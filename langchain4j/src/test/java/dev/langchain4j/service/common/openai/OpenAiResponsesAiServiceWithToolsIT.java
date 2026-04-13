@@ -45,8 +45,8 @@ class OpenAiResponsesAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     }
 
     @Override
-    protected boolean hasDeterministicParallelToolExecutionAssertions() {
-        return true; // TODO
+    protected boolean supportsMultimodalToolResults() {
+        return true;
     }
 
     private static class StreamingChatModelAdapter implements ChatModel {

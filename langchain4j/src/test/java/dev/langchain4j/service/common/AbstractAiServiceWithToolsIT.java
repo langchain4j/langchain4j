@@ -834,7 +834,8 @@ public abstract class AbstractAiServiceWithToolsIT {
         var assistant =
                 AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
 
-        var text = adaptPrompt3("How much is 37 plus 87?");
+        var text = adaptPrompt3("How much is 37 plus 87? " +
+                "Reply in the following format: 37 + 87 = ...");
 
         // when
         var response = assistant.chat(text);
@@ -870,10 +871,6 @@ public abstract class AbstractAiServiceWithToolsIT {
 
     protected String adaptPrompt3(String prompt) {
         return prompt;
-    }
-
-    protected boolean hasDeterministicParallelToolExecutionAssertions() {
-        return true;
     }
 
     @ParameterizedTest
@@ -912,8 +909,10 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         var tool = spy(toolInstance);
 
-        var assistant =
-                AiServices.builder(Assistant.class).chatModel(model).tools(tool).build();
+        var assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .tools(tool)
+                .build();
 
         var text = "How much is 37 plus 87? How much is 73 plus 78? Call 2 tools in parallel (at the same time)!";
 
@@ -921,30 +920,23 @@ public abstract class AbstractAiServiceWithToolsIT {
         var response = assistant.chat(text);
 
         // then
-        if (!hasDeterministicParallelToolExecutionAssertions()) {
-            assertThat(response.toolExecutions().size()).isGreaterThanOrEqualTo(2);
-            assertThat(response.toolExecutions().stream().map(t -> t.result())).contains("124", "151");
-            verify(tool, atLeastOnce()).add(37, 87);
-            verify(tool, atLeastOnce()).add(73, 78);
+        if (returnBehavior == ReturnBehavior.TO_LLM) {
+            // The tool is called twice, the result is manipulated by the LLM so the response is not equal to the plain tool result
+            assertThat(response.content()).contains("124");
+            assertThat(response.content()).contains("151");
         } else {
-            if (returnBehavior == ReturnBehavior.TO_LLM) {
-                // The tool is called twice, the result is manipulated by the LLM so the response is not equal to the
-                // plain tool result
-                assertThat(response.content()).contains("124");
-                assertThat(response.content()).contains("151");
-            } else {
-                // The first tool result is returned immediately so the response is equal to the plain tool result
-                assertThat(response.content()).isNull();
-                verify(tool).add(37, 87);
-            }
-
-            assertThat(response.toolExecutions().size()).isEqualTo(2);
-            assertThat(response.toolExecutions().get(0).result()).isEqualTo("124");
-            assertThat(response.toolExecutions().get(1).result()).isEqualTo("151");
+            // The first tool result is returned immediately so the response is equal to the plain tool result
+            assertThat(response.content()).isNull();
             verify(tool).add(37, 87);
-            verify(tool).add(73, 78);
-            verifyNoMoreInteractions(tool);
         }
+
+        assertThat(response.toolExecutions().size()).isEqualTo(2);
+        assertThat(response.toolExecutions().get(0).result()).isEqualTo("124");
+        assertThat(response.toolExecutions().get(1).result()).isEqualTo("151");
+        verify(tool).add(37, 87);
+        verify(tool).add(73, 78);
+
+        verifyNoMoreInteractions(tool);
 
         if (verifyModelInteractions()) {
             verify(model).supportedCapabilities();

@@ -49,7 +49,6 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.FinishReason;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -195,7 +194,7 @@ class OpenAiResponsesClient {
             input.addAll(toResponsesMessages(msg));
         }
 
-        var payload = new HashMap<String, Object>();
+        var payload = new LinkedHashMap<String, Object>();
         payload.put(FIELD_MODEL, getOrDefault(parameters.modelName(), config.modelName()));
         payload.put(FIELD_INPUT, input);
         payload.put(FIELD_STREAM, true);
@@ -257,13 +256,13 @@ class OpenAiResponsesClient {
         }
 
         if (config.reasoningEffort() != null && !config.reasoningEffort().isEmpty()) {
-            var reasoning = new HashMap<String, Object>();
+            var reasoning = new LinkedHashMap<String, Object>();
             reasoning.put(FIELD_EFFORT, config.reasoningEffort());
             payload.put(FIELD_REASONING, reasoning);
         }
 
         if (config.streamIncludeObfuscation() != null) {
-            var streamOptions = new HashMap<String, Object>();
+            var streamOptions = new LinkedHashMap<String, Object>();
             streamOptions.put(FIELD_INCLUDE_OBFUSCATION, config.streamIncludeObfuscation());
             payload.put(FIELD_STREAM_OPTIONS, streamOptions);
         }
@@ -272,7 +271,7 @@ class OpenAiResponsesClient {
         if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
             var tools = new ArrayList<Map<String, Object>>();
             for (var toolSpec : toolSpecifications) {
-                var tool = new HashMap<String, Object>();
+                var tool = new LinkedHashMap<String, Object>();
                 tool.put(FIELD_TYPE, TYPE_FUNCTION);
                 tool.put(FIELD_NAME, toolSpec.name());
                 if (toolSpec.description() != null) {
@@ -283,9 +282,9 @@ class OpenAiResponsesClient {
                 if (toolSpec.parameters() != null) {
                     functionParameters = toMap(toolSpec.parameters(), config.strict());
                 } else if (config.strict()) {
-                    functionParameters = new HashMap<>();
+                    functionParameters = new LinkedHashMap<>();
                     functionParameters.put(FIELD_TYPE, TYPE_OBJECT);
-                    functionParameters.put(FIELD_PROPERTIES, new HashMap<>());
+                    functionParameters.put(FIELD_PROPERTIES, new LinkedHashMap<>());
                     functionParameters.put(FIELD_ADDITIONAL_PROPERTIES, false);
                 }
 
@@ -311,7 +310,7 @@ class OpenAiResponsesClient {
         var textConfig = toResponseTextConfig(chatRequest.responseFormat(), config.strict());
         if (config.textVerbosity() != null) {
             if (textConfig == null) {
-                textConfig = new HashMap<>();
+                textConfig = new LinkedHashMap<>();
             }
             textConfig.put(FIELD_TEXT_VERBOSITY, config.textVerbosity());
         }
@@ -371,7 +370,7 @@ class OpenAiResponsesClient {
                     String callId = requireNonBlank(toolRequest.id(), "ToolExecutionRequest.id");
                     String name = requireNonBlank(toolRequest.name(), "ToolExecutionRequest.name");
                     String arguments = requireNonBlank(toolRequest.arguments(), "ToolExecutionRequest.arguments");
-                    var functionCall = new HashMap<String, Object>();
+                    var functionCall = new LinkedHashMap<String, Object>();
                     functionCall.put(FIELD_TYPE, TYPE_FUNCTION_CALL);
                     functionCall.put(FIELD_CALL_ID, callId);
                     functionCall.put(FIELD_NAME, name);
@@ -382,15 +381,28 @@ class OpenAiResponsesClient {
 
             return items;
         } else if (msg instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
-            if (!toolExecutionResultMessage.hasSingleText()) {
-                throw new UnsupportedFeatureException(
-                        "OpenAI Responses API does not support non-text content in tool results. "
-                                + "Only text content is supported in function_call_output.");
-            }
-            var outputEntry = new HashMap<String, Object>();
+            var outputEntry = new LinkedHashMap<String, Object>();
             outputEntry.put(FIELD_TYPE, TYPE_FUNCTION_CALL_OUTPUT);
             outputEntry.put(FIELD_CALL_ID, toolExecutionResultMessage.id());
-            outputEntry.put(FIELD_OUTPUT, toolExecutionResultMessage.text());
+
+            if (toolExecutionResultMessage.hasSingleText()) {
+                outputEntry.put(FIELD_OUTPUT, toolExecutionResultMessage.text());
+            } else {
+                List<Map<String, Object>> outputContents = new ArrayList<>();
+                for (Content content : toolExecutionResultMessage.contents()) {
+                    if (content instanceof TextContent textContent) {
+                        outputContents.add(createInputTextContent(textContent.text()));
+                    } else if (content instanceof ImageContent imageContent) {
+                        outputContents.add(createInputImageContent(imageContent.image()));
+                    } else {
+                        throw new UnsupportedFeatureException("Unsupported content type in tool result: "
+                                + content.getClass().getName()
+                                + ". Only TextContent and ImageContent are supported.");
+                    }
+                }
+                outputEntry.put(FIELD_OUTPUT, outputContents);
+            }
+
             return List.of(outputEntry);
         } else {
             throw new UnsupportedFeatureException(
@@ -400,7 +412,7 @@ class OpenAiResponsesClient {
     }
 
     private static Map<String, Object> createMessageEntry(String role, List<Map<String, Object>> contentEntries) {
-        var entry = new HashMap<String, Object>();
+        var entry = new LinkedHashMap<String, Object>();
         entry.put(FIELD_TYPE, TYPE_MESSAGE);
         entry.put(FIELD_ROLE, role);
         entry.put(FIELD_CONTENT, contentEntries);
@@ -408,21 +420,21 @@ class OpenAiResponsesClient {
     }
 
     private static Map<String, Object> createInputTextContent(String text) {
-        var content = new HashMap<String, Object>();
+        var content = new LinkedHashMap<String, Object>();
         content.put(FIELD_TYPE, TYPE_INPUT_TEXT);
         content.put(FIELD_TEXT, text);
         return content;
     }
 
     private static Map<String, Object> createOutputTextContent(String text) {
-        var content = new HashMap<String, Object>();
+        var content = new LinkedHashMap<String, Object>();
         content.put(FIELD_TYPE, TYPE_OUTPUT_TEXT);
         content.put(FIELD_TEXT, text);
         return content;
     }
 
     private static Map<String, Object> createInputImageContent(Image image) {
-        var content = new HashMap<String, Object>();
+        var content = new LinkedHashMap<String, Object>();
         content.put(FIELD_TYPE, TYPE_INPUT_IMAGE);
         content.put(FIELD_IMAGE_URL, buildImageUrl(image));
         content.put(FIELD_DETAIL, DETAIL_AUTO_VALUE);
@@ -463,11 +475,11 @@ class OpenAiResponsesClient {
             return null;
         }
 
-        var textConfig = new HashMap<String, Object>();
+        var textConfig = new LinkedHashMap<String, Object>();
         JsonSchema jsonSchema = responseFormat.jsonSchema();
 
         if (jsonSchema == null) {
-            var format = new HashMap<String, Object>();
+            var format = new LinkedHashMap<String, Object>();
             format.put(FIELD_TYPE, TYPE_JSON_OBJECT);
             textConfig.put(FIELD_FORMAT, format);
         } else {
@@ -544,8 +556,8 @@ class OpenAiResponsesClient {
 
         private final StreamingChatResponseHandler handler;
         private volatile StreamingHandle streamingHandle;
-        private final Map<String, ToolExecutionRequest.Builder> toolCallBuilders = new HashMap<>();
-        private final Map<String, Integer> toolCallIndices = new HashMap<>();
+        private final Map<String, ToolExecutionRequest.Builder> toolCallBuilders = new LinkedHashMap<>();
+        private final Map<String, Integer> toolCallIndices = new LinkedHashMap<>();
         private final List<ToolExecutionRequest> completedToolCalls = new ArrayList<>();
         private final Set<String> completedToolCallItemIds = new HashSet<>();
         private final List<ServerSentEvent> rawServerSentEvents = new ArrayList<>();

@@ -41,11 +41,6 @@ class OpenAiOfficialResponsesAiServiceWithToolsIT extends AbstractAiServiceWithT
         return true;
     }
 
-    @Override
-    protected boolean hasDeterministicParallelToolExecutionAssertions() {
-        return false;
-    }
-
     private static class StreamingChatModelAdapter implements ChatModel {
 
         private final StreamingChatModel streamingChatModel;
