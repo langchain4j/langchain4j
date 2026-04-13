@@ -4,9 +4,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.time.format.DateTimeParseException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.stream.Stream;
@@ -42,12 +42,13 @@ class DateOutputParserTest {
         );
     }
 
-    @ParameterizedTest
-    @NullSource
-    void should_fail_to_parse_null_input(String input) {
+    @Test
+    void should_fail_to_parse_null_input() {
 
-        assertThatThrownBy(() -> parser.parse(input))
-                .isInstanceOf(Exception.class);
+        assertThatThrownBy(() -> parser.parse(null))
+                .isExactlyInstanceOf(OutputParsingException.class)
+                .hasMessage("Cannot parse null into java.util.Date")
+                .hasNoCause();
     }
 
     @ParameterizedTest
@@ -64,7 +65,9 @@ class DateOutputParserTest {
     void should_fail_to_parse_invalid_input(String input) {
 
         assertThatThrownBy(() -> parser.parse(input))
-                .isInstanceOf(RuntimeException.class);
+                .isExactlyInstanceOf(OutputParsingException.class)
+                .hasMessageContainingAll("Cannot parse", input, "into java.util.Date")
+                .hasCauseExactlyInstanceOf(DateTimeParseException.class);
     }
 
     @Test

@@ -15,8 +15,15 @@ class DateOutputParser implements OutputParser<Date> {
 
     @Override
     public Date parse(String string) {
-        LocalDate localDate = LocalDate.parse(string.trim(), FORMATTER);
-        return Date.from(localDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        if (string == null) {
+            throw new OutputParsingException("Cannot parse null into java.util.Date", null);
+        }
+        try {
+            LocalDate localDate = LocalDate.parse(string.trim(), FORMATTER);
+            return Date.from(localDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        } catch (Exception e) {
+            throw new OutputParsingException("Cannot parse '%s' into java.util.Date".formatted(string), e);
+        }
     }
 
     @Override
