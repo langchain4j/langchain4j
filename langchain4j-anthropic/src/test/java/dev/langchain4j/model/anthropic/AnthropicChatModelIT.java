@@ -97,7 +97,6 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
-                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
@@ -132,7 +131,6 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
-                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
@@ -476,7 +474,6 @@ class AnthropicChatModelIT {
 
         // given
         AnthropicChatModel model = AnthropicChatModel.builder()
-                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheTools(true)
