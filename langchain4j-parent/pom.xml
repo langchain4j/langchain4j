@@ -527,6 +527,38 @@
                     <artifactId>flatten-maven-plugin</artifactId>
                     <version>1.7.2</version>
                 </plugin>
+                <plugin>
+                    <groupId>org.revapi</groupId>
+                    <artifactId>revapi-maven-plugin</artifactId>
+                    <version>0.15.1</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.revapi</groupId>
+                            <artifactId>revapi-java</artifactId>
+                            <version>0.28.4</version>
+                        </dependency>
+                    </dependencies>
+                    <configuration>
+                        <failOnMissingConfigurationFiles>false</failOnMissingConfigurationFiles>
+                        <oldVersion>RELEASE</oldVersion>
+                        <analysisConfigurationFiles>
+                            <configurationFile>
+                                <path>${project.basedir}/revapi.json</path>
+                            </configurationFile>
+                        </analysisConfigurationFiles>
+                        <analysisConfiguration>
+                            <revapi.differences>
+                                <ignore>true</ignore>
+                                <differences>
+                                    <item>
+                                        <code>java.method.varargOverloadsOnlyDifferInVarargParameter</code>
+                                        <justification>Varargs overloads differing only in element type are intentional for API convenience</justification>
+                                    </item>
+                                </differences>
+                            </revapi.differences>
+                        </analysisConfiguration>
+                    </configuration>
+                </plugin>
             </plugins>
         </pluginManagement>
 
@@ -782,6 +814,19 @@
                                 <exclude>**/*Exception.*</exclude>
                             </excludes>
                         </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.revapi</groupId>
+                <artifactId>revapi-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <phase>verify</phase>
                     </execution>
                 </executions>
             </plugin>
