@@ -31,6 +31,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
+          token: ${{ secrets.GH_RELEASE_AUTOMATION }}
 
       - name: Set up JDK 25
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
@@ -43,12 +44,6 @@ jobs:
         run: |
           echo "Next stable version: $NEXT_STABLE_VERSION"
           echo "Next beta version: $NEXT_BETA_VERSION"
-
-      - name: Create and switch to new branch
-        run: |
-          BRANCH_NAME="update-versions-$NEXT_STABLE_VERSION"
-          echo "branchName=$BRANCH_NAME" >> $GITHUB_ENV
-          git checkout -b "$BRANCH_NAME"
 
       - name: Extract current stable version property
         id: extract-current-stable
@@ -97,7 +92,7 @@ jobs:
 
           git add pom.xml '**/pom.xml'
           git commit -m "Update versions to $NEXT_STABLE_VERSION and $NEXT_BETA_VERSION"
-          git push origin "$branchName"
+          git push origin main
 
       - name: Trigger the same job in the langchain4j-spring repo
         env:

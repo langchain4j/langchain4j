@@ -81,7 +81,7 @@ jobs:
         run: mvn versions:set-property -Dproperty=langchain4j.beta.version -DnewVersion="$BETA_VERSION" -DgenerateBackupPoms=false
 
       - name: Release core and parent modules
-        run: mvn -B -U -pl langchain4j-core,langchain4j-parent -Psign clean deploy
+        run: mvn -B -U -pl internal/langchain4j-internal-test-retry,langchain4j-core,langchain4j-parent -Psign clean deploy
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
@@ -104,7 +104,7 @@ jobs:
         run: |
           EMBEDDING_MODULES=$(find embeddings -mindepth 1 -maxdepth 1 -type d -exec test -f "{}/pom.xml" \; -print | paste -sd , -)
           
-          EXCLUDES="!langchain4j-core,!langchain4j-parent"
+          EXCLUDES="!internal/langchain4j-internal-test-retry,!langchain4j-core,!langchain4j-parent"
 
           # Append embeddings exclusions (converted to !path syntax)
           if [ -n "$EMBEDDING_MODULES" ]; then

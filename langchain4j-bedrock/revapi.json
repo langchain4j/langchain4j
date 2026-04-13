@@ -1,0 +1,15 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.nonPublicPartOfAPI",
+          "old": "class dev.langchain4j.model.bedrock.BedrockTitanEmbeddingResponse",
+          "justification": "AbstractBedrockEmbeddingModel is package-private, so the generic type parameter cannot leak to external subclasses"
+        }
+      ]
+    }
+  }
+]

@@ -91,7 +91,7 @@ jobs:
           mvn -B -U verify \
             -pl "${modules}" \
             -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipOracleITs -DskipVespaITs \
-            --fail-at-end -Dmaven.test.failure.ignore=true \
+            --fail-at-end \
             -Djunit.jupiter.extensions.autodetection.enabled=true \
             -DembeddingsSkipCache \
             -Dtinylog.writer.level=info
@@ -99,6 +99,7 @@ jobs:
         env:
           LC4J_GLOBAL_TEST_RETRY_ENABLED: true
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_CACHING_BASE_URL: ${{ secrets.ANTHROPIC_CACHING_BASE_URL }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME: ${{ secrets.AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME }}
@@ -148,6 +149,54 @@ jobs:
 
       - name: Clean Docker
         run: docker system prune -af || true
+
+      - name: Publish Test Summary
+        if: always()
+        run: |
+          python3 << 'PYEOF'
+          import xml.etree.ElementTree as ET
+          import glob, os
+
+          files = glob.glob('**/target/*-reports/TEST-*.xml', recursive=True)
+          total = failures = errors = skipped = 0
+          failed_tests = []
+
+          for path in files:
+              try:
+                  root = ET.parse(path).getroot()
+                  total += int(root.get('tests', 0))
+                  failures += int(root.get('failures', 0))
+                  errors += int(root.get('errors', 0))
+                  skipped += int(root.get('skipped', 0))
+                  for tc in root.findall('.//testcase'):
+                      fail = tc.find('failure')
+                      if fail is None:
+                          fail = tc.find('error')
+                      if fail is not None:
+                          cls = tc.get('classname', '').split('.')[-1]
+                          name = tc.get('name', '')
+                          msg = (fail.get('message', '') or '')[:150].replace('\n', ' ').replace('|', '\\|')
+                          failed_tests.append(f"| `{cls}` | `{name}` | {msg} |")
+              except Exception:
+                  pass
+
+          passed = total - failures - errors - skipped
+          summary = os.environ.get('GITHUB_STEP_SUMMARY', '/dev/null')
+          with open(summary, 'a') as f:
+              f.write('## Test Results\n\n')
+              if failures == 0 and errors == 0:
+                  f.write(f':white_check_mark: **{passed} passed**, {skipped} skipped out of {total} tests\n')
+              else:
+                  f.write(f':x: **{failures} failed, {errors} errors**, {passed} passed, {skipped} skipped out of {total} tests\n')
+              if failed_tests:
+                  f.write('\n### Failures\n\n')
+                  f.write('| Class | Test | Message |\n')
+                  f.write('|-------|------|---------|\n')
+                  for line in failed_tests[:50]:
+                      f.write(line + '\n')
+                  if len(failed_tests) > 50:
+                      f.write(f'\n*... and {len(failed_tests) - 50} more*\n')
+          PYEOF
 
       - name: Upload Test Reports
         if: always() # always run even if the previous step failed or was cancelled

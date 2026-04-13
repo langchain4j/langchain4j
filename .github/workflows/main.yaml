@@ -51,6 +51,9 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
+      - name: Print Maven version
+        run: mvn --version
+
       - name: Compile and unit test with JDK ${{ matrix.java_version }}
         run: |
           mvn -B -U -DembeddingsSkipCache -T8C test javadoc:aggregate
@@ -110,6 +113,7 @@ jobs:
         env:
           LC4J_GLOBAL_TEST_RETRY_ENABLED: true
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_CACHING_BASE_URL: ${{ secrets.ANTHROPIC_CACHING_BASE_URL }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME: ${{ secrets.AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME }}

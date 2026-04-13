@@ -26,6 +26,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          token: ${{ secrets.GH_RELEASE_AUTOMATION }}
 
       - name: Extract current stable and beta versions from docs metadata
         id: extract-current-versions
@@ -36,13 +38,6 @@ jobs:
           echo "betaCurrent=$BETA_CURRENT" >> $GITHUB_OUTPUT
           echo "Found stable version in docs: $STABLE_CURRENT"
           echo "Found beta version in docs: $BETA_CURRENT"
-
-      - name: Create new branch
-        id: create-branch
-        run: |
-          BRANCH_NAME="update-docs-versions-$STABLE_VERSION"
-          git checkout -b "$BRANCH_NAME"
-          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
 
       - name: Replace versions in docs recursively
         run: |
@@ -77,7 +72,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/docs
           git commit -m "docu: update versions to $STABLE_VERSION and $BETA_VERSION"
-          git push origin "${{ steps.create-branch.outputs.branch }}"
+          git push origin main
 
       - name: Trigger documentation build and deploy
         if: steps.git-check.outputs.changed == 'true'
