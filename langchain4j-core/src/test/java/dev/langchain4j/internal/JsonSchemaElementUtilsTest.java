@@ -475,7 +475,7 @@ class JsonSchemaElementUtilsTest {
     }
 
     @Test
-    void shouldRejectJsonRawSchemaForOpenAiResponses() {
+    void shouldRejectJsonRawSchemaForOpenAiResponses() { // TODO remove
         JsonRawSchema schema = JsonRawSchema.from("{\"type\":\"object\"}");
 
         assertThatThrownBy(() -> JsonSchemaElementUtils.toMapForOpenAiResponses(schema))

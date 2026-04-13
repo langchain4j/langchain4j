@@ -1,7 +1,5 @@
 package dev.langchain4j.service.common.openai;
 
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
@@ -13,26 +11,41 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiResponsesStreamingChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithJsonSchemaIT;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
 import java.util.List;
 import java.util.Set;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 // TODO move to langchain4j-open-ai module once dependency cycle is resolved
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiResponsesAiServicesWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT {
 
-    private static final ChatModel MODEL = new StreamingChatModelAdapter(
-            OpenAiResponsesStreamingChatModel.builder()
-                    .apiKey(System.getenv("OPENAI_API_KEY"))
-                    .modelName(GPT_4_O_MINI.toString())
-                    .temperature(0.0)
-                    .strict(true)
-                    .build(),
-            true);
-
     @Override
     protected List<ChatModel> models() {
-        return List.of(MODEL);
+        return List.of(
+                new StreamingChatModelAdapter(
+                        OpenAiResponsesStreamingChatModel.builder()
+                                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                                .apiKey(System.getenv("OPENAI_API_KEY"))
+                                .modelName("gpt-5.4-mini")
+                                .temperature(0.0)
+                                .strict(true)
+                                .logRequests(true)
+                                .logResponses(true)
+                                .build(),
+                        true),
+                new StreamingChatModelAdapter(
+                        OpenAiResponsesStreamingChatModel.builder()
+                                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                                .apiKey(System.getenv("OPENAI_API_KEY"))
+                                .modelName("gpt-5.4-mini")
+                                .temperature(0.0)
+                                .strict(false)
+                                .logRequests(true)
+                                .logResponses(true)
+                                .build(),
+                        false)
+        );
     }
 
     @Override

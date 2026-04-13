@@ -231,7 +231,7 @@ public class JsonSchemaElementUtils {
      * for optional fields), keeps existing {@code additionalProperties} values if present, and only adds
      * the field when it is missing.
      */
-    public static Map<String, Object> toMapForOpenAiResponses(JsonSchemaElement jsonSchemaElement) {
+    public static Map<String, Object> toMapForOpenAiResponses(JsonSchemaElement jsonSchemaElement) { // TODO remove
         if (jsonSchemaElement instanceof JsonRawSchema) {
             throw new UnsupportedFeatureException(
                     "JsonRawSchema is not supported with OpenAI Responses API; use typed JsonSchema elements instead");
@@ -376,7 +376,7 @@ public class JsonSchemaElementUtils {
         }
     }
 
-    private static void ensureAdditionalPropertiesFalse(Object node) {
+    public static void ensureAdditionalPropertiesFalse(Object node) { // TODO remove
         if (node instanceof Map<?, ?> rawMap) {
             @SuppressWarnings("unchecked")
             Map<String, Object> map = (Map<String, Object>) rawMap;
@@ -397,7 +397,7 @@ public class JsonSchemaElementUtils {
         }
     }
 
-    private static boolean isObjectSchema(Map<?, ?> map) {
+    private static boolean isObjectSchema(Map<?, ?> map) { // TODO remove
         if (map.containsKey("properties")) {
             return true;
         }

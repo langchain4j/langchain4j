@@ -1,9 +1,9 @@
 package dev.langchain4j.model.openai;
 
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
-import static dev.langchain4j.internal.JsonSchemaElementUtils.toMapForOpenAiResponses;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -40,6 +40,7 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
@@ -50,13 +51,15 @@ import dev.langchain4j.model.output.FinishReason;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 class OpenAiResponsesClient {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
+            .enable(INDENT_OUTPUT);
     private static final String DEFAULT_BASE_URL = "https://api.openai.com/v1";
     private static final String OPENAI_ORGANIZATION_HEADER = "OpenAI-Organization";
     private static final String STREAM_DONE_MARKER = "[DONE]";
@@ -126,7 +129,6 @@ class OpenAiResponsesClient {
     private static final String FIELD_INCLUDE_OBFUSCATION = "include_obfuscation";
     private static final String FIELD_TEXT_VERBOSITY = "verbosity";
     private static final String FIELD_FORMAT = "format";
-    private static final String FIELD_JSON_SCHEMA = "json_schema";
     private static final String FIELD_SCHEMA = "schema";
     private static final String FIELD_ADDITIONAL_PROPERTIES = "additionalProperties";
     private static final String FIELD_STATUS = "status";
@@ -469,26 +471,21 @@ class OpenAiResponsesClient {
             format.put(FIELD_TYPE, TYPE_JSON_OBJECT);
             textConfig.put(FIELD_FORMAT, format);
         } else {
-            if (!(jsonSchema.rootElement() instanceof JsonObjectSchema)) {
+            if (!(jsonSchema.rootElement() instanceof JsonObjectSchema
+                    || jsonSchema.rootElement() instanceof JsonRawSchema)) {
                 throw new IllegalArgumentException(
-                        "For OpenAI Responses API, the root element of the JSON Schema must be a JsonObjectSchema, but it was: "
+                        "For OpenAI, the root element of the JSON Schema must be either a JsonObjectSchema or a JsonRawSchema, but it was: "
                                 + jsonSchema.rootElement().getClass());
             }
 
-            Map<String, Object> schemaMap = toMapForOpenAiResponses(jsonSchema.rootElement());
-            var format = new HashMap<String, Object>();
+            var format = new LinkedHashMap<String, Object>();
             format.put(FIELD_TYPE, TYPE_JSON_SCHEMA);
+            format.put(FIELD_STRICT, strict);
             if (jsonSchema.name() != null) {
                 format.put(FIELD_NAME, jsonSchema.name());
             }
-            var jsonSchemaConfig = new HashMap<String, Object>();
-            jsonSchemaConfig.put(FIELD_SCHEMA, schemaMap);
-            jsonSchemaConfig.put(FIELD_STRICT, strict);
-            if (jsonSchema.name() != null) {
-                jsonSchemaConfig.put(FIELD_NAME, jsonSchema.name());
-            }
-            format.put(FIELD_SCHEMA, schemaMap);
-            format.put(FIELD_JSON_SCHEMA, jsonSchemaConfig);
+            format.put(FIELD_SCHEMA, toMap(jsonSchema.rootElement(), strict));
+
             textConfig.put(FIELD_FORMAT, format);
         }
 

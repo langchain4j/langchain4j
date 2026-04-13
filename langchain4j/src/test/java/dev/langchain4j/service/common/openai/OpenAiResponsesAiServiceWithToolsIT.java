@@ -25,6 +25,7 @@ class OpenAiResponsesAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     @Override
     protected List<ChatModel> models() {
         return List.of(new StreamingChatModelAdapter(OpenAiResponsesStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(GPT_4_O_MINI.toString())
                 .temperature(0.0)

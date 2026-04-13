@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Set;
 
 @Experimental
-public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
+public class OpenAiResponsesStreamingChatModel implements StreamingChatModel { // TODO extract into a separate module?
 
     private final OpenAiResponsesClient client;
     private final String modelName;
@@ -86,7 +86,6 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         this.streamIncludeObfuscation = builder.streamIncludeObfuscation;
         // Default to false to avoid persisting data unless explicitly requested.
         this.store = getOrDefault(builder.store, false);
-        // Default to false to avoid rejecting outputs unless explicitly enabled by the user.
         this.strict = getOrDefault(builder.strict, false);
         this.listeners = copy(builder.listeners);
         this.defaultRequestParameters = OpenAiResponsesChatRequestParameters.builder()

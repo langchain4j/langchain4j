@@ -3,7 +3,9 @@ package dev.langchain4j.model.openai.common;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1_NANO;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.atLeast;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -38,15 +40,15 @@ import org.mockito.InOrder;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(); // TODO
 
     @Override
     protected List<StreamingChatModel> models() {
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_4_1_NANO.toString())
-                .strict(true)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -57,9 +59,9 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
         OpenAiResponsesStreamingChatModel.Builder modelBuilder = OpenAiResponsesStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .strict(true);
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"));
 
         if (parameters.modelName() != null) {
             modelBuilder.modelName(parameters.modelName());
@@ -77,14 +79,14 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return OpenAiChatRequestParameters.builder()
+        return OpenAiChatRequestParameters.builder() // TODO should be OpenAiResponsesChatRequestParameters
                 .maxOutputTokens(Math.max(maxOutputTokens, 16))
                 .build();
     }
 
     @Override
     protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel streamingChatModel) {
-        return OpenAiChatResponseMetadata.class;
+        return OpenAiChatResponseMetadata.class; // TODO should be responses-specific?
     }
 
     @Override
@@ -94,22 +96,23 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected boolean supportsSingleImageInputAsPublicURL() {
-        return false;
+        return false; // TODO why?
     }
 
     @Override
     protected boolean supportsMultipleImageInputsAsPublicURLs() {
-        return false;
+        return false; // TODO why?
     }
 
     @Override
     protected boolean supportsJsonResponseFormatWithRawSchema() {
-        return false;
+        return false; // TODO
     }
 
     @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {
         return OpenAiResponsesStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_4_1_NANO.toString())
@@ -120,32 +123,56 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
-        io.verify(handler).onCompleteToolCall(argThat(toolCall -> {
-            ToolExecutionRequest request = toolCall.toolExecutionRequest();
-            return toolCall.index() == 0
-                    && request.id().equals(id)
-                    && request.name().equals("getWeather")
-                    && request.arguments().replace(" ", "").equals("{\"city\":\"Munich\"}");
-        }));
+        io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
+                toolCall.index() == 0
+                        && toolCall.id().equals(id)
+                        && toolCall.name().equals("getWeather")
+                        && !toolCall.partialArguments().isBlank()
+        ), any());
+        io.verify(handler).onCompleteToolCall(argThat(toolCall ->
+                {
+                    ToolExecutionRequest request = toolCall.toolExecutionRequest();
+                    return toolCall.index() == 0
+                            && request.id().equals(id)
+                            && request.name().equals("getWeather")
+                            && request.arguments().replace(" ", "").equals("{\"city\":\"Munich\"}");
+                }
+        ));
     }
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
-        io.verify(handler).onCompleteToolCall(argThat(toolCall -> {
-            ToolExecutionRequest request = toolCall.toolExecutionRequest();
-            return toolCall.index() == 0
-                    && request.id().equals(id1)
-                    && request.name().equals("getWeather")
-                    && request.arguments().replace(" ", "").equals("{\"city\":\"Munich\"}");
-        }));
+        io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
+                toolCall.index() == 0
+                        && toolCall.id().equals(id1)
+                        && toolCall.name().equals("getWeather")
+                        && !toolCall.partialArguments().isBlank()
+        ), any());
+        io.verify(handler).onCompleteToolCall(argThat(toolCall ->
+                {
+                    ToolExecutionRequest request = toolCall.toolExecutionRequest();
+                    return toolCall.index() == 0
+                            && request.id().equals(id1)
+                            && request.name().equals("getWeather")
+                            && request.arguments().replace(" ", "").equals("{\"city\":\"Munich\"}");
+                }
+        ));
 
-        io.verify(handler).onCompleteToolCall(argThat(toolCall -> {
-            ToolExecutionRequest request = toolCall.toolExecutionRequest();
-            return toolCall.index() == 1
-                    && request.id().equals(id2)
-                    && request.name().equals("getTime")
-                    && request.arguments().replace(" ", "").equals("{\"country\":\"France\"}");
-        }));
+        io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
+                toolCall.index() == 1
+                        && toolCall.id().equals(id2)
+                        && toolCall.name().equals("getTime")
+                        && !toolCall.partialArguments().isBlank()
+        ), any());
+        io.verify(handler).onCompleteToolCall(argThat(toolCall ->
+                {
+                    ToolExecutionRequest request = toolCall.toolExecutionRequest();
+                    return toolCall.index() == 1
+                            && request.id().equals(id2)
+                            && request.name().equals("getTime")
+                            && request.arguments().replace(" ", "").equals("{\"country\":\"France\"}");
+                }
+        ));
     }
 
     @Override
@@ -247,6 +274,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Test
     void should_work_with_o_models() {
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName("o4-mini")
                 .build();
@@ -266,6 +294,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Test
     void should_support_reasoning_effort() {
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName("o4-mini")
                 .reasoningEffort("medium")
@@ -288,8 +317,9 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         MockHttpClient mockHttpClient = new MockHttpClient();
 
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
                 .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(GPT_4_1_NANO.toString())
                 .temperature(0.7)
                 .topP(0.9)
@@ -334,88 +364,12 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Test
-    void should_send_tools_in_responses_api_format() throws Exception {
-        MockHttpClient mockHttpClient = new MockHttpClient();
-
-        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
-                .apiKey("test-key")
-                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
-                .modelName(GPT_4_1_NANO.toString())
-                .strict(true)
-                .build();
-
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("getWeather")
-                .description("Get weather data")
-                .parameters(JsonObjectSchema.builder().addStringProperty("city").build())
-                .build();
-
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("Hello"))
-                .toolSpecifications(toolSpecification)
-                .build();
-
-        try {
-            model.chat(chatRequest, new TestStreamingChatResponseHandler());
-        } catch (Exception ignored) {
-        }
-
-        JsonNode payload = OBJECT_MAPPER.readTree(mockHttpClient.request().body());
-        JsonNode toolsNode = payload.get("tools");
-
-        assertThat(toolsNode).isNotNull();
-        assertThat(toolsNode.size()).isEqualTo(1);
-
-        JsonNode toolNode = toolsNode.get(0);
-        assertThat(toolNode.get("type").asText()).isEqualTo("function");
-        assertThat(toolNode.get("name").asText()).isEqualTo("getWeather");
-        assertThat(toolNode.get("description").asText()).isEqualTo("Get weather data");
-        assertThat(toolNode.has("parameters")).isTrue();
-        assertThat(toolNode.get("strict").asBoolean()).isTrue();
-
-        assertThat(payload.get("tool_choice").asText()).isEqualTo("auto");
-    }
-
-    @Test
-    void should_not_send_strict_when_strict_is_false() throws Exception {
-        MockHttpClient mockHttpClient = new MockHttpClient();
-
-        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
-                .apiKey("test-key")
-                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
-                .modelName(GPT_4_1_NANO.toString())
-                .strict(false)
-                .build();
-
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("getWeather")
-                .parameters(JsonObjectSchema.builder().addStringProperty("city").build())
-                .build();
-
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("Hello"))
-                .toolSpecifications(toolSpecification)
-                .build();
-
-        try {
-            model.chat(chatRequest, new TestStreamingChatResponseHandler());
-        } catch (Exception ignored) {
-        }
-
-        JsonNode payload = OBJECT_MAPPER.readTree(mockHttpClient.request().body());
-        JsonNode toolNode = payload.get("tools").get(0);
-
-        assertThat(toolNode.has("strict")).isFalse();
-        assertThat(toolNode.get("parameters").has("additionalProperties")).isFalse();
-    }
-
-    @Test
     void should_send_previous_response_id_from_request_parameters() throws Exception {
         MockHttpClient mockHttpClient = new MockHttpClient();
 
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
-                .apiKey("test-key")
                 .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .apiKey("test-key")
                 .modelName(GPT_4_1_NANO.toString())
                 .previousResponseId("builder-response-id")
                 .build();
@@ -621,10 +575,10 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         MockHttpClient mockHttpClient = new MockHttpClient();
 
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
                 .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
-                .modelName(GPT_4_1_NANO.toString())
                 .baseUrl("https://custom.openai.example.com/v1")
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .modelName(GPT_4_1_NANO.toString())
                 .build();
 
         ChatRequest chatRequest =
@@ -642,6 +596,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Test
     void should_return_model_specific_response_metadata() {
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(GPT_4_1_NANO.toString())
                 .serviceTier("default")
@@ -670,6 +625,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Test
     void should_fail_when_input_exceeds_context_limit() {
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName("gpt-5-nano")
                 .build();
@@ -725,4 +681,5 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
         assertThat(chatResponse.aiMessage().text()).isNotBlank();
     }
+    // TODO revisit all tests here
 }

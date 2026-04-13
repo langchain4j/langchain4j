@@ -1,5 +1,6 @@
 package dev.langchain4j.service.common;
 
+import static dev.langchain4j.data.message.SystemMessage.*;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
@@ -872,9 +873,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                         .messages(
                                 systemMessage == null
                                         ? singletonList(userMessage(text))
-                                        : List.of(
-                                                dev.langchain4j.data.message.SystemMessage.systemMessage(systemMessage),
-                                                userMessage(text)))
+                                        : List.of(systemMessage(systemMessage), userMessage(text)))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
                                 .jsonSchema(JsonSchema.builder()
@@ -1100,10 +1099,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         PersonExtractor16 personExtractor = AiServices.create(PersonExtractor16.class, model);
 
         String text = """
-                Klaus can be identified by the following IDs:
-                - 12345
-                - 567b229a-6b0a-4f1e-9006-448cd9dfbfda
-                - Klaus12345
+                Klaus can be identified by the following ID: 567b229a-6b0a-4f1e-9006-448cd9dfbfda
                 """;
 
         // when
