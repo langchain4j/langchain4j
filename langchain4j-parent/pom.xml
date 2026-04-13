@@ -555,6 +555,14 @@
                                         <code>java.method.varargOverloadsOnlyDifferInVarargParameter</code>
                                         <justification>Varargs overloads differing only in element type are intentional for API convenience</justification>
                                     </item>
+                                    <item>
+                                        <code>java.missing.oldClass</code>
+                                        <justification>Dependencies are not checked, so their classes are expectedly missing</justification>
+                                    </item>
+                                    <item>
+                                        <code>java.missing.newClass</code>
+                                        <justification>Dependencies are not checked, so their classes are expectedly missing</justification>
+                                    </item>
                                 </differences>
                             </revapi.differences>
                         </analysisConfiguration>
