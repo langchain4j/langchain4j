@@ -411,6 +411,9 @@ public class ToolService {
 
             if (chatMemory != null) {
                 messages = chatMemory.messages();
+                if (!context.storeRetrievedContentInChatMemory) {
+                    messages = UserMessage.replaceLast(chatMemory.messages(), invocationContext.userMessage());
+                }
             }
 
             toolServiceContext = refreshDynamicProviders(toolServiceContext, messages, invocationContext);
@@ -746,4 +749,5 @@ public class ToolService {
     public boolean isImmediateTool(String toolName) {
         return immediateReturnTools.contains(toolName);
     }
+
 }

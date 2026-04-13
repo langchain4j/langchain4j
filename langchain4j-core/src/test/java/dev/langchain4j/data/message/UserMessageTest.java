@@ -147,4 +147,65 @@ class UserMessageTest implements WithAssertions {
 
         assertThat(result).contains(only);
     }
+
+    @Test
+    void replaceLast_should_replace_last_user_message_when_different() {
+        UserMessage original = UserMessage.from("original");
+        UserMessage replacement = UserMessage.from("replacement");
+        List<ChatMessage> messages = List.of(SystemMessage.from("system"), original, AiMessage.from("ai"));
+
+        List<ChatMessage> result = UserMessage.replaceLast(messages, replacement);
+
+        assertThat(result).containsExactly(SystemMessage.from("system"), replacement, AiMessage.from("ai"));
+        assertThat(result).isNotSameAs(messages);
+    }
+
+    @Test
+    void replaceLast_should_return_same_list_when_replacement_matches() {
+        UserMessage message = UserMessage.from("hello");
+        List<ChatMessage> messages = List.of(SystemMessage.from("system"), message, AiMessage.from("ai"));
+
+        List<ChatMessage> result = UserMessage.replaceLast(messages, UserMessage.from("hello"));
+
+        assertThat(result).isSameAs(messages);
+    }
+
+    @Test
+    void replaceLast_should_return_same_list_when_replacement_is_null() {
+        List<ChatMessage> messages = List.of(UserMessage.from("hello"));
+
+        List<ChatMessage> result = UserMessage.replaceLast(messages, null);
+
+        assertThat(result).isSameAs(messages);
+    }
+
+    @Test
+    void replaceLast_should_return_same_list_when_no_user_message_found() {
+        List<ChatMessage> messages = List.of(SystemMessage.from("system"), AiMessage.from("ai"));
+
+        List<ChatMessage> result = UserMessage.replaceLast(messages, UserMessage.from("replacement"));
+
+        assertThat(result).isSameAs(messages);
+    }
+
+    @Test
+    void replaceLast_should_replace_only_last_user_message() {
+        UserMessage first = UserMessage.from("first");
+        UserMessage second = UserMessage.from("second");
+        UserMessage replacement = UserMessage.from("replacement");
+        List<ChatMessage> messages = List.of(first, AiMessage.from("ai"), second);
+
+        List<ChatMessage> result = UserMessage.replaceLast(messages, replacement);
+
+        assertThat(result).containsExactly(first, AiMessage.from("ai"), replacement);
+    }
+
+    @Test
+    void replaceLast_should_return_same_list_for_empty_list() {
+        List<ChatMessage> messages = List.of();
+
+        List<ChatMessage> result = UserMessage.replaceLast(messages, UserMessage.from("replacement"));
+
+        assertThat(result).isSameAs(messages);
+    }
 }
