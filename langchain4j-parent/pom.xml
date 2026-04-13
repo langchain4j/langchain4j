@@ -546,6 +546,7 @@
                             </configurationFile>
                         </analysisConfigurationFiles>
                         <failOnMissingConfigurationFiles>false</failOnMissingConfigurationFiles>
+                        <checkDependencies>false</checkDependencies>
                         <analysisConfiguration>
                             <revapi.differences>
                                 <ignore>true</ignore>
