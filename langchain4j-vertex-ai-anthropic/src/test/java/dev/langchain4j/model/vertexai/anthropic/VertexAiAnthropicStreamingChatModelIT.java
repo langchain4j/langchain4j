@@ -46,10 +46,10 @@ class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT
     protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
         VertexAiAnthropicStreamingChatModel.VertexAiAnthropicStreamingChatModelBuilder
                 vertexAiAnthropicStreamingChatModelBuilder = VertexAiAnthropicStreamingChatModel.builder()
-                .project(System.getenv("GCP_PROJECT_ID"))
-                .location(DEFAULT_LOCATION)
-                .logRequests(true)
-                .logResponses(true);
+                        .project(System.getenv("GCP_PROJECT_ID"))
+                        .location(DEFAULT_LOCATION)
+                        .logRequests(true)
+                        .logResponses(true);
         if (parameters.modelName() == null) {
             vertexAiAnthropicStreamingChatModelBuilder.modelName(DEFAULT_MODEL_NAME);
         } else {
