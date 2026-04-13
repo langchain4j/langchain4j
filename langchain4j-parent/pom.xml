@@ -539,13 +539,13 @@
                         </dependency>
                     </dependencies>
                     <configuration>
-                        <failOnMissingConfigurationFiles>false</failOnMissingConfigurationFiles>
                         <oldVersion>RELEASE</oldVersion>
                         <analysisConfigurationFiles>
                             <configurationFile>
                                 <path>${project.basedir}/revapi.json</path>
                             </configurationFile>
                         </analysisConfigurationFiles>
+                        <failOnMissingConfigurationFiles>false</failOnMissingConfigurationFiles>
                         <analysisConfiguration>
                             <revapi.differences>
                                 <ignore>true</ignore>
