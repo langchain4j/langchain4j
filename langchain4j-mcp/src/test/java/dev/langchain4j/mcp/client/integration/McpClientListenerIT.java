@@ -46,7 +46,7 @@ public class McpClientListenerIT {
         testListener = new TestListener();
         mcpClient = new DefaultMcpClient.Builder()
                 .transport(transport)
-                .listener(testListener)
+                .addListener(testListener)
                 .toolExecutionTimeout(Duration.ofSeconds(4))
                 .build();
     }
