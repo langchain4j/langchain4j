@@ -1,7 +1,5 @@
 package dev.langchain4j.service.common.openai;
 
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
@@ -13,10 +11,11 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiResponsesStreamingChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 // TODO move to langchain4j-open-ai module once dependency cycle is resolved
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
@@ -27,11 +26,11 @@ class OpenAiResponsesAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
         return List.of(new StreamingChatModelAdapter(OpenAiResponsesStreamingChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName(GPT_4_O_MINI.toString())
+                .modelName("gpt-5.4-mini")
                 .temperature(0.0)
-                .maxToolCalls(2)
-                .parallelToolCalls(true)
-                .strict(true)
+                .strict(true) // TODO?
+                .logRequests(true)
+                .logResponses(true)
                 .build()));
     }
 
@@ -47,7 +46,7 @@ class OpenAiResponsesAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
 
     @Override
     protected boolean hasDeterministicParallelToolExecutionAssertions() {
-        return false;
+        return true; // TODO
     }
 
     private static class StreamingChatModelAdapter implements ChatModel {
