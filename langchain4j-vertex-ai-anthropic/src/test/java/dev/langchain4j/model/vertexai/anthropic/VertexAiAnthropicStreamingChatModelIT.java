@@ -22,7 +22,7 @@ import org.junit.jupiter.api.condition.EnabledOnJre;
 import org.mockito.InOrder;
 
 @EnabledIf(
-        value = "dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicFixtures#isMonday",
+        value = "dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicChatModelIT#isMonday",
         disabledReason = "Not enough quota to run it more often")
 @EnabledOnJre(value = JAVA_17, disabledReason = "Not enough quota to run it more often")
 @EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")
@@ -46,10 +46,10 @@ class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT
     protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
         VertexAiAnthropicStreamingChatModel.VertexAiAnthropicStreamingChatModelBuilder
                 vertexAiAnthropicStreamingChatModelBuilder = VertexAiAnthropicStreamingChatModel.builder()
-                        .project(System.getenv("GCP_PROJECT_ID"))
-                        .location(DEFAULT_LOCATION)
-                        .logRequests(true)
-                        .logResponses(true);
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(DEFAULT_LOCATION)
+                .logRequests(true)
+                .logResponses(true);
         if (parameters.modelName() == null) {
             vertexAiAnthropicStreamingChatModelBuilder.modelName(DEFAULT_MODEL_NAME);
         } else {

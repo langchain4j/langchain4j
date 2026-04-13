@@ -24,7 +24,7 @@ import org.junit.jupiter.api.condition.EnabledOnJre;
  * Error handling and edge case tests for VertexAiAnthropic models
  */
 @EnabledIf(
-        value = "dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicFixtures#isMonday",
+        value = "dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicChatModelIT#isMonday",
         disabledReason = "Not enough quota to run it more often")
 @EnabledOnJre(value = JAVA_17, disabledReason = "Not enough quota to run it more often")
 @EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")
