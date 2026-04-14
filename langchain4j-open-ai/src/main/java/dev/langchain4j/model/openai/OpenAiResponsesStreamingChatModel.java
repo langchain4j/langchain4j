@@ -1,10 +1,5 @@
 package dev.langchain4j.model.openai;
 
-import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.Arrays.asList;
-
 import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -17,8 +12,14 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+
 import java.util.List;
 import java.util.Set;
+
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Arrays.asList;
 
 @Experimental
 public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
@@ -74,7 +75,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 .textVerbosity(getOrDefault(builder.textVerbosity, responsesParameters.textVerbosity()))
                 .streamIncludeObfuscation(getOrDefault(builder.streamIncludeObfuscation, responsesParameters.streamIncludeObfuscation()))
                 .store(getOrDefault(builder.store, getOrDefault(responsesParameters.store(), false)))
-                .strict(getOrDefault(builder.strict, getOrDefault(responsesParameters.strict(), false)))
+                .strict(getOrDefault(builder.strict, responsesParameters.strict()))
                 .build();
 
         this.listeners = copy(builder.listeners);

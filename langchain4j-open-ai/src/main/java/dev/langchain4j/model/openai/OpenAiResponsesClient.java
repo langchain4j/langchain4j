@@ -58,6 +58,7 @@ class OpenAiResponsesClient {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .enable(INDENT_OUTPUT);
+
     private static final String DEFAULT_BASE_URL = "https://api.openai.com/v1";
     private static final String OPENAI_ORGANIZATION_HEADER = "OpenAI-Organization";
     private static final String STREAM_DONE_MARKER = "[DONE]";
@@ -188,12 +189,12 @@ class OpenAiResponsesClient {
 
     private Map<String, Object> buildRequestPayload(ChatRequest chatRequest,
                                                      OpenAiResponsesChatRequestParameters parameters) {
-        var input = new ArrayList<Map<String, Object>>();
-        for (var msg : chatRequest.messages()) {
-            input.addAll(toResponsesMessages(msg));
+        List<Map<String, Object>> input = new ArrayList<>();
+        for (ChatMessage message : chatRequest.messages()) {
+            input.addAll(toResponsesMessages(message));
         }
 
-        var payload = new LinkedHashMap<String, Object>();
+        Map<String, Object> payload = new LinkedHashMap<>();
         payload.put(FIELD_MODEL, parameters.modelName());
         payload.put(FIELD_INPUT, input);
         payload.put(FIELD_STREAM, true);
@@ -235,7 +236,7 @@ class OpenAiResponsesClient {
             payload.put(FIELD_INCLUDE, parameters.include());
         }
 
-        if (parameters.serviceTier() != null && !parameters.serviceTier().isEmpty()) {
+        if (parameters.serviceTier() != null) {
             payload.put(FIELD_SERVICE_TIER, parameters.serviceTier());
         }
 
@@ -251,14 +252,14 @@ class OpenAiResponsesClient {
             payload.put(FIELD_PROMPT_CACHE_RETENTION, parameters.promptCacheRetention());
         }
 
-        if (parameters.reasoningEffort() != null && !parameters.reasoningEffort().isEmpty()) {
-            var reasoning = new LinkedHashMap<String, Object>();
+        if (parameters.reasoningEffort() != null) {
+            Map<String, Object> reasoning = new LinkedHashMap<>();
             reasoning.put(FIELD_EFFORT, parameters.reasoningEffort());
             payload.put(FIELD_REASONING, reasoning);
         }
 
         if (parameters.streamIncludeObfuscation() != null) {
-            var streamOptions = new LinkedHashMap<String, Object>();
+            Map<String, Object> streamOptions = new LinkedHashMap<>();
             streamOptions.put(FIELD_INCLUDE_OBFUSCATION, parameters.streamIncludeObfuscation());
             payload.put(FIELD_STREAM_OPTIONS, streamOptions);
         }
@@ -266,9 +267,9 @@ class OpenAiResponsesClient {
         Boolean strict = parameters.strict();
         List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
         if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
-            var tools = new ArrayList<Map<String, Object>>();
-            for (var toolSpec : toolSpecifications) {
-                var tool = new LinkedHashMap<String, Object>();
+            List<Map<String, Object>> tools = new ArrayList<>();
+            for (ToolSpecification toolSpec : toolSpecifications) {
+                Map<String, Object> tool = new LinkedHashMap<>();
                 tool.put(FIELD_TYPE, TYPE_FUNCTION);
                 tool.put(FIELD_NAME, toolSpec.name());
                 if (toolSpec.description() != null) {
@@ -281,7 +282,7 @@ class OpenAiResponsesClient {
                 } else if (Boolean.TRUE.equals(strict)) {
                     functionParameters = new LinkedHashMap<>();
                     functionParameters.put(FIELD_TYPE, TYPE_OBJECT);
-                    functionParameters.put(FIELD_PROPERTIES, new LinkedHashMap<>());
+                    functionParameters.put(FIELD_PROPERTIES, Map.of());
                     functionParameters.put(FIELD_ADDITIONAL_PROPERTIES, false);
                 }
 
@@ -299,12 +300,10 @@ class OpenAiResponsesClient {
 
             if (parameters.toolChoice() != null) {
                 payload.put(FIELD_TOOL_CHOICE, toToolChoiceString(parameters.toolChoice()));
-            } else {
-                payload.put(FIELD_TOOL_CHOICE, "auto");
             }
         }
 
-        var textConfig = toResponseTextConfig(parameters.responseFormat(), Boolean.TRUE.equals(strict));
+        Map<String, Object> textConfig = toResponseTextConfig(parameters.responseFormat(), Boolean.TRUE.equals(strict));
         if (parameters.textVerbosity() != null) {
             if (textConfig == null) {
                 textConfig = new LinkedHashMap<>();

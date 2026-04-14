@@ -1,12 +1,13 @@
 package dev.langchain4j.model.openai;
 
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+
 import java.util.List;
 import java.util.Objects;
+
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 
 public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestParameters {
 
@@ -36,7 +37,7 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
         this.parallelToolCalls = builder.parallelToolCalls;
         this.topLogprobs = builder.topLogprobs;
         this.truncation = builder.truncation;
-        this.include = copyIfNotNull(builder.include);
+        this.include = copy(builder.include);
         this.serviceTier = builder.serviceTier;
         this.safetyIdentifier = builder.safetyIdentifier;
         this.promptCacheKey = builder.promptCacheKey;
