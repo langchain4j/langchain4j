@@ -237,6 +237,8 @@ class OpenAiStreamingChatModelIT {
 
         // then
         assertThat(response.aiMessage().text()).containsIgnoringCase("Berlin");
+
+        System.out.println("OpenAiStreamingChatModelIT.should_support_all_model_names success for " + modelName);
     }
 
     @Test

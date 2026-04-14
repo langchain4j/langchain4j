@@ -51,9 +51,24 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
+      - name: Print Maven version
+        run: mvn --version
+
       - name: Compile and unit test with JDK ${{ matrix.java_version }}
         run: |
-          mvn -B -U -DembeddingsSkipCache -T8C test javadoc:aggregate
+          set -o pipefail
+          mvn -B -U -DembeddingsSkipCache -T8C test javadoc:aggregate 2>&1 | tee maven-output.log
+
+      - name: Surface build errors
+        if: failure()
+        run: |
+          {
+            echo '## Build Errors (JDK ${{ matrix.java_version }})'
+            echo ''
+            echo '```'
+            grep '^\[ERROR\]' maven-output.log | head -50
+            echo '```'
+          } >> $GITHUB_STEP_SUMMARY
 
   integration_test:
     needs: compile_and_unit_test
@@ -95,21 +110,24 @@ jobs:
         continue-on-error: true
 
       - name: Integration test with JDK ${{ matrix.java_version }}
+        id: integration_test
         run: |
-          
+          set -o pipefail
+
           ## Compile and install ALL modules to ensure that modules selected by GIB in the next step
           ## reference the latest code (e.g., langchain4j-core and langchain4j)
-          mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install
+          mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install 2>&1 | tee maven-output.log
 
           mvn -B -U verify \
             -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
             -Djunit.jupiter.extensions.autodetection.enabled=true \
             -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipOracleITs -DskipVespaITs \
             -DembeddingsSkipCache \
-            -Dtinylog.writer.level=info
+            -Dtinylog.writer.level=info 2>&1 | tee maven-output.log
         env:
           LC4J_GLOBAL_TEST_RETRY_ENABLED: true
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_CACHING_BASE_URL: ${{ secrets.ANTHROPIC_CACHING_BASE_URL }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME: ${{ secrets.AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME }}
@@ -147,6 +165,17 @@ jobs:
           WEAVIATE_API_KEY: ${{ secrets.WEAVIATE_API_KEY }}
           WEAVIATE_HOST: ${{ secrets.WEAVIATE_HOST }}
 
+      - name: Surface build errors
+        if: steps.integration_test.outcome == 'failure'
+        run: |
+          {
+            echo '## Build Errors (Integration Test, JDK ${{ matrix.java_version }})'
+            echo ''
+            echo '```'
+            grep '^\[ERROR\]' maven-output.log | head -50
+            echo '```'
+          } >> $GITHUB_STEP_SUMMARY
+
       - name: Clean Docker
         run: docker system prune -af || true
 
@@ -163,7 +192,20 @@ jobs:
           cache: 'maven'
         # Check we only rely on permissive licenses in the main parts of the library:
       - name: License Compliance
-        run: mvn -P compliance org.honton.chas:license-maven-plugin:compliance
+        run: |
+          set -o pipefail
+          mvn -P compliance org.honton.chas:license-maven-plugin:compliance 2>&1 | tee maven-output.log
+
+      - name: Surface build errors
+        if: failure()
+        run: |
+          {
+            echo '## Build Errors (License Compliance)'
+            echo ''
+            echo '```'
+            grep '^\[ERROR\]' maven-output.log | head -50
+            echo '```'
+          } >> $GITHUB_STEP_SUMMARY
 
   spotless:
     runs-on: ubuntu-latest
@@ -178,4 +220,17 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
       - name: Spotless Check
-        run: mvn -Pspotless validate
+        run: |
+          set -o pipefail
+          mvn -Pspotless validate 2>&1 | tee maven-output.log
+
+      - name: Surface build errors
+        if: failure()
+        run: |
+          {
+            echo '## Build Errors (Spotless)'
+            echo ''
+            echo '```'
+            grep '^\[ERROR\]' maven-output.log | head -50
+            echo '```'
+          } >> $GITHUB_STEP_SUMMARY
