@@ -7,6 +7,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Arrays.asList;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
@@ -21,7 +22,7 @@ import java.util.List;
 import java.util.Set;
 
 @Experimental
-public class OpenAiResponsesStreamingChatModel implements StreamingChatModel { // TODO extract into a separate module?
+public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
 
     private final OpenAiResponsesClient client;
     private final String modelName;
@@ -42,7 +43,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel { /
     private final String textVerbosity;
     private final Boolean streamIncludeObfuscation;
     private final Boolean store;
-    private final Boolean strict;
+    private final Boolean strict; // TODO separate for tools and structured outputs?
     private final List<ChatModelListener> listeners;
     private final ChatRequestParameters defaultRequestParameters;
 
@@ -58,6 +59,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel { /
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
+            validate(builder.defaultRequestParameters);
             commonParameters = builder.defaultRequestParameters;
         } else {
             commonParameters = DefaultChatRequestParameters.EMPTY;
@@ -106,6 +108,9 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel { /
 
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+
+        validate(chatRequest.parameters());
+
         OpenAiResponsesConfig config = new OpenAiResponsesConfig(
                 modelName,
                 temperature,
@@ -128,6 +133,22 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel { /
                 strict);
 
         client.streamingChat(chatRequest, config, handler);
+    }
+
+    private static void validate(final ChatRequestParameters parameters) {
+        if (parameters.topK() != null) {
+            throw new UnsupportedFeatureException("'topK' parameter is not supported by OpenAI Responses API");
+        }
+        if (parameters.frequencyPenalty() != null) {
+            throw new UnsupportedFeatureException("'frequencyPenalty' parameter is not supported by OpenAI Responses API");
+        }
+        if (parameters.presencePenalty() != null) {
+            throw new UnsupportedFeatureException("'presencePenalty' parameter is not supported by OpenAI Responses API");
+        }
+        if (parameters.stopSequences() != null && !parameters.stopSequences().isEmpty()) {
+            throw new UnsupportedFeatureException("'stopSequences' parameter is not supported by OpenAI Responses API");
+        }
+        // TODO tool choice
     }
 
     @Override

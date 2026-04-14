@@ -69,6 +69,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     // TODO https://github.com/langchain4j/langchain4j/issues/2220
 
     static final String WHAT_IS_THE_CAPITAL_OF_GERMANY = "What is the capital of Germany?";
+    static final String TELL_ME_A_LONG_STORY = "Tell me a long story";
 
     static final String CAT_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
@@ -348,7 +349,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         int maxOutputTokens = maxOutputTokens();
         ChatRequestParameters parameters = createParameters(maxOutputTokens);
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY))
+                .messages(UserMessage.from(TELL_ME_A_LONG_STORY))
                 .parameters(parameters)
                 .build();
 
@@ -410,7 +411,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         M model = createModelWith(parameters);
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY))
+                .messages(UserMessage.from(TELL_ME_A_LONG_STORY))
                 .build();
 
         // when
@@ -582,7 +583,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .parameters(parameters)
-                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY))
+                .messages(UserMessage.from(TELL_ME_A_LONG_STORY))
                 .build();
 
         // when
@@ -617,7 +618,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .parameters(parameters)
-                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY))
+                .messages(UserMessage.from(TELL_ME_A_LONG_STORY))
                 .build();
 
         // when
