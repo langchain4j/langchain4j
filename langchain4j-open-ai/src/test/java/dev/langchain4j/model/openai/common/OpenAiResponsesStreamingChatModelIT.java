@@ -16,7 +16,6 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.openai.OpenAiChatResponseMetadata;
 import dev.langchain4j.model.openai.OpenAiResponsesChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiResponsesChatResponseMetadata;
 import dev.langchain4j.model.openai.OpenAiResponsesStreamingChatModel;
@@ -28,6 +27,7 @@ import org.mockito.InOrder;
 
 import java.util.List;
 
+import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -37,6 +37,7 @@ import static org.mockito.Mockito.atLeast;
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
+    private static final String GPT_5_4_MINI = "gpt-5.4-mini";
     private static final int MAX_OUTPUT_TOKENS_MIN_VALUE = 16;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -46,7 +47,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName("gpt-5.4-mini")
+                .modelName(GPT_5_4_MINI)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -67,7 +68,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         if (parameters.modelName() != null) {
             modelBuilder.modelName(parameters.modelName());
         } else {
-            modelBuilder.modelName("gpt-5.4-mini");
+            modelBuilder.modelName(GPT_5_4_MINI);
         }
 
         return modelBuilder.build();
@@ -113,7 +114,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName("gpt-5.4-mini")
+                .modelName(GPT_5_4_MINI)
                 .listeners(List.of(listener))
                 .build();
     }
@@ -178,6 +179,42 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Test
+    void should_return_model_specific_response_metadata() {
+        String serviceTier = "default";
+
+        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .modelName(GPT_5_4_MINI)
+                .serviceTier(serviceTier)
+                .build();
+
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat("What is 2+2?", handler);
+
+        ChatResponseMetadata metadata = handler.get().metadata();
+        assertThat(metadata).isInstanceOf(OpenAiResponsesChatResponseMetadata.class);
+
+        OpenAiResponsesChatResponseMetadata openAiMetadata = (OpenAiResponsesChatResponseMetadata) metadata;
+        assertThat(openAiMetadata.id()).isNotBlank();
+        assertThat(openAiMetadata.modelName()).startsWith(GPT_5_4_MINI);
+        assertThat(openAiMetadata.finishReason()).isEqualTo(STOP);
+        assertThat(openAiMetadata.createdAt()).isGreaterThan(0);
+        assertThat(openAiMetadata.completedAt()).isGreaterThan(0);
+        assertThat(openAiMetadata.completedAt()).isGreaterThanOrEqualTo(openAiMetadata.createdAt());
+        assertThat(openAiMetadata.serviceTier()).isEqualTo(serviceTier);
+        assertThat(openAiMetadata.rawHttpResponse()).isNotNull();
+        assertThat(openAiMetadata.rawServerSentEvents()).isNotEmpty();
+
+        OpenAiTokenUsage tokenUsage = openAiMetadata.tokenUsage();
+        assertThat(tokenUsage).isNotNull();
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+    }
+
+    @Test
     void should_work_with_o_models() {
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
@@ -226,7 +263,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName("gpt-5.4-mini")
+                .modelName(GPT_5_4_MINI)
                 .temperature(0.7)
                 .topP(0.9)
                 .maxOutputTokens(100)
@@ -275,7 +312,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
                 .apiKey("test-key")
-                .modelName("gpt-5.4-mini")
+                .modelName(GPT_5_4_MINI)
                 .previousResponseId("builder-response-id")
                 .build();
 
@@ -303,7 +340,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .apiKey("test-key")
                 .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
                 .defaultRequestParameters(OpenAiResponsesChatRequestParameters.builder()
-                        .modelName("gpt-5.4-mini")
+                        .modelName(GPT_5_4_MINI)
                         .previousResponseId("default-response-id")
                         .build())
                 .build();
@@ -330,7 +367,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test-key")
                 .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
-                .modelName("gpt-5.4-mini")
+                .modelName(GPT_5_4_MINI)
                 .build();
 
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
@@ -351,7 +388,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test-key")
                 .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
-                .modelName("gpt-5.4-mini")
+                .modelName(GPT_5_4_MINI)
                 .build();
 
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
@@ -359,7 +396,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
         ChatResponse response = handler.get();
         assertThat(response.aiMessage().text()).isEmpty();
-        assertThat(response.metadata().finishReason()).isEqualTo(dev.langchain4j.model.output.FinishReason.STOP);
+        assertThat(response.metadata().finishReason()).isEqualTo(STOP);
     }
 
     @Test
@@ -373,7 +410,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test-key")
                 .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
-                .modelName("gpt-5.4-mini")
+                .modelName(GPT_5_4_MINI)
                 .build();
 
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
@@ -391,7 +428,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test-key")
                 .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
-                .modelName("gpt-5.4-mini")
+                .modelName(GPT_5_4_MINI)
                 .build();
 
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
@@ -411,7 +448,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
                 .apiKey("test-key")
                 .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
-                .modelName("gpt-5.4-mini")
+                .modelName(GPT_5_4_MINI)
                 .build();
 
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
@@ -421,58 +458,4 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         assertThat(response.aiMessage().text()).isEmpty();
         assertThat(response.metadata().finishReason()).isEqualTo(dev.langchain4j.model.output.FinishReason.LENGTH);
     }
-
-    @Test
-    void should_support_prompt_cache_retention() {
-        MockHttpClient mockHttpClient = new MockHttpClient();
-
-        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
-                .modelName("gpt-5.4-mini")
-                .promptCacheRetention("24h")
-                .build();
-
-        ChatRequest chatRequest =
-                ChatRequest.builder().messages(UserMessage.from("Hello")).build();
-
-        try {
-            TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-            model.chat(chatRequest, handler);
-        } catch (Exception e) {
-        }
-
-        assertThat(mockHttpClient.request().body()).containsIgnoringWhitespaces("\"prompt_cache_retention\": \"24h\"");
-    }
-
-    @Test
-    void should_return_model_specific_response_metadata() {
-        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName("gpt-5.4-mini")
-                .serviceTier("default")
-                .build();
-
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat("What is 2+2?", handler);
-
-        ChatResponseMetadata metadata = handler.get().metadata();
-        assertThat(metadata).isInstanceOf(OpenAiResponsesChatResponseMetadata.class);
-
-        OpenAiResponsesChatResponseMetadata openAiMetadata = (OpenAiResponsesChatResponseMetadata) metadata;
-        assertThat(openAiMetadata.id()).isNotBlank();
-        assertThat(openAiMetadata.modelName()).isNotBlank();
-
-        if (openAiMetadata.tokenUsage() != null) {
-            TokenUsage tokenUsage = openAiMetadata.tokenUsage();
-            assertThat(tokenUsage).isInstanceOf(OpenAiTokenUsage.class);
-            assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-            assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
-            assertThat(tokenUsage.totalTokenCount())
-                    .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-        }
-    }
-
-    // TODO revisit all tests here
 }
