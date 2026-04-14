@@ -51,6 +51,9 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
+      - name: Print Maven version
+        run: mvn --version
+
       - name: Compile and unit test with JDK ${{ matrix.java_version }}
         run: |
           mvn -B -U -DembeddingsSkipCache -T8C test javadoc:aggregate
