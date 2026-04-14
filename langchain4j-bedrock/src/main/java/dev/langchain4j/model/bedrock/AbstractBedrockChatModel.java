@@ -87,7 +87,6 @@ import software.amazon.awssdk.services.bedrockruntime.model.Message;
 import software.amazon.awssdk.services.bedrockruntime.model.OutputConfig;
 import software.amazon.awssdk.services.bedrockruntime.model.OutputFormat;
 import software.amazon.awssdk.services.bedrockruntime.model.OutputFormatStructure;
-import software.amazon.awssdk.services.bedrockruntime.model.OutputFormatType;
 import software.amazon.awssdk.services.bedrockruntime.model.ReasoningContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ReasoningTextBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ServiceTier;
@@ -369,7 +368,8 @@ abstract class AbstractBedrockChatModel {
             } else if (content instanceof ImageContent imageContent) {
                 SdkBytes bytes = fromByteArray(
                         nonNull(imageContent.image().base64Data())
-                                ? Base64.getDecoder().decode(imageContent.image().base64Data())
+                                ? Base64.getDecoder()
+                                        .decode(imageContent.image().base64Data())
                                 : readBytes(String.valueOf(imageContent.image().url())));
                 String imgFormat = extractAndValidateFormat(imageContent.image());
                 contentBlocks.add(ToolResultContentBlock.builder()
@@ -379,9 +379,8 @@ abstract class AbstractBedrockChatModel {
                                 .build())
                         .build());
             } else {
-                throw new UnsupportedFeatureException(
-                        "Bedrock does not support content type '" + content.type()
-                                + "' in tool results. Only text and image content are supported.");
+                throw new UnsupportedFeatureException("Bedrock does not support content type '" + content.type()
+                        + "' in tool results. Only text and image content are supported.");
             }
         }
         return ContentBlock.builder()
@@ -530,9 +529,8 @@ abstract class AbstractBedrockChatModel {
             allTools.addAll(tools);
 
             if (cachePointPlacement == BedrockCachePointPlacement.AFTER_TOOLS) {
-                allTools.add(Tool.builder()
-                        .cachePoint(buildCachePoint(cacheTtl))
-                        .build());
+                allTools.add(
+                        Tool.builder().cachePoint(buildCachePoint(cacheTtl)).build());
             }
         }
 
@@ -1053,8 +1051,7 @@ abstract class AbstractBedrockChatModel {
         if (jsonSchema.rootElement() instanceof JsonRawSchema rawSchema) {
             jsonSchemaString = rawSchema.schema();
         } else {
-            Map<String, Object> jsonSchemaMap =
-                    toMap(jsonSchema.rootElement(), true, true, "string");
+            Map<String, Object> jsonSchemaMap = toMap(jsonSchema.rootElement(), true, true, "string");
             jsonSchemaString = Json.toJson(jsonSchemaMap);
         }
 
