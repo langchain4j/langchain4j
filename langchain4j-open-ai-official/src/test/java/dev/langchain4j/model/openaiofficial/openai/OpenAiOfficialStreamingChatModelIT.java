@@ -34,6 +34,7 @@ class OpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
         OpenAiOfficialStreamingChatModel.Builder openAiChatModelBuilder = OpenAiOfficialStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .defaultRequestParameters(parameters);
 
@@ -113,6 +114,7 @@ class OpenAiOfficialStreamingChatModelIT extends AbstractStreamingChatModelIT {
         // given
 
         StreamingChatModel model = OpenAiOfficialStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName("o4-mini")
                 .build();

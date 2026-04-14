@@ -73,6 +73,7 @@ class OpenAiOfficialEmbeddingModelIT {
         int totalSegmentsToEmbed = 50;
 
         EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(EMBEDDING_MODEL_NAME)
                 .maxSegmentsPerBatch(maxSegmentsPerBatch)
@@ -107,6 +108,7 @@ class OpenAiOfficialEmbeddingModelIT {
         int dimension = 42;
 
         EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(EMBEDDING_MODEL_NAME)
                 .dimensions(dimension)
