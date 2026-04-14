@@ -155,11 +155,11 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         private Boolean store;
         private Boolean strictTools;
         private Boolean strictJsonSchema;
+        private ResponseFormat responseFormat;
         private Boolean logRequests;
         private Boolean logResponses;
         private List<ChatModelListener> listeners;
         private ChatRequestParameters defaultRequestParameters;
-        private ResponseFormat responseFormat;
 
         public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -291,6 +291,11 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        public Builder responseFormat(ResponseFormat responseFormat) {
+            this.responseFormat = responseFormat;
+            return this;
+        }
+
         public Builder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
@@ -312,11 +317,6 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
 
         public Builder defaultRequestParameters(ChatRequestParameters parameters) {
             this.defaultRequestParameters = parameters;
-            return this;
-        }
-
-        public Builder responseFormat(ResponseFormat responseFormat) {
-            this.responseFormat = responseFormat;
             return this;
         }
 

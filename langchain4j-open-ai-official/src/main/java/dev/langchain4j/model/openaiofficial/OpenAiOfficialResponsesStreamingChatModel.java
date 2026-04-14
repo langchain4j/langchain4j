@@ -284,7 +284,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 try {
                     streamResponse.close();
                 } catch (Exception e) {
-                    // Ignore close errors TODO?
+                    // Ignore close errors
                 }
             });
 
