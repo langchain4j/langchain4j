@@ -58,11 +58,6 @@ class OpenAiResponsesAiServicesWithJsonSchemaIT extends AbstractAiServiceWithJso
         return model instanceof StreamingChatModelAdapter adapter && adapter.strictJsonSchemaEnabled;
     }
 
-    @Override
-    protected String localDateTimeFieldsSystemMessage() {
-        return "Fill all fields when information is present. Never return nulls.";
-    }
-
     private static class StreamingChatModelAdapter implements ChatModel {
 
         private final StreamingChatModel streamingChatModel;

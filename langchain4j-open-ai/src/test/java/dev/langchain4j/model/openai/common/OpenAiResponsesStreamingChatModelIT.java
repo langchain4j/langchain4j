@@ -318,36 +318,6 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Test
-    void should_use_builder_defaults_when_do_chat_bypasses_parameter_merging() throws Exception {
-        MockHttpClient mockHttpClient = new MockHttpClient();
-
-        OpenAiResponsesStreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
-                .apiKey("test-key")
-                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
-                .modelName("gpt-5.4-mini")
-                .temperature(0.25)
-                .topP(0.75)
-                .maxOutputTokens(123)
-                .build();
-
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("Hello"))
-                .parameters(OpenAiResponsesChatRequestParameters.builder().build())
-                .build();
-
-        try {
-            model.doChat(chatRequest, new TestStreamingChatResponseHandler());
-        } catch (Exception ignored) {
-        }
-
-        JsonNode payload = OBJECT_MAPPER.readTree(mockHttpClient.request().body());
-        assertThat(payload.get("model").asText()).isEqualTo("gpt-5.4-mini");
-        assertThat(payload.get("temperature").asDouble()).isEqualTo(0.25);
-        assertThat(payload.get("top_p").asDouble()).isEqualTo(0.75);
-        assertThat(payload.get("max_output_tokens").asInt()).isEqualTo(123);
-    }
-
-    @Test
     void should_emit_partial_thinking_for_reasoning_deltas() {
         MockHttpClient mockHttpClient = new MockHttpClient(List.of(
                 new ServerSentEvent(null, "{\"type\":\"response.reasoning_text.delta\",\"delta\":\"let me\"}"),

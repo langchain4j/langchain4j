@@ -1,6 +1,5 @@
 package dev.langchain4j.service.common;
 
-import static dev.langchain4j.data.message.SystemMessage.*;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
@@ -202,10 +201,6 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     protected boolean isStrictJsonSchemaEnabled(ChatModel model) {
         return false;
-    }
-
-    protected String localDateTimeFieldsSystemMessage() {
-        return null;
     }
 
     interface PersonExtractor2 {
@@ -846,13 +841,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         // given
         model = spy(model);
 
-        String systemMessage = localDateTimeFieldsSystemMessage();
-        PersonExtractor13 personExtractor = systemMessage == null
-                ? AiServices.create(PersonExtractor13.class, model)
-                : AiServices.builder(PersonExtractor13.class)
-                        .chatModel(model)
-                        .systemMessage(systemMessage)
-                        .build();
+        PersonExtractor13 personExtractor = AiServices.create(PersonExtractor13.class, model);
 
         String text = "Extract the person's information from the following text."
                 + "Fill in all the fields where the information is available! "
@@ -870,10 +859,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         verify(model)
                 .chat(ChatRequest.builder()
-                        .messages(
-                                systemMessage == null
-                                        ? singletonList(userMessage(text))
-                                        : List.of(systemMessage(systemMessage), userMessage(text)))
+                        .messages(userMessage(text))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
                                 .jsonSchema(JsonSchema.builder()

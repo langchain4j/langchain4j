@@ -35,7 +35,6 @@ import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
@@ -174,9 +173,10 @@ class OpenAiResponsesClient {
         return new Builder();
     }
 
-    void streamingChat(ChatRequest chatRequest, OpenAiResponsesConfig config, StreamingChatResponseHandler handler) {
+    void streamingChat(ChatRequest chatRequest, OpenAiResponsesChatRequestParameters parameters,
+                       StreamingChatResponseHandler handler) {
         try {
-            Map<String, Object> payload = buildRequestPayload(chatRequest, config);
+            Map<String, Object> payload = buildRequestPayload(chatRequest, parameters);
             HttpRequest request = buildHttpRequest(payload);
 
             httpClient.execute(request, new DefaultServerSentEventParser(), new ResponsesApiEventListener(handler));
@@ -186,88 +186,85 @@ class OpenAiResponsesClient {
         }
     }
 
-    private Map<String, Object> buildRequestPayload(ChatRequest chatRequest, OpenAiResponsesConfig config) {
-        ChatRequestParameters parameters = chatRequest.parameters();
-
+    private Map<String, Object> buildRequestPayload(ChatRequest chatRequest,
+                                                     OpenAiResponsesChatRequestParameters parameters) {
         var input = new ArrayList<Map<String, Object>>();
         for (var msg : chatRequest.messages()) {
             input.addAll(toResponsesMessages(msg));
         }
 
         var payload = new LinkedHashMap<String, Object>();
-        payload.put(FIELD_MODEL, getOrDefault(parameters.modelName(), config.modelName()));
+        payload.put(FIELD_MODEL, parameters.modelName());
         payload.put(FIELD_INPUT, input);
         payload.put(FIELD_STREAM, true);
-        payload.put(FIELD_STORE, config.store());
+        payload.put(FIELD_STORE, parameters.store());
 
-        Double temperature = getOrDefault(parameters.temperature(), config.temperature());
-        if (temperature != null) {
-            payload.put(FIELD_TEMPERATURE, temperature);
+        if (parameters.temperature() != null) {
+            payload.put(FIELD_TEMPERATURE, parameters.temperature());
         }
 
-        Double topP = getOrDefault(parameters.topP(), config.topP());
-        if (topP != null) {
-            payload.put(FIELD_TOP_P, topP);
+        if (parameters.topP() != null) {
+            payload.put(FIELD_TOP_P, parameters.topP());
         }
 
-        Integer maxOutputTokens = getOrDefault(parameters.maxOutputTokens(), config.maxOutputTokens());
-        if (maxOutputTokens != null) {
-            payload.put(FIELD_MAX_OUTPUT_TOKENS, maxOutputTokens);
+        if (parameters.maxOutputTokens() != null) {
+            payload.put(FIELD_MAX_OUTPUT_TOKENS, parameters.maxOutputTokens());
         }
 
-        if (config.maxToolCalls() != null) {
-            payload.put(FIELD_MAX_TOOL_CALLS, config.maxToolCalls());
+        if (parameters.maxToolCalls() != null) {
+            payload.put(FIELD_MAX_TOOL_CALLS, parameters.maxToolCalls());
         }
 
-        if (config.parallelToolCalls() != null) {
-            payload.put(FIELD_PARALLEL_TOOL_CALLS, config.parallelToolCalls());
+        if (parameters.parallelToolCalls() != null) {
+            payload.put(FIELD_PARALLEL_TOOL_CALLS, parameters.parallelToolCalls());
         }
 
-        if (config.previousResponseId() != null) {
-            payload.put(FIELD_PREVIOUS_RESPONSE_ID, config.previousResponseId());
+        if (parameters.previousResponseId() != null) {
+            payload.put(FIELD_PREVIOUS_RESPONSE_ID, parameters.previousResponseId());
         }
 
-        if (config.topLogprobs() != null) {
-            payload.put(FIELD_TOP_LOGPROBS, config.topLogprobs());
+        if (parameters.topLogprobs() != null) {
+            payload.put(FIELD_TOP_LOGPROBS, parameters.topLogprobs());
         }
 
-        if (config.truncation() != null && !config.truncation().isEmpty()) {
-            payload.put(FIELD_TRUNCATION, config.truncation());
+        if (parameters.truncation() != null && !parameters.truncation().isEmpty()) {
+            payload.put(FIELD_TRUNCATION, parameters.truncation());
         }
 
-        if (config.include() != null && !config.include().isEmpty()) {
-            payload.put(FIELD_INCLUDE, config.include());
+        if (parameters.include() != null && !parameters.include().isEmpty()) {
+            payload.put(FIELD_INCLUDE, parameters.include());
         }
 
-        if (config.serviceTier() != null && !config.serviceTier().isEmpty()) {
-            payload.put(FIELD_SERVICE_TIER, config.serviceTier());
+        if (parameters.serviceTier() != null && !parameters.serviceTier().isEmpty()) {
+            payload.put(FIELD_SERVICE_TIER, parameters.serviceTier());
         }
 
-        if (config.safetyIdentifier() != null) {
-            payload.put(FIELD_SAFETY_IDENTIFIER, config.safetyIdentifier());
+        if (parameters.safetyIdentifier() != null) {
+            payload.put(FIELD_SAFETY_IDENTIFIER, parameters.safetyIdentifier());
         }
 
-        if (config.promptCacheKey() != null) {
-            payload.put(FIELD_PROMPT_CACHE_KEY, config.promptCacheKey());
+        if (parameters.promptCacheKey() != null) {
+            payload.put(FIELD_PROMPT_CACHE_KEY, parameters.promptCacheKey());
         }
 
-        if (config.promptCacheRetention() != null) {
-            payload.put(FIELD_PROMPT_CACHE_RETENTION, config.promptCacheRetention());
+        if (parameters.promptCacheRetention() != null) {
+            payload.put(FIELD_PROMPT_CACHE_RETENTION, parameters.promptCacheRetention());
         }
 
-        if (config.reasoningEffort() != null && !config.reasoningEffort().isEmpty()) {
+        if (parameters.reasoningEffort() != null && !parameters.reasoningEffort().isEmpty()) {
             var reasoning = new LinkedHashMap<String, Object>();
-            reasoning.put(FIELD_EFFORT, config.reasoningEffort());
+            reasoning.put(FIELD_EFFORT, parameters.reasoningEffort());
             payload.put(FIELD_REASONING, reasoning);
         }
 
-        if (config.streamIncludeObfuscation() != null) {
+        if (parameters.streamIncludeObfuscation() != null) {
             var streamOptions = new LinkedHashMap<String, Object>();
-            streamOptions.put(FIELD_INCLUDE_OBFUSCATION, config.streamIncludeObfuscation());
+            streamOptions.put(FIELD_INCLUDE_OBFUSCATION, parameters.streamIncludeObfuscation());
             payload.put(FIELD_STREAM_OPTIONS, streamOptions);
         }
 
-        List<ToolSpecification> toolSpecifications = chatRequest.toolSpecifications();
+        Boolean strict = parameters.strict();
+        List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
         if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
             var tools = new ArrayList<Map<String, Object>>();
             for (var toolSpec : toolSpecifications) {
@@ -280,8 +277,8 @@ class OpenAiResponsesClient {
 
                 Map<String, Object> functionParameters = null;
                 if (toolSpec.parameters() != null) {
-                    functionParameters = toMap(toolSpec.parameters(), config.strict());
-                } else if (config.strict()) {
+                    functionParameters = toMap(toolSpec.parameters(), Boolean.TRUE.equals(strict));
+                } else if (Boolean.TRUE.equals(strict)) {
                     functionParameters = new LinkedHashMap<>();
                     functionParameters.put(FIELD_TYPE, TYPE_OBJECT);
                     functionParameters.put(FIELD_PROPERTIES, new LinkedHashMap<>());
@@ -292,7 +289,7 @@ class OpenAiResponsesClient {
                     tool.put(FIELD_PARAMETERS, functionParameters);
                 }
 
-                if (config.strict()) {
+                if (Boolean.TRUE.equals(strict)) {
                     tool.put(FIELD_STRICT, true);
                 }
 
@@ -300,19 +297,19 @@ class OpenAiResponsesClient {
             }
             payload.put(FIELD_TOOLS, tools);
 
-            if (chatRequest.toolChoice() != null) {
-                payload.put(FIELD_TOOL_CHOICE, toToolChoiceString(chatRequest.toolChoice()));
+            if (parameters.toolChoice() != null) {
+                payload.put(FIELD_TOOL_CHOICE, toToolChoiceString(parameters.toolChoice()));
             } else {
                 payload.put(FIELD_TOOL_CHOICE, "auto");
             }
         }
 
-        var textConfig = toResponseTextConfig(chatRequest.responseFormat(), config.strict());
-        if (config.textVerbosity() != null) {
+        var textConfig = toResponseTextConfig(parameters.responseFormat(), Boolean.TRUE.equals(strict));
+        if (parameters.textVerbosity() != null) {
             if (textConfig == null) {
                 textConfig = new LinkedHashMap<>();
             }
-            textConfig.put(FIELD_TEXT_VERBOSITY, config.textVerbosity());
+            textConfig.put(FIELD_TEXT_VERBOSITY, parameters.textVerbosity());
         }
         if (textConfig != null) {
             payload.put(FIELD_TEXT, textConfig);
