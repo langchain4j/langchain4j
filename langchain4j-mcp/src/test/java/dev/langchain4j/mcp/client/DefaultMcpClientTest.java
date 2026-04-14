@@ -17,10 +17,13 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpListToolsParams;
 import dev.langchain4j.mcp.protocol.McpListToolsRequest;
+import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -306,6 +309,157 @@ public class DefaultMcpClientTest {
                 .as("Listener must run before meta supplier so that listeners can set up context "
                         + "(e.g. a tracing span) that the meta supplier can then reference")
                 .containsExactly("listener", "meta");
+    }
+
+    @Test
+    public void should_use_custom_tool_result_extractor_for_content_responses() throws Exception {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        ObjectNode toolResult = JsonNodeFactory.instance.objectNode();
+        toolResult
+                .putObject("result")
+                .putArray("content")
+                .addObject()
+                .put("type", "text")
+                .put("text", "ok");
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(toolResult));
+
+        McpToolResultExtractor extractor = (content, isError) -> ToolExecutionResult.builder()
+                .result(Map.of("value", content.get(0).get("text").asText()))
+                .resultText("custom:" + content.get(0).get("text").asText())
+                .isError(isError)
+                .build();
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .toolResultExtractor(extractor)
+                .build();
+
+        ToolExecutionResult result =
+                client.executeTool(ToolExecutionRequest.builder().name("test").arguments("{}").build());
+
+        assertThat(result.resultText()).isEqualTo("custom:ok");
+        assertThat(result.result()).isEqualTo(Map.of("value", "ok"));
+    }
+
+    @Test
+    public void should_use_custom_tool_result_extractor_for_timeout_fallback() {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(new CompletableFuture<>());
+
+        McpToolResultExtractor extractor = (content, isError) -> ToolExecutionResult.builder()
+                .resultText("custom-timeout:" + content.get(0).get("text").asText())
+                .isError(isError)
+                .build();
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .toolExecutionTimeout(java.time.Duration.ofMillis(1))
+                .toolResultExtractor(extractor)
+                .build();
+
+        ToolExecutionResult result =
+                client.executeTool(ToolExecutionRequest.builder().name("test").arguments("{}").build());
+
+        assertThat(result.resultText()).isEqualTo("custom-timeout:There was a timeout executing the tool");
+    }
+
+    @Test
+    public void should_use_custom_tool_result_extractor_for_listener_application_level_error_path() throws Exception {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        ObjectNode toolResult = JsonNodeFactory.instance.objectNode();
+        ObjectNode resultNode = toolResult.putObject("result");
+        resultNode.put("isError", true);
+        resultNode.putArray("content").addObject().put("type", "text").put("text", "bad");
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(toolResult));
+
+        class CapturingListener implements McpClientListener {
+            ToolExecutionResult toolResult;
+
+            @Override
+            public void afterExecuteTool(McpCallContext context, ToolExecutionResult result, Map<String, Object> raw) {
+                this.toolResult = result;
+            }
+        }
+
+        CapturingListener listener = new CapturingListener();
+        McpToolResultExtractor extractor = (content, isError) -> ToolExecutionResult.builder()
+                .result(Map.of("message", content.get(0).get("text").asText()))
+                .resultText("custom-error")
+                .isError(isError)
+                .build();
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .listener(listener)
+                .toolResultExtractor(extractor)
+                .build();
+
+        assertThatThrownBy(
+                        () -> client.executeTool(ToolExecutionRequest.builder().name("test").arguments("{}").build()))
+                .isInstanceOf(ToolExecutionException.class)
+                .hasMessage("custom-error");
+
+        assertThat(listener.toolResult).isNotNull();
+        assertThat(listener.toolResult.resultText()).isEqualTo("custom-error");
+        assertThat(listener.toolResult.result()).isEqualTo(Map.of("message", "bad"));
+        assertThat(listener.toolResult.isError()).isTrue();
+    }
+
+    @Test
+    public void should_throw_for_application_level_error_even_if_custom_extractor_does_not_propagate_is_error()
+            throws Exception {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        ObjectNode toolResult = JsonNodeFactory.instance.objectNode();
+        ObjectNode resultNode = toolResult.putObject("result");
+        resultNode.put("isError", true);
+        resultNode.putArray("content").addObject().put("type", "text").put("text", "bad");
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(toolResult));
+
+        McpToolResultExtractor extractor = (content, isError) -> ToolExecutionResult.builder()
+                .resultText(content.get(0).get("text").asText())
+                .isError(false)
+                .build();
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .toolResultExtractor(extractor)
+                .build();
+
+        assertThatThrownBy(
+                        () -> client.executeTool(ToolExecutionRequest.builder().name("test").arguments("{}").build()))
+                .isInstanceOf(ToolExecutionException.class)
+                .hasMessage("bad");
+    }
+
+    @Test
+    public void should_throw_tool_execution_exception_for_application_level_error_with_multiple_result_contents()
+            throws Exception {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        ObjectNode toolResult = JsonNodeFactory.instance.objectNode();
+        ObjectNode resultNode = toolResult.putObject("result");
+        resultNode.put("isError", true);
+        resultNode.putArray("content").addObject().put("type", "text").put("text", "bad");
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(toolResult));
+
+        McpToolResultExtractor extractor = (content, isError) -> ToolExecutionResult.builder()
+                .resultContents(List.of(TextContent.from("bad"), TextContent.from("details")))
+                .isError(isError)
+                .build();
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .toolResultExtractor(extractor)
+                .build();
+
+        assertThatThrownBy(
+                        () -> client.executeTool(ToolExecutionRequest.builder().name("test").arguments("{}").build()))
+                .isInstanceOf(ToolExecutionException.class)
+                .hasMessage("bad\ndetails");
     }
 
     /**

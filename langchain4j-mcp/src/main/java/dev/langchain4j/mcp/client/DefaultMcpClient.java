@@ -112,6 +112,7 @@ public class DefaultMcpClient implements McpClient {
     private final Boolean cachePromptList;
     private final McpClientListener listener;
     private final McpMetaSupplier metaSupplier;
+    private final McpToolResultExtractor toolResultExtractor;
 
     public DefaultMcpClient(Builder builder) {
         try {
@@ -146,6 +147,7 @@ public class DefaultMcpClient implements McpClient {
             cacheResourceList = getOrDefault(builder.cacheResourceList, Boolean.TRUE);
             cachePromptList = getOrDefault(builder.cachePromptList, Boolean.TRUE);
             onResourceUpdated = builder.onResourceUpdated;
+            toolResultExtractor = getOrDefault(builder.toolResultExtractor, new DefaultMcpToolResultExtractor());
             RESULT_TIMEOUT = JsonNodeFactory.instance.objectNode();
             messageHandler = new McpOperationHandler(
                     pendingOperations,
@@ -298,7 +300,7 @@ public class DefaultMcpClient implements McpClient {
             McpCancellationNotification cancellation = new McpCancellationNotification(operationId, "Timeout");
             applyMeta(cancellation, null);
             transport.executeOperationWithoutResponse(cancellation);
-            return ToolExecutionHelper.extractResult(RESULT_TIMEOUT, false);
+            return ToolExecutionHelper.extractResult(RESULT_TIMEOUT, false, toolResultExtractor);
         } catch (ExecutionException e) {
             if (listener != null) {
                 listener.onExecuteToolError(context, e);
@@ -311,7 +313,7 @@ public class DefaultMcpClient implements McpClient {
             pendingOperations.remove(operationId);
         }
         try {
-            ToolExecutionResult toolResult = ToolExecutionHelper.extractResult(result, false);
+            ToolExecutionResult toolResult = ToolExecutionHelper.extractResult(result, false, toolResultExtractor);
             if (listener != null) {
                 listener.afterExecuteTool(
                         context, toolResult, (Map<String, Object>) ToolExecutionHelper.toObject(result));
@@ -328,8 +330,9 @@ public class DefaultMcpClient implements McpClient {
                 // -> we notify the listener with afterExecuteTool
                 if (listener != null) {
                     listener.afterExecuteTool(
-                            context, ToolExecutionHelper.extractResult(result, true), (Map<String, Object>)
-                                    ToolExecutionHelper.toObject(result));
+                            context,
+                            ToolExecutionHelper.extractResult(result, true, toolResultExtractor),
+                            (Map<String, Object>) ToolExecutionHelper.toObject(result));
                 }
             }
             throw e;
@@ -754,6 +757,7 @@ public class DefaultMcpClient implements McpClient {
         private McpProgressHandler progressHandler;
         private McpMetaSupplier metaSupplier;
         private BiConsumer<McpClient, String> onResourceUpdated;
+        private McpToolResultExtractor toolResultExtractor;
 
         /**
          * Sets the transport protocol to use for communicating with the
@@ -977,6 +981,21 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder metaSupplier(McpMetaSupplier metaSupplier) {
             this.metaSupplier = metaSupplier;
+            return this;
+        }
+
+        /**
+         * Sets the extractor used for MCP tool responses that return ordinary
+         * {@code CallToolResult.result.content[]} items.
+         * Responses with {@code structuredContent} are handled separately and
+         * are not affected by this setting.
+         * The default client only supports {@code structuredContent} and text
+         * content out of the box. More specialized extraction strategies, such as
+         * parsing text items and returning the first JSON object, can be implemented
+         * with a custom extractor.
+         */
+        public Builder toolResultExtractor(McpToolResultExtractor toolResultExtractor) {
+            this.toolResultExtractor = ensureNotNull(toolResultExtractor, "toolResultExtractor");
             return this;
         }
 
