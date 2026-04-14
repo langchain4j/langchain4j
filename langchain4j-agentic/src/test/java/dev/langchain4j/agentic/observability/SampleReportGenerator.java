@@ -306,5 +306,7 @@ public class SampleReportGenerator {
         @Override public List<dev.langchain4j.agentic.scope.AgentInvocation> agentInvocations() { return List.of(); }
         @Override public List<dev.langchain4j.agentic.scope.AgentInvocation> agentInvocations(String n) { return List.of(); }
         @Override public List<dev.langchain4j.agentic.scope.AgentInvocation> agentInvocations(Class<?> t) { return List.of(); }
+        @Override public <T> void setExecutionContext(final Class<T> type, final T context) {}
+        @Override public <T> T getExecutionContext(final Class<T> type) { return null; }
     }
 }

@@ -47,6 +47,7 @@ public class DefaultAgenticScope implements AgenticScope {
     private final List<AgentMessage> context = Collections.synchronizedList(new ArrayList<>());
 
     private final transient Map<String, Object> agents = new ConcurrentHashMap<>();
+    private final transient Map<Class<?>, Object> executionContexts = new ConcurrentHashMap<>();
 
     private static final Function<ErrorContext, ErrorRecoveryResult> DEFAULT_ERROR_RECOVERY =
             errorContext -> ErrorRecoveryResult.throwException();
@@ -336,5 +337,18 @@ public class DefaultAgenticScope implements AgenticScope {
                 .filter(p -> !p.isDone())
                 .map(PendingResponse::responseId)
                 .collect(Collectors.toSet());
+    }
+
+    @Override
+    public <T> void setExecutionContext(final Class<T> type, final T executionContext) {
+        if (executionContext == null)
+            throw new IllegalArgumentException("executionContext cannot be null");
+        this.executionContexts.put(type, executionContext);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T> T getExecutionContext(final Class<T> type) {
+        return (T) this.executionContexts.get(type);
     }
 }

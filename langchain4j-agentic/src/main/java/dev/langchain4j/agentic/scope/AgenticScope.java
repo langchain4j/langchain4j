@@ -175,4 +175,29 @@ public interface AgenticScope extends LangChain4jManaged {
     default Set<String> pendingResponseIds() {
         return Set.of();
     }
+
+    /**
+     * Stores non-serializable execution context in this scope, keyed by type.
+     * <p>
+     * This allows custom {@link dev.langchain4j.agentic.planner.Planner} implementations to store
+     * runtime objects that are needed during execution but should not be persisted.
+     * The execution context is stored in a {@code transient} map and will not be serialized.
+     *
+     * @param type    the class type to use as the key for this context (must not be {@code null})
+     * @param context the execution context instance to store (must not be {@code null})
+     * @param <T>     the type of the execution context
+     * @throws IllegalArgumentException if {@code context} is {@code null}
+     */
+    <T> void setExecutionContext(Class<T> type, T context);
+
+    /**
+     * Retrieves non-serializable execution context from this scope by type.
+     * <p>
+     * Returns execution context previously stored via {@link #setExecutionContext(Class, Object)}.
+     *
+     * @param type the class type used as the key for the execution context
+     * @param <T>  the type of the execution context
+     * @return the execution context instance previously stored for this type, or {@code null} if none exists
+     */
+    <T> T getExecutionContext(Class<T> type);
 }
