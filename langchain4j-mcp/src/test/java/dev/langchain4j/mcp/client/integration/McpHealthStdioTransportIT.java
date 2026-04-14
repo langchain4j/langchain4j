@@ -3,7 +3,6 @@ package dev.langchain4j.mcp.client.integration;
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.destroyProcessTree;
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.getJBangCommand;
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.getPathToScript;
-import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.mcp.client.DefaultMcpClient;
@@ -25,7 +24,6 @@ class McpHealthStdioTransportIT {
 
     @BeforeAll
     static void setup() {
-        skipTestsIfJbangNotAvailable();
         StdioMcpTransport transport = new StdioMcpTransport.Builder()
                 .command(List.of(
                         getJBangCommand(), "--quiet", "--fresh", "run", getPathToScript("logging_mcp_server.java")))

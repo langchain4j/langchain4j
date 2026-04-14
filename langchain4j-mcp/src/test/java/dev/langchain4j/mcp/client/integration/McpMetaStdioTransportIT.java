@@ -2,7 +2,6 @@ package dev.langchain4j.mcp.client.integration;
 
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.getJBangCommand;
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.getPathToScript;
-import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -23,7 +22,6 @@ class McpMetaStdioTransportIT {
 
     @BeforeAll
     static void setup() {
-        skipTestsIfJbangNotAvailable();
         McpTransport transport = new StdioMcpTransport.Builder()
                 .command(List.of(
                         getJBangCommand(), "--quiet", "--fresh", "run", getPathToScript("meta_mcp_server.java")))
