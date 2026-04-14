@@ -36,6 +36,6 @@ public class DefaultMcpToolResultExtractorTest {
 
         assertThatThrownBy(() -> extractor.extract(content, false))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessage("Unsupported content type: image");
+                .hasMessage("Unsupported content type: \"image\"");
     }
 }

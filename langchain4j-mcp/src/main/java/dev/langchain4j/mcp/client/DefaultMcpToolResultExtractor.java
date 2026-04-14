@@ -29,8 +29,9 @@ public class DefaultMcpToolResultExtractor implements McpToolResultExtractor {
 
     private String extractText(JsonNode contentItem) {
         if (!contentItem.get("type").asText().equals("text")) {
-            throw new RuntimeException(
-                    "Unsupported content type: " + contentItem.get("type").asText());
+            // Preserve the historical error message format from ToolExecutionHelper,
+            // where the JSON string value is rendered with quotes.
+            throw new RuntimeException("Unsupported content type: " + contentItem.get("type"));
         }
         return contentItem.get("text").asText();
     }
