@@ -23,6 +23,7 @@ class OpenAiOfficialResponsesAiServicesWithJsonSchemaIT extends AbstractAiServic
 
     private static ChatModel createModel(boolean strictJsonSchema) {
         StreamingChatModel streamingModel = OpenAiOfficialResponsesStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName("gpt-5.4-mini")
                 .temperature(0.0)

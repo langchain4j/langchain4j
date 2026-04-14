@@ -1,6 +1,5 @@
 package dev.langchain4j.model.openaiofficial.openai;
 
-import com.openai.client.okhttp.OpenAIOkHttpClient;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatResponseMetadata;
@@ -8,21 +7,19 @@ import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChat
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.common.AbstractStreamingAiServiceIT;
-import java.util.List;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
+import java.util.List;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiOfficialResponsesStreamingAiServiceIT extends AbstractStreamingAiServiceIT {
 
     @Override
     protected List<StreamingChatModel> models() {
-        var client = OpenAIOkHttpClient.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .build();
-
         StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
-                .client(client)
-                .modelName(InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME.toString())
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .modelName("gpt-5.4-mini")
                 .build();
 
         return List.of(model);

@@ -59,12 +59,9 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
     @Override
     protected List<StreamingChatModel> models() {
-        var client = OpenAIOkHttpClient.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .build();
-
         StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
-                .client(client)
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(GPT_5_4_MINI)
                 .build();
 
@@ -73,12 +70,9 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
     @Override
     protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
-        var client = OpenAIOkHttpClient.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .build();
-
         return OpenAiOfficialResponsesStreamingChatModel.builder()
-                .client(client)
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
                 .defaultRequestParameters(parameters)
                 .modelName(getOrDefault(parameters.modelName(), "gpt-5.4-mini"))
                 .build();
@@ -124,12 +118,9 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
     @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {
-        var client = OpenAIOkHttpClient.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .build();
-
         return OpenAiOfficialResponsesStreamingChatModel.builder()
-                .client(client)
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName("gpt-5.4-mini")
                 .listeners(listener)
                 .build();
