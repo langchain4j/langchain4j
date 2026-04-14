@@ -41,7 +41,8 @@ class ToolExecutionHelper {
                 ToolExecutionResult toolExecutionResult =
                         toolResultExtractor.extract((ArrayNode) resultNode.get("content"), applicationError);
                 if (applicationError && !ignoreApplicationLevelErrors) {
-                    throw new ToolExecutionException(errorMessage(toolExecutionResult, (ArrayNode) resultNode.get("content")));
+                    throw new ToolExecutionException(
+                            errorMessage(toolExecutionResult, (ArrayNode) resultNode.get("content")));
                 }
                 return toolExecutionResult;
             } else {

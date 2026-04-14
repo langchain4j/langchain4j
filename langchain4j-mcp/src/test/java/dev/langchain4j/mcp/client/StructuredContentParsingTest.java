@@ -18,8 +18,7 @@ public class StructuredContentParsingTest {
     @Test
     public void testComplexObject() throws JsonProcessingException {
         // JSON
-        String response =
-                """
+        String response = """
                 {
                   "jsonrpc": "2.0",
                   "id": 2,
@@ -57,8 +56,7 @@ public class StructuredContentParsingTest {
 
     @Test
     public void testStructuredContentWithArrays() throws JsonProcessingException {
-        String response =
-                """
+        String response = """
                 {
                   "jsonrpc": "2.0",
                   "id": 3,
@@ -82,15 +80,13 @@ public class StructuredContentParsingTest {
         Map<String, Object> map = (Map<String, Object>) toolExecutionResult.result();
         assertThat(map.get("items")).isEqualTo(java.util.List.of(1, 2, 3));
         assertThat(map.get("nested")).isInstanceOf(Map.class);
-        assertThat(((Map<String, Object>) map.get("nested")).get("labels"))
-                .isEqualTo(java.util.List.of("a", "b"));
+        assertThat(((Map<String, Object>) map.get("nested")).get("labels")).isEqualTo(java.util.List.of("a", "b"));
         verifyNoInteractions(extractor);
     }
 
     @Test
     public void should_prefer_structured_content_over_content_array() throws JsonProcessingException {
-        String response =
-                """
+        String response = """
                 {
                   "jsonrpc": "2.0",
                   "id": 4,

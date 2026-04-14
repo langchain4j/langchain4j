@@ -335,8 +335,8 @@ public class DefaultMcpClientTest {
                 .toolResultExtractor(extractor)
                 .build();
 
-        ToolExecutionResult result =
-                client.executeTool(ToolExecutionRequest.builder().name("test").arguments("{}").build());
+        ToolExecutionResult result = client.executeTool(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build());
 
         assertThat(result.resultText()).isEqualTo("custom:ok");
         assertThat(result.result()).isEqualTo(Map.of("value", "ok"));
@@ -345,8 +345,7 @@ public class DefaultMcpClientTest {
     @Test
     public void should_use_custom_tool_result_extractor_for_timeout_fallback() {
         final McpTransport transport = getMinimalMcpTransportMock();
-        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
-                .thenReturn(new CompletableFuture<>());
+        when(transport.executeOperationWithResponse(any(McpCallContext.class))).thenReturn(new CompletableFuture<>());
 
         McpToolResultExtractor extractor = (content, isError) -> ToolExecutionResult.builder()
                 .resultText("custom-timeout:" + content.get(0).get("text").asText())
@@ -359,8 +358,8 @@ public class DefaultMcpClientTest {
                 .toolResultExtractor(extractor)
                 .build();
 
-        ToolExecutionResult result =
-                client.executeTool(ToolExecutionRequest.builder().name("test").arguments("{}").build());
+        ToolExecutionResult result = client.executeTool(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build());
 
         assertThat(result.resultText()).isEqualTo("custom-timeout:There was a timeout executing the tool");
     }
@@ -397,8 +396,10 @@ public class DefaultMcpClientTest {
                 .toolResultExtractor(extractor)
                 .build();
 
-        assertThatThrownBy(
-                        () -> client.executeTool(ToolExecutionRequest.builder().name("test").arguments("{}").build()))
+        assertThatThrownBy(() -> client.executeTool(ToolExecutionRequest.builder()
+                        .name("test")
+                        .arguments("{}")
+                        .build()))
                 .isInstanceOf(ToolExecutionException.class)
                 .hasMessage("custom-error");
 
@@ -429,8 +430,10 @@ public class DefaultMcpClientTest {
                 .toolResultExtractor(extractor)
                 .build();
 
-        assertThatThrownBy(
-                        () -> client.executeTool(ToolExecutionRequest.builder().name("test").arguments("{}").build()))
+        assertThatThrownBy(() -> client.executeTool(ToolExecutionRequest.builder()
+                        .name("test")
+                        .arguments("{}")
+                        .build()))
                 .isInstanceOf(ToolExecutionException.class)
                 .hasMessage("bad");
     }
@@ -456,8 +459,10 @@ public class DefaultMcpClientTest {
                 .toolResultExtractor(extractor)
                 .build();
 
-        assertThatThrownBy(
-                        () -> client.executeTool(ToolExecutionRequest.builder().name("test").arguments("{}").build()))
+        assertThatThrownBy(() -> client.executeTool(ToolExecutionRequest.builder()
+                        .name("test")
+                        .arguments("{}")
+                        .build()))
                 .isInstanceOf(ToolExecutionException.class)
                 .hasMessage("bad\ndetails");
     }

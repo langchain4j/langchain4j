@@ -22,12 +22,16 @@ public class DefaultMcpToolResultExtractor implements McpToolResultExtractor {
                 .map(this::extractText)
                 .collect(Collectors.joining("\n"));
 
-        return ToolExecutionResult.builder().isError(isError).resultText(resultText).build();
+        return ToolExecutionResult.builder()
+                .isError(isError)
+                .resultText(resultText)
+                .build();
     }
 
     private String extractText(JsonNode contentItem) {
         if (!contentItem.get("type").asText().equals("text")) {
-            throw new RuntimeException("Unsupported content type: " + contentItem.get("type"));
+            throw new RuntimeException(
+                    "Unsupported content type: " + contentItem.get("type").asText());
         }
         return contentItem.get("text").asText();
     }

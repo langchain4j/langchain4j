@@ -37,15 +37,20 @@ class McpToolResultExtractorStdioTransportIT {
             @Override
             public ToolExecutionResult extract(ArrayNode content, boolean isError) {
                 if (content.isEmpty()) {
-                    return ToolExecutionResult.builder().isError(isError).resultText("").build();
+                    return ToolExecutionResult.builder()
+                            .isError(isError)
+                            .resultText("")
+                            .build();
                 }
 
                 String type = content.get(0).get("type").asText();
 
                 if ("text".equals(type) && content.size() == 1) {
                     try {
-                        Map<String, Object> map =
-                                OBJECT_MAPPER.convertValue(OBJECT_MAPPER.readTree(content.get(0).get("text").asText()), Map.class);
+                        Map<String, Object> map = OBJECT_MAPPER.convertValue(
+                                OBJECT_MAPPER.readTree(
+                                        content.get(0).get("text").asText()),
+                                Map.class);
                         return ToolExecutionResult.builder()
                                 .isError(isError)
                                 .result(map)
@@ -105,8 +110,10 @@ class McpToolResultExtractorStdioTransportIT {
 
     @Test
     void should_extract_json_text_content_with_custom_extractor() {
-        ToolExecutionResult result = client.executeTool(
-                ToolExecutionRequest.builder().name("jsonContent").arguments("{}").build());
+        ToolExecutionResult result = client.executeTool(ToolExecutionRequest.builder()
+                .name("jsonContent")
+                .arguments("{}")
+                .build());
 
         assertThat(result.result()).isEqualTo(Map.of("value", 42, "status", "ok"));
         assertThat(result.resultText()).isEqualTo("{\"value\":42,\"status\":\"ok\"}");
@@ -114,8 +121,10 @@ class McpToolResultExtractorStdioTransportIT {
 
     @Test
     void should_extract_image_content_with_custom_extractor() {
-        ToolExecutionResult result = client.executeTool(
-                ToolExecutionRequest.builder().name("imageContent").arguments("{}").build());
+        ToolExecutionResult result = client.executeTool(ToolExecutionRequest.builder()
+                .name("imageContent")
+                .arguments("{}")
+                .build());
 
         assertThat(result.resultContents()).hasSize(1);
         assertThat(result.resultContents().get(0)).isInstanceOf(ImageContent.class);
@@ -127,8 +136,10 @@ class McpToolResultExtractorStdioTransportIT {
 
     @Test
     void should_extract_mixed_multimodal_content_with_custom_extractor() {
-        ToolExecutionResult result = client.executeTool(
-                ToolExecutionRequest.builder().name("mixedContent").arguments("{}").build());
+        ToolExecutionResult result = client.executeTool(ToolExecutionRequest.builder()
+                .name("mixedContent")
+                .arguments("{}")
+                .build());
 
         assertThat(result.resultContents()).hasSize(2);
         assertThat(result.resultContents().get(0)).isEqualTo(TextContent.from("preview"));
@@ -154,12 +165,17 @@ class McpToolResultExtractorStdioTransportIT {
                 .toolExecutionTimeout(Duration.ofSeconds(4))
                 .toolResultExtractor((content, isError) -> {
                     extractorCalled.set(true);
-                    return ToolExecutionResult.builder().isError(isError).resultText("wrong").build();
+                    return ToolExecutionResult.builder()
+                            .isError(isError)
+                            .resultText("wrong")
+                            .build();
                 })
                 .build()) {
 
-            ToolExecutionResult result = structuredContentClient.executeTool(
-                    ToolExecutionRequest.builder().name("structuredContent").arguments("{}").build());
+            ToolExecutionResult result = structuredContentClient.executeTool(ToolExecutionRequest.builder()
+                    .name("structuredContent")
+                    .arguments("{}")
+                    .build());
 
             assertThat(extractorCalled).isFalse();
             assertThat(result.result()).isEqualTo(Map.of("value", 7, "status", "structured"));
