@@ -115,13 +115,27 @@ abstract class AbstractBedrockChatModel {
     private static final int MAX_CACHE_POINTS_PER_REQUEST = 4;
 
     /**
-     * Reusable cache point block - AWS SDK model objects are immutable.
+     * Default cache point block with no TTL (5-minute default).
      */
-    private static final SystemContentBlock CACHE_POINT_BLOCK = SystemContentBlock.builder()
-            .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
+    private static final software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock DEFAULT_CACHE_POINT =
+            software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
                     .type(software.amazon.awssdk.services.bedrockruntime.model.CachePointType.DEFAULT)
-                    .build())
-            .build();
+                    .build();
+
+    /**
+     * Creates a CachePointBlock with the specified TTL.
+     * If cacheTtl is null, returns the default cache point (5-minute TTL).
+     */
+    private static software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock buildCachePoint(
+            BedrockCacheTtl cacheTtl) {
+        if (cacheTtl == null) {
+            return DEFAULT_CACHE_POINT;
+        }
+        return software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
+                .type(software.amazon.awssdk.services.bedrockruntime.model.CachePointType.DEFAULT)
+                .ttl(cacheTtl.toSdkCacheTtl())
+                .build();
+    }
 
     protected final Region region;
     protected final Duration timeout;
@@ -163,17 +177,22 @@ abstract class AbstractBedrockChatModel {
                 .toolChoice(commonParameters.toolChoice())
                 // Bedrock-specific parameters
                 .additionalModelRequestFields(bedrockParameters.additionalModelRequestFields())
-                .promptCaching(bedrockParameters.cachePointPlacement())
+                .promptCaching(bedrockParameters.cachePointPlacement(), bedrockParameters.cacheTtl())
                 .guardrailConfiguration(bedrockParameters.bedrockGuardrailConfiguration())
                 .build();
     }
 
     protected List<SystemContentBlock> extractSystemMessages(List<ChatMessage> messages) {
-        return extractSystemMessages(messages, null);
+        return extractSystemMessages(messages, null, null);
     }
 
     protected List<SystemContentBlock> extractSystemMessages(
             List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement) {
+        return extractSystemMessages(messages, cachePointPlacement, null);
+    }
+
+    protected List<SystemContentBlock> extractSystemMessages(
+            List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement, BedrockCacheTtl cacheTtl) {
         if (messages == null) {
             return new ArrayList<>();
         }
@@ -197,7 +216,9 @@ abstract class AbstractBedrockChatModel {
 
                         // Add cache point AFTER this content block if marked
                         if (textContent.hasCachePoint()) {
-                            systemBlocks.add(CACHE_POINT_BLOCK);
+                            systemBlocks.add(SystemContentBlock.builder()
+                                    .cachePoint(buildCachePoint(cacheTtl))
+                                    .build());
                         }
                     } else {
                         // Fail fast for unknown content types to prevent silent data loss
@@ -221,7 +242,9 @@ abstract class AbstractBedrockChatModel {
         // 3. The LAST system message was a core SystemMessage (not BedrockSystemMessage)
         if (cachePointPlacement == BedrockCachePointPlacement.AFTER_SYSTEM && !systemBlocks.isEmpty()) {
             if (lastWasCoreSystemMessage) {
-                systemBlocks.add(CACHE_POINT_BLOCK);
+                systemBlocks.add(SystemContentBlock.builder()
+                        .cachePoint(buildCachePoint(cacheTtl))
+                        .build());
             } else {
                 log.warn("BedrockCachePointPlacement.AFTER_SYSTEM is configured but ignored because "
                         + "the last system message is a BedrockSystemMessage with granular cache points. "
@@ -234,11 +257,16 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected List<Message> extractRegularMessages(List<ChatMessage> messages) {
-        return extractRegularMessages(messages, null);
+        return extractRegularMessages(messages, null, null);
     }
 
     protected List<Message> extractRegularMessages(
             List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement) {
+        return extractRegularMessages(messages, cachePointPlacement, null);
+    }
+
+    protected List<Message> extractRegularMessages(
+            List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement, BedrockCacheTtl cacheTtl) {
         if (messages == null) {
             return new ArrayList<>();
         }
@@ -284,9 +312,7 @@ abstract class AbstractBedrockChatModel {
                 if (shouldAddCachePoint) {
                     List<ContentBlock> contentWithCachePoint = new ArrayList<>(bedrockMessage.content());
                     contentWithCachePoint.add(ContentBlock.builder()
-                            .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
-                                    .type(software.amazon.awssdk.services.bedrockruntime.model.CachePointType.DEFAULT)
-                                    .build())
+                            .cachePoint(buildCachePoint(cacheTtl))
                             .build());
 
                     bedrockMessage = Message.builder()
@@ -469,11 +495,16 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected ToolConfiguration extractToolConfigurationFrom(ChatRequest chatRequest) {
-        return extractToolConfigurationFrom(chatRequest, null);
+        return extractToolConfigurationFrom(chatRequest, null, null);
     }
 
     protected ToolConfiguration extractToolConfigurationFrom(
             ChatRequest chatRequest, BedrockCachePointPlacement cachePointPlacement) {
+        return extractToolConfigurationFrom(chatRequest, cachePointPlacement, null);
+    }
+
+    protected ToolConfiguration extractToolConfigurationFrom(
+            ChatRequest chatRequest, BedrockCachePointPlacement cachePointPlacement, BedrockCacheTtl cacheTtl) {
         List<ToolSpecification> toolSpecifications = chatRequest.toolSpecifications();
         ChatRequestParameters parameters = chatRequest.parameters();
 
@@ -500,9 +531,7 @@ abstract class AbstractBedrockChatModel {
 
             if (cachePointPlacement == BedrockCachePointPlacement.AFTER_TOOLS) {
                 allTools.add(Tool.builder()
-                        .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
-                                .type(software.amazon.awssdk.services.bedrockruntime.model.CachePointType.DEFAULT)
-                                .build())
+                        .cachePoint(buildCachePoint(cacheTtl))
                         .build());
             }
         }

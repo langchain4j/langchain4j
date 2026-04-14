@@ -74,6 +74,7 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
         BedrockChatRequestParameters parameters = (BedrockChatRequestParameters) chatRequest.parameters();
 
         BedrockCachePointPlacement cachePointPlacement = parameters.cachePointPlacement();
+        BedrockCacheTtl cacheTtl = parameters.cacheTtl();
         BedrockGuardrailConfiguration bedrockGuardrailConfiguration = parameters.bedrockGuardrailConfiguration();
         BedrockServiceTier bedrockServiceTier = parameters.serviceTier();
 
@@ -85,9 +86,9 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
         return ConverseRequest.builder()
                 .modelId(chatRequest.modelName())
                 .inferenceConfig(inferenceConfigFrom(chatRequest.parameters()))
-                .system(extractSystemMessages(chatRequest.messages(), cachePointPlacement))
-                .messages(extractRegularMessages(chatRequest.messages(), cachePointPlacement))
-                .toolConfig(extractToolConfigurationFrom(chatRequest, cachePointPlacement))
+                .system(extractSystemMessages(chatRequest.messages(), cachePointPlacement, cacheTtl))
+                .messages(extractRegularMessages(chatRequest.messages(), cachePointPlacement, cacheTtl))
+                .toolConfig(extractToolConfigurationFrom(chatRequest, cachePointPlacement, cacheTtl))
                 .additionalModelRequestFields(additionalRequestModelFieldsFrom(chatRequest.parameters()))
                 .guardrailConfig(guardrailConfigFrom(bedrockGuardrailConfiguration))
                 .outputConfig(outputConfigFrom(chatRequest.responseFormat()))
