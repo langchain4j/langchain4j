@@ -75,7 +75,8 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 .textVerbosity(getOrDefault(builder.textVerbosity, responsesParameters.textVerbosity()))
                 .streamIncludeObfuscation(getOrDefault(builder.streamIncludeObfuscation, responsesParameters.streamIncludeObfuscation()))
                 .store(getOrDefault(builder.store, getOrDefault(responsesParameters.store(), false)))
-                .strict(getOrDefault(builder.strict, responsesParameters.strict()))
+                .strictTools(getOrDefault(builder.strictTools, responsesParameters.strictTools()))
+                .strictJsonSchema(getOrDefault(builder.strictJsonSchema, responsesParameters.strictJsonSchema()))
                 .build();
 
         this.listeners = copy(builder.listeners);
@@ -152,7 +153,8 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         private String textVerbosity;
         private Boolean streamIncludeObfuscation;
         private Boolean store;
-        private Boolean strict;
+        private Boolean strictTools;
+        private Boolean strictJsonSchema;
         private Boolean logRequests;
         private Boolean logResponses;
         private List<ChatModelListener> listeners;
@@ -269,8 +271,13 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
-        public Builder strict(Boolean strict) {
-            this.strict = strict;
+        public Builder strictTools(Boolean strictTools) {
+            this.strictTools = strictTools;
+            return this;
+        }
+
+        public Builder strictJsonSchema(Boolean strictJsonSchema) {
+            this.strictJsonSchema = strictJsonSchema;
             return this;
         }
 

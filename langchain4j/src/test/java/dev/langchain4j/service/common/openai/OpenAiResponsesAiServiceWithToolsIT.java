@@ -23,15 +23,26 @@ class OpenAiResponsesAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
 
     @Override
     protected List<ChatModel> models() {
-        return List.of(new StreamingChatModelAdapter(OpenAiResponsesStreamingChatModel.builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName("gpt-5.4-mini")
-                .temperature(0.0)
-                .strict(true) // TODO?
-                .logRequests(true)
-                .logResponses(true)
-                .build()));
+        return List.of(
+                new StreamingChatModelAdapter(OpenAiResponsesStreamingChatModel.builder()
+                        .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                        .apiKey(System.getenv("OPENAI_API_KEY"))
+                        .modelName("gpt-5.4-mini")
+                        .temperature(0.0)
+                        .strictTools(true)
+                        .logRequests(true)
+                        .logResponses(true)
+                        .build()),
+                new StreamingChatModelAdapter(OpenAiResponsesStreamingChatModel.builder()
+                        .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                        .apiKey(System.getenv("OPENAI_API_KEY"))
+                        .modelName("gpt-5.4-mini")
+                        .temperature(0.0)
+                        .strictTools(false)
+                        .logRequests(true)
+                        .logResponses(true)
+                        .build())
+        );
     }
 
     @Override

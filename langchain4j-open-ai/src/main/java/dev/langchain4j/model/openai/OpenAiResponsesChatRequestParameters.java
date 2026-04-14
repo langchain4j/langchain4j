@@ -28,7 +28,8 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
     private final String textVerbosity;
     private final Boolean streamIncludeObfuscation;
     private final Boolean store;
-    private final Boolean strict;
+    private final Boolean strictTools;
+    private final Boolean strictJsonSchema;
 
     private OpenAiResponsesChatRequestParameters(Builder builder) {
         super(builder);
@@ -46,7 +47,8 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
         this.textVerbosity = builder.textVerbosity;
         this.streamIncludeObfuscation = builder.streamIncludeObfuscation;
         this.store = builder.store;
-        this.strict = builder.strict;
+        this.strictTools = builder.strictTools;
+        this.strictJsonSchema = builder.strictJsonSchema;
     }
 
     public String previousResponseId() {
@@ -105,8 +107,12 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
         return store;
     }
 
-    public Boolean strict() {
-        return strict;
+    public Boolean strictTools() {
+        return strictTools;
+    }
+
+    public Boolean strictJsonSchema() {
+        return strictJsonSchema;
     }
 
     @Override
@@ -145,7 +151,8 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
                 && Objects.equals(textVerbosity, that.textVerbosity)
                 && Objects.equals(streamIncludeObfuscation, that.streamIncludeObfuscation)
                 && Objects.equals(store, that.store)
-                && Objects.equals(strict, that.strict);
+                && Objects.equals(strictTools, that.strictTools)
+                && Objects.equals(strictJsonSchema, that.strictJsonSchema);
     }
 
     @Override
@@ -166,7 +173,8 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
                 textVerbosity,
                 streamIncludeObfuscation,
                 store,
-                strict);
+                strictTools,
+                strictJsonSchema);
     }
 
     public static Builder builder() {
@@ -189,7 +197,8 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
         private String textVerbosity;
         private Boolean streamIncludeObfuscation;
         private Boolean store;
-        private Boolean strict;
+        private Boolean strictTools;
+        private Boolean strictJsonSchema;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
@@ -209,7 +218,8 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
                 textVerbosity(getOrDefault(p.textVerbosity(), textVerbosity));
                 streamIncludeObfuscation(getOrDefault(p.streamIncludeObfuscation(), streamIncludeObfuscation));
                 store(getOrDefault(p.store(), store));
-                strict(getOrDefault(p.strict(), strict));
+                strictTools(getOrDefault(p.strictTools(), strictTools));
+                strictJsonSchema(getOrDefault(p.strictJsonSchema(), strictJsonSchema));
             }
             return this;
         }
@@ -284,8 +294,13 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
             return this;
         }
 
-        public Builder strict(Boolean strict) {
-            this.strict = strict;
+        public Builder strictTools(Boolean strictTools) {
+            this.strictTools = strictTools;
+            return this;
+        }
+
+        public Builder strictJsonSchema(Boolean strictJsonSchema) {
+            this.strictJsonSchema = strictJsonSchema;
             return this;
         }
 

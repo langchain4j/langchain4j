@@ -234,7 +234,6 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .topLogprobs(5)
                 .truncation("auto")
                 .include(List.of("message.output_text.logprobs", "reasoning.encrypted_content"))
-                .strict(false)
                 .serviceTier("default")
                 .reasoningEffort("low")
                 .promptCacheRetention("24h")

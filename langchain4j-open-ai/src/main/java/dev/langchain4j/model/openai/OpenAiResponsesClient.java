@@ -264,7 +264,7 @@ class OpenAiResponsesClient {
             payload.put(FIELD_STREAM_OPTIONS, streamOptions);
         }
 
-        Boolean strict = parameters.strict();
+        boolean strictTools = Boolean.TRUE.equals(parameters.strictTools());
         List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
         if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
             List<Map<String, Object>> tools = new ArrayList<>();
@@ -278,8 +278,8 @@ class OpenAiResponsesClient {
 
                 Map<String, Object> functionParameters = null;
                 if (toolSpec.parameters() != null) {
-                    functionParameters = toMap(toolSpec.parameters(), Boolean.TRUE.equals(strict));
-                } else if (Boolean.TRUE.equals(strict)) {
+                    functionParameters = toMap(toolSpec.parameters(), strictTools);
+                } else if (strictTools) {
                     functionParameters = new LinkedHashMap<>();
                     functionParameters.put(FIELD_TYPE, TYPE_OBJECT);
                     functionParameters.put(FIELD_PROPERTIES, Map.of());
@@ -290,7 +290,7 @@ class OpenAiResponsesClient {
                     tool.put(FIELD_PARAMETERS, functionParameters);
                 }
 
-                if (Boolean.TRUE.equals(strict)) {
+                if (strictTools) {
                     tool.put(FIELD_STRICT, true);
                 }
 
@@ -303,7 +303,8 @@ class OpenAiResponsesClient {
             }
         }
 
-        Map<String, Object> textConfig = toResponseTextConfig(parameters.responseFormat(), Boolean.TRUE.equals(strict));
+        boolean strictJsonSchema = Boolean.TRUE.equals(parameters.strictJsonSchema());
+        Map<String, Object> textConfig = toResponseTextConfig(parameters.responseFormat(), strictJsonSchema);
         if (parameters.textVerbosity() != null) {
             if (textConfig == null) {
                 textConfig = new LinkedHashMap<>();

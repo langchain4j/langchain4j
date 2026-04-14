@@ -29,7 +29,7 @@ class OpenAiResponsesAiServicesWithJsonSchemaIT extends AbstractAiServiceWithJso
                                 .apiKey(System.getenv("OPENAI_API_KEY"))
                                 .modelName("gpt-5.4-mini")
                                 .temperature(0.0)
-                                .strict(true)
+                                .strictJsonSchema(true)
                                 .logRequests(true)
                                 .logResponses(true)
                                 .build(),
@@ -40,7 +40,7 @@ class OpenAiResponsesAiServicesWithJsonSchemaIT extends AbstractAiServiceWithJso
                                 .apiKey(System.getenv("OPENAI_API_KEY"))
                                 .modelName("gpt-5.4-mini")
                                 .temperature(0.0)
-                                .strict(false)
+                                .strictJsonSchema(false)
                                 .logRequests(true)
                                 .logResponses(true)
                                 .build(),
