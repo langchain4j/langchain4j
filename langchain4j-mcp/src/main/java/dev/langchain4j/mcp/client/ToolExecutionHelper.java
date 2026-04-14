@@ -1,7 +1,6 @@
 package dev.langchain4j.mcp.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
@@ -39,10 +38,9 @@ class ToolExecutionHelper {
             } else if (resultNode.has("content")) {
                 boolean applicationError = isError(resultNode);
                 ToolExecutionResult toolExecutionResult =
-                        toolResultExtractor.extract((ArrayNode) resultNode.get("content"), applicationError);
+                        toolResultExtractor.extract(resultNode.get("content"), applicationError);
                 if (applicationError && !ignoreApplicationLevelErrors) {
-                    throw new ToolExecutionException(
-                            errorMessage(toolExecutionResult, (ArrayNode) resultNode.get("content")));
+                    throw new ToolExecutionException(errorMessage(toolExecutionResult, resultNode.get("content")));
                 }
                 return toolExecutionResult;
             } else {
@@ -62,7 +60,7 @@ class ToolExecutionHelper {
         }
     }
 
-    private static String errorMessage(ToolExecutionResult toolExecutionResult, ArrayNode content) {
+    private static String errorMessage(ToolExecutionResult toolExecutionResult, JsonNode content) {
         String contentsText = toolExecutionResult.resultContents().stream()
                 .filter(TextContent.class::isInstance)
                 .map(TextContent.class::cast)

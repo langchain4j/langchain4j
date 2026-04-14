@@ -1,7 +1,6 @@
 package dev.langchain4j.mcp.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -17,7 +16,7 @@ import java.util.stream.StreamSupport;
 public class DefaultMcpToolResultExtractor implements McpToolResultExtractor {
 
     @Override
-    public ToolExecutionResult extract(ArrayNode content, boolean isError) {
+    public ToolExecutionResult extract(JsonNode content, boolean isError) {
         String resultText = StreamSupport.stream(content.spliterator(), false)
                 .map(this::extractText)
                 .collect(Collectors.joining("\n"));

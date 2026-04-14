@@ -1,6 +1,6 @@
 package dev.langchain4j.mcp.client;
 
-import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 
 /**
@@ -24,5 +24,5 @@ public interface McpToolResultExtractor {
      * @param isError whether the tool response is marked as an application-level error.
      * @return the extracted {@link ToolExecutionResult}.
      */
-    ToolExecutionResult extract(ArrayNode content, boolean isError);
+    ToolExecutionResult extract(JsonNode content, boolean isError);
 }

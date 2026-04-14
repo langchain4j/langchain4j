@@ -5,8 +5,8 @@ import static dev.langchain4j.mcp.client.integration.McpServerHelper.getPathToSc
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
@@ -35,7 +35,7 @@ class McpToolResultExtractorStdioTransportIT {
 
         McpToolResultExtractor extractor = new McpToolResultExtractor() {
             @Override
-            public ToolExecutionResult extract(ArrayNode content, boolean isError) {
+            public ToolExecutionResult extract(JsonNode content, boolean isError) {
                 if (content.isEmpty()) {
                     return ToolExecutionResult.builder()
                             .isError(isError)
