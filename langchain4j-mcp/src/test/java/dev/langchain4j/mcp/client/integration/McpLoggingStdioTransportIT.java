@@ -2,6 +2,7 @@ package dev.langchain4j.mcp.client.integration;
 
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.getJBangCommand;
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.getPathToScript;
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
 
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.transport.McpTransport;
@@ -15,6 +16,7 @@ class McpLoggingStdioTransportIT extends McpLoggingTestBase {
 
     @BeforeAll
     static void setup() {
+        skipTestsIfJbangNotAvailable();
         McpTransport transport = new StdioMcpTransport.Builder()
                 .command(List.of(
                         getJBangCommand(), "--quiet", "--fresh", "run", getPathToScript("logging_mcp_server.java")))
