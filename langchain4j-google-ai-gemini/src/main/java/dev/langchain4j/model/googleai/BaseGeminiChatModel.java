@@ -88,7 +88,7 @@ class BaseGeminiChatModel {
             parameters = DefaultChatRequestParameters.EMPTY;
         }
 
-        this.defaultRequestParameters = ChatRequestParameters.builder()
+        this.defaultRequestParameters = GoogleAiGeminiChatRequestParameters.builder()
                 .modelName(getOrDefault(builder.modelName, parameters.modelName()))
                 .temperature(getOrDefault(builder.temperature, parameters.temperature()))
                 .topP(getOrDefault(builder.topP, parameters.topP()))
@@ -100,6 +100,8 @@ class BaseGeminiChatModel {
                 .toolSpecifications(parameters.toolSpecifications())
                 .toolChoice(getOrDefault(toToolChoice(functionCallingConfig), parameters.toolChoice()))
                 .responseFormat(getOrDefault(builder.responseFormat, parameters.responseFormat()))
+                .aspectRatio(getOrDefault(builder.aspectRatio, aspectRatio(parameters)))
+                .imageSize(getOrDefault(builder.imageSize, imageSize(parameters)))
                 .build();
     }
 
@@ -117,6 +119,7 @@ class BaseGeminiChatModel {
 
     protected GeminiGenerateContentRequest createGenerateContentRequest(ChatRequest chatRequest) {
         ChatRequestParameters parameters = chatRequest.parameters();
+        GeminiGenerationConfig.GeminiImageConfig effectiveImageConfig = resolveImageConfig(parameters);
 
         GeminiContent systemInstruction = new GeminiContent(List.of(), GeminiRole.MODEL.toString());
         List<GeminiContent> geminiContentList = fromMessageToGContent(
@@ -156,7 +159,7 @@ class BaseGeminiChatModel {
                         .logprobs(logprobs)
                         .thinkingConfig(this.thinkingConfig)
                         .mediaResolution(this.mediaResolution)
-                        .imageConfig(this.imageConfig)
+                        .imageConfig(effectiveImageConfig)
                         .build())
                 .safetySettings(this.safetySettings)
                 .tools(fromToolSpecsToGTools(
@@ -232,6 +235,32 @@ class BaseGeminiChatModel {
                 .aspectRatio(aspectRatio)
                 .imageSize(imageSize)
                 .build();
+    }
+
+    private static String aspectRatio(ChatRequestParameters parameters) {
+        if (parameters instanceof GoogleAiGeminiChatRequestParameters geminiParameters) {
+            return geminiParameters.aspectRatio();
+        }
+        return null;
+    }
+
+    private static String imageSize(ChatRequestParameters parameters) {
+        if (parameters instanceof GoogleAiGeminiChatRequestParameters geminiParameters) {
+            return geminiParameters.imageSize();
+        }
+        return null;
+    }
+
+    private GeminiGenerationConfig.GeminiImageConfig resolveImageConfig(ChatRequestParameters parameters) {
+        String aspectRatio = imageConfig == null ? null : imageConfig.aspectRatio();
+        String imageSize = imageConfig == null ? null : imageConfig.imageSize();
+
+        if (parameters instanceof GoogleAiGeminiChatRequestParameters geminiParameters) {
+            aspectRatio = getOrDefault(geminiParameters.aspectRatio(), aspectRatio);
+            imageSize = getOrDefault(geminiParameters.imageSize(), imageSize);
+        }
+
+        return buildImageConfig(aspectRatio, imageSize);
     }
 
     protected ChatResponse processResponse(GeminiGenerateContentResponse geminiResponse) {
