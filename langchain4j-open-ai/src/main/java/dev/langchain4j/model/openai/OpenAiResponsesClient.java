@@ -131,8 +131,8 @@ class OpenAiResponsesClient {
     private static final String FIELD_SCHEMA = "schema";
     private static final String FIELD_ADDITIONAL_PROPERTIES = "additionalProperties";
     private static final String FIELD_STATUS = "status";
-    private static final String FIELD_CREATED = "created";
-    private static final String FIELD_SYSTEM_FINGERPRINT = "system_fingerprint";
+    private static final String FIELD_CREATED_AT = "created_at";
+    private static final String FIELD_COMPLETED_AT = "completed_at";
     private static final String DETAIL_AUTO_VALUE = "auto";
     private static final String DEFAULT_IMAGE_MIME_TYPE = "image/jpeg";
 
@@ -752,20 +752,19 @@ class OpenAiResponsesClient {
                     : !completedToolCalls.isEmpty() ? AiMessage.from(completedToolCalls) : new AiMessage(sb.toString());
 
             var responseBuilder = ChatResponse.builder().aiMessage(aiMessage);
-            var metadataBuilder = OpenAiChatResponseMetadata.builder()
+            var metadataBuilder = OpenAiResponsesChatResponseMetadata.builder()
                     .id(responseNode.path(FIELD_ID).asText(null))
                     .modelName(responseNode.path(FIELD_MODEL).asText(null));
 
-            if (responseNode.hasNonNull(FIELD_CREATED)) {
-                metadataBuilder.created(responseNode.path(FIELD_CREATED).asLong());
+            if (responseNode.hasNonNull(FIELD_CREATED_AT)) {
+                metadataBuilder.createdAt(responseNode.path(FIELD_CREATED_AT).asLong());
+            }
+            if (responseNode.hasNonNull(FIELD_COMPLETED_AT)) {
+                metadataBuilder.completedAt(responseNode.path(FIELD_COMPLETED_AT).asLong());
             }
             if (responseNode.hasNonNull(FIELD_SERVICE_TIER)) {
                 metadataBuilder.serviceTier(
                         responseNode.path(FIELD_SERVICE_TIER).asText());
-            }
-            if (responseNode.hasNonNull(FIELD_SYSTEM_FINGERPRINT)) {
-                metadataBuilder.systemFingerprint(
-                        responseNode.path(FIELD_SYSTEM_FINGERPRINT).asText());
             }
             if (tokenUsage != null) {
                 metadataBuilder.tokenUsage(tokenUsage);

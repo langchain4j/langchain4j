@@ -18,6 +18,7 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.OpenAiChatResponseMetadata;
 import dev.langchain4j.model.openai.OpenAiResponsesChatRequestParameters;
+import dev.langchain4j.model.openai.OpenAiResponsesChatResponseMetadata;
 import dev.langchain4j.model.openai.OpenAiResponsesStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
@@ -98,7 +99,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel streamingChatModel) {
-        return OpenAiChatResponseMetadata.class; // TODO should be responses-specific?
+        return OpenAiResponsesChatResponseMetadata.class;
     }
 
     @Override
@@ -189,8 +190,8 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
         ChatResponse response = handler.get();
         assertThat(response.aiMessage().text()).contains("Berlin");
-        assertThat(response.metadata()).isInstanceOf(OpenAiChatResponseMetadata.class);
-        OpenAiChatResponseMetadata metadata = (OpenAiChatResponseMetadata) response.metadata();
+        assertThat(response.metadata()).isInstanceOf(OpenAiResponsesChatResponseMetadata.class);
+        OpenAiResponsesChatResponseMetadata metadata = (OpenAiResponsesChatResponseMetadata) response.metadata();
         assertThat(metadata.id()).isNotBlank();
         assertThat(metadata.modelName()).isNotBlank();
         assertThat(metadata.finishReason()).isNotNull();
@@ -210,8 +211,8 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
         ChatResponse response = handler.get();
         assertThat(response.aiMessage().text()).contains("Paris");
-        assertThat(response.metadata()).isInstanceOf(OpenAiChatResponseMetadata.class);
-        OpenAiChatResponseMetadata metadata = (OpenAiChatResponseMetadata) response.metadata();
+        assertThat(response.metadata()).isInstanceOf(OpenAiResponsesChatResponseMetadata.class);
+        OpenAiResponsesChatResponseMetadata metadata = (OpenAiResponsesChatResponseMetadata) response.metadata();
         assertThat(metadata.id()).isNotBlank();
         assertThat(metadata.modelName()).isNotBlank();
         assertThat(metadata.finishReason()).isNotNull();
@@ -457,9 +458,9 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         model.chat("What is 2+2?", handler);
 
         ChatResponseMetadata metadata = handler.get().metadata();
-        assertThat(metadata).isInstanceOf(OpenAiChatResponseMetadata.class);
+        assertThat(metadata).isInstanceOf(OpenAiResponsesChatResponseMetadata.class);
 
-        OpenAiChatResponseMetadata openAiMetadata = (OpenAiChatResponseMetadata) metadata;
+        OpenAiResponsesChatResponseMetadata openAiMetadata = (OpenAiResponsesChatResponseMetadata) metadata;
         assertThat(openAiMetadata.id()).isNotBlank();
         assertThat(openAiMetadata.modelName()).isNotBlank();
 
