@@ -1051,7 +1051,7 @@ public class AiServicesWithToolSearchToolIT {
         verifyNoMoreInteractions(spySearchableTools);
 
         // when
-        String answer3 = assistant.chat("How much is 2+2? Use one of the tools!");
+        String answer3 = assistant.chat("How much is 2+2? Use 'add' tool to calculate the result!");
 
         // then
         assertThat(answer3).contains("21");

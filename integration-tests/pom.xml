@@ -39,5 +39,6 @@
         <maven.javadoc.skip>true</maven.javadoc.skip>
         <maven.source.skip>true</maven.source.skip>
         <enforcer.skipRules>requireUpperBoundDeps</enforcer.skipRules>
+        <revapi.skip>true</revapi.skip>
     </properties>
 </project>
