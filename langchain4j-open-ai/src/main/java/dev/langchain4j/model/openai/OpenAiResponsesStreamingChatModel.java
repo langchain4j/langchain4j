@@ -271,6 +271,16 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        /**
+         * @deprecated use {@link #strictTools(Boolean)} and {@link #strictJsonSchema(Boolean)} instead
+         */
+        @Deprecated(since = "1.13.0")
+        public Builder strict(Boolean strict) {
+            this.strictTools = strict;
+            this.strictJsonSchema = strict;
+            return this;
+        }
+
         public Builder strictTools(Boolean strictTools) {
             this.strictTools = strictTools;
             return this;

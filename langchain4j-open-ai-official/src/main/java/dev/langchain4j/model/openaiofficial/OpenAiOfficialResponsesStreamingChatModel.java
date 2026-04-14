@@ -66,6 +66,7 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
@@ -95,7 +96,6 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
-import static dev.langchain4j.internal.JsonSchemaElementUtils.toMapForOpenAiResponses;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -524,13 +524,14 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 builder.format(ResponseFormatTextConfig.ofJsonObject(
                         ResponseFormatJsonObject.builder().build()));
             } else {
-                if (!(jsonSchema.rootElement() instanceof JsonObjectSchema)) {
+                if (!(jsonSchema.rootElement() instanceof JsonObjectSchema
+                        || jsonSchema.rootElement() instanceof JsonRawSchema)) {
                     throw new IllegalArgumentException(
-                            "For OpenAI Responses API, the root element of the JSON Schema must be a JsonObjectSchema, but it was: "
+                            "For OpenAI, the root element of the JSON Schema must be either a JsonObjectSchema or a JsonRawSchema, but it was: "
                                     + jsonSchema.rootElement().getClass());
                 }
 
-                Map<String, Object> schemaMap = toMapForOpenAiResponses(jsonSchema.rootElement());
+                Map<String, Object> schemaMap = toMap(jsonSchema.rootElement(), strict);
                 ResponseFormatTextJsonSchemaConfig.Schema.Builder schemaBuilder =
                         ResponseFormatTextJsonSchemaConfig.Schema.builder();
 
@@ -790,11 +791,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         }
 
         /**
-         * Sets whether to use strict mode for both tools and JSON schema. Defaults to false.
-         *
-         * <p>When strict mode is enabled, the schema will include "additionalProperties": false and
-         * "required" arrays with all property keys.
+         * @deprecated use {@link #strictTools(Boolean)} and {@link #strictJsonSchema(Boolean)} instead
          */
+        @Deprecated(since = "1.13.0")
         public Builder strict(Boolean strict) {
             this.strictTools = strict;
             this.strictJsonSchema = strict;
