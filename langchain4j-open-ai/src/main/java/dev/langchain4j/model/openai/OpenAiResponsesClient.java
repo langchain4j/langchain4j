@@ -133,7 +133,6 @@ class OpenAiResponsesClient {
     private static final String FIELD_STATUS = "status";
     private static final String FIELD_CREATED_AT = "created_at";
     private static final String FIELD_COMPLETED_AT = "completed_at";
-    private static final String DETAIL_AUTO_VALUE = "auto";
     private static final String DEFAULT_IMAGE_MIME_TYPE = "image/jpeg";
 
     private static final String ROLE_SYSTEM = "system";
@@ -347,7 +346,7 @@ class OpenAiResponsesClient {
                 if (content instanceof TextContent textContent) {
                     contentEntries.add(createInputTextContent(textContent.text()));
                 } else if (content instanceof ImageContent imageContent) {
-                    contentEntries.add(createInputImageContent(imageContent.image()));
+                    contentEntries.add(createInputImageContent(imageContent.image(), imageContent.detailLevel()));
                 } else {
                     throw new UnsupportedFeatureException("Unsupported content type: "
                             + content.getClass().getName() + ". Only TextContent and ImageContent are supported.");
@@ -390,7 +389,7 @@ class OpenAiResponsesClient {
                     if (content instanceof TextContent textContent) {
                         outputContents.add(createInputTextContent(textContent.text()));
                     } else if (content instanceof ImageContent imageContent) {
-                        outputContents.add(createInputImageContent(imageContent.image()));
+                        outputContents.add(createInputImageContent(imageContent.image(), imageContent.detailLevel()));
                     } else {
                         throw new UnsupportedFeatureException("Unsupported content type in tool result: "
                                 + content.getClass().getName()
@@ -430,12 +429,22 @@ class OpenAiResponsesClient {
         return content;
     }
 
-    private static Map<String, Object> createInputImageContent(Image image) {
+    private static Map<String, Object> createInputImageContent(Image image, ImageContent.DetailLevel detailLevel) {
         var content = new LinkedHashMap<String, Object>();
         content.put(FIELD_TYPE, TYPE_INPUT_IMAGE);
         content.put(FIELD_IMAGE_URL, buildImageUrl(image));
-        content.put(FIELD_DETAIL, DETAIL_AUTO_VALUE);
+        content.put(FIELD_DETAIL, toDetailString(detailLevel));
         return content;
+    }
+
+    private static String toDetailString(ImageContent.DetailLevel detailLevel) {
+        return switch (detailLevel) {
+            case LOW -> "low";
+            case HIGH -> "high";
+            case AUTO -> "auto";
+            default -> throw new UnsupportedFeatureException(
+                    "DetailLevel " + detailLevel + " is not supported by OpenAI Responses API. Supported values: LOW, HIGH, AUTO");
+        };
     }
 
     private static String buildImageUrl(Image image) {

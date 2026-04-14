@@ -27,6 +27,7 @@ import org.mockito.InOrder;
 
 import java.util.List;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -57,21 +58,15 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
-        OpenAiResponsesStreamingChatModel.Builder modelBuilder = OpenAiResponsesStreamingChatModel.builder()
+        return OpenAiResponsesStreamingChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .defaultRequestParameters(parameters)
+                .modelName(getOrDefault(parameters.modelName(), GPT_5_4_MINI))
                 .logRequests(true)
-                .logResponses(true);
-
-        if (parameters.modelName() != null) {
-            modelBuilder.modelName(parameters.modelName());
-        } else {
-            modelBuilder.modelName(GPT_5_4_MINI);
-        }
-
-        return modelBuilder.build();
+                .logResponses(true)
+                .build();
     }
 
     @Override

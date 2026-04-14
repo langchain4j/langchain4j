@@ -3,7 +3,7 @@ package dev.langchain4j.model.openaiofficial.openai;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
-import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatResponseMetadata;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
@@ -30,7 +30,7 @@ class OpenAiOfficialResponsesStreamingAiServiceIT extends AbstractStreamingAiSer
 
     @Override
     protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel streamingChatModel) {
-        return OpenAiOfficialChatResponseMetadata.class;
+        return OpenAiOfficialResponsesChatResponseMetadata.class;
     }
 
     @Override

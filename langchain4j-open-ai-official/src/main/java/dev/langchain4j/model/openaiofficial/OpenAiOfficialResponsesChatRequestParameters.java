@@ -1,11 +1,12 @@
 package dev.langchain4j.model.openaiofficial;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+
 import java.util.Objects;
+
+import static dev.langchain4j.internal.Utils.getOrDefault;
 
 @Experimental
 public class OpenAiOfficialResponsesChatRequestParameters extends DefaultChatRequestParameters {
@@ -14,14 +15,26 @@ public class OpenAiOfficialResponsesChatRequestParameters extends DefaultChatReq
             OpenAiOfficialResponsesChatRequestParameters.builder().build();
 
     private final String previousResponseId;
+    private final Boolean strictTools;
+    private final Boolean strictJsonSchema;
 
     private OpenAiOfficialResponsesChatRequestParameters(Builder builder) {
         super(builder);
         this.previousResponseId = builder.previousResponseId;
+        this.strictTools = builder.strictTools;
+        this.strictJsonSchema = builder.strictJsonSchema;
     }
 
     public String previousResponseId() {
         return previousResponseId;
+    }
+
+    public Boolean strictTools() {
+        return strictTools;
+    }
+
+    public Boolean strictJsonSchema() {
+        return strictJsonSchema;
     }
 
     @Override
@@ -46,12 +59,14 @@ public class OpenAiOfficialResponsesChatRequestParameters extends DefaultChatReq
         if (o == null || getClass() != o.getClass()) return false;
         if (!super.equals(o)) return false;
         OpenAiOfficialResponsesChatRequestParameters that = (OpenAiOfficialResponsesChatRequestParameters) o;
-        return Objects.equals(previousResponseId, that.previousResponseId);
+        return Objects.equals(previousResponseId, that.previousResponseId)
+                && Objects.equals(strictTools, that.strictTools)
+                && Objects.equals(strictJsonSchema, that.strictJsonSchema);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), previousResponseId);
+        return Objects.hash(super.hashCode(), previousResponseId, strictTools, strictJsonSchema);
     }
 
     public static Builder builder() {
@@ -61,18 +76,32 @@ public class OpenAiOfficialResponsesChatRequestParameters extends DefaultChatReq
     public static class Builder extends DefaultChatRequestParameters.Builder<Builder> {
 
         private String previousResponseId;
+        private Boolean strictTools;
+        private Boolean strictJsonSchema;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
             super.overrideWith(parameters);
-            if (parameters instanceof OpenAiOfficialResponsesChatRequestParameters openAiResponsesParameters) {
-                previousResponseId(getOrDefault(openAiResponsesParameters.previousResponseId(), previousResponseId));
+            if (parameters instanceof OpenAiOfficialResponsesChatRequestParameters p) {
+                previousResponseId(getOrDefault(p.previousResponseId(), previousResponseId));
+                strictTools(getOrDefault(p.strictTools(), strictTools));
+                strictJsonSchema(getOrDefault(p.strictJsonSchema(), strictJsonSchema));
             }
             return this;
         }
 
         public Builder previousResponseId(String previousResponseId) {
             this.previousResponseId = previousResponseId;
+            return this;
+        }
+
+        public Builder strictTools(Boolean strictTools) {
+            this.strictTools = strictTools;
+            return this;
+        }
+
+        public Builder strictJsonSchema(Boolean strictJsonSchema) {
+            this.strictJsonSchema = strictJsonSchema;
             return this;
         }
 

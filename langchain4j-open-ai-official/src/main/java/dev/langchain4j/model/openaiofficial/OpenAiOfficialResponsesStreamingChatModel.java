@@ -34,14 +34,17 @@ import com.openai.models.responses.ResponseFormatTextConfig;
 import com.openai.models.responses.ResponseFormatTextJsonSchemaConfig;
 import com.openai.models.responses.ResponseFunctionCallArgumentsDeltaEvent;
 import com.openai.models.responses.ResponseFunctionCallArgumentsDoneEvent;
+import com.openai.models.responses.ResponseFunctionCallOutputItem;
 import com.openai.models.responses.ResponseFunctionToolCall;
 import com.openai.models.responses.ResponseInProgressEvent;
 import com.openai.models.responses.ResponseIncludable;
 import com.openai.models.responses.ResponseIncompleteEvent;
 import com.openai.models.responses.ResponseInputContent;
 import com.openai.models.responses.ResponseInputImage;
+import com.openai.models.responses.ResponseInputImageContent;
 import com.openai.models.responses.ResponseInputItem;
 import com.openai.models.responses.ResponseInputText;
+import com.openai.models.responses.ResponseInputTextContent;
 import com.openai.models.responses.ResponseOutputItemAddedEvent;
 import com.openai.models.responses.ResponseOutputItemDoneEvent;
 import com.openai.models.responses.ResponseReasoningSummaryTextDeltaEvent;
@@ -71,6 +74,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
@@ -129,7 +133,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     private final Boolean store;
     private final List<ChatModelListener> listeners;
     private final ChatRequestParameters defaultRequestParameters;
-    private final Boolean strict;
+    private final boolean strictTools;
+    private final boolean strictJsonSchema;
 
     private OpenAiOfficialResponsesStreamingChatModel(Builder builder) {
         this.client = builder.client != null
@@ -150,13 +155,26 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                         builder.customHeaders);
         this.executorService =
                 getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutorService);
-        this.modelName = ensureNotNull(builder.modelName, "modelName");
-        this.temperature = builder.temperature;
-        this.topP = builder.topP;
-        this.maxOutputTokens = builder.maxOutputTokens;
+
+        ChatRequestParameters commonParameters;
+        if (builder.defaultRequestParameters != null) {
+            commonParameters = builder.defaultRequestParameters;
+        } else {
+            commonParameters = DefaultChatRequestParameters.EMPTY;
+        }
+
+        OpenAiOfficialResponsesChatRequestParameters responsesParameters =
+                commonParameters instanceof OpenAiOfficialResponsesChatRequestParameters p
+                        ? p
+                        : OpenAiOfficialResponsesChatRequestParameters.EMPTY;
+
+        this.modelName = ensureNotNull(getOrDefault(builder.modelName, commonParameters.modelName()), "modelName");
+        this.temperature = getOrDefault(builder.temperature, commonParameters.temperature());
+        this.topP = getOrDefault(builder.topP, commonParameters.topP());
+        this.maxOutputTokens = getOrDefault(builder.maxOutputTokens, commonParameters.maxOutputTokens());
         this.maxToolCalls = builder.maxToolCalls;
         this.parallelToolCalls = builder.parallelToolCalls;
-        this.previousResponseId = builder.previousResponseId;
+        this.previousResponseId = getOrDefault(builder.previousResponseId, responsesParameters.previousResponseId());
         this.topLogprobs = builder.topLogprobs;
         this.truncation = builder.truncation;
         this.include = copyIfNotNull(builder.include);
@@ -169,14 +187,20 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         this.streamIncludeObfuscation = builder.streamIncludeObfuscation;
         this.store = getOrDefault(builder.store, false);
         this.listeners = copy(builder.listeners);
+        this.strictTools = getOrDefault(builder.strictTools, getOrDefault(responsesParameters.strictTools(), false));
+        this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, getOrDefault(responsesParameters.strictJsonSchema(), false));
         this.defaultRequestParameters = OpenAiOfficialResponsesChatRequestParameters.builder()
                 .modelName(modelName)
                 .temperature(temperature)
                 .topP(topP)
                 .maxOutputTokens(maxOutputTokens)
+                .toolSpecifications(commonParameters.toolSpecifications())
+                .toolChoice(commonParameters.toolChoice())
+                .responseFormat(commonParameters.responseFormat())
                 .previousResponseId(previousResponseId)
+                .strictTools(strictTools)
+                .strictJsonSchema(strictJsonSchema)
                 .build();
-        this.strict = getOrDefault(builder.strict, false);
     }
 
     public static Builder builder() {
@@ -273,7 +297,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             if (chatRequest.toolSpecifications() != null
                     && !chatRequest.toolSpecifications().isEmpty()) {
                 for (var toolSpec : chatRequest.toolSpecifications()) {
-                    paramsBuilder.addTool(toResponsesTool(toolSpec, strict));
+                    paramsBuilder.addTool(toResponsesTool(toolSpec, strictTools));
                 }
 
                 // Add tool choice if specified
@@ -282,7 +306,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 }
             }
 
-            ResponseTextConfig textConfig = toResponseTextConfig(chatRequest.responseFormat(), strict, textVerbosity);
+            ResponseTextConfig textConfig = toResponseTextConfig(chatRequest.responseFormat(), strictJsonSchema, textVerbosity);
             if (textConfig != null) {
                 paramsBuilder.text(textConfig);
             }
@@ -385,16 +409,36 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
             return items;
         } else if (msg instanceof ToolExecutionResultMessage toolResultMessage) {
-            if (!toolResultMessage.hasSingleText()) {
-                throw new UnsupportedFeatureException(
-                        "OpenAI Responses API does not support non-text content in tool results. "
-                                + "Only text content is supported in function_call_output.");
+            var outputBuilder = ResponseInputItem.FunctionCallOutput.builder()
+                    .callId(toolResultMessage.id());
+
+            if (toolResultMessage.hasSingleText()) {
+                outputBuilder.output(toolResultMessage.text());
+            } else {
+                var outputItems = new ArrayList<ResponseFunctionCallOutputItem>();
+                for (Content content : toolResultMessage.contents()) {
+                    if (content instanceof TextContent textContent) {
+                        outputItems.add(ResponseFunctionCallOutputItem.ofInputText(
+                                ResponseInputTextContent.builder()
+                                        .text(textContent.text())
+                                        .build()));
+                    } else if (content instanceof ImageContent imageContent) {
+                        outputItems.add(ResponseFunctionCallOutputItem.ofInputImage(
+                                ResponseInputImageContent.builder()
+                                        .imageUrl(buildImageUrl(imageContent.image()))
+                                        .detail(toResponsesImageDetail(imageContent.detailLevel()))
+                                        .build()));
+                    } else {
+                        throw new UnsupportedFeatureException("Unsupported content type in tool result: "
+                                + content.getClass().getName()
+                                + ". Only TextContent and ImageContent are supported.");
+                    }
+                }
+                outputBuilder.output(ResponseInputItem.FunctionCallOutput.Output
+                        .ofResponseFunctionCallOutputItemList(outputItems));
             }
-            // Tool execution result - convert to function call output
-            return List.of(ResponseInputItem.ofFunctionCallOutput(ResponseInputItem.FunctionCallOutput.builder()
-                    .callId(toolResultMessage.id())
-                    .output(toolResultMessage.text())
-                    .build()));
+
+            return List.of(ResponseInputItem.ofFunctionCallOutput(outputBuilder.build()));
         } else {
             return List.of(createTextMessage(EasyInputMessage.Role.USER, msg.toString()));
         }
@@ -420,7 +464,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 String imageUrl = buildImageUrl(image);
                 contentList.add(ResponseInputContent.ofInputImage(ResponseInputImage.builder()
                         .imageUrl(imageUrl)
-                        .detail(ResponseInputImage.Detail.AUTO)
+                        .detail(toResponsesUserImageDetail(imageContent.detailLevel()))
                         .build()));
             }
         }
@@ -440,6 +484,26 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         } else {
             throw new IllegalArgumentException("Image must have either url or base64Data");
         }
+    }
+
+    private static ResponseInputImage.Detail toResponsesUserImageDetail(ImageContent.DetailLevel detailLevel) {
+        return switch (detailLevel) {
+            case LOW -> ResponseInputImage.Detail.LOW;
+            case HIGH -> ResponseInputImage.Detail.HIGH;
+            case AUTO -> ResponseInputImage.Detail.AUTO;
+            default -> throw new UnsupportedFeatureException(
+                    "DetailLevel " + detailLevel + " is not supported by OpenAI Responses API. Supported values: LOW, HIGH, AUTO");
+        };
+    }
+
+    private static ResponseInputImageContent.Detail toResponsesImageDetail(ImageContent.DetailLevel detailLevel) {
+        return switch (detailLevel) {
+            case LOW -> ResponseInputImageContent.Detail.LOW;
+            case HIGH -> ResponseInputImageContent.Detail.HIGH;
+            case AUTO -> ResponseInputImageContent.Detail.AUTO;
+            default -> throw new UnsupportedFeatureException(
+                    "DetailLevel " + detailLevel + " is not supported by OpenAI Responses API. Supported values: LOW, HIGH, AUTO");
+        };
     }
 
     private static FunctionTool toResponsesTool(ToolSpecification toolSpec, boolean strict) {
@@ -557,7 +621,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private Boolean store;
         private List<ChatModelListener> listeners;
         private ExecutorService executorService;
-        private Boolean strict;
+        private Boolean strictTools;
+        private Boolean strictJsonSchema;
+        private ChatRequestParameters defaultRequestParameters;
 
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -751,13 +817,29 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         }
 
         /**
-         * Sets whether to use strict mode for function calling. Defaults to false.
+         * Sets whether to use strict mode for both tools and JSON schema. Defaults to false.
          *
          * <p>When strict mode is enabled, the schema will include "additionalProperties": false and
          * "required" arrays with all property keys.
          */
         public Builder strict(Boolean strict) {
-            this.strict = strict;
+            this.strictTools = strict;
+            this.strictJsonSchema = strict;
+            return this;
+        }
+
+        public Builder strictTools(Boolean strictTools) {
+            this.strictTools = strictTools;
+            return this;
+        }
+
+        public Builder strictJsonSchema(Boolean strictJsonSchema) {
+            this.strictJsonSchema = strictJsonSchema;
+            return this;
+        }
+
+        public Builder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
+            this.defaultRequestParameters = defaultRequestParameters;
             return this;
         }
 
@@ -1036,8 +1118,13 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                             : new AiMessage(textBuilder.toString());
 
             // Build metadata
-            var metadataBuilder =
-                    OpenAiOfficialChatResponseMetadata.builder().id(responseId).modelName(modelName);
+            var metadataBuilder = OpenAiOfficialResponsesChatResponseMetadata.builder()
+                    .id(responseId)
+                    .modelName(modelName);
+
+            metadataBuilder.createdAt((long) response.createdAt());
+            response.completedAt().ifPresent(ts -> metadataBuilder.completedAt(ts.longValue()));
+            response.serviceTier().ifPresent(tier -> metadataBuilder.serviceTier(tier.asString()));
 
             if (finishReason != null) {
                 metadataBuilder.finishReason(FinishReason.valueOf(finishReason));
