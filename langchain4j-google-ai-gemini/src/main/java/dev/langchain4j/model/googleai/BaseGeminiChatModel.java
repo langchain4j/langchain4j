@@ -271,8 +271,13 @@ class BaseGeminiChatModel {
     }
 
     protected TokenUsage createTokenUsage(GeminiUsageMetadata tokenCounts) {
-        return new TokenUsage(
-                tokenCounts.promptTokenCount(), tokenCounts.candidatesTokenCount(), tokenCounts.totalTokenCount());
+        return GoogleAiGeminiTokenUsage.builder()
+                .inputTokenCount(tokenCounts.promptTokenCount())
+                .outputTokenCount(tokenCounts.candidatesTokenCount())
+                .totalTokenCount(tokenCounts.totalTokenCount())
+                .cachedContentTokenCount(tokenCounts.cachedContentTokenCount())
+                .thoughtsTokenCount(tokenCounts.thoughtsTokenCount())
+                .build();
     }
 
     private UrlContextMetadata toUrlContextMetadata(

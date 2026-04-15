@@ -10,6 +10,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate.GeminiFinishReason;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
@@ -209,9 +210,60 @@ class GoogleAiGeminiChatModelTest {
             var chatResponse = subject.chat(chatRequest);
 
             // Then
+            assertThat(chatResponse.metadata().tokenUsage()).isInstanceOf(GoogleAiGeminiTokenUsage.class);
             assertThat(chatResponse.metadata().tokenUsage().inputTokenCount()).isEqualTo(15);
             assertThat(chatResponse.metadata().tokenUsage().outputTokenCount()).isEqualTo(25);
             assertThat(chatResponse.metadata().tokenUsage().totalTokenCount()).isEqualTo(40);
+            GoogleAiGeminiTokenUsage geminiTokenUsage =
+                    (GoogleAiGeminiTokenUsage) chatResponse.metadata().tokenUsage();
+            assertThat(geminiTokenUsage.cachedContentTokenCount()).isNull();
+            assertThat(geminiTokenUsage.thoughtsTokenCount()).isNull();
+        }
+
+        @Test
+        void shouldExposeCachedAndThinkingTokenCountsInResponse() {
+            GeminiUsageMetadata usageMetadata = GeminiUsageMetadata.builder()
+                    .promptTokenCount(120)
+                    .candidatesTokenCount(30)
+                    .totalTokenCount(200)
+                    .cachedContentTokenCount(80)
+                    .thoughtsTokenCount(50)
+                    .build();
+
+            GeminiCandidate candidate = new GeminiCandidate(
+                    new GeminiContent(
+                            List.of(GeminiContent.GeminiPart.builder()
+                                    .text("Cached + thinking response")
+                                    .build()),
+                            "model"),
+                    GeminiFinishReason.STOP,
+                    null,
+                    null);
+
+            GeminiGenerateContentResponse geminiResponse = new GeminiGenerateContentResponse(
+                    "cache-thinking-id", "gemini-2.5-pro", List.of(candidate), usageMetadata, null);
+
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(geminiResponse);
+
+            GoogleAiGeminiChatModel subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .build(mockGeminiService);
+
+            ChatRequest chatRequest =
+                    ChatRequest.builder().messages(new UserMessage("Hello")).build();
+
+            ChatResponse chatResponse = subject.chat(chatRequest);
+
+            assertThat(chatResponse.metadata().tokenUsage()).isInstanceOf(GoogleAiGeminiTokenUsage.class);
+            GoogleAiGeminiTokenUsage tokenUsage =
+                    (GoogleAiGeminiTokenUsage) chatResponse.metadata().tokenUsage();
+            assertThat(tokenUsage.inputTokenCount()).isEqualTo(120);
+            assertThat(tokenUsage.outputTokenCount()).isEqualTo(30);
+            assertThat(tokenUsage.totalTokenCount()).isEqualTo(200);
+            assertThat(tokenUsage.cachedContentTokenCount()).isEqualTo(80);
+            assertThat(tokenUsage.thoughtsTokenCount()).isEqualTo(50);
         }
 
         @Test
