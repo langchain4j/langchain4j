@@ -256,11 +256,16 @@ You can also use the specific `isAzure()` and `isGitHubModels()` methods to forc
 
 ## OpenAI Responses API
 
+:::note
+This feature is experimental and may change in future releases.
+:::
+
 OpenAI's [Responses API](https://platform.openai.com/docs/api-reference/responses) (`/v1/responses`) is an alternative to the Chat Completions API.
-It exposes a richer stream of events (text deltas, tool calls, status events) and server-side cancellation semantics.
+Currently, only a streaming model is available (`OpenAiOfficialResponsesStreamingChatModel`).
 
 ### Creating `OpenAiOfficialResponsesStreamingChatModel`
 
+#### Plain Java
 ```java
 StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
@@ -268,9 +273,52 @@ StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
         .build();
 ```
 
-### Key differences from Chat Completions API
-- **Streaming-only in LangChain4j**: Only the streaming model is implemented for Responses today. Non-streaming support can be added later.
-- **Cancellation**: Both `OpenAiOfficialStreamingChatModel` and the Responses streaming model return a `StreamingHandle` that supports `cancel()`. Responses API aligns better with server-side cancellation semantics and emits explicit status events.
-- **Same features**: Tools, listeners, and common request parameters are supported. Responses has a slightly different payload shape, but LangChain4j maps the features consistently.
-- **JSON schema response format**: Structured output with `RESPONSE_FORMAT_JSON_SCHEMA` is supported for typed schemas rooted at `JsonObjectSchema`. `JsonRawSchema` is not supported in Responses mode.
-- **Response chaining**: `previousResponseId` can be supplied explicitly through Responses request parameters for multi-turn chaining when the provider account supports it.
+You can also use `OpenAiOfficialResponsesChatRequestParameters` to configure default request parameters:
+```java
+StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .defaultRequestParameters(OpenAiOfficialResponsesChatRequestParameters.builder()
+                .modelName("gpt-4o-mini")
+                .previousResponseId("resp_abc123")
+                .reasoningEffort("medium")
+                .store(true)
+                .build())
+        .build();
+```
+
+### `OpenAiOfficialResponsesChatRequestParameters`
+
+`OpenAiOfficialResponsesChatRequestParameters` extends `DefaultChatRequestParameters` with Responses API-specific fields:
+`previousResponseId`, `maxToolCalls`, `parallelToolCalls`, `topLogprobs`, `truncation`, `include`,
+`serviceTier`, `safetyIdentifier`, `promptCacheKey`, `promptCacheRetention`, `reasoningEffort`,
+`textVerbosity`, `streamIncludeObfuscation`, `store`, `strictTools`, `strictJsonSchema`.
+
+These parameters can be configured as defaults when creating the model (via `defaultRequestParameters` on the builder),
+or passed per-request via `ChatRequest` (per-request parameters override the defaults):
+```java
+ChatRequest chatRequest = ChatRequest.builder()
+        .messages(UserMessage.from("Hello"))
+        .parameters(OpenAiOfficialResponsesChatRequestParameters.builder()
+                .modelName("gpt-4o-mini")
+                .previousResponseId("resp_abc123")
+                .store(true)
+                .build())
+        .build();
+```
+
+### `OpenAiOfficialResponsesChatResponseMetadata`
+
+The response metadata for the Responses API provides additional fields beyond the standard `ChatResponseMetadata`:
+
+```java
+OpenAiOfficialResponsesChatResponseMetadata metadata =
+        (OpenAiOfficialResponsesChatResponseMetadata) chatResponse.metadata();
+
+metadata.id();               // Response ID (can be used as previousResponseId)
+metadata.modelName();        // Model name used for the request
+metadata.finishReason();     // Finish reason (STOP, LENGTH, TOOL_EXECUTION, OTHER)
+metadata.tokenUsage();       // Returns OpenAiOfficialTokenUsage with detailed token counts
+metadata.createdAt();        // Timestamp when the response was created
+metadata.completedAt();      // Timestamp when the response was completed
+metadata.serviceTier();      // Service tier used for the request
+```
