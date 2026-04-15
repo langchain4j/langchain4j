@@ -227,7 +227,8 @@ public class JsonSchemaElementUtils {
         return toMap(jsonSchemaElement, strict, required, null);
     }
 
-    public static Map<String, Object> toMap(JsonSchemaElement jsonSchemaElement, boolean strict, boolean required, String enumType) {
+    public static Map<String, Object> toMap(
+            JsonSchemaElement jsonSchemaElement, boolean strict, boolean required, String enumType) {
         if (jsonSchemaElement instanceof JsonObjectSchema jsonObjectSchema) {
             Map<String, Object> map = new LinkedHashMap<>();
             map.put("type", type("object", strict, required));

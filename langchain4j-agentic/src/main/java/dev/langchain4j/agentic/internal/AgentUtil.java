@@ -30,6 +30,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -79,11 +80,14 @@ public class AgentUtil {
         return stateInstance(key).name();
     }
 
-    public static List<AgentExecutor> agentsToExecutors(Object... agents) {
-        return Stream.of(agents).map(AgentUtil::agentToExecutor).toList();
+    public static List<AgentExecutor> agentsToExecutors(Collection<?> agents) {
+        return agents.stream().map(AgentUtil::agentToExecutor).toList();
     }
 
     public static AgentExecutor agentToExecutor(Object agent) {
+        if (agent instanceof AgentExecutor executor) {
+            return executor;
+        }
         if (agent instanceof Class c) {
             AgentExecutor builtInAgent = createBuiltInAgentExecutor(c);
             if (builtInAgent != null) {
