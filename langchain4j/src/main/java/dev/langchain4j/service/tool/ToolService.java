@@ -6,7 +6,6 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNegative;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
@@ -70,10 +69,10 @@ public class ToolService {
     };
 
     static final String TOOL_LIMIT_EXCEEDED_MESSAGE =
-            "Tool '%s' has reached its invocation limit of %d. Please proceed without it.";
+            "Tool '%s' has reached its execution limit of %d. Please proceed without it.";
 
     static final String TOOL_LOOP_ENDED_MESSAGE =
-            "Tool loop ended because another tool reached its invocation limit. Please proceed without tools.";
+            "Tool loop ended because another tool reached its execution limit. Please proceed without tools.";
 
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
@@ -90,8 +89,8 @@ public class ToolService {
     private Consumer<BeforeToolExecution> beforeToolExecution = null;
     private Consumer<ToolExecution> afterToolExecution = null;
 
-    private int defaultMaxToolInvocations = Integer.MAX_VALUE;
-    private final Map<String, Integer> perToolMaxInvocations = new HashMap<>();
+    private int defaultMaxToolExecutions = Integer.MAX_VALUE;
+    private final Map<String, Integer> perToolMaxExecutions = new HashMap<>();
     private ToolLimitExceededBehavior defaultToolLimitExceededBehavior = ToolLimitExceededBehavior.CONTINUE;
     private final Map<String, ToolLimitExceededBehavior> perToolLimitExceededBehaviors = new HashMap<>();
 
@@ -221,53 +220,24 @@ public class ToolService {
     }
 
     /**
-     * Sets the default maximum number of times any single tool may be invoked
-     * within one AI service call. Tools that exceed this limit will be handled
-     * according to the configured {@link ToolLimitExceededBehavior}.
+     * Applies a {@link ToolExecutionLimits} configuration: the default limit, per-tool overrides,
+     * the default behavior, and per-tool behavior overrides. Replaces any previously supplied
+     * limits.
      *
      * @since 1.14.0
      */
-    public void maxToolInvocations(int defaultLimit) {
-        ensureNotNegative(defaultLimit, "defaultLimit");
-        this.defaultMaxToolInvocations = defaultLimit;
+    public void toolExecutionLimits(ToolExecutionLimits limits) {
+        ensureNotNull(limits, "limits");
+        this.defaultMaxToolExecutions = limits.defaultLimit();
+        this.perToolMaxExecutions.clear();
+        this.perToolMaxExecutions.putAll(limits.perToolLimits());
+        this.defaultToolLimitExceededBehavior = limits.defaultBehavior();
+        this.perToolLimitExceededBehaviors.clear();
+        this.perToolLimitExceededBehaviors.putAll(limits.perToolBehaviors());
     }
 
-    /**
-     * Sets the maximum number of invocations for a specific tool.
-     * This overrides the default limit set by {@link #maxToolInvocations(int)}.
-     *
-     * @since 1.14.0
-     */
-    public void maxToolInvocations(String toolName, int limit) {
-        ensureNotNull(toolName, "toolName");
-        ensureNotNegative(limit, "limit");
-        this.perToolMaxInvocations.put(toolName, limit);
-    }
-
-    /**
-     * Sets the maximum number of invocations for a specific tool, with a specific behavior
-     * when the limit is exceeded.
-     *
-     * @since 1.14.0
-     */
-    public void maxToolInvocations(String toolName, int limit, ToolLimitExceededBehavior behavior) {
-        ensureNotNull(toolName, "toolName");
-        ensureNotNegative(limit, "limit");
-        this.perToolMaxInvocations.put(toolName, limit);
-        this.perToolLimitExceededBehaviors.put(toolName, behavior);
-    }
-
-    /**
-     * Sets the default behavior when any tool's invocation limit is exceeded.
-     *
-     * @since 1.14.0
-     */
-    public void toolLimitExceededBehavior(ToolLimitExceededBehavior behavior) {
-        this.defaultToolLimitExceededBehavior = behavior;
-    }
-
-    public int maxToolInvocationsFor(String toolName) {
-        return perToolMaxInvocations.getOrDefault(toolName, defaultMaxToolInvocations);
+    public int maxToolExecutionsFor(String toolName) {
+        return perToolMaxExecutions.getOrDefault(toolName, defaultMaxToolExecutions);
     }
 
     public ToolLimitExceededBehavior toolLimitExceededBehaviorFor(String toolName) {
@@ -401,7 +371,7 @@ public class ToolService {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
-        Map<String, Integer> toolInvocationCounts = new HashMap<>();
+        Map<String, Integer> toolExecutionCounts = new HashMap<>();
 
         int sequentialToolsInvocationsLeft = maxSequentialToolsInvocations;
         while (true) {
@@ -428,19 +398,19 @@ public class ToolService {
             // Use a projected count to handle parallel calls to the same tool in one response.
             List<ToolExecutionRequest> withinBudgetRequests = new ArrayList<>();
             Map<ToolExecutionRequest, ToolExecutionResult> overBudgetResults = new LinkedHashMap<>();
-            Map<String, Integer> projectedCounts = new HashMap<>(toolInvocationCounts);
+            Map<String, Integer> projectedCounts = new HashMap<>(toolExecutionCounts);
             boolean endLoop = false;
 
             for (ToolExecutionRequest request : aiMessage.toolExecutionRequests()) {
                 String toolName = request.name();
                 int currentCount = projectedCounts.getOrDefault(toolName, 0);
-                int limit = maxToolInvocationsFor(toolName);
+                int limit = maxToolExecutionsFor(toolName);
 
                 if (currentCount >= limit) {
                     ToolLimitExceededBehavior behavior = toolLimitExceededBehaviorFor(toolName);
                     switch (behavior) {
                         case ERROR:
-                            throw new ToolInvocationLimitExceededException(toolName, limit, currentCount + 1);
+                            throw new ToolExecutionLimitExceededException(toolName, limit, currentCount + 1);
                         case END:
                             endLoop = true;
                             break;
@@ -469,8 +439,8 @@ public class ToolService {
                 // (models expect a ToolExecutionResultMessage for each tool call).
                 for (ToolExecutionRequest request : aiMessage.toolExecutionRequests()) {
                     String name = request.name();
-                    int reqLimit = maxToolInvocationsFor(name);
-                    int count = toolInvocationCounts.getOrDefault(name, 0);
+                    int reqLimit = maxToolExecutionsFor(name);
+                    int count = toolExecutionCounts.getOrDefault(name, 0);
                     String text = count >= reqLimit
                             ? String.format(TOOL_LIMIT_EXCEEDED_MESSAGE, name, reqLimit)
                             : TOOL_LOOP_ENDED_MESSAGE;
@@ -522,7 +492,7 @@ public class ToolService {
 
             // Increment counts for executed tools
             for (ToolExecutionRequest request : withinBudgetRequests) {
-                toolInvocationCounts.merge(request.name(), 1, Integer::sum);
+                toolExecutionCounts.merge(request.name(), 1, Integer::sum);
             }
 
             // Merge over-budget results (preserving original request order)
@@ -577,7 +547,7 @@ public class ToolService {
                         .toolExecutions(toolExecutions)
                         .aggregateTokenUsage(aggregateTokenUsage)
                         .immediateToolReturn(true)
-                        .toolInvocationCounts(toolInvocationCounts)
+                        .toolExecutionCounts(toolExecutionCounts)
                         .build();
             }
 
@@ -589,12 +559,21 @@ public class ToolService {
             }
 
             toolServiceContext = refreshDynamicProviders(toolServiceContext, messages, invocationContext);
+            Set<String> exhausted = findExhaustedTools(toolExecutionCounts);
             if (toolSearchService != null) {
-                toolServiceContext = ToolSearchService.addFoundTools(toolServiceContext, allResults.values());
+                toolServiceContext =
+                        ToolSearchService.addFoundTools(toolServiceContext, allResults.values(), exhausted);
             }
 
             // Level 1: Remove exhausted tools before the next LLM call
-            toolServiceContext = toolServiceContext.withoutTools(findExhaustedTools(toolInvocationCounts));
+            toolServiceContext = toolServiceContext.withoutTools(exhausted);
+
+            // Rebuild the ToolSearchExecutor with a fresh searchableTools snapshot so the
+            // tool-search strategy cannot re-surface an exhausted tool in the next round.
+            if (toolSearchService != null && !exhausted.isEmpty()) {
+                toolServiceContext =
+                        toolSearchService.refreshSearchExecutors(toolServiceContext, invocationContext, exhausted);
+            }
 
             parameters = parameters.overrideWith(ChatRequestParameters.builder()
                     .toolSpecifications(toolServiceContext.effectiveTools())
@@ -619,7 +598,7 @@ public class ToolService {
                 .finalResponse(chatResponse)
                 .toolExecutions(toolExecutions)
                 .aggregateTokenUsage(aggregateTokenUsage)
-                .toolInvocationCounts(toolInvocationCounts)
+                .toolExecutionCounts(toolExecutionCounts)
                 .build();
     }
 
@@ -888,14 +867,31 @@ public class ToolService {
     }
 
     /**
-     * Returns the set of tool names that have reached their invocation limits.
+     * Rebuilds the tool-search executor's {@code searchableTools} snapshot to exclude
+     * {@code exhaustedToolNames}. No-op if no tool-search strategy is configured or the
+     * exhausted set is empty.
      *
      * @since 1.14.0
      */
-    public Set<String> findExhaustedTools(Map<String, Integer> toolInvocationCounts) {
+    public ToolServiceContext refreshSearchExecutorsIfNeeded(
+            ToolServiceContext toolServiceContext,
+            InvocationContext invocationContext,
+            Set<String> exhaustedToolNames) {
+        if (toolSearchService == null || exhaustedToolNames.isEmpty()) {
+            return toolServiceContext;
+        }
+        return toolSearchService.refreshSearchExecutors(toolServiceContext, invocationContext, exhaustedToolNames);
+    }
+
+    /**
+     * Returns the set of tool names that have reached their execution limits.
+     *
+     * @since 1.14.0
+     */
+    public Set<String> findExhaustedTools(Map<String, Integer> toolExecutionCounts) {
         Set<String> exhausted = new HashSet<>();
-        for (Map.Entry<String, Integer> entry : toolInvocationCounts.entrySet()) {
-            if (entry.getValue() >= maxToolInvocationsFor(entry.getKey())) {
+        for (Map.Entry<String, Integer> entry : toolExecutionCounts.entrySet()) {
+            if (entry.getValue() >= maxToolExecutionsFor(entry.getKey())) {
                 exhausted.add(entry.getKey());
             }
         }
@@ -941,5 +937,4 @@ public class ToolService {
     public boolean isImmediateTool(String toolName) {
         return immediateReturnTools.contains(toolName);
     }
-
 }

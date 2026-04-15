@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class PerToolInvocationLimitTest {
+class PerToolExecutionLimitTest {
 
     interface Assistant {
         Result<String> chat(String message);
@@ -88,7 +88,8 @@ class PerToolInvocationLimitTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
                 .tools(new SearchTool())
-                .maxToolInvocations("search", 2)
+                .toolExecutionLimits(
+                        ToolExecutionLimits.builder().maxExecutions("search", 2).build())
                 .build();
 
         Result<String> result = assistant.chat("search for something");
@@ -110,7 +111,8 @@ class PerToolInvocationLimitTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
                 .tools(new SearchTool())
-                .maxToolInvocations(1)
+                .toolExecutionLimits(
+                        ToolExecutionLimits.builder().defaultLimit(1).build())
                 .build();
 
         Result<String> result = assistant.chat("search");
@@ -143,8 +145,10 @@ class PerToolInvocationLimitTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
                 .tools(new SearchTool(), new CalculatorTool())
-                .maxToolInvocations(1)
-                .maxToolInvocations("search", 3)
+                .toolExecutionLimits(ToolExecutionLimits.builder()
+                        .defaultLimit(1)
+                        .maxExecutions("search", 3)
+                        .build())
                 .build();
 
         Result<String> result = assistant.chat("do things");
@@ -173,11 +177,13 @@ class PerToolInvocationLimitTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
                 .tools(new SearchTool())
-                .maxToolInvocations("search", 1, ToolLimitExceededBehavior.ERROR)
+                .toolExecutionLimits(ToolExecutionLimits.builder()
+                        .maxExecutions("search", 1, ToolLimitExceededBehavior.ERROR)
+                        .build())
                 .build();
 
         assertThatThrownBy(() -> assistant.chat("search"))
-                .isInstanceOf(ToolInvocationLimitExceededException.class)
+                .isInstanceOf(ToolExecutionLimitExceededException.class)
                 .hasMessageContaining("search")
                 .hasMessageContaining("1");
     }
@@ -200,7 +206,9 @@ class PerToolInvocationLimitTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
                 .tools(new SearchTool())
-                .maxToolInvocations("search", 1, ToolLimitExceededBehavior.END)
+                .toolExecutionLimits(ToolExecutionLimits.builder()
+                        .maxExecutions("search", 1, ToolLimitExceededBehavior.END)
+                        .build())
                 .build();
 
         Result<String> result = assistant.chat("search");
@@ -236,7 +244,8 @@ class PerToolInvocationLimitTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
                 .tools(new SearchTool(), new CalculatorTool())
-                .maxToolInvocations("search", 2)
+                .toolExecutionLimits(
+                        ToolExecutionLimits.builder().maxExecutions("search", 2).build())
                 .build();
 
         Result<String> result = assistant.chat("search");
@@ -266,7 +275,8 @@ class PerToolInvocationLimitTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
                 .tools(new SearchTool())
-                .maxToolInvocations("search", 0)
+                .toolExecutionLimits(
+                        ToolExecutionLimits.builder().maxExecutions("search", 0).build())
                 .build();
 
         Result<String> result = assistant.chat("search");
@@ -324,8 +334,8 @@ class PerToolInvocationLimitTest {
         Result<String> result = assistant.chat("do things");
 
         assertThat(result.content()).isEqualTo("Done");
-        assertThat(result.toolInvocationCounts()).containsEntry("search", 2);
-        assertThat(result.toolInvocationCounts()).containsEntry("calculate", 1);
+        assertThat(result.toolExecutionCounts()).containsEntry("search", 2);
+        assertThat(result.toolExecutionCounts()).containsEntry("calculate", 1);
     }
 
     @Test
@@ -355,7 +365,8 @@ class PerToolInvocationLimitTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
                 .tools(new SearchTool())
-                .maxToolInvocations(1)
+                .toolExecutionLimits(
+                        ToolExecutionLimits.builder().defaultLimit(1).build())
                 .build();
 
         Result<String> result = assistant.chat("search");
@@ -402,7 +413,8 @@ class PerToolInvocationLimitTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
                 .tools(new SearchTool(), new CalculatorTool())
-                .maxToolInvocations(1)
+                .toolExecutionLimits(
+                        ToolExecutionLimits.builder().defaultLimit(1).build())
                 .build();
 
         assistant.chat("do things");
@@ -435,7 +447,9 @@ class PerToolInvocationLimitTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
                 .tools(new SearchTool(), new CalculatorTool())
-                .maxToolInvocations("search", 1, ToolLimitExceededBehavior.END)
+                .toolExecutionLimits(ToolExecutionLimits.builder()
+                        .maxExecutions("search", 1, ToolLimitExceededBehavior.END)
+                        .build())
                 .build();
 
         Result<String> result = assistant.chat("search");
@@ -474,12 +488,14 @@ class PerToolInvocationLimitTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
                 .tools(new SearchTool(), new CalculatorTool())
-                .maxToolInvocations("search", 2)
-                .maxToolInvocations("calculate", 1, ToolLimitExceededBehavior.ERROR)
+                .toolExecutionLimits(ToolExecutionLimits.builder()
+                        .maxExecutions("search", 2)
+                        .maxExecutions("calculate", 1, ToolLimitExceededBehavior.ERROR)
+                        .build())
                 .build();
 
         assertThatThrownBy(() -> assistant.chat("do things"))
-                .isInstanceOf(ToolInvocationLimitExceededException.class)
+                .isInstanceOf(ToolExecutionLimitExceededException.class)
                 .hasMessageContaining("calculate");
 
         assertThat(searchInvocations).hasSize(1);
@@ -510,7 +526,9 @@ class PerToolInvocationLimitTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
                 .tools(new SearchTool(), new CalculatorTool())
-                .maxToolInvocations("calculate", 1, ToolLimitExceededBehavior.END)
+                .toolExecutionLimits(ToolExecutionLimits.builder()
+                        .maxExecutions("calculate", 1, ToolLimitExceededBehavior.END)
+                        .build())
                 .build();
 
         Result<String> result = assistant.chat("do things");
@@ -547,11 +565,13 @@ class PerToolInvocationLimitTest {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
                 .tools(new SearchTool(), new CalculatorTool())
-                .maxToolInvocations("calculate", 1, ToolLimitExceededBehavior.ERROR)
+                .toolExecutionLimits(ToolExecutionLimits.builder()
+                        .maxExecutions("calculate", 1, ToolLimitExceededBehavior.ERROR)
+                        .build())
                 .build();
 
         assertThatThrownBy(() -> assistant.chat("do things"))
-                .isInstanceOf(ToolInvocationLimitExceededException.class)
+                .isInstanceOf(ToolExecutionLimitExceededException.class)
                 .hasMessageContaining("calculate");
 
         // Neither calc nor search should have executed — ERROR fires during budget check
@@ -560,20 +580,14 @@ class PerToolInvocationLimitTest {
     }
 
     @Test
-    void should_reject_negative_limit() {
-        assertThatThrownBy(() -> AiServices.builder(Assistant.class)
-                        .chatModel(sequentialModel(AiMessage.from("hi")))
-                        .tools(new SearchTool())
-                        .maxToolInvocations(-1))
+    void should_reject_negative_default_limit() {
+        assertThatThrownBy(() -> ToolExecutionLimits.builder().defaultLimit(-1))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void should_reject_negative_per_tool_limit() {
-        assertThatThrownBy(() -> AiServices.builder(Assistant.class)
-                        .chatModel(sequentialModel(AiMessage.from("hi")))
-                        .tools(new SearchTool())
-                        .maxToolInvocations("search", -1))
+        assertThatThrownBy(() -> ToolExecutionLimits.builder().maxExecutions("search", -1))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }

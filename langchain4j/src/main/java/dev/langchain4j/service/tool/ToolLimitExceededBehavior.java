@@ -1,7 +1,7 @@
 package dev.langchain4j.service.tool;
 
 /**
- * Defines the behavior when a per-tool invocation limit is exceeded.
+ * Defines the behavior when a per-tool execution limit is exceeded.
  *
  * @since 1.14.0
  */
@@ -18,7 +18,7 @@ public enum ToolLimitExceededBehavior {
     CONTINUE,
 
     /**
-     * A {@link ToolInvocationLimitExceededException} is thrown, terminating the AI service invocation.
+     * A {@link ToolExecutionLimitExceededException} is thrown, terminating the AI service invocation.
      */
     ERROR,
 

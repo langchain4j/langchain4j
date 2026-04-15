@@ -338,7 +338,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .toolExecutions(toolServiceResult.toolExecutions())
                                     .intermediateResponses(toolServiceResult.intermediateResponses())
                                     .finalResponse(toolServiceResult.finalResponse())
-                                    .toolInvocationCounts(toolServiceResult.toolInvocationCounts())
+                                    .toolExecutionCounts(toolServiceResult.toolExecutionCounts())
                                     .build();
 
                             return fireEventAndReturn(invocationContext, result);
@@ -375,7 +375,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         .toolExecutions(toolServiceResult.toolExecutions())
                                         .intermediateResponses(toolServiceResult.intermediateResponses())
                                         .finalResponse(toolServiceResult.finalResponse())
-                                        .toolInvocationCounts(toolServiceResult.toolInvocationCounts())
+                                        .toolExecutionCounts(toolServiceResult.toolExecutionCounts())
                                         .build()
                                 : parsedResponse;
 

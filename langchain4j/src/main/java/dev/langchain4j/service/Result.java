@@ -37,7 +37,7 @@ public class Result<T> {
     private final List<ToolExecution> toolExecutions;
     private final List<ChatResponse> intermediateResponses;
     private final ChatResponse finalResponse;
-    private final Map<String, Integer> toolInvocationCounts;
+    private final Map<String, Integer> toolExecutionCounts;
 
     /**
      * @since 1.2.0
@@ -50,8 +50,8 @@ public class Result<T> {
         this.toolExecutions = copy(builder.toolExecutions);
         this.intermediateResponses = copy(builder.intermediateResponses);
         this.finalResponse = builder.finalResponse;
-        this.toolInvocationCounts =
-                builder.toolInvocationCounts == null ? Map.of() : Map.copyOf(builder.toolInvocationCounts);
+        this.toolExecutionCounts =
+                builder.toolExecutionCounts == null ? Map.of() : Map.copyOf(builder.toolExecutionCounts);
     }
 
     public Result(
@@ -67,7 +67,7 @@ public class Result<T> {
         this.toolExecutions = copy(toolExecutions);
         this.intermediateResponses = List.of();
         this.finalResponse = null;
-        this.toolInvocationCounts = Map.of();
+        this.toolExecutionCounts = Map.of();
     }
 
     public static <T> ResultBuilder<T> builder() {
@@ -127,13 +127,13 @@ public class Result<T> {
     }
 
     /**
-     * Returns the number of times each tool was invoked during this AI service call.
+     * Returns the number of times each tool was executed during this AI service call.
      *
-     * @return an unmodifiable map from tool name to invocation count
+     * @return an unmodifiable map from tool name to execution count
      * @since 1.14.0
      */
-    public Map<String, Integer> toolInvocationCounts() {
-        return toolInvocationCounts;
+    public Map<String, Integer> toolExecutionCounts() {
+        return toolExecutionCounts;
     }
 
     public static class ResultBuilder<T> {
@@ -145,7 +145,7 @@ public class Result<T> {
         private List<ToolExecution> toolExecutions;
         private List<ChatResponse> intermediateResponses;
         private ChatResponse finalResponse;
-        private Map<String, Integer> toolInvocationCounts;
+        private Map<String, Integer> toolExecutionCounts;
 
         ResultBuilder() {}
 
@@ -193,8 +193,8 @@ public class Result<T> {
         /**
          * @since 1.14.0
          */
-        public ResultBuilder<T> toolInvocationCounts(Map<String, Integer> toolInvocationCounts) {
-            this.toolInvocationCounts = toolInvocationCounts;
+        public ResultBuilder<T> toolExecutionCounts(Map<String, Integer> toolExecutionCounts) {
+            this.toolExecutionCounts = toolExecutionCounts;
             return this;
         }
 

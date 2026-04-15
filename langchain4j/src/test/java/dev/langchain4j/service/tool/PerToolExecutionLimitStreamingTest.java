@@ -17,7 +17,7 @@ import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class PerToolInvocationLimitStreamingTest {
+class PerToolExecutionLimitStreamingTest {
 
     interface StreamingAssistant {
         TokenStream chat(String message);
@@ -75,7 +75,8 @@ class PerToolInvocationLimitStreamingTest {
                 .streamingChatModel(model)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(20))
                 .tools(new SearchTool())
-                .maxToolInvocations("search", 2)
+                .toolExecutionLimits(
+                        ToolExecutionLimits.builder().maxExecutions("search", 2).build())
                 .build();
 
         ChatResponse response = streamToCompletion(assistant.chat("search"));
@@ -104,7 +105,9 @@ class PerToolInvocationLimitStreamingTest {
                 .streamingChatModel(model)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(20))
                 .tools(new SearchTool())
-                .maxToolInvocations("search", 1, ToolLimitExceededBehavior.ERROR)
+                .toolExecutionLimits(ToolExecutionLimits.builder()
+                        .maxExecutions("search", 1, ToolLimitExceededBehavior.ERROR)
+                        .build())
                 .build();
 
         CompletableFuture<Throwable> futureError = new CompletableFuture<>();
@@ -116,7 +119,7 @@ class PerToolInvocationLimitStreamingTest {
                 .start();
 
         Throwable error = futureError.get(30, SECONDS);
-        assertThat(error).isInstanceOf(ToolInvocationLimitExceededException.class);
+        assertThat(error).isInstanceOf(ToolExecutionLimitExceededException.class);
     }
 
     @Test
@@ -136,7 +139,9 @@ class PerToolInvocationLimitStreamingTest {
                 .streamingChatModel(model)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(20))
                 .tools(new SearchTool())
-                .maxToolInvocations("search", 1, ToolLimitExceededBehavior.END)
+                .toolExecutionLimits(ToolExecutionLimits.builder()
+                        .maxExecutions("search", 1, ToolLimitExceededBehavior.END)
+                        .build())
                 .build();
 
         ChatResponse response = streamToCompletion(assistant.chat("search"));
@@ -194,7 +199,8 @@ class PerToolInvocationLimitStreamingTest {
                 .streamingChatModel(model)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(20))
                 .tools(new SearchTool())
-                .maxToolInvocations("search", 2)
+                .toolExecutionLimits(
+                        ToolExecutionLimits.builder().maxExecutions("search", 2).build())
                 .build();
 
         ChatResponse response = streamToCompletion(assistant.chat("search"));
@@ -230,7 +236,9 @@ class PerToolInvocationLimitStreamingTest {
                 .streamingChatModel(model)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(20))
                 .tools(new SearchTool(), new CalculatorTool())
-                .maxToolInvocations("calculate", 1, ToolLimitExceededBehavior.END)
+                .toolExecutionLimits(ToolExecutionLimits.builder()
+                        .maxExecutions("calculate", 1, ToolLimitExceededBehavior.END)
+                        .build())
                 .build();
 
         ChatResponse response = streamToCompletion(assistant.chat("do things"));
@@ -263,8 +271,10 @@ class PerToolInvocationLimitStreamingTest {
                 .streamingChatModel(model)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(20))
                 .tools(new SearchTool(), new CalculatorTool())
-                .maxToolInvocations(1)
-                .maxToolInvocations("search", 3)
+                .toolExecutionLimits(ToolExecutionLimits.builder()
+                        .defaultLimit(1)
+                        .maxExecutions("search", 3)
+                        .build())
                 .build();
 
         ChatResponse response = streamToCompletion(assistant.chat("do things"));

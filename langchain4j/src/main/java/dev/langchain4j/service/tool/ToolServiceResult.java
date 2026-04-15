@@ -18,7 +18,7 @@ public class ToolServiceResult {
     private final List<ToolExecution> toolExecutions;
     private final TokenUsage aggregateTokenUsage;
     private final boolean immediateToolReturn;
-    private final Map<String, Integer> toolInvocationCounts;
+    private final Map<String, Integer> toolExecutionCounts;
 
     /**
      * @since 1.2.0
@@ -29,8 +29,8 @@ public class ToolServiceResult {
         this.toolExecutions = ensureNotNull(builder.toolExecutions, "toolExecutions");
         this.aggregateTokenUsage = builder.aggregateTokenUsage;
         this.immediateToolReturn = builder.immediateToolReturn;
-        this.toolInvocationCounts =
-                builder.toolInvocationCounts == null ? Map.of() : Map.copyOf(builder.toolInvocationCounts);
+        this.toolExecutionCounts =
+                builder.toolExecutionCounts == null ? Map.of() : Map.copyOf(builder.toolExecutionCounts);
     }
 
     /**
@@ -43,7 +43,7 @@ public class ToolServiceResult {
         this.toolExecutions = ensureNotNull(toolExecutions, "toolExecutions");
         this.aggregateTokenUsage = chatResponse.tokenUsage();
         this.immediateToolReturn = false;
-        this.toolInvocationCounts = Map.of();
+        this.toolExecutionCounts = Map.of();
     }
 
     /**
@@ -99,13 +99,13 @@ public class ToolServiceResult {
     }
 
     /**
-     * Returns the number of times each tool was invoked during this AI service call.
+     * Returns the number of times each tool was executed during this AI service call.
      *
-     * @return an unmodifiable map from tool name to invocation count
+     * @return an unmodifiable map from tool name to execution count
      * @since 1.14.0
      */
-    public Map<String, Integer> toolInvocationCounts() {
-        return toolInvocationCounts;
+    public Map<String, Integer> toolExecutionCounts() {
+        return toolExecutionCounts;
     }
 
     @Override
@@ -118,7 +118,7 @@ public class ToolServiceResult {
                 && Objects.equals(this.toolExecutions, that.toolExecutions)
                 && Objects.equals(this.aggregateTokenUsage, that.aggregateTokenUsage)
                 && Objects.equals(this.immediateToolReturn, that.immediateToolReturn)
-                && Objects.equals(this.toolInvocationCounts, that.toolInvocationCounts);
+                && Objects.equals(this.toolExecutionCounts, that.toolExecutionCounts);
     }
 
     @Override
@@ -129,7 +129,7 @@ public class ToolServiceResult {
                 toolExecutions,
                 aggregateTokenUsage,
                 immediateToolReturn,
-                toolInvocationCounts);
+                toolExecutionCounts);
     }
 
     @Override
@@ -139,8 +139,8 @@ public class ToolServiceResult {
                 + finalResponse + ", toolExecutions="
                 + toolExecutions + ", aggregateTokenUsage="
                 + aggregateTokenUsage + ", immediateToolReturn="
-                + immediateToolReturn + ", toolInvocationCounts="
-                + toolInvocationCounts + '}';
+                + immediateToolReturn + ", toolExecutionCounts="
+                + toolExecutionCounts + '}';
     }
 
     public static Builder builder() {
@@ -154,7 +154,7 @@ public class ToolServiceResult {
         private List<ToolExecution> toolExecutions;
         private TokenUsage aggregateTokenUsage;
         private boolean immediateToolReturn;
-        private Map<String, Integer> toolInvocationCounts;
+        private Map<String, Integer> toolExecutionCounts;
 
         public Builder intermediateResponses(List<ChatResponse> intermediateResponses) {
             this.intermediateResponses = intermediateResponses;
@@ -184,8 +184,8 @@ public class ToolServiceResult {
         /**
          * @since 1.14.0
          */
-        public Builder toolInvocationCounts(Map<String, Integer> toolInvocationCounts) {
-            this.toolInvocationCounts = toolInvocationCounts;
+        public Builder toolExecutionCounts(Map<String, Integer> toolExecutionCounts) {
+            this.toolExecutionCounts = toolExecutionCounts;
             return this;
         }
 
