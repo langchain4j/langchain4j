@@ -507,7 +507,7 @@ class AnthropicChatModelIT {
         assertThat(createCacheTokenUsage.cacheCreationInputTokens()).isGreaterThan(minCacheableTokenThresholdForHaiku);
         assertThat(createCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
 
-        Thread.sleep(1000);
+        Thread.sleep(2000);
 
         // when
         ChatResponse response2 = model.chat(request);

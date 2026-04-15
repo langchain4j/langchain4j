@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai;
 
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
@@ -34,22 +35,30 @@ import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
+import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.FinishReason;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 class OpenAiResponsesClient {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
+            .enable(INDENT_OUTPUT);
+
     private static final String DEFAULT_BASE_URL = "https://api.openai.com/v1";
     private static final String OPENAI_ORGANIZATION_HEADER = "OpenAI-Organization";
     private static final String STREAM_DONE_MARKER = "[DONE]";
@@ -59,7 +68,12 @@ class OpenAiResponsesClient {
     private static final String EVENT_FUNCTION_CALL_ARGUMENTS_DELTA = "response.function_call_arguments.delta";
     private static final String EVENT_FUNCTION_CALL_ARGUMENTS_DONE = "response.function_call_arguments.done";
     private static final String EVENT_OUTPUT_ITEM_DONE = "response.output_item.done";
+    private static final String EVENT_REASONING_TEXT_DELTA = "response.reasoning_text.delta";
+    private static final String EVENT_REASONING_SUMMARY_TEXT_DELTA = "response.reasoning_summary_text.delta";
     private static final String EVENT_RESPONSE_COMPLETED = "response.completed";
+    private static final String EVENT_RESPONSE_INCOMPLETE = "response.incomplete";
+    private static final String EVENT_RESPONSE_FAILED = "response.failed";
+    private static final String EVENT_RESPONSE_ERROR = "response.error";
 
     private static final String FIELD_TYPE = "type";
     private static final String FIELD_ROLE = "role";
@@ -79,6 +93,8 @@ class OpenAiResponsesClient {
     private static final String FIELD_ITEM_ID = "item_id";
     private static final String FIELD_OUTPUT_INDEX = "output_index";
     private static final String FIELD_RESPONSE = "response";
+    private static final String FIELD_ERROR = "error";
+    private static final String FIELD_MESSAGE = "message";
     private static final String FIELD_OUTPUT = "output";
     private static final String FIELD_USAGE = "usage";
     private static final String FIELD_INPUT_TOKENS = "input_tokens";
@@ -112,13 +128,11 @@ class OpenAiResponsesClient {
     private static final String FIELD_INCLUDE_OBFUSCATION = "include_obfuscation";
     private static final String FIELD_TEXT_VERBOSITY = "verbosity";
     private static final String FIELD_FORMAT = "format";
-    private static final String FIELD_JSON_SCHEMA = "json_schema";
     private static final String FIELD_SCHEMA = "schema";
     private static final String FIELD_ADDITIONAL_PROPERTIES = "additionalProperties";
     private static final String FIELD_STATUS = "status";
-    private static final String FIELD_CREATED = "created";
-    private static final String FIELD_SYSTEM_FINGERPRINT = "system_fingerprint";
-    private static final String DETAIL_AUTO_VALUE = "auto";
+    private static final String FIELD_CREATED_AT = "created_at";
+    private static final String FIELD_COMPLETED_AT = "completed_at";
     private static final String DEFAULT_IMAGE_MIME_TYPE = "image/jpeg";
 
     private static final String ROLE_SYSTEM = "system";
@@ -159,9 +173,10 @@ class OpenAiResponsesClient {
         return new Builder();
     }
 
-    void streamingChat(ChatRequest chatRequest, OpenAiResponsesConfig config, StreamingChatResponseHandler handler) {
+    void streamingChat(ChatRequest chatRequest, OpenAiResponsesChatRequestParameters parameters,
+                       StreamingChatResponseHandler handler) {
         try {
-            Map<String, Object> payload = buildRequestPayload(chatRequest, config);
+            Map<String, Object> payload = buildRequestPayload(chatRequest, parameters);
             HttpRequest request = buildHttpRequest(payload);
 
             httpClient.execute(request, new DefaultServerSentEventParser(), new ResponsesApiEventListener(handler));
@@ -171,98 +186,89 @@ class OpenAiResponsesClient {
         }
     }
 
-    private Map<String, Object> buildRequestPayload(ChatRequest chatRequest, OpenAiResponsesConfig config) {
-        ChatRequestParameters parameters = chatRequest.parameters();
-
-        var input = new ArrayList<Map<String, Object>>();
-        for (var msg : chatRequest.messages()) {
-            input.addAll(toResponsesMessages(msg));
+    private Map<String, Object> buildRequestPayload(ChatRequest chatRequest,
+                                                     OpenAiResponsesChatRequestParameters parameters) {
+        List<Map<String, Object>> input = new ArrayList<>();
+        for (ChatMessage message : chatRequest.messages()) {
+            input.addAll(toResponsesMessages(message));
         }
 
-        var payload = new HashMap<String, Object>();
-        String effectiveModelName =
-                parameters != null && parameters.modelName() != null ? parameters.modelName() : config.modelName();
-        payload.put(FIELD_MODEL, effectiveModelName);
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put(FIELD_MODEL, parameters.modelName());
         payload.put(FIELD_INPUT, input);
         payload.put(FIELD_STREAM, true);
-        payload.put(FIELD_STORE, config.store());
+        payload.put(FIELD_STORE, parameters.store());
 
-        Double effectiveTemperature = parameters != null && parameters.temperature() != null
-                ? parameters.temperature()
-                : config.temperature();
-        if (effectiveTemperature != null) {
-            payload.put(FIELD_TEMPERATURE, effectiveTemperature);
+        if (parameters.temperature() != null) {
+            payload.put(FIELD_TEMPERATURE, parameters.temperature());
         }
 
-        Double effectiveTopP = parameters != null && parameters.topP() != null ? parameters.topP() : config.topP();
-        if (effectiveTopP != null) {
-            payload.put(FIELD_TOP_P, effectiveTopP);
+        if (parameters.topP() != null) {
+            payload.put(FIELD_TOP_P, parameters.topP());
         }
 
-        Integer requestMaxOutputTokens = parameters != null ? parameters.maxOutputTokens() : null;
-        Integer effectiveMaxOutputTokens =
-                requestMaxOutputTokens != null ? requestMaxOutputTokens : config.maxOutputTokens();
-        if (effectiveMaxOutputTokens != null) {
-            payload.put(FIELD_MAX_OUTPUT_TOKENS, effectiveMaxOutputTokens);
+        if (parameters.maxOutputTokens() != null) {
+            payload.put(FIELD_MAX_OUTPUT_TOKENS, parameters.maxOutputTokens());
         }
 
-        if (config.maxToolCalls() != null) {
-            payload.put(FIELD_MAX_TOOL_CALLS, config.maxToolCalls());
+        if (parameters.maxToolCalls() != null) {
+            payload.put(FIELD_MAX_TOOL_CALLS, parameters.maxToolCalls());
         }
 
-        if (config.parallelToolCalls() != null) {
-            payload.put(FIELD_PARALLEL_TOOL_CALLS, config.parallelToolCalls());
+        if (parameters.parallelToolCalls() != null) {
+            payload.put(FIELD_PARALLEL_TOOL_CALLS, parameters.parallelToolCalls());
         }
 
-        if (config.previousResponseId() != null) {
-            payload.put(FIELD_PREVIOUS_RESPONSE_ID, config.previousResponseId());
+        if (parameters.previousResponseId() != null) {
+            payload.put(FIELD_PREVIOUS_RESPONSE_ID, parameters.previousResponseId());
         }
 
-        if (config.topLogprobs() != null) {
-            payload.put(FIELD_TOP_LOGPROBS, config.topLogprobs());
+        if (parameters.topLogprobs() != null) {
+            payload.put(FIELD_TOP_LOGPROBS, parameters.topLogprobs());
         }
 
-        if (config.truncation() != null && !config.truncation().isEmpty()) {
-            payload.put(FIELD_TRUNCATION, config.truncation());
+        if (parameters.truncation() != null && !parameters.truncation().isEmpty()) {
+            payload.put(FIELD_TRUNCATION, parameters.truncation());
         }
 
-        if (config.include() != null && !config.include().isEmpty()) {
-            payload.put(FIELD_INCLUDE, config.include());
+        if (parameters.include() != null && !parameters.include().isEmpty()) {
+            payload.put(FIELD_INCLUDE, parameters.include());
         }
 
-        if (config.serviceTier() != null && !config.serviceTier().isEmpty()) {
-            payload.put(FIELD_SERVICE_TIER, config.serviceTier());
+        if (parameters.serviceTier() != null) {
+            payload.put(FIELD_SERVICE_TIER, parameters.serviceTier());
         }
 
-        if (config.safetyIdentifier() != null) {
-            payload.put(FIELD_SAFETY_IDENTIFIER, config.safetyIdentifier());
+        if (parameters.safetyIdentifier() != null) {
+            payload.put(FIELD_SAFETY_IDENTIFIER, parameters.safetyIdentifier());
         }
 
-        if (config.promptCacheKey() != null) {
-            payload.put(FIELD_PROMPT_CACHE_KEY, config.promptCacheKey());
+        if (parameters.promptCacheKey() != null) {
+            payload.put(FIELD_PROMPT_CACHE_KEY, parameters.promptCacheKey());
         }
 
-        if (config.promptCacheRetention() != null) {
-            payload.put(FIELD_PROMPT_CACHE_RETENTION, config.promptCacheRetention());
+        if (parameters.promptCacheRetention() != null) {
+            payload.put(FIELD_PROMPT_CACHE_RETENTION, parameters.promptCacheRetention());
         }
 
-        if (config.reasoningEffort() != null && !config.reasoningEffort().isEmpty()) {
-            var reasoning = new HashMap<String, Object>();
-            reasoning.put(FIELD_EFFORT, config.reasoningEffort());
+        if (parameters.reasoningEffort() != null) {
+            Map<String, Object> reasoning = new LinkedHashMap<>();
+            reasoning.put(FIELD_EFFORT, parameters.reasoningEffort());
             payload.put(FIELD_REASONING, reasoning);
         }
 
-        if (config.streamIncludeObfuscation() != null) {
-            var streamOptions = new HashMap<String, Object>();
-            streamOptions.put(FIELD_INCLUDE_OBFUSCATION, config.streamIncludeObfuscation());
+        if (parameters.streamIncludeObfuscation() != null) {
+            Map<String, Object> streamOptions = new LinkedHashMap<>();
+            streamOptions.put(FIELD_INCLUDE_OBFUSCATION, parameters.streamIncludeObfuscation());
             payload.put(FIELD_STREAM_OPTIONS, streamOptions);
         }
 
-        List<ToolSpecification> toolSpecifications = chatRequest.toolSpecifications();
+        boolean strictTools = Boolean.TRUE.equals(parameters.strictTools());
+        List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
         if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
-            var tools = new ArrayList<Map<String, Object>>();
-            for (var toolSpec : toolSpecifications) {
-                var tool = new HashMap<String, Object>();
+            List<Map<String, Object>> tools = new ArrayList<>();
+            for (ToolSpecification toolSpec : toolSpecifications) {
+                Map<String, Object> tool = new LinkedHashMap<>();
                 tool.put(FIELD_TYPE, TYPE_FUNCTION);
                 tool.put(FIELD_NAME, toolSpec.name());
                 if (toolSpec.description() != null) {
@@ -271,11 +277,11 @@ class OpenAiResponsesClient {
 
                 Map<String, Object> functionParameters = null;
                 if (toolSpec.parameters() != null) {
-                    functionParameters = toMap(toolSpec.parameters(), config.strict());
-                } else if (config.strict()) {
-                    functionParameters = new HashMap<>();
+                    functionParameters = toMap(toolSpec.parameters(), strictTools);
+                } else if (strictTools) {
+                    functionParameters = new LinkedHashMap<>();
                     functionParameters.put(FIELD_TYPE, TYPE_OBJECT);
-                    functionParameters.put(FIELD_PROPERTIES, new HashMap<>());
+                    functionParameters.put(FIELD_PROPERTIES, Map.of());
                     functionParameters.put(FIELD_ADDITIONAL_PROPERTIES, false);
                 }
 
@@ -283,7 +289,7 @@ class OpenAiResponsesClient {
                     tool.put(FIELD_PARAMETERS, functionParameters);
                 }
 
-                if (config.strict()) {
+                if (strictTools) {
                     tool.put(FIELD_STRICT, true);
                 }
 
@@ -291,19 +297,18 @@ class OpenAiResponsesClient {
             }
             payload.put(FIELD_TOOLS, tools);
 
-            if (chatRequest.toolChoice() != null) {
-                payload.put(FIELD_TOOL_CHOICE, toToolChoiceString(chatRequest.toolChoice()));
-            } else {
-                payload.put(FIELD_TOOL_CHOICE, "auto");
+            if (parameters.toolChoice() != null) {
+                payload.put(FIELD_TOOL_CHOICE, toToolChoiceString(parameters.toolChoice()));
             }
         }
 
-        var textConfig = toResponseTextConfig(chatRequest.responseFormat(), config.strict());
-        if (config.textVerbosity() != null) {
+        boolean strictJsonSchema = Boolean.TRUE.equals(parameters.strictJsonSchema());
+        Map<String, Object> textConfig = toResponseTextConfig(parameters.responseFormat(), strictJsonSchema);
+        if (parameters.textVerbosity() != null) {
             if (textConfig == null) {
-                textConfig = new HashMap<>();
+                textConfig = new LinkedHashMap<>();
             }
-            textConfig.put(FIELD_TEXT_VERBOSITY, config.textVerbosity());
+            textConfig.put(FIELD_TEXT_VERBOSITY, parameters.textVerbosity());
         }
         if (textConfig != null) {
             payload.put(FIELD_TEXT, textConfig);
@@ -318,9 +323,12 @@ class OpenAiResponsesClient {
         HttpRequest.Builder requestBuilder = HttpRequest.builder()
                 .url(baseUrl + "/responses")
                 .method(HttpMethod.POST)
-                .addHeader("Authorization", "Bearer " + apiKey)
                 .addHeader("Content-Type", "application/json")
                 .addHeader("Accept", "text/event-stream");
+
+        if (apiKey != null && !apiKey.isBlank()) {
+            requestBuilder.addHeader("Authorization", "Bearer " + apiKey);
+        }
 
         if (organizationId != null) {
             requestBuilder.addHeader(OPENAI_ORGANIZATION_HEADER, organizationId);
@@ -329,7 +337,7 @@ class OpenAiResponsesClient {
         return requestBuilder.body(requestBody).build();
     }
 
-    private List<Map<String, Object>> toResponsesMessages(ChatMessage msg) {
+    private static List<Map<String, Object>> toResponsesMessages(ChatMessage msg) {
         if (msg instanceof SystemMessage systemMessage) {
             return List.of(createMessageEntry(ROLE_SYSTEM, List.of(createInputTextContent(systemMessage.text()))));
         } else if (msg instanceof UserMessage userMessage) {
@@ -338,7 +346,7 @@ class OpenAiResponsesClient {
                 if (content instanceof TextContent textContent) {
                     contentEntries.add(createInputTextContent(textContent.text()));
                 } else if (content instanceof ImageContent imageContent) {
-                    contentEntries.add(createInputImageContent(imageContent.image()));
+                    contentEntries.add(createInputImageContent(imageContent.image(), imageContent.detailLevel()));
                 } else {
                     throw new UnsupportedFeatureException("Unsupported content type: "
                             + content.getClass().getName() + ". Only TextContent and ImageContent are supported.");
@@ -355,26 +363,42 @@ class OpenAiResponsesClient {
 
             if (aiMessage.hasToolExecutionRequests()) {
                 for (ToolExecutionRequest toolRequest : aiMessage.toolExecutionRequests()) {
-                    var functionCall = new HashMap<String, Object>();
+                    String callId = requireNonBlank(toolRequest.id(), "ToolExecutionRequest.id");
+                    String name = requireNonBlank(toolRequest.name(), "ToolExecutionRequest.name");
+                    String arguments = requireNonBlank(toolRequest.arguments(), "ToolExecutionRequest.arguments");
+                    var functionCall = new LinkedHashMap<String, Object>();
                     functionCall.put(FIELD_TYPE, TYPE_FUNCTION_CALL);
-                    functionCall.put(FIELD_CALL_ID, toolRequest.id());
-                    functionCall.put(FIELD_NAME, toolRequest.name());
-                    functionCall.put(FIELD_ARGUMENTS, toolRequest.arguments());
+                    functionCall.put(FIELD_CALL_ID, callId);
+                    functionCall.put(FIELD_NAME, name);
+                    functionCall.put(FIELD_ARGUMENTS, arguments);
                     items.add(functionCall);
                 }
             }
 
             return items;
         } else if (msg instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
-            if (!toolExecutionResultMessage.hasSingleText()) {
-                throw new UnsupportedFeatureException(
-                        "OpenAI Responses API does not support non-text content in tool results. "
-                                + "Only text content is supported in function_call_output.");
-            }
-            var outputEntry = new HashMap<String, Object>();
+            var outputEntry = new LinkedHashMap<String, Object>();
             outputEntry.put(FIELD_TYPE, TYPE_FUNCTION_CALL_OUTPUT);
             outputEntry.put(FIELD_CALL_ID, toolExecutionResultMessage.id());
-            outputEntry.put(FIELD_OUTPUT, toolExecutionResultMessage.text());
+
+            if (toolExecutionResultMessage.hasSingleText()) {
+                outputEntry.put(FIELD_OUTPUT, toolExecutionResultMessage.text());
+            } else {
+                List<Map<String, Object>> outputContents = new ArrayList<>();
+                for (Content content : toolExecutionResultMessage.contents()) {
+                    if (content instanceof TextContent textContent) {
+                        outputContents.add(createInputTextContent(textContent.text()));
+                    } else if (content instanceof ImageContent imageContent) {
+                        outputContents.add(createInputImageContent(imageContent.image(), imageContent.detailLevel()));
+                    } else {
+                        throw new UnsupportedFeatureException("Unsupported content type in tool result: "
+                                + content.getClass().getName()
+                                + ". Only TextContent and ImageContent are supported.");
+                    }
+                }
+                outputEntry.put(FIELD_OUTPUT, outputContents);
+            }
+
             return List.of(outputEntry);
         } else {
             throw new UnsupportedFeatureException(
@@ -383,37 +407,47 @@ class OpenAiResponsesClient {
         }
     }
 
-    private Map<String, Object> createMessageEntry(String role, List<Map<String, Object>> contentEntries) {
-        var entry = new HashMap<String, Object>();
+    private static Map<String, Object> createMessageEntry(String role, List<Map<String, Object>> contentEntries) {
+        var entry = new LinkedHashMap<String, Object>();
         entry.put(FIELD_TYPE, TYPE_MESSAGE);
         entry.put(FIELD_ROLE, role);
         entry.put(FIELD_CONTENT, contentEntries);
         return entry;
     }
 
-    private Map<String, Object> createInputTextContent(String text) {
-        var content = new HashMap<String, Object>();
+    private static Map<String, Object> createInputTextContent(String text) {
+        var content = new LinkedHashMap<String, Object>();
         content.put(FIELD_TYPE, TYPE_INPUT_TEXT);
         content.put(FIELD_TEXT, text);
         return content;
     }
 
-    private Map<String, Object> createOutputTextContent(String text) {
-        var content = new HashMap<String, Object>();
+    private static Map<String, Object> createOutputTextContent(String text) {
+        var content = new LinkedHashMap<String, Object>();
         content.put(FIELD_TYPE, TYPE_OUTPUT_TEXT);
         content.put(FIELD_TEXT, text);
         return content;
     }
 
-    private Map<String, Object> createInputImageContent(Image image) {
-        var content = new HashMap<String, Object>();
+    private static Map<String, Object> createInputImageContent(Image image, ImageContent.DetailLevel detailLevel) {
+        var content = new LinkedHashMap<String, Object>();
         content.put(FIELD_TYPE, TYPE_INPUT_IMAGE);
         content.put(FIELD_IMAGE_URL, buildImageUrl(image));
-        content.put(FIELD_DETAIL, DETAIL_AUTO_VALUE);
+        content.put(FIELD_DETAIL, toDetailString(detailLevel));
         return content;
     }
 
-    private String buildImageUrl(Image image) {
+    private static String toDetailString(ImageContent.DetailLevel detailLevel) {
+        return switch (detailLevel) {
+            case LOW -> "low";
+            case HIGH -> "high";
+            case AUTO -> "auto";
+            default -> throw new UnsupportedFeatureException(
+                    "DetailLevel " + detailLevel + " is not supported by OpenAI Responses API. Supported values: LOW, HIGH, AUTO");
+        };
+    }
+
+    private static String buildImageUrl(Image image) {
         if (image.url() != null) {
             return image.url().toString();
         } else if (image.base64Data() != null) {
@@ -424,7 +458,7 @@ class OpenAiResponsesClient {
         }
     }
 
-    private String toToolChoiceString(dev.langchain4j.model.chat.request.ToolChoice toolChoice) {
+    private static String toToolChoiceString(ToolChoice toolChoice) {
         if (toolChoice == null) {
             return null;
         }
@@ -435,42 +469,41 @@ class OpenAiResponsesClient {
         };
     }
 
-    private Map<String, Object> toResponseTextConfig(
-            dev.langchain4j.model.chat.request.ResponseFormat responseFormat, boolean strict) {
-        if (responseFormat == null
-                || responseFormat.type() == dev.langchain4j.model.chat.request.ResponseFormatType.TEXT) {
+    private static String requireNonBlank(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(fieldName + " must be provided");
+        }
+        return value;
+    }
+
+    private static Map<String, Object> toResponseTextConfig(ResponseFormat responseFormat, boolean strict) {
+        if (responseFormat == null || responseFormat.type() == ResponseFormatType.TEXT) {
             return null;
         }
 
-        var textConfig = new HashMap<String, Object>();
-        dev.langchain4j.model.chat.request.json.JsonSchema jsonSchema = responseFormat.jsonSchema();
+        var textConfig = new LinkedHashMap<String, Object>();
+        JsonSchema jsonSchema = responseFormat.jsonSchema();
 
         if (jsonSchema == null) {
-            var format = new HashMap<String, Object>();
+            var format = new LinkedHashMap<String, Object>();
             format.put(FIELD_TYPE, TYPE_JSON_OBJECT);
             textConfig.put(FIELD_FORMAT, format);
         } else {
-            if (!(jsonSchema.rootElement() instanceof dev.langchain4j.model.chat.request.json.JsonObjectSchema
-                    || jsonSchema.rootElement() instanceof dev.langchain4j.model.chat.request.json.JsonRawSchema)) {
+            if (!(jsonSchema.rootElement() instanceof JsonObjectSchema
+                    || jsonSchema.rootElement() instanceof JsonRawSchema)) {
                 throw new IllegalArgumentException(
-                        "For OpenAI Responses API, the root element of the JSON Schema must be either a JsonObjectSchema or a JsonRawSchema, but it was: "
+                        "For OpenAI, the root element of the JSON Schema must be either a JsonObjectSchema or a JsonRawSchema, but it was: "
                                 + jsonSchema.rootElement().getClass());
             }
 
-            Map<String, Object> schemaMap = toMap(jsonSchema.rootElement(), strict);
-            var format = new HashMap<String, Object>();
+            var format = new LinkedHashMap<String, Object>();
             format.put(FIELD_TYPE, TYPE_JSON_SCHEMA);
+            format.put(FIELD_STRICT, strict);
             if (jsonSchema.name() != null) {
                 format.put(FIELD_NAME, jsonSchema.name());
             }
-            var jsonSchemaConfig = new HashMap<String, Object>();
-            jsonSchemaConfig.put(FIELD_SCHEMA, schemaMap);
-            jsonSchemaConfig.put(FIELD_STRICT, strict);
-            if (jsonSchema.name() != null) {
-                jsonSchemaConfig.put(FIELD_NAME, jsonSchema.name());
-            }
-            format.put(FIELD_SCHEMA, schemaMap);
-            format.put(FIELD_JSON_SCHEMA, jsonSchemaConfig);
+            format.put(FIELD_SCHEMA, toMap(jsonSchema.rootElement(), strict));
+
             textConfig.put(FIELD_FORMAT, format);
         }
 
@@ -529,8 +562,8 @@ class OpenAiResponsesClient {
 
         private final StreamingChatResponseHandler handler;
         private volatile StreamingHandle streamingHandle;
-        private final Map<String, ToolExecutionRequest.Builder> toolCallBuilders = new HashMap<>();
-        private final Map<String, Integer> toolCallIndices = new HashMap<>();
+        private final Map<String, ToolExecutionRequest.Builder> toolCallBuilders = new LinkedHashMap<>();
+        private final Map<String, Integer> toolCallIndices = new LinkedHashMap<>();
         private final List<ToolExecutionRequest> completedToolCalls = new ArrayList<>();
         private final Set<String> completedToolCallItemIds = new HashSet<>();
         private final List<ServerSentEvent> rawServerSentEvents = new ArrayList<>();
@@ -600,6 +633,11 @@ class OpenAiResponsesClient {
                     if (!text.isEmpty()) {
                         InternalStreamingChatResponseHandlerUtils.onPartialResponse(handler, text, streamingHandle);
                     }
+                } else if (EVENT_REASONING_TEXT_DELTA.equals(type) || EVENT_REASONING_SUMMARY_TEXT_DELTA.equals(type)) {
+                    var thinking = node.path(FIELD_DELTA).asText();
+                    if (!thinking.isEmpty()) {
+                        InternalStreamingChatResponseHandlerUtils.onPartialThinking(handler, thinking, streamingHandle);
+                    }
                 } else if (EVENT_OUTPUT_ITEM_ADDED.equals(type)) {
                     var item = node.path(FIELD_ITEM);
                     if (TYPE_FUNCTION_CALL.equals(item.path(FIELD_TYPE).asText())) {
@@ -618,7 +656,19 @@ class OpenAiResponsesClient {
                     var builder = toolCallBuilders.get(itemId);
                     if (builder != null) {
                         var currentArgs = builder.build().arguments();
-                        builder.arguments(currentArgs + node.path(FIELD_DELTA).asText());
+                        String delta = node.path(FIELD_DELTA).asText();
+                        builder.arguments(currentArgs + delta);
+                        Integer index = toolCallIndices.get(itemId);
+                        if (index != null && !delta.isEmpty()) {
+                            PartialToolCall partialToolCall = PartialToolCall.builder()
+                                    .index(index)
+                                    .id(builder.build().id())
+                                    .name(builder.build().name())
+                                    .partialArguments(delta)
+                                    .build();
+                            InternalStreamingChatResponseHandlerUtils.onPartialToolCall(
+                                    handler, partialToolCall, streamingHandle);
+                        }
                     }
                 } else if (EVENT_FUNCTION_CALL_ARGUMENTS_DONE.equals(type)) {
                     var itemId = node.path(FIELD_ITEM_ID).asText();
@@ -629,8 +679,10 @@ class OpenAiResponsesClient {
                     }
                 } else if (EVENT_OUTPUT_ITEM_DONE.equals(type)) {
                     handleOutputItemDone(node);
-                } else if (EVENT_RESPONSE_COMPLETED.equals(type)) {
+                } else if (EVENT_RESPONSE_COMPLETED.equals(type) || EVENT_RESPONSE_INCOMPLETE.equals(type)) {
                     handleResponseCompleted(node);
+                } else if (EVENT_RESPONSE_FAILED.equals(type) || EVENT_RESPONSE_ERROR.equals(type)) {
+                    handleResponseFailure(node);
                 }
             } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -703,55 +755,70 @@ class OpenAiResponsesClient {
                 tokenUsage = usageBuilder.build();
             }
 
-            if (!sb.isEmpty() || !completedToolCalls.isEmpty()) {
-                var text = sb.isEmpty() ? null : sb.toString();
-                var aiMessage = !completedToolCalls.isEmpty() && text != null
-                        ? new AiMessage(text, completedToolCalls)
-                        : !completedToolCalls.isEmpty()
-                                ? AiMessage.from(completedToolCalls)
-                                : new AiMessage(sb.toString());
+            var text = sb.isEmpty() ? null : sb.toString();
+            var aiMessage = !completedToolCalls.isEmpty() && text != null
+                    ? new AiMessage(text, completedToolCalls)
+                    : !completedToolCalls.isEmpty() ? AiMessage.from(completedToolCalls) : new AiMessage(sb.toString());
 
-                var responseBuilder = ChatResponse.builder().aiMessage(aiMessage);
-                var metadataBuilder = OpenAiChatResponseMetadata.builder()
-                        .id(responseNode.path(FIELD_ID).asText(null))
-                        .modelName(responseNode.path(FIELD_MODEL).asText(null));
+            var responseBuilder = ChatResponse.builder().aiMessage(aiMessage);
+            var metadataBuilder = OpenAiResponsesChatResponseMetadata.builder()
+                    .id(responseNode.path(FIELD_ID).asText(null))
+                    .modelName(responseNode.path(FIELD_MODEL).asText(null));
 
-                if (responseNode.hasNonNull(FIELD_CREATED)) {
-                    metadataBuilder.created(responseNode.path(FIELD_CREATED).asLong());
-                }
-                if (responseNode.hasNonNull(FIELD_SERVICE_TIER)) {
-                    metadataBuilder.serviceTier(
-                            responseNode.path(FIELD_SERVICE_TIER).asText());
-                }
-                if (responseNode.hasNonNull(FIELD_SYSTEM_FINGERPRINT)) {
-                    metadataBuilder.systemFingerprint(
-                            responseNode.path(FIELD_SYSTEM_FINGERPRINT).asText());
-                }
-                if (tokenUsage != null) {
-                    metadataBuilder.tokenUsage(tokenUsage);
-                }
+            if (responseNode.hasNonNull(FIELD_CREATED_AT)) {
+                metadataBuilder.createdAt(responseNode.path(FIELD_CREATED_AT).asLong());
+            }
+            if (responseNode.hasNonNull(FIELD_COMPLETED_AT)) {
+                metadataBuilder.completedAt(responseNode.path(FIELD_COMPLETED_AT).asLong());
+            }
+            if (responseNode.hasNonNull(FIELD_SERVICE_TIER)) {
+                metadataBuilder.serviceTier(
+                        responseNode.path(FIELD_SERVICE_TIER).asText());
+            }
+            if (tokenUsage != null) {
+                metadataBuilder.tokenUsage(tokenUsage);
+            }
 
-                var finishReason =
-                        determineFinishReason(responseNode.path(FIELD_STATUS).asText(null));
-                if (finishReason != null) {
-                    metadataBuilder.finishReason(finishReason);
-                }
-                if (rawHttpResponse != null) {
-                    metadataBuilder.rawHttpResponse(rawHttpResponse);
-                }
-                if (!rawServerSentEvents.isEmpty()) {
-                    metadataBuilder.rawServerSentEvents(new ArrayList<>(rawServerSentEvents));
-                }
+            var finishReason =
+                    determineFinishReason(responseNode.path(FIELD_STATUS).asText(null));
+            if (finishReason != null) {
+                metadataBuilder.finishReason(finishReason);
+            }
+            if (rawHttpResponse != null) {
+                metadataBuilder.rawHttpResponse(rawHttpResponse);
+            }
+            if (!rawServerSentEvents.isEmpty()) {
+                metadataBuilder.rawServerSentEvents(new ArrayList<>(rawServerSentEvents));
+            }
 
-                responseBuilder.metadata(metadataBuilder.build());
-                if (!isCancelled()) {
-                    try {
-                        handler.onCompleteResponse(responseBuilder.build());
-                    } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e));
-                    }
+            responseBuilder.metadata(metadataBuilder.build());
+            if (!isCancelled()) {
+                try {
+                    handler.onCompleteResponse(responseBuilder.build());
+                } catch (Exception e) {
+                    withLoggingExceptions(() -> handler.onError(e));
                 }
             }
+        }
+
+        private void handleResponseFailure(JsonNode node) {
+            JsonNode errorNode = node.path(FIELD_ERROR);
+            if (errorNode.isMissingNode()) {
+                errorNode = node.path(FIELD_RESPONSE).path(FIELD_ERROR);
+            }
+            String message = extractErrorMessage(errorNode);
+            withLoggingExceptions(() -> handler.onError(new RuntimeException(message)));
+        }
+
+        private String extractErrorMessage(JsonNode errorNode) {
+            if (errorNode == null || errorNode.isMissingNode() || errorNode.isNull()) {
+                return "Response failed";
+            }
+            String message = errorNode.path(FIELD_MESSAGE).asText(null);
+            if (message == null || message.isBlank()) {
+                message = errorNode.toString();
+            }
+            return "Response failed: " + message;
         }
 
         private FinishReason determineFinishReason(String status) {
