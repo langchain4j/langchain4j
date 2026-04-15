@@ -1,21 +1,21 @@
-package dev.langchain4j.model.openai.common;
+package dev.langchain4j.model.openai.common.responses;
+
+import dev.langchain4j.exception.AuthenticationException;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelListenerIT;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.openai.OpenAiResponsesChatModel;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1_NANO;
 import static java.util.Collections.singletonList;
 
-import dev.langchain4j.exception.AuthenticationException;
-import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
-import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.openai.OpenAiResponsesStreamingChatModel;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
-class OpenAiResponsesStreamingChatModelListenerIT extends AbstractStreamingChatModelListenerIT {
+class OpenAiResponsesChatModelListenerIT extends AbstractChatModelListenerIT {
 
     @Override
-    protected StreamingChatModel createModel(ChatModelListener listener) {
-        return OpenAiResponsesStreamingChatModel.builder()
+    protected ChatModel createModel(ChatModelListener listener) {
+        return OpenAiResponsesChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -33,8 +33,8 @@ class OpenAiResponsesStreamingChatModelListenerIT extends AbstractStreamingChatM
     }
 
     @Override
-    protected StreamingChatModel createFailingModel(ChatModelListener listener) {
-        return OpenAiResponsesStreamingChatModel.builder()
+    protected ChatModel createFailingModel(ChatModelListener listener) {
+        return OpenAiResponsesChatModel.builder()
                 .apiKey("banana")
                 .modelName(modelName())
                 .listeners(listener)

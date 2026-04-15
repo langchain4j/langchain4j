@@ -1,4 +1,4 @@
-package dev.langchain4j.model.openai.common;
+package dev.langchain4j.model.openai.common.responses;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

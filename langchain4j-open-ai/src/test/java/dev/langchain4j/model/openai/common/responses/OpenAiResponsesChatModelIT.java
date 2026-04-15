@@ -1,4 +1,4 @@
-package dev.langchain4j.model.openai.common;
+package dev.langchain4j.model.openai.common.responses;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
