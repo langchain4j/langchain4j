@@ -256,10 +256,16 @@ You can also use the specific `isAzure()` and `isGitHubModels()` methods to forc
 
 ## OpenAI Responses API
 
-OpenAI's [Responses API](https://platform.openai.com/docs/api-reference/responses) (`/v1/responses`) is an alternative to the Chat Completions API that provides enhanced control over streaming responses and cancellation.
+:::note
+This feature is experimental and may change in future releases.
+:::
+
+OpenAI's [Responses API](https://platform.openai.com/docs/api-reference/responses) (`/v1/responses`) is an alternative to the Chat Completions API.
+Currently, only a streaming model is available (`OpenAiOfficialResponsesStreamingChatModel`).
 
 ### Creating `OpenAiOfficialResponsesStreamingChatModel`
 
+#### Plain Java
 ```java
 StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
@@ -267,8 +273,52 @@ StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
         .build();
 ```
 
-### Key differences from Chat Completions API
-- **Streaming-only**: Currently only streaming mode is supported
-- **Cancellation**: Supports `StreamingHandle.cancel()` to stop responses
-- **Same features**: Full support for tools, listeners, and all standard parameters
+You can also use `OpenAiOfficialResponsesChatRequestParameters` to configure default request parameters:
+```java
+StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .defaultRequestParameters(OpenAiOfficialResponsesChatRequestParameters.builder()
+                .modelName("gpt-4o-mini")
+                .previousResponseId("resp_abc123")
+                .reasoningEffort("medium")
+                .store(true)
+                .build())
+        .build();
+```
 
+### `OpenAiOfficialResponsesChatRequestParameters`
+
+`OpenAiOfficialResponsesChatRequestParameters` extends `DefaultChatRequestParameters` with Responses API-specific fields:
+`previousResponseId`, `maxToolCalls`, `parallelToolCalls`, `topLogprobs`, `truncation`, `include`,
+`serviceTier`, `safetyIdentifier`, `promptCacheKey`, `promptCacheRetention`, `reasoningEffort`,
+`textVerbosity`, `streamIncludeObfuscation`, `store`, `strictTools`, `strictJsonSchema`.
+
+These parameters can be configured as defaults when creating the model (via `defaultRequestParameters` on the builder),
+or passed per-request via `ChatRequest` (per-request parameters override the defaults):
+```java
+ChatRequest chatRequest = ChatRequest.builder()
+        .messages(UserMessage.from("Hello"))
+        .parameters(OpenAiOfficialResponsesChatRequestParameters.builder()
+                .modelName("gpt-4o-mini")
+                .previousResponseId("resp_abc123")
+                .store(true)
+                .build())
+        .build();
+```
+
+### `OpenAiOfficialResponsesChatResponseMetadata`
+
+The response metadata for the Responses API provides additional fields beyond the standard `ChatResponseMetadata`:
+
+```java
+OpenAiOfficialResponsesChatResponseMetadata metadata =
+        (OpenAiOfficialResponsesChatResponseMetadata) chatResponse.metadata();
+
+metadata.id();               // Response ID (can be used as previousResponseId)
+metadata.modelName();        // Model name used for the request
+metadata.finishReason();     // Finish reason (STOP, LENGTH, TOOL_EXECUTION, OTHER)
+metadata.tokenUsage();       // Returns OpenAiOfficialTokenUsage with detailed token counts
+metadata.createdAt();        // Timestamp when the response was created
+metadata.completedAt();      // Timestamp when the response was completed
+metadata.serviceTier();      // Service tier used for the request
+```

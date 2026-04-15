@@ -862,7 +862,7 @@ public abstract class AbstractAiServiceWithToolsIT {
                 .tools(tool)
                 .build();
 
-        var text = adaptPrompt3("How much is 37 plus 87?");
+        var text = adaptPrompt3("How much is 37 plus 87? Answer in the following format: 37 + 87 = ...");
 
         // when
         var response = assistant.chat(text);

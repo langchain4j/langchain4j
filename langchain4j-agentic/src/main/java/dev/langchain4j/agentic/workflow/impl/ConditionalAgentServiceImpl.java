@@ -14,6 +14,7 @@ import dev.langchain4j.agentic.workflow.ConditionalAgent;
 import dev.langchain4j.agentic.workflow.ConditionalAgentService;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -50,18 +51,18 @@ public class ConditionalAgentServiceImpl<T> extends AbstractServiceBuilder<T, Co
 
     @Override
     public ConditionalAgentServiceImpl<T> subAgents(Predicate<AgenticScope> condition, Object... agents) {
-        return subAgents("<unknown>", condition, agentsToExecutors(agents));
+        return subAgents("<unknown>", condition, agentsToExecutors(List.of(agents)));
     }
 
     @Override
     public ConditionalAgentServiceImpl<T> subAgents(
             String conditionDescription, Predicate<AgenticScope> condition, Object... agents) {
-        return subAgents(conditionDescription, condition, agentsToExecutors(agents));
+        return subAgents(conditionDescription, condition, agentsToExecutors(List.of(agents)));
     }
 
     @Override
-    public ConditionalAgentServiceImpl<T> subAgents(List<AgentExecutor> agentExecutors) {
-        return subAgents(agenticScope -> true, agentExecutors);
+    public ConditionalAgentServiceImpl<T> subAgents(Collection<?> agents) {
+        return subAgents(agenticScope -> true, agentsToExecutors(agents));
     }
 
     @Override
