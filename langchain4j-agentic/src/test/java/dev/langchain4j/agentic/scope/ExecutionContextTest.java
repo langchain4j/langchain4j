@@ -1,9 +1,9 @@
 package dev.langchain4j.agentic.scope;
 
-import org.junit.jupiter.api.Test;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import org.junit.jupiter.api.Test;
 
 class ExecutionContextTest {
 
@@ -148,7 +148,8 @@ class ExecutionContextTest {
 
         // then
         assertThat(deserialized.readState("serializable-key")).isEqualTo("serializable-value");
-        assertThat(deserialized.executionContextAs("planner", TestPlanner.class)).isNull();
+        assertThat(deserialized.executionContextAs("planner", TestPlanner.class))
+                .isNull();
         assertThat(deserialized.executionContextAs(TestPlanner.class)).isNull();
     }
 
