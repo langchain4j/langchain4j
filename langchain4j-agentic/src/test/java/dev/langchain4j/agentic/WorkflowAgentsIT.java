@@ -165,8 +165,10 @@ public class WorkflowAgentsIT {
                 .outputKey("story")
                 .build());
 
+        List<?> subagents = List.of(creativeWriter, audienceEditor, styleEditor);
+
         UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
-                        .subAgents(creativeWriter, audienceEditor, styleEditor)
+                        .subAgents(subagents)
                         .outputKey("story")
                         .build();
 
