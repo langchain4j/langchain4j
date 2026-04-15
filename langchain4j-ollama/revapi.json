@@ -1,0 +1,15 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.nonPublicPartOfAPI",
+          "old": "class dev.langchain4j.model.ollama.OllamaClient",
+          "justification": "OllamaBaseChatModel is package-private, so the protected field cannot leak to external subclasses"
+        }
+      ]
+    }
+  }
+]

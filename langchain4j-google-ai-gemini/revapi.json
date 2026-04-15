@@ -1,0 +1,45 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.nonPublicPartOfAPI",
+          "old": "class dev.langchain4j.model.googleai.BatchRequestResponse.Operation.Status",
+          "justification": "Exposed only through package-private base classes"
+        },
+        {
+          "code": "java.class.nonPublicPartOfAPI",
+          "old": "class dev.langchain4j.model.googleai.GeminiGenerateContentRequest",
+          "justification": "Exposed only through package-private base classes"
+        },
+        {
+          "code": "java.class.nonPublicPartOfAPI",
+          "old": "class dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate",
+          "justification": "Exposed only through package-private base classes"
+        },
+        {
+          "code": "java.class.nonPublicPartOfAPI",
+          "old": "class dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata",
+          "justification": "Exposed only through package-private base classes"
+        },
+        {
+          "code": "java.class.nonPublicPartOfAPI",
+          "old": "class dev.langchain4j.model.googleai.GeminiGenerateContentResponse",
+          "justification": "Exposed only through package-private base classes"
+        },
+        {
+          "code": "java.class.nonPublicPartOfAPI",
+          "new": "class dev.langchain4j.model.googleai.GeminiGenerationConfig.GeminiImageConfig",
+          "justification": "Exposed only through package-private base classes"
+        },
+        {
+          "code": "java.class.nonPublicPartOfAPI",
+          "old": "class dev.langchain4j.model.googleai.GeminiService",
+          "justification": "Exposed only through package-private base classes"
+        }
+      ]
+    }
+  }
+]

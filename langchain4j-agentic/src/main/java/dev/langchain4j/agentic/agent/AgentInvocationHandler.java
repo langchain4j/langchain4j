@@ -24,6 +24,8 @@ import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListe
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.memory.ChatMemoryService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -36,8 +38,11 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
+import static dev.langchain4j.agentic.scope.DefaultAgenticScope.ephemeralAgenticScope;
 
 public class AgentInvocationHandler implements InvocationHandler, InternalAgent {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AgentInvocationHandler.class);
 
     private final AiServiceContext context;
     private final AgentBuilder<?, ?> builder;
@@ -68,8 +73,9 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
             return switch (method.getName()) {
                 case "getEventClass" -> AiServiceResponseReceivedEvent.class;
                 case "onEvent" -> {
-                    Object agenticScopeId = ((AgenticScope) LangChain4jManaged.current().get(AgenticScope.class)).memoryId();
-                    lastResponseEvents.put(agenticScopeId, (AiServiceResponseReceivedEvent) args[0]);
+                    AiServiceResponseReceivedEvent event = (AiServiceResponseReceivedEvent) args[0];
+                    AgenticScope agenticScope = (AgenticScope) event.invocationContext().managedParameters().get(AgenticScope.class);
+                    lastResponseEvents.put(agenticScope.memoryId(), event);
                     yield null;
                 }
                 default ->
@@ -150,7 +156,18 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
             };
         }
 
-        return method.invoke(agent, args);
+        AgenticScope agenticScope = LangChain4jManaged.current(AgenticScope.class);
+        if (agenticScope == null) {
+            LOGGER.warn("Improper invocation of a standalone agent outside of an agentic system, consider using AiServices instead.");
+            LangChain4jManaged.setCurrent(Map.of(AgenticScope.class, ephemeralAgenticScope()));
+        }
+        try {
+            return method.invoke(agent, args);
+        } finally {
+            if (agenticScope == null) {
+                LangChain4jManaged.removeCurrent();
+            }
+        }
     }
 
     private static Optional<UserMessage> lastUserMessage(Collection<ChatMessage> messages) {
@@ -180,11 +197,9 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         if (parentListener != null && parentListener.inheritedBySubagents() && isNewListener(agentListener, parentListener)) {
             agentListener = composeWithInherited(agentListener, parentListener);
             context.toolService.beforeToolExecution(beforeToolExecution ->
-                    agentListener.beforeAgentToolExecution(new BeforeAgentToolExecution(
-                            (AgenticScope) LangChain4jManaged.current().get(AgenticScope.class), this, beforeToolExecution)));
+                    agentListener.beforeAgentToolExecution(new BeforeAgentToolExecution(this, beforeToolExecution)));
             context.toolService.afterToolExecution(toolExecution ->
-                    agentListener.afterAgentToolExecution(new AfterAgentToolExecution(
-                            (AgenticScope) LangChain4jManaged.current().get(AgenticScope.class), this, toolExecution)));
+                    agentListener.afterAgentToolExecution(new AfterAgentToolExecution(this, toolExecution)));
         }
     }
 
@@ -246,6 +261,11 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
     @Override
     public boolean async() {
         return builder.async;
+    }
+
+    @Override
+    public boolean optional() {
+        return builder.optional;
     }
 
     @Override

@@ -100,7 +100,7 @@ class MetadataTest {
         assertThat(toString)
                 .isEqualToIgnoringWhitespace(
                         """
-                        Metadata { chatMessage = UserMessage { name = null, contents = [TextContent { text = "user message" }], attributes = {} }, systemMessage = SystemMessage { text = "Be polite" }, chatMemory = [UserMessage { name = null, contents = [TextContent { text = "Hello" }], attributes = {} }, AiMessage { text = "Hi, how can I help you today?", thinking = null, toolExecutionRequests = [], attributes = {} }], invocationContext = DefaultInvocationContext{invocationId=null, interfaceName='null', methodName='null', methodArguments=[], chatMemoryId=42, invocationParameters=null, managedParameters=null, timestamp=null} }
+                        Metadata { chatMessage = UserMessage { name = null, contents = [TextContent { text = "user message" }], attributes = {} }, systemMessage = SystemMessage { text = "Be polite" }, chatMemory = [UserMessage { name = null, contents = [TextContent { text = "Hello" }], attributes = {} }, AiMessage { text = "Hi, how can I help you today?", thinking = null, toolExecutionRequests = [], attributes = {} }], invocationContext = DefaultInvocationContext{invocationId=null, interfaceName='null', methodName='null', methodArguments=[], userMessage=null, chatMemoryId=42, invocationParameters=null, managedParameters=null, timestamp=null} }
                         """);
     }
 

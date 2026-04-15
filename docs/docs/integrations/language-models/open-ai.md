@@ -31,7 +31,7 @@ LangChain4j provides 3 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.12.2</version>
+    <version>1.13.0</version>
 </dependency>
 ```
 
@@ -40,7 +40,7 @@ LangChain4j provides 3 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.12.2-beta22</version>
+    <version>1.13.0-beta23</version>
 </dependency>
 ```
 
@@ -394,8 +394,11 @@ More information can be found [here](/tutorials/customizable-http-client).
 
 ## OpenAI Responses API
 
+:::note
+This feature is experimental and may change in future releases.
+:::
+
 OpenAI's [Responses API](https://platform.openai.com/docs/api-reference/responses) (`/v1/responses`) is an alternative to the Chat Completions API.
-It supports both non-streaming and streaming chat models in LangChain4j.
 
 ### Creating `OpenAiResponsesChatModel`
 
@@ -403,7 +406,6 @@ It supports both non-streaming and streaming chat models in LangChain4j.
 ChatModel model = OpenAiResponsesChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName("gpt-5.4")
-        .reasoningEffort("low")
         .build();
 ```
 
@@ -416,14 +418,46 @@ StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
         .build();
 ```
 
-### Key differences from Chat Completions API
-- **Non-streaming and streaming**: Use `OpenAiResponsesChatModel` or `OpenAiResponsesStreamingChatModel`
-- **Cancellation (streaming)**: Supports `StreamingHandle.cancel()` to stop responses
-- **Same features**: Full support for tools, listeners, and all standard parameters
+### `OpenAiResponsesChatRequestParameters`
 
-:::note
-For models such as `gpt-5.4`, OpenAI requires the Responses API (`/v1/responses`) for combinations like tools + `reasoningEffort`.
-:::
+`OpenAiResponsesChatRequestParameters` extends `DefaultChatRequestParameters` with Responses API-specific fields:
+`previousResponseId`, `maxToolCalls`, `parallelToolCalls`, `topLogprobs`, `truncation`, `include`,
+`serviceTier`, `safetyIdentifier`, `promptCacheKey`, `promptCacheRetention`, `reasoningEffort`,
+`textVerbosity`, `streamIncludeObfuscation`, `store`, `strictTools`, `strictJsonSchema`.
+
+These parameters can be configured as defaults when creating the model (via `defaultRequestParameters` on the builder),
+or passed per-request via `ChatRequest` (per-request parameters override the defaults):
+```java
+ChatRequest chatRequest = ChatRequest.builder()
+        .messages(UserMessage.from("Hello"))
+        .parameters(OpenAiResponsesChatRequestParameters.builder()
+                .modelName("gpt-4o-mini")
+                .previousResponseId("resp_abc123")
+                .store(true)
+                .build())
+        .build();
+```
+
+### `OpenAiResponsesChatResponseMetadata`
+
+The response metadata for the Responses API provides additional fields beyond the standard `ChatResponseMetadata`:
+
+```java
+OpenAiResponsesChatResponseMetadata metadata =
+        (OpenAiResponsesChatResponseMetadata) chatResponse.metadata();
+
+metadata.id();               // Response ID (can be used as previousResponseId)
+metadata.modelName();        // Model name used for the request
+metadata.finishReason();     // Finish reason (STOP, LENGTH, TOOL_EXECUTION, OTHER)
+metadata.tokenUsage();       // Returns OpenAiTokenUsage with detailed token counts
+metadata.createdAt();        // Timestamp when the response was created
+metadata.completedAt();      // Timestamp when the response was completed
+metadata.serviceTier();      // Service tier used for the request
+
+// Raw HTTP access (same as Chat Completions API)
+metadata.rawHttpResponse();
+metadata.rawServerSentEvents();
+```
 
 ## Examples
 - [OpenAI Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/open-ai-examples/src/main/java)

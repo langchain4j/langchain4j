@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.googleai.Json.fromJson;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -233,20 +234,20 @@ public final class GeminiFiles {
     /**
      * Request body for initiating a resumable upload.
      */
-    private record GeminiFileMetadata(FileInfo file) {
-        record FileInfo(String display_name) {}
+    private record GeminiFileMetadata(@JsonProperty("file") FileInfo file) {
+        record FileInfo(@JsonProperty("display_name") String display_name) {}
     }
 
     /**
      * Response from the file upload containing file information.
      */
-    record GeminiFileResponse(GeminiFile file) {}
+    record GeminiFileResponse(@JsonProperty("file") GeminiFile file) {}
 
     /**
      * Response from listing files.
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record GeminiFilesListResponse(List<GeminiFile> files) {}
+    record GeminiFilesListResponse(@JsonProperty("files") List<GeminiFile> files) {}
 
     static class GeminiUploadFailureException extends RuntimeException {
         GeminiUploadFailureException(String message, Throwable cause) {
@@ -324,16 +325,16 @@ public final class GeminiFiles {
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record GeminiFile(
-            String name,
-            @Nullable String displayName,
-            String mimeType,
-            Long sizeBytes,
-            String createTime,
-            String updateTime,
-            String expirationTime,
-            String sha256Hash,
-            String uri,
-            String state) {
+            @JsonProperty("name") String name,
+            @JsonProperty("displayName") @Nullable String displayName,
+            @JsonProperty("mimeType") String mimeType,
+            @JsonProperty("sizeBytes") Long sizeBytes,
+            @JsonProperty("createTime") String createTime,
+            @JsonProperty("updateTime") String updateTime,
+            @JsonProperty("expirationTime") String expirationTime,
+            @JsonProperty("sha256Hash") String sha256Hash,
+            @JsonProperty("uri") String uri,
+            @JsonProperty("state") String state) {
         /**
          * Returns whether the file is in ACTIVE state and ready to use.
          */

@@ -302,12 +302,24 @@ McpClient mcpClient = new DefaultMcpClient.Builder()
 The MCP client supports listeners that can listen to events happening
 during the lifetime of the client. The interface
 `dev.langchain4j.mcp.client.McpClientListener` serves as the base
-for listener implementations. The listener will
-be invoked before and after every tool call, prompt rendering
-and resource access. The respective `McpCallContext` is injected when calling
-the listeners. This object contains the actual MCP message being sent to the
-server and an instance of `InvocationContext` when applicable (only when this
+for listener implementations. Multiple listeners can be registered
+on a single client; they will all be invoked before and after every
+tool call, prompt rendering and resource access. The respective
+`McpCallContext` is injected when calling the listeners. This object
+contains the actual MCP message being sent to the server and an
+instance of `InvocationContext` when applicable (only when this
 call happens as part of an AI service invocation).
+
+Listeners can be added one by one or in bulk:
+
+```java
+McpClient mcpClient = DefaultMcpClient.builder()
+    .transport(transport)
+    .addListener(new MyFirstListener())
+    .addListener(new MySecondListener())
+    .addListeners(List.of(new MyThirdListener(), new MyFourthListener()))
+    .build();
+```
 
 ## Resources
 
@@ -370,6 +382,32 @@ it receives this list of resources and can then decide to invoke `read_resource`
 and `get_resource` tools should suffice under most circumstances to explain to an LLM how to use them. However, if you need
 to customize the descriptions of these tools and their arguments, you override them using the methods of
 `DefaultMcpResourcesAsToolsPresenter.Builder`.
+
+### Resource subscriptions
+
+The MCP protocol supports [resource subscriptions](https://modelcontextprotocol.io/specification/2025-11-25/server/resources#subscriptions),
+allowing the client to be notified when a resource changes on the server.
+
+To subscribe to updates for a specific resource, use `client.subscribeToResource(uri)`.
+When the server updates the resource, it sends a `notifications/resources/updated` notification.
+To handle these notifications, register a callback via the `onResourceUpdated` builder method:
+
+```java
+McpClient mcpClient = DefaultMcpClient.builder()
+    .transport(transport)
+    .onResourceUpdated((client, uri) -> {
+        // re-read the updated resource
+        McpReadResourceResult result = client.readResource(uri);
+        // process the updated contents...
+    })
+    .build();
+
+// subscribe to a resource
+mcpClient.subscribeToResource("file:///status");
+
+// later, unsubscribe
+mcpClient.unsubscribeFromResource("file:///status");
+```
 
 ## Prompts
 

@@ -162,38 +162,39 @@ public class OpenAiStreamingResponseBuilder {
             }
         }
 
-        if (delta.toolCalls() != null && !delta.toolCalls().isEmpty()) {
-            ToolCall toolCall = delta.toolCalls().get(0);
-            int toolCallIndex = toolCall.index() != null ? toolCall.index() : fallbackToolCallIndex.get();
+        if (delta.toolCalls() != null) {
+            for (ToolCall toolCall : delta.toolCalls()) {
+                int toolCallIndex = toolCall.index() != null ? toolCall.index() : fallbackToolCallIndex.get();
 
-            ToolExecutionRequestBuilder builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
-                    toolCallIndex, idx -> new ToolExecutionRequestBuilder());
-
-            // When index is null and a different tool call id appears, increment the fallback index
-            if (toolCall.index() == null
-                    && toolCall.id() != null
-                    && !builder.idBuilder.isEmpty()
-                    && !builder.idBuilder.toString().equals(toolCall.id())) {
-                toolCallIndex = fallbackToolCallIndex.incrementAndGet();
-                builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
+                ToolExecutionRequestBuilder builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
                         toolCallIndex, idx -> new ToolExecutionRequestBuilder());
-            }
 
-            if (toolCall.id() != null) {
-                if (accumulateToolCallId) {
-                    builder.idBuilder.append(toolCall.id());
-                } else {
-                    builder.idBuilder.setLength(0);
-                    builder.idBuilder.append(toolCall.id());
+                // When index is null and a different tool call id appears, increment the fallback index
+                if (toolCall.index() == null
+                        && toolCall.id() != null
+                        && !builder.idBuilder.isEmpty()
+                        && !builder.idBuilder.toString().equals(toolCall.id())) {
+                    toolCallIndex = fallbackToolCallIndex.incrementAndGet();
+                    builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
+                            toolCallIndex, idx -> new ToolExecutionRequestBuilder());
                 }
-            }
 
-            FunctionCall functionCall = toolCall.function();
-            if (functionCall.name() != null) {
-                builder.nameBuilder.append(functionCall.name());
-            }
-            if (functionCall.arguments() != null) {
-                builder.argumentsBuilder.append(functionCall.arguments());
+                if (toolCall.id() != null) {
+                    if (accumulateToolCallId) {
+                        builder.idBuilder.append(toolCall.id());
+                    } else {
+                        builder.idBuilder.setLength(0);
+                        builder.idBuilder.append(toolCall.id());
+                    }
+                }
+
+                FunctionCall functionCall = toolCall.function();
+                if (functionCall.name() != null) {
+                    builder.nameBuilder.append(functionCall.name());
+                }
+                if (functionCall.arguments() != null) {
+                    builder.argumentsBuilder.append(functionCall.arguments());
+                }
             }
         }
     }

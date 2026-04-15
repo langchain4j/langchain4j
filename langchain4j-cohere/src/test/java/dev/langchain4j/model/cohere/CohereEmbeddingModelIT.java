@@ -21,13 +21,17 @@ class CohereEmbeddingModelIT {
     void should_embed_single_text() {
 
         // given
-        EmbeddingModel model = CohereEmbeddingModel.withApiKey(System.getenv("COHERE_API_KEY"));
+        EmbeddingModel model = CohereEmbeddingModel.builder()
+                .apiKey(System.getenv("COHERE_API_KEY"))
+                .modelName("embed-english-light-v3.0")
+                .inputType("search_document")
+                .build();
 
         // when
         Response<Embedding> response = model.embed("Hello World");
 
         // then
-        assertThat(response.content().dimension()).isEqualTo(4096);
+        assertThat(response.content().dimension()).isEqualTo(384);
 
         assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(2);
         assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(0);

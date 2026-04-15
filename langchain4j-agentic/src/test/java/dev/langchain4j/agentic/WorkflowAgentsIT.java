@@ -7,8 +7,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agentic.Agents.AudienceEditor;
@@ -142,6 +145,62 @@ public class WorkflowAgentsIT {
         verify(creativeWriter).generateStory("dragons and wizards");
         verify(audienceEditor).editStory(any(), eq("young adults"));
         verify(styleEditor).editStory(any(), eq("fantasy"));
+    }
+
+    @Test
+    void optional_agent_test() {
+        CreativeWriter creativeWriter = spy(AgenticServices.agentBuilder(CreativeWriter.class)
+                        .chatModel(baseModel())
+                        .outputKey("story")
+                        .build());
+
+        AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
+                .chatModel(baseModel())
+                .optional(true)
+                .outputKey("story")
+                .build());
+
+        StyleEditor styleEditor = spy(AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build());
+
+        List<?> subagents = List.of(creativeWriter, audienceEditor, styleEditor);
+
+        UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+                        .subAgents(subagents)
+                        .outputKey("story")
+                        .build();
+
+        Map<String, Object> completeInput = Map.of(
+                "topic", "dragons and wizards",
+                "style", "fantasy",
+                "audience", "young adults");
+
+        novelCreator.invoke(completeInput);
+
+        verify(creativeWriter).generateStory("dragons and wizards");
+        verify(audienceEditor).editStory(any(), eq("young adults"));
+        verify(styleEditor).editStory(any(), eq("fantasy"));
+
+        reset(creativeWriter, audienceEditor, styleEditor);
+
+        Map<String, Object> missingAudienceInput = Map.of(
+                "topic", "dragons and wizards",
+                "style", "fantasy");
+
+        novelCreator.invoke(missingAudienceInput);
+
+        verify(creativeWriter).generateStory("dragons and wizards");
+        verify(audienceEditor, never()).editStory(any(), any()); // audienceEditor should be skipped due to missing argument
+        verify(styleEditor).editStory(any(), eq("fantasy"));
+
+        Map<String, Object> missingStyleInput = Map.of(
+                "topic", "dragons and wizards",
+                "audience", "young adults");
+
+        assertThat(assertThrows(MissingArgumentException.class, () -> novelCreator.invoke(missingStyleInput)))
+                .hasMessageContaining("style");
     }
 
     @Test

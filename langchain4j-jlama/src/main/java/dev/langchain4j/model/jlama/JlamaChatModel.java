@@ -19,6 +19,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.RetryUtils;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -145,6 +146,11 @@ public class JlamaChatModel implements ChatModel {
                 }
                 case TOOL_EXECUTION_RESULT -> {
                     ToolExecutionResultMessage toolMessage = (ToolExecutionResultMessage) message;
+                    if (!toolMessage.hasSingleText()) {
+                        throw new UnsupportedFeatureException(
+                                "Jlama does not support non-text content in tool results. "
+                                        + "Only text content is supported.");
+                    }
                     ToolResult result = ToolResult.from(toolMessage.toolName(), toolMessage.id(), toolMessage.text());
                     promptBuilder.addToolResult(result);
                 }
