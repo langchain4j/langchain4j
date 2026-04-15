@@ -548,9 +548,47 @@
                         <failOnMissingConfigurationFiles>false</failOnMissingConfigurationFiles>
                         <checkDependencies>false</checkDependencies>
                         <analysisConfiguration>
+                            <revapi.filter>
+                                <elements>
+                                    <exclude>
+                                        <item>
+                                            <matcher>java</matcher>
+                                            <match>@dev.langchain4j.Internal ^*;</match>
+                                        </item>
+                                        <item>
+                                            <matcher>java-package</matcher>
+                                            <match>/.*\.internal(\..*)?/</match>
+                                        </item>
+                                    </exclude>
+                                </elements>
+                            </revapi.filter>
                             <revapi.differences>
                                 <ignore>true</ignore>
                                 <differences>
+                                    <item>
+                                        <regex>true</regex>
+                                        <code>.*</code>
+                                        <old>.*\.internal\..*</old>
+                                        <justification>Internal API is not subject to backward compatibility checks</justification>
+                                    </item>
+                                    <item>
+                                        <regex>true</regex>
+                                        <code>.*</code>
+                                        <new>.*\.internal\..*</new>
+                                        <justification>Internal API is not subject to backward compatibility checks</justification>
+                                    </item>
+                                    <item>
+                                        <regex>true</regex>
+                                        <code>.*</code>
+                                        <old>.*Internal.*</old>
+                                        <justification>Internal API is not subject to backward compatibility checks</justification>
+                                    </item>
+                                    <item>
+                                        <regex>true</regex>
+                                        <code>.*</code>
+                                        <new>.*Internal.*</new>
+                                        <justification>Internal API is not subject to backward compatibility checks</justification>
+                                    </item>
                                     <item>
                                         <code>java.method.varargOverloadsOnlyDifferInVarargParameter</code>
                                         <justification>Varargs overloads differing only in element type are intentional for API convenience</justification>
