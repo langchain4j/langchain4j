@@ -350,7 +350,7 @@ class OpenAiResponsesClient {
         return requestBuilder.body(requestBody).build();
     }
 
-    private String extractText(JsonNode output) {
+    private static String extractText(JsonNode output) {
         if (!output.isArray()) {
             return null;
         }
@@ -371,7 +371,7 @@ class OpenAiResponsesClient {
         return textBuilder.isEmpty() ? null : textBuilder.toString();
     }
 
-    private List<ToolExecutionRequest> extractToolExecutionRequests(JsonNode output) {
+    private static List<ToolExecutionRequest> extractToolExecutionRequests(JsonNode output) {
         if (!output.isArray()) {
             return List.of();
         }
@@ -397,7 +397,7 @@ class OpenAiResponsesClient {
         return toolExecutionRequests;
     }
 
-    private OpenAiTokenUsage parseTokenUsage(JsonNode usageNode) {
+    private static OpenAiTokenUsage parseTokenUsage(JsonNode usageNode) {
         if (usageNode == null || usageNode.isMissingNode() || usageNode.isNull()) {
             return null;
         }
@@ -445,23 +445,12 @@ class OpenAiResponsesClient {
                 ? AiMessage.from(toolExecutionRequests)
                 : new AiMessage(text == null ? "" : text);
 
-        OpenAiTokenUsage tokenUsage = parseTokenUsage(responseNode.path(FIELD_USAGE));
 
-        OpenAiChatResponseMetadata.Builder metadataBuilder = OpenAiChatResponseMetadata.builder()
+        OpenAiResponsesChatResponseMetadata.Builder metadataBuilder = OpenAiResponsesChatResponseMetadata.builder()
                 .id(responseNode.path(FIELD_ID).asText(null))
-                .modelName(responseNode.path(FIELD_MODEL).asText(null))
-                .rawHttpResponse(rawHttpResponse);
+                .modelName(responseNode.path(FIELD_MODEL).asText(null));
 
-        if (responseNode.hasNonNull(FIELD_CREATED)) {
-            metadataBuilder.created(responseNode.path(FIELD_CREATED).asLong());
-        }
-        if (responseNode.hasNonNull(FIELD_SERVICE_TIER)) {
-            metadataBuilder.serviceTier(responseNode.path(FIELD_SERVICE_TIER).asText());
-        }
-        if (responseNode.hasNonNull(FIELD_SYSTEM_FINGERPRINT)) {
-            metadataBuilder.systemFingerprint(
-                    responseNode.path(FIELD_SYSTEM_FINGERPRINT).asText());
-        }
+        OpenAiTokenUsage tokenUsage = parseTokenUsage(responseNode.path(FIELD_USAGE));
         if (tokenUsage != null) {
             metadataBuilder.tokenUsage(tokenUsage);
         }
@@ -471,6 +460,20 @@ class OpenAiResponsesClient {
         if (finishReason != null) {
             metadataBuilder.finishReason(finishReason);
         }
+
+        if (responseNode.hasNonNull(FIELD_CREATED_AT)) {
+            metadataBuilder.createdAt(responseNode.path(FIELD_CREATED_AT).asLong());
+        }
+
+        if (responseNode.hasNonNull(FIELD_COMPLETED_AT)) {
+            metadataBuilder.completedAt(responseNode.path(FIELD_COMPLETED_AT).asLong());
+        }
+
+        if (responseNode.hasNonNull(FIELD_SERVICE_TIER)) {
+            metadataBuilder.serviceTier(responseNode.path(FIELD_SERVICE_TIER).asText());
+        }
+
+        metadataBuilder.rawHttpResponse(rawHttpResponse);
 
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
@@ -856,55 +859,30 @@ class OpenAiResponsesClient {
         }
 
         private void handleResponseCompleted(JsonNode node) {
-            var sb = new StringBuilder();
             var responseNode = node.path(FIELD_RESPONSE);
-            var output = responseNode.path(FIELD_OUTPUT);
-            if (output.isArray()) {
-                for (var item : output) {
-                    if (TYPE_MESSAGE.equals(item.path(FIELD_TYPE).asText())) {
-                        var content = item.path(FIELD_CONTENT);
-                        if (content.isArray()) {
-                            for (var c : content) {
-                                if (TYPE_OUTPUT_TEXT.equals(c.path(FIELD_TYPE).asText())) {
-                                    sb.append(c.path(FIELD_TEXT).asText());
-                                }
-                            }
-                        }
-                    }
-                }
-            }
 
-            OpenAiTokenUsage tokenUsage = null;
-            var usageNode = responseNode.path(FIELD_USAGE);
-            if (!usageNode.isMissingNode()) {
-                var usageBuilder = OpenAiTokenUsage.builder()
-                        .inputTokenCount(usageNode.path(FIELD_INPUT_TOKENS).asInt())
-                        .outputTokenCount(usageNode.path(FIELD_OUTPUT_TOKENS).asInt())
-                        .totalTokenCount(usageNode.path(FIELD_TOTAL_TOKENS).asInt());
+            String text = extractText(responseNode.path(FIELD_OUTPUT));
 
-                var inputDetailsNode = usageNode.path(FIELD_INPUT_TOKENS_DETAILS);
-                if (!inputDetailsNode.isMissingNode()) {
-                    var cachedTokens =
-                            inputDetailsNode.path(FIELD_CACHED_TOKENS).asInt();
-                    if (cachedTokens > 0) {
-                        usageBuilder.inputTokensDetails(OpenAiTokenUsage.InputTokensDetails.builder()
-                                .cachedTokens(cachedTokens)
-                                .build());
-                    }
-                }
-
-                tokenUsage = usageBuilder.build();
-            }
-
-            var text = sb.isEmpty() ? null : sb.toString();
             var aiMessage = !completedToolCalls.isEmpty() && text != null
                     ? new AiMessage(text, completedToolCalls)
-                    : !completedToolCalls.isEmpty() ? AiMessage.from(completedToolCalls) : new AiMessage(sb.toString());
+                    : !completedToolCalls.isEmpty()
+                    ? AiMessage.from(completedToolCalls)
+                    : new AiMessage(text == null ? "" : text);
 
-            var responseBuilder = ChatResponse.builder().aiMessage(aiMessage);
-            var metadataBuilder = OpenAiResponsesChatResponseMetadata.builder()
+            OpenAiResponsesChatResponseMetadata.Builder metadataBuilder = OpenAiResponsesChatResponseMetadata.builder()
                     .id(responseNode.path(FIELD_ID).asText(null))
                     .modelName(responseNode.path(FIELD_MODEL).asText(null));
+
+            OpenAiTokenUsage tokenUsage = parseTokenUsage(responseNode.path(FIELD_USAGE));
+            if (tokenUsage != null) {
+                metadataBuilder.tokenUsage(tokenUsage);
+            }
+
+            FinishReason finishReason = finishReasonFromStatus(
+                    responseNode.path(FIELD_STATUS).asText(null), !completedToolCalls.isEmpty());
+            if (finishReason != null) {
+                metadataBuilder.finishReason(finishReason);
+            }
 
             if (responseNode.hasNonNull(FIELD_CREATED_AT)) {
                 metadataBuilder.createdAt(responseNode.path(FIELD_CREATED_AT).asLong());
@@ -913,17 +891,7 @@ class OpenAiResponsesClient {
                 metadataBuilder.completedAt(responseNode.path(FIELD_COMPLETED_AT).asLong());
             }
             if (responseNode.hasNonNull(FIELD_SERVICE_TIER)) {
-                metadataBuilder.serviceTier(
-                        responseNode.path(FIELD_SERVICE_TIER).asText());
-            }
-            if (tokenUsage != null) {
-                metadataBuilder.tokenUsage(tokenUsage);
-            }
-
-            var finishReason =
-                    determineFinishReason(responseNode.path(FIELD_STATUS).asText(null));
-            if (finishReason != null) {
-                metadataBuilder.finishReason(finishReason);
+                metadataBuilder.serviceTier(responseNode.path(FIELD_SERVICE_TIER).asText());
             }
             if (rawHttpResponse != null) {
                 metadataBuilder.rawHttpResponse(rawHttpResponse);
@@ -932,7 +900,10 @@ class OpenAiResponsesClient {
                 metadataBuilder.rawServerSentEvents(new ArrayList<>(rawServerSentEvents));
             }
 
-            responseBuilder.metadata(metadataBuilder.build());
+            var responseBuilder = ChatResponse.builder()
+                    .aiMessage(aiMessage)
+                    .metadata(metadataBuilder.build());
+
             if (!isCancelled()) {
                 try {
                     handler.onCompleteResponse(responseBuilder.build());
@@ -960,18 +931,6 @@ class OpenAiResponsesClient {
                 message = errorNode.toString();
             }
             return "Response failed: " + message;
-        }
-
-        private FinishReason determineFinishReason(String status) {
-            if (status == null || status.isBlank()) {
-                return null;
-            }
-            return switch (status) {
-                case "completed" -> !completedToolCalls.isEmpty() ? FinishReason.TOOL_EXECUTION : FinishReason.STOP;
-                case "incomplete" -> FinishReason.LENGTH;
-                case "failed" -> FinishReason.OTHER;
-                default -> FinishReason.OTHER;
-            };
         }
 
         private void completeToolCall(String itemId, ToolExecutionRequest.Builder builder) {
