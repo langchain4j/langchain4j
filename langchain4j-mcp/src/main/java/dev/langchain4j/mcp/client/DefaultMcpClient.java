@@ -335,7 +335,7 @@ public class DefaultMcpClient implements McpClient {
     public List<McpResource> listResources(InvocationContext invocationContext) {
         assertNotClosed();
         return retrieveWithPossibleCaching(
-                cacheToolList,
+                cacheResourceList,
                 this::obtainResourceList,
                 resourceListUpdateInProgress,
                 () -> resourceRefs.get(),
