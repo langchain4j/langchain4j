@@ -177,27 +177,69 @@ public interface AgenticScope extends LangChain4jManaged {
     }
 
     /**
-     * Stores non-serializable execution context in this scope, keyed by type.
+     * Stores non-serializable execution context in this scope, keyed by name.
      * <p>
      * This allows custom {@link dev.langchain4j.agentic.planner.Planner} implementations to store
      * runtime objects that are needed during execution but should not be persisted.
      * The execution context is stored in a {@code transient} map and will not be serialized.
+     * <p>
+     * This is distinct from {@link #writeState(String, Object)}, which is for serializable
+     * agent interaction data that forms part of the conversation state.
      *
-     * @param type    the class type to use as the key for this context (must not be {@code null})
+     * @param key     the key to use for this context (must not be {@code null})
      * @param context the execution context instance to store (must not be {@code null})
-     * @param <T>     the type of the execution context
+     * @throws IllegalArgumentException if {@code key} or {@code context} is {@code null}
+     */
+    void writeExecutionContext(String key, Object context);
+
+    /**
+     * Stores non-serializable execution context in this scope, using the class name as the key.
+     * <p>
+     * This is a convenience method that delegates to {@link #writeExecutionContext(String, Object)}
+     * using the fully qualified class name as the key.
+     *
+     * @param type    the class type to use as the key for this context
+     * @param context the execution context instance to store
      * @throws IllegalArgumentException if {@code context} is {@code null}
      */
-    <T> void setExecutionContext(Class<T> type, T context);
+    default void writeExecutionContext(Class<?> type, Object context) {
+        writeExecutionContext(type.getName(), context);
+    }
+
+    /**
+     * Retrieves non-serializable execution context from this scope by key.
+     * <p>
+     * Returns execution context previously stored via {@link #writeExecutionContext(String, Object)}.
+     *
+     * @param key the key used to store the execution context
+     * @return the execution context instance previously stored for this key, or {@code null} if none exists
+     */
+    Object executionContext(String key);
+
+    /**
+     * Retrieves non-serializable execution context from this scope by key with type-safe casting.
+     * <p>
+     * Returns execution context previously stored via {@link #writeExecutionContext(String, Object)}.
+     *
+     * @param key  the key used to store the execution context
+     * @param type the expected type of the execution context (for type-safe casting)
+     * @param <T>  the type of the execution context
+     * @return the execution context instance previously stored for this key, or {@code null} if none exists
+     * @throws ClassCastException if the stored context cannot be cast to the expected type
+     */
+    <T> T executionContextAs(String key, Class<T> type);
 
     /**
      * Retrieves non-serializable execution context from this scope by type.
      * <p>
-     * Returns execution context previously stored via {@link #setExecutionContext(Class, Object)}.
+     * This is a convenience method that delegates to {@link #executionContextAs(String, Class)}
+     * using the fully qualified class name as the key.
      *
      * @param type the class type used as the key for the execution context
      * @param <T>  the type of the execution context
      * @return the execution context instance previously stored for this type, or {@code null} if none exists
      */
-    <T> T getExecutionContext(Class<T> type);
+    default <T> T executionContextAs(Class<T> type) {
+        return executionContextAs(type.getName(), type);
+    }
 }

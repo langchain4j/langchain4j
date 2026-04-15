@@ -8,16 +8,30 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ExecutionContextTest {
 
     @Test
-    void should_store_and_retrieve_execution_context() {
+    void should_store_and_retrieve_execution_context_by_string_key() {
         // given
         DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
         String context = "test-context";
 
         // when
-        scope.setExecutionContext(String.class, context);
+        scope.writeExecutionContext("myKey", context);
 
         // then
-        String retrieved = scope.getExecutionContext(String.class);
+        String retrieved = scope.executionContextAs("myKey", String.class);
+        assertThat(retrieved).isEqualTo(context);
+    }
+
+    @Test
+    void should_store_and_retrieve_execution_context_by_class() {
+        // given
+        DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
+        String context = "test-context";
+
+        // when
+        scope.writeExecutionContext(String.class, context);
+
+        // then
+        String retrieved = scope.executionContextAs(String.class);
         assertThat(retrieved).isEqualTo(context);
     }
 
@@ -30,14 +44,30 @@ class ExecutionContextTest {
         TestPlanner plannerContext = new TestPlanner("planner-1");
 
         // when
-        scope.setExecutionContext(String.class, stringContext);
-        scope.setExecutionContext(Integer.class, integerContext);
-        scope.setExecutionContext(TestPlanner.class, plannerContext);
+        scope.writeExecutionContext(String.class, stringContext);
+        scope.writeExecutionContext(Integer.class, integerContext);
+        scope.writeExecutionContext(TestPlanner.class, plannerContext);
 
         // then
-        assertThat(scope.getExecutionContext(String.class)).isEqualTo(stringContext);
-        assertThat(scope.getExecutionContext(Integer.class)).isEqualTo(integerContext);
-        assertThat(scope.getExecutionContext(TestPlanner.class)).isEqualTo(plannerContext);
+        assertThat(scope.executionContextAs(String.class)).isEqualTo(stringContext);
+        assertThat(scope.executionContextAs(Integer.class)).isEqualTo(integerContext);
+        assertThat(scope.executionContextAs(TestPlanner.class)).isEqualTo(plannerContext);
+    }
+
+    @Test
+    void should_allow_multiple_contexts_of_same_type_with_different_keys() {
+        // given
+        DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
+        String context1 = "first-string";
+        String context2 = "second-string";
+
+        // when
+        scope.writeExecutionContext("key1", context1);
+        scope.writeExecutionContext("key2", context2);
+
+        // then
+        assertThat(scope.executionContextAs("key1", String.class)).isEqualTo(context1);
+        assertThat(scope.executionContextAs("key2", String.class)).isEqualTo(context2);
     }
 
     @Test
@@ -46,7 +76,19 @@ class ExecutionContextTest {
         DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
 
         // when
-        String retrieved = scope.getExecutionContext(String.class);
+        String retrieved = scope.executionContextAs("nonExistentKey", String.class);
+
+        // then
+        assertThat(retrieved).isNull();
+    }
+
+    @Test
+    void should_return_null_for_non_existent_execution_context_by_class() {
+        // given
+        DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
+
+        // when
+        String retrieved = scope.executionContextAs(String.class);
 
         // then
         assertThat(retrieved).isNull();
@@ -60,23 +102,34 @@ class ExecutionContextTest {
         String secondContext = "second";
 
         // when
-        scope.setExecutionContext(String.class, firstContext);
-        scope.setExecutionContext(String.class, secondContext);
+        scope.writeExecutionContext("key", firstContext);
+        scope.writeExecutionContext("key", secondContext);
 
         // then
-        String retrieved = scope.getExecutionContext(String.class);
+        String retrieved = scope.executionContextAs("key", String.class);
         assertThat(retrieved).isEqualTo(secondContext);
     }
 
     @Test
-    void should_throw_exception_when_setting_null_execution_context() {
+    void should_throw_exception_when_writing_null_execution_context() {
         // given
         DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
 
         // when/then
-        assertThatThrownBy(() -> scope.setExecutionContext(String.class, null))
+        assertThatThrownBy(() -> scope.writeExecutionContext("key", null))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("executionContext cannot be null");
+                .hasMessageContaining("context cannot be null");
+    }
+
+    @Test
+    void should_throw_exception_when_writing_execution_context_with_null_key() {
+        // given
+        DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
+
+        // when/then
+        assertThatThrownBy(() -> scope.writeExecutionContext((String) null, "value"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("key cannot be null");
     }
 
     @Test
@@ -85,7 +138,8 @@ class ExecutionContextTest {
         DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.PERSISTENT);
         TestPlanner planner = new TestPlanner("test-planner");
 
-        scope.setExecutionContext(TestPlanner.class, planner);
+        scope.writeExecutionContext("planner", planner);
+        scope.writeExecutionContext(TestPlanner.class, planner);
         scope.writeState("serializable-key", "serializable-value");
 
         // when
@@ -94,7 +148,8 @@ class ExecutionContextTest {
 
         // then
         assertThat(deserialized.readState("serializable-key")).isEqualTo("serializable-value");
-        assertThat(deserialized.getExecutionContext(TestPlanner.class)).isNull();
+        assertThat(deserialized.executionContextAs("planner", TestPlanner.class)).isNull();
+        assertThat(deserialized.executionContextAs(TestPlanner.class)).isNull();
     }
 
     @Test
@@ -103,7 +158,7 @@ class ExecutionContextTest {
         DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
         TestPlanner planner = new TestPlanner("planner");
 
-        scope.setExecutionContext(TestPlanner.class, planner);
+        scope.writeExecutionContext(TestPlanner.class, planner);
 
         // when
         scope.writeState("key1", "value1");
@@ -111,7 +166,7 @@ class ExecutionContextTest {
         scope.readState("key1");
 
         // then
-        assertThat(scope.getExecutionContext(TestPlanner.class)).isEqualTo(planner);
+        assertThat(scope.executionContextAs(TestPlanner.class)).isEqualTo(planner);
     }
 
     @Test
@@ -121,10 +176,10 @@ class ExecutionContextTest {
         TestPlanner planner = new TestPlanner("ephemeral-planner");
 
         // when
-        scope.setExecutionContext(TestPlanner.class, planner);
+        scope.writeExecutionContext(TestPlanner.class, planner);
 
         // then
-        assertThat(scope.getExecutionContext(TestPlanner.class)).isEqualTo(planner);
+        assertThat(scope.executionContextAs(TestPlanner.class)).isEqualTo(planner);
     }
 
     @Test
@@ -134,10 +189,10 @@ class ExecutionContextTest {
         TestPlanner planner = new TestPlanner("persistent-planner");
 
         // when
-        scope.setExecutionContext(TestPlanner.class, planner);
+        scope.writeExecutionContext(TestPlanner.class, planner);
 
         // then
-        assertThat(scope.getExecutionContext(TestPlanner.class)).isEqualTo(planner);
+        assertThat(scope.executionContextAs(TestPlanner.class)).isEqualTo(planner);
     }
 
     @Test
@@ -147,10 +202,10 @@ class ExecutionContextTest {
         TestPlanner planner = new TestPlanner("registered-planner");
 
         // when
-        scope.setExecutionContext(TestPlanner.class, planner);
+        scope.writeExecutionContext(TestPlanner.class, planner);
 
         // then
-        assertThat(scope.getExecutionContext(TestPlanner.class)).isEqualTo(planner);
+        assertThat(scope.executionContextAs(TestPlanner.class)).isEqualTo(planner);
     }
 
     // Test helper class

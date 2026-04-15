@@ -47,7 +47,7 @@ public class DefaultAgenticScope implements AgenticScope {
     private final List<AgentMessage> context = Collections.synchronizedList(new ArrayList<>());
 
     private final transient Map<String, Object> agents = new ConcurrentHashMap<>();
-    private final transient Map<Class<?>, Object> executionContexts = new ConcurrentHashMap<>();
+    private final transient Map<String, Object> executionContexts = new ConcurrentHashMap<>();
 
     private static final Function<ErrorContext, ErrorRecoveryResult> DEFAULT_ERROR_RECOVERY =
             errorContext -> ErrorRecoveryResult.throwException();
@@ -340,15 +340,22 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     @Override
-    public <T> void setExecutionContext(final Class<T> type, final T executionContext) {
-        if (executionContext == null)
-            throw new IllegalArgumentException("executionContext cannot be null");
-        this.executionContexts.put(type, executionContext);
+    public void writeExecutionContext(final String key, final Object context) {
+        if (key == null)
+            throw new IllegalArgumentException("key cannot be null");
+        if (context == null)
+            throw new IllegalArgumentException("context cannot be null");
+        this.executionContexts.put(key, context);
+    }
+
+    @Override
+    public Object executionContext(final String key) {
+        return this.executionContexts.get(key);
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public <T> T getExecutionContext(final Class<T> type) {
-        return (T) this.executionContexts.get(type);
+    public <T> T executionContextAs(final String key, final Class<T> type) {
+        return (T) this.executionContexts.get(key);
     }
 }
