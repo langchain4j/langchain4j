@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
@@ -11,6 +12,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 
 import java.util.List;
@@ -57,8 +59,8 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
                 .maxOutputTokens(getOrDefault(builder.maxOutputTokens, commonParameters.maxOutputTokens()))
-                .toolSpecifications(commonParameters.toolSpecifications())
-                .toolChoice(commonParameters.toolChoice())
+                .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
+                .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
 
                 .previousResponseId(getOrDefault(builder.previousResponseId, responsesParameters.previousResponseId()))
@@ -156,6 +158,8 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         private Boolean strictTools;
         private Boolean strictJsonSchema;
         private ResponseFormat responseFormat;
+        private List<ToolSpecification> toolSpecifications;
+        private ToolChoice toolChoice;
         private Boolean logRequests;
         private Boolean logResponses;
         private List<ChatModelListener> listeners;
@@ -293,6 +297,20 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
 
         public Builder responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
+            return this;
+        }
+
+        public Builder toolSpecifications(List<ToolSpecification> toolSpecifications) {
+            this.toolSpecifications = toolSpecifications;
+            return this;
+        }
+
+        public Builder toolSpecifications(ToolSpecification... toolSpecifications) {
+            return toolSpecifications(asList(toolSpecifications));
+        }
+
+        public Builder toolChoice(ToolChoice toolChoice) {
+            this.toolChoice = toolChoice;
             return this;
         }
 

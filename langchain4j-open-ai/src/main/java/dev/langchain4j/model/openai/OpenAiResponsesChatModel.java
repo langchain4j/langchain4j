@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
@@ -11,6 +12,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
 import java.util.List;
@@ -57,8 +59,8 @@ public class OpenAiResponsesChatModel implements ChatModel {
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
                 .maxOutputTokens(getOrDefault(builder.maxOutputTokens, commonParameters.maxOutputTokens()))
-                .toolSpecifications(commonParameters.toolSpecifications())
-                .toolChoice(commonParameters.toolChoice())
+                .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
+                .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
 
                 .previousResponseId(getOrDefault(builder.previousResponseId, responsesParameters.previousResponseId()))
@@ -154,6 +156,8 @@ public class OpenAiResponsesChatModel implements ChatModel {
         private Boolean strictTools;
         private Boolean strictJsonSchema;
         private ResponseFormat responseFormat;
+        private List<ToolSpecification> toolSpecifications;
+        private ToolChoice toolChoice;
         private Boolean logRequests;
         private Boolean logResponses;
         private List<ChatModelListener> listeners;
@@ -264,16 +268,6 @@ public class OpenAiResponsesChatModel implements ChatModel {
             return this;
         }
 
-        /**
-         * @deprecated use {@link #strictTools(Boolean)} and {@link #strictJsonSchema(Boolean)} instead
-         */
-        @Deprecated(since = "1.13.0")
-        public Builder strict(Boolean strict) {
-            this.strictTools = strict;
-            this.strictJsonSchema = strict;
-            return this;
-        }
-
         public Builder strictTools(Boolean strictTools) {
             this.strictTools = strictTools;
             return this;
@@ -286,6 +280,20 @@ public class OpenAiResponsesChatModel implements ChatModel {
 
         public Builder responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
+            return this;
+        }
+
+        public Builder toolSpecifications(List<ToolSpecification> toolSpecifications) {
+            this.toolSpecifications = toolSpecifications;
+            return this;
+        }
+
+        public Builder toolSpecifications(ToolSpecification... toolSpecifications) {
+            return toolSpecifications(asList(toolSpecifications));
+        }
+
+        public Builder toolChoice(ToolChoice toolChoice) {
+            this.toolChoice = toolChoice;
             return this;
         }
 
