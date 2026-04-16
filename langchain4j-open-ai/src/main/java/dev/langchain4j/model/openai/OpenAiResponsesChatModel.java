@@ -74,6 +74,7 @@ public class OpenAiResponsesChatModel implements ChatModel {
                 .promptCacheKey(getOrDefault(builder.promptCacheKey, responsesParameters.promptCacheKey()))
                 .promptCacheRetention(getOrDefault(builder.promptCacheRetention, responsesParameters.promptCacheRetention()))
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, responsesParameters.reasoningEffort()))
+                .reasoningSummary(getOrDefault(builder.reasoningSummary, responsesParameters.reasoningSummary()))
                 .textVerbosity(getOrDefault(builder.textVerbosity, responsesParameters.textVerbosity()))
                 .store(getOrDefault(builder.store, getOrDefault(responsesParameters.store(), false)))
                 .strictTools(getOrDefault(builder.strictTools, responsesParameters.strictTools()))
@@ -151,6 +152,7 @@ public class OpenAiResponsesChatModel implements ChatModel {
         private String promptCacheKey;
         private String promptCacheRetention;
         private String reasoningEffort;
+        private String reasoningSummary;
         private String textVerbosity;
         private Boolean store;
         private Boolean strictTools;
@@ -255,6 +257,11 @@ public class OpenAiResponsesChatModel implements ChatModel {
 
         public Builder reasoningEffort(String reasoningEffort) {
             this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
+        public Builder reasoningSummary(String reasoningSummary) {
+            this.reasoningSummary = reasoningSummary;
             return this;
         }
 

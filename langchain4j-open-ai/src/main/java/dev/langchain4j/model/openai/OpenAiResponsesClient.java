@@ -123,6 +123,8 @@ class OpenAiResponsesClient {
     private static final String FIELD_PROMPT_CACHE_RETENTION = "prompt_cache_retention";
     private static final String FIELD_REASONING = "reasoning";
     private static final String FIELD_EFFORT = "effort";
+    private static final String FIELD_SUMMARY = "summary";
+    private static final String FIELD_SUMMARY_TEXT = "summary_text";
     private static final String FIELD_STRICT = "strict";
     private static final String FIELD_STREAM_OPTIONS = "stream_options";
     private static final String FIELD_INCLUDE_OBFUSCATION = "include_obfuscation";
@@ -264,9 +266,14 @@ class OpenAiResponsesClient {
             payload.put(FIELD_PROMPT_CACHE_RETENTION, parameters.promptCacheRetention());
         }
 
-        if (parameters.reasoningEffort() != null) {
+        if (parameters.reasoningEffort() != null || parameters.reasoningSummary() != null) {
             Map<String, Object> reasoning = new LinkedHashMap<>();
-            reasoning.put(FIELD_EFFORT, parameters.reasoningEffort());
+            if (parameters.reasoningEffort() != null) {
+                reasoning.put(FIELD_EFFORT, parameters.reasoningEffort());
+            }
+            if (parameters.reasoningSummary() != null) {
+                reasoning.put(FIELD_SUMMARY, parameters.reasoningSummary());
+            }
             payload.put(FIELD_REASONING, reasoning);
         }
 
@@ -371,6 +378,27 @@ class OpenAiResponsesClient {
         return textBuilder.isEmpty() ? null : textBuilder.toString();
     }
 
+    private static String extractReasoningSummary(JsonNode output) {
+        if (!output.isArray()) {
+            return null;
+        }
+
+        StringBuilder summaryBuilder = new StringBuilder();
+        for (JsonNode item : output) {
+            if (FIELD_REASONING.equals(item.path(FIELD_TYPE).asText())) {
+                JsonNode summaryArray = item.path(FIELD_SUMMARY);
+                if (summaryArray.isArray()) {
+                    for (JsonNode summaryItem : summaryArray) {
+                        if (FIELD_SUMMARY_TEXT.equals(summaryItem.path(FIELD_TYPE).asText())) {
+                            summaryBuilder.append(summaryItem.path(FIELD_TEXT).asText());
+                        }
+                    }
+                }
+            }
+        }
+        return summaryBuilder.isEmpty() ? null : summaryBuilder.toString();
+    }
+
     private static List<ToolExecutionRequest> extractToolExecutionRequests(JsonNode output) {
         if (!output.isArray()) {
             return List.of();
@@ -435,15 +463,17 @@ class OpenAiResponsesClient {
     private ChatResponse parseChatResponse(SuccessfulHttpResponse rawHttpResponse) throws Exception {
         JsonNode responseNode = OBJECT_MAPPER.readTree(rawHttpResponse.body());
 
-        String text = extractText(responseNode.path(FIELD_OUTPUT));
+        JsonNode outputNode = responseNode.path(FIELD_OUTPUT);
+        String text = extractText(outputNode);
+        String thinking = extractReasoningSummary(outputNode);
         List<ToolExecutionRequest> toolExecutionRequests =
-                extractToolExecutionRequests(responseNode.path(FIELD_OUTPUT));
+                extractToolExecutionRequests(outputNode);
 
-        AiMessage aiMessage = !toolExecutionRequests.isEmpty() && text != null
-                ? new AiMessage(text, toolExecutionRequests)
-                : !toolExecutionRequests.isEmpty()
-                ? AiMessage.from(toolExecutionRequests)
-                : new AiMessage(text == null ? "" : text);
+        AiMessage.Builder aiMessageBuilder = AiMessage.builder()
+                .text(!toolExecutionRequests.isEmpty() && text == null ? null : (text == null ? "" : text)) // TODO
+                .thinking(thinking)
+                .toolExecutionRequests(toolExecutionRequests.isEmpty() ? null : toolExecutionRequests);
+        AiMessage aiMessage = aiMessageBuilder.build();
 
 
         OpenAiResponsesChatResponseMetadata.Builder metadataBuilder = OpenAiResponsesChatResponseMetadata.builder()
@@ -861,13 +891,15 @@ class OpenAiResponsesClient {
         private void handleResponseCompleted(JsonNode node) {
             var responseNode = node.path(FIELD_RESPONSE);
 
-            String text = extractText(responseNode.path(FIELD_OUTPUT));
+            JsonNode outputNode = responseNode.path(FIELD_OUTPUT);
+            String text = extractText(outputNode);
+            String thinking = extractReasoningSummary(outputNode);
 
-            var aiMessage = !completedToolCalls.isEmpty() && text != null
-                    ? new AiMessage(text, completedToolCalls)
-                    : !completedToolCalls.isEmpty()
-                    ? AiMessage.from(completedToolCalls)
-                    : new AiMessage(text == null ? "" : text);
+            AiMessage.Builder aiMessageBuilder = AiMessage.builder()
+                    .text(!completedToolCalls.isEmpty() && text == null ? null : (text == null ? "" : text)) // TODO
+                    .thinking(thinking)
+                    .toolExecutionRequests(completedToolCalls.isEmpty() ? null : completedToolCalls);
+            var aiMessage = aiMessageBuilder.build();
 
             OpenAiResponsesChatResponseMetadata.Builder metadataBuilder = OpenAiResponsesChatResponseMetadata.builder()
                     .id(responseNode.path(FIELD_ID).asText(null))

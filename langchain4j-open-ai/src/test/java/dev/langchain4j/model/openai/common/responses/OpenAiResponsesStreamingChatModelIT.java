@@ -373,6 +373,38 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Test
+    void should_set_thinking_on_ai_message_from_reasoning_summary_in_completed_response() {
+        MockHttpClient mockHttpClient = new MockHttpClient(List.of(
+                new ServerSentEvent(null, "{\"type\":\"response.reasoning_summary_text.delta\",\"delta\":\"let me\"}"),
+                new ServerSentEvent(null, "{\"type\":\"response.reasoning_summary_text.delta\",\"delta\":\" think\"}"),
+                new ServerSentEvent(null, "{\"type\":\"response.output_text.delta\",\"delta\":\"Berlin\"}"),
+                new ServerSentEvent(
+                        null,
+                        "{\"type\":\"response.completed\",\"response\":{\"id\":\"resp_123\",\"model\":\"o4-mini\",\"status\":\"completed\","
+                                + "\"output\":["
+                                + "{\"type\":\"reasoning\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"let me think\"}]},"
+                                + "{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Berlin\"}]}"
+                                + "],\"usage\":{\"input_tokens\":10,\"output_tokens\":5,\"total_tokens\":15}}}"),
+                new ServerSentEvent(null, "[DONE]")));
+
+        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .apiKey("test-key")
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .modelName("o4-mini")
+                .reasoningSummary("auto")
+                .build();
+
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat("Hello", handler);
+
+        ChatResponse response = handler.get();
+        assertThat(response.aiMessage().text()).isEqualTo("Berlin");
+        assertThat(response.aiMessage().thinking()).isEqualTo("let me think");
+        assertThat(handler.getThinking()).isEqualTo("let me think");
+        assertThat(response.aiMessage().thinking()).isEqualTo(handler.getThinking());
+    }
+
+    @Test
     void should_complete_response_when_completed_event_has_no_text_or_tool_calls() {
         MockHttpClient mockHttpClient = new MockHttpClient(List.of(
                 new ServerSentEvent(
