@@ -125,6 +125,7 @@ class OpenAiResponsesClient {
     private static final String FIELD_EFFORT = "effort";
     private static final String FIELD_SUMMARY = "summary";
     private static final String FIELD_SUMMARY_TEXT = "summary_text";
+    private static final String FIELD_ENCRYPTED_CONTENT = "encrypted_content";
     private static final String FIELD_STRICT = "strict";
     private static final String FIELD_STREAM_OPTIONS = "stream_options";
     private static final String FIELD_INCLUDE_OBFUSCATION = "include_obfuscation";
@@ -141,9 +142,12 @@ class OpenAiResponsesClient {
     private static final String ROLE_USER = "user";
     private static final String ROLE_ASSISTANT = "assistant";
 
+    static final String ENCRYPTED_REASONING_KEY = "encrypted_reasoning"; // do not change, will break backward compatibility!
+
     private static final String TYPE_FUNCTION = "function";
     private static final String TYPE_FUNCTION_CALL = "function_call";
     private static final String TYPE_MESSAGE = "message";
+    private static final String TYPE_REASONING = "reasoning";
     private static final String TYPE_OUTPUT_TEXT = "output_text";
     private static final String TYPE_OBJECT = "object";
     private static final String TYPE_INPUT_TEXT = "input_text";
@@ -385,7 +389,7 @@ class OpenAiResponsesClient {
 
         StringBuilder summaryBuilder = new StringBuilder();
         for (JsonNode item : output) {
-            if (FIELD_REASONING.equals(item.path(FIELD_TYPE).asText())) {
+            if (TYPE_REASONING.equals(item.path(FIELD_TYPE).asText())) {
                 JsonNode summaryArray = item.path(FIELD_SUMMARY);
                 if (summaryArray.isArray()) {
                     for (JsonNode summaryItem : summaryArray) {
@@ -397,6 +401,22 @@ class OpenAiResponsesClient {
             }
         }
         return summaryBuilder.isEmpty() ? null : summaryBuilder.toString();
+    }
+
+    private static String extractReasoningEncryptedContent(JsonNode output) {
+        if (!output.isArray()) {
+            return null;
+        }
+
+        for (JsonNode item : output) {
+            if (TYPE_REASONING.equals(item.path(FIELD_TYPE).asText())) {
+                JsonNode encryptedContent = item.path(FIELD_ENCRYPTED_CONTENT);
+                if (!encryptedContent.isMissingNode() && !encryptedContent.isNull()) {
+                    return encryptedContent.asText();
+                }
+            }
+        }
+        return null;
     }
 
     private static List<ToolExecutionRequest> extractToolExecutionRequests(JsonNode output) {
@@ -466,13 +486,17 @@ class OpenAiResponsesClient {
         JsonNode outputNode = responseNode.path(FIELD_OUTPUT);
         String text = extractText(outputNode);
         String thinking = extractReasoningSummary(outputNode);
+        String encryptedContent = extractReasoningEncryptedContent(outputNode);
         List<ToolExecutionRequest> toolExecutionRequests =
                 extractToolExecutionRequests(outputNode);
 
         AiMessage.Builder aiMessageBuilder = AiMessage.builder()
-                .text(!toolExecutionRequests.isEmpty() && text == null ? null : (text == null ? "" : text)) // TODO
+                .text(text)
                 .thinking(thinking)
-                .toolExecutionRequests(toolExecutionRequests.isEmpty() ? null : toolExecutionRequests);
+                .toolExecutionRequests(toolExecutionRequests);
+        if (encryptedContent != null) {
+            aiMessageBuilder.attributes(Map.of(ENCRYPTED_REASONING_KEY, encryptedContent));
+        }
         AiMessage aiMessage = aiMessageBuilder.build();
 
 
@@ -529,6 +553,22 @@ class OpenAiResponsesClient {
             return List.of(createMessageEntry(ROLE_USER, contentEntries));
         } else if (msg instanceof AiMessage aiMessage) {
             List<Map<String, Object>> items = new ArrayList<>();
+
+            String encryptedContent = aiMessage.attribute(ENCRYPTED_REASONING_KEY, String.class);
+            if (encryptedContent != null) {
+                var reasoningItem = new LinkedHashMap<String, Object>();
+                reasoningItem.put(FIELD_TYPE, TYPE_REASONING);
+                reasoningItem.put(FIELD_ENCRYPTED_CONTENT, encryptedContent);
+                List<Map<String, Object>> summaryItems = new ArrayList<>();
+                if (aiMessage.thinking() != null && !aiMessage.thinking().isEmpty()) {
+                    var summaryTextItem = new LinkedHashMap<String, Object>();
+                    summaryTextItem.put(FIELD_TYPE, FIELD_SUMMARY_TEXT);
+                    summaryTextItem.put(FIELD_TEXT, aiMessage.thinking());
+                    summaryItems.add(summaryTextItem);
+                }
+                reasoningItem.put(FIELD_SUMMARY, summaryItems);
+                items.add(reasoningItem);
+            }
 
             var text = aiMessage.text();
             if (text != null && !text.isEmpty()) {
@@ -894,11 +934,15 @@ class OpenAiResponsesClient {
             JsonNode outputNode = responseNode.path(FIELD_OUTPUT);
             String text = extractText(outputNode);
             String thinking = extractReasoningSummary(outputNode);
+            String encryptedContent = extractReasoningEncryptedContent(outputNode);
 
             AiMessage.Builder aiMessageBuilder = AiMessage.builder()
-                    .text(!completedToolCalls.isEmpty() && text == null ? null : (text == null ? "" : text)) // TODO
+                    .text(text)
                     .thinking(thinking)
-                    .toolExecutionRequests(completedToolCalls.isEmpty() ? null : completedToolCalls);
+                    .toolExecutionRequests(completedToolCalls);
+            if (encryptedContent != null) {
+                aiMessageBuilder.attributes(Map.of(ENCRYPTED_REASONING_KEY, encryptedContent));
+            }
             var aiMessage = aiMessageBuilder.build();
 
             OpenAiResponsesChatResponseMetadata.Builder metadataBuilder = OpenAiResponsesChatResponseMetadata.builder()

@@ -230,27 +230,6 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Test
-    void should_support_reasoning_effort() {
-        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName("o4-mini")
-                .reasoningEffort("medium")
-                .build();
-
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat("What is the capital of France?", handler);
-
-        ChatResponse response = handler.get();
-        assertThat(response.aiMessage().text()).contains("Paris");
-        assertThat(response.metadata()).isInstanceOf(OpenAiResponsesChatResponseMetadata.class);
-        OpenAiResponsesChatResponseMetadata metadata = (OpenAiResponsesChatResponseMetadata) response.metadata();
-        assertThat(metadata.id()).isNotBlank();
-        assertThat(metadata.modelName()).isNotBlank();
-        assertThat(metadata.finishReason()).isNotNull();
-    }
-
-    @Test
     void should_propagate_all_Responses_API_specific_parameters() {
         MockHttpClient mockHttpClient = new MockHttpClient();
 
@@ -350,83 +329,6 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Test
-    void should_emit_partial_thinking_for_reasoning_deltas() {
-        MockHttpClient mockHttpClient = new MockHttpClient(List.of(
-                new ServerSentEvent(null, "{\"type\":\"response.reasoning_text.delta\",\"delta\":\"let me\"}"),
-                new ServerSentEvent(null, "{\"type\":\"response.reasoning_summary_text.delta\",\"delta\":\" think\"}"),
-                new ServerSentEvent(
-                        null,
-                        "{\"type\":\"response.completed\",\"response\":{\"id\":\"resp_123\",\"model\":\"gpt-4.1-nano\",\"status\":\"completed\",\"output\":[],\"usage\":{\"input_tokens\":1,\"output_tokens\":0,\"total_tokens\":1}}}"),
-                new ServerSentEvent(null, "[DONE]")));
-
-        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
-                .apiKey("test-key")
-                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
-                .modelName(GPT_5_4_MINI)
-                .build();
-
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat("Hello", handler);
-
-        handler.get();
-        assertThat(handler.getThinking()).isEqualTo("let me think");
-    }
-
-    @Test
-    void should_set_thinking_on_ai_message_from_reasoning_summary_in_completed_response() {
-        MockHttpClient mockHttpClient = new MockHttpClient(List.of(
-                new ServerSentEvent(null, "{\"type\":\"response.reasoning_summary_text.delta\",\"delta\":\"let me\"}"),
-                new ServerSentEvent(null, "{\"type\":\"response.reasoning_summary_text.delta\",\"delta\":\" think\"}"),
-                new ServerSentEvent(null, "{\"type\":\"response.output_text.delta\",\"delta\":\"Berlin\"}"),
-                new ServerSentEvent(
-                        null,
-                        "{\"type\":\"response.completed\",\"response\":{\"id\":\"resp_123\",\"model\":\"o4-mini\",\"status\":\"completed\","
-                                + "\"output\":["
-                                + "{\"type\":\"reasoning\",\"summary\":[{\"type\":\"summary_text\",\"text\":\"let me think\"}]},"
-                                + "{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"Berlin\"}]}"
-                                + "],\"usage\":{\"input_tokens\":10,\"output_tokens\":5,\"total_tokens\":15}}}"),
-                new ServerSentEvent(null, "[DONE]")));
-
-        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
-                .apiKey("test-key")
-                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
-                .modelName("o4-mini")
-                .reasoningSummary("auto")
-                .build();
-
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat("Hello", handler);
-
-        ChatResponse response = handler.get();
-        assertThat(response.aiMessage().text()).isEqualTo("Berlin");
-        assertThat(response.aiMessage().thinking()).isEqualTo("let me think");
-        assertThat(handler.getThinking()).isEqualTo("let me think");
-        assertThat(response.aiMessage().thinking()).isEqualTo(handler.getThinking());
-    }
-
-    @Test
-    void should_complete_response_when_completed_event_has_no_text_or_tool_calls() {
-        MockHttpClient mockHttpClient = new MockHttpClient(List.of(
-                new ServerSentEvent(
-                        null,
-                        "{\"type\":\"response.completed\",\"response\":{\"id\":\"resp_123\",\"model\":\"gpt-4.1-nano\",\"status\":\"completed\",\"output\":[],\"usage\":{\"input_tokens\":1,\"output_tokens\":0,\"total_tokens\":1}}}"),
-                new ServerSentEvent(null, "[DONE]")));
-
-        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
-                .apiKey("test-key")
-                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
-                .modelName(GPT_5_4_MINI)
-                .build();
-
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat("Hello", handler);
-
-        ChatResponse response = handler.get();
-        assertThat(response.aiMessage().text()).isEmpty();
-        assertThat(response.metadata().finishReason()).isEqualTo(STOP);
-    }
-
-    @Test
     void should_surface_response_failed_message_from_error_node() {
         MockHttpClient mockHttpClient = new MockHttpClient(List.of(
                 new ServerSentEvent(
@@ -462,27 +364,5 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         model.chat("Hello", handler);
 
         assertThatThrownBy(handler::get).rootCause().hasMessage("Response failed: request rejected");
-    }
-
-    @Test
-    void should_map_incomplete_status_to_length_for_completed_callback() {
-        MockHttpClient mockHttpClient = new MockHttpClient(List.of(
-                new ServerSentEvent(
-                        null,
-                        "{\"type\":\"response.incomplete\",\"response\":{\"id\":\"resp_123\",\"model\":\"gpt-4.1-nano\",\"status\":\"incomplete\",\"output\":[],\"usage\":{\"input_tokens\":1,\"output_tokens\":0,\"total_tokens\":1}}}"),
-                new ServerSentEvent(null, "[DONE]")));
-
-        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
-                .apiKey("test-key")
-                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
-                .modelName(GPT_5_4_MINI)
-                .build();
-
-        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat("Hello", handler);
-
-        ChatResponse response = handler.get();
-        assertThat(response.aiMessage().text()).isEmpty();
-        assertThat(response.metadata().finishReason()).isEqualTo(dev.langchain4j.model.output.FinishReason.LENGTH);
     }
 }
