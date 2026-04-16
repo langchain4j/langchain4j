@@ -96,35 +96,15 @@ public abstract sealed class AbstractGuardrailExecutor<
      * @return The {@link GuardrailResult} of the validation
      */
     protected R validate(P request, G guardrail) {
-        return validateWithGuardrailName(request, guardrail).result();
-    }
-
-    private GuardrailValidation<R> validateWithGuardrailName(P request, G guardrail) {
         ensureNotNull(request, "request");
         ensureNotNull(guardrail, "guardrail");
 
         try {
-            var result = guardrail.validate(request);
-            var guardrailName = extractGuardrailName(result, guardrail);
-            return new GuardrailValidation<>(result.validatedBy(guardrail.getClass()), guardrailName);
+            return guardrail.validate(request).validatedBy(guardrail.getClass());
         } catch (Exception e) {
             throw createGuardrailException(e.getMessage(), e);
         }
     }
-
-    private String extractGuardrailName(R result, G guardrail) {
-        if (!result.isSuccess() && result.failures().size() == 1) {
-            var failureGuardrailClass = result.failures().get(0).guardrailClass();
-
-            if (failureGuardrailClass != null) {
-                return failureGuardrailClass.getSimpleName();
-            }
-        }
-
-        return guardrail.getClass().getSimpleName();
-    }
-
-    private record GuardrailValidation<R>(R result, String guardrailName) {}
 
     /**
      * Handles a fatal result.
@@ -150,7 +130,7 @@ public abstract sealed class AbstractGuardrailExecutor<
                         .request(request)
                         .result(result)
                         .guardrailClass((Class<G>) guardrail.getClass())
-                    .guardrailName(guardrailName)
+                        .guardrailName(guardrailName)
                         .duration(duration)
                         .build());
     }
@@ -164,19 +144,16 @@ public abstract sealed class AbstractGuardrailExecutor<
         for (var guardrail : this.guardrails) {
             if (guardrail != null) {
                 var before = System.nanoTime();
-                var validation = validateWithGuardrailName(accumulatedRequest, guardrail);
-                var validationResult = validation.result();
+                var result = validate(accumulatedRequest, guardrail);
                 var after = System.nanoTime();
                 Duration duration = Duration.ofNanos(after - before);
                 fireObservabilityEvent(
                         request.requestParams().invocationContext(),
                         accumulatedRequest,
-                        validationResult,
+                        result,
                         guardrail,
-                        validation.guardrailName(),
+                        guardrail.name(),
                         duration);
-
-                var result = validationResult;
 
                 if (result.isFatal()) {
                     // Fatal result, so stop right here and don't do any more processing

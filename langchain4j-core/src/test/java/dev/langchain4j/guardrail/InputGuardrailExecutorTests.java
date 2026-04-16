@@ -106,6 +106,37 @@ class InputGuardrailExecutorTests {
         assertThat(eventRef.get().guardrailName()).isEqualTo(InnerFailingInputGuardrail.class.getSimpleName());
     }
 
+    @Test
+    void wrappedGuardrailShouldUseInnerGuardrailNameInObservabilityEventOnSuccess() {
+        var eventRef = new AtomicReference<InputGuardrailExecutedEvent>();
+        var registrar = AiServiceListenerRegistrar.newInstance();
+        registrar.register((InputGuardrailExecutedListener) eventRef::set);
+
+        var request = InputGuardrailRequest.builder()
+                .userMessage(UserMessage.from("test"))
+                .commonParams(GuardrailRequestParams.builder()
+                        .chatMemory(null)
+                        .augmentationResult(null)
+                        .userMessageTemplate("")
+                        .variables(Map.of())
+                        .invocationContext(DEFAULT_INVOCATION_CONTEXT)
+                        .aiServiceListenerRegistrar(registrar)
+                        .build())
+                .build();
+
+        var executor = InputGuardrailExecutor.builder()
+                .guardrails(new WrappedInputGuardrail(new InnerSuccessInputGuardrail()))
+                .config(InputGuardrailsConfig.builder().build())
+                .build();
+
+        var result = executor.execute(request);
+
+        assertThat(result).isSuccessful();
+        assertThat(eventRef.get()).isNotNull();
+        assertThat(eventRef.get().guardrailClass()).isEqualTo(WrappedInputGuardrail.class);
+        assertThat(eventRef.get().guardrailName()).isEqualTo(InnerSuccessInputGuardrail.class.getSimpleName());
+    }
+
     @ParameterizedTest(name = "{0}")
     @MethodSource("failedFatalGuardrails")
     void failedFatal(
@@ -299,7 +330,14 @@ class InputGuardrailExecutorTests {
         private static class InnerFailingInputGuardrail implements InputGuardrail {
                 @Override
                 public InputGuardrailResult validate(UserMessage userMessage) {
-                        return failure("wrapped failure").validatedBy(InnerFailingInputGuardrail.class);
+                        return failure("wrapped failure");
+                }
+        }
+
+        private static class InnerSuccessInputGuardrail implements InputGuardrail {
+                @Override
+                public InputGuardrailResult validate(UserMessage userMessage) {
+                        return success();
                 }
         }
 
@@ -309,6 +347,11 @@ class InputGuardrailExecutorTests {
 
                 private WrappedInputGuardrail(InputGuardrail delegate) {
                         this.delegate = delegate;
+                }
+
+                @Override
+                public String name() {
+                        return delegate.name();
                 }
 
                 @Override
