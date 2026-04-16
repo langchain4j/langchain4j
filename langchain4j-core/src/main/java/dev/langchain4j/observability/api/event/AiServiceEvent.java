@@ -17,7 +17,7 @@ public interface AiServiceEvent {
     // So that downstream frameworks/applications could define their own event types and still use the
     // registration/firing mechanisms provided here in LC4j
     <T extends AiServiceEvent> Class<T> eventClass();
-
+ 
     /**
      * Creates a new builder instance initialized with the properties of this {@link AiServiceEvent}.
      * This allows modification of the existing properties and reconstruction of the event.
