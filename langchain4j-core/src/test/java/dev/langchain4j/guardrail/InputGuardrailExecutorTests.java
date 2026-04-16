@@ -137,6 +137,37 @@ class InputGuardrailExecutorTests {
         assertThat(eventRef.get().guardrailName()).isEqualTo(InnerSuccessInputGuardrail.class.getSimpleName());
     }
 
+    @Test
+    void shouldFallbackToClassNameWhenNoCustomNameProvided() {
+        var eventRef = new AtomicReference<InputGuardrailExecutedEvent>();
+        var registrar = AiServiceListenerRegistrar.newInstance();
+        registrar.register((InputGuardrailExecutedListener) eventRef::set);
+
+        var request = InputGuardrailRequest.builder()
+                .userMessage(UserMessage.from("test"))
+                .commonParams(GuardrailRequestParams.builder()
+                        .chatMemory(null)
+                        .augmentationResult(null)
+                        .userMessageTemplate("")
+                        .variables(Map.of())
+                        .invocationContext(DEFAULT_INVOCATION_CONTEXT)
+                        .aiServiceListenerRegistrar(registrar)
+                        .build())
+                .build();
+
+        var executor = InputGuardrailExecutor.builder()
+                .guardrails(new InnerSuccessInputGuardrail())
+                .config(InputGuardrailsConfig.builder().build())
+                .build();
+
+        var result = executor.execute(request);
+
+        assertThat(result).isSuccessful();
+        assertThat(eventRef.get()).isNotNull();
+        assertThat(eventRef.get().guardrailClass()).isEqualTo(InnerSuccessInputGuardrail.class);
+        assertThat(eventRef.get().guardrailName()).isEqualTo(InnerSuccessInputGuardrail.class.getSimpleName());
+    }
+
     @ParameterizedTest(name = "{0}")
     @MethodSource("failedFatalGuardrails")
     void failedFatal(
