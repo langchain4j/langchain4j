@@ -13,7 +13,11 @@ class ToolSerializationTest {
                 .name("getWeather")
                 .description("Get the weather")
                 .parameters(JsonObjectSchema.builder()
-                        .addProperty("city", JsonStringSchema.builder().description("The city name").build())
+                        .addProperty(
+                                "city",
+                                JsonStringSchema.builder()
+                                        .description("The city name")
+                                        .build())
                         .required("city")
                         .build())
                 .build();
