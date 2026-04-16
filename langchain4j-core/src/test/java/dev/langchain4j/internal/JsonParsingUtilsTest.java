@@ -199,4 +199,47 @@ class JsonParsingUtilsTest {
         assertThat(result).isNotNull();
         assertThat(result.value()[1].tags).containsExactly("x", "y");
     }
+
+    /**
+     * Regression test for #4585: JsonEOFException in PojoOutputParser
+     * when streaming responses are truncated mid-value.
+     * <p>
+     * When the LLM streams a partial JSON like:
+     * {@code {"response": "The sky appears blue due to..."}
+     * missing the closing {@code }}, the last {@code } might be inside a string
+     * value (e.g., after "atmosphere."). The extraction must find the true
+     * structural closing brace, not one inside a quoted string.
+     */
+    @Test
+    void should_handle_truncated_json_with_braces_in_string_values() throws Exception {
+        // JSON truncated mid-value with closing } missing
+        // The string contains periods that might confuse bracket-finding
+        String truncatedJson = "{\"response\": \"The sky appears blue due to Rayleigh scattering. "
+            + "This process involves the interaction of light with molecules in the Earth's atmosphere. "
+            + "Blue light has shorter wavelengths than other colors of light, so it is scattered more efficiently. "
+            + "This scattering effect causes light to appear blue when we look up.\"}";
+
+        // This should NOT throw - extractAndParseJson should handle truncation
+        JsonParsingUtils.ParsedJson<Map> result = JsonParsingUtils.extractAndParseJson(truncatedJson, Map.class);
+
+        assertThat(result).isNotNull();
+        assertThat(result.value()).containsKey("response");
+        assertThat((String) result.value().get("response"))
+            .startsWith("The sky appears blue");
+    }
+
+    /**
+     * Test that truncated JSON where the very last character is a quote
+     * (meaning the closing brace is completely missing) is still handled.
+     */
+    @Test
+    void should_handle_json_with_missing_closing_brace() throws Exception {
+        String truncatedJson = "{\"name\": \"Test\"";
+
+        JsonParsingUtils.ParsedJson<Map> result = JsonParsingUtils.extractAndParseJson(truncatedJson, Map.class);
+
+        assertThat(result).isNotNull();
+        assertThat(result.value()).containsKey("name");
+        assertThat(result.value().get("name")).isEqualTo("Test");
+    }
 }

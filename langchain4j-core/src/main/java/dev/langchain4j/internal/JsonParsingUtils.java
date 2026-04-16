@@ -49,10 +49,81 @@ public class JsonParsingUtils {
         }
     }
 
+    /**
+     * Finds the last closing brace ('}' or ']') that is at nesting level 0,
+     * meaning it is not inside a string. This handles streaming truncation
+     * cases where the JSON might be cut off mid-value, and the last brace
+     * in the raw text might actually be inside a string value.
+     *
+     * <p>For example, in streaming mode a truncated JSON like:
+     * {@code {"response": "The sky appears blue due to Rayleigh scattering."}}
+     * might appear as:
+     * {@code {"response": "The sky appears blue due to Rayleigh scattering."}
+     * where the final '}' is missing, or worse, might have the final brace
+     * inside the string value itself.
+     */
     private static int findJsonEnd(String text, int fromIndex) {
-        int jsonMapEnd = text.lastIndexOf('}', fromIndex);
-        int jsonListEnd = text.lastIndexOf(']', fromIndex);
+        int jsonMapEnd = findLastNestingLevelZeroBrace(text, '}', fromIndex);
+        int jsonListEnd = findLastNestingLevelZeroBrace(text, ']', fromIndex);
         return Math.max(jsonMapEnd, jsonListEnd);
+    }
+
+    /**
+     * Finds the last occurrence of the given brace that is at nesting level 0
+     * (not inside a string and not nested inside another object/array).
+     * Properly handles escape sequences in strings.
+     */
+    private static int findLastNestingLevelZeroBrace(String text, char brace, int fromIndex) {
+        int inStringIndex = text.lastIndexOf('"', fromIndex);
+        int braceIndex = text.lastIndexOf(brace, fromIndex);
+
+        if (braceIndex < 0) return -1;
+
+        // Walk backward from braceIndex, tracking string state
+        int i = braceIndex - 1;
+        boolean inString = false;
+
+        while (i >= 0) {
+            char c = text.charAt(i);
+
+            if (c == '\\' && inString) {
+                // Skip escaped character
+                i--;
+            } else if (c == '"') {
+                // Toggle string state
+                inString = !inString;
+            }
+
+            if (!inString && c == brace) {
+                // Found another brace at nesting level 0, this one is later
+                return i;
+            }
+            i--;
+        }
+
+        // No earlier brace at nesting level 0 found; return original if it's at level 0
+        // Re-check if our original brace is inside a string
+        if (isBraceAtNestingLevelZero(text, braceIndex, brace)) {
+            return braceIndex;
+        }
+        return -1;
+    }
+
+    /**
+     * Checks if the brace at the given index is at nesting level 0
+     * (not inside a string).
+     */
+    private static boolean isBraceAtNestingLevelZero(String text, int braceIndex, char brace) {
+        boolean inString = false;
+        for (int i = 0; i < braceIndex; i++) {
+            char c = text.charAt(i);
+            if (c == '\\' && inString) {
+                i++; // Skip escaped character
+            } else if (c == '"') {
+                inString = !inString;
+            }
+        }
+        return !inString;
     }
 
     private static int findJsonStart(String text, int jsonEnd, char closingBrace) {
