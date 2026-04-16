@@ -28,7 +28,7 @@ class DoclingDocumentParserIT {
             .build();
 
     @Test
-    void shouldParsePdfDocument() {
+    void shouldParsePdfDocument() throws Exception {
         DoclingDocumentParser parser = new DoclingDocumentParser(client);
 
         try (InputStream inputStream = getClass().getResourceAsStream("/test-file.pdf")) {
@@ -37,13 +37,11 @@ class DoclingDocumentParserIT {
             assertThat(document).isNotNull();
             assertThat(document.text()).isNotEmpty();
             assertThat(document.metadata().getString("document_size_bytes")).isNotNull();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
         }
     }
 
     @Test
-    void shouldParseDocxDocument() {
+    void shouldParseDocxDocument() throws Exception {
         DoclingDocumentParser parser = new DoclingDocumentParser(client);
 
         try (InputStream inputStream = getClass().getResourceAsStream("/test-file.docx")) {
@@ -51,8 +49,6 @@ class DoclingDocumentParserIT {
 
             assertThat(document).isNotNull();
             assertThat(document.text()).isNotEmpty();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
         }
     }
 }

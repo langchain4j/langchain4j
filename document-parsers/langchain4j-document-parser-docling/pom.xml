@@ -25,7 +25,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.14.0-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
 
         <!-- Docling Java Client (optional: downstream frameworks provide their own DoclingServeApi impl) -->
