@@ -15,9 +15,13 @@ public class AnthropicThinking {
     @JsonProperty
     private final Integer budgetTokens;
 
+    @JsonProperty
+    private final String display;
+
     public AnthropicThinking(Builder builder) {
         this.type = builder.type;
         this.budgetTokens = builder.budgetTokens;
+        this.display = builder.display;
     }
 
     public static Builder builder() {
@@ -28,6 +32,7 @@ public class AnthropicThinking {
 
         private String type;
         private Integer budgetTokens;
+        private String display;
 
         private Builder() {
         }
@@ -39,6 +44,18 @@ public class AnthropicThinking {
 
         public Builder budgetTokens(Integer budgetTokens) {
             this.budgetTokens = budgetTokens;
+            return this;
+        }
+
+        /**
+         * Controls how thinking content is returned in the response.
+         * <p>
+         * Valid values: {@code "summarized"} and {@code "omitted"}. On Claude Opus 4.7
+         * the server default is {@code "omitted"}; on earlier Opus/Sonnet models the
+         * default is {@code "summarized"}.
+         */
+        public Builder display(String display) {
+            this.display = display;
             return this;
         }
 
