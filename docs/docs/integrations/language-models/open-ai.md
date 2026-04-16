@@ -474,7 +474,57 @@ StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
 ```
 
 Unlike some other providers (e.g. DeepSeek), OpenAI reasoning tokens do not persist
-across conversation turns, so there is no need to send thinking back in follow-up requests.
+across conversation turns, so there is no need to send the reasoning summary back in follow-up requests.
+
+#### Encrypted Reasoning (Keeping Reasoning in Context)
+
+When `store` is `false` (by default) or your organization has zero data retention,
+the model's reasoning context is lost between turns.
+To preserve it, request [encrypted reasoning content](https://developers.openai.com/api/docs/guides/reasoning#keeping-reasoning-items-in-context)
+via the `include` parameter:
+
+```java
+ChatModel model = OpenAiResponsesChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-5-mini")
+        .reasoningEffort("medium")
+        .include(List.of("reasoning.encrypted_content"))
+        .build();
+```
+
+When `include` contains `"reasoning.encrypted_content"`, the response's reasoning items
+will contain an opaque encrypted blob. This is automatically stored in
+`AiMessage.attributes()` under the key `"encrypted_reasoning"`.
+
+When you pass that `AiMessage` back in a follow-up request (e.g. after a tool call),
+the encrypted reasoning is automatically included in the request,
+allowing the model to resume its reasoning context:
+
+```java
+// Turn 1: model calls a tool
+ChatResponse response1 = model.chat(ChatRequest.builder()
+        .messages(userMessage)
+        .parameters(ChatRequestParameters.builder()
+                .toolSpecifications(weatherTool)
+                .build())
+        .build());
+
+AiMessage aiMessage1 = response1.aiMessage();
+// aiMessage1.attribute("encrypted_reasoning", String.class) is not null
+
+// Turn 2: send tool result back — encrypted reasoning is sent automatically
+ChatResponse response2 = model.chat(ChatRequest.builder()
+        .messages(
+                userMessage,
+                aiMessage1, // contains encrypted reasoning in attributes
+                ToolExecutionResultMessage.from(aiMessage1.toolExecutionRequests().get(0), "sunny"))
+        .parameters(ChatRequestParameters.builder()
+                .toolSpecifications(weatherTool)
+                .build())
+        .build());
+```
+
+This works identically for `OpenAiResponsesStreamingChatModel`.
 
 ### `OpenAiResponsesChatResponseMetadata`
 
