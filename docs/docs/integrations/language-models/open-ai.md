@@ -399,28 +399,22 @@ This feature is experimental and may change in future releases.
 :::
 
 OpenAI's [Responses API](https://platform.openai.com/docs/api-reference/responses) (`/v1/responses`) is an alternative to the Chat Completions API.
-Currently, only a streaming model is available (`OpenAiResponsesStreamingChatModel`).
+
+### Creating `OpenAiResponsesChatModel`
+
+```java
+ChatModel model = OpenAiResponsesChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-5.4")
+        .build();
+```
 
 ### Creating `OpenAiResponsesStreamingChatModel`
 
-#### Plain Java
 ```java
 StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName("gpt-4o-mini")
-        .build();
-```
-
-You can also use `OpenAiResponsesChatRequestParameters` to configure default request parameters:
-```java
-StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
-        .apiKey(System.getenv("OPENAI_API_KEY"))
-        .defaultRequestParameters(OpenAiResponsesChatRequestParameters.builder()
-                .modelName("gpt-4o-mini")
-                .previousResponseId("resp_abc123")
-                .reasoningEffort("medium")
-                .store(true)
-                .build())
         .build();
 ```
 
