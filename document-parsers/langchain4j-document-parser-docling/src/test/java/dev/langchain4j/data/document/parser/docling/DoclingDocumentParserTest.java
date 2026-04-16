@@ -1,204 +1,115 @@
 package dev.langchain4j.data.document.parser.docling;
 
+import ai.docling.api.serve.DoclingServeApi;
+import ai.docling.api.serve.convert.response.ConvertDocumentResponse;
+import ai.docling.api.serve.convert.response.DocumentResponse;
+import dev.langchain4j.data.document.Document;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class DoclingDocumentParserTest {
 
-    @Test
-    void shouldThrowExceptionWhenInputStreamIsNull() {
-        // Given
-        DoclingDocumentParser parser = new DoclingDocumentParser("http://localhost:5001");
+    @Mock
+    private DoclingServeApi mockApi;
 
-        // When/Then
+    @Mock
+    private ConvertDocumentResponse mockResponse;
+
+    @Mock
+    private DocumentResponse mockDocumentResponse;
+
+    @Test
+    void shouldThrowWhenInputStreamIsNull() {
+        DoclingDocumentParser parser = new DoclingDocumentParser(mockApi);
+
         assertThatThrownBy(() -> parser.parse(null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("cannot be null");
     }
 
     @Test
-    void shouldThrowExceptionWhenInputStreamIsEmpty() {
-        // Given
-        DoclingDocumentParser parser = new DoclingDocumentParser("http://localhost:5001");
+    void shouldThrowWhenInputStreamIsEmpty() {
+        DoclingDocumentParser parser = new DoclingDocumentParser(mockApi);
         InputStream emptyStream = new ByteArrayInputStream(new byte[0]);
 
-        // When/Then
         assertThatThrownBy(() -> parser.parse(emptyStream))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("empty");
     }
 
     @Test
-    void shouldThrowExceptionWhenServerUrlIsNull() {
-        // When/Then
-        assertThatThrownBy(() -> new DoclingDocumentParser(null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("server URL");
+    void shouldThrowWhenApiInstanceIsNull() {
+        assertThatThrownBy(() -> new DoclingDocumentParser((DoclingServeApi) null))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
-    void shouldThrowExceptionWhenServerUrlIsEmpty() {
-        // When/Then
-        assertThatThrownBy(() -> new DoclingDocumentParser(""))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("server URL");
+    void shouldReturnDocumentWithParsedText() {
+        when(mockApi.convertSource(any())).thenReturn(mockResponse);
+        when(mockResponse.getDocument()).thenReturn(mockDocumentResponse);
+        when(mockResponse.getErrors()).thenReturn(null);
+        when(mockDocumentResponse.getMarkdownContent()).thenReturn("# Parsed Content");
+
+        DoclingDocumentParser parser = new DoclingDocumentParser(mockApi);
+        Document document = parser.parse(new ByteArrayInputStream("some bytes".getBytes()));
+
+        assertThat(document.text()).isEqualTo("# Parsed Content");
     }
 
     @Test
-    void shouldUseDefaultServerUrlWhenNoUrlProvided() {
-        // When
-        DoclingDocumentParser parser = new DoclingDocumentParser();
+    void shouldIncludeDocumentSizeBytesInMetadata() {
+        byte[] content = "document content".getBytes();
+        when(mockApi.convertSource(any())).thenReturn(mockResponse);
+        when(mockResponse.getDocument()).thenReturn(mockDocumentResponse);
+        when(mockResponse.getErrors()).thenReturn(null);
+        when(mockDocumentResponse.getMarkdownContent()).thenReturn("Parsed text");
 
-        // Then - verifies constructor doesn't throw and creates valid instance
-        assertThat(parser).isNotNull();
+        DoclingDocumentParser parser = new DoclingDocumentParser(mockApi);
+        Document document = parser.parse(new ByteArrayInputStream(content));
+
+        assertThat(document.metadata().getString("document_size_bytes"))
+                .isEqualTo(String.valueOf(content.length));
+    }
+
+    @Test
+    void shouldThrowWhenApiReturnsNullResponse() {
+        when(mockApi.convertSource(any())).thenReturn(null);
+
+        DoclingDocumentParser parser = new DoclingDocumentParser(mockApi);
+
+        assertThatThrownBy(() -> parser.parse(new ByteArrayInputStream("data".getBytes())))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("empty response");
+    }
+
+    @Test
+    void shouldThrowWhenApiReturnsEmptyContent() {
+        when(mockApi.convertSource(any())).thenReturn(mockResponse);
+        when(mockResponse.getDocument()).thenReturn(mockDocumentResponse);
+        when(mockResponse.getErrors()).thenReturn(null);
+        when(mockDocumentResponse.getMarkdownContent()).thenReturn("");
+
+        DoclingDocumentParser parser = new DoclingDocumentParser(mockApi);
+
+        assertThatThrownBy(() -> parser.parse(new ByteArrayInputStream("data".getBytes())))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("no text content");
     }
 
     @Test
     void shouldImplementDocumentParserInterface() {
-        // Given
-        DoclingDocumentParser parser = new DoclingDocumentParser();
-
-        // Then - verify it implements the required interface
+        DoclingDocumentParser parser = new DoclingDocumentParser(mockApi);
         assertThat(parser).isInstanceOf(dev.langchain4j.data.document.DocumentParser.class);
     }
-
-    @Test
-    void shouldAcceptCustomServerUrl() {
-        // Given
-        String customUrl = "http://my-docling-server:8080";
-
-        // When
-        DoclingDocumentParser parser = new DoclingDocumentParser(customUrl);
-
-        // Then - verify parser was created successfully
-        assertThat(parser).isNotNull();
-    }
-
-    @Test
-    void shouldAllowMultipleParserInstances() {
-        // When
-        DoclingDocumentParser parser1 = new DoclingDocumentParser();
-        DoclingDocumentParser parser2 = new DoclingDocumentParser("http://localhost:5001");
-
-        // Then - verify both instances are created and independent
-        assertThat(parser1).isNotNull();
-        assertThat(parser2).isNotNull();
-        assertThat(parser1).isNotSameAs(parser2);
-    }
-
-    @Test
-    void shouldAcceptValidHttpUrl() {
-        // Given
-        String httpUrl = "http://docling-server:5001";
-
-        // When/Then - should not throw
-        DoclingDocumentParser parser = new DoclingDocumentParser(httpUrl);
-        assertThat(parser).isNotNull();
-    }
-
-    @Test
-    void shouldAcceptLocalhostUrl() {
-        // Given
-        String localhostUrl = "http://localhost:5001";
-
-        // When/Then - should not throw
-        DoclingDocumentParser parser = new DoclingDocumentParser(localhostUrl);
-        assertThat(parser).isNotNull();
-    }
-
-    @Test
-    void shouldAcceptIpAddressUrl() {
-        // Given
-        String ipUrl = "http://192.168.1.100:5001";
-
-        // When/Then - should not throw
-        DoclingDocumentParser parser = new DoclingDocumentParser(ipUrl);
-        assertThat(parser).isNotNull();
-    }
-
-    @Test
-    void shouldAcceptUrlWithoutPort() {
-        // Given
-        String urlWithoutPort = "http://docling-server";
-
-        // When/Then - should not throw
-        DoclingDocumentParser parser = new DoclingDocumentParser(urlWithoutPort);
-        assertThat(parser).isNotNull();
-    }
-
-    @Test
-    void shouldAcceptUrlWithDifferentPort() {
-        // Given
-        String customPortUrl = "http://localhost:8080";
-
-        // When/Then - should not throw
-        DoclingDocumentParser parser = new DoclingDocumentParser(customPortUrl);
-        assertThat(parser).isNotNull();
-    }
-
-    @Test
-    void shouldThrowExceptionForWhitespaceOnlyServerUrl() {
-        // When/Then
-        assertThatThrownBy(() -> new DoclingDocumentParser("   "))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("server URL");
-    }
-
-    @Test
-    void shouldHandleInputStreamWithContent() {
-        // Given
-        DoclingDocumentParser parser = new DoclingDocumentParser("http://localhost:5001");
-        byte[] sampleData = "Sample PDF content".getBytes();
-        InputStream inputStream = new ByteArrayInputStream(sampleData);
-
-        // When/Then - we can't test full parsing without server, but we can verify it
-        // doesn't crash on valid input
-        // This will throw an exception about server connectivity, which is expected
-        assertThatThrownBy(() -> parser.parse(inputStream))
-                .isInstanceOf(RuntimeException.class);
-    }
-
-    @Test
-    void shouldAcceptPositiveTimeout() {
-        // Given
-        int timeout = 120;
-
-        // When
-        DoclingDocumentParser parser = new DoclingDocumentParser("http://localhost:5001", timeout);
-
-        // Then
-        assertThat(parser).isNotNull();
-    }
-
-    @Test
-    void shouldRejectZeroTimeout() {
-        // When/Then
-        assertThatThrownBy(() -> new DoclingDocumentParser("http://localhost:5001", 0))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("positive");
-    }
-
-    @Test
-    void shouldRejectNegativeTimeout() {
-        // When/Then
-        assertThatThrownBy(() -> new DoclingDocumentParser("http://localhost:5001", -1))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("positive");
-    }
-    @Test
-    void shouldReturnConfiguredTimeout() {
-        // Given
-        DoclingDocumentParser parser = new DoclingDocumentParser("http://localhost:5001", 90);
-        
-        // When
-        int timeout = parser.getTimeoutSeconds();
-        
-        // Then
-        assertThat(timeout).isEqualTo(90);
-}
 }

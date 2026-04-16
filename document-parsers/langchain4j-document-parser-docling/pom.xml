@@ -7,7 +7,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.12.0-beta20-SNAPSHOT</version>
+        <version>1.14.0-beta24-SNAPSHOT</version>
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -15,6 +15,7 @@
     <name>LangChain4j :: Document Parser :: Docling</name>
 
     <properties>
+        <docling.version>0.1.5</docling.version>
         <!-- docling-serve-client brings in conflicting Jackson transitive versions -->
         <enforcer.skipRules>dependencyConvergence,requireUpperBoundDeps</enforcer.skipRules>
     </properties>
@@ -24,20 +25,21 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.12.0-SNAPSHOT</version>
+            <version>1.14.0-SNAPSHOT</version>
         </dependency>
 
-        <!-- Docling Java Client -->
+        <!-- Docling Java Client (optional: downstream frameworks provide their own DoclingServeApi impl) -->
         <dependency>
             <groupId>ai.docling</groupId>
             <artifactId>docling-serve-client</artifactId>
-            <version>0.1.5</version>
+            <version>${docling.version}</version>
+            <optional>true</optional>
         </dependency>
 
         <dependency>
             <groupId>ai.docling</groupId>
             <artifactId>docling-serve-api</artifactId>
-            <version>0.1.5</version>
+            <version>${docling.version}</version>
         </dependency>
 
         <!-- Testing -->
@@ -53,11 +55,23 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- Docling Testcontainers for integration testing -->
         <dependency>
             <groupId>ai.docling</groupId>
             <artifactId>docling-testcontainers</artifactId>
-            <version>0.1.5</version>
+            <version>${docling.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
