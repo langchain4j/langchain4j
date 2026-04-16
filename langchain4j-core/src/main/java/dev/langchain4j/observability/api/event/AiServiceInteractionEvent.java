@@ -1,3 +1,6 @@
+import java.util.List;
+import java.util.ArrayList;
+import dev.langchain4j.invocation.InvocationContext;
 
 public interface AiServiceInteractionEvent extends AiServiceEvent {
 
@@ -46,7 +49,7 @@ public interface AiServiceInteractionEvent extends AiServiceEvent {
         }
 
         public List<AiServiceEvent> events() {
-            return events;
+            return List.copyOf(events);
         }
 
         @Override
