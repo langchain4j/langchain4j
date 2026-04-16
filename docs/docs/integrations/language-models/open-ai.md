@@ -423,7 +423,7 @@ StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
 `OpenAiResponsesChatRequestParameters` extends `DefaultChatRequestParameters` with Responses API-specific fields:
 `previousResponseId`, `maxToolCalls`, `parallelToolCalls`, `topLogprobs`, `truncation`, `include`,
 `serviceTier`, `safetyIdentifier`, `promptCacheKey`, `promptCacheRetention`, `reasoningEffort`,
-`textVerbosity`, `streamIncludeObfuscation`, `store`, `strictTools`, `strictJsonSchema`.
+`reasoningSummary`, `textVerbosity`, `streamIncludeObfuscation`, `store`, `strictTools`, `strictJsonSchema`.
 
 These parameters can be configured as defaults when creating the model (via `defaultRequestParameters` on the builder),
 or passed per-request via `ChatRequest` (per-request parameters override the defaults):
@@ -437,6 +437,44 @@ ChatRequest chatRequest = ChatRequest.builder()
                 .build())
         .build();
 ```
+
+### Thinking / Reasoning
+OpenAI reasoning models (e.g. `gpt-5.4`, `gpt-5-mini`) support
+[reasoning summaries](https://developers.openai.com/api/docs/guides/reasoning#reasoning-summaries)
+that expose a summary of the model's internal reasoning.
+
+To enable reasoning summaries, set `reasoningSummary` to `"auto"` on the builder
+(or via `OpenAiResponsesChatRequestParameters`).
+You can also control how much effort the model puts into reasoning with `reasoningEffort`.
+
+```java
+ChatModel model = OpenAiResponsesChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-5-mini")
+        .reasoningEffort("low")
+        .reasoningSummary("auto")
+        .build();
+
+ChatResponse response = model.chat("What is the capital of Germany?");
+response.aiMessage().text();     // "The capital of Germany is Berlin."
+response.aiMessage().thinking(); // reasoning summary text
+```
+
+When `reasoningSummary` is set for `OpenAiResponsesStreamingChatModel`,
+the `StreamingChatResponseHandler.onPartialThinking()` callback will be invoked
+as reasoning summary tokens are streamed:
+
+```java
+StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-5-mini")
+        .reasoningEffort("low")
+        .reasoningSummary("auto")
+        .build();
+```
+
+Unlike some other providers (e.g. DeepSeek), OpenAI reasoning tokens do not persist
+across conversation turns, so there is no need to send thinking back in follow-up requests.
 
 ### `OpenAiResponsesChatResponseMetadata`
 
