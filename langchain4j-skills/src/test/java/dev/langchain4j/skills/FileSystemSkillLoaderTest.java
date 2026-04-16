@@ -79,11 +79,20 @@ class FileSystemSkillLoaderTest {
     }
 
     @Test
-    void should_ignore_empty_resources() {
+    void should_skip_empty_resources() {
         Skill skill = FileSystemSkillLoader.loadSkill(toPath("skills/test-skill"));
 
         assertThat(skill.resources().stream().map(SkillResource::relativePath))
                 .doesNotContain("references/empty.md")
+                .containsExactly("references/full.md");
+    }
+
+    @Test
+    void should_skip_binary_files() {
+        Skill skill = FileSystemSkillLoader.loadSkill(toPath("skills/test-skill"));
+
+        assertThat(skill.resources().stream().map(SkillResource::relativePath))
+                .doesNotContain("references/image.png")
                 .containsExactly("references/full.md");
     }
 
