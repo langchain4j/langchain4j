@@ -358,38 +358,38 @@ class InputGuardrailExecutorTests {
         }
     }
 
-        private static class InnerFailingInputGuardrail implements InputGuardrail {
-                @Override
-                public InputGuardrailResult validate(UserMessage userMessage) {
-                        return failure("wrapped failure");
-                }
+    private static class InnerFailingInputGuardrail implements InputGuardrail {
+        @Override
+        public InputGuardrailResult validate(UserMessage userMessage) {
+            return failure("wrapped failure");
+        }
+    }
+
+    private static class InnerSuccessInputGuardrail implements InputGuardrail {
+        @Override
+        public InputGuardrailResult validate(UserMessage userMessage) {
+            return success();
+        }
+    }
+
+    private static class WrappedInputGuardrail implements InputGuardrail {
+
+        private final InputGuardrail delegate;
+
+        private WrappedInputGuardrail(InputGuardrail delegate) {
+            this.delegate = delegate;
         }
 
-        private static class InnerSuccessInputGuardrail implements InputGuardrail {
-                @Override
-                public InputGuardrailResult validate(UserMessage userMessage) {
-                        return success();
-                }
+        @Override
+        public String name() {
+            return delegate.name();
         }
 
-        private static class WrappedInputGuardrail implements InputGuardrail {
-
-                private final InputGuardrail delegate;
-
-                private WrappedInputGuardrail(InputGuardrail delegate) {
-                        this.delegate = delegate;
-                }
-
-                @Override
-                public String name() {
-                        return delegate.name();
-                }
-
-                @Override
-                public InputGuardrailResult validate(InputGuardrailRequest request) {
-                        return delegate.validate(request);
-                }
+        @Override
+        public InputGuardrailResult validate(InputGuardrailRequest request) {
+            return delegate.validate(request);
         }
+    }
 
     static class InputGuardrailAggregator implements ArgumentsAggregator {
         @Override

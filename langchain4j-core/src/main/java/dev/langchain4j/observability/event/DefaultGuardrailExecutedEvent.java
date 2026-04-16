@@ -35,7 +35,8 @@ public abstract class DefaultGuardrailExecutedEvent<
         this.request = ensureNotNull(builder.request(), "request");
         this.result = ensureNotNull(builder.result(), "result");
         this.guardrailClass = ensureNotNull(builder.guardrailClass(), "guardrailClass");
-        this.guardrailName = (builder.guardrailName() != null) ? builder.guardrailName() : this.guardrailClass.getSimpleName();
+        this.guardrailName =
+                (builder.guardrailName() != null) ? builder.guardrailName() : this.guardrailClass.getSimpleName();
         this.duration = ensureNotNull(builder.duration(), "duration");
     }
 
