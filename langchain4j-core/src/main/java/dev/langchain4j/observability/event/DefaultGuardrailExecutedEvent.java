@@ -27,6 +27,7 @@ public abstract class DefaultGuardrailExecutedEvent<
     private final P request;
     private final R result;
     private final Class<G> guardrailClass;
+    private final String guardrailName;
     private final Duration duration;
 
     protected DefaultGuardrailExecutedEvent(GuardrailExecutedEventBuilder<P, R, G, E> builder) {
@@ -34,6 +35,7 @@ public abstract class DefaultGuardrailExecutedEvent<
         this.request = ensureNotNull(builder.request(), "request");
         this.result = ensureNotNull(builder.result(), "result");
         this.guardrailClass = ensureNotNull(builder.guardrailClass(), "guardrailClass");
+        this.guardrailName = (builder.guardrailName() != null) ? builder.guardrailName() : this.guardrailClass.getSimpleName();
         this.duration = ensureNotNull(builder.duration(), "duration");
     }
 
@@ -50,6 +52,11 @@ public abstract class DefaultGuardrailExecutedEvent<
     @Override
     public Class<G> guardrailClass() {
         return this.guardrailClass;
+    }
+
+    @Override
+    public String guardrailName() {
+        return this.guardrailName;
     }
 
     @Override

@@ -45,6 +45,15 @@ public interface GuardrailExecutedEvent<
     Class<G> guardrailClass();
 
     /**
+     * Retrieves the guardrail name associated with the validation process.
+     *
+     * @return the guardrail name. Defaults to {@code guardrailClass().getSimpleName()} when not explicitly set.
+     */
+    default String guardrailName() {
+        return guardrailClass().getSimpleName();
+    }
+
+    /**
      * Retrieves the duration of the guardrail execution.
      *
      * @return the duration of the guardrail validation process.
@@ -61,6 +70,7 @@ public interface GuardrailExecutedEvent<
         private P request;
         private R result;
         private Class<G> guardrailClass;
+        private String guardrailName;
         private Duration duration;
 
         protected GuardrailExecutedEventBuilder() {}
@@ -70,6 +80,7 @@ public interface GuardrailExecutedEvent<
             request(src.request());
             result(src.result());
             guardrailClass(src.guardrailClass());
+            guardrailName(src.guardrailName());
             duration(src.duration());
         }
 
@@ -79,6 +90,10 @@ public interface GuardrailExecutedEvent<
 
         public P request() {
             return request;
+        }
+
+        public String guardrailName() {
+            return guardrailName;
         }
 
         public R result() {
@@ -105,6 +120,11 @@ public interface GuardrailExecutedEvent<
 
         public <C extends G> GuardrailExecutedEventBuilder<P, R, G, T> guardrailClass(Class<C> guardrailClass) {
             this.guardrailClass = (Class<G>) guardrailClass;
+            return this;
+        }
+
+        public GuardrailExecutedEventBuilder<P, R, G, T> guardrailName(String guardrailName) {
+            this.guardrailName = guardrailName;
             return this;
         }
 
