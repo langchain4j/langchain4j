@@ -32,22 +32,6 @@
         {
           "ignore": true,
           "code": "java.method.parameterTypeChanged",
-          "old": "parameter S dev.langchain4j.agentic.internal.AbstractServiceBuilder<T, S>::subAgents(===java.util.List<dev.langchain4j.agentic.internal.AgentExecutor>===)",
-          "new": "parameter S dev.langchain4j.agentic.internal.AbstractServiceBuilder<T, S>::subAgents(===java.util.Collection<?>===)",
-          "parameterIndex": "0",
-          "justification": "Not a breaking change, this is an internal API that is not exposed to users"
-        },
-        {
-          "ignore": true,
-          "code": "java.method.parameterTypeChanged",
-          "old": "parameter java.util.List<dev.langchain4j.agentic.internal.AgentExecutor> dev.langchain4j.agentic.internal.AgentUtil::agentsToExecutors(===java.lang.Object[]===)",
-          "new": "parameter java.util.List<dev.langchain4j.agentic.internal.AgentExecutor> dev.langchain4j.agentic.internal.AgentUtil::agentsToExecutors(===java.util.Collection<?>===)",
-          "parameterIndex": "0",
-          "justification": "Not a breaking change, this is an internal API that is not exposed to users"
-        },
-        {
-          "ignore": true,
-          "code": "java.method.parameterTypeChanged",
           "old": "parameter T dev.langchain4j.agentic.planner.AgenticService<T, A>::subAgents(===java.util.List<dev.langchain4j.agentic.internal.AgentExecutor>===)",
           "new": "parameter T dev.langchain4j.agentic.planner.AgenticService<T, A>::subAgents(===java.util.Collection<?>===)",
           "parameterIndex": "0",
