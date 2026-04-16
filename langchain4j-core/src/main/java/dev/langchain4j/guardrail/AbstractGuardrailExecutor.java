@@ -117,12 +117,7 @@ public abstract sealed class AbstractGuardrailExecutor<
     }
 
     protected void fireObservabilityEvent(
-            InvocationContext invocationContext,
-            P request,
-            R result,
-            G guardrail,
-            String guardrailName,
-            Duration duration) {
+            InvocationContext invocationContext, P request, R result, G guardrail, Duration duration) {
         request.requestParams()
                 .aiservicelistenerregistrar()
                 .fireEvent(createEmptyObservabilityEventBuilderInstance()
