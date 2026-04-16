@@ -1,4 +1,4 @@
-package dev.langchain4j.model.openai.common;
+package dev.langchain4j.model.openai.common.responses;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -49,7 +49,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_5_4_MINI)
-                .logRequests(true)
+                .logRequests(false) // images are huge in logs
                 .logResponses(true)
                 .build();
 
@@ -110,7 +110,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_5_4_MINI)
-                .listeners(List.of(listener))
+                .listeners(listener)
                 .build();
     }
 

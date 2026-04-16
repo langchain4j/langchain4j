@@ -6,14 +6,14 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
-import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.ChatResponse;
 
 import java.util.List;
 import java.util.Set;
@@ -24,13 +24,13 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Arrays.asList;
 
 @Experimental
-public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
+public class OpenAiResponsesChatModel implements ChatModel {
 
     private final OpenAiResponsesClient client;
     private final OpenAiResponsesChatRequestParameters defaultRequestParameters;
     private final List<ChatModelListener> listeners;
 
-    private OpenAiResponsesStreamingChatModel(Builder builder) {
+    private OpenAiResponsesChatModel(Builder builder) {
         this.client = OpenAiResponsesClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(builder.baseUrl)
@@ -75,7 +75,6 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 .promptCacheRetention(getOrDefault(builder.promptCacheRetention, responsesParameters.promptCacheRetention()))
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, responsesParameters.reasoningEffort()))
                 .textVerbosity(getOrDefault(builder.textVerbosity, responsesParameters.textVerbosity()))
-                .streamIncludeObfuscation(getOrDefault(builder.streamIncludeObfuscation, responsesParameters.streamIncludeObfuscation()))
                 .store(getOrDefault(builder.store, getOrDefault(responsesParameters.store(), false)))
                 .strictTools(getOrDefault(builder.strictTools, responsesParameters.strictTools()))
                 .strictJsonSchema(getOrDefault(builder.strictJsonSchema, responsesParameters.strictJsonSchema()))
@@ -89,11 +88,11 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
     }
 
     @Override
-    public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+    public ChatResponse doChat(ChatRequest chatRequest) {
         validate(chatRequest.parameters());
         OpenAiResponsesChatRequestParameters parameters =
                 (OpenAiResponsesChatRequestParameters) chatRequest.parameters();
-        client.streamingChat(chatRequest, parameters, handler);
+        return client.chat(chatRequest, parameters);
     }
 
     private static void validate(final ChatRequestParameters parameters) {
@@ -153,7 +152,6 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         private String promptCacheRetention;
         private String reasoningEffort;
         private String textVerbosity;
-        private Boolean streamIncludeObfuscation;
         private Boolean store;
         private Boolean strictTools;
         private Boolean strictJsonSchema;
@@ -265,23 +263,8 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
-        public Builder streamIncludeObfuscation(Boolean streamIncludeObfuscation) {
-            this.streamIncludeObfuscation = streamIncludeObfuscation;
-            return this;
-        }
-
         public Builder store(Boolean store) {
             this.store = store;
-            return this;
-        }
-
-        /**
-         * @deprecated use {@link #strictTools(Boolean)} and {@link #strictJsonSchema(Boolean)} instead
-         */
-        @Deprecated(since = "1.13.0")
-        public Builder strict(Boolean strict) {
-            this.strictTools = strict;
-            this.strictJsonSchema = strict;
             return this;
         }
 
@@ -338,8 +321,8 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
-        public OpenAiResponsesStreamingChatModel build() {
-            return new OpenAiResponsesStreamingChatModel(this);
+        public OpenAiResponsesChatModel build() {
+            return new OpenAiResponsesChatModel(this);
         }
     }
 }
