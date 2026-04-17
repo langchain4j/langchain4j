@@ -26,7 +26,7 @@ public interface AiServiceInteractionEvent extends AiServiceEvent {
     class AiServiceInteractionEventBuilder extends Builder<AiServiceInteractionEvent> {
         private final List<AiServiceEvent> events = new ArrayList<>();
 
-        protected AiServiceInteractionEventBuilder() {}
+        public AiServiceInteractionEventBuilder() {}
 
         public AiServiceInteractionEventBuilder(AiServiceInteractionEvent src) {
             super(src);

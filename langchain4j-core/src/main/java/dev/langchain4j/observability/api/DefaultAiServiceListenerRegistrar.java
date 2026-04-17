@@ -72,7 +72,7 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
     /* 
       Test Map to instead be thread safe and store *started event* IDs with the events
     */
-      private Map<UUID, InvocationState> AiServiceInteractionEvent = new ConcurrentHashMap<>();
+      private Map<UUID, InvocationState> invocationStates = new ConcurrentHashMap<>();
     
 
     /**
@@ -91,14 +91,28 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
         // Test features
         UUID InvocationID = event.invocationContext().invocationId();
 
-        if (event.eventClass() == AiServiceStartedEvent.class){
-            InvocationState state = AiServiceInteractionEvent.computeIfAbsent(InvocationID, id -> new InvocationState());
+        if (event instanceof AiServiceStartedEEvent){
+            InvocationState state = invocationStates.computeIfAbsent(invocationId, id -> new InvocationState());
             state.add(event);
+            return;
         }
-        else{
-            InvocationState state = AiServiceInteractionEvent.get(InvocationID);
-            state.add(event);
-            }
+
+        state.add(event);
+
+        if(event instanceof AiServiceCompletdEvent || event instanceof AiServiceErrorEvent){
+            List<AiServiceEvent> events = state.snapshot();
+            invocationStates.remove(invocationId);
+
+            AiServiceInteractionEvent interactionEvent =
+                AiServiceInteractionEvent.builder()
+                    .invocationContext(event.invocationContext())
+                    .events(events)
+                    .build();
+
+            Optional.ofNullable(this.listeners.get(interactionEvent.eventClass()))
+                .map(l -> (EventListeners<AiServiceInteractionEvent>) l)
+                .ifPresent(l -> l.fireEvent(interactionEvent));
+        }
 
         
     }
