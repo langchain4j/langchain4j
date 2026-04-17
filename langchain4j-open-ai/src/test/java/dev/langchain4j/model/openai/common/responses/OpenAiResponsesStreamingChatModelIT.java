@@ -24,6 +24,7 @@ import dev.langchain4j.model.openai.OpenAiResponsesChatResponseMetadata;
 import dev.langchain4j.model.openai.OpenAiResponsesStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
