@@ -2,6 +2,8 @@ package dev.langchain4j.model.openaiofficial.openai.responses;
 
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
+import com.openai.models.Reasoning;
+import com.openai.models.ReasoningEffort;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -47,14 +49,14 @@ class OpenAiOfficialResponsesChatModelThinkingIT {
     void should_return_reasoning_summary() {
 
         // given
-        String reasoningSummary = "auto";
+        Reasoning.Summary reasoningSummary = Reasoning.Summary.AUTO;
 
         ChatModel model = OpenAiOfficialResponsesChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName("gpt-5-mini")
-                .reasoningEffort("low")
+                .reasoningEffort(ReasoningEffort.LOW)
                 .reasoningSummary(reasoningSummary)
                 .build();
 
@@ -78,7 +80,7 @@ class OpenAiOfficialResponsesChatModelThinkingIT {
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName("gpt-5-mini")
-                .reasoningEffort("low")
+                .reasoningEffort(ReasoningEffort.LOW)
                 .build();
 
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
@@ -104,7 +106,7 @@ class OpenAiOfficialResponsesChatModelThinkingIT {
         ChatModel model = OpenAiOfficialResponsesChatModel.builder()
                 .client(spyingOpenAIClient(spyingHttpClient))
                 .modelName("gpt-5-mini")
-                .reasoningEffort("medium")
+                .reasoningEffort(ReasoningEffort.MEDIUM)
                 .include(include)
                 .build();
 
@@ -165,7 +167,7 @@ class OpenAiOfficialResponsesChatModelThinkingIT {
         ChatModel model = OpenAiOfficialResponsesChatModel.builder()
                 .client(spyingOpenAIClient(spyingHttpClient))
                 .modelName("gpt-5-mini")
-                .reasoningEffort("medium")
+                .reasoningEffort(ReasoningEffort.MEDIUM)
                 .include(include)
                 .build();
 

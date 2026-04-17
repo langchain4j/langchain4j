@@ -1,5 +1,7 @@
 package dev.langchain4j.model.openaiofficial;
 
+import com.openai.models.Reasoning;
+import com.openai.models.ReasoningEffort;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
@@ -26,8 +28,8 @@ public class OpenAiOfficialResponsesChatRequestParameters extends DefaultChatReq
     private final String safetyIdentifier;
     private final String promptCacheKey;
     private final String promptCacheRetention;
-    private final String reasoningEffort;
-    private final String reasoningSummary;
+    private final ReasoningEffort reasoningEffort;
+    private final Reasoning.Summary reasoningSummary;
     private final String textVerbosity;
     private final Boolean streamIncludeObfuscation;
     private final Boolean store;
@@ -95,11 +97,11 @@ public class OpenAiOfficialResponsesChatRequestParameters extends DefaultChatReq
         return promptCacheRetention;
     }
 
-    public String reasoningEffort() {
+    public ReasoningEffort reasoningEffort() {
         return reasoningEffort;
     }
 
-    public String reasoningSummary() {
+    public Reasoning.Summary reasoningSummary() {
         return reasoningSummary;
     }
 
@@ -203,8 +205,8 @@ public class OpenAiOfficialResponsesChatRequestParameters extends DefaultChatReq
         private String safetyIdentifier;
         private String promptCacheKey;
         private String promptCacheRetention;
-        private String reasoningEffort;
-        private String reasoningSummary;
+        private ReasoningEffort reasoningEffort;
+        private Reasoning.Summary reasoningSummary;
         private String textVerbosity;
         private Boolean streamIncludeObfuscation;
         private Boolean store;
@@ -286,12 +288,20 @@ public class OpenAiOfficialResponsesChatRequestParameters extends DefaultChatReq
             return this;
         }
 
-        public Builder reasoningEffort(String reasoningEffort) {
+        public Builder reasoningEffort(ReasoningEffort reasoningEffort) {
             this.reasoningEffort = reasoningEffort;
             return this;
         }
 
-        public Builder reasoningSummary(String reasoningSummary) {
+        /**
+         * @deprecated use {@link #reasoningEffort(ReasoningEffort)} instead
+         */
+        @Deprecated(since = "1.14.0")
+        public Builder reasoningEffort(String reasoningEffort) {
+            return reasoningEffort(reasoningEffort != null ? ReasoningEffort.of(reasoningEffort) : null);
+        }
+
+        public Builder reasoningSummary(Reasoning.Summary reasoningSummary) {
             this.reasoningSummary = reasoningSummary;
             return this;
         }

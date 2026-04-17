@@ -371,10 +371,10 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         if (parameters.reasoningEffort() != null || parameters.reasoningSummary() != null) {
             Reasoning.Builder reasoningBuilder = Reasoning.builder();
             if (parameters.reasoningEffort() != null) {
-                reasoningBuilder.effort(ReasoningEffort.of(parameters.reasoningEffort()));
+                reasoningBuilder.effort(parameters.reasoningEffort());
             }
             if (parameters.reasoningSummary() != null) {
-                reasoningBuilder.summary(Reasoning.Summary.of(parameters.reasoningSummary()));
+                reasoningBuilder.summary(parameters.reasoningSummary());
             }
             paramsBuilder.reasoning(reasoningBuilder.build());
         }
@@ -680,8 +680,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private String safetyIdentifier;
         private String promptCacheKey;
         private String promptCacheRetention;
-        private String reasoningEffort;
-        private String reasoningSummary;
+        private ReasoningEffort reasoningEffort;
+        private Reasoning.Summary reasoningSummary;
         private String textVerbosity;
         private Boolean streamIncludeObfuscation;
         private Boolean store;
@@ -848,12 +848,20 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             return this;
         }
 
-        public Builder reasoningEffort(String reasoningEffort) {
+        public Builder reasoningEffort(ReasoningEffort reasoningEffort) {
             this.reasoningEffort = reasoningEffort;
             return this;
         }
 
-        public Builder reasoningSummary(String reasoningSummary) {
+        /**
+         * @deprecated use {@link #reasoningEffort(ReasoningEffort)} instead
+         */
+        @Deprecated(since = "1.14.0")
+        public Builder reasoningEffort(String reasoningEffort) {
+            return reasoningEffort(reasoningEffort != null ? ReasoningEffort.of(reasoningEffort) : null);
+        }
+
+        public Builder reasoningSummary(Reasoning.Summary reasoningSummary) {
             this.reasoningSummary = reasoningSummary;
             return this;
         }
@@ -1054,7 +1062,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             }
 
             String delta = event.delta();
-            if (delta == null || delta.isEmpty()) {
+            if (delta.isEmpty()) {
                 return;
             }
 
@@ -1072,14 +1080,14 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
         private void handleReasoningTextDelta(ResponseReasoningTextDeltaEvent event) {
             String delta = event.delta();
-            if (delta != null && !delta.isEmpty()) {
+            if (!delta.isEmpty()) {
                 onPartialThinking(handler, delta, streamingHandle);
             }
         }
 
         private void handleReasoningSummaryTextDelta(ResponseReasoningSummaryTextDeltaEvent event) {
             String delta = event.delta();
-            if (delta != null && !delta.isEmpty()) {
+            if (!delta.isEmpty()) {
                 onPartialThinking(handler, delta, streamingHandle);
             }
         }

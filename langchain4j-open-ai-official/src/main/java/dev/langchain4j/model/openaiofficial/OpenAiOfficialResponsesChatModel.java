@@ -3,6 +3,8 @@ package dev.langchain4j.model.openaiofficial;
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
 import com.openai.credential.Credential;
+import com.openai.models.Reasoning;
+import com.openai.models.ReasoningEffort;
 import com.openai.models.responses.Response;
 import com.openai.models.responses.ResponseCreateParams;
 import dev.langchain4j.Experimental;
@@ -240,8 +242,8 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
         private String safetyIdentifier;
         private String promptCacheKey;
         private String promptCacheRetention;
-        private String reasoningEffort;
-        private String reasoningSummary;
+        private ReasoningEffort reasoningEffort;
+        private Reasoning.Summary reasoningSummary;
         private String textVerbosity;
         private Boolean store;
         private List<ChatModelListener> listeners;
@@ -406,12 +408,12 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
             return this;
         }
 
-        public Builder reasoningEffort(String reasoningEffort) {
+        public Builder reasoningEffort(ReasoningEffort reasoningEffort) {
             this.reasoningEffort = reasoningEffort;
             return this;
         }
 
-        public Builder reasoningSummary(String reasoningSummary) {
+        public Builder reasoningSummary(Reasoning.Summary reasoningSummary) {
             this.reasoningSummary = reasoningSummary;
             return this;
         }
