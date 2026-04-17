@@ -14,7 +14,7 @@ public class DefaultAiServiceInteractionEvent implements AiServiceInteractionEve
 
     private final List<AiServiceEvent> events;
 
-    public DefaultAiServiceInteractionEvent(AiServiceInteractionEventBuilder builder){
+    public DefaultAiServiceInteractionEvent(AiServiceInteractionEvent.AiServiceInteractionEventBuilder builder){
         this.invocationContext = ensureNotNull(builder.invocationContext(), "invocationContext");
         this.events = List.copyOf(ensureNotNull(builder.events(), "events"));
     }
