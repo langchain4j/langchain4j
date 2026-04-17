@@ -7,8 +7,6 @@
         {
           "ignore": true,
           "code": "java.class.externalClassExposedInAPI",
-          "regex": true,
-          "new": "class com\\.openai\\..+",
           "justification": "OpenAI SDK types (e.g., ReasoningEffort, Reasoning.Summary, OpenAIClient) are intentionally exposed on the public API of this module, since wrapping the official OpenAI Java SDK is its purpose."
         }
       ]
