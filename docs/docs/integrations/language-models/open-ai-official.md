@@ -348,8 +348,9 @@ StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
         .build();
 ```
 
-Unlike some other providers (e.g. DeepSeek), OpenAI reasoning tokens do not persist
-across conversation turns, so there is no need to send the reasoning summary back in follow-up requests.
+The reasoning summary in `AiMessage.thinking()` is informational and does not need to be sent back
+in follow-up requests — OpenAI discards it between turns. To actually preserve the model's reasoning
+state across turns (e.g. between tool calls), use encrypted reasoning instead, described below.
 
 #### Encrypted Reasoning (Keeping Reasoning in Context)
 
