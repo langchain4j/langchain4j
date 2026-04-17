@@ -20,9 +20,13 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingException;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
 import dev.langchain4j.model.anthropic.internal.api.MessageTokenCountResponse;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -408,6 +412,91 @@ class DefaultAnthropicClientTest {
             assertThat(error.getMessage()).isEqualTo("Rate limit exceeded");
             assertThat(((AnthropicStreamingException) error).type()).isEqualTo("rate_limit_error");
         }
+
+        @Test
+        void shouldHandleInterleavedParallelToolCalls() throws Exception {
+            // Given: SSE events where two tool calls are interleaved
+            // (content_block_start for index=2 arrives before content_block_stop for index=1)
+            List<ServerSentEvent> events = List.of(
+                    createMessageStartEvent(),
+                    // Tool call 1 starts (content block index=1)
+                    new ServerSentEvent("content_block_start",
+                            "{\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"tool_use\",\"id\":\"tool_1\",\"name\":\"get_weather\"}}"),
+                    new ServerSentEvent("content_block_delta",
+                            "{\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"city\\\"\"}}"),
+                    // Tool call 2 starts BEFORE tool call 1 stops (content block index=2)
+                    new ServerSentEvent("content_block_start",
+                            "{\"type\":\"content_block_start\",\"index\":2,\"content_block\":{\"type\":\"tool_use\",\"id\":\"tool_2\",\"name\":\"get_time\"}}"),
+                    new ServerSentEvent("content_block_delta",
+                            "{\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"zone\\\"\"}}"),
+                    // More deltas for both
+                    new ServerSentEvent("content_block_delta",
+                            "{\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\": \\\"Paris\\\"}\"}}"),
+                    new ServerSentEvent("content_block_delta",
+                            "{\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\": \\\"UTC\\\"}\"}}"),
+                    // Tool call 1 stops
+                    new ServerSentEvent("content_block_stop",
+                            "{\"type\":\"content_block_stop\",\"index\":1}"),
+                    // Tool call 2 stops
+                    new ServerSentEvent("content_block_stop",
+                            "{\"type\":\"content_block_stop\",\"index\":2}"),
+                    createMessageDeltaWithToolUse(),
+                    createMessageStopEvent());
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(events);
+
+            DefaultAnthropicClient subject = createClient(mockHttpClient);
+
+            AnthropicCreateMessageRequest request = createMessageRequest();
+
+            CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+            List<PartialToolCall> partialToolCalls = new ArrayList<>();
+            List<CompleteToolCall> completeToolCalls = new ArrayList<>();
+
+            // When
+            subject.createMessage(request, new StreamingChatResponseHandler() {
+                @Override
+                public void onPartialToolCall(PartialToolCall partialToolCall) {
+                    partialToolCalls.add(partialToolCall);
+                }
+
+                @Override
+                public void onCompleteToolCall(CompleteToolCall completeToolCall) {
+                    completeToolCalls.add(completeToolCall);
+                }
+
+                @Override
+                public void onCompleteResponse(ChatResponse completeResponse) {
+                    futureResponse.complete(completeResponse);
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    futureResponse.completeExceptionally(error);
+                }
+            });
+
+            ChatResponse response = futureResponse.get(5, TimeUnit.SECONDS);
+
+            // Then: both tool calls should be parsed correctly without mixing
+            assertThat(completeToolCalls).hasSize(2);
+
+            CompleteToolCall firstComplete = completeToolCalls.get(0);
+            assertThat(firstComplete.toolExecutionRequest().id()).isEqualTo("tool_1");
+            assertThat(firstComplete.toolExecutionRequest().name()).isEqualTo("get_weather");
+            assertThat(firstComplete.toolExecutionRequest().arguments()).isEqualTo("{\"city\": \"Paris\"}");
+
+            CompleteToolCall secondComplete = completeToolCalls.get(1);
+            assertThat(secondComplete.toolExecutionRequest().id()).isEqualTo("tool_2");
+            assertThat(secondComplete.toolExecutionRequest().name()).isEqualTo("get_time");
+            assertThat(secondComplete.toolExecutionRequest().arguments()).isEqualTo("{\"zone\": \"UTC\"}");
+
+            // Verify the final response also contains both tool execution requests
+            List<ToolExecutionRequest> toolRequests =
+                    response.aiMessage().toolExecutionRequests();
+            assertThat(toolRequests).hasSize(2);
+            assertThat(toolRequests.get(0).name()).isEqualTo("get_weather");
+            assertThat(toolRequests.get(1).name()).isEqualTo("get_time");
+        }
     }
 
     @Nested
@@ -514,6 +603,11 @@ class DefaultAnthropicClientTest {
                 "{\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"%s\"},\"usage\":{\"output_tokens\":20}}",
                 "end_turn");
         return new ServerSentEvent("message_delta", data);
+    }
+
+    private static ServerSentEvent createMessageDeltaWithToolUse() {
+        return new ServerSentEvent("message_delta",
+                "{\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\"},\"usage\":{\"output_tokens\":50}}");
     }
 
     private static ServerSentEvent createMessageStopEvent() {

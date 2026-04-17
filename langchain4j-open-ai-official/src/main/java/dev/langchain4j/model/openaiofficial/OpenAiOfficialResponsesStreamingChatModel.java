@@ -1,15 +1,5 @@
 package dev.langchain4j.model.openaiofficial;
 
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
-import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
-import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.setupSyncClient;
-import static java.util.Arrays.asList;
-
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
 import com.openai.core.JsonValue;
@@ -24,12 +14,14 @@ import com.openai.models.responses.FunctionTool;
 import com.openai.models.responses.ResponseCompletedEvent;
 import com.openai.models.responses.ResponseCreateParams;
 import com.openai.models.responses.ResponseCreatedEvent;
+import com.openai.models.responses.ResponseError;
 import com.openai.models.responses.ResponseErrorEvent;
 import com.openai.models.responses.ResponseFailedEvent;
 import com.openai.models.responses.ResponseFormatTextConfig;
 import com.openai.models.responses.ResponseFormatTextJsonSchemaConfig;
 import com.openai.models.responses.ResponseFunctionCallArgumentsDeltaEvent;
 import com.openai.models.responses.ResponseFunctionCallArgumentsDoneEvent;
+import com.openai.models.responses.ResponseFunctionCallOutputItem;
 import com.openai.models.responses.ResponseFunctionToolCall;
 import com.openai.models.responses.ResponseInProgressEvent;
 import com.openai.models.responses.ResponseIncludable;
@@ -37,10 +29,14 @@ import com.openai.models.responses.ResponseIncompleteEvent;
 import com.openai.models.responses.ResponseInputContent;
 import com.openai.models.responses.ResponseInputFile;
 import com.openai.models.responses.ResponseInputImage;
+import com.openai.models.responses.ResponseInputImageContent;
 import com.openai.models.responses.ResponseInputItem;
 import com.openai.models.responses.ResponseInputText;
+import com.openai.models.responses.ResponseInputTextContent;
 import com.openai.models.responses.ResponseOutputItemAddedEvent;
 import com.openai.models.responses.ResponseOutputItemDoneEvent;
+import com.openai.models.responses.ResponseReasoningSummaryTextDeltaEvent;
+import com.openai.models.responses.ResponseReasoningTextDeltaEvent;
 import com.openai.models.responses.ResponseStreamEvent;
 import com.openai.models.responses.ResponseTextConfig;
 import com.openai.models.responses.ResponseTextDeltaEvent;
@@ -62,10 +58,12 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
@@ -74,8 +72,13 @@ import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
+import dev.langchain4j.model.output.FinishReason;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -83,13 +86,23 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.setupSyncClient;
+import static java.util.Arrays.asList;
 
 /**
  * StreamingChatModel implementation using the official OpenAI Java client for the Responses API.
@@ -102,74 +115,71 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
     private final OpenAIClient client;
     private final ExecutorService executorService;
-    private final String modelName;
-    private final Double temperature;
-    private final Double topP;
-    private final Integer maxOutputTokens;
-    private final Integer maxToolCalls;
-    private final Boolean parallelToolCalls;
-    private final String previousResponseId;
-    private final Integer topLogprobs;
-    private final String truncation;
-    private final List<String> include;
-    private final String serviceTier;
-    private final String safetyIdentifier;
-    private final String promptCacheKey;
-    private final String promptCacheRetention;
-    private final String reasoningEffort;
-    private final String textVerbosity;
-    private final Boolean streamIncludeObfuscation;
-    private final Boolean store;
+    private final OpenAiOfficialResponsesChatRequestParameters defaultRequestParameters;
     private final List<ChatModelListener> listeners;
-    private final ChatRequestParameters defaultRequestParameters;
-    private final Boolean strict;
 
     private OpenAiOfficialResponsesStreamingChatModel(Builder builder) {
         this.client = builder.client != null
                 ? builder.client
                 : setupSyncClient(
-                        builder.baseUrl,
-                        builder.apiKey,
-                        builder.credential,
-                        builder.microsoftFoundryDeploymentName,
-                        builder.azureOpenAIServiceVersion,
-                        builder.organizationId,
-                        builder.isMicrosoftFoundry,
-                        builder.isGitHubModels,
-                        builder.modelName,
-                        builder.timeout,
-                        builder.maxRetries,
-                        builder.proxy,
-                        builder.customHeaders);
+                builder.baseUrl,
+                builder.apiKey,
+                builder.credential,
+                builder.microsoftFoundryDeploymentName,
+                builder.azureOpenAIServiceVersion,
+                builder.organizationId,
+                builder.isMicrosoftFoundry,
+                builder.isGitHubModels,
+                builder.modelName,
+                builder.timeout,
+                builder.maxRetries,
+                builder.proxy,
+                builder.customHeaders);
         this.executorService =
                 getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutorService);
-        this.modelName = ensureNotNull(builder.modelName, "modelName");
-        this.temperature = builder.temperature;
-        this.topP = builder.topP;
-        this.maxOutputTokens = builder.maxOutputTokens;
-        this.maxToolCalls = builder.maxToolCalls;
-        this.parallelToolCalls = builder.parallelToolCalls;
-        this.previousResponseId = builder.previousResponseId;
-        this.topLogprobs = builder.topLogprobs;
-        this.truncation = builder.truncation;
-        this.include = copyIfNotNull(builder.include);
-        this.serviceTier = builder.serviceTier;
-        this.safetyIdentifier = builder.safetyIdentifier;
-        this.promptCacheKey = builder.promptCacheKey;
-        this.promptCacheRetention = builder.promptCacheRetention;
-        this.reasoningEffort = builder.reasoningEffort;
-        this.textVerbosity = builder.textVerbosity;
-        this.streamIncludeObfuscation = builder.streamIncludeObfuscation;
-        this.store = getOrDefault(builder.store, false);
-        this.listeners = copy(builder.listeners);
-        this.defaultRequestParameters = OpenAiOfficialChatRequestParameters.builder()
-                .modelName(modelName)
-                .temperature(temperature)
-                .topP(topP)
-                .maxOutputTokens(maxOutputTokens)
-                .maxCompletionTokens(maxOutputTokens)
+
+        ChatRequestParameters commonParameters;
+        if (builder.defaultRequestParameters != null) {
+            validate(builder.defaultRequestParameters);
+            commonParameters = builder.defaultRequestParameters;
+        } else {
+            commonParameters = DefaultChatRequestParameters.EMPTY;
+        }
+
+        OpenAiOfficialResponsesChatRequestParameters responsesParameters =
+                commonParameters instanceof OpenAiOfficialResponsesChatRequestParameters p
+                        ? p
+                        : OpenAiOfficialResponsesChatRequestParameters.EMPTY;
+
+        this.defaultRequestParameters = OpenAiOfficialResponsesChatRequestParameters.builder()
+
+                .modelName(ensureNotNull(getOrDefault(builder.modelName, commonParameters.modelName()), "modelName"))
+                .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
+                .topP(getOrDefault(builder.topP, commonParameters.topP()))
+                .maxOutputTokens(getOrDefault(builder.maxOutputTokens, commonParameters.maxOutputTokens()))
+                .toolSpecifications(commonParameters.toolSpecifications())
+                .toolChoice(commonParameters.toolChoice())
+                .responseFormat(commonParameters.responseFormat())
+
+                .previousResponseId(getOrDefault(builder.previousResponseId, responsesParameters.previousResponseId()))
+                .maxToolCalls(getOrDefault(builder.maxToolCalls, responsesParameters.maxToolCalls()))
+                .parallelToolCalls(getOrDefault(builder.parallelToolCalls, responsesParameters.parallelToolCalls()))
+                .topLogprobs(getOrDefault(builder.topLogprobs, responsesParameters.topLogprobs()))
+                .truncation(getOrDefault(builder.truncation, responsesParameters.truncation()))
+                .include(getOrDefault(builder.include, responsesParameters.include()))
+                .serviceTier(getOrDefault(builder.serviceTier, responsesParameters.serviceTier()))
+                .safetyIdentifier(getOrDefault(builder.safetyIdentifier, responsesParameters.safetyIdentifier()))
+                .promptCacheKey(getOrDefault(builder.promptCacheKey, responsesParameters.promptCacheKey()))
+                .promptCacheRetention(getOrDefault(builder.promptCacheRetention, responsesParameters.promptCacheRetention()))
+                .reasoningEffort(getOrDefault(builder.reasoningEffort, responsesParameters.reasoningEffort()))
+                .textVerbosity(getOrDefault(builder.textVerbosity, responsesParameters.textVerbosity()))
+                .streamIncludeObfuscation(getOrDefault(builder.streamIncludeObfuscation, responsesParameters.streamIncludeObfuscation()))
+                .store(getOrDefault(builder.store, getOrDefault(responsesParameters.store(), false)))
+                .strictTools(getOrDefault(builder.strictTools, responsesParameters.strictTools()))
+                .strictJsonSchema(getOrDefault(builder.strictJsonSchema, responsesParameters.strictJsonSchema()))
                 .build();
-        this.strict = getOrDefault(builder.strict, true);
+
+        this.listeners = copy(builder.listeners);
     }
 
     public static Builder builder() {
@@ -178,103 +188,93 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-        // Determine the model name to use (request parameter overrides default)
-        String effectiveModelName =
-                chatRequest.parameters() != null && chatRequest.parameters().modelName() != null
-                        ? chatRequest.parameters().modelName()
-                        : modelName;
+        validate(chatRequest.parameters());
+        OpenAiOfficialResponsesChatRequestParameters parameters =
+                (OpenAiOfficialResponsesChatRequestParameters) chatRequest.parameters();
 
         AtomicReference<String> responseIdRef = new AtomicReference<>();
-        Future<?> cancellationMonitorFuture = null;
         Future<?> streamingFuture = null;
 
         try {
             var paramsBuilder = ResponseCreateParams.builder()
-                    .model(ResponsesModel.ofChat(ChatModel.of(effectiveModelName)))
-                    .store(store);
+                    .model(ResponsesModel.ofChat(ChatModel.of(parameters.modelName())))
+                    .store(parameters.store());
 
-            // Convert messages to ResponseInputItems
             var inputItems = new ArrayList<ResponseInputItem>();
             for (var msg : chatRequest.messages()) {
                 inputItems.addAll(toResponseInputItems(msg));
             }
             paramsBuilder.inputOfResponse(inputItems);
 
-            // Add optional parameters (request parameters override defaults)
-            Double effectiveTemperature = chatRequest.temperature() != null ? chatRequest.temperature() : temperature;
-            if (effectiveTemperature != null) {
-                paramsBuilder.temperature(effectiveTemperature);
+            if (parameters.temperature() != null) {
+                paramsBuilder.temperature(parameters.temperature());
             }
-
-            Double effectiveTopP = chatRequest.topP() != null ? chatRequest.topP() : topP;
-            if (effectiveTopP != null) {
-                paramsBuilder.topP(effectiveTopP);
+            if (parameters.topP() != null) {
+                paramsBuilder.topP(parameters.topP());
             }
-
-            Integer effectiveMaxOutputTokens = getOrDefault(chatRequest.maxOutputTokens(), maxOutputTokens);
-            if (effectiveMaxOutputTokens != null) {
-                paramsBuilder.maxOutputTokens(effectiveMaxOutputTokens.longValue());
+            if (parameters.maxOutputTokens() != null) {
+                paramsBuilder.maxOutputTokens(parameters.maxOutputTokens().longValue());
             }
-            if (maxToolCalls != null) {
-                paramsBuilder.maxToolCalls(maxToolCalls);
+            if (parameters.maxToolCalls() != null) {
+                paramsBuilder.maxToolCalls(parameters.maxToolCalls());
             }
-            if (parallelToolCalls != null) {
-                paramsBuilder.parallelToolCalls(parallelToolCalls);
+            if (parameters.parallelToolCalls() != null) {
+                paramsBuilder.parallelToolCalls(parameters.parallelToolCalls());
             }
-            if (previousResponseId != null) {
-                paramsBuilder.previousResponseId(previousResponseId);
+            if (parameters.previousResponseId() != null) {
+                paramsBuilder.previousResponseId(parameters.previousResponseId());
             }
-            if (topLogprobs != null) {
-                paramsBuilder.topLogprobs(topLogprobs);
+            if (parameters.topLogprobs() != null) {
+                paramsBuilder.topLogprobs(parameters.topLogprobs());
             }
-            if (truncation != null && !truncation.isEmpty()) {
-                paramsBuilder.truncation(ResponseCreateParams.Truncation.of(truncation));
+            if (parameters.truncation() != null) {
+                paramsBuilder.truncation(ResponseCreateParams.Truncation.of(parameters.truncation()));
             }
-            if (include != null && !include.isEmpty()) {
+            if (parameters.include() != null && !parameters.include().isEmpty()) {
                 var includables = new ArrayList<ResponseIncludable>();
-                for (var item : include) {
+                for (var item : parameters.include()) {
                     includables.add(ResponseIncludable.of(item));
                 }
                 paramsBuilder.include(includables);
             }
-            if (serviceTier != null && !serviceTier.isEmpty()) {
-                paramsBuilder.serviceTier(ResponseCreateParams.ServiceTier.of(serviceTier));
+            if (parameters.serviceTier() != null) {
+                paramsBuilder.serviceTier(ResponseCreateParams.ServiceTier.of(parameters.serviceTier()));
             }
-            if (safetyIdentifier != null) {
-                paramsBuilder.safetyIdentifier(safetyIdentifier);
+            if (parameters.safetyIdentifier() != null) {
+                paramsBuilder.safetyIdentifier(parameters.safetyIdentifier());
             }
-            if (promptCacheKey != null) {
-                paramsBuilder.promptCacheKey(promptCacheKey);
+            if (parameters.promptCacheKey() != null) {
+                paramsBuilder.promptCacheKey(parameters.promptCacheKey());
             }
-            if (promptCacheRetention != null) {
+            if (parameters.promptCacheRetention() != null) {
                 paramsBuilder.putAdditionalBodyProperty(
-                        PROMPT_CACHE_RETENTION_FIELD, JsonValue.from(promptCacheRetention));
+                        PROMPT_CACHE_RETENTION_FIELD, JsonValue.from(parameters.promptCacheRetention()));
             }
-            if (reasoningEffort != null && !reasoningEffort.isEmpty()) {
+            if (parameters.reasoningEffort() != null) {
                 paramsBuilder.reasoning(Reasoning.builder()
-                        .effort(ReasoningEffort.of(reasoningEffort))
+                        .effort(ReasoningEffort.of(parameters.reasoningEffort()))
                         .build());
             }
-            if (streamIncludeObfuscation != null) {
+            if (parameters.streamIncludeObfuscation() != null) {
                 paramsBuilder.streamOptions(ResponseCreateParams.StreamOptions.builder()
-                        .includeObfuscation(streamIncludeObfuscation)
+                        .includeObfuscation(parameters.streamIncludeObfuscation())
                         .build());
             }
 
-            // Add tools if present
-            if (chatRequest.toolSpecifications() != null
-                    && !chatRequest.toolSpecifications().isEmpty()) {
-                for (var toolSpec : chatRequest.toolSpecifications()) {
-                    paramsBuilder.addTool(toResponsesTool(toolSpec, strict));
+            boolean strictTools = Boolean.TRUE.equals(parameters.strictTools());
+            if (parameters.toolSpecifications() != null
+                    && !parameters.toolSpecifications().isEmpty()) {
+                for (var toolSpec : parameters.toolSpecifications()) {
+                    paramsBuilder.addTool(toResponsesTool(toolSpec, strictTools));
                 }
 
-                // Add tool choice if specified
-                if (chatRequest.toolChoice() != null) {
-                    paramsBuilder.toolChoice(toResponsesToolChoice(chatRequest.toolChoice()));
+                if (parameters.toolChoice() != null) {
+                    paramsBuilder.toolChoice(toResponsesToolChoice(parameters.toolChoice()));
                 }
             }
 
-            ResponseTextConfig textConfig = toResponseTextConfig(chatRequest.responseFormat(), strict, textVerbosity);
+            boolean strictJsonSchema = Boolean.TRUE.equals(parameters.strictJsonSchema());
+            ResponseTextConfig textConfig = toResponseTextConfig(parameters.responseFormat(), strictJsonSchema, parameters.textVerbosity());
             if (textConfig != null) {
                 paramsBuilder.text(textConfig);
             }
@@ -290,10 +290,11 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 }
             });
 
-            var eventHandler = new ResponsesEventHandler(handler, responseIdRef, effectiveModelName, streamingHandle);
+            var eventHandler = new ResponsesEventHandler(handler, responseIdRef, parameters.modelName(), streamingHandle);
 
-            // The forEach call blocks, so it is submitted to the executor service to run asynchronously,
-            // this is the only thread used.
+            // The forEach call blocks, so it is submitted to the executor service to run asynchronously.
+            // We keep this on our executor (instead of OpenAIClientAsync callbacks) to ensure that user
+            // handlers execute on a single, controlled thread rather than SDK/OkHttp threads.
             streamingFuture = executorService.submit(() -> {
                 try (streamResponse) {
                     streamResponse.stream().forEach(eventHandler::handleEvent);
@@ -331,6 +332,26 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         return ModelProvider.OPEN_AI;
     }
 
+    @Override
+    public Set<Capability> supportedCapabilities() {
+        return Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
+    }
+
+    private static void validate(ChatRequestParameters parameters) {
+        if (parameters.topK() != null) {
+            throw new UnsupportedFeatureException("'topK' parameter is not supported by OpenAI Responses API");
+        }
+        if (parameters.frequencyPenalty() != null) {
+            throw new UnsupportedFeatureException("'frequencyPenalty' parameter is not supported by OpenAI Responses API");
+        }
+        if (parameters.presencePenalty() != null) {
+            throw new UnsupportedFeatureException("'presencePenalty' parameter is not supported by OpenAI Responses API");
+        }
+        if (parameters.stopSequences() != null && !parameters.stopSequences().isEmpty()) {
+            throw new UnsupportedFeatureException("'stopSequences' parameter is not supported by OpenAI Responses API");
+        }
+    }
+
     private static List<ResponseInputItem> toResponseInputItems(ChatMessage msg) {
         if (msg instanceof SystemMessage systemMessage) {
             return List.of(createTextMessage(EasyInputMessage.Role.SYSTEM, systemMessage.text()));
@@ -363,16 +384,36 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
             return items;
         } else if (msg instanceof ToolExecutionResultMessage toolResultMessage) {
-            if (!toolResultMessage.hasSingleText()) {
-                throw new UnsupportedFeatureException(
-                        "OpenAI Responses API does not support non-text content in tool results. "
-                                + "Only text content is supported in function_call_output.");
+            var outputBuilder = ResponseInputItem.FunctionCallOutput.builder()
+                    .callId(toolResultMessage.id());
+
+            if (toolResultMessage.hasSingleText()) {
+                outputBuilder.output(toolResultMessage.text());
+            } else {
+                var outputItems = new ArrayList<ResponseFunctionCallOutputItem>();
+                for (Content content : toolResultMessage.contents()) {
+                    if (content instanceof TextContent textContent) {
+                        outputItems.add(ResponseFunctionCallOutputItem.ofInputText(
+                                ResponseInputTextContent.builder()
+                                        .text(textContent.text())
+                                        .build()));
+                    } else if (content instanceof ImageContent imageContent) {
+                        outputItems.add(ResponseFunctionCallOutputItem.ofInputImage(
+                                ResponseInputImageContent.builder()
+                                        .imageUrl(buildImageUrl(imageContent.image()))
+                                        .detail(toResponsesImageDetail(imageContent.detailLevel()))
+                                        .build()));
+                    } else {
+                        throw new UnsupportedFeatureException("Unsupported content type in tool result: "
+                                + content.getClass().getName()
+                                + ". Only TextContent and ImageContent are supported.");
+                    }
+                }
+                outputBuilder.output(ResponseInputItem.FunctionCallOutput.Output
+                        .ofResponseFunctionCallOutputItemList(outputItems));
             }
-            // Tool execution result - convert to function call output
-            return List.of(ResponseInputItem.ofFunctionCallOutput(ResponseInputItem.FunctionCallOutput.builder()
-                    .callId(toolResultMessage.id())
-                    .output(toolResultMessage.text())
-                    .build()));
+
+            return List.of(ResponseInputItem.ofFunctionCallOutput(outputBuilder.build()));
         } else {
             return List.of(createTextMessage(EasyInputMessage.Role.USER, msg.toString()));
         }
@@ -398,7 +439,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 String imageUrl = buildImageUrl(image);
                 contentList.add(ResponseInputContent.ofInputImage(ResponseInputImage.builder()
                         .imageUrl(imageUrl)
-                        .detail(ResponseInputImage.Detail.AUTO)
+                        .detail(toResponsesUserImageDetail(imageContent.detailLevel()))
                         .build()));
             } else if (content instanceof PdfFileContent pdfFileContent) {
                 ResponseInputFile.Builder pdfInput = ResponseInputFile.builder();
@@ -430,6 +471,26 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         } else {
             throw new IllegalArgumentException("Image must have either url or base64Data");
         }
+    }
+
+    private static ResponseInputImage.Detail toResponsesUserImageDetail(ImageContent.DetailLevel detailLevel) {
+        return switch (detailLevel) {
+            case LOW -> ResponseInputImage.Detail.LOW;
+            case HIGH -> ResponseInputImage.Detail.HIGH;
+            case AUTO -> ResponseInputImage.Detail.AUTO;
+            default -> throw new UnsupportedFeatureException(
+                    "DetailLevel " + detailLevel + " is not supported by OpenAI Responses API. Supported values: LOW, HIGH, AUTO");
+        };
+    }
+
+    private static ResponseInputImageContent.Detail toResponsesImageDetail(ImageContent.DetailLevel detailLevel) {
+        return switch (detailLevel) {
+            case LOW -> ResponseInputImageContent.Detail.LOW;
+            case HIGH -> ResponseInputImageContent.Detail.HIGH;
+            case AUTO -> ResponseInputImageContent.Detail.AUTO;
+            default -> throw new UnsupportedFeatureException(
+                    "DetailLevel " + detailLevel + " is not supported by OpenAI Responses API. Supported values: LOW, HIGH, AUTO");
+        };
     }
 
     private static FunctionTool toResponsesTool(ToolSpecification toolSpec, boolean strict) {
@@ -480,7 +541,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 if (!(jsonSchema.rootElement() instanceof JsonObjectSchema
                         || jsonSchema.rootElement() instanceof JsonRawSchema)) {
                     throw new IllegalArgumentException(
-                            "For OpenAI Responses API, the root element of the JSON Schema must be either a JsonObjectSchema or a JsonRawSchema, but it was: "
+                            "For OpenAI, the root element of the JSON Schema must be either a JsonObjectSchema or a JsonRawSchema, but it was: "
                                     + jsonSchema.rootElement().getClass());
                 }
 
@@ -548,7 +609,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private Boolean store;
         private List<ChatModelListener> listeners;
         private ExecutorService executorService;
-        private Boolean strict;
+        private Boolean strictTools;
+        private Boolean strictJsonSchema;
+        private ChatRequestParameters defaultRequestParameters;
 
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -742,13 +805,27 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         }
 
         /**
-         * Sets whether to use strict mode for function calling. Defaults to true.
-         *
-         * <p>When strict mode is enabled, the schema will include "additionalProperties": false and
-         * "required" arrays with all property keys.
+         * @deprecated use {@link #strictTools(Boolean)} and {@link #strictJsonSchema(Boolean)} instead
          */
+        @Deprecated(since = "1.13.0")
         public Builder strict(Boolean strict) {
-            this.strict = strict;
+            this.strictTools = strict;
+            this.strictJsonSchema = strict;
+            return this;
+        }
+
+        public Builder strictTools(Boolean strictTools) {
+            this.strictTools = strictTools;
+            return this;
+        }
+
+        public Builder strictJsonSchema(Boolean strictJsonSchema) {
+            this.strictJsonSchema = strictJsonSchema;
+            return this;
+        }
+
+        public Builder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
+            this.defaultRequestParameters = defaultRequestParameters;
             return this;
         }
 
@@ -757,7 +834,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         }
     }
 
-    /** Event handler for Responses API streaming. */
+    /**
+     * Event handler for Responses API streaming.
+     */
     private static class ResponsesEventHandler {
 
         private final StreamingChatResponseHandler handler;
@@ -790,9 +869,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             }
 
             try {
-                // TODO: process reasoning events, specifically ResponseReasoningSummaryTextDoneEvent and
-                //   ResponseReasoningTextDoneEvent. It makes little sense to map them to onPartialThinking,
-                //   need reasoning callbacks.
                 if (event.isCreated()) {
                     handleCreated(event.asCreated());
                 } else if (event.isInProgress()) {
@@ -807,6 +883,10 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                     handleContentPartDone(event.contentPartDone().get());
                 } else if (event.isOutputItemAdded()) {
                     handleOutputItemAdded(event.asOutputItemAdded());
+                } else if (event.isReasoningTextDelta()) {
+                    handleReasoningTextDelta(event.asReasoningTextDelta());
+                } else if (event.isReasoningSummaryTextDelta()) {
+                    handleReasoningSummaryTextDelta(event.asReasoningSummaryTextDelta());
                 } else if (event.isFunctionCallArgumentsDelta()) {
                     handleFunctionCallArgumentsDelta(event.asFunctionCallArgumentsDelta());
                 } else if (event.isFunctionCallArgumentsDone()) {
@@ -883,7 +963,42 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         }
 
         private void handleFunctionCallArgumentsDelta(ResponseFunctionCallArgumentsDeltaEvent event) {
-            // Delta events are ignored
+            String itemId = event.itemId();
+            var builder = toolCallBuilders.get(itemId);
+            var index = toolCallIndices.get(itemId);
+            if (builder == null || index == null) {
+                return;
+            }
+
+            String delta = event.delta();
+            if (delta == null || delta.isEmpty()) {
+                return;
+            }
+
+            String currentArgs = builder.build().arguments();
+            builder.arguments(currentArgs + delta);
+
+            PartialToolCall partialToolCall = PartialToolCall.builder()
+                    .index(index)
+                    .id(builder.build().id())
+                    .name(builder.build().name())
+                    .partialArguments(delta)
+                    .build();
+            onPartialToolCall(handler, partialToolCall, streamingHandle);
+        }
+
+        private void handleReasoningTextDelta(ResponseReasoningTextDeltaEvent event) {
+            String delta = event.delta();
+            if (delta != null && !delta.isEmpty()) {
+                onPartialThinking(handler, delta, streamingHandle);
+            }
+        }
+
+        private void handleReasoningSummaryTextDelta(ResponseReasoningSummaryTextDeltaEvent event) {
+            String delta = event.delta();
+            if (delta != null && !delta.isEmpty()) {
+                onPartialThinking(handler, delta, streamingHandle);
+            }
         }
 
         private void handleFunctionCallArgumentsDone(ResponseFunctionCallArgumentsDoneEvent event) {
@@ -895,10 +1010,12 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 ToolExecutionRequest toolExecutionRequest = builder.build();
                 completedToolCalls.add(toolExecutionRequest);
 
-                try {
-                    handler.onCompleteToolCall(new CompleteToolCall(index, toolExecutionRequest));
-                } catch (Exception e) {
-                    withLoggingExceptions(() -> handler.onError(e));
+                if (!streamingHandle.isCancelled()) {
+                    try {
+                        handler.onCompleteToolCall(new CompleteToolCall(index, toolExecutionRequest));
+                    } catch (Exception e) {
+                        withLoggingExceptions(() -> handler.onError(e));
+                    }
                 }
             } else {
                 logger.warn("No builder for itemId in argumentsDone: {}", itemId);
@@ -914,7 +1031,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
             // Extract status and map to finish reason
             response.status().ifPresent(status -> {
-                this.finishReason = mapStatusToFinishReason(status.toString());
+                this.finishReason = mapStatusToFinishReason(status.asString());
             });
 
             // Extract token usage and complete
@@ -940,8 +1057,16 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
         private void handleFailed(ResponseFailedEvent event) {
             var response = event.response();
-            var error = response.error();
-            withLoggingExceptions(() -> handler.onError(new RuntimeException("Response failed: " + error)));
+            var message = response.error().map(this::extractErrorMessage).orElse("Response failed");
+            withLoggingExceptions(() -> handler.onError(new RuntimeException("Response failed: " + message)));
+        }
+
+        private String extractErrorMessage(ResponseError error) {
+            var message = error.message();
+            if (message == null || message.isBlank()) {
+                return error.toString();
+            }
+            return message;
         }
 
         private void handleIncomplete(ResponseIncompleteEvent event) {
@@ -977,15 +1102,20 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             var aiMessage = !completedToolCalls.isEmpty() && text != null
                     ? new AiMessage(text, completedToolCalls)
                     : !completedToolCalls.isEmpty()
-                            ? AiMessage.from(completedToolCalls)
-                            : new AiMessage(textBuilder.toString());
+                    ? AiMessage.from(completedToolCalls)
+                    : new AiMessage(textBuilder.toString());
 
             // Build metadata
-            var metadataBuilder =
-                    OpenAiOfficialChatResponseMetadata.builder().id(responseId).modelName(modelName);
+            var metadataBuilder = OpenAiOfficialResponsesChatResponseMetadata.builder()
+                    .id(responseId)
+                    .modelName(modelName);
+
+            metadataBuilder.createdAt((long) response.createdAt());
+            response.completedAt().ifPresent(ts -> metadataBuilder.completedAt(ts.longValue()));
+            response.serviceTier().ifPresent(tier -> metadataBuilder.serviceTier(tier.asString()));
 
             if (finishReason != null) {
-                metadataBuilder.finishReason(dev.langchain4j.model.output.FinishReason.valueOf(finishReason));
+                metadataBuilder.finishReason(FinishReason.valueOf(finishReason));
             }
 
             if (tokenUsage != null) {
@@ -997,10 +1127,12 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                     .metadata(metadataBuilder.build())
                     .build();
 
-            try {
-                handler.onCompleteResponse(chatResponse);
-            } catch (Exception e) {
-                withLoggingExceptions(() -> handler.onError(e));
+            if (!streamingHandle.isCancelled()) {
+                try {
+                    handler.onCompleteResponse(chatResponse);
+                } catch (Exception e) {
+                    withLoggingExceptions(() -> handler.onError(e));
+                }
             }
         }
     }

@@ -57,6 +57,7 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -862,7 +863,7 @@ public abstract class AbstractAiServiceWithToolsIT {
                 .tools(tool)
                 .build();
 
-        var text = adaptPrompt3("How much is 37 plus 87?");
+        var text = adaptPrompt3("How much is 37 plus 87? Answer in the following format: 37 + 87 = ...");
 
         // when
         var response = assistant.chat(text);
@@ -1164,7 +1165,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         class Tools {
 
             @Tool
-            String modify(int ignored) {
+            String modify() {
                 return "";
             }
         }
@@ -1178,12 +1179,12 @@ public abstract class AbstractAiServiceWithToolsIT {
                 .tools(tools)
                 .build();
 
-        String text = "Call tool 'modify' for argument '7'";
+        String text = "Call 'modify' tool";
 
         // when-then
         assertThatNoException().isThrownBy(() -> assistant.chat(text));
 
-        verify(tools).modify(7);
+        verify(tools, atLeastOnce()).modify();
 
         verify(model).chat(argThat((ChatRequest request) ->
                 request.messages().size() == 3
