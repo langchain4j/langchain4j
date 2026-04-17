@@ -1,7 +1,14 @@
 package dev.langchain4j.observability.api;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
+import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
+import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
+import dev.langchain4j.observability.api.event.AiServiceInteractionEvent;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Optional;
@@ -72,7 +79,7 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
     /* 
       Test Map to instead be thread safe and store *started event* IDs with the events
     */
-      private Map<UUID, InvocationState> invocationStates = new ConcurrentHashMap<>();
+      private final Map<UUID, InvocationState> invocationStates = new ConcurrentHashMap<>();
     
 
     /**
@@ -89,17 +96,21 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
                 .ifPresent(l -> l.fireEvent(event));
 
         // Test features
-        UUID InvocationID = event.invocationContext().invocationId();
+        UUID invocationID = event.invocationContext().invocationId();
 
-        if (event instanceof AiServiceStartedEEvent){
+        if (event instanceof AiServiceStartedEvent){
             InvocationState state = invocationStates.computeIfAbsent(invocationId, id -> new InvocationState());
             state.add(event);
             return;
         }
 
+        InvocationState state = invocationStates.get(invocationId);
+        if (state == null) {
+               return;
+            }
         state.add(event);
 
-        if(event instanceof AiServiceCompletdEvent || event instanceof AiServiceErrorEvent){
+        if(event instanceof AiServiceCompletedEvent || event instanceof AiServiceErrorEvent){
             List<AiServiceEvent> events = state.snapshot();
             invocationStates.remove(invocationId);
 
