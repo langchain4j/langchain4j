@@ -1,4 +1,4 @@
-# LangChain for Java: Supercharge your Java application with the power of LLMs
+# LangChain4j: idiomatic, open-source Java library for building LLM-powered applications on the JVM
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/langchain4j/langchain4j/main.yaml?branch=main&style=for-the-badge&label=CI%20BUILD&logo=github)](https://github.com/langchain4j/langchain4j/actions/workflows/main.yaml)
 [![Nightly Build](https://img.shields.io/github/actions/workflow/status/langchain4j/langchain4j/nightly_jdk17.yaml?branch=main&style=for-the-badge&label=NIGHTLY%20BUILD&logo=github)](https://github.com/langchain4j/langchain4j/actions/workflows/nightly_jdk17.yaml)
@@ -40,7 +40,7 @@ We noticed a lack of Java counterparts to the numerous Python and JavaScript LLM
 and we had to fix that!
 
 **Despite the name, LangChain4j is not a Java port of LangChain (Python) — it is built for Java, not ported to it.**
-It is an idiomatic, Java-native library designed from the ground up around Java conventions:
+It is an idiomatic Java library designed from the ground up around Java conventions:
 type safety, POJOs, annotations, interfaces, dependency injection, fluent APIs, and first-class integrations with Quarkus, Spring Boot, Helidon, and Micronaut.
 Its API, internals, and release cycle are independent of the Python LangChain project.
 
