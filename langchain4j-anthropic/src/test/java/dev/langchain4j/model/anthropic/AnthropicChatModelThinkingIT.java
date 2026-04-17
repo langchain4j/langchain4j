@@ -49,6 +49,7 @@ class AnthropicChatModelThinkingIT {
 
                 .thinkingType("enabled")
                 .thinkingBudgetTokens(THINKING_BUDGET_TOKENS)
+                .thinkingDisplay("summarized")
                 .maxTokens(THINKING_BUDGET_TOKENS + 100)
                 .returnThinking(returnThinking)
 

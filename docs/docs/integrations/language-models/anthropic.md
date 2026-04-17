@@ -53,6 +53,7 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .cacheTools(...)
     .thinkingType(...)
     .thinkingBudgetTokens(...)
+    .thinkingDisplay(...)
     .returnThinking(...)
     .sendThinking(...)
     .timeout(...)
@@ -428,6 +429,7 @@ Both `AnthropicChatModel` and `AnthropicStreamingChatModel` support
 It is controlled by the following parameters:
 - `thinkingType` and `thinkingBudgetTokens`: enable thinking,
   see more details [here](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking).
+- `thinkingDisplay`: controls how thinking content is returned. Valid values are `"summarized"` and `"omitted"`.
 - `returnThinking`: controls whether to return thinking (if available) inside `AiMessage.thinking()`
   and whether to invoke `StreamingChatResponseHandler.onPartialThinking()` and `TokenStream.onPartialThinking()`
   callbacks when using `BedrockStreamingChatModel`.
