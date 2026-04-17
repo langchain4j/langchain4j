@@ -293,14 +293,6 @@ public class OpenAiOfficialResponsesChatRequestParameters extends DefaultChatReq
             return this;
         }
 
-        /**
-         * @deprecated use {@link #reasoningEffort(ReasoningEffort)} instead
-         */
-        @Deprecated(since = "1.14.0")
-        public Builder reasoningEffort(String reasoningEffort) {
-            return reasoningEffort(reasoningEffort != null ? ReasoningEffort.of(reasoningEffort) : null);
-        }
-
         public Builder reasoningSummary(Reasoning.Summary reasoningSummary) {
             this.reasoningSummary = reasoningSummary;
             return this;
