@@ -182,7 +182,8 @@ class GeminiService {
             boolean returnServerToolResults,
             StreamingChatResponseHandler handler) {
         String url = String.format("%s/models/%s:streamGenerateContent?alt=sse", baseUrl, modelName);
-        streamRequest(url, apiKey, request, includeCodeExecutionOutput, returnThinking, returnServerToolResults, handler);
+        streamRequest(
+                url, apiKey, request, includeCodeExecutionOutput, returnThinking, returnServerToolResults, handler);
     }
 
     private <T> T sendRequest(String url, String apiKey, @Nullable Object requestBody, Class<T> responseType) {

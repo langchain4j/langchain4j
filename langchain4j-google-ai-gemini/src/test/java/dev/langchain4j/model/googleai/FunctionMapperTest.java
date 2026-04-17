@@ -345,7 +345,9 @@ class FunctionMapperTest {
         // when
         GeminiTool geminiTool = FunctionMapper.fromToolSpecsAndServerToolsToGTools(
                         null,
-                        List.of(GoogleAiGeminiServerTool.builder().type("google_search").build()),
+                        List.of(GoogleAiGeminiServerTool.builder()
+                                .type("google_search")
+                                .build()),
                         false,
                         false,
                         false,
@@ -372,13 +374,7 @@ class FunctionMapperTest {
 
         // when
         GeminiTool geminiTool = FunctionMapper.fromToolSpecsAndServerToolsToGTools(
-                        null,
-                        serverTools,
-                        false,
-                        false,
-                        false,
-                        true,
-                        true)
+                        null, serverTools, false, false, false, true, true)
                 .get(0);
 
         // then
