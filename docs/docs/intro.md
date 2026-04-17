@@ -34,7 +34,7 @@ and we had to fix that!
 
 :::note Not a port of LangChain (Python)
 Despite the name, **LangChain4j is not a Java port of [LangChain](https://github.com/langchain-ai/langchain) (Python) — it is built for Java, not ported to it**.
-It is an **idiomatic, Java-native** library designed from the ground up around Java conventions:
+It is an **idiomatic Java** library designed from the ground up around Java conventions:
 type safety, POJOs, annotations, interfaces, dependency injection, fluent APIs, and first-class integrations with
 [Quarkus](/tutorials/quarkus-integration), [Spring Boot](/tutorials/spring-boot-integration),
 [Helidon](/tutorials/helidon-integration), and [Micronaut](/tutorials/micronaut-integration).
