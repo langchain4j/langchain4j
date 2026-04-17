@@ -1,3 +1,6 @@
+package dev.langchain4j.observability.api.event;
+
+import dev.langchain4j.observability.event.DefaultAiServiceInteractionEvent;
 import java.util.List;
 import java.util.ArrayList;
 import dev.langchain4j.invocation.InvocationContext;
@@ -25,7 +28,7 @@ public interface AiServiceInteractionEvent extends AiServiceEvent {
 
         protected AiServiceInteractionEventBuilder() {}
 
-        protected AiServiceInteractionEventBuilder(AiServiceInteractionEvent src) {
+        public AiServiceInteractionEventBuilder(AiServiceInteractionEvent src) {
             super(src);
             events(src.events());
         }
