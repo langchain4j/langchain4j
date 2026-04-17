@@ -1194,7 +1194,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             String encryptedReasoning = extractEncryptedReasoning(response);
 
             AiMessage.Builder aiMessageBuilder = AiMessage.builder()
-                    .text(text != null ? text : (completedToolCalls.isEmpty() ? "" : null))
+                    .text(text)
                     .thinking(thinking)
                     .toolExecutionRequests(completedToolCalls);
             if (encryptedReasoning != null) {

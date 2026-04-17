@@ -132,7 +132,7 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
             List<ToolExecutionRequest> toolExecutionRequests = extractToolExecutionRequests(response);
 
             AiMessage.Builder aiMessageBuilder = AiMessage.builder()
-                    .text(text != null ? text : (toolExecutionRequests.isEmpty() ? "" : null))
+                    .text(text)
                     .thinking(thinking)
                     .toolExecutionRequests(toolExecutionRequests);
             if (encryptedReasoning != null) {
