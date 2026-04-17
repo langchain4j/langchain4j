@@ -27,20 +27,27 @@ class GeminiStreamingResponseBuilder {
 
     private final boolean includeCodeExecutionOutput;
     private final Boolean returnThinking;
+    private final boolean returnServerToolResults;
 
     private final StringBuilder contentBuilder;
     private final StringBuilder thoughtBuilder;
     private final Map<String, Object> attributes = new ConcurrentHashMap<>();
     private final List<ToolExecutionRequest> functionCalls;
+    private final List<GeminiContent.GeminiPart> parts = new ArrayList<>();
 
     private final AtomicReference<String> id = new AtomicReference<>();
     private final AtomicReference<String> modelName = new AtomicReference<>();
     private final AtomicReference<TokenUsage> tokenUsage = new AtomicReference<>();
     private final AtomicReference<FinishReason> finishReason = new AtomicReference<>();
+    private final AtomicReference<GeminiGenerateContentResponse.GeminiUrlContextMetadata> urlContextMetadata =
+            new AtomicReference<>();
+    private final AtomicReference<GroundingMetadata> groundingMetadata = new AtomicReference<>();
 
-    GeminiStreamingResponseBuilder(boolean includeCodeExecutionOutput, Boolean returnThinking) {
+    GeminiStreamingResponseBuilder(
+            boolean includeCodeExecutionOutput, Boolean returnThinking, boolean returnServerToolResults) {
         this.includeCodeExecutionOutput = includeCodeExecutionOutput;
         this.returnThinking = returnThinking;
+        this.returnServerToolResults = returnServerToolResults;
         this.contentBuilder = new StringBuilder();
         this.thoughtBuilder = new StringBuilder();
         this.functionCalls = new ArrayList<>();
@@ -70,6 +77,7 @@ class GeminiStreamingResponseBuilder {
         updateModelName(partialResponse);
         updateFinishReason(firstCandidate);
         updateTokenUsage(partialResponse.usageMetadata());
+        updateServerToolMetadata(partialResponse, firstCandidate);
 
         GeminiContent content = firstCandidate.content();
         if (content == null || content.parts() == null) {
@@ -78,6 +86,7 @@ class GeminiStreamingResponseBuilder {
 
         AiMessage message = fromGPartsToAiMessage(content.parts(), includeCodeExecutionOutput, returnThinking);
         updateContentAndFunctionCalls(message);
+        parts.addAll(content.parts());
 
         return new TextAndTools(
                 Optional.ofNullable(message.text()),
@@ -134,6 +143,17 @@ class GeminiStreamingResponseBuilder {
         }
     }
 
+    private void updateServerToolMetadata(GeminiGenerateContentResponse response, GeminiCandidate candidate) {
+        if (candidate.urlContextMetadata() != null) {
+            urlContextMetadata.set(candidate.urlContextMetadata());
+        }
+        if (response.groundingMetadata() != null) {
+            groundingMetadata.set(response.groundingMetadata());
+        } else if (candidate.groundingMetadata() != null) {
+            groundingMetadata.set(candidate.groundingMetadata());
+        }
+    }
+
     private void updateContentAndFunctionCalls(AiMessage message) {
         Optional.ofNullable(message.text()).ifPresent(contentBuilder::append);
         Optional.ofNullable(message.thinking()).ifPresent(thoughtBuilder::append);
@@ -146,12 +166,21 @@ class GeminiStreamingResponseBuilder {
     private AiMessage createAiMessage() {
         String text = contentBuilder.toString();
         String thought = thoughtBuilder.toString();
+        Map<String, Object> finalAttributes = new ConcurrentHashMap<>(attributes);
+
+        if (returnServerToolResults) {
+            List<GoogleAiGeminiServerToolResult> serverToolResults = GeminiServerToolsMapper.extractServerToolResults(
+                    parts, urlContextMetadata.get(), groundingMetadata.get());
+            if (!serverToolResults.isEmpty()) {
+                finalAttributes.put(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY, serverToolResults);
+            }
+        }
 
         return AiMessage.builder()
                 .text(text.isEmpty() ? null : text)
                 .thinking(thought.isEmpty() ? null : thought)
                 .toolExecutionRequests(functionCalls)
-                .attributes(attributes)
+                .attributes(finalAttributes)
                 .build();
     }
 }

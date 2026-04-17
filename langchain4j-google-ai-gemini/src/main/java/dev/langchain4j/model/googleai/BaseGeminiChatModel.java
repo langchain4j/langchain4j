@@ -29,6 +29,7 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -43,6 +44,8 @@ class BaseGeminiChatModel {
     protected final boolean retrieveGoogleMapsWidgetToken;
     protected final boolean allowUrlContext;
     protected final boolean includeCodeExecutionOutput;
+    protected final List<GoogleAiGeminiServerTool> serverTools;
+    protected final boolean returnServerToolResults;
     protected final List<GeminiSafetySetting> safetySettings;
     protected final List<ChatModelListener> listeners;
     protected final GeminiThinkingConfig thinkingConfig;
@@ -68,6 +71,8 @@ class BaseGeminiChatModel {
         this.retrieveGoogleMapsWidgetToken = getOrDefault(builder.retrieveGoogleMapsWidgetToken, false);
         this.allowUrlContext = getOrDefault(builder.allowUrlContext, false);
         this.includeCodeExecutionOutput = getOrDefault(builder.includeCodeExecutionOutput, false);
+        this.serverTools = copyIfNotNull(builder.serverTools);
+        this.returnServerToolResults = getOrDefault(builder.returnServerToolResults, false);
         this.safetySettings = copyIfNotNull(builder.safetySettings);
         this.listeners = copy(builder.listeners);
         this.thinkingConfig = builder.thinkingConfig;
@@ -161,6 +166,7 @@ class BaseGeminiChatModel {
                 .safetySettings(this.safetySettings)
                 .tools(fromToolSpecsToGTools(
                         chatRequest.toolSpecifications(),
+                        this.serverTools,
                         this.allowCodeExecution,
                         this.allowGoogleSearch,
                         this.allowUrlContext,
@@ -236,7 +242,7 @@ class BaseGeminiChatModel {
 
     protected ChatResponse processResponse(GeminiGenerateContentResponse geminiResponse) {
         GeminiCandidate firstCandidate = geminiResponse.candidates().get(0);
-        AiMessage aiMessage = createAiMessage(firstCandidate);
+        AiMessage aiMessage = createAiMessage(geminiResponse, firstCandidate);
 
         FinishReason finishReason = fromGFinishReasonToFinishReason(firstCandidate.finishReason());
         if (aiMessage != null && aiMessage.hasToolExecutionRequests()) {
@@ -263,11 +269,35 @@ class BaseGeminiChatModel {
     }
 
     protected AiMessage createAiMessage(GeminiCandidate candidate) {
+        return createAiMessage(null, candidate);
+    }
+
+    protected AiMessage createAiMessage(GeminiGenerateContentResponse response, GeminiCandidate candidate) {
+        AiMessage aiMessage;
         if (candidate == null || candidate.content() == null) {
-            return fromGPartsToAiMessage(List.of(), includeCodeExecutionOutput, returnThinking);
+            aiMessage = fromGPartsToAiMessage(List.of(), includeCodeExecutionOutput, returnThinking);
+        } else {
+            aiMessage = fromGPartsToAiMessage(candidate.content().parts(), includeCodeExecutionOutput, returnThinking);
         }
 
-        return fromGPartsToAiMessage(candidate.content().parts(), includeCodeExecutionOutput, returnThinking);
+        if (!returnServerToolResults) {
+            return aiMessage;
+        }
+
+        List<GoogleAiGeminiServerToolResult> results =
+                GeminiServerToolsMapper.extractServerToolResults(response, candidate);
+        if (results.isEmpty()) {
+            return aiMessage;
+        }
+
+        Map<String, Object> attributes = new HashMap<>(aiMessage.attributes());
+        attributes.put(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY, results);
+        return AiMessage.builder()
+                .text(aiMessage.text())
+                .thinking(aiMessage.thinking())
+                .toolExecutionRequests(aiMessage.toolExecutionRequests())
+                .attributes(attributes)
+                .build();
     }
 
     protected TokenUsage createTokenUsage(GeminiUsageMetadata tokenCounts) {
@@ -329,6 +359,8 @@ class BaseGeminiChatModel {
         protected Boolean retrieveGoogleMapsWidgetToken;
         protected Boolean allowUrlContext;
         protected Boolean includeCodeExecutionOutput;
+        protected List<GoogleAiGeminiServerTool> serverTools;
+        protected Boolean returnServerToolResults;
         protected Boolean logRequestsAndResponses;
         protected Boolean logRequests;
         protected Boolean logResponses;
@@ -388,6 +420,20 @@ class BaseGeminiChatModel {
 
         public B includeCodeExecutionOutput(Boolean includeCodeExecutionOutput) {
             this.includeCodeExecutionOutput = includeCodeExecutionOutput;
+            return builder();
+        }
+
+        public B serverTools(List<GoogleAiGeminiServerTool> serverTools) {
+            this.serverTools = serverTools;
+            return builder();
+        }
+
+        public B serverTools(GoogleAiGeminiServerTool... serverTools) {
+            return serverTools(Arrays.asList(serverTools));
+        }
+
+        public B returnServerToolResults(Boolean returnServerToolResults) {
+            this.returnServerToolResults = returnServerToolResults;
             return builder();
         }
 
