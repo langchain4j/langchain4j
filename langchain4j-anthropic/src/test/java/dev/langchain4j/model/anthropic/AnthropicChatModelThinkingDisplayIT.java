@@ -28,7 +28,8 @@ class AnthropicChatModelThinkingDisplayIT {
     void should_return_thinking_when_display_is_summarized() {
 
         // given
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
 
         ChatModel model = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -91,7 +92,8 @@ class AnthropicChatModelThinkingDisplayIT {
     void should_send_display_field_in_request_body() {
 
         // given
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
 
         ChatModel model = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))

@@ -34,8 +34,7 @@ public class AnthropicThinking {
         private Integer budgetTokens;
         private String display;
 
-        private Builder() {
-        }
+        private Builder() {}
 
         public Builder type(String type) {
             this.type = type;
