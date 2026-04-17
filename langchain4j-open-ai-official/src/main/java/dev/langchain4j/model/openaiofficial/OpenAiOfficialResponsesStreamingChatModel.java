@@ -2,6 +2,8 @@ package dev.langchain4j.model.openaiofficial;
 
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
+import com.openai.core.JsonField;
+import com.openai.core.JsonMissing;
 import com.openai.core.JsonValue;
 import com.openai.credential.Credential;
 import com.openai.models.ChatModel;
@@ -32,8 +34,10 @@ import com.openai.models.responses.ResponseInputImageContent;
 import com.openai.models.responses.ResponseInputItem;
 import com.openai.models.responses.ResponseInputText;
 import com.openai.models.responses.ResponseInputTextContent;
+import com.openai.models.responses.ResponseOutputItem;
 import com.openai.models.responses.ResponseOutputItemAddedEvent;
 import com.openai.models.responses.ResponseOutputItemDoneEvent;
+import com.openai.models.responses.ResponseReasoningItem;
 import com.openai.models.responses.ResponseReasoningSummaryTextDeltaEvent;
 import com.openai.models.responses.ResponseReasoningTextDeltaEvent;
 import com.openai.models.responses.ResponseStreamEvent;
@@ -110,6 +114,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
     private static final Logger logger = LoggerFactory.getLogger(OpenAiOfficialResponsesStreamingChatModel.class);
     private static final String PROMPT_CACHE_RETENTION_FIELD = "prompt_cache_retention";
+    // do not change, will break backward compatibility!
+    static final String ENCRYPTED_REASONING_KEY = "encrypted_reasoning";
 
     private final OpenAIClient client;
     private final ExecutorService executorService;
@@ -170,6 +176,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 .promptCacheKey(getOrDefault(builder.promptCacheKey, responsesParameters.promptCacheKey()))
                 .promptCacheRetention(getOrDefault(builder.promptCacheRetention, responsesParameters.promptCacheRetention()))
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, responsesParameters.reasoningEffort()))
+                .reasoningSummary(getOrDefault(builder.reasoningSummary, responsesParameters.reasoningSummary()))
                 .textVerbosity(getOrDefault(builder.textVerbosity, responsesParameters.textVerbosity()))
                 .streamIncludeObfuscation(getOrDefault(builder.streamIncludeObfuscation, responsesParameters.streamIncludeObfuscation()))
                 .store(getOrDefault(builder.store, getOrDefault(responsesParameters.store(), false)))
@@ -194,90 +201,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         Future<?> streamingFuture = null;
 
         try {
-            var paramsBuilder = ResponseCreateParams.builder()
-                    .model(ResponsesModel.ofChat(ChatModel.of(parameters.modelName())))
-                    .store(parameters.store());
-
-            var inputItems = new ArrayList<ResponseInputItem>();
-            for (var msg : chatRequest.messages()) {
-                inputItems.addAll(toResponseInputItems(msg));
-            }
-            paramsBuilder.inputOfResponse(inputItems);
-
-            if (parameters.temperature() != null) {
-                paramsBuilder.temperature(parameters.temperature());
-            }
-            if (parameters.topP() != null) {
-                paramsBuilder.topP(parameters.topP());
-            }
-            if (parameters.maxOutputTokens() != null) {
-                paramsBuilder.maxOutputTokens(parameters.maxOutputTokens().longValue());
-            }
-            if (parameters.maxToolCalls() != null) {
-                paramsBuilder.maxToolCalls(parameters.maxToolCalls());
-            }
-            if (parameters.parallelToolCalls() != null) {
-                paramsBuilder.parallelToolCalls(parameters.parallelToolCalls());
-            }
-            if (parameters.previousResponseId() != null) {
-                paramsBuilder.previousResponseId(parameters.previousResponseId());
-            }
-            if (parameters.topLogprobs() != null) {
-                paramsBuilder.topLogprobs(parameters.topLogprobs());
-            }
-            if (parameters.truncation() != null) {
-                paramsBuilder.truncation(ResponseCreateParams.Truncation.of(parameters.truncation()));
-            }
-            if (parameters.include() != null && !parameters.include().isEmpty()) {
-                var includables = new ArrayList<ResponseIncludable>();
-                for (var item : parameters.include()) {
-                    includables.add(ResponseIncludable.of(item));
-                }
-                paramsBuilder.include(includables);
-            }
-            if (parameters.serviceTier() != null) {
-                paramsBuilder.serviceTier(ResponseCreateParams.ServiceTier.of(parameters.serviceTier()));
-            }
-            if (parameters.safetyIdentifier() != null) {
-                paramsBuilder.safetyIdentifier(parameters.safetyIdentifier());
-            }
-            if (parameters.promptCacheKey() != null) {
-                paramsBuilder.promptCacheKey(parameters.promptCacheKey());
-            }
-            if (parameters.promptCacheRetention() != null) {
-                paramsBuilder.putAdditionalBodyProperty(
-                        PROMPT_CACHE_RETENTION_FIELD, JsonValue.from(parameters.promptCacheRetention()));
-            }
-            if (parameters.reasoningEffort() != null) {
-                paramsBuilder.reasoning(Reasoning.builder()
-                        .effort(ReasoningEffort.of(parameters.reasoningEffort()))
-                        .build());
-            }
-            if (parameters.streamIncludeObfuscation() != null) {
-                paramsBuilder.streamOptions(ResponseCreateParams.StreamOptions.builder()
-                        .includeObfuscation(parameters.streamIncludeObfuscation())
-                        .build());
-            }
-
-            boolean strictTools = Boolean.TRUE.equals(parameters.strictTools());
-            if (parameters.toolSpecifications() != null
-                    && !parameters.toolSpecifications().isEmpty()) {
-                for (var toolSpec : parameters.toolSpecifications()) {
-                    paramsBuilder.addTool(toResponsesTool(toolSpec, strictTools));
-                }
-
-                if (parameters.toolChoice() != null) {
-                    paramsBuilder.toolChoice(toResponsesToolChoice(parameters.toolChoice()));
-                }
-            }
-
-            boolean strictJsonSchema = Boolean.TRUE.equals(parameters.strictJsonSchema());
-            ResponseTextConfig textConfig = toResponseTextConfig(parameters.responseFormat(), strictJsonSchema, parameters.textVerbosity());
-            if (textConfig != null) {
-                paramsBuilder.text(textConfig);
-            }
-
-            var params = paramsBuilder.build();
+            var params = buildRequestParams(chatRequest, parameters);
             var streamResponse = client.responses().createStreaming(params);
 
             ResponsesStreamingHandle streamingHandle = new ResponsesStreamingHandle(() -> {
@@ -335,7 +259,154 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         return Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
     }
 
-    private static void validate(ChatRequestParameters parameters) {
+    static String extractReasoningSummary(com.openai.models.responses.Response response) {
+        StringBuilder summaryBuilder = new StringBuilder();
+        for (ResponseOutputItem item : response.output()) {
+            if (item.isReasoning()) {
+                for (ResponseReasoningItem.Summary summary : item.asReasoning().summary()) {
+                    summaryBuilder.append(summary.text());
+                }
+            }
+        }
+        return summaryBuilder.isEmpty() ? null : summaryBuilder.toString();
+    }
+
+    static String extractEncryptedReasoning(com.openai.models.responses.Response response) {
+        for (ResponseOutputItem item : response.output()) {
+            if (item.isReasoning()) {
+                var encrypted = item.asReasoning().encryptedContent();
+                if (encrypted.isPresent() && !encrypted.get().isEmpty()) {
+                    return encrypted.get();
+                }
+            }
+        }
+        return null;
+    }
+
+    static List<ToolExecutionRequest> extractToolExecutionRequests(com.openai.models.responses.Response response) {
+        List<ToolExecutionRequest> requests = new ArrayList<>();
+        for (ResponseOutputItem item : response.output()) {
+            if (item.isFunctionCall()) {
+                var fn = item.asFunctionCall();
+                requests.add(ToolExecutionRequest.builder()
+                        .id(fn.callId())
+                        .name(fn.name())
+                        .arguments(fn.arguments())
+                        .build());
+            }
+        }
+        return requests;
+    }
+
+    static String extractText(com.openai.models.responses.Response response) {
+        StringBuilder textBuilder = new StringBuilder();
+        for (ResponseOutputItem item : response.output()) {
+            if (item.isMessage()) {
+                item.asMessage().content().forEach(content -> {
+                    if (content.isOutputText()) {
+                        textBuilder.append(content.asOutputText().text());
+                    }
+                });
+            }
+        }
+        return textBuilder.isEmpty() ? null : textBuilder.toString();
+    }
+
+    static ResponseCreateParams buildRequestParams(
+            ChatRequest chatRequest, OpenAiOfficialResponsesChatRequestParameters parameters) {
+        var paramsBuilder = ResponseCreateParams.builder()
+                .model(ResponsesModel.ofChat(ChatModel.of(parameters.modelName())))
+                .store(parameters.store());
+
+        var inputItems = new ArrayList<ResponseInputItem>();
+        for (var msg : chatRequest.messages()) {
+            inputItems.addAll(toResponseInputItems(msg));
+        }
+        paramsBuilder.inputOfResponse(inputItems);
+
+        if (parameters.temperature() != null) {
+            paramsBuilder.temperature(parameters.temperature());
+        }
+        if (parameters.topP() != null) {
+            paramsBuilder.topP(parameters.topP());
+        }
+        if (parameters.maxOutputTokens() != null) {
+            paramsBuilder.maxOutputTokens(parameters.maxOutputTokens().longValue());
+        }
+        if (parameters.maxToolCalls() != null) {
+            paramsBuilder.maxToolCalls(parameters.maxToolCalls());
+        }
+        if (parameters.parallelToolCalls() != null) {
+            paramsBuilder.parallelToolCalls(parameters.parallelToolCalls());
+        }
+        if (parameters.previousResponseId() != null) {
+            paramsBuilder.previousResponseId(parameters.previousResponseId());
+        }
+        if (parameters.topLogprobs() != null) {
+            paramsBuilder.topLogprobs(parameters.topLogprobs());
+        }
+        if (parameters.truncation() != null) {
+            paramsBuilder.truncation(ResponseCreateParams.Truncation.of(parameters.truncation()));
+        }
+        if (parameters.include() != null && !parameters.include().isEmpty()) {
+            var includables = new ArrayList<ResponseIncludable>();
+            for (var item : parameters.include()) {
+                includables.add(ResponseIncludable.of(item));
+            }
+            paramsBuilder.include(includables);
+        }
+        if (parameters.serviceTier() != null) {
+            paramsBuilder.serviceTier(ResponseCreateParams.ServiceTier.of(parameters.serviceTier()));
+        }
+        if (parameters.safetyIdentifier() != null) {
+            paramsBuilder.safetyIdentifier(parameters.safetyIdentifier());
+        }
+        if (parameters.promptCacheKey() != null) {
+            paramsBuilder.promptCacheKey(parameters.promptCacheKey());
+        }
+        if (parameters.promptCacheRetention() != null) {
+            paramsBuilder.putAdditionalBodyProperty(
+                    PROMPT_CACHE_RETENTION_FIELD, JsonValue.from(parameters.promptCacheRetention()));
+        }
+        if (parameters.reasoningEffort() != null || parameters.reasoningSummary() != null) {
+            Reasoning.Builder reasoningBuilder = Reasoning.builder();
+            if (parameters.reasoningEffort() != null) {
+                reasoningBuilder.effort(ReasoningEffort.of(parameters.reasoningEffort()));
+            }
+            if (parameters.reasoningSummary() != null) {
+                reasoningBuilder.summary(Reasoning.Summary.of(parameters.reasoningSummary()));
+            }
+            paramsBuilder.reasoning(reasoningBuilder.build());
+        }
+        if (parameters.streamIncludeObfuscation() != null) {
+            paramsBuilder.streamOptions(ResponseCreateParams.StreamOptions.builder()
+                    .includeObfuscation(parameters.streamIncludeObfuscation())
+                    .build());
+        }
+
+        boolean strictTools = Boolean.TRUE.equals(parameters.strictTools());
+        if (parameters.toolSpecifications() != null
+                && !parameters.toolSpecifications().isEmpty()) {
+            for (var toolSpec : parameters.toolSpecifications()) {
+                paramsBuilder.addTool(toResponsesTool(toolSpec, strictTools));
+            }
+
+            if (parameters.toolChoice() != null) {
+                paramsBuilder.toolChoice(toResponsesToolChoice(parameters.toolChoice()));
+            }
+        }
+
+        boolean strictJsonSchema = Boolean.TRUE.equals(parameters.strictJsonSchema());
+        ResponseTextConfig textConfig = toResponseTextConfig(
+                parameters.responseFormat(), strictJsonSchema, parameters.textVerbosity());
+        if (textConfig != null) {
+            paramsBuilder.text(textConfig);
+        }
+
+        return paramsBuilder.build();
+    }
+
+    static void validate(ChatRequestParameters parameters) {
         if (parameters.topK() != null) {
             throw new UnsupportedFeatureException("'topK' parameter is not supported by OpenAI Responses API");
         }
@@ -357,6 +428,12 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             return List.of(createUserMessage(userMessage));
         } else if (msg instanceof AiMessage aiMessage) {
             var items = new ArrayList<ResponseInputItem>();
+
+            // Add reasoning item (with encrypted_content and summary) if present
+            String encryptedReasoning = aiMessage.attribute(ENCRYPTED_REASONING_KEY, String.class);
+            if (encryptedReasoning != null && !encryptedReasoning.isEmpty()) {
+                items.add(toReasoningInputItem(encryptedReasoning, aiMessage.thinking()));
+            }
 
             // Add text message if present
             var text = aiMessage.text();
@@ -415,6 +492,20 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         } else {
             return List.of(createTextMessage(EasyInputMessage.Role.USER, msg.toString()));
         }
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static ResponseInputItem toReasoningInputItem(String encryptedContent, String thinking) {
+        List<ResponseReasoningItem.Summary> summaries = new ArrayList<>();
+        if (thinking != null && !thinking.isEmpty()) {
+            summaries.add(ResponseReasoningItem.Summary.builder().text(thinking).build());
+        }
+        ResponseReasoningItem reasoningItem = ResponseReasoningItem.builder()
+                .id((JsonField) JsonMissing.of())
+                .summary(summaries)
+                .encryptedContent(encryptedContent)
+                .build();
+        return ResponseInputItem.ofReasoning(reasoningItem);
     }
 
     private static ResponseInputItem createTextMessage(EasyInputMessage.Role role, String text) {
@@ -590,6 +681,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private String promptCacheKey;
         private String promptCacheRetention;
         private String reasoningEffort;
+        private String reasoningSummary;
         private String textVerbosity;
         private Boolean streamIncludeObfuscation;
         private Boolean store;
@@ -758,6 +850,11 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
         public Builder reasoningEffort(String reasoningEffort) {
             this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
+        public Builder reasoningSummary(String reasoningSummary) {
+            this.reasoningSummary = reasoningSummary;
             return this;
         }
 
@@ -1085,11 +1182,17 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
             // Build final AI message
             var text = !textBuilder.isEmpty() ? textBuilder.toString() : null;
-            var aiMessage = !completedToolCalls.isEmpty() && text != null
-                    ? new AiMessage(text, completedToolCalls)
-                    : !completedToolCalls.isEmpty()
-                    ? AiMessage.from(completedToolCalls)
-                    : new AiMessage(textBuilder.toString());
+            String thinking = extractReasoningSummary(response);
+            String encryptedReasoning = extractEncryptedReasoning(response);
+
+            AiMessage.Builder aiMessageBuilder = AiMessage.builder()
+                    .text(text != null ? text : (completedToolCalls.isEmpty() ? "" : null))
+                    .thinking(thinking)
+                    .toolExecutionRequests(completedToolCalls);
+            if (encryptedReasoning != null) {
+                aiMessageBuilder.attributes(Map.of(ENCRYPTED_REASONING_KEY, encryptedReasoning));
+            }
+            var aiMessage = aiMessageBuilder.build();
 
             // Build metadata
             var metadataBuilder = OpenAiOfficialResponsesChatResponseMetadata.builder()
