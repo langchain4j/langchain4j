@@ -340,6 +340,54 @@ class FunctionMapperTest {
         assertThat(geminiTool.googleMaps().enableWidget()).isTrue();
     }
 
+    @Test
+    void should_include_explicit_server_tools_without_function_specifications() {
+        // when
+        GeminiTool geminiTool = FunctionMapper.fromToolSpecsAndServerToolsToGTools(
+                        null,
+                        List.of(GoogleAiGeminiServerTool.builder().type("google_search").build()),
+                        false,
+                        false,
+                        false,
+                        false,
+                        false)
+                .get(0);
+
+        // then
+        assertThat(geminiTool).isNotNull();
+        assertThat(geminiTool.functionDeclarations()).isNull();
+        assertThat(geminiTool.codeExecution()).isNull();
+        assertThat(geminiTool.googleSearch()).isNotNull();
+        assertThat(geminiTool.urlContext()).isNull();
+        assertThat(geminiTool.googleMaps()).isNull();
+    }
+
+    @Test
+    void should_merge_explicit_server_tools_with_legacy_flags() {
+        // given
+        List<GoogleAiGeminiServerTool> serverTools = List.of(GoogleAiGeminiServerTool.builder()
+                .type("google_maps")
+                .addAttribute("enable_widget", false)
+                .build());
+
+        // when
+        GeminiTool geminiTool = FunctionMapper.fromToolSpecsAndServerToolsToGTools(
+                        null,
+                        serverTools,
+                        false,
+                        false,
+                        false,
+                        true,
+                        true)
+                .get(0);
+
+        // then
+        assertThat(geminiTool).isNotNull();
+        assertThat(geminiTool.functionDeclarations()).isNull();
+        assertThat(geminiTool.googleMaps()).isNotNull();
+        assertThat(geminiTool.googleMaps().enableWidget()).isFalse();
+    }
+
     private static String withoutNullValues(String toString) {
         return toString.replaceAll("(, )?(?<=(, |\\())[^\\s(]+?=null(?:, )?", " ")
                 .replaceFirst(", \\)$", ")");

@@ -33,12 +33,7 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
     public void doChat(ChatRequest request, StreamingChatResponseHandler handler) {
         GeminiGenerateContentRequest geminiRequest = createGenerateContentRequest(request);
         geminiService.generateContentStream(
-                request.modelName(),
-                geminiRequest,
-                includeCodeExecutionOutput,
-                returnThinking,
-                returnServerToolResults,
-                handler);
+                request.modelName(), geminiRequest, includeCodeExecutionOutput, returnThinking, returnServerToolResults, handler);
     }
 
     @Override
