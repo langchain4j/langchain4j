@@ -21,6 +21,7 @@ import dev.langchain4j.model.openai.OpenAiResponsesChatResponseMetadata;
 import dev.langchain4j.model.openai.OpenAiResponsesStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
@@ -171,6 +172,11 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected boolean supportsStopSequencesParameter() {
         return false;
+    }
+
+    @Disabled("gpt-5.4-mini cannot do it properly")
+    @Override
+    protected void should_respect_JsonRawSchema_responseFormat(StreamingChatModel model) {
     }
 
     @Test
