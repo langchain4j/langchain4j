@@ -9,6 +9,7 @@ import com.openai.models.responses.Response;
 import com.openai.models.responses.ResponseCreateParams;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.ModelProvider;
@@ -18,6 +19,8 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 
@@ -87,9 +90,9 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
                 .maxOutputTokens(getOrDefault(builder.maxOutputTokens, commonParameters.maxOutputTokens()))
-                .toolSpecifications(commonParameters.toolSpecifications())
-                .toolChoice(commonParameters.toolChoice())
-                .responseFormat(commonParameters.responseFormat())
+                .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
+                .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
+                .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
 
                 .previousResponseId(getOrDefault(builder.previousResponseId, responsesParameters.previousResponseId()))
                 .maxToolCalls(getOrDefault(builder.maxToolCalls, responsesParameters.maxToolCalls()))
@@ -168,6 +171,10 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
                             .cachedTokens((int) cachedTokens)
                             .build());
                 }
+
+                tokenUsageBuilder.outputTokensDetails(OpenAiOfficialTokenUsage.OutputTokensDetails.builder()
+                        .reasoningTokens(usage.outputTokensDetails().reasoningTokens())
+                        .build());
                 metadataBuilder.tokenUsage(tokenUsageBuilder.build());
             });
 
@@ -249,6 +256,9 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
         private List<ChatModelListener> listeners;
         private Boolean strictTools;
         private Boolean strictJsonSchema;
+        private List<ToolSpecification> toolSpecifications;
+        private ToolChoice toolChoice;
+        private ResponseFormat responseFormat;
         private ChatRequestParameters defaultRequestParameters;
 
         public Builder baseUrl(String baseUrl) {
@@ -444,6 +454,25 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
 
         public Builder strictJsonSchema(Boolean strictJsonSchema) {
             this.strictJsonSchema = strictJsonSchema;
+            return this;
+        }
+
+        public Builder toolSpecifications(List<ToolSpecification> toolSpecifications) {
+            this.toolSpecifications = toolSpecifications;
+            return this;
+        }
+
+        public Builder toolSpecifications(ToolSpecification... toolSpecifications) {
+            return toolSpecifications(asList(toolSpecifications));
+        }
+
+        public Builder toolChoice(ToolChoice toolChoice) {
+            this.toolChoice = toolChoice;
+            return this;
+        }
+
+        public Builder responseFormat(ResponseFormat responseFormat) {
+            this.responseFormat = responseFormat;
             return this;
         }
 

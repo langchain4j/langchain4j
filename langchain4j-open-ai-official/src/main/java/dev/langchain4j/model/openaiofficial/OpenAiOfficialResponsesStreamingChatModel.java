@@ -161,9 +161,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
                 .maxOutputTokens(getOrDefault(builder.maxOutputTokens, commonParameters.maxOutputTokens()))
-                .toolSpecifications(commonParameters.toolSpecifications())
-                .toolChoice(commonParameters.toolChoice())
-                .responseFormat(commonParameters.responseFormat())
+                .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
+                .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
+                .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
 
                 .previousResponseId(getOrDefault(builder.previousResponseId, responsesParameters.previousResponseId()))
                 .maxToolCalls(getOrDefault(builder.maxToolCalls, responsesParameters.maxToolCalls()))
@@ -689,6 +689,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private ExecutorService executorService;
         private Boolean strictTools;
         private Boolean strictJsonSchema;
+        private List<ToolSpecification> toolSpecifications;
+        private ToolChoice toolChoice;
+        private ResponseFormat responseFormat;
         private ChatRequestParameters defaultRequestParameters;
 
         public Builder baseUrl(String baseUrl) {
@@ -912,6 +915,25 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
         public Builder strictJsonSchema(Boolean strictJsonSchema) {
             this.strictJsonSchema = strictJsonSchema;
+            return this;
+        }
+
+        public Builder toolSpecifications(List<ToolSpecification> toolSpecifications) {
+            this.toolSpecifications = toolSpecifications;
+            return this;
+        }
+
+        public Builder toolSpecifications(ToolSpecification... toolSpecifications) {
+            return toolSpecifications(asList(toolSpecifications));
+        }
+
+        public Builder toolChoice(ToolChoice toolChoice) {
+            this.toolChoice = toolChoice;
+            return this;
+        }
+
+        public Builder responseFormat(ResponseFormat responseFormat) {
+            this.responseFormat = responseFormat;
             return this;
         }
 
@@ -1184,6 +1206,10 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                             .cachedTokens((int) cachedTokens)
                             .build());
                 }
+
+                builder.outputTokensDetails(OpenAiOfficialTokenUsage.OutputTokensDetails.builder()
+                        .reasoningTokens(usage.outputTokensDetails().reasoningTokens())
+                        .build());
 
                 tokenUsage = builder.build();
             });
