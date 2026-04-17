@@ -318,16 +318,17 @@ OpenAI reasoning models (e.g. `gpt-5.4`, `gpt-5-mini`) support
 [reasoning summaries](https://developers.openai.com/api/docs/guides/reasoning#reasoning-summaries)
 that expose a summary of the model's internal reasoning.
 
-To enable reasoning summaries, set `reasoningSummary` to `"auto"` on the builder
+To enable reasoning summaries, set `reasoningSummary` to `Reasoning.Summary.AUTO` on the builder
 (or via `OpenAiOfficialResponsesChatRequestParameters`).
 You can also control how much effort the model puts into reasoning with `reasoningEffort`.
+Both setters accept either the official SDK types (`ReasoningEffort`, `Reasoning.Summary`) or a plain `String`.
 
 ```java
 ChatModel model = OpenAiOfficialResponsesChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName("gpt-5-mini")
-        .reasoningEffort("low")
-        .reasoningSummary("auto")
+        .reasoningEffort(ReasoningEffort.LOW)
+        .reasoningSummary(Reasoning.Summary.AUTO)
         .build();
 
 ChatResponse response = model.chat("What is the capital of Germany?");
@@ -343,8 +344,8 @@ as reasoning summary tokens are streamed:
 StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName("gpt-5-mini")
-        .reasoningEffort("low")
-        .reasoningSummary("auto")
+        .reasoningEffort(ReasoningEffort.LOW)
+        .reasoningSummary(Reasoning.Summary.AUTO)
         .build();
 ```
 
@@ -362,7 +363,7 @@ via the `include` parameter:
 ChatModel model = OpenAiOfficialResponsesChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName("gpt-5-mini")
-        .reasoningEffort("medium")
+        .reasoningEffort(ReasoningEffort.MEDIUM)
         .include(List.of("reasoning.encrypted_content"))
         .build();
 ```
