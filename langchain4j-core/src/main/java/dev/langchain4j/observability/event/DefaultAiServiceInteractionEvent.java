@@ -1,4 +1,4 @@
-package dev.langchain4j.observatbility.event;
+package dev.langchain4j.observability.event; 
 
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
@@ -15,7 +15,7 @@ public class DefaultAiServiceInteractionEvent implements AiServiceInteractionEve
     private final List<AiServiceEvent> events;
 
     public DefaultAiServiceInteractionEvent(AiServiceInteractionEventBuilder builder){
-        this.invocationContext = ensureNotNull(bulider.invocationContext(), "invocationContext");
+        this.invocationContext = ensureNotNull(builder.invocationContext(), "invocationContext");
         this.events = List.copyOf(ensureNotNull(builder.events(), "events"));
     }
 
@@ -34,7 +34,10 @@ public class DefaultAiServiceInteractionEvent implements AiServiceInteractionEve
         return "DefaultAiServiceInteractionEvent{" + "invocationContext=" + invocationContext + ", events=" + events + "}";
     }
 
-
+    @Override
+    public AiServiceInteractionEventBuilder toBuilder(){
+        return new AiServiceInteractionEventBuilder(this);
+    }
 
 
 }
