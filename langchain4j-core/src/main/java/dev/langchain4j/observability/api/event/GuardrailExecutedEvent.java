@@ -45,12 +45,14 @@ public interface GuardrailExecutedEvent<
     Class<G> guardrailClass();
 
     /**
-    * Retrieves the guardrail name associated with the validation process.
-    *
-    * @return the guardrail name, as set by the executor (see {@link Guardrail#name()}).
-    */
-    String guardrailName();
-    
+     * Retrieves the guardrail name associated with the validation process.
+     *
+     * @return the guardrail name. Defaults to {@code guardrailClass().getSimpleName()} when not explicitly set.
+     */
+    default String guardrailName() {
+        return guardrailClass().getSimpleName();
+    }
+
     /**
      * Retrieves the duration of the guardrail execution.
      *
