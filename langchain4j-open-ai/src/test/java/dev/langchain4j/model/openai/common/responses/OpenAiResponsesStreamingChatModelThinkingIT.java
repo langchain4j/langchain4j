@@ -15,6 +15,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiResponsesStreamingChatModel;
+import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
@@ -83,6 +84,9 @@ class OpenAiResponsesStreamingChatModelThinkingIT {
         assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage.thinking()).isNotBlank();
         assertThat(aiMessage.thinking()).isEqualTo(spyHandler.getThinking());
+
+        OpenAiTokenUsage tokenUsage = (OpenAiTokenUsage) chatResponse.tokenUsage();
+        assertThat(tokenUsage.outputTokensDetails().reasoningTokens()).isNotNull();
 
         InOrder inOrder = inOrder(spyHandler);
         inOrder.verify(spyHandler).get();
