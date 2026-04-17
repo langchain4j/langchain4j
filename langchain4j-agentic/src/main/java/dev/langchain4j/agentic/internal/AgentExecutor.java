@@ -39,12 +39,69 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
 
     private Object handleAgentFailure(
             AgentInvocationException e, DefaultAgenticScope agenticScope, Object invokedAgent, PlannerExecutor planner) {
+        // Try to unwrap MissingArgumentException from the cause chain.
+        // When a subagent's prompt template is missing a variable, the root cause
+        // (IllegalArgumentException: Value for the variable 'X' is missing) gets buried
+        // under multiple layers of reflection exceptions (InvocationTargetException ->
+        // UndeclaredThrowableException -> InvocationTargetException -> AgentInvocationException).
+        // Without this unwrapping, instanceof MissingArgumentException in the error handler
+        // would never match.
+        MissingArgumentException mae = findMissingArgumentException(e);
+        if (mae != null) {
+            return handleMissingArgumentException(mae, agenticScope, planner);
+        }
         ErrorRecoveryResult recoveryResult = agenticScope.handleError(agentInvoker.name(), e);
         return switch (recoveryResult.type()) {
             case THROW_EXCEPTION -> throw e;
             case RETRY -> internalExecute(agenticScope, invokedAgent, planner, false);
             case RETURN_RESULT -> recoveryResult.result();
         };
+    }
+
+    private Object handleMissingArgumentException(
+            MissingArgumentException e, DefaultAgenticScope agenticScope, PlannerExecutor planner) {
+        if (optional()) {
+            LOG.info("Skipping optional agent '{}' because of missing argument '{}'", agentInvoker.name(), e.argumentName());
+            Object response = agenticScope.readState(agentInvoker.outputKey());
+            if (planner != null) {
+                planner.onSubagentInvoked(new AgentInvocation(type(), name(), agentId(), Map.of(), response));
+            }
+            return response;
+        }
+        // Delegate to the error handler so the user can supply the missing value and retry
+        ErrorRecoveryResult recoveryResult = agenticScope.handleError(agentInvoker.name(), e);
+        return switch (recoveryResult.type()) {
+            case THROW_EXCEPTION -> throw e;
+            case RETRY -> internalExecute(agenticScope, agent, planner, false);
+            case RETURN_RESULT -> recoveryResult.result();
+        };
+    }
+
+    /**
+     * Searches the exception chain for a prompt template missing-variable error
+     * ("Value for the variable 'X' is missing" or "Value for the variable 'X' is null")
+     * and converts it to a MissingArgumentException.
+     */
+    private static MissingArgumentException findMissingArgumentException(AgentInvocationException e) {
+        Throwable current = e;
+        while (current != null) {
+            String message = current.getMessage();
+            if (message != null) {
+                // Match messages from DefaultPromptTemplateFactory.ensureAllVariablesProvided()
+                // and PromptTemplate.render() - e.g.:
+                // "Value for the variable 'topic' is missing"
+                // "Value for the variable 'topic' is null"
+                if (message.startsWith("Value for the variable '")) {
+                    int endIdx = message.indexOf("' is ");
+                    if (endIdx > 0) {
+                        String varName = message.substring("Value for the variable '".length(), endIdx);
+                        return new MissingArgumentException(varName);
+                    }
+                }
+            }
+            current = current.getCause();
+        }
+        return null;
     }
 
     private Object internalExecute(DefaultAgenticScope agenticScope, Object invokedAgent, PlannerExecutor planner, boolean async) {
