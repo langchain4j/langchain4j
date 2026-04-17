@@ -321,7 +321,6 @@ that expose a summary of the model's internal reasoning.
 To enable reasoning summaries, set `reasoningSummary` to `Reasoning.Summary.AUTO` on the builder
 (or via `OpenAiOfficialResponsesChatRequestParameters`).
 You can also control how much effort the model puts into reasoning with `reasoningEffort`.
-Both setters accept either the official SDK types (`ReasoningEffort`, `Reasoning.Summary`) or a plain `String`.
 
 ```java
 ChatModel model = OpenAiOfficialResponsesChatModel.builder()
