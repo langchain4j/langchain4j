@@ -7,6 +7,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import java.util.HashMap;
 import java.util.Map;
+import software.amazon.awssdk.services.bedrockruntime.model.CacheTTL;
 
 public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
 
@@ -15,7 +16,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
 
     private final Map<String, Object> additionalModelRequestFields;
     private final BedrockCachePointPlacement cachePointPlacement;
-    private final BedrockCacheTtl cacheTtl;
+    private final CacheTTL cacheTtl;
     private final BedrockGuardrailConfiguration bedrockGuardrailConfiguration;
     private final BedrockServiceTier serviceTier;
 
@@ -56,7 +57,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
         return cachePointPlacement;
     }
 
-    public BedrockCacheTtl cacheTtl() {
+    public CacheTTL cacheTtl() {
         return cacheTtl;
     }
 
@@ -72,7 +73,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
 
         private Map<String, Object> additionalModelRequestFields;
         private BedrockCachePointPlacement cachePointPlacement;
-        private BedrockCacheTtl cacheTtl;
+        private CacheTTL cacheTtl;
         private BedrockGuardrailConfiguration bedrockGuardrailConfiguration;
         private BedrockServiceTier serviceTier;
 
@@ -153,7 +154,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
          * @return this builder
          * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html">AWS Bedrock Prompt Caching</a>
          */
-        public Builder promptCaching(BedrockCachePointPlacement placement, BedrockCacheTtl ttl) {
+        public Builder promptCaching(BedrockCachePointPlacement placement, CacheTTL ttl) {
             this.cachePointPlacement = placement;
             this.cacheTtl = ttl;
             return this;

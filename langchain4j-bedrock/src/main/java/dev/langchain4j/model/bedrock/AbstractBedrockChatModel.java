@@ -68,6 +68,9 @@ import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockruntime.model.AnyToolChoice;
+import software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock;
+import software.amazon.awssdk.services.bedrockruntime.model.CachePointType;
+import software.amazon.awssdk.services.bedrockruntime.model.CacheTTL;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ConversationRole;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
@@ -116,23 +119,20 @@ abstract class AbstractBedrockChatModel {
     /**
      * Default cache point block with no TTL (5-minute default).
      */
-    private static final software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock DEFAULT_CACHE_POINT =
-            software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
-                    .type(software.amazon.awssdk.services.bedrockruntime.model.CachePointType.DEFAULT)
-                    .build();
+    private static final CachePointBlock DEFAULT_CACHE_POINT =
+            CachePointBlock.builder().type(CachePointType.DEFAULT).build();
 
     /**
      * Creates a CachePointBlock with the specified TTL.
      * If cacheTtl is null, returns the default cache point (5-minute TTL).
      */
-    private static software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock buildCachePoint(
-            BedrockCacheTtl cacheTtl) {
+    private static CachePointBlock buildCachePoint(CacheTTL cacheTtl) {
         if (cacheTtl == null) {
             return DEFAULT_CACHE_POINT;
         }
-        return software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
-                .type(software.amazon.awssdk.services.bedrockruntime.model.CachePointType.DEFAULT)
-                .ttl(cacheTtl.toSdkCacheTtl())
+        return CachePointBlock.builder()
+                .type(CachePointType.DEFAULT)
+                .ttl(cacheTtl)
                 .build();
     }
 
@@ -191,7 +191,7 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected List<SystemContentBlock> extractSystemMessages(
-            List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement, BedrockCacheTtl cacheTtl) {
+            List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement, CacheTTL cacheTtl) {
         if (messages == null) {
             return new ArrayList<>();
         }
@@ -265,7 +265,7 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected List<Message> extractRegularMessages(
-            List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement, BedrockCacheTtl cacheTtl) {
+            List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement, CacheTTL cacheTtl) {
         if (messages == null) {
             return new ArrayList<>();
         }
@@ -503,7 +503,7 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected ToolConfiguration extractToolConfigurationFrom(
-            ChatRequest chatRequest, BedrockCachePointPlacement cachePointPlacement, BedrockCacheTtl cacheTtl) {
+            ChatRequest chatRequest, BedrockCachePointPlacement cachePointPlacement, CacheTTL cacheTtl) {
         List<ToolSpecification> toolSpecifications = chatRequest.toolSpecifications();
         ChatRequestParameters parameters = chatRequest.parameters();
 
