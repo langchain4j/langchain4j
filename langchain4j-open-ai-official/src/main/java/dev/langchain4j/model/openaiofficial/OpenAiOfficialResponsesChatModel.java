@@ -33,12 +33,15 @@ import java.util.Set;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.ENCRYPTED_REASONING_KEY;
+import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.buildAiMessage;
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.buildRequestParams;
+import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.buildResponseMetadata;
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.extractEncryptedReasoning;
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.extractReasoningSummary;
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.extractText;
+import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.extractTokenUsage;
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.extractToolExecutionRequests;
+import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.mapStatusToFinishReason;
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.validate;
 import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.setupSyncClient;
 import static java.util.Arrays.asList;
@@ -134,69 +137,22 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
             String encryptedReasoning = extractEncryptedReasoning(response);
             List<ToolExecutionRequest> toolExecutionRequests = extractToolExecutionRequests(response);
 
-            AiMessage.Builder aiMessageBuilder = AiMessage.builder()
-                    .text(text)
-                    .thinking(thinking)
-                    .toolExecutionRequests(toolExecutionRequests);
-            if (encryptedReasoning != null) {
-                aiMessageBuilder.attributes(Map.of(ENCRYPTED_REASONING_KEY, encryptedReasoning));
-            }
-            AiMessage aiMessage = aiMessageBuilder.build();
+            AiMessage aiMessage = buildAiMessage(text, thinking, toolExecutionRequests, encryptedReasoning);
 
-            OpenAiOfficialResponsesChatResponseMetadata.Builder metadataBuilder =
-                    OpenAiOfficialResponsesChatResponseMetadata.builder()
-                            .id(response.id())
-                            .modelName(parameters.modelName())
-                            .createdAt((long) response.createdAt());
+            String finishReason = response.status()
+                    .map(status -> mapStatusToFinishReason(status.asString(), !toolExecutionRequests.isEmpty()))
+                    .orElse(null);
 
-            response.completedAt().ifPresent(ts -> metadataBuilder.completedAt(ts.longValue()));
-            response.serviceTier().ifPresent(tier -> metadataBuilder.serviceTier(tier.asString()));
-
-            response.status().ifPresent(status -> {
-                String finishReason = mapStatusToFinishReason(status.asString(), !toolExecutionRequests.isEmpty());
-                if (finishReason != null) {
-                    metadataBuilder.finishReason(FinishReason.valueOf(finishReason));
-                }
-            });
-
-            response.usage().ifPresent(usage -> {
-                OpenAiOfficialTokenUsage.Builder tokenUsageBuilder = OpenAiOfficialTokenUsage.builder()
-                        .inputTokenCount((int) usage.inputTokens())
-                        .outputTokenCount((int) usage.outputTokens())
-                        .totalTokenCount((int) usage.totalTokens());
-
-                long cachedTokens = usage.inputTokensDetails().cachedTokens();
-                if (cachedTokens > 0) {
-                    tokenUsageBuilder.inputTokensDetails(OpenAiOfficialTokenUsage.InputTokensDetails.builder()
-                            .cachedTokens((int) cachedTokens)
-                            .build());
-                }
-
-                tokenUsageBuilder.outputTokensDetails(OpenAiOfficialTokenUsage.OutputTokensDetails.builder()
-                        .reasoningTokens(usage.outputTokensDetails().reasoningTokens())
-                        .build());
-                metadataBuilder.tokenUsage(tokenUsageBuilder.build());
-            });
+            OpenAiOfficialResponsesChatResponseMetadata metadata = buildResponseMetadata(
+                    response.id(), parameters.modelName(), response, finishReason, extractTokenUsage(response));
 
             return ChatResponse.builder()
                     .aiMessage(aiMessage)
-                    .metadata(metadataBuilder.build())
+                    .metadata(metadata)
                     .build();
         } catch (Exception e) {
             throw ExceptionMapper.DEFAULT.mapException(e);
         }
-    }
-
-    private static String mapStatusToFinishReason(String status, boolean hasToolCalls) {
-        if (status == null) {
-            return null;
-        }
-        return switch (status) {
-            case "completed" -> hasToolCalls ? "TOOL_EXECUTION" : "STOP";
-            case "incomplete" -> "LENGTH";
-            case "failed" -> "OTHER";
-            default -> "OTHER";
-        };
     }
 
     @Override
@@ -276,15 +232,6 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
             return this;
         }
 
-        /**
-         * @deprecated Use {@link #microsoftFoundryDeploymentName(String)} instead
-         */
-        @Deprecated
-        public Builder azureDeploymentName(String azureDeploymentName) {
-            this.microsoftFoundryDeploymentName = azureDeploymentName;
-            return this;
-        }
-
         public Builder microsoftFoundryDeploymentName(String microsoftFoundryDeploymentName) {
             this.microsoftFoundryDeploymentName = microsoftFoundryDeploymentName;
             return this;
@@ -297,15 +244,6 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
 
         public Builder organizationId(String organizationId) {
             this.organizationId = organizationId;
-            return this;
-        }
-
-        /**
-         * @deprecated Use {@link #isMicrosoftFoundry(boolean)} instead
-         */
-        @Deprecated
-        public Builder isAzure(boolean isAzure) {
-            this.isMicrosoftFoundry = isAzure;
             return this;
         }
 

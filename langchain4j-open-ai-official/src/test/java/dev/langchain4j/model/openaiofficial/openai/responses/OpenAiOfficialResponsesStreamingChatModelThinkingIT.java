@@ -17,13 +17,14 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
-import dev.langchain4j.model.openaiofficial.SpyingHttpClient;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialSpyingHttpClient;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
 
 import java.util.List;
 
+import static com.openai.client.okhttp.OkHttpClient.*;
 import static java.util.List.of;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -134,8 +135,7 @@ class OpenAiOfficialResponsesStreamingChatModelThinkingIT {
         // given
         List<String> include = List.of("reasoning.encrypted_content");
 
-        SpyingHttpClient spyingHttpClient =
-                new SpyingHttpClient(com.openai.client.okhttp.OkHttpClient.builder().build());
+        OpenAiOfficialSpyingHttpClient spyingHttpClient = new OpenAiOfficialSpyingHttpClient(builder().build());
 
         StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
                 .client(spyingOpenAIClient(spyingHttpClient))
@@ -197,8 +197,7 @@ class OpenAiOfficialResponsesStreamingChatModelThinkingIT {
         // given
         List<String> include = List.of("reasoning.encrypted_content");
 
-        SpyingHttpClient spyingHttpClient =
-                new SpyingHttpClient(com.openai.client.okhttp.OkHttpClient.builder().build());
+        OpenAiOfficialSpyingHttpClient spyingHttpClient = new OpenAiOfficialSpyingHttpClient(builder().build());
 
         StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
                 .client(spyingOpenAIClient(spyingHttpClient))
@@ -253,7 +252,7 @@ class OpenAiOfficialResponsesStreamingChatModelThinkingIT {
                 .contains(encryptedContent1);
     }
 
-    static OpenAIClient spyingOpenAIClient(SpyingHttpClient spy) {
+    static OpenAIClient spyingOpenAIClient(OpenAiOfficialSpyingHttpClient spy) {
         String baseUrl = System.getenv("OPENAI_BASE_URL");
         String apiKey = System.getenv("OPENAI_API_KEY");
         String orgId = System.getenv("OPENAI_ORGANIZATION_ID");

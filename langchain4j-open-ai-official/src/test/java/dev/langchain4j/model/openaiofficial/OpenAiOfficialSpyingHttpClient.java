@@ -19,12 +19,12 @@ import java.util.concurrent.CompletableFuture;
 /**
  * Test helper: {@link HttpClient} decorator that records the serialized JSON body of every outgoing request.
  */
-public class SpyingHttpClient implements HttpClient {
+public class OpenAiOfficialSpyingHttpClient implements HttpClient {
 
     private final HttpClient delegate;
     private final List<String> requestBodies = Collections.synchronizedList(new ArrayList<>());
 
-    public SpyingHttpClient(HttpClient delegate) {
+    public OpenAiOfficialSpyingHttpClient(HttpClient delegate) {
         this.delegate = delegate;
     }
 

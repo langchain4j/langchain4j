@@ -16,12 +16,13 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
-import dev.langchain4j.model.openaiofficial.SpyingHttpClient;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialSpyingHttpClient;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
 
+import static com.openai.client.okhttp.OkHttpClient.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
@@ -107,8 +108,7 @@ class OpenAiOfficialResponsesChatModelThinkingIT {
         // given
         List<String> include = List.of("reasoning.encrypted_content");
 
-        SpyingHttpClient spyingHttpClient =
-                new SpyingHttpClient(com.openai.client.okhttp.OkHttpClient.builder().build());
+        OpenAiOfficialSpyingHttpClient spyingHttpClient = new OpenAiOfficialSpyingHttpClient(builder().build());
 
         ChatModel model = OpenAiOfficialResponsesChatModel.builder()
                 .client(spyingOpenAIClient(spyingHttpClient))
@@ -168,8 +168,7 @@ class OpenAiOfficialResponsesChatModelThinkingIT {
         // given
         List<String> include = List.of("reasoning.encrypted_content");
 
-        SpyingHttpClient spyingHttpClient =
-                new SpyingHttpClient(com.openai.client.okhttp.OkHttpClient.builder().build());
+        OpenAiOfficialSpyingHttpClient spyingHttpClient = new OpenAiOfficialSpyingHttpClient(builder().build());
 
         ChatModel model = OpenAiOfficialResponsesChatModel.builder()
                 .client(spyingOpenAIClient(spyingHttpClient))
@@ -222,7 +221,7 @@ class OpenAiOfficialResponsesChatModelThinkingIT {
                 .contains(encryptedContent1);
     }
 
-    static OpenAIClient spyingOpenAIClient(SpyingHttpClient spy) {
+    static OpenAIClient spyingOpenAIClient(OpenAiOfficialSpyingHttpClient spy) {
         String baseUrl = System.getenv("OPENAI_BASE_URL");
         String apiKey = System.getenv("OPENAI_API_KEY");
         String orgId = System.getenv("OPENAI_ORGANIZATION_ID");

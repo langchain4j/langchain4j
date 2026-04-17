@@ -312,6 +312,70 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         return textBuilder.isEmpty() ? null : textBuilder.toString();
     }
 
+    static AiMessage buildAiMessage(
+            String text,
+            String thinking,
+            List<ToolExecutionRequest> toolExecutionRequests,
+            String encryptedReasoning) {
+        AiMessage.Builder builder = AiMessage.builder()
+                .text(text)
+                .thinking(thinking)
+                .toolExecutionRequests(toolExecutionRequests);
+        if (encryptedReasoning != null) {
+            builder.attributes(Map.of(ENCRYPTED_REASONING_KEY, encryptedReasoning));
+        }
+        return builder.build();
+    }
+
+    static OpenAiOfficialResponsesChatResponseMetadata buildResponseMetadata(
+            String responseId,
+            String modelName,
+            com.openai.models.responses.Response response,
+            String finishReason,
+            OpenAiOfficialTokenUsage tokenUsage) {
+        var builder = OpenAiOfficialResponsesChatResponseMetadata.builder()
+                .id(responseId)
+                .modelName(modelName)
+                .createdAt((long) response.createdAt());
+        response.completedAt().ifPresent(ts -> builder.completedAt(ts.longValue()));
+        response.serviceTier().ifPresent(tier -> builder.serviceTier(tier.asString()));
+        if (finishReason != null) {
+            builder.finishReason(FinishReason.valueOf(finishReason));
+        }
+        if (tokenUsage != null) {
+            builder.tokenUsage(tokenUsage);
+        }
+        return builder.build();
+    }
+
+    static String mapStatusToFinishReason(String status, boolean hasToolCalls) {
+        if (status == null) {
+            return null;
+        }
+        return switch (status) {
+            case "completed" -> hasToolCalls ? "TOOL_EXECUTION" : "STOP";
+            case "incomplete" -> "LENGTH";
+            case "failed" -> "OTHER";
+            default -> "OTHER";
+        };
+    }
+
+    static OpenAiOfficialTokenUsage extractTokenUsage(com.openai.models.responses.Response response) {
+        return response.usage()
+                .map(usage -> OpenAiOfficialTokenUsage.builder()
+                        .inputTokenCount(usage.inputTokens())
+                        .outputTokenCount(usage.outputTokens())
+                        .totalTokenCount(usage.totalTokens())
+                        .inputTokensDetails(OpenAiOfficialTokenUsage.InputTokensDetails.builder()
+                                .cachedTokens(usage.inputTokensDetails().cachedTokens())
+                                .build())
+                        .outputTokensDetails(OpenAiOfficialTokenUsage.OutputTokensDetails.builder()
+                                .reasoningTokens(usage.outputTokensDetails().reasoningTokens())
+                                .build())
+                        .build())
+                .orElse(null);
+    }
+
     static ResponseCreateParams buildRequestParams(
             ChatRequest chatRequest, OpenAiOfficialResponsesChatRequestParameters parameters) {
         var paramsBuilder = ResponseCreateParams.builder()
@@ -1144,23 +1208,11 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
             // Extract status and map to finish reason
             response.status().ifPresent(status -> {
-                this.finishReason = mapStatusToFinishReason(status.asString());
+                this.finishReason = mapStatusToFinishReason(status.asString(), !completedToolCalls.isEmpty());
             });
 
             // Extract token usage and complete
             extractTokenUsageAndComplete(response);
-        }
-
-        private String mapStatusToFinishReason(String status) {
-            if (status == null) {
-                return null;
-            }
-            return switch (status) {
-                case "completed" -> !completedToolCalls.isEmpty() ? "TOOL_EXECUTION" : "STOP";
-                case "incomplete" -> "LENGTH";
-                case "failed" -> "OTHER";
-                default -> "OTHER";
-            };
         }
 
         private void handleError(ResponseErrorEvent event) {
@@ -1176,7 +1228,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
         private String extractErrorMessage(ResponseError error) {
             var message = error.message();
-            if (message == null || message.isBlank()) {
+            if (message.isBlank()) {
                 return error.toString();
             }
             return message;
@@ -1188,66 +1240,23 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             finishReason = "LENGTH";
 
             // Complete the response normally
-            var response = event.response();
-            extractTokenUsageAndComplete(response);
+            extractTokenUsageAndComplete(event.response());
         }
 
         private void extractTokenUsageAndComplete(com.openai.models.responses.Response response) {
-            // Extract token usage
-            response.usage().ifPresent(usage -> {
-                var builder = OpenAiOfficialTokenUsage.builder()
-                        .inputTokenCount((int) usage.inputTokens())
-                        .outputTokenCount((int) usage.outputTokens())
-                        .totalTokenCount((int) usage.totalTokens());
-
-                var cachedTokens = usage.inputTokensDetails().cachedTokens();
-                if (cachedTokens > 0) {
-                    builder.inputTokensDetails(OpenAiOfficialTokenUsage.InputTokensDetails.builder()
-                            .cachedTokens((int) cachedTokens)
-                            .build());
-                }
-
-                builder.outputTokensDetails(OpenAiOfficialTokenUsage.OutputTokensDetails.builder()
-                        .reasoningTokens(usage.outputTokensDetails().reasoningTokens())
-                        .build());
-
-                tokenUsage = builder.build();
-            });
-
-            // Build final AI message
             var text = !textBuilder.isEmpty() ? textBuilder.toString() : null;
-            String thinking = extractReasoningSummary(response);
-            String encryptedReasoning = extractEncryptedReasoning(response);
+            var aiMessage = buildAiMessage(
+                    text,
+                    extractReasoningSummary(response),
+                    completedToolCalls,
+                    extractEncryptedReasoning(response));
 
-            AiMessage.Builder aiMessageBuilder = AiMessage.builder()
-                    .text(text)
-                    .thinking(thinking)
-                    .toolExecutionRequests(completedToolCalls);
-            if (encryptedReasoning != null) {
-                aiMessageBuilder.attributes(Map.of(ENCRYPTED_REASONING_KEY, encryptedReasoning));
-            }
-            var aiMessage = aiMessageBuilder.build();
-
-            // Build metadata
-            var metadataBuilder = OpenAiOfficialResponsesChatResponseMetadata.builder()
-                    .id(responseId)
-                    .modelName(modelName);
-
-            metadataBuilder.createdAt((long) response.createdAt());
-            response.completedAt().ifPresent(ts -> metadataBuilder.completedAt(ts.longValue()));
-            response.serviceTier().ifPresent(tier -> metadataBuilder.serviceTier(tier.asString()));
-
-            if (finishReason != null) {
-                metadataBuilder.finishReason(FinishReason.valueOf(finishReason));
-            }
-
-            if (tokenUsage != null) {
-                metadataBuilder.tokenUsage(tokenUsage);
-            }
+            tokenUsage = extractTokenUsage(response);
+            var metadata = buildResponseMetadata(responseId, modelName, response, finishReason, tokenUsage);
 
             var chatResponse = ChatResponse.builder()
                     .aiMessage(aiMessage)
-                    .metadata(metadataBuilder.build())
+                    .metadata(metadata)
                     .build();
 
             if (!streamingHandle.isCancelled()) {
