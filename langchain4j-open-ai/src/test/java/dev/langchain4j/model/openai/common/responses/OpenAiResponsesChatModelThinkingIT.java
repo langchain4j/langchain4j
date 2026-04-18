@@ -14,6 +14,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiResponsesChatModel;
+import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -70,6 +71,9 @@ class OpenAiResponsesChatModelThinkingIT {
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
         assertThat(aiMessage.thinking()).isNotBlank();
+
+        OpenAiTokenUsage tokenUsage = (OpenAiTokenUsage) chatResponse.tokenUsage();
+        assertThat(tokenUsage.outputTokensDetails().reasoningTokens()).isNotNull();
     }
 
     @Test
