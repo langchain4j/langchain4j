@@ -219,10 +219,22 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         }
 
         if (agentListener != null) {
-            aiServices.beforeToolExecution(beforeToolExecution ->
-                    agentListener.beforeAgentToolExecution(new BeforeAgentToolExecution(agent, beforeToolExecution)));
-            aiServices.afterToolExecution(afterToolExecution ->
-                    agentListener.afterAgentToolExecution(new AfterAgentToolExecution(agent, afterToolExecution)));
+            aiServices.beforeToolExecution(beforeToolExecution -> {
+                try {
+                    LangChain4jManaged.setCurrent(Map.of(AgenticScope.class, agenticScope));
+                    agentListener.beforeAgentToolExecution(new BeforeAgentToolExecution(agent, beforeToolExecution));
+                } finally {
+                    LangChain4jManaged.removeCurrent();
+                }
+            });
+            aiServices.afterToolExecution(afterToolExecution -> {
+                try {
+                    LangChain4jManaged.setCurrent(Map.of(AgenticScope.class, agenticScope));
+                    agentListener.afterAgentToolExecution(new AfterAgentToolExecution(agent, afterToolExecution));
+                } finally {
+                    LangChain4jManaged.removeCurrent();
+                }
+            });
         }
 
         return (T) agent;
