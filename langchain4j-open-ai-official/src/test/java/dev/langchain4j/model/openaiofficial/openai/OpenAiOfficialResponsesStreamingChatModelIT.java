@@ -3,23 +3,30 @@ package dev.langchain4j.model.openaiofficial.openai;
 import com.openai.models.ChatModel;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatRequestParameters;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatRequestParameters;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatResponseMetadata;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialServerTool;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialServerToolResult;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
 
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeast;
@@ -152,6 +159,38 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     @Override
     protected boolean supportsStopSequencesParameter() {
         return false;
+    }
+
+    @Test
+    void should_execute_real_web_search_server_tool_request() {
+        StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .modelName(GPT_5_4)
+                .serverTools(OpenAiOfficialServerTool.builder()
+                        .type("web_search")
+                        .addAttribute("allowed_domains", List.of("developers.openai.com"))
+                        .build())
+                .returnServerToolResults(true)
+                .defaultRequestParameters(OpenAiOfficialResponsesChatRequestParameters.builder()
+                        .toolChoice(ToolChoice.REQUIRED)
+                        .build())
+                .build();
+
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat("Use web search on the OpenAI developer docs and answer with one short sentence about the web search tool.",
+                handler);
+
+        var response = handler.get();
+        assertThat(response.aiMessage().text()).isNotBlank();
+        assertThat(response.aiMessage().attributes()).containsKey("server_tool_results");
+
+        List<OpenAiOfficialServerToolResult> serverToolResults =
+                response.aiMessage().attribute("server_tool_results", List.class);
+        assertThat(serverToolResults).isNotEmpty();
+        assertThat(serverToolResults)
+                .extracting(OpenAiOfficialServerToolResult::type)
+                .contains("web_search_call");
     }
 
     @Disabled("gpt-5.4-mini cannot do it properly")

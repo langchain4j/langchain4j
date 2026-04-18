@@ -21,11 +21,10 @@ import org.junit.jupiter.api.Test;
 class OpenAiOfficialResponsesStreamingChatModelTest {
 
     @Test
-    void should_convert_legacy_web_search_domain_attributes_into_filters_only() {
+    void should_convert_allowed_domains_into_web_search_filters_only() {
         OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
                 .type("web_search")
                 .addAttribute("allowed_domains", List.of("openai.com"))
-                .addAttribute("blocked_domains", List.of("example.com"))
                 .addAttribute("latency_tier", "interactive")
                 .build();
 
@@ -34,11 +33,9 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
         assertThat(tool.isWebSearch()).isTrue();
         assertThat(tool.asWebSearch().filters()).isPresent();
         assertThat(tool.asWebSearch().filters().get().allowedDomains()).hasValue(List.of("openai.com"));
-        assertThat(tool.asWebSearch().filters().get()._additionalProperties())
-                .containsEntry("blocked_domains", JsonValue.from(List.of("example.com")));
         assertThat(tool.asWebSearch()._additionalProperties())
                 .containsKey("latency_tier")
-                .doesNotContainKeys("allowed_domains", "blocked_domains");
+                .doesNotContainKeys("allowed_domains");
     }
 
     @Test
@@ -52,6 +49,47 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
 
         assertThat(tool.isWebSearch()).isTrue();
         assertThat(tool.asWebSearch().type().asString()).isEqualTo("web_search_2025_08_26");
+    }
+
+    @Test
+    void should_accept_web_search_preview_tool_type() {
+        OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
+                .type("web_search_preview")
+                .addAttribute("search_context_size", "medium")
+                .addAttribute("search_content_types", List.of("text"))
+                .build();
+
+        var tool = OpenAiOfficialServerToolMapper.toResponsesTool(serverTool);
+
+        assertThat(tool.isWebSearchPreview()).isTrue();
+        assertThat(tool.asWebSearchPreview().type().asString()).isEqualTo("web_search_preview");
+        assertThat(tool.asWebSearchPreview().searchContextSize())
+                .hasValueSatisfying(value -> assertThat(value.asString()).isEqualTo("medium"));
+    }
+
+    @Test
+    void should_accept_versioned_web_search_preview_tool_type() {
+        OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
+                .type("web_search_preview_2025_03_11")
+                .addAttribute("search_context_size", "high")
+                .build();
+
+        var tool = OpenAiOfficialServerToolMapper.toResponsesTool(serverTool);
+
+        assertThat(tool.isWebSearchPreview()).isTrue();
+        assertThat(tool.asWebSearchPreview().type().asString()).isEqualTo("web_search_preview_2025_03_11");
+    }
+
+    @Test
+    void should_reject_blocked_domains_for_web_search_tools() {
+        OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
+                .type("web_search")
+                .addAttribute("blocked_domains", List.of("example.com"))
+                .build();
+
+        assertThatThrownBy(() -> OpenAiOfficialServerToolMapper.toResponsesTool(serverTool))
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessageContaining("'blocked_domains' is not supported");
     }
 
     @Test
@@ -145,6 +183,30 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
     }
 
     @Test
+    void should_accept_shell_container_skill_reference_type() {
+        OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
+                .type("shell")
+                .addAttribute(
+                        "environment",
+                        Map.of(
+                                "type", "container_auto",
+                                "skills", List.of(Map.of("type", "skill_reference", "skill_id", "skill_123"))))
+                .build();
+
+        var tool = OpenAiOfficialServerToolMapper.toResponsesTool(serverTool);
+
+        assertThat(tool.isShell()).isTrue();
+        assertThat(tool.asShell().environment()).hasValueSatisfying(environment -> {
+            assertThat(environment.isContainerAuto()).isTrue();
+            assertThat(environment.asContainerAuto().skills()).hasValueSatisfying(skills -> {
+                assertThat(skills).hasSize(1);
+                assertThat(skills.get(0).isReference()).isTrue();
+                assertThat(skills.get(0).asReference()._type().asString()).hasValue("skill_reference");
+            });
+        });
+    }
+
+    @Test
     void should_reject_unsupported_shell_container_network_policy_type() {
         OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
                 .type("shell")
@@ -158,14 +220,36 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
     }
 
     @Test
-    void should_reject_web_search_preview_server_tool() {
-        OpenAiOfficialServerTool serverTool =
-                OpenAiOfficialServerTool.builder().type("web_search_preview").build();
+    void should_accept_computer_use_preview_tool_type() {
+        OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
+                .type("computer_use_preview")
+                .addAttribute("display_width", 1024)
+                .addAttribute("display_height", 768)
+                .addAttribute("environment", "browser")
+                .build();
 
-        assertThatThrownBy(() -> OpenAiOfficialServerToolMapper.toResponsesTool(serverTool))
-                .isInstanceOf(UnsupportedFeatureException.class)
-                .hasMessageContaining(
-                        "Supported types are: web_search, versioned web_search_YYYY_MM_DD, file_search, tool_search, mcp, shell, computer, namespace.");
+        var tool = OpenAiOfficialServerToolMapper.toResponsesTool(serverTool);
+
+        assertThat(tool.isComputerUsePreview()).isTrue();
+        assertThat(tool.asComputerUsePreview()._type().asString()).hasValue("computer_use_preview");
+        assertThat(tool.asComputerUsePreview().displayWidth()).isEqualTo(1024);
+        assertThat(tool.asComputerUsePreview().displayHeight()).isEqualTo(768);
+        assertThat(tool.asComputerUsePreview().environment().asString()).isEqualTo("browser");
+    }
+
+    @Test
+    void should_accept_versioned_computer_use_preview_tool_type() {
+        OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
+                .type("computer_use_preview_2025_03_11")
+                .addAttribute("display_width", 1024)
+                .addAttribute("display_height", 768)
+                .addAttribute("environment", "browser")
+                .build();
+
+        var tool = OpenAiOfficialServerToolMapper.toResponsesTool(serverTool);
+
+        assertThat(tool.isComputerUsePreview()).isTrue();
+        assertThat(tool.asComputerUsePreview()._type().asString()).hasValue("computer_use_preview_2025_03_11");
     }
 
     @Test
@@ -215,6 +299,9 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
         assertThat(results)
                 .extracting(OpenAiOfficialServerToolResult::type)
                 .containsExactly("shell_call", "computer_call");
+        assertThat(results)
+                .extracting(OpenAiOfficialServerToolResult::toolUseId)
+                .containsExactly("shell_call_1", "computer_call_1");
     }
 
     @Test
@@ -244,9 +331,13 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
 
         assertThat(results).hasSize(1);
         assertThat(results.get(0).type()).isEqualTo("computer_call");
-        assertThat(((Map<String, Object>) results.get(0).content()).keySet())
-                .contains("id", "call_id", "status", "type", "action")
-                .doesNotContain("pending_safety_checks");
+        assertThat(results.get(0).toolUseId()).isEqualTo("computer_call_2");
+        assertThat(contentOf(results.get(0)))
+                .containsEntry("id", "computer_2")
+                .containsEntry("call_id", "computer_call_2")
+                .containsEntry("type", "computer_call")
+                .containsKey("action")
+                .doesNotContainKey("pending_safety_checks");
     }
 
     @Test
@@ -270,9 +361,13 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
 
         assertThat(results).hasSize(1);
         assertThat(results.get(0).type()).isEqualTo("shell_call_output");
-        assertThat(results.get(0).toolUseId()).isEqualTo("shell_out_1");
-        assertThat(((Map<String, Object>) results.get(0).content()).keySet())
-                .contains("id", "call_id", "output", "status", "max_output_length");
+        assertThat(results.get(0).toolUseId()).isEqualTo("shell_call_1");
+        assertThat(contentOf(results.get(0)))
+                .containsEntry("id", "shell_out_1")
+                .containsEntry("call_id", "shell_call_1")
+                .containsEntry("type", "shell_call_output")
+                .containsKey("max_output_length")
+                .containsKey("output");
     }
 
     @Test
@@ -344,5 +439,120 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
                         "mcp_list_tools",
                         "mcp_approval_request",
                         "mcp_call");
+    }
+
+    @Test
+    void should_extract_raw_json_for_documented_output_items_not_modeled_as_typed_arms() {
+        ResponseOutputItem computerCallOutput = responseOutputItem("""
+                {
+                  "id": "computer_out_1",
+                  "call_id": "computer_call_1",
+                  "type": "computer_call_output",
+                  "status": "completed",
+                  "output": {
+                    "type": "computer_screenshot",
+                    "image_url": "data:image/png;base64,abc"
+                  }
+                }
+                """);
+
+        ResponseOutputItem localShellCallOutput = responseOutputItem("""
+                {
+                  "id": "local_shell_out_1",
+                  "call_id": "local_shell_call_1",
+                  "type": "local_shell_call_output",
+                  "status": "completed",
+                  "output": [
+                    {
+                      "type": "logs",
+                      "logs": "hello"
+                    }
+                  ]
+                }
+                """);
+
+        List<OpenAiOfficialServerToolResult> results =
+                OpenAiOfficialResponsesStreamingChatModel.extractServerToolResults(
+                        List.of(computerCallOutput, localShellCallOutput));
+
+        assertThat(results)
+                .extracting(OpenAiOfficialServerToolResult::type)
+                .containsExactly("computer_call_output", "local_shell_call_output");
+        assertThat(results)
+                .extracting(OpenAiOfficialServerToolResult::toolUseId)
+                .containsExactly("computer_call_1", "local_shell_call_1");
+        assertThat(contentOf(results.get(0)))
+                .containsEntry("id", "computer_out_1")
+                .containsEntry("call_id", "computer_call_1")
+                .containsEntry("type", "computer_call_output");
+        assertThat(contentOf(results.get(1)))
+                .containsEntry("id", "local_shell_out_1")
+                .containsEntry("call_id", "local_shell_call_1")
+                .containsEntry("type", "local_shell_call_output");
+    }
+
+    @Test
+    void should_extract_additional_built_in_tool_items_using_raw_json_content() {
+        ResponseOutputItem toolSearchOutput = responseOutputItem("""
+                {
+                  "id": "tool_search_output_1",
+                  "call_id": "tool_search_call_1",
+                  "execution": "server",
+                  "status": "completed",
+                  "tools": [],
+                  "type": "tool_search_output"
+                }
+                """);
+
+        ResponseOutputItem applyPatchCall = responseOutputItem("""
+                {
+                  "id": "patch_call_1",
+                  "call_id": "patch_request_1",
+                  "operation": {
+                    "type": "create_file",
+                    "path": "README.md",
+                    "content": "hello"
+                  },
+                  "status": "completed",
+                  "type": "apply_patch_call"
+                }
+                """);
+
+        ResponseOutputItem applyPatchCallOutput = responseOutputItem("""
+                {
+                  "id": "patch_output_1",
+                  "call_id": "patch_request_1",
+                  "status": "completed",
+                  "output": "created README.md",
+                  "type": "apply_patch_call_output"
+                }
+                """);
+
+        List<OpenAiOfficialServerToolResult> results =
+                OpenAiOfficialResponsesStreamingChatModel.extractServerToolResults(
+                        List.of(toolSearchOutput, applyPatchCall, applyPatchCallOutput));
+
+        assertThat(results)
+                .extracting(OpenAiOfficialServerToolResult::type)
+                .containsExactly("tool_search_output", "apply_patch_call", "apply_patch_call_output");
+        assertThat(results)
+                .extracting(OpenAiOfficialServerToolResult::toolUseId)
+                .containsExactly("tool_search_call_1", "patch_request_1", "patch_request_1");
+        assertThat(contentOf(results.get(0))).containsEntry("type", "tool_search_output");
+        assertThat(contentOf(results.get(1))).containsEntry("type", "apply_patch_call");
+        assertThat(contentOf(results.get(2))).containsEntry("type", "apply_patch_call_output");
+    }
+
+    private static ResponseOutputItem responseOutputItem(String json) {
+        try {
+            return ObjectMappers.jsonMapper().readValue(json, ResponseOutputItem.class);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> contentOf(OpenAiOfficialServerToolResult result) {
+        return (Map<String, Object>) result.content();
     }
 }

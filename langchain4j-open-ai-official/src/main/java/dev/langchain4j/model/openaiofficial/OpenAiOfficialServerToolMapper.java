@@ -2,6 +2,7 @@ package dev.langchain4j.model.openaiofficial;
 
 import com.openai.core.JsonValue;
 import com.openai.models.responses.ComputerTool;
+import com.openai.models.responses.ComputerUsePreviewTool;
 import com.openai.models.responses.ContainerAuto;
 import com.openai.models.responses.ContainerNetworkPolicyDomainSecret;
 import com.openai.models.responses.ContainerReference;
@@ -14,6 +15,7 @@ import com.openai.models.responses.NamespaceTool;
 import com.openai.models.responses.SkillReference;
 import com.openai.models.responses.Tool;
 import com.openai.models.responses.ToolSearchTool;
+import com.openai.models.responses.WebSearchPreviewTool;
 import com.openai.models.responses.WebSearchTool;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import java.util.LinkedHashMap;
@@ -25,8 +27,14 @@ final class OpenAiOfficialServerToolMapper {
     private OpenAiOfficialServerToolMapper() {}
 
     static Tool toResponsesTool(OpenAiOfficialServerTool serverTool) {
+        if (isSupportedWebSearchPreviewToolType(serverTool.type())) {
+            return Tool.ofWebSearchPreview(toWebSearchPreviewTool(serverTool));
+        }
         if (isSupportedWebSearchToolType(serverTool.type())) {
             return Tool.ofWebSearch(toWebSearchTool(serverTool));
+        }
+        if (isSupportedComputerUsePreviewToolType(serverTool.type())) {
+            return Tool.ofComputerUsePreview(toComputerUsePreviewTool(serverTool));
         }
 
         return switch (serverTool.type()) {
@@ -39,20 +47,30 @@ final class OpenAiOfficialServerToolMapper {
             default ->
                 throw new UnsupportedFeatureException(
                         "Unsupported OpenAI server tool type: " + serverTool.type()
-                                + ". Supported types are: web_search, versioned web_search_YYYY_MM_DD, file_search, tool_search, mcp, shell, computer, namespace.");
+                                + ". Supported types are: web_search, web_search_*, file_search, tool_search, mcp, shell, computer, computer_use_*, namespace.");
         };
     }
 
     private static boolean isSupportedWebSearchToolType(String type) {
-        return "web_search".equals(type) || (type != null && type.matches("web_search_\\d{4}_\\d{2}_\\d{2}"));
+        return "web_search".equals(type)
+                || (type != null && type.startsWith("web_search_") && !type.startsWith("web_search_preview"));
+    }
+
+    private static boolean isSupportedWebSearchPreviewToolType(String type) {
+        return type != null && type.startsWith("web_search_preview");
+    }
+
+    private static boolean isSupportedComputerUsePreviewToolType(String type) {
+        return type != null && type.startsWith("computer_use_");
     }
 
     private static WebSearchTool toWebSearchTool(OpenAiOfficialServerTool serverTool) {
         WebSearchTool.Builder builder = WebSearchTool.builder();
         Map<String, Object> attributes = serverTool.attributes();
+        rejectBlockedDomains(attributes);
         putAdditionalProperties(
                 attributes,
-                List.of("filters", "search_context_size", "user_location", "allowed_domains", "blocked_domains"),
+                List.of("filters", "search_context_size", "user_location", "allowed_domains"),
                 builder::putAdditionalProperty);
         builder.type(WebSearchTool.Type.of(serverTool.type()));
         String searchContextSize = stringValue(attributes, "search_context_size");
@@ -80,6 +98,32 @@ final class OpenAiOfficialServerToolMapper {
                 }
             });
             builder.filters(filtersBuilder.build());
+        }
+        return builder.build();
+    }
+
+    private static WebSearchPreviewTool toWebSearchPreviewTool(OpenAiOfficialServerTool serverTool) {
+        WebSearchPreviewTool.Builder builder = WebSearchPreviewTool.builder();
+        Map<String, Object> attributes = serverTool.attributes();
+        rejectBlockedDomains(attributes);
+        putAdditionalProperties(
+                attributes,
+                List.of("search_context_size", "search_content_types", "user_location"),
+                builder::putAdditionalProperty);
+        builder.type(WebSearchPreviewTool.Type.of(serverTool.type()));
+        String searchContextSize = stringValue(attributes, "search_context_size");
+        if (searchContextSize != null) {
+            builder.searchContextSize(WebSearchPreviewTool.SearchContextSize.of(searchContextSize));
+        }
+        List<String> searchContentTypes = stringListValue(attributes.get("search_content_types"));
+        if (searchContentTypes != null) {
+            builder.searchContentTypes(searchContentTypes.stream()
+                    .map(WebSearchPreviewTool.SearchContentType::of)
+                    .toList());
+        }
+        Object userLocation = mapValue(attributes, "user_location");
+        if (userLocation instanceof Map<?, ?> map) {
+            builder.userLocation(toWebSearchPreviewUserLocation(map));
         }
         return builder.build();
     }
@@ -357,7 +401,7 @@ final class OpenAiOfficialServerToolMapper {
         Map<String, Object> skillMap = toStringObjectMap(skill);
         String type = String.valueOf(skillMap.get("type"));
         return switch (type) {
-            case "reference" -> ContainerAuto.Skill.ofReference(toSkillReference(skillMap));
+            case "skill_reference" -> ContainerAuto.Skill.ofReference(toSkillReference(skillMap));
             case "inline" -> ContainerAuto.Skill.ofInline(toInlineSkill(skillMap));
             default -> throw new IllegalArgumentException("Unsupported shell container skill type: " + type);
         };
@@ -366,13 +410,40 @@ final class OpenAiOfficialServerToolMapper {
     private static SkillReference toSkillReference(Map<String, Object> skill) {
         SkillReference.Builder builder = SkillReference.builder();
         putAdditionalProperties(skill, List.of("type", "skill_id", "version"), builder::putAdditionalProperty);
-        builder.type(JsonValue.from(skill.getOrDefault("type", "reference")));
+        builder.type(JsonValue.from(skill.getOrDefault("type", "skill_reference")));
         if (skill.containsKey("skill_id")) {
             builder.skillId(String.valueOf(skill.get("skill_id")));
         }
         if (skill.containsKey("version")) {
             builder.version(String.valueOf(skill.get("version")));
         }
+        return builder.build();
+    }
+
+    private static ComputerUsePreviewTool toComputerUsePreviewTool(OpenAiOfficialServerTool serverTool) {
+        ComputerUsePreviewTool.Builder builder = ComputerUsePreviewTool.builder();
+        Map<String, Object> attributes = serverTool.attributes();
+        putAdditionalProperties(
+                attributes,
+                List.of("display_height", "display_width", "environment"),
+                builder::putAdditionalProperty);
+        builder.type(JsonValue.from(serverTool.type()));
+
+        Integer displayHeight = integerValue(attributes, "display_height");
+        if (displayHeight != null) {
+            builder.displayHeight(displayHeight.longValue());
+        }
+
+        Integer displayWidth = integerValue(attributes, "display_width");
+        if (displayWidth != null) {
+            builder.displayWidth(displayWidth.longValue());
+        }
+
+        String environment = stringValue(attributes, "environment");
+        if (environment != null) {
+            builder.environment(ComputerUsePreviewTool.Environment.of(environment));
+        }
+
         return builder.build();
     }
 
@@ -503,6 +574,38 @@ final class OpenAiOfficialServerToolMapper {
         }
 
         return builder.build();
+    }
+
+    private static WebSearchPreviewTool.UserLocation toWebSearchPreviewUserLocation(Map<?, ?> userLocation) {
+        Map<String, Object> userLocationMap = toStringObjectMap(userLocation);
+        WebSearchPreviewTool.UserLocation.Builder builder = WebSearchPreviewTool.UserLocation.builder();
+        putAdditionalProperties(
+                userLocationMap,
+                List.of("type", "city", "country", "region", "timezone"),
+                builder::putAdditionalProperty);
+        if (userLocationMap.containsKey("type")) {
+            builder.type(JsonValue.from(userLocationMap.get("type")));
+        }
+        if (userLocationMap.containsKey("city")) {
+            builder.city(String.valueOf(userLocationMap.get("city")));
+        }
+        if (userLocationMap.containsKey("country")) {
+            builder.country(String.valueOf(userLocationMap.get("country")));
+        }
+        if (userLocationMap.containsKey("region")) {
+            builder.region(String.valueOf(userLocationMap.get("region")));
+        }
+        if (userLocationMap.containsKey("timezone")) {
+            builder.timezone(String.valueOf(userLocationMap.get("timezone")));
+        }
+        return builder.build();
+    }
+
+    private static void rejectBlockedDomains(Map<String, Object> attributes) {
+        if (attributes.containsKey("blocked_domains")) {
+            throw new UnsupportedFeatureException(
+                    "'blocked_domains' is not supported by OpenAI Responses web search tools. Use 'allowed_domains' instead.");
+        }
     }
 
     private static NamespaceTool.Tool toNamespaceToolEntry(Map<?, ?> tool) {
