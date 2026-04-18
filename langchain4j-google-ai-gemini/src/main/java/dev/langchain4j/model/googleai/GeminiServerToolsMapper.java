@@ -16,8 +16,10 @@ import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandid
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUrlContextMetadata;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 final class GeminiServerToolsMapper {
 
@@ -97,21 +99,16 @@ final class GeminiServerToolsMapper {
             List<GeminiPart> parts, GeminiUrlContextMetadata urlContextMetadata, GroundingMetadata groundingMetadata) {
         List<GoogleAiGeminiServerToolResult> results = new ArrayList<>();
 
-        List<Map<String, Object>> codeExecutionSteps = extractCodeExecutionSteps(parts);
-        if (!codeExecutionSteps.isEmpty()) {
-            results.add(GoogleAiGeminiServerToolResult.builder()
-                    .type("code_execution_tool_result")
-                    .content(codeExecutionSteps)
-                    .build());
-        }
+        results.addAll(extractCodeExecutionResults(parts));
 
         if (urlContextMetadata != null && !isNullOrEmpty(urlContextMetadata.urlMetadata())) {
             Map<String, Object> content = new LinkedHashMap<>();
             content.put("url_metadata", urlContextMetadata.urlMetadata());
-            results.add(GoogleAiGeminiServerToolResult.builder()
+            GoogleAiGeminiServerToolResult.Builder builder = GoogleAiGeminiServerToolResult.builder()
                     .type("url_context_tool_result")
-                    .content(content)
-                    .build());
+                    .content(content);
+            putToolUseId(builder, findToolUseId(parts, "URL_CONTEXT"));
+            results.add(builder.build());
         }
 
         if (hasGoogleSearchData(groundingMetadata)) {
@@ -121,10 +118,11 @@ final class GeminiServerToolsMapper {
             putIfNotNull(content, "retrieval_metadata", groundingMetadata.retrievalMetadata());
             putIfNotNull(content, "grounding_chunks", groundingMetadata.groundingChunks());
             putIfNotNull(content, "grounding_supports", groundingMetadata.groundingSupports());
-            results.add(GoogleAiGeminiServerToolResult.builder()
+            GoogleAiGeminiServerToolResult.Builder builder = GoogleAiGeminiServerToolResult.builder()
                     .type("google_search_tool_result")
-                    .content(content)
-                    .build());
+                    .content(content);
+            putToolUseId(builder, findToolUseId(parts, "GOOGLE_SEARCH_WEB"));
+            results.add(builder.build());
         }
 
         if (hasGoogleMapsData(groundingMetadata)) {
@@ -132,10 +130,11 @@ final class GeminiServerToolsMapper {
             putIfNotNull(content, "grounding_chunks", groundingMetadata.groundingChunks());
             putIfNotNull(content, "grounding_supports", groundingMetadata.groundingSupports());
             putIfNotNull(content, "google_maps_widget_context_token", groundingMetadata.googleMapsWidgetContextToken());
-            results.add(GoogleAiGeminiServerToolResult.builder()
+            GoogleAiGeminiServerToolResult.Builder builder = GoogleAiGeminiServerToolResult.builder()
                     .type("google_maps_tool_result")
-                    .content(content)
-                    .build());
+                    .content(content);
+            putToolUseId(builder, findToolUseId(parts, "GOOGLE_MAPS"));
+            results.add(builder.build());
         }
 
         return results;
@@ -153,10 +152,11 @@ final class GeminiServerToolsMapper {
         return extractServerToolResults(parts, urlContextMetadata, groundingMetadata);
     }
 
-    private static List<Map<String, Object>> extractCodeExecutionSteps(List<GeminiPart> parts) {
-        List<Map<String, Object>> steps = new ArrayList<>();
+    private static List<GoogleAiGeminiServerToolResult> extractCodeExecutionResults(List<GeminiPart> parts) {
+        Map<String, List<Map<String, Object>>> stepsByToolUseId = new LinkedHashMap<>();
+        List<Map<String, Object>> stepsWithoutId = new ArrayList<>();
         if (parts == null) {
-            return steps;
+            return List.of();
         }
 
         for (GeminiPart part : parts) {
@@ -170,7 +170,7 @@ final class GeminiServerToolsMapper {
                                 ? executableCode.programmingLanguage().toString()
                                 : null);
                 putIfNotNull(code, "code", executableCode.code());
-                steps.add(code);
+                addCodeExecutionStep(stepsByToolUseId, stepsWithoutId, executableCode.id(), code);
             }
 
             GeminiCodeExecutionResult codeExecutionResult = part.codeExecutionResult();
@@ -183,11 +183,39 @@ final class GeminiServerToolsMapper {
                                 ? codeExecutionResult.outcome().toString()
                                 : null);
                 putIfNotNull(result, "output", codeExecutionResult.output());
-                steps.add(result);
+                addCodeExecutionStep(stepsByToolUseId, stepsWithoutId, codeExecutionResult.id(), result);
             }
         }
 
-        return steps;
+        List<GoogleAiGeminiServerToolResult> results = new ArrayList<>();
+        for (Map.Entry<String, List<Map<String, Object>>> entry : stepsByToolUseId.entrySet()) {
+            results.add(GoogleAiGeminiServerToolResult.builder()
+                    .type("code_execution_tool_result")
+                    .toolUseId(entry.getKey())
+                    .content(entry.getValue())
+                    .build());
+        }
+        if (!stepsWithoutId.isEmpty()) {
+            results.add(GoogleAiGeminiServerToolResult.builder()
+                    .type("code_execution_tool_result")
+                    .content(stepsWithoutId)
+                    .build());
+        }
+        return results;
+    }
+
+    private static void addCodeExecutionStep(
+            Map<String, List<Map<String, Object>>> stepsByToolUseId,
+            List<Map<String, Object>> stepsWithoutId,
+            String toolUseId,
+            Map<String, Object> step) {
+        if (toolUseId == null) {
+            stepsWithoutId.add(step);
+            return;
+        }
+        stepsByToolUseId
+                .computeIfAbsent(toolUseId, ignored -> new ArrayList<>())
+                .add(step);
     }
 
     private static boolean hasGoogleSearchData(GroundingMetadata groundingMetadata) {
@@ -219,9 +247,37 @@ final class GeminiServerToolsMapper {
         return groundingMetadata.groundingChunks().stream().anyMatch(chunk -> chunk.maps() != null);
     }
 
+    private static String findToolUseId(List<GeminiPart> parts, String toolType) {
+        if (parts == null) {
+            return null;
+        }
+
+        Set<String> ids = new LinkedHashSet<>();
+        for (GeminiPart part : parts) {
+            if (part.toolCall() != null
+                    && toolType.equals(part.toolCall().toolType())
+                    && part.toolCall().id() != null) {
+                ids.add(part.toolCall().id());
+            }
+            if (part.toolResponse() != null
+                    && toolType.equals(part.toolResponse().toolType())
+                    && part.toolResponse().id() != null) {
+                ids.add(part.toolResponse().id());
+            }
+        }
+
+        return ids.size() == 1 ? ids.iterator().next() : null;
+    }
+
     private static boolean booleanAttribute(Map<String, Object> attributes, String key) {
         Object value = attributes.get(key);
         return value != null && Boolean.parseBoolean(String.valueOf(value));
+    }
+
+    private static void putToolUseId(GoogleAiGeminiServerToolResult.Builder builder, String toolUseId) {
+        if (toolUseId != null) {
+            builder.toolUseId(toolUseId);
+        }
     }
 
     private static void putIfNotNull(Map<String, Object> target, String key, Object value) {

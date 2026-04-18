@@ -50,6 +50,8 @@ final class PartsAndContentsMapper {
 
     static final String THINKING_SIGNATURE_KEY =
             "thinking_signature"; // do not change, will break backward compatibility!
+    static final String RAW_PARTS_KEY =
+            "_gemini_raw_parts"; // internal key for preserving exact Gemini tool-circulation parts
 
     private static final CustomMimeTypesFileTypeDetector mimeTypeDetector = new CustomMimeTypesFileTypeDetector();
 
@@ -275,11 +277,17 @@ final class PartsAndContentsMapper {
         if (!generatedImages.isEmpty()) {
             attributes.put(GENERATED_IMAGES_KEY, generatedImages);
         }
+        boolean shouldPersistRawParts = shouldPersistRawParts(safeParts);
+        boolean shouldIncludeFunctionCallIds = shouldPersistRawParts
+                || functionCalls.stream().anyMatch(functionCall -> !isNullOrBlank(functionCall.id()));
+        if (shouldPersistRawParts) {
+            attributes.put(RAW_PARTS_KEY, List.copyOf(safeParts));
+        }
 
         return AiMessage.builder()
                 .text(isNullOrEmpty(text) ? null : text)
                 .thinking(isNullOrEmpty(thinking) ? null : thinking)
-                .toolExecutionRequests(toToolExecutionRequests(functionCalls))
+                .toolExecutionRequests(toToolExecutionRequests(functionCalls, shouldIncludeFunctionCallIds))
                 .attributes(attributes.isEmpty() ? Map.of() : attributes)
                 .build();
     }
@@ -318,6 +326,11 @@ final class PartsAndContentsMapper {
                             return null;
                         case AI:
                             AiMessage aiMessage = (AiMessage) msg;
+
+                            List<GeminiContent.GeminiPart> rawParts = rawParts(aiMessage);
+                            if (rawParts != null) {
+                                return new GeminiContent(rawParts, GeminiRole.MODEL.toString());
+                            }
 
                             List<GeminiContent.GeminiPart> parts = new ArrayList<>();
 
@@ -365,17 +378,21 @@ final class PartsAndContentsMapper {
                                         toolParts.add(fromContentToGPart(imageContent, mediaResolutionPerPartEnabled));
                                     } else {
                                         throw new UnsupportedFeatureException(
-                                                "Google AI Gemini does not support content type '"
-                                                        + content.type() + "' in tool results.");
+                                                "Google AI Gemini does not support content type '" + content.type()
+                                                        + "' in tool results.");
                                     }
                                 }
                                 if (responseMap.isEmpty()) {
                                     responseMap.put("response", "");
                                 }
-                                toolParts.add(0, GeminiContent.GeminiPart.builder()
-                                        .functionResponse(new GeminiFunctionResponse(
-                                                toolResultMessage.toolName(), responseMap))
-                                        .build());
+                                toolParts.add(
+                                        0,
+                                        GeminiContent.GeminiPart.builder()
+                                                .functionResponse(new GeminiFunctionResponse(
+                                                        toolResultMessage.toolName(),
+                                                        responseMap,
+                                                        toolResultMessage.id()))
+                                                .build());
                                 return new GeminiContent(toolParts, GeminiRole.USER.toString());
                             }
 
@@ -383,7 +400,8 @@ final class PartsAndContentsMapper {
                                     List.of(GeminiContent.GeminiPart.builder()
                                             .functionResponse(new GeminiFunctionResponse(
                                                     toolResultMessage.toolName(),
-                                                    Map.of("response", toolResultMessage.text())))
+                                                    Map.of("response", toolResultMessage.text()),
+                                                    toolResultMessage.id()))
                                             .build()),
                                     GeminiRole.USER.toString());
                         default:
@@ -422,11 +440,30 @@ final class PartsAndContentsMapper {
             boolean shouldAddThoughtSignature = i == 0 && isNotNullOrEmpty(thoughtSignature);
             GeminiContent.GeminiPart geminiPart = GeminiContent.GeminiPart.builder()
                     .functionCall(new GeminiFunctionCall(
-                            toolExecutionRequest.name(), fromJson(toolExecutionRequest.arguments(), Map.class)))
+                            toolExecutionRequest.name(),
+                            fromJson(toolExecutionRequest.arguments(), Map.class),
+                            toolExecutionRequest.id()))
                     .thoughtSignature(shouldAddThoughtSignature ? thoughtSignature : null)
                     .build();
             geminiParts.add(geminiPart);
         }
         return geminiParts;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<GeminiContent.GeminiPart> rawParts(AiMessage aiMessage) {
+        return (List<GeminiContent.GeminiPart>) aiMessage.attributes().get(RAW_PARTS_KEY);
+    }
+
+    static boolean shouldPersistRawParts(List<GeminiContent.GeminiPart> parts) {
+        return parts.stream()
+                .anyMatch(part -> part.thoughtSignature() != null
+                        || part.functionCall() != null
+                        || part.toolCall() != null
+                        || part.toolResponse() != null
+                        || (part.executableCode() != null
+                                && part.executableCode().id() != null)
+                        || (part.codeExecutionResult() != null
+                                && part.codeExecutionResult().id() != null));
     }
 }

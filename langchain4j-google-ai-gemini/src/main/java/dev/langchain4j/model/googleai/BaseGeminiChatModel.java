@@ -3,6 +3,7 @@ package dev.langchain4j.model.googleai;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
 import static dev.langchain4j.model.googleai.FunctionMapper.fromToolSpecsAndServerToolsToGTools;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
@@ -45,6 +46,7 @@ class BaseGeminiChatModel {
     protected final boolean allowUrlContext;
     protected final boolean includeCodeExecutionOutput;
     protected final List<GoogleAiGeminiServerTool> serverTools;
+    protected final boolean includeServerSideToolInvocations;
     protected final boolean returnServerToolResults;
     protected final List<GeminiSafetySetting> safetySettings;
     protected final List<ChatModelListener> listeners;
@@ -72,6 +74,7 @@ class BaseGeminiChatModel {
         this.allowUrlContext = getOrDefault(builder.allowUrlContext, false);
         this.includeCodeExecutionOutput = getOrDefault(builder.includeCodeExecutionOutput, false);
         this.serverTools = copyIfNotNull(builder.serverTools);
+        this.includeServerSideToolInvocations = getOrDefault(builder.includeServerSideToolInvocations, false);
         this.returnServerToolResults = getOrDefault(builder.returnServerToolResults, false);
         this.safetySettings = copyIfNotNull(builder.safetySettings);
         this.listeners = copy(builder.listeners);
@@ -141,6 +144,17 @@ class BaseGeminiChatModel {
             }
         }
 
+        List<GoogleAiGeminiServerTool> mergedServerTools = GeminiServerToolsMapper.mergeServerTools(
+                this.serverTools,
+                this.allowCodeExecution,
+                this.allowGoogleSearch,
+                this.allowUrlContext,
+                this.allowGoogleMaps,
+                this.retrieveGoogleMapsWidgetToken);
+        boolean hasFunctionDeclarations = !isNullOrEmpty(chatRequest.toolSpecifications());
+        boolean shouldIncludeServerSideToolInvocations =
+                this.includeServerSideToolInvocations || (hasFunctionDeclarations && !isNullOrEmpty(mergedServerTools));
+
         return GeminiGenerateContentRequest.builder()
                 .contents(geminiContentList)
                 .systemInstruction(!systemInstruction.parts().isEmpty() ? systemInstruction : null)
@@ -165,19 +179,25 @@ class BaseGeminiChatModel {
                         .build())
                 .safetySettings(this.safetySettings)
                 .tools(fromToolSpecsAndServerToolsToGTools(
-                        chatRequest.toolSpecifications(),
-                        this.serverTools,
-                        this.allowCodeExecution,
-                        this.allowGoogleSearch,
-                        this.allowUrlContext,
-                        this.allowGoogleMaps,
-                        this.retrieveGoogleMapsWidgetToken))
-                .toolConfig(toToolConfig(parameters.toolChoice(), this.functionCallingConfig))
+                        chatRequest.toolSpecifications(), mergedServerTools, false, false, false, false, false))
+                .toolConfig(toToolConfig(
+                        parameters.toolChoice(),
+                        this.functionCallingConfig,
+                        hasFunctionDeclarations,
+                        shouldIncludeServerSideToolInvocations))
                 .build();
     }
 
-    private GeminiToolConfig toToolConfig(ToolChoice toolChoice, GeminiFunctionCallingConfig functionCallingConfig) {
-        if (toolChoice == null && functionCallingConfig == null) {
+    private GeminiToolConfig toToolConfig(
+            ToolChoice toolChoice,
+            GeminiFunctionCallingConfig functionCallingConfig,
+            boolean hasFunctionDeclarations,
+            boolean includeServerSideToolInvocations) {
+        if (!hasFunctionDeclarations) {
+            return includeServerSideToolInvocations ? new GeminiToolConfig(null, true) : null;
+        }
+
+        if (toolChoice == null && functionCallingConfig == null && !includeServerSideToolInvocations) {
             return null;
         }
 
@@ -192,7 +212,14 @@ class BaseGeminiChatModel {
             geminiMode = toGeminiMode(toolChoice);
         }
 
-        return new GeminiToolConfig(new GeminiFunctionCallingConfig(geminiMode, allowedFunctionNames));
+        if (includeServerSideToolInvocations && (geminiMode == null || geminiMode == GeminiMode.AUTO)) {
+            geminiMode = GeminiMode.VALIDATED;
+        }
+
+        GeminiFunctionCallingConfig config = geminiMode != null || allowedFunctionNames != null
+                ? new GeminiFunctionCallingConfig(geminiMode, allowedFunctionNames)
+                : null;
+        return new GeminiToolConfig(config, includeServerSideToolInvocations ? true : null);
     }
 
     protected static String computeMimeType(ResponseFormat responseFormat) {
@@ -360,6 +387,7 @@ class BaseGeminiChatModel {
         protected Boolean allowUrlContext;
         protected Boolean includeCodeExecutionOutput;
         protected List<GoogleAiGeminiServerTool> serverTools;
+        protected Boolean includeServerSideToolInvocations;
         protected Boolean returnServerToolResults;
         protected Boolean logRequestsAndResponses;
         protected Boolean logRequests;
@@ -430,6 +458,11 @@ class BaseGeminiChatModel {
 
         public B serverTools(GoogleAiGeminiServerTool... serverTools) {
             return serverTools(Arrays.asList(serverTools));
+        }
+
+        public B includeServerSideToolInvocations(Boolean includeServerSideToolInvocations) {
+            this.includeServerSideToolInvocations = includeServerSideToolInvocations;
+            return builder();
         }
 
         public B returnServerToolResults(Boolean returnServerToolResults) {

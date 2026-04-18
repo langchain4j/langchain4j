@@ -3,11 +3,13 @@ package dev.langchain4j.model.googleai;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -551,6 +553,320 @@ class GoogleAiGeminiChatModelTest {
             var request = requestCaptor.getValue();
             assertThat(request.toolConfig()).isNotNull();
             assertThat(request.toolConfig().functionCallingConfig().getMode()).isEqualTo(GeminiMode.NONE);
+        }
+
+        @Test
+        void shouldEnableServerSideToolInvocationsAutomaticallyForMixedTools() {
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .serverTools(GoogleAiGeminiServerTool.builder()
+                            .type("google_search")
+                            .build())
+                    .build(mockGeminiService);
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(new UserMessage("Call a function after searching"))
+                    .toolSpecifications(
+                            ToolSpecification.builder().name("myTool").build())
+                    .build();
+
+            subject.chat(chatRequest);
+
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            var request = requestCaptor.getValue();
+            assertThat(request.toolConfig()).isNotNull();
+            assertThat(request.toolConfig().includeServerSideToolInvocations()).isTrue();
+            assertThat(request.toolConfig().functionCallingConfig()).isNotNull();
+            assertThat(request.toolConfig().functionCallingConfig().getMode()).isEqualTo(GeminiMode.VALIDATED);
+        }
+
+        @Test
+        void shouldAllowExplicitServerSideToolInvocationsForBuiltInToolsOnly() {
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .serverTools(GoogleAiGeminiServerTool.builder()
+                            .type("google_search")
+                            .build())
+                    .includeServerSideToolInvocations(true)
+                    .build(mockGeminiService);
+
+            var chatRequest =
+                    ChatRequest.builder().messages(new UserMessage("Search")).build();
+
+            subject.chat(chatRequest);
+
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            var request = requestCaptor.getValue();
+            assertThat(request.toolConfig()).isNotNull();
+            assertThat(request.toolConfig().includeServerSideToolInvocations()).isTrue();
+            assertThat(request.toolConfig().functionCallingConfig()).isNull();
+        }
+
+        @Test
+        void shouldIgnoreFunctionCallingConfigWhenOnlyBuiltInToolsAreConfigured() {
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .serverTools(GoogleAiGeminiServerTool.builder()
+                            .type("google_search")
+                            .build())
+                    .includeServerSideToolInvocations(true)
+                    .toolConfig(GeminiMode.AUTO)
+                    .build(mockGeminiService);
+
+            subject.chat(
+                    ChatRequest.builder().messages(new UserMessage("Search")).build());
+
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            var request = requestCaptor.getValue();
+            assertThat(request.toolConfig()).isNotNull();
+            assertThat(request.toolConfig().includeServerSideToolInvocations()).isTrue();
+            assertThat(request.toolConfig().functionCallingConfig()).isNull();
+        }
+
+        @Test
+        void shouldNormalizeAutoModeToValidatedWhenIncludingServerSideToolInvocationsForMixedTools() {
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .serverTools(GoogleAiGeminiServerTool.builder()
+                            .type("google_search")
+                            .build())
+                    .includeServerSideToolInvocations(true)
+                    .toolConfig(GeminiMode.AUTO)
+                    .build(mockGeminiService);
+
+            subject.chat(ChatRequest.builder()
+                    .messages(new UserMessage("Search and call a function"))
+                    .toolSpecifications(
+                            ToolSpecification.builder().name("myTool").build())
+                    .build());
+
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            var request = requestCaptor.getValue();
+            assertThat(request.toolConfig()).isNotNull();
+            assertThat(request.toolConfig().includeServerSideToolInvocations()).isTrue();
+            assertThat(request.toolConfig().functionCallingConfig()).isNotNull();
+            assertThat(request.toolConfig().functionCallingConfig().getMode()).isEqualTo(GeminiMode.VALIDATED);
+        }
+    }
+
+    @Nested
+    class ToolCirculationTest {
+        @Captor
+        ArgumentCaptor<GeminiGenerateContentRequest> requestCaptor;
+
+        @Test
+        void shouldReplayRawToolCirculationPartsAndFunctionResponseIdOnFollowUpTurn() {
+            ToolSpecification toolSpecification =
+                    ToolSpecification.builder().name("getWeather").build();
+
+            GeminiContent turnOneContent = new GeminiContent(
+                    List.of(
+                            GeminiContent.GeminiPart.builder()
+                                    .thoughtSignature("sig-tool")
+                                    .toolCall(new GeminiContent.GeminiPart.GeminiToolCall(
+                                            "GOOGLE_SEARCH_WEB",
+                                            Map.of("queries", List.of("northernmost city in the United States")),
+                                            "search-1"))
+                                    .build(),
+                            GeminiContent.GeminiPart.builder()
+                                    .thoughtSignature("sig-response")
+                                    .toolResponse(new GeminiContent.GeminiPart.GeminiToolResponse(
+                                            "GOOGLE_SEARCH_WEB",
+                                            Map.of("search_suggestions", "Utqiagvik weather"),
+                                            "search-1"))
+                                    .build(),
+                            GeminiContent.GeminiPart.builder()
+                                    .thoughtSignature("sig-function")
+                                    .functionCall(new GeminiContent.GeminiPart.GeminiFunctionCall(
+                                            "getWeather", Map.of("location", "Utqiagvik, Alaska"), "function-1"))
+                                    .build()),
+                    "model");
+
+            GeminiGenerateContentResponse firstResponse = new GeminiGenerateContentResponse(
+                    "response-1",
+                    "gemini-3-flash-preview",
+                    List.of(new GeminiCandidate(turnOneContent, GeminiFinishReason.STOP, null, null)),
+                    createUsageMetadata(10, 5, 15),
+                    null);
+            GeminiGenerateContentResponse secondResponse = createGeminiResponse("It is cold.");
+
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(firstResponse, secondResponse);
+
+            GoogleAiGeminiChatModel subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .serverTools(GoogleAiGeminiServerTool.builder()
+                            .type("google_search")
+                            .build())
+                    .defaultRequestParameters(ChatRequestParameters.builder()
+                            .toolSpecifications(toolSpecification)
+                            .build())
+                    .build(mockGeminiService);
+
+            UserMessage userMessage = UserMessage.from("Search, then check the weather.");
+
+            ChatResponse firstChatResponse = subject.chat(userMessage);
+            ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(
+                    firstChatResponse.aiMessage().toolExecutionRequests().get(0), "Very cold. 22 degrees Fahrenheit.");
+
+            subject.chat(userMessage, firstChatResponse.aiMessage(), toolExecutionResultMessage);
+
+            verify(mockGeminiService, times(2)).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            List<GeminiGenerateContentRequest> requests = requestCaptor.getAllValues();
+
+            GeminiGenerateContentRequest secondRequest = requests.get(1);
+            assertThat(secondRequest.toolConfig()).isNotNull();
+            assertThat(secondRequest.toolConfig().includeServerSideToolInvocations())
+                    .isTrue();
+            assertThat(secondRequest.contents()).hasSize(3);
+
+            GeminiContent replayedModelContent = secondRequest.contents().get(1);
+            assertThat(replayedModelContent.role()).isEqualTo("model");
+            assertThat(replayedModelContent.parts()).hasSize(3);
+            assertThat(replayedModelContent.parts().get(0).toolCall())
+                    .isEqualTo(turnOneContent.parts().get(0).toolCall());
+            assertThat(replayedModelContent.parts().get(1).toolResponse())
+                    .isEqualTo(turnOneContent.parts().get(1).toolResponse());
+            assertThat(replayedModelContent.parts().get(2).functionCall())
+                    .isEqualTo(turnOneContent.parts().get(2).functionCall());
+
+            GeminiContent functionResultContent = secondRequest.contents().get(2);
+            assertThat(functionResultContent.role()).isEqualTo("user");
+            assertThat(functionResultContent.parts())
+                    .singleElement()
+                    .satisfies(part -> assertThat(part.functionResponse().id()).isEqualTo("function-1"));
+        }
+
+        @Test
+        void shouldPreservePlainFunctionCallIdOnFollowUpTurn() {
+            ToolSpecification toolSpecification =
+                    ToolSpecification.builder().name("getWeather").build();
+
+            GeminiContent turnOneContent = new GeminiContent(
+                    List.of(GeminiContent.GeminiPart.builder()
+                            .functionCall(new GeminiContent.GeminiPart.GeminiFunctionCall(
+                                    "getWeather", Map.of("location", "Paris"), "function-plain-1"))
+                            .build()),
+                    "model");
+
+            GeminiGenerateContentResponse firstResponse = new GeminiGenerateContentResponse(
+                    "response-1",
+                    "gemini-2.5-flash",
+                    List.of(new GeminiCandidate(turnOneContent, GeminiFinishReason.STOP, null, null)),
+                    createUsageMetadata(10, 5, 15),
+                    null);
+            GeminiGenerateContentResponse secondResponse = createGeminiResponse("It is mild.");
+
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(firstResponse, secondResponse);
+
+            GoogleAiGeminiChatModel subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .defaultRequestParameters(ChatRequestParameters.builder()
+                            .toolSpecifications(toolSpecification)
+                            .build())
+                    .build(mockGeminiService);
+
+            UserMessage userMessage = UserMessage.from("Check the weather.");
+
+            ChatResponse firstChatResponse = subject.chat(userMessage);
+            assertThat(firstChatResponse.aiMessage().toolExecutionRequests())
+                    .singleElement()
+                    .satisfies(toolRequest -> assertThat(toolRequest.id()).isEqualTo("function-plain-1"));
+            ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(
+                    firstChatResponse.aiMessage().toolExecutionRequests().get(0), "Mild. 18 degrees Celsius.");
+
+            subject.chat(userMessage, firstChatResponse.aiMessage(), toolExecutionResultMessage);
+
+            verify(mockGeminiService, times(2)).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            List<GeminiGenerateContentRequest> requests = requestCaptor.getAllValues();
+
+            GeminiContent functionResultContent = requests.get(1).contents().get(2);
+            assertThat(functionResultContent.role()).isEqualTo("user");
+            assertThat(functionResultContent.parts())
+                    .singleElement()
+                    .satisfies(part -> assertThat(part.functionResponse().id()).isEqualTo("function-plain-1"));
+        }
+
+        @Test
+        void shouldReplayFunctionOnlyPartsWithDistinctThoughtSignaturesOnFollowUpTurn() {
+            ToolSpecification toolSpecification =
+                    ToolSpecification.builder().name("getWeather").build();
+
+            GeminiContent turnOneContent = new GeminiContent(
+                    List.of(
+                            GeminiContent.GeminiPart.builder()
+                                    .thoughtSignature("sig-function-1")
+                                    .functionCall(new GeminiContent.GeminiPart.GeminiFunctionCall(
+                                            "getWeather", Map.of("location", "Paris"), "function-1"))
+                                    .build(),
+                            GeminiContent.GeminiPart.builder()
+                                    .thoughtSignature("sig-function-2")
+                                    .functionCall(new GeminiContent.GeminiPart.GeminiFunctionCall(
+                                            "getWeather", Map.of("location", "Berlin"), "function-2"))
+                                    .build()),
+                    "model");
+
+            GeminiGenerateContentResponse firstResponse = new GeminiGenerateContentResponse(
+                    "response-1",
+                    "gemini-3-flash-preview",
+                    List.of(new GeminiCandidate(turnOneContent, GeminiFinishReason.STOP, null, null)),
+                    createUsageMetadata(10, 5, 15),
+                    null);
+            GeminiGenerateContentResponse secondResponse = createGeminiResponse("Both are mild.");
+
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(firstResponse, secondResponse);
+
+            GoogleAiGeminiChatModel subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .serverTools(GoogleAiGeminiServerTool.builder()
+                            .type("google_search")
+                            .build())
+                    .defaultRequestParameters(ChatRequestParameters.builder()
+                            .toolSpecifications(toolSpecification)
+                            .build())
+                    .build(mockGeminiService);
+
+            UserMessage userMessage = UserMessage.from("Search, then check both cities.");
+
+            ChatResponse firstChatResponse = subject.chat(userMessage);
+            ToolExecutionResultMessage firstToolResult = ToolExecutionResultMessage.from(
+                    firstChatResponse.aiMessage().toolExecutionRequests().get(0), "Paris is mild.");
+            ToolExecutionResultMessage secondToolResult = ToolExecutionResultMessage.from(
+                    firstChatResponse.aiMessage().toolExecutionRequests().get(1), "Berlin is cool.");
+
+            subject.chat(userMessage, firstChatResponse.aiMessage(), firstToolResult, secondToolResult);
+
+            verify(mockGeminiService, times(2)).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            GeminiGenerateContentRequest secondRequest =
+                    requestCaptor.getAllValues().get(1);
+
+            assertThat(secondRequest.contents()).hasSize(4);
+            assertThat(secondRequest.contents().get(1).parts()).isEqualTo(turnOneContent.parts());
         }
     }
 

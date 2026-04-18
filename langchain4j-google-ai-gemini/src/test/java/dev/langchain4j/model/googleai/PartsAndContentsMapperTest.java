@@ -16,6 +16,7 @@ import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.video.Video;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiBlob;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class PartsAndContentsMapperTest {
@@ -105,6 +106,30 @@ class PartsAndContentsMapperTest {
         assertThat(result.thinking()).isNull();
         assertThat(result.toolExecutionRequests()).isEmpty();
         assertThat(result.attributes()).isEmpty();
+    }
+
+    @Test
+    void fromGPartsToAiMessage_persistsRawFunctionPartsWithThoughtSignatures() {
+        List<GeminiContent.GeminiPart> parts = List.of(
+                GeminiContent.GeminiPart.builder()
+                        .thoughtSignature("sig-1")
+                        .functionCall(new GeminiContent.GeminiPart.GeminiFunctionCall(
+                                "firstTool", Map.of("city", "Paris"), "fn-1"))
+                        .build(),
+                GeminiContent.GeminiPart.builder()
+                        .thoughtSignature("sig-2")
+                        .functionCall(new GeminiContent.GeminiPart.GeminiFunctionCall(
+                                "secondTool", Map.of("country", "France"), "fn-2"))
+                        .build());
+
+        AiMessage aiMessage = PartsAndContentsMapper.fromGPartsToAiMessage(parts, false, null);
+        List<GeminiContent> contents = PartsAndContentsMapper.fromMessageToGContent(List.of(aiMessage), null, false);
+
+        assertThat(aiMessage.attributes()).containsKey(PartsAndContentsMapper.RAW_PARTS_KEY);
+        assertThat(contents).singleElement().satisfies(content -> {
+            assertThat(content.role()).isEqualTo("model");
+            assertThat(content.parts()).isEqualTo(parts);
+        });
     }
 
     @Test

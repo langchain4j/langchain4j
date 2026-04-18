@@ -95,11 +95,21 @@ class FunctionMapper {
     }
 
     static List<ToolExecutionRequest> toToolExecutionRequests(List<GeminiFunctionCall> functionCalls) {
+        return toToolExecutionRequests(functionCalls, false);
+    }
+
+    static List<ToolExecutionRequest> toToolExecutionRequests(
+            List<GeminiFunctionCall> functionCalls, boolean includeIds) {
         return functionCalls.stream()
-                .map(functionCall -> ToolExecutionRequest.builder()
-                        .name(functionCall.name())
-                        .arguments(toJsonWithoutIndent(functionCall.args()))
-                        .build())
+                .map(functionCall -> {
+                    ToolExecutionRequest.Builder builder = ToolExecutionRequest.builder()
+                            .name(functionCall.name())
+                            .arguments(toJsonWithoutIndent(functionCall.args()));
+                    if (includeIds) {
+                        builder.id(functionCall.id());
+                    }
+                    return builder.build();
+                })
                 .toList();
     }
 }

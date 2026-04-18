@@ -100,5 +100,8 @@ record GeminiGenerateContentRequest(
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record GeminiToolConfig(
-            @JsonProperty("functionCallingConfig") GeminiFunctionCallingConfig functionCallingConfig) {}
+            @JsonProperty("functionCallingConfig") GeminiFunctionCallingConfig functionCallingConfig,
+
+            @JsonProperty("includeServerSideToolInvocations")
+            Boolean includeServerSideToolInvocations) {}
 }

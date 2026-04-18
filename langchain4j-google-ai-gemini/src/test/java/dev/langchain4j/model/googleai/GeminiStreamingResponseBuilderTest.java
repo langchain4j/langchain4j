@@ -48,8 +48,7 @@ class GeminiStreamingResponseBuilderTest {
     @Test
     void should_return_text_when_candidate_has_content() {
         GeminiContent content = new GeminiContent(
-                List.of(new GeminiContent.GeminiPart("Hello", null, null, null, null, null, null, null, null, null)),
-                "model");
+                List.of(GeminiContent.GeminiPart.builder().text("Hello").build()), "model");
         GeminiCandidate candidate = new GeminiCandidate(content, null, null, null);
         GeminiGenerateContentResponse response =
                 new GeminiGenerateContentResponse("id-1", "gemini-pro", List.of(candidate), null, null);
@@ -64,19 +63,16 @@ class GeminiStreamingResponseBuilderTest {
     void should_include_server_tool_results_when_enabled() {
         GeminiStreamingResponseBuilder builder = new GeminiStreamingResponseBuilder(false, null, true);
         GeminiContent content = new GeminiContent(
-                List.of(new GeminiContent.GeminiPart(
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        new GeminiContent.GeminiPart.GeminiExecutableCode(
-                                GeminiContent.GeminiPart.GeminiExecutableCode.GeminiLanguage.PYTHON, "print(1)"),
-                        new GeminiContent.GeminiPart.GeminiCodeExecutionResult(
-                                GeminiContent.GeminiPart.GeminiCodeExecutionResult.GeminiOutcome.OUTCOME_OK, "1"),
-                        null,
-                        null,
-                        null)),
+                List.of(GeminiContent.GeminiPart.builder()
+                        .executableCode(new GeminiContent.GeminiPart.GeminiExecutableCode(
+                                GeminiContent.GeminiPart.GeminiExecutableCode.GeminiLanguage.PYTHON,
+                                "print(1)",
+                                "code-id"))
+                        .codeExecutionResult(new GeminiContent.GeminiPart.GeminiCodeExecutionResult(
+                                GeminiContent.GeminiPart.GeminiCodeExecutionResult.GeminiOutcome.OUTCOME_OK,
+                                "1",
+                                "code-id"))
+                        .build()),
                 "model");
         GeminiCandidate candidate = new GeminiCandidate(content, null, null, null);
         GeminiGenerateContentResponse response =
@@ -88,6 +84,33 @@ class GeminiStreamingResponseBuilderTest {
 
         assertThat(completeResponse.aiMessage().attributes())
                 .containsKey(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
+    }
+
+    @Test
+    void should_preserve_raw_tool_circulation_parts_when_present() {
+        GeminiStreamingResponseBuilder builder = new GeminiStreamingResponseBuilder(false, null, false);
+        GeminiContent content = new GeminiContent(
+                List.of(
+                        GeminiContent.GeminiPart.builder()
+                                .thoughtSignature("sig-1")
+                                .toolCall(new GeminiContent.GeminiPart.GeminiToolCall(
+                                        "GOOGLE_SEARCH_WEB",
+                                        java.util.Map.of("queries", List.of("langchain4j")),
+                                        "tool-1"))
+                                .build(),
+                        GeminiContent.GeminiPart.builder()
+                                .thoughtSignature("sig-2")
+                                .functionCall(new GeminiContent.GeminiPart.GeminiFunctionCall(
+                                        "getWeather", java.util.Map.of("city", "Paris"), "fn-1"))
+                                .build()),
+                "model");
+
+        builder.append(new GeminiGenerateContentResponse(
+                "id-1", "gemini-pro", List.of(new GeminiCandidate(content, null, null, null)), null, null));
+
+        ChatResponse completeResponse = builder.build();
+
+        assertThat(completeResponse.aiMessage().attributes()).containsKey(PartsAndContentsMapper.RAW_PARTS_KEY);
     }
 
     @Test
@@ -116,6 +139,25 @@ class GeminiStreamingResponseBuilderTest {
                         List.of(new GeminiGenerateContentResponse.GeminiUrlMetadata(
                                 "https://docs.langchain4j.dev",
                                 GeminiGenerateContentResponse.GeminiUrlRetrievalStatus.URL_RETRIEVAL_STATUS_SUCCESS)));
+        GeminiContent content = new GeminiContent(
+                List.of(
+                        GeminiContent.GeminiPart.builder()
+                                .toolCall(new GeminiContent.GeminiPart.GeminiToolCall(
+                                        "GOOGLE_SEARCH_WEB",
+                                        java.util.Map.of("queries", List.of("langchain4j")),
+                                        "search-tool-1"))
+                                .build(),
+                        GeminiContent.GeminiPart.builder()
+                                .toolCall(new GeminiContent.GeminiPart.GeminiToolCall(
+                                        "URL_CONTEXT",
+                                        java.util.Map.of("url", "https://docs.langchain4j.dev"),
+                                        "url-tool-1"))
+                                .build(),
+                        GeminiContent.GeminiPart.builder()
+                                .toolCall(new GeminiContent.GeminiPart.GeminiToolCall(
+                                        "GOOGLE_MAPS", java.util.Map.of("query", "Paris landmark"), "maps-tool-1"))
+                                .build()),
+                "model");
         GroundingMetadata groundingMetadata = GroundingMetadata.builder()
                 .webSearchQueries(List.of("langchain4j"))
                 .googleMapsWidgetContextToken("widget-token")
@@ -128,8 +170,7 @@ class GeminiStreamingResponseBuilderTest {
         GeminiGenerateContentResponse response = new GeminiGenerateContentResponse(
                 "id-1",
                 "gemini-pro",
-                List.of(new GeminiCandidate(
-                        new GeminiContent(List.of(), "model"), null, urlContextMetadata, groundingMetadata)),
+                List.of(new GeminiCandidate(content, null, urlContextMetadata, groundingMetadata)),
                 null,
                 null);
 
@@ -149,24 +190,71 @@ class GeminiStreamingResponseBuilderTest {
                         .findFirst())
                 .isPresent()
                 .get()
-                .extracting(GoogleAiGeminiServerToolResult::content)
-                .satisfies(content ->
-                        assertThat((java.util.Map<String, Object>) content).containsKey("url_metadata"));
+                .satisfies(result -> {
+                    assertThat(result.toolUseId()).isEqualTo("url-tool-1");
+                    assertThat((java.util.Map<String, Object>) result.content()).containsKey("url_metadata");
+                });
         assertThat(results.stream()
                         .filter(result -> "google_search_tool_result".equals(result.type()))
                         .findFirst())
                 .isPresent()
                 .get()
-                .extracting(GoogleAiGeminiServerToolResult::content)
-                .satisfies(content -> assertThat((java.util.Map<String, Object>) content)
-                        .containsEntry("web_search_queries", List.of("langchain4j")));
+                .satisfies(result -> {
+                    assertThat(result.toolUseId()).isEqualTo("search-tool-1");
+                    assertThat((java.util.Map<String, Object>) result.content())
+                            .containsEntry("web_search_queries", List.of("langchain4j"));
+                });
         assertThat(results.stream()
                         .filter(result -> "google_maps_tool_result".equals(result.type()))
                         .findFirst())
                 .isPresent()
                 .get()
-                .extracting(GoogleAiGeminiServerToolResult::content)
-                .satisfies(content -> assertThat((java.util.Map<String, Object>) content)
-                        .containsEntry("google_maps_widget_context_token", "widget-token"));
+                .satisfies(result -> {
+                    assertThat(result.toolUseId()).isEqualTo("maps-tool-1");
+                    assertThat((java.util.Map<String, Object>) result.content())
+                            .containsEntry("google_maps_widget_context_token", "widget-token");
+                });
+    }
+
+    @Test
+    void should_group_code_execution_results_by_tool_use_id() {
+        GeminiStreamingResponseBuilder builder = new GeminiStreamingResponseBuilder(false, null, true);
+        GeminiContent content = new GeminiContent(
+                List.of(
+                        GeminiContent.GeminiPart.builder()
+                                .executableCode(new GeminiContent.GeminiPart.GeminiExecutableCode(
+                                        GeminiContent.GeminiPart.GeminiExecutableCode.GeminiLanguage.PYTHON,
+                                        "print(1)",
+                                        "code-1"))
+                                .codeExecutionResult(new GeminiContent.GeminiPart.GeminiCodeExecutionResult(
+                                        GeminiContent.GeminiPart.GeminiCodeExecutionResult.GeminiOutcome.OUTCOME_OK,
+                                        "1",
+                                        "code-1"))
+                                .build(),
+                        GeminiContent.GeminiPart.builder()
+                                .executableCode(new GeminiContent.GeminiPart.GeminiExecutableCode(
+                                        GeminiContent.GeminiPart.GeminiExecutableCode.GeminiLanguage.PYTHON,
+                                        "print(2)",
+                                        "code-2"))
+                                .codeExecutionResult(new GeminiContent.GeminiPart.GeminiCodeExecutionResult(
+                                        GeminiContent.GeminiPart.GeminiCodeExecutionResult.GeminiOutcome.OUTCOME_OK,
+                                        "2",
+                                        "code-2"))
+                                .build()),
+                "model");
+
+        builder.append(new GeminiGenerateContentResponse(
+                "id-1", "gemini-pro", List.of(new GeminiCandidate(content, null, null, null)), null, null));
+
+        ChatResponse completeResponse = builder.build();
+
+        @SuppressWarnings("unchecked")
+        List<GoogleAiGeminiServerToolResult> results = (List<GoogleAiGeminiServerToolResult>)
+                completeResponse.aiMessage().attributes().get(GeminiServerToolsMapper.SERVER_TOOL_RESULTS_KEY);
+
+        assertThat(results)
+                .filteredOn(result -> "code_execution_tool_result".equals(result.type()))
+                .extracting(GoogleAiGeminiServerToolResult::toolUseId)
+                .containsExactly("code-1", "code-2");
     }
 }

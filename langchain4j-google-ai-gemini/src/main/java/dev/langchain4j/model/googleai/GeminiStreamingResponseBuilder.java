@@ -167,6 +167,9 @@ class GeminiStreamingResponseBuilder {
         String text = contentBuilder.toString();
         String thought = thoughtBuilder.toString();
         Map<String, Object> finalAttributes = new ConcurrentHashMap<>(attributes);
+        if (PartsAndContentsMapper.shouldPersistRawParts(parts)) {
+            finalAttributes.put(PartsAndContentsMapper.RAW_PARTS_KEY, List.copyOf(parts));
+        }
 
         if (returnServerToolResults) {
             List<GoogleAiGeminiServerToolResult> serverToolResults = GeminiServerToolsMapper.extractServerToolResults(

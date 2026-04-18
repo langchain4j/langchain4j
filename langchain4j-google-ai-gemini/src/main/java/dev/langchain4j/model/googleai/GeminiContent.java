@@ -24,6 +24,8 @@ record GeminiContent(
     record GeminiPart(
             @JsonProperty("text") String text,
             @JsonProperty("inlineData") GeminiBlob inlineData,
+            @JsonProperty("toolCall") GeminiToolCall toolCall,
+            @JsonProperty("toolResponse") GeminiToolResponse toolResponse,
             @JsonProperty("functionCall") GeminiFunctionCall functionCall,
             @JsonProperty("functionResponse") GeminiFunctionResponse functionResponse,
             @JsonProperty("fileData") GeminiFileData fileData,
@@ -48,6 +50,8 @@ record GeminiContent(
         static class Builder {
             private String text;
             private GeminiBlob inlineData;
+            private GeminiToolCall toolCall;
+            private GeminiToolResponse toolResponse;
             private GeminiFunctionCall functionCall;
             private GeminiFunctionResponse functionResponse;
             private GeminiFileData fileData;
@@ -66,6 +70,16 @@ record GeminiContent(
 
             Builder inlineData(GeminiBlob inlineData) {
                 this.inlineData = inlineData;
+                return this;
+            }
+
+            Builder toolCall(GeminiToolCall toolCall) {
+                this.toolCall = toolCall;
+                return this;
+            }
+
+            Builder toolResponse(GeminiToolResponse toolResponse) {
+                this.toolResponse = toolResponse;
                 return this;
             }
 
@@ -113,6 +127,8 @@ record GeminiContent(
                 return new GeminiPart(
                         text,
                         inlineData,
+                        toolCall,
+                        toolResponse,
                         functionCall,
                         functionResponse,
                         fileData,
@@ -130,14 +146,28 @@ record GeminiContent(
                 @JsonProperty("data") String data) {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
+        record GeminiToolCall(
+                @JsonProperty("toolType") String toolType,
+                @JsonProperty("args") Map<String, Object> args,
+                @JsonProperty("id") String id) {}
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        record GeminiToolResponse(
+                @JsonProperty("toolType") String toolType,
+                @JsonProperty("response") Map<String, Object> response,
+                @JsonProperty("id") String id) {}
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiFunctionCall(
                 @JsonProperty("name") String name,
-                @JsonProperty("args") Map<String, Object> args) {}
+                @JsonProperty("args") Map<String, Object> args,
+                @JsonProperty("id") String id) {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiFunctionResponse(
                 @JsonProperty("name") String name,
-                @JsonProperty("response") Map<String, String> response) {}
+                @JsonProperty("response") Map<String, String> response,
+                @JsonProperty("id") String id) {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiFileData(
@@ -147,7 +177,8 @@ record GeminiContent(
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiExecutableCode(
                 @JsonProperty("programmingLanguage") GeminiLanguage programmingLanguage,
-                @JsonProperty("code") String code) {
+                @JsonProperty("code") String code,
+                @JsonProperty("id") String id) {
             enum GeminiLanguage {
                 PYTHON,
                 LANGUAGE_UNSPECIFIED;
@@ -168,7 +199,8 @@ record GeminiContent(
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiCodeExecutionResult(
                 @JsonProperty("outcome") GeminiOutcome outcome,
-                @JsonProperty("output") String output) {
+                @JsonProperty("output") String output,
+                @JsonProperty("id") String id) {
             // TODO how to deal with the non-OK outcomes?
             enum GeminiOutcome {
                 OUTCOME_UNSPECIFIED,
