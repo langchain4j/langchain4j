@@ -424,9 +424,7 @@ final class OpenAiOfficialServerToolMapper {
         ComputerUsePreviewTool.Builder builder = ComputerUsePreviewTool.builder();
         Map<String, Object> attributes = serverTool.attributes();
         putAdditionalProperties(
-                attributes,
-                List.of("display_height", "display_width", "environment"),
-                builder::putAdditionalProperty);
+                attributes, List.of("display_height", "display_width", "environment"), builder::putAdditionalProperty);
         builder.type(JsonValue.from(serverTool.type()));
 
         Integer displayHeight = integerValue(attributes, "display_height");
