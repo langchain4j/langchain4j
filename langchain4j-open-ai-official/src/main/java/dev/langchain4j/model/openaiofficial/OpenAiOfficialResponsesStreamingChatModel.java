@@ -175,10 +175,14 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 .serviceTier(getOrDefault(builder.serviceTier, responsesParameters.serviceTier()))
                 .safetyIdentifier(getOrDefault(builder.safetyIdentifier, responsesParameters.safetyIdentifier()))
                 .promptCacheKey(getOrDefault(builder.promptCacheKey, responsesParameters.promptCacheKey()))
-                .promptCacheRetention(getOrDefault(builder.promptCacheRetention, responsesParameters.promptCacheRetention()))
+                .promptCacheRetention(
+                        getOrDefault(builder.promptCacheRetention, responsesParameters.promptCacheRetention()))
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, responsesParameters.reasoningEffort()))
                 .textVerbosity(getOrDefault(builder.textVerbosity, responsesParameters.textVerbosity()))
-                .streamIncludeObfuscation(getOrDefault(builder.streamIncludeObfuscation, responsesParameters.streamIncludeObfuscation()))
+                .streamIncludeObfuscation(
+                        getOrDefault(
+                                builder.streamIncludeObfuscation,
+                                responsesParameters.streamIncludeObfuscation()))
                 .store(getOrDefault(builder.store, getOrDefault(responsesParameters.store(), false)))
                 .strictTools(getOrDefault(builder.strictTools, responsesParameters.strictTools()))
                 .strictJsonSchema(getOrDefault(builder.strictJsonSchema, responsesParameters.strictJsonSchema()))
@@ -281,7 +285,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             }
 
             boolean strictJsonSchema = Boolean.TRUE.equals(parameters.strictJsonSchema());
-            ResponseTextConfig textConfig = toResponseTextConfig(parameters.responseFormat(), strictJsonSchema, parameters.textVerbosity());
+            ResponseTextConfig textConfig =
+                    toResponseTextConfig(
+                            parameters.responseFormat(), strictJsonSchema, parameters.textVerbosity());
             if (textConfig != null) {
                 paramsBuilder.text(textConfig);
             }
@@ -350,10 +356,12 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             throw new UnsupportedFeatureException("'topK' parameter is not supported by OpenAI Responses API");
         }
         if (parameters.frequencyPenalty() != null) {
-            throw new UnsupportedFeatureException("'frequencyPenalty' parameter is not supported by OpenAI Responses API");
+            throw new UnsupportedFeatureException(
+                    "'frequencyPenalty' parameter is not supported by OpenAI Responses API");
         }
         if (parameters.presencePenalty() != null) {
-            throw new UnsupportedFeatureException("'presencePenalty' parameter is not supported by OpenAI Responses API");
+            throw new UnsupportedFeatureException(
+                    "'presencePenalty' parameter is not supported by OpenAI Responses API");
         }
         if (parameters.stopSequences() != null && !parameters.stopSequences().isEmpty()) {
             throw new UnsupportedFeatureException("'stopSequences' parameter is not supported by OpenAI Responses API");
@@ -392,8 +400,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
             return items;
         } else if (msg instanceof ToolExecutionResultMessage toolResultMessage) {
-            var outputBuilder = ResponseInputItem.FunctionCallOutput.builder()
-                    .callId(toolResultMessage.id());
+            var outputBuilder = ResponseInputItem.FunctionCallOutput.builder().callId(toolResultMessage.id());
 
             if (toolResultMessage.hasSingleText()) {
                 outputBuilder.output(toolResultMessage.text());
