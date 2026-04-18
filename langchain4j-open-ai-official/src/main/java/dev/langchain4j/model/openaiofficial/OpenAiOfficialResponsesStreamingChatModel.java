@@ -89,7 +89,6 @@ import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.FinishReason;
-
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -130,19 +129,19 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         this.client = builder.client != null
                 ? builder.client
                 : setupSyncClient(
-                builder.baseUrl,
-                builder.apiKey,
-                builder.credential,
-                builder.microsoftFoundryDeploymentName,
-                builder.azureOpenAIServiceVersion,
-                builder.organizationId,
-                builder.isMicrosoftFoundry,
-                builder.isGitHubModels,
-                builder.modelName,
-                builder.timeout,
-                builder.maxRetries,
-                builder.proxy,
-                builder.customHeaders);
+                        builder.baseUrl,
+                        builder.apiKey,
+                        builder.credential,
+                        builder.microsoftFoundryDeploymentName,
+                        builder.azureOpenAIServiceVersion,
+                        builder.organizationId,
+                        builder.isMicrosoftFoundry,
+                        builder.isGitHubModels,
+                        builder.modelName,
+                        builder.timeout,
+                        builder.maxRetries,
+                        builder.proxy,
+                        builder.customHeaders);
         this.executorService =
                 getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutorService);
 
@@ -160,7 +159,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                         : OpenAiOfficialResponsesChatRequestParameters.EMPTY;
 
         this.defaultRequestParameters = OpenAiOfficialResponsesChatRequestParameters.builder()
-
                 .modelName(ensureNotNull(getOrDefault(builder.modelName, commonParameters.modelName()), "modelName"))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
@@ -168,7 +166,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(commonParameters.responseFormat())
-
                 .previousResponseId(getOrDefault(builder.previousResponseId, responsesParameters.previousResponseId()))
                 .maxToolCalls(getOrDefault(builder.maxToolCalls, responsesParameters.maxToolCalls()))
                 .parallelToolCalls(getOrDefault(builder.parallelToolCalls, responsesParameters.parallelToolCalls()))
