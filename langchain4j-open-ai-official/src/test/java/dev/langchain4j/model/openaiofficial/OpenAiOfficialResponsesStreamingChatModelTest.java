@@ -189,8 +189,10 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
                 .addAttribute(
                         "environment",
                         Map.of(
-                                "type", "container_auto",
-                                "skills", List.of(Map.of("type", "skill_reference", "skill_id", "skill_123"))))
+                                "type",
+                                "container_auto",
+                                "skills",
+                                List.of(Map.of("type", "skill_reference", "skill_id", "skill_123"))))
                 .build();
 
         var tool = OpenAiOfficialServerToolMapper.toResponsesTool(serverTool);
@@ -427,8 +429,8 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
                         .build());
 
         List<OpenAiOfficialServerToolResult> results =
-                OpenAiOfficialResponsesStreamingChatModel.extractServerToolResults(
-                        List.of(webSearchCall, fileSearchCall, toolSearchCall, mcpListTools, mcpApprovalRequest, mcpCall));
+                OpenAiOfficialResponsesStreamingChatModel.extractServerToolResults(List.of(
+                        webSearchCall, fileSearchCall, toolSearchCall, mcpListTools, mcpApprovalRequest, mcpCall));
 
         assertThat(results)
                 .extracting(OpenAiOfficialServerToolResult::type)

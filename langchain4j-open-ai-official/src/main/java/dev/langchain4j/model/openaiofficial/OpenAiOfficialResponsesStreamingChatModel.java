@@ -180,9 +180,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, responsesParameters.reasoningEffort()))
                 .textVerbosity(getOrDefault(builder.textVerbosity, responsesParameters.textVerbosity()))
                 .streamIncludeObfuscation(
-                        getOrDefault(
-                                builder.streamIncludeObfuscation,
-                                responsesParameters.streamIncludeObfuscation()))
+                        getOrDefault(builder.streamIncludeObfuscation, responsesParameters.streamIncludeObfuscation()))
                 .store(getOrDefault(builder.store, getOrDefault(responsesParameters.store(), false)))
                 .strictTools(getOrDefault(builder.strictTools, responsesParameters.strictTools()))
                 .strictJsonSchema(getOrDefault(builder.strictJsonSchema, responsesParameters.strictJsonSchema()))
@@ -286,8 +284,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
             boolean strictJsonSchema = Boolean.TRUE.equals(parameters.strictJsonSchema());
             ResponseTextConfig textConfig =
-                    toResponseTextConfig(
-                            parameters.responseFormat(), strictJsonSchema, parameters.textVerbosity());
+                    toResponseTextConfig(parameters.responseFormat(), strictJsonSchema, parameters.textVerbosity());
             if (textConfig != null) {
                 paramsBuilder.text(textConfig);
             }
@@ -408,24 +405,22 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 var outputItems = new ArrayList<ResponseFunctionCallOutputItem>();
                 for (Content content : toolResultMessage.contents()) {
                     if (content instanceof TextContent textContent) {
-                        outputItems.add(ResponseFunctionCallOutputItem.ofInputText(
-                                ResponseInputTextContent.builder()
-                                        .text(textContent.text())
-                                        .build()));
+                        outputItems.add(ResponseFunctionCallOutputItem.ofInputText(ResponseInputTextContent.builder()
+                                .text(textContent.text())
+                                .build()));
                     } else if (content instanceof ImageContent imageContent) {
-                        outputItems.add(ResponseFunctionCallOutputItem.ofInputImage(
-                                ResponseInputImageContent.builder()
-                                        .imageUrl(buildImageUrl(imageContent.image()))
-                                        .detail(toResponsesImageDetail(imageContent.detailLevel()))
-                                        .build()));
+                        outputItems.add(ResponseFunctionCallOutputItem.ofInputImage(ResponseInputImageContent.builder()
+                                .imageUrl(buildImageUrl(imageContent.image()))
+                                .detail(toResponsesImageDetail(imageContent.detailLevel()))
+                                .build()));
                     } else {
                         throw new UnsupportedFeatureException("Unsupported content type in tool result: "
                                 + content.getClass().getName()
                                 + ". Only TextContent and ImageContent are supported.");
                     }
                 }
-                outputBuilder.output(ResponseInputItem.FunctionCallOutput.Output
-                        .ofResponseFunctionCallOutputItemList(outputItems));
+                outputBuilder.output(
+                        ResponseInputItem.FunctionCallOutput.Output.ofResponseFunctionCallOutputItemList(outputItems));
             }
 
             return List.of(ResponseInputItem.ofFunctionCallOutput(outputBuilder.build()));
@@ -481,8 +476,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             case LOW -> ResponseInputImage.Detail.LOW;
             case HIGH -> ResponseInputImage.Detail.HIGH;
             case AUTO -> ResponseInputImage.Detail.AUTO;
-            default -> throw new UnsupportedFeatureException(
-                    "DetailLevel " + detailLevel + " is not supported by OpenAI Responses API. Supported values: LOW, HIGH, AUTO");
+            default ->
+                throw new UnsupportedFeatureException("DetailLevel " + detailLevel
+                        + " is not supported by OpenAI Responses API. Supported values: LOW, HIGH, AUTO");
         };
     }
 
@@ -491,8 +487,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             case LOW -> ResponseInputImageContent.Detail.LOW;
             case HIGH -> ResponseInputImageContent.Detail.HIGH;
             case AUTO -> ResponseInputImageContent.Detail.AUTO;
-            default -> throw new UnsupportedFeatureException(
-                    "DetailLevel " + detailLevel + " is not supported by OpenAI Responses API. Supported values: LOW, HIGH, AUTO");
+            default ->
+                throw new UnsupportedFeatureException("DetailLevel " + detailLevel
+                        + " is not supported by OpenAI Responses API. Supported values: LOW, HIGH, AUTO");
         };
     }
 
@@ -550,7 +547,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     }
 
     private static Map<String, Object> toRawServerToolResultContent(ResponseOutputItem outputItem) {
-        return outputItem._json()
+        return outputItem
+                ._json()
                 .map(json -> json.convert(STRING_OBJECT_MAP))
                 .orElseGet(() -> ObjectMappers.jsonMapper().convertValue(outputItem, STRING_OBJECT_MAP));
     }
@@ -1208,8 +1206,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             var aiMessage = !completedToolCalls.isEmpty() && text != null
                     ? new AiMessage(text, completedToolCalls)
                     : !completedToolCalls.isEmpty()
-                    ? AiMessage.from(completedToolCalls)
-                    : new AiMessage(textBuilder.toString());
+                            ? AiMessage.from(completedToolCalls)
+                            : new AiMessage(textBuilder.toString());
 
             if (!serverToolResults.isEmpty()) {
                 aiMessage = aiMessage.toBuilder()
