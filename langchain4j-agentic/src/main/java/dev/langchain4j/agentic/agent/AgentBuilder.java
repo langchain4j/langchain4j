@@ -12,6 +12,9 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.TypedKey;
+import dev.langchain4j.agentic.internal.AgentUtil;
+import dev.langchain4j.agentic.internal.AgenticScopeOwner;
+import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AfterAgentToolExecution;
 import dev.langchain4j.agentic.observability.AgentListener;
@@ -19,9 +22,6 @@ import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.observability.MonitoredAgent;
-import dev.langchain4j.agentic.internal.AgentUtil;
-import dev.langchain4j.agentic.internal.AgenticScopeOwner;
-import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
@@ -148,8 +148,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         AiServiceContext context = AiServiceContext.create(agentServiceClass);
         AiServices<T> aiServices = AiServices.builder(context);
         if (model != null && streamingChatModel != null) {
-            throw new AgenticSystemConfigurationException(
-                    "Both chatModel and streamingChatModel are set for agent '" + this.name + "'. Please set only one of them.");
+            throw new AgenticSystemConfigurationException("Both chatModel and streamingChatModel are set for agent '"
+                    + this.name + "'. Please set only one of them.");
         }
         if (model != null) {
             aiServices.chatModel(model);
@@ -189,8 +189,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
                 aiServices.chatRequestTransformer(
                         new Context.AgenticScopeContextGenerator(agenticScope, contextProvider));
             } else {
-                aiServices.chatRequestTransformer(
-                        new Context.Summarizer(agenticScope, model, contextProvidingAgents));
+                aiServices.chatRequestTransformer(new Context.Summarizer(agenticScope, model, contextProvidingAgents));
             }
         }
 
@@ -206,8 +205,10 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
                 agentServiceClass.getClassLoader(),
                 new Class<?>[] {
                     agentServiceClass,
-                    InternalAgent.class, AgenticScopeOwner.class,
-                    ChatMemoryAccess.class, ChatMessagesAccess.class,
+                    InternalAgent.class,
+                    AgenticScopeOwner.class,
+                    ChatMemoryAccess.class,
+                    ChatMessagesAccess.class,
                     AiServiceResponseReceivedListener.class
                 },
                 new AgentInvocationHandler(context, aiServices.build(), this, agenticScopeDependent));
@@ -219,16 +220,28 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         }
 
         if (agentListener != null) {
-            aiServices.beforeToolExecution(beforeToolExecution ->
-                    agentListener.beforeAgentToolExecution(new BeforeAgentToolExecution(agent, beforeToolExecution)));
-            aiServices.afterToolExecution(afterToolExecution ->
-                    agentListener.afterAgentToolExecution(new AfterAgentToolExecution(agent, afterToolExecution)));
+            aiServices.beforeToolExecution(beforeToolExecution -> {
+                try {
+                    LangChain4jManaged.setCurrent(Map.of(AgenticScope.class, agenticScope));
+                    agentListener.beforeAgentToolExecution(new BeforeAgentToolExecution(agent, beforeToolExecution));
+                } finally {
+                    LangChain4jManaged.removeCurrent();
+                }
+            });
+            aiServices.afterToolExecution(afterToolExecution -> {
+                try {
+                    LangChain4jManaged.setCurrent(Map.of(AgenticScope.class, agenticScope));
+                    agentListener.afterAgentToolExecution(new AfterAgentToolExecution(agent, afterToolExecution));
+                } finally {
+                    LangChain4jManaged.removeCurrent();
+                }
+            });
         }
 
         return (T) agent;
     }
 
-    protected void build(DefaultAgenticScope agenticScope, AiServiceContext context, AiServices<T> aiServices) { }
+    protected void build(DefaultAgenticScope agenticScope, AiServiceContext context, AiServices<T> aiServices) {}
 
     private void setupGuardrails(AiServices<T> aiServices) {
         if (inputGuardrailsConfig != null) {
@@ -375,14 +388,12 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         return (B) this;
     }
 
-    public <I extends InputGuardrail> B inputGuardrailClasses(
-            Class<? extends I>... inputGuardrailClasses) {
+    public <I extends InputGuardrail> B inputGuardrailClasses(Class<? extends I>... inputGuardrailClasses) {
         this.inputGuardrailClasses = inputGuardrailClasses;
         return (B) this;
     }
 
-    public <O extends OutputGuardrail> B outputGuardrailClasses(
-            Class<? extends O>... outputGuardrailClasses) {
+    public <O extends OutputGuardrail> B outputGuardrailClasses(Class<? extends O>... outputGuardrailClasses) {
         this.outputGuardrailClasses = outputGuardrailClasses;
         return (B) this;
     }
@@ -503,5 +514,4 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         }
         return (B) this;
     }
-
 }
