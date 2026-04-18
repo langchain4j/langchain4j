@@ -25,8 +25,11 @@ final class OpenAiOfficialServerToolMapper {
     private OpenAiOfficialServerToolMapper() {}
 
     static Tool toResponsesTool(OpenAiOfficialServerTool serverTool) {
+        if (isSupportedWebSearchToolType(serverTool.type())) {
+            return Tool.ofWebSearch(toWebSearchTool(serverTool));
+        }
+
         return switch (serverTool.type()) {
-            case "web_search" -> Tool.ofWebSearch(toWebSearchTool(serverTool));
             case "file_search" -> Tool.ofFileSearch(toFileSearchTool(serverTool));
             case "tool_search" -> Tool.ofSearch(toToolSearchTool(serverTool));
             case "mcp" -> Tool.ofMcp(toMcpTool(serverTool));
@@ -36,8 +39,12 @@ final class OpenAiOfficialServerToolMapper {
             default ->
                 throw new UnsupportedFeatureException(
                         "Unsupported OpenAI server tool type: " + serverTool.type()
-                                + ". Supported types are: web_search, file_search, tool_search, mcp, shell, computer, namespace.");
+                                + ". Supported types are: web_search, versioned web_search_YYYY_MM_DD, file_search, tool_search, mcp, shell, computer, namespace.");
         };
+    }
+
+    private static boolean isSupportedWebSearchToolType(String type) {
+        return "web_search".equals(type) || (type != null && type.matches("web_search_\\d{4}_\\d{2}_\\d{2}"));
     }
 
     private static WebSearchTool toWebSearchTool(OpenAiOfficialServerTool serverTool) {

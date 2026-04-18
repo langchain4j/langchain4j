@@ -42,6 +42,19 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
     }
 
     @Test
+    void should_accept_versioned_web_search_tool_type() {
+        OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
+                .type("web_search_2025_08_26")
+                .addAttribute("search_context_size", "medium")
+                .build();
+
+        var tool = OpenAiOfficialServerToolMapper.toResponsesTool(serverTool);
+
+        assertThat(tool.isWebSearch()).isTrue();
+        assertThat(tool.asWebSearch().type().asString()).isEqualTo("web_search_2025_08_26");
+    }
+
+    @Test
     void should_keep_backward_compatible_tool_search_attributes_api() {
         OpenAiOfficialServerTool serverTool = OpenAiOfficialServerTool.builder()
                 .type("tool_search")
@@ -152,7 +165,7 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
         assertThatThrownBy(() -> OpenAiOfficialServerToolMapper.toResponsesTool(serverTool))
                 .isInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining(
-                        "Supported types are: web_search, file_search, tool_search, mcp, shell, computer, namespace.");
+                        "Supported types are: web_search, versioned web_search_YYYY_MM_DD, file_search, tool_search, mcp, shell, computer, namespace.");
     }
 
     @Test
@@ -309,13 +322,27 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
                 .type(JsonValue.from("mcp_call"))
                 .build());
 
+        ResponseOutputItem mcpApprovalRequest =
+                ResponseOutputItem.ofMcpApprovalRequest(ResponseOutputItem.McpApprovalRequest.builder()
+                        .id("mcp_approval_1")
+                        .arguments("{\"path\":\"README.md\"}")
+                        .name("read_file")
+                        .serverLabel("filesystem")
+                        .type(JsonValue.from("mcp_approval_request"))
+                        .build());
+
         List<OpenAiOfficialServerToolResult> results =
                 OpenAiOfficialResponsesStreamingChatModel.extractServerToolResults(
-                        List.of(webSearchCall, fileSearchCall, toolSearchCall, mcpListTools, mcpCall));
+                        List.of(webSearchCall, fileSearchCall, toolSearchCall, mcpListTools, mcpApprovalRequest, mcpCall));
 
         assertThat(results)
                 .extracting(OpenAiOfficialServerToolResult::type)
                 .containsExactly(
-                        "web_search_call", "file_search_call", "tool_search_call", "mcp_list_tools", "mcp_call");
+                        "web_search_call",
+                        "file_search_call",
+                        "tool_search_call",
+                        "mcp_list_tools",
+                        "mcp_approval_request",
+                        "mcp_call");
     }
 }
