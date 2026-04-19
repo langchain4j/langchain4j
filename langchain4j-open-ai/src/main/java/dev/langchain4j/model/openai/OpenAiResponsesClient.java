@@ -102,6 +102,8 @@ class OpenAiResponsesClient {
     private static final String FIELD_TOTAL_TOKENS = "total_tokens";
     private static final String FIELD_INPUT_TOKENS_DETAILS = "input_tokens_details";
     private static final String FIELD_CACHED_TOKENS = "cached_tokens";
+    private static final String FIELD_OUTPUT_TOKENS_DETAILS = "output_tokens_details";
+    private static final String FIELD_REASONING_TOKENS = "reasoning_tokens";
     private static final String FIELD_MODEL = "model";
     private static final String FIELD_INPUT = "input";
     private static final String FIELD_STREAM = "stream";
@@ -457,12 +459,16 @@ class OpenAiResponsesClient {
 
         JsonNode inputDetailsNode = usageNode.path(FIELD_INPUT_TOKENS_DETAILS);
         if (!inputDetailsNode.isMissingNode()) {
-            int cachedTokens = inputDetailsNode.path(FIELD_CACHED_TOKENS).asInt();
-            if (cachedTokens > 0) {
-                usageBuilder.inputTokensDetails(OpenAiTokenUsage.InputTokensDetails.builder()
-                        .cachedTokens(cachedTokens)
-                        .build());
-            }
+            usageBuilder.inputTokensDetails(OpenAiTokenUsage.InputTokensDetails.builder()
+                    .cachedTokens(inputDetailsNode.path(FIELD_CACHED_TOKENS).asInt())
+                    .build());
+        }
+
+        JsonNode outputDetailsNode = usageNode.path(FIELD_OUTPUT_TOKENS_DETAILS);
+        if (!outputDetailsNode.isMissingNode()) {
+            usageBuilder.outputTokensDetails(OpenAiTokenUsage.OutputTokensDetails.builder()
+                    .reasoningTokens(outputDetailsNode.path(FIELD_REASONING_TOKENS).asInt())
+                    .build());
         }
 
         return usageBuilder.build();
