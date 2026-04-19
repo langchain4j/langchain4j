@@ -29,6 +29,7 @@
         <java.version>17</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.build.outputTimestamp>1775745639</project.build.outputTimestamp>
     </properties>
 
     <dependencies>
