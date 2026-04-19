@@ -26,7 +26,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 @Execution(ExecutionMode.CONCURRENT)
 class GoogleAiGeminiChatModelErrorsTest {
 
-    private static final MockGemini MOCK = new MockGemini(false);
+    private static final MockGemini MOCK = new MockGemini();
 
     public static final Duration TIMEOUT = Duration.ofSeconds(3);
     public static final String MODEL_NAME = "gemini-2.0-flash";
