@@ -54,7 +54,6 @@ class BaseGeminiChatModel {
     protected final Boolean enableEnhancedCivicAnswers;
     protected final GeminiMediaResolutionLevel mediaResolution;
     protected final boolean mediaResolutionPerPartEnabled;
-    protected final GeminiGenerationConfig.GeminiImageConfig imageConfig;
 
     protected final ChatRequestParameters defaultRequestParameters;
 
@@ -79,7 +78,6 @@ class BaseGeminiChatModel {
         this.logprobs = builder.logprobs;
         this.mediaResolution = builder.mediaResolution;
         this.mediaResolutionPerPartEnabled = getOrDefault(builder.mediaResolutionPerPartEnabled, false);
-        this.imageConfig = buildImageConfig(builder.aspectRatio, builder.imageSize);
 
         ChatRequestParameters parameters;
         if (builder.defaultRequestParameters != null) {
@@ -119,7 +117,8 @@ class BaseGeminiChatModel {
 
     protected GeminiGenerateContentRequest createGenerateContentRequest(ChatRequest chatRequest) {
         ChatRequestParameters parameters = chatRequest.parameters();
-        GeminiGenerationConfig.GeminiImageConfig effectiveImageConfig = resolveImageConfig(parameters);
+        GeminiGenerationConfig.GeminiImageConfig effectiveImageConfig =
+                buildImageConfig(aspectRatio(parameters), imageSize(parameters));
 
         GeminiContent systemInstruction = new GeminiContent(List.of(), GeminiRole.MODEL.toString());
         List<GeminiContent> geminiContentList = fromMessageToGContent(
@@ -249,18 +248,6 @@ class BaseGeminiChatModel {
             return geminiParameters.imageSize();
         }
         return null;
-    }
-
-    private GeminiGenerationConfig.GeminiImageConfig resolveImageConfig(ChatRequestParameters parameters) {
-        String aspectRatio = imageConfig == null ? null : imageConfig.aspectRatio();
-        String imageSize = imageConfig == null ? null : imageConfig.imageSize();
-
-        if (parameters instanceof GoogleAiGeminiChatRequestParameters geminiParameters) {
-            aspectRatio = getOrDefault(geminiParameters.aspectRatio(), aspectRatio);
-            imageSize = getOrDefault(geminiParameters.imageSize(), imageSize);
-        }
-
-        return buildImageConfig(aspectRatio, imageSize);
     }
 
     protected ChatResponse processResponse(GeminiGenerateContentResponse geminiResponse) {
