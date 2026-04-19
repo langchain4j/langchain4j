@@ -5,20 +5,29 @@
       "ignore": true,
       "differences": [
         {
-          "ignore": true,
-          "code": "java.method.parameterTypeChanged",
-          "old": "parameter S dev.langchain4j.agentic.internal.AbstractServiceBuilder<T, S>::subAgents(===java.util.List<dev.langchain4j.agentic.internal.AgentExecutor>===)",
-          "new": "parameter S dev.langchain4j.agentic.internal.AbstractServiceBuilder<T, S>::subAgents(===java.util.Collection<?>===)",
-          "parameterIndex": "0",
-          "justification": "Not a breaking change, this is an internal API that is not exposed to users"
+          "code": "java.method.addedToInterface",
+          "new": "method void dev.langchain4j.agentic.scope.AgenticScope::writeExecutionContext(java.lang.String, java.lang.Object)",
+          "justification": "New method to allow Planner implementations to store non-serializable execution context. Does not break existing implementations as it's a new optional feature."
         },
         {
-          "ignore": true,
-          "code": "java.method.parameterTypeChanged",
-          "old": "parameter java.util.List<dev.langchain4j.agentic.internal.AgentExecutor> dev.langchain4j.agentic.internal.AgentUtil::agentsToExecutors(===java.lang.Object[]===)",
-          "new": "parameter java.util.List<dev.langchain4j.agentic.internal.AgentExecutor> dev.langchain4j.agentic.internal.AgentUtil::agentsToExecutors(===java.util.Collection<?>===)",
-          "parameterIndex": "0",
-          "justification": "Not a breaking change, this is an internal API that is not exposed to users"
+          "code": "java.method.addedToInterface",
+          "new": "method java.lang.Object dev.langchain4j.agentic.scope.AgenticScope::executionContext(java.lang.String)",
+          "justification": "New method to retrieve non-serializable execution context. Does not break existing implementations as it's a new optional feature."
+        },
+        {
+          "code": "java.method.addedToInterface",
+          "new": "method <T> T dev.langchain4j.agentic.scope.AgenticScope::executionContextAs(java.lang.String, java.lang.Class<T>)",
+          "justification": "New method to retrieve non-serializable execution context with type-safe casting. Does not break existing implementations as it's a new optional feature."
+        },
+        {
+          "code": "java.method.addedToInterface",
+          "new": "method void dev.langchain4j.agentic.scope.AgenticScope::writeExecutionContext(java.lang.Class<?>, java.lang.Object)",
+          "justification": "Convenience default method that delegates to writeExecutionContext(String, Object) using the class name as key. Does not require implementation."
+        },
+        {
+          "code": "java.method.addedToInterface",
+          "new": "method <T> T dev.langchain4j.agentic.scope.AgenticScope::executionContextAs(java.lang.Class<T>)",
+          "justification": "Convenience default method that delegates to executionContextAs(String, Class) using the class name as key. Does not require implementation."
         },
         {
           "ignore": true,

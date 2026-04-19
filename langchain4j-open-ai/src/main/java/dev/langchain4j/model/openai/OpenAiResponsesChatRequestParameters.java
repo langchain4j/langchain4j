@@ -25,6 +25,7 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
     private final String promptCacheKey;
     private final String promptCacheRetention;
     private final String reasoningEffort;
+    private final String reasoningSummary;
     private final String textVerbosity;
     private final Boolean streamIncludeObfuscation;
     private final Boolean store;
@@ -44,6 +45,7 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
         this.promptCacheKey = builder.promptCacheKey;
         this.promptCacheRetention = builder.promptCacheRetention;
         this.reasoningEffort = builder.reasoningEffort;
+        this.reasoningSummary = builder.reasoningSummary;
         this.textVerbosity = builder.textVerbosity;
         this.streamIncludeObfuscation = builder.streamIncludeObfuscation;
         this.store = builder.store;
@@ -93,6 +95,10 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
 
     public String reasoningEffort() {
         return reasoningEffort;
+    }
+
+    public String reasoningSummary() {
+        return reasoningSummary;
     }
 
     public String textVerbosity() {
@@ -148,6 +154,7 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
                 && Objects.equals(promptCacheKey, that.promptCacheKey)
                 && Objects.equals(promptCacheRetention, that.promptCacheRetention)
                 && Objects.equals(reasoningEffort, that.reasoningEffort)
+                && Objects.equals(reasoningSummary, that.reasoningSummary)
                 && Objects.equals(textVerbosity, that.textVerbosity)
                 && Objects.equals(streamIncludeObfuscation, that.streamIncludeObfuscation)
                 && Objects.equals(store, that.store)
@@ -170,6 +177,7 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
                 promptCacheKey,
                 promptCacheRetention,
                 reasoningEffort,
+                reasoningSummary,
                 textVerbosity,
                 streamIncludeObfuscation,
                 store,
@@ -194,6 +202,7 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
         private String promptCacheKey;
         private String promptCacheRetention;
         private String reasoningEffort;
+        private String reasoningSummary;
         private String textVerbosity;
         private Boolean streamIncludeObfuscation;
         private Boolean store;
@@ -215,6 +224,7 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
                 promptCacheKey(getOrDefault(p.promptCacheKey(), promptCacheKey));
                 promptCacheRetention(getOrDefault(p.promptCacheRetention(), promptCacheRetention));
                 reasoningEffort(getOrDefault(p.reasoningEffort(), reasoningEffort));
+                reasoningSummary(getOrDefault(p.reasoningSummary(), reasoningSummary));
                 textVerbosity(getOrDefault(p.textVerbosity(), textVerbosity));
                 streamIncludeObfuscation(getOrDefault(p.streamIncludeObfuscation(), streamIncludeObfuscation));
                 store(getOrDefault(p.store(), store));
@@ -276,6 +286,11 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
 
         public Builder reasoningEffort(String reasoningEffort) {
             this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
+        public Builder reasoningSummary(String reasoningSummary) {
+            this.reasoningSummary = reasoningSummary;
             return this;
         }
 
