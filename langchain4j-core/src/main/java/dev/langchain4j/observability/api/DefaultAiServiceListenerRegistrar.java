@@ -79,7 +79,7 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
     /* 
       Test Map to instead be thread safe and store *started event* IDs with the events
     */
-      private final Map<UUID, InvocationState> invocationStates = new ConcurrentHashMap<>();
+    private final Map<UUID, InvocationState> invocationStates = new ConcurrentHashMap<>();
     
 
     /**
