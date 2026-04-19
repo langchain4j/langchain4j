@@ -66,6 +66,176 @@ The `AgenticServices` class provides a set of static factory methods to create a
 The langchain4j-agentic module introduces the concept of an `AgenticScope`, which is a collection of data shared among the agents participating in an agentic system. The `AgenticScope` is used to store shared variables, which can be written by an agent to communicate the results it produced and read by another agent to put together the information that it needs to perform its task. This allows agents to collaborate effectively, sharing information and results as needed.
 
 The `AgenticScope` also automatically registers other relevant information like the sequence of invocations of all agents with their responses. It is automatically created when the main agent of the agentic system is invoked and programmatically provided through callbacks when necessary. The different possible usages of the `AgenticScope` will be clarified with practical examples when discussing the agentic patterns implemented by `langchain4j-agentic`.
+## Declarative Agent Pattern
+
+In addition to programmatically defining agents using builders (as shown in the Workflow patterns section), the `langchain4j-agentic` module provides a declarative approach using annotations. This allows you to define agents directly within interface definitions, making the code more concise and readable.
+
+### Declaring Agents with `@SequenceAgent`
+
+The `@SequenceAgent` annotation marks a method as a definition of a sequence agent, used to orchestrate the agentic workflow by invoking a series of sub-agents in a predefined order.
+
+```java
+public interface StoryCreator {
+
+    @SequenceAgent(
+            outputKey = "story",
+            subAgents = { CreativeWriter.class, AudienceEditor.class, StyleEditor.class })
+    String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
+}
+```
+
+Then create and use it:
+
+```java
+StoryCreator storyCreator = AgenticServices
+        .createAgenticSystem(StoryCreator.class, baseModel());
+
+String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
+```
+
+The interface itself defines the agentic system, and the `@SequenceAgent` method specifies how the sub-agents are orchestrated.
+
+### Declaring Agents with `@LoopAgent`
+
+The `@LoopAgent` annotation marks a method as a definition of a loop agent, used to orchestrate the agentic workflow by invoking a series of sub-agents in a loop until a certain predicate is met or a maximum number of iterations is reached.
+
+```java
+public interface StyleReviewLoopAgent {
+
+    @LoopAgent(
+            description = "Review the given story to ensure it aligns with the specified style",
+            outputKey = "story",
+            maxIterations = 5,
+            subAgents = { StyleScorer.class, StyleEditor.class })
+    String reviewAndScore(@V("story") String story);
+
+    @ExitCondition(testExitAtLoopEnd = true, description = "score >= 0.8")
+    static boolean exit(@V("score") double score) {
+        return score >= 0.8;
+    }
+}
+```
+
+The `@ExitCondition` annotation marks a static method as the exit predicate for the loop. The `testExitAtLoopEnd` attribute controls when the exit condition is evaluated:
+- `true`: evaluated after each loop iteration completes
+- `false` (default): evaluated after each sub-agent invocation
+
+### Declaring Agents with `@PlannerAgent`
+
+The `@PlannerAgent` annotation marks a method as a definition of an agent based on a custom planner, allowing the LLM to dynamically decide which sub-agents to invoke and in what order.
+
+```java
+public interface PlannerBasedStoryCreator {
+
+    @PlannerAgent(
+            outputKey = "story",
+            subAgents = { CreativeWriter.class, AudienceEditor.class, StyleEditor.class })
+    String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
+
+    @PlannerSupplier
+    static Planner planner() {
+        return new SequentialPlanner();
+    }
+}
+```
+
+The `@PlannerSupplier` annotation marks a static method that provides the `Planner` instance. The planner determines the execution order of sub-agents at runtime.
+
+### Error Handling with `@ErrorHandler`
+
+The `@ErrorHandler` annotation marks a static method as an error handler for the workflow agent. It allows for custom error recovery logic.
+
+```java
+public interface StoryCreatorWithErrorRecovery {
+
+    @SequenceAgent(
+            outputKey = "story",
+            subAgents = { CreativeWriter.class, AudienceEditor.class, StyleEditor.class })
+    String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
+
+    @ErrorHandler
+    static ErrorRecoveryResult errorHandler(ErrorContext errorContext) {
+        if (errorContext.agentName().equals("generateStory") &&
+                errorContext.exception() instanceof MissingArgumentException mEx &&
+                mEx.argumentName().equals("topic")) {
+            errorContext.agenticScope().writeState("topic", "dragons and wizards");
+            return ErrorRecoveryResult.retry();
+        }
+        return ErrorRecoveryResult.throwException();
+    }
+}
+```
+
+The error handler receives an `ErrorContext` containing:
+- `agentName()`: the name of the agent that failed
+- `exception()`: the exception that was thrown
+- `agenticScope()`: the scope where state can be modified
+
+It returns an `ErrorRecoveryResult`:
+- `ErrorRecoveryResult.retry()`: retry the operation after taking corrective action
+- `ErrorRecoveryResult.throwException()`: propagate the exception
+- `ErrorRecoveryResult.result(Object)`: return a specific result
+
+### Declarative Model Injection with `@ChatModelSupplier`
+
+You can also declare the chat model to use directly in the interface using the `@ChatModelSupplier` annotation:
+
+```java
+public interface StoryCreatorWithModel extends StoryCreator {
+
+    @ChatModelSupplier
+    static ChatModel chatModel() {
+        return baseModel();
+    }
+}
+
+// Then create without specifying the model:
+StoryCreatorWithModel storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithModel.class);
+
+String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
+```
+
+### Return Type with `ResultWithAgenticScope`
+
+When you need to access the `AgenticScope` after the agent execution completes, the method can return a `ResultWithAgenticScope<T>`:
+
+```java
+public interface StoryCreatorWithScope {
+
+    @SequenceAgent(
+            outputKey = "story",
+            subAgents = { CreativeWriter.class, StyleEditor.class })
+    ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
+}
+
+// Usage
+ResultWithAgenticScope<String> result = storyCreatorWithScope.write("dragons and wizards", "fantasy");
+String story = result.result();
+AgenticScope scope = result.agenticScope();
+
+// Access invocation history
+List<AgentInvocation> invocations = scope.agentInvocations("generateStory");
+```
+
+### Configuring Agents with Callbacks
+
+When creating the agentic system, you can also configure individual sub-agents using the configuration callback:
+
+```java
+StoryCreator storyCreator = AgenticServices.createAgenticSystem(
+    StoryCreator.class,
+    baseModel(),
+    ctx -> {
+        // Configure specific sub-agents
+        if (ctx.agentServiceClass() == StyleEditor.class) {
+            ctx.agentBuilder().outputKey("styledStory");
+        }
+    });
+```
+
+This allows you to override or customize the configuration of individual sub-agents declaratively defined.
+
+
 
 ## Workflow patterns
 
@@ -2170,7 +2340,7 @@ public interface OrderWorkflow extends AgenticScopeAccess {
 }
 ```
 
-The `@MemoryId` annotation is essential â€” it activates persistent scope, which is required for recoverability. Build the workflow as a sequence of three agents:
+The `@MemoryId` annotation is essential â€?it activates persistent scope, which is required for recoverability. Build the workflow as a sequence of three agents:
 
 ```java
 // Step 1: Validate the order and write results to shared state
@@ -2190,7 +2360,7 @@ HumanInTheLoop approvalGate = AgenticServices.humanInTheLoopBuilder()
 AgenticScopeAction shipOrder = AgenticServices.agentAction(scope -> {
     String validated = scope.readState("validated_order", "");
     String approval = scope.readState("approval", "");
-    scope.writeState("result", "Order " + validated + " â€” " + approval);
+    scope.writeState("result", "Order " + validated + " â€?" + approval);
 });
 
 OrderWorkflow workflow = AgenticServices.sequenceBuilder(OrderWorkflow.class)
@@ -2199,7 +2369,7 @@ OrderWorkflow workflow = AgenticServices.sequenceBuilder(OrderWorkflow.class)
         .build();
 ```
 
-When this workflow runs, it validates the order, then blocks at the `HumanInTheLoop` step waiting for external input. At this point the full scope â€” including the validated order data, the planner's cursor position (step 2 completed), and the `PendingResponse` â€” is checkpointed to the store.
+When this workflow runs, it validates the order, then blocks at the `HumanInTheLoop` step waiting for external input. At this point the full scope â€?including the validated order data, the planner's cursor position (step 2 completed), and the `PendingResponse` â€?is checkpointed to the store.
 
 The `PendingResponse` class is an implementation of the `DelayedResponse` that can be completed externally without spawning a background thread. Unlike `AsyncResponse`, which immediately starts executing on a thread pool, `PendingResponse` creates an initially incomplete future that must be explicitly completed via its `complete()` method. After serialization and deserialization, a new incomplete future is created, allowing an external system to reconnect and complete the response.
 
@@ -2212,9 +2382,9 @@ AgenticScope recovered = workflow.getAgenticScope("order-12345");
 // Replace the PendingResponse with the actual human decision
 recovered.writeState("approval", "APPROVED by manager");
 
-// Re-invoke with the same order ID â€” the planner resumes from step 3
+// Re-invoke with the same order ID â€?the planner resumes from step 3
 String result = workflow.processOrder("order-12345", "1000 widgets");
-// â†’ "Order VALIDATED: 1000 widgets â€” APPROVED by manager"
+// â†?"Order VALIDATED: 1000 widgets â€?APPROVED by manager"
 ```
 
 The `SequentialPlanner` restores its cursor from the checkpointed state and skips the already-completed steps (validate and approval gate), executing only the final shipping step.
