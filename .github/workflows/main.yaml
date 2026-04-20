@@ -110,7 +110,6 @@ jobs:
         continue-on-error: true
 
       - name: Integration test with JDK ${{ matrix.java_version }}
-        id: integration_test
         run: |
           set -o pipefail
 
@@ -166,7 +165,7 @@ jobs:
           WEAVIATE_HOST: ${{ secrets.WEAVIATE_HOST }}
 
       - name: Surface build errors
-        if: steps.integration_test.outcome == 'failure'
+        if: failure()
         run: |
           {
             echo '## Build Errors (Integration Test, JDK ${{ matrix.java_version }})'
