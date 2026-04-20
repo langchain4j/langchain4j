@@ -57,9 +57,10 @@ import java.util.stream.Collectors;
  * It can be used to dynamically define {@code filter} value, depending on factors such as the query,
  * the user (using Metadata#chatMemoryId()} from {@link Query#metadata()}), etc.
  * <br>
- * - {@code removeDuplicateOverlap}: When {@code true} (default), de-duplicates overlapping text between sequential
+ * - {@code removeDuplicateOverlap}: When {@code true}, de-duplicates overlapping text between sequential
  * {@link TextSegment}s from the same document. This occurs when documents are split with overlap: adjacent segments
  * share a common suffix/prefix. Enabling this removes the duplicate prefix from the later segment before returning.
+ * Default is {@code false}.
  */
 public class EmbeddingStoreContentRetriever implements ContentRetriever {
 
@@ -68,7 +69,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
     public static final Function<Query, Filter> DEFAULT_FILTER = (query) -> null;
 
     public static final String DEFAULT_DISPLAY_NAME = "Default";
-    public static final boolean DEFAULT_REMOVE_DUPLICATE_OVERLAP = true;
+    public static final boolean DEFAULT_REMOVE_DUPLICATE_OVERLAP = false;
 
     private static final String SEGMENT_INDEX_METADATA_KEY = "index";
 
@@ -224,7 +225,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
          * <p>When documents are split with overlap, adjacent segments share a common suffix/prefix.
          * When {@code true} (default), this duplicate prefix is removed from the later segment before returning.</p>
          *
-         * @param removeDuplicateOverlap {@code true} to remove duplicate overlap (default), {@code false} to keep it
+         * @param removeDuplicateOverlap {@code true} to remove duplicate overlap, {@code false} to keep it (default)
          * @return builder
          */
         public EmbeddingStoreContentRetrieverBuilder removeDuplicateOverlap(boolean removeDuplicateOverlap) {
@@ -297,19 +298,13 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
         Map<Map<String, Object>, Map<Integer, Content>> byDocument = new HashMap<>();
 
         for (Content content : contents) {
-            Map<String, Object> fullMetadata = content.textSegment().metadata().toMap();
-            String indexStr = (String) fullMetadata.get(SEGMENT_INDEX_METADATA_KEY);
-            if (indexStr == null) {
-                continue;
-            }
-            int segmentIndex;
-            try {
-                segmentIndex = Integer.parseInt(indexStr);
-            } catch (NumberFormatException e) {
+            Integer segmentIndex = content.textSegment().metadata().getInteger(SEGMENT_INDEX_METADATA_KEY);
+            if (segmentIndex == null) {
                 continue;
             }
 
-            Map<String, Object> docKey = new HashMap<>(fullMetadata);
+            Map<String, Object> docKey =
+                    new HashMap<>(content.textSegment().metadata().toMap());
             docKey.remove(SEGMENT_INDEX_METADATA_KEY);
 
             byDocument.computeIfAbsent(docKey, k -> new HashMap<>()).put(segmentIndex, content);
@@ -339,7 +334,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
 
                 String overlap = longestSuffixPrefixOverlap(currentText, nextText);
                 if (!overlap.isEmpty()) {
-                    trimmedTexts.put(next, nextText.substring(overlap.length()).stripLeading());
+                    trimmedTexts.put(next, nextText.substring(overlap.length()));
                 }
             }
         }
@@ -365,7 +360,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
     /**
      * Returns the longest string that is both a suffix of {@code a} and a prefix of {@code b}.
      */
-    static String longestSuffixPrefixOverlap(String a, String b) {
+    private static String longestSuffixPrefixOverlap(String a, String b) {
         int maxLen = Math.min(a.length(), b.length());
         for (int len = maxLen; len > 0; len--) {
             if (a.endsWith(b.substring(0, len))) {

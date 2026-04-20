@@ -393,45 +393,16 @@ class EmbeddingStoreContentRetrieverTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
-    // ---- longestSuffixPrefixOverlap unit tests ----
-
-    @Test
-    void longestSuffixPrefixOverlap_should_find_overlap() {
-        assertThat(EmbeddingStoreContentRetriever.longestSuffixPrefixOverlap(
-                        "the quick brown fox", "the quick brown fox jumps"))
-                .isEqualTo("the quick brown fox");
-    }
-
-    @Test
-    void longestSuffixPrefixOverlap_should_find_partial_overlap() {
-        assertThat(EmbeddingStoreContentRetriever.longestSuffixPrefixOverlap("hello world", "world peace"))
-                .isEqualTo("world");
-    }
-
-    @Test
-    void longestSuffixPrefixOverlap_should_return_empty_when_no_overlap() {
-        assertThat(EmbeddingStoreContentRetriever.longestSuffixPrefixOverlap("hello", "world"))
-                .isEmpty();
-    }
-
-    @Test
-    void longestSuffixPrefixOverlap_should_return_empty_for_empty_inputs() {
-        assertThat(EmbeddingStoreContentRetriever.longestSuffixPrefixOverlap("", "world"))
-                .isEmpty();
-        assertThat(EmbeddingStoreContentRetriever.longestSuffixPrefixOverlap("hello", ""))
-                .isEmpty();
-    }
-
     // ---- deduplicateOverlap integration tests via retrieve() ----
 
     @Test
     void should_remove_overlap_between_sequential_segments_from_same_document() {
-        // given - segment 0 ends with "fox", segment 1 starts with "fox" (overlap from splitting)
+        // given - segment 0 ends with "fox jumps", segment 1 starts with "fox jumps" (overlap from splitting)
         Metadata doc0Meta = new Metadata().put("file_name", "doc.txt").put("index", "0");
         Metadata doc1Meta = new Metadata().put("file_name", "doc.txt").put("index", "1");
 
-        TextSegment seg0 = TextSegment.from("the quick brown fox", doc0Meta);
-        TextSegment seg1 = TextSegment.from("brown fox jumps over", doc1Meta);
+        TextSegment seg0 = TextSegment.from("the quick brown fox jumps", doc0Meta);
+        TextSegment seg1 = TextSegment.from("fox jumps over the lazy dog", doc1Meta);
 
         when(EMBEDDING_STORE.search(any()))
                 .thenReturn(new EmbeddingSearchResult<>(asList(
@@ -446,10 +417,10 @@ class EmbeddingStoreContentRetrieverTest {
         // when
         List<Content> result = retriever.retrieve(QUERY);
 
-        // then - "brown fox" prefix stripped from segment 1
+        // then - "fox jumps" prefix stripped from segment 1
         assertThat(result).hasSize(2);
-        assertThat(result.get(0).textSegment().text()).isEqualTo("the quick brown fox");
-        assertThat(result.get(1).textSegment().text()).isEqualTo("jumps over");
+        assertThat(result.get(0).textSegment().text()).isEqualTo("the quick brown fox jumps");
+        assertThat(result.get(1).textSegment().text()).isEqualTo(" over the lazy dog");
     }
 
     @Test
@@ -486,8 +457,8 @@ class EmbeddingStoreContentRetrieverTest {
         Metadata doc0Meta = new Metadata().put("file_name", "doc.txt").put("index", "0");
         Metadata doc2Meta = new Metadata().put("file_name", "doc.txt").put("index", "2");
 
-        TextSegment seg0 = TextSegment.from("the quick brown fox", doc0Meta);
-        TextSegment seg2 = TextSegment.from("brown fox jumps over", doc2Meta);
+        TextSegment seg0 = TextSegment.from("the quick brown fox jumps", doc0Meta);
+        TextSegment seg2 = TextSegment.from("fox jumps over the lazy dog", doc2Meta);
 
         when(EMBEDDING_STORE.search(any()))
                 .thenReturn(new EmbeddingSearchResult<>(asList(
@@ -496,13 +467,14 @@ class EmbeddingStoreContentRetrieverTest {
         EmbeddingStoreContentRetriever retriever = EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(EMBEDDING_STORE)
                 .embeddingModel(EMBEDDING_MODEL)
+                .removeDuplicateOverlap(true)
                 .build();
 
         // when
         List<Content> result = retriever.retrieve(QUERY);
 
         // then - no change because index gap is 2, not 1
-        assertThat(result.get(1).textSegment().text()).isEqualTo("brown fox jumps over");
+        assertThat(result.get(1).textSegment().text()).isEqualTo("fox jumps over the lazy dog");
     }
 
     @Test
@@ -511,8 +483,8 @@ class EmbeddingStoreContentRetrieverTest {
         Metadata doc1Meta = new Metadata().put("file_name", "doc1.txt").put("index", "0");
         Metadata doc2Meta = new Metadata().put("file_name", "doc2.txt").put("index", "1");
 
-        TextSegment seg0 = TextSegment.from("the quick brown fox", doc1Meta);
-        TextSegment seg1 = TextSegment.from("brown fox jumps over", doc2Meta);
+        TextSegment seg0 = TextSegment.from("the quick brown fox jumps", doc1Meta);
+        TextSegment seg1 = TextSegment.from("fox jumps over the lazy dog", doc2Meta);
 
         when(EMBEDDING_STORE.search(any()))
                 .thenReturn(new EmbeddingSearchResult<>(asList(
@@ -521,20 +493,21 @@ class EmbeddingStoreContentRetrieverTest {
         EmbeddingStoreContentRetriever retriever = EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(EMBEDDING_STORE)
                 .embeddingModel(EMBEDDING_MODEL)
+                .removeDuplicateOverlap(true)
                 .build();
 
         // when
         List<Content> result = retriever.retrieve(QUERY);
 
         // then - no change, different documents
-        assertThat(result.get(1).textSegment().text()).isEqualTo("brown fox jumps over");
+        assertThat(result.get(1).textSegment().text()).isEqualTo("fox jumps over the lazy dog");
     }
 
     @Test
     void should_not_modify_segments_without_index_metadata() {
         // segments without "index" metadata are left untouched
-        TextSegment seg0 = TextSegment.from("the quick brown fox");
-        TextSegment seg1 = TextSegment.from("brown fox jumps over");
+        TextSegment seg0 = TextSegment.from("the quick brown fox jumps");
+        TextSegment seg1 = TextSegment.from("fox jumps over the lazy dog");
 
         when(EMBEDDING_STORE.search(any()))
                 .thenReturn(new EmbeddingSearchResult<>(asList(
@@ -543,12 +516,13 @@ class EmbeddingStoreContentRetrieverTest {
         EmbeddingStoreContentRetriever retriever = EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(EMBEDDING_STORE)
                 .embeddingModel(EMBEDDING_MODEL)
+                .removeDuplicateOverlap(true)
                 .build();
 
         // when
         List<Content> result = retriever.retrieve(QUERY);
 
-        // then
-        assertThat(result.get(1).textSegment().text()).isEqualTo("brown fox jumps over");
+        // then - no change, no index metadata
+        assertThat(result.get(1).textSegment().text()).isEqualTo("fox jumps over the lazy dog");
     }
 }
