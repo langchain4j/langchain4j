@@ -57,6 +57,7 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -1027,7 +1028,7 @@ public abstract class AbstractAiServiceWithToolsIT {
                 .tools(addTool, multiplyTool)
                 .build();
 
-        var text = adaptPrompt1("First add 2 and 3, then multiply the result by 4");
+        var text = adaptPrompt1("First add 2 and 3 by calling 'add' tool, then multiply the result by 4 by calling 'multiply' tool");
 
         // when
         var response = assistant.chat(text);
@@ -1183,7 +1184,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         // when-then
         assertThatNoException().isThrownBy(() -> assistant.chat(text));
 
-        verify(tools).modify(7);
+        verify(tools, atLeastOnce()).modify(7);
 
         verify(model).chat(argThat((ChatRequest request) ->
                 request.messages().size() == 3

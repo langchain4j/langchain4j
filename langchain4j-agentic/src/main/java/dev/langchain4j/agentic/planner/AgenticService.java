@@ -5,7 +5,6 @@ import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.scope.AgenticScope;
-
 import java.util.Collection;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -15,6 +14,7 @@ public interface AgenticService<T, A> {
     A build();
 
     T subAgents(Object... agents);
+
     T subAgents(Collection<?> agents);
 
     T beforeCall(Consumer<AgenticScope> beforeCall);
@@ -24,6 +24,7 @@ public interface AgenticService<T, A> {
     T description(String description);
 
     T outputKey(String outputKey);
+
     T outputKey(Class<? extends TypedKey<?>> outputKey);
 
     T output(Function<AgenticScope, Object> output);

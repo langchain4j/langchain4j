@@ -51,8 +51,11 @@ public class TestStreamingChatResponseHandler implements StreamingChatResponseHa
     @Override
     public void onCompleteResponse(ChatResponse completeResponse) {
         AiMessage aiMessage = completeResponse.aiMessage();
-        if (!aiMessage.hasToolExecutionRequests()) {
+        if (responseBuilder.length() > 0) {
             assertThat(aiMessage.text()).isEqualTo(responseBuilder.toString());
+        }
+        if (thinkingBuilder.length() > 0) {
+            assertThat(aiMessage.thinking()).isEqualTo(thinkingBuilder.toString());
         }
         futureResponse.complete(completeResponse);
     }

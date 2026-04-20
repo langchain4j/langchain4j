@@ -399,28 +399,22 @@ This feature is experimental and may change in future releases.
 :::
 
 OpenAI's [Responses API](https://platform.openai.com/docs/api-reference/responses) (`/v1/responses`) is an alternative to the Chat Completions API.
-Currently, only a streaming model is available (`OpenAiResponsesStreamingChatModel`).
+
+### Creating `OpenAiResponsesChatModel`
+
+```java
+ChatModel model = OpenAiResponsesChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-5.4")
+        .build();
+```
 
 ### Creating `OpenAiResponsesStreamingChatModel`
 
-#### Plain Java
 ```java
 StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .modelName("gpt-4o-mini")
-        .build();
-```
-
-You can also use `OpenAiResponsesChatRequestParameters` to configure default request parameters:
-```java
-StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
-        .apiKey(System.getenv("OPENAI_API_KEY"))
-        .defaultRequestParameters(OpenAiResponsesChatRequestParameters.builder()
-                .modelName("gpt-4o-mini")
-                .previousResponseId("resp_abc123")
-                .reasoningEffort("medium")
-                .store(true)
-                .build())
         .build();
 ```
 
@@ -429,7 +423,7 @@ StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
 `OpenAiResponsesChatRequestParameters` extends `DefaultChatRequestParameters` with Responses API-specific fields:
 `previousResponseId`, `maxToolCalls`, `parallelToolCalls`, `topLogprobs`, `truncation`, `include`,
 `serviceTier`, `safetyIdentifier`, `promptCacheKey`, `promptCacheRetention`, `reasoningEffort`,
-`textVerbosity`, `streamIncludeObfuscation`, `store`, `strictTools`, `strictJsonSchema`.
+`reasoningSummary`, `textVerbosity`, `streamIncludeObfuscation`, `store`, `strictTools`, `strictJsonSchema`.
 
 These parameters can be configured as defaults when creating the model (via `defaultRequestParameters` on the builder),
 or passed per-request via `ChatRequest` (per-request parameters override the defaults):
@@ -443,6 +437,94 @@ ChatRequest chatRequest = ChatRequest.builder()
                 .build())
         .build();
 ```
+
+### Thinking / Reasoning
+OpenAI reasoning models (e.g. `gpt-5.4`, `gpt-5-mini`) support
+[reasoning summaries](https://developers.openai.com/api/docs/guides/reasoning#reasoning-summaries)
+that expose a summary of the model's internal reasoning.
+
+To enable reasoning summaries, set `reasoningSummary` to `"auto"` on the builder
+(or via `OpenAiResponsesChatRequestParameters`).
+You can also control how much effort the model puts into reasoning with `reasoningEffort`.
+
+```java
+ChatModel model = OpenAiResponsesChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-5-mini")
+        .reasoningEffort("low")
+        .reasoningSummary("auto")
+        .build();
+
+ChatResponse response = model.chat("What is the capital of Germany?");
+response.aiMessage().text();     // "The capital of Germany is Berlin."
+response.aiMessage().thinking(); // reasoning summary text
+```
+
+When `reasoningSummary` is set for `OpenAiResponsesStreamingChatModel`,
+the `StreamingChatResponseHandler.onPartialThinking()` callback will be invoked
+as reasoning summary tokens are streamed:
+
+```java
+StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-5-mini")
+        .reasoningEffort("low")
+        .reasoningSummary("auto")
+        .build();
+```
+
+Unlike some other providers (e.g. DeepSeek), OpenAI reasoning tokens do not persist
+across conversation turns, so there is no need to send the reasoning summary back in follow-up requests.
+
+#### Encrypted Reasoning (Keeping Reasoning in Context)
+
+When `store` is `false` (by default) or your organization has zero data retention,
+the model's reasoning context is lost between turns.
+To preserve it, request [encrypted reasoning content](https://developers.openai.com/api/docs/guides/reasoning#keeping-reasoning-items-in-context)
+via the `include` parameter:
+
+```java
+ChatModel model = OpenAiResponsesChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-5-mini")
+        .reasoningEffort("medium")
+        .include(List.of("reasoning.encrypted_content"))
+        .build();
+```
+
+When `include` contains `"reasoning.encrypted_content"`, the response's reasoning items
+will contain an opaque encrypted blob. This is automatically stored in
+`AiMessage.attributes()` under the key `"encrypted_reasoning"`.
+
+When you pass that `AiMessage` back in a follow-up request (e.g. after a tool call),
+the encrypted reasoning is automatically included in the request,
+allowing the model to resume its reasoning context:
+
+```java
+// Turn 1: model calls a tool
+ChatResponse response1 = model.chat(ChatRequest.builder()
+        .messages(userMessage)
+        .parameters(ChatRequestParameters.builder()
+                .toolSpecifications(weatherTool)
+                .build())
+        .build());
+
+AiMessage aiMessage1 = response1.aiMessage();
+// aiMessage1.attribute("encrypted_reasoning", String.class) is not null
+
+// Turn 2: send tool result back — encrypted reasoning is sent automatically
+ChatResponse response2 = model.chat(ChatRequest.builder()
+        .messages(
+                userMessage,
+                aiMessage1, // contains encrypted reasoning in attributes
+                ToolExecutionResultMessage.from(aiMessage1.toolExecutionRequests().get(0), "sunny"))
+        .parameters(ChatRequestParameters.builder()
+                .toolSpecifications(weatherTool)
+                .build())
+        .build());
+```
+
+This works identically for `OpenAiResponsesStreamingChatModel`.
 
 ### `OpenAiResponsesChatResponseMetadata`
 

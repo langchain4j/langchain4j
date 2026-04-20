@@ -9,8 +9,8 @@ import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.K;
-import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.declarative.LoopCounter;
+import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
@@ -52,9 +52,10 @@ public class AgentUtil {
         return (TypedKey<T>) STATE_INSTANCES.computeIfAbsent(key, k -> {
             try {
                 return key.getDeclaredConstructor().newInstance();
-            }  catch (NoSuchMethodException e) {
-                throw new AgenticSystemConfigurationException("TypedKey '" + key.getName() + "' doesn't have a no-args constructor", e);
-            }  catch (IllegalAccessException e) {
+            } catch (NoSuchMethodException e) {
+                throw new AgenticSystemConfigurationException(
+                        "TypedKey '" + key.getName() + "' doesn't have a no-args constructor", e);
+            } catch (IllegalAccessException e) {
                 throw new AgenticSystemConfigurationException("TypedKey '" + key.getName() + "' is not accessible", e);
             } catch (InstantiationException | InvocationTargetException e) {
                 throw new RuntimeException(e);
@@ -67,7 +68,8 @@ public class AgentUtil {
             return typedOutputKey != Agent.NoTypedKey.class ? keyName(typedOutputKey) : null;
         }
         if (typedOutputKey != Agent.NoTypedKey.class) {
-            throw new AgenticSystemConfigurationException("Both outputKey and typedOutputKey are set. Please set only one of them.");
+            throw new AgenticSystemConfigurationException(
+                    "Both outputKey and typedOutputKey are set. Please set only one of them.");
         }
         return outputKey;
     }
@@ -105,20 +107,29 @@ public class AgentUtil {
         String name = isNullOrBlank(annotation.name()) ? agenticMethod.getName() : annotation.name();
         String description = isNullOrBlank(annotation.description()) ? annotation.value() : annotation.description();
         String outputKey = AgentUtil.outputKey(annotation.outputKey(), annotation.typedOutputKey());
-        return new AgentExecutor(nonAiAgentInvoker(agent, agenticMethod, name, description, outputKey, annotation.async()), agent);
+        return new AgentExecutor(
+                nonAiAgentInvoker(agent, agenticMethod, name, description, outputKey, annotation.async()), agent);
     }
 
-    private static AgentInvoker nonAiAgentInvoker(Object agent, Method agenticMethod, String name, String description, String outputKey, boolean async) {
+    private static AgentInvoker nonAiAgentInvoker(
+            Object agent, Method agenticMethod, String name, String description, String outputKey, boolean async) {
         return agent instanceof AgentSpecsProvider spec
                 ? AgentInvoker.fromSpec(spec, agenticMethod, name)
                 : nonAiAgentInvoker(agenticMethod, name, description, outputKey, async);
     }
 
-    public static AgentInvoker nonAiAgentInvoker(Method agenticMethod, String name, String description, String outputKey, boolean async) {
+    public static AgentInvoker nonAiAgentInvoker(
+            Method agenticMethod, String name, String description, String outputKey, boolean async) {
         return AgentInvoker.fromMethod(
-                new NonAiAgentInstance(agenticMethod.getDeclaringClass(),
-                        name, description, agenticMethod.getGenericReturnType(), outputKey, async,
-                        argumentsFromMethod(agenticMethod), null),
+                new NonAiAgentInstance(
+                        agenticMethod.getDeclaringClass(),
+                        name,
+                        description,
+                        agenticMethod.getGenericReturnType(),
+                        outputKey,
+                        async,
+                        argumentsFromMethod(agenticMethod),
+                        null),
                 agenticMethod);
     }
 
@@ -183,8 +194,8 @@ public class AgentUtil {
         return k != null ? stateInstance(k.value()).defaultValue() : null;
     }
 
-    public static AgentInvocationArguments agentInvocationArguments(
-            AgenticScope agenticScope, Method method) throws MissingArgumentException {
+    public static AgentInvocationArguments agentInvocationArguments(AgenticScope agenticScope, Method method)
+            throws MissingArgumentException {
         return agentInvocationArguments(agenticScope, argumentsFromMethod(method), Map.of());
     }
 
@@ -279,10 +290,14 @@ public class AgentUtil {
         return validateAgentClass(agentServiceClass, failOnMissingAnnotation, null);
     }
 
-    public static Method validateAgentClass(Class<?> agentServiceClass, boolean failOnMissingAnnotation, Class<? extends Annotation> patternAnnotation) {
+    public static Method validateAgentClass(
+            Class<?> agentServiceClass,
+            boolean failOnMissingAnnotation,
+            Class<? extends Annotation> patternAnnotation) {
         Method agentMethod = null;
         for (Method method : agentServiceClass.getMethods()) {
-            if (method.isAnnotationPresent(Agent.class) || (patternAnnotation != null && method.isAnnotationPresent(patternAnnotation))) {
+            if (method.isAnnotationPresent(Agent.class)
+                    || (patternAnnotation != null && method.isAnnotationPresent(patternAnnotation))) {
                 if (agentMethod != null) {
                     throw new IllegalArgumentException(
                             "Multiple agent methods found in class: " + agentServiceClass.getName());
@@ -299,7 +314,9 @@ public class AgentUtil {
     public static <T> T buildAgent(Class<T> agentServiceClass, InvocationHandler invocationHandler) {
         return (T) Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(),
-                new Class<?>[] { agentServiceClass, InternalAgent.class, AgenticScopeOwner.class, AgenticScopeAccess.class },
+                new Class<?>[] {
+                    agentServiceClass, InternalAgent.class, AgenticScopeOwner.class, AgenticScopeAccess.class
+                },
                 invocationHandler);
     }
 
@@ -337,9 +354,8 @@ public class AgentUtil {
             } else if (isImageType(keyClass) && isImageType(existingType)) {
                 // do nothing
             } else {
-                throw new AgenticSystemConfigurationException(
-                        "Conflicting types for key '" + name + "': " +
-                                existingType.getName() + " and " + keyClass.getName());
+                throw new AgenticSystemConfigurationException("Conflicting types for key '" + name + "': "
+                        + existingType.getName() + " and " + keyClass.getName());
             }
         }
     }

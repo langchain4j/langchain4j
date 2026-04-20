@@ -1,4 +1,4 @@
-package dev.langchain4j.model.openai.common;
+package dev.langchain4j.model.openai.common.responses;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1_NANO;
 import static java.util.Collections.singletonList;
