@@ -16,6 +16,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
     private final Double mirostatEta;
     private final Double mirostatTau;
     private final Integer numCtx;
+    private final Integer numThread;
     private final Integer repeatLastN;
     private final Double repeatPenalty;
     private final Integer seed;
@@ -29,6 +30,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         this.mirostatEta = builder.mirostatEta;
         this.mirostatTau = builder.mirostatTau;
         this.numCtx = builder.numCtx;
+        this.numThread = builder.numThread;
         this.repeatLastN = builder.repeatLastN;
         this.repeatPenalty = builder.repeatPenalty;
         this.seed = builder.seed;
@@ -51,6 +53,10 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
 
     public Integer numCtx() {
         return numCtx;
+    }
+
+    public Integer numThread() {
+        return numThread;
     }
 
     public Integer repeatLastN() {
@@ -86,6 +92,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 && Objects.equals(mirostatEta, that.mirostatEta)
                 && Objects.equals(mirostatTau, that.mirostatTau)
                 && Objects.equals(numCtx, that.numCtx)
+                && Objects.equals(numThread, that.numThread)
                 && Objects.equals(repeatLastN, that.repeatLastN)
                 && Objects.equals(repeatPenalty, that.repeatPenalty)
                 && Objects.equals(seed, that.seed)
@@ -102,6 +109,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 mirostatEta,
                 mirostatTau,
                 numCtx,
+                numThread,
                 repeatLastN,
                 repeatPenalty,
                 seed,
@@ -128,6 +136,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 + ", mirostatEta=" + mirostatEta
                 + ", mirostatTau=" + mirostatTau
                 + ", numCtx=" + numCtx
+                + ", numThread=" + numThread
                 + ", repeatLastN=" + repeatLastN
                 + ", repeatPenalty=" + repeatPenalty
                 + ", seed=" + seed
@@ -163,6 +172,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
         private Double mirostatEta;
         private Double mirostatTau;
         private Integer numCtx;
+        private Integer numThread;
         private Integer repeatLastN;
         private Double repeatPenalty;
         private Integer seed;
@@ -178,6 +188,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 mirostatEta(getOrDefault(ollamaChatRequestParameters.mirostatEta, mirostatEta));
                 mirostatTau(getOrDefault(ollamaChatRequestParameters.mirostatTau, mirostatTau));
                 numCtx(getOrDefault(ollamaChatRequestParameters.numCtx, numCtx));
+                numThread(getOrDefault(ollamaChatRequestParameters.numThread, numThread));
                 repeatLastN(getOrDefault(ollamaChatRequestParameters.repeatLastN, repeatLastN));
                 repeatPenalty(getOrDefault(ollamaChatRequestParameters.repeatPenalty, repeatPenalty));
                 seed(getOrDefault(ollamaChatRequestParameters.seed, seed));
@@ -226,6 +237,18 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
 
         public Builder numCtx(Integer numCtx) {
             this.numCtx = numCtx;
+            return this;
+        }
+
+        /**
+         * Sets the number of threads to use during computation.
+         * <p>Useful for CPU-only machines to control CPU utilization.</p>
+         * <p>Default: detected automatically</p>
+         *
+         * @return builder
+         */
+        public Builder numThread(Integer numThread) {
+            this.numThread = numThread;
             return this;
         }
 
