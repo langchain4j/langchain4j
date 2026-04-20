@@ -307,6 +307,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                                 toResultMessage(toolRequest, toolResult);
                         addToMemory(toolExecutionResultMessage);
                         immediateToolReturn = immediateToolReturn
+                                && !toolResult.isError()
                                 && context.toolService.isImmediateTool(toolExecutionResultMessage.toolName());
                     } catch (ExecutionException e) {
                         if (e.getCause() instanceof RuntimeException re) {
@@ -328,8 +329,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     ToolExecutionResultMessage toolExecutionResultMessage =
                             toResultMessage(toolRequest, toolResult);
                     addToMemory(toolExecutionResultMessage);
-                    immediateToolReturn =
-                            immediateToolReturn && context.toolService.isImmediateTool(toolRequest.name());
+                    immediateToolReturn = immediateToolReturn
+                            && !toolResult.isError()
+                            && context.toolService.isImmediateTool(toolRequest.name());
                 }
             }
 
