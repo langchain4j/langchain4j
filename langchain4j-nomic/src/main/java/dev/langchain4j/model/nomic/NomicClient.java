@@ -1,20 +1,19 @@
 package dev.langchain4j.model.nomic;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.langchain4j.internal.Utils;
+import java.io.IOException;
+import java.time.Duration;
 import okhttp3.OkHttpClient;
 import org.slf4j.Logger;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
-
-import java.io.IOException;
-import java.time.Duration;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 class NomicClient {
 
@@ -27,13 +26,18 @@ class NomicClient {
     private final NomicApi nomicApi;
     private final String authorizationHeader;
 
-    NomicClient(String baseUrl, String apiKey, Duration timeout, Boolean logRequests, Boolean logResponses, Logger logger) {
+    NomicClient(
+            String baseUrl, String apiKey, Duration timeout, Boolean logRequests, Boolean logResponses, Logger logger) {
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
-                .writeTimeout(timeout);
+                .writeTimeout(timeout)
+                .addInterceptor(chain -> chain.proceed(chain.request()
+                        .newBuilder()
+                        .addHeader("User-Agent", "langchain4j-nomic")
+                        .build()));
 
         if (logRequests) {
             okHttpClientBuilder.addInterceptor(new RequestLoggingInterceptor(logger));
@@ -58,8 +62,8 @@ class NomicClient {
 
     public EmbeddingResponse embed(EmbeddingRequest request) {
         try {
-            retrofit2.Response<EmbeddingResponse> retrofitResponse
-                    = nomicApi.embed(request, authorizationHeader).execute();
+            retrofit2.Response<EmbeddingResponse> retrofitResponse =
+                    nomicApi.embed(request, authorizationHeader).execute();
 
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
@@ -86,8 +90,7 @@ class NomicClient {
         private Boolean logResponses;
         private Logger logger;
 
-        NomicClientBuilder() {
-        }
+        NomicClientBuilder() {}
 
         public NomicClientBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -120,11 +123,13 @@ class NomicClient {
         }
 
         public NomicClient build() {
-            return new NomicClient(this.baseUrl, this.apiKey, this.timeout, this.logRequests, this.logResponses, this.logger);
+            return new NomicClient(
+                    this.baseUrl, this.apiKey, this.timeout, this.logRequests, this.logResponses, this.logger);
         }
 
         public String toString() {
-            return "NomicClient.NomicClientBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", timeout=" + this.timeout + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+            return "NomicClient.NomicClientBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", timeout="
+                    + this.timeout + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
         }
     }
 }

@@ -1,12 +1,11 @@
 package dev.langchain4j.model.huggingface;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
+import java.io.IOException;
 import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
-
-import java.io.IOException;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 class ApiKeyInsertingInterceptor implements Interceptor {
 
@@ -22,6 +21,7 @@ class ApiKeyInsertingInterceptor implements Interceptor {
         Request request = chain.request()
                 .newBuilder()
                 .addHeader("Authorization", "Bearer " + apiKey)
+                .addHeader("User-Agent", "langchain4j-hugging-face")
                 .build();
 
         return chain.proceed(request);
