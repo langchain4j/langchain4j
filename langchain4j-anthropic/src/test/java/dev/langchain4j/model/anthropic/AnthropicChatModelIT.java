@@ -421,7 +421,7 @@ class AnthropicChatModelIT {
     }
 
     @Test
-    void should_cache_system_message_and_tools() {
+    void should_cache_system_message_and_tools() throws InterruptedException {
 
         // given
         AnthropicChatModel model = AnthropicChatModel.builder()
@@ -459,6 +459,8 @@ class AnthropicChatModelIT {
         AnthropicTokenUsage createCacheTokenUsage = (AnthropicTokenUsage) response.tokenUsage();
         assertThat(createCacheTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
         assertThat(createCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
+
+        Thread.sleep(2000);
 
         // when
         ChatResponse response2 = model.chat(request);
