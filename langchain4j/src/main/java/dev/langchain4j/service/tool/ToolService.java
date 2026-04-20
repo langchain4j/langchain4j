@@ -386,7 +386,9 @@ public class ToolService {
                 }
 
                 if (immediateToolReturn) {
-                    if (toolServiceContext.immediateReturnTools().contains(request.name())) {
+                    if (result.isError()) {
+                        immediateToolReturn = false;
+                    } else if (toolServiceContext.immediateReturnTools().contains(request.name())) {
                         if (!isReturnTypeResult) {
                             throw illegalConfiguration(
                                     "Tool '%s' with immediate return is not allowed on a AI service not returning Result.",
