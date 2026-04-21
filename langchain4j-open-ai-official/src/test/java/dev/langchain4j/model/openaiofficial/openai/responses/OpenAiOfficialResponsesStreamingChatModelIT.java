@@ -155,6 +155,6 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
     @Disabled("gpt-5.4-mini cannot do it properly")
     @Override
-    protected void should_respect_JsonRawSchema_responseFormat(StreamingChatModel model) {
+    protected void should_respect_JSON_response_format_with_schema(StreamingChatModel model) {
     }
 }
