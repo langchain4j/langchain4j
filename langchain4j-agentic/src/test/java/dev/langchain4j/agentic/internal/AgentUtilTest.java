@@ -81,6 +81,6 @@ class AgentUtilTest {
 
         assertThatThrownBy(() ->
                         AgentUtil.agentInvocationArguments(scope, List.of(new AgentArgument(Person.class, "person"))))
-                .isInstanceOf(RuntimeException.class);
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }

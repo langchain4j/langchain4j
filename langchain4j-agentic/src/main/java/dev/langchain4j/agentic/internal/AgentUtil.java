@@ -261,7 +261,14 @@ public class AgentUtil {
                 case "double", "java.lang.Double" -> Double.parseDouble(s);
                 case "float", "java.lang.Float" -> Float.parseFloat(s);
                 case "boolean", "java.lang.Boolean" -> Boolean.parseBoolean(s);
-                default -> Json.fromJson(s, type);
+                default -> {
+                    try {
+                        yield Json.fromJson(s, type);
+                    } catch (Exception e) {
+                        throw new IllegalArgumentException(
+                                "Cannot deserialize value '" + s + "' to type " + type.getName(), e);
+                    }
+                }
             };
         }
         if (value instanceof Number n) {
