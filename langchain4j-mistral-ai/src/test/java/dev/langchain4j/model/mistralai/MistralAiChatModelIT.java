@@ -4,11 +4,14 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.CODESTRAL_LATEST;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_SMALL_LATEST;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MISTRAL_7B;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.VOXTRAL_MINI_LATEST;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.AudioContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -18,7 +21,11 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.Base64;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -187,5 +194,54 @@ class MistralAiChatModelIT {
         assertThat(metadata.rawHttpResponse().headers()).containsKey("mistral-correlation-id");
         assertThat(metadata.rawHttpResponse().body()).contains("Berlin");
         assertThat(metadata.rawServerSentEvents()).isEmpty();
+    }
+
+    @Test
+    void should_accept_base64_audio_content() throws Exception {
+
+        // given
+        ChatModel chatModel = MistralAiChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(VOXTRAL_MINI_LATEST)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        Path file = Paths.get(
+                getClass().getClassLoader().getResource("test_audio.ogg").toURI());
+        String base64Content = Base64.getEncoder().encodeToString(Files.readAllBytes(file));
+
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("What's the language of the audio?"), AudioContent.from(base64Content, "audio/ogg"));
+
+        // when
+        ChatResponse chatResponse = chatModel.chat(userMessage);
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).contains("German");
+    }
+
+    @Test
+    void should_accept_url_audio_content() {
+
+        // given
+        ChatModel chatModel = MistralAiChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(VOXTRAL_MINI_LATEST)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("What's the language of the audio?"),
+                AudioContent.from("https://upload.wikimedia.org/wikipedia/commons/2/28/Lorca_la_luna_asoma.ogg"));
+
+        // when
+        ChatResponse chatResponse = chatModel.chat(userMessage);
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).contains("Spanish");
     }
 }
