@@ -295,7 +295,7 @@ class OpenAiChatModelIT {
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_5_NANO)
-                .logRequests(false) // PDF is huge
+                .logRequests(false) // PDF is huge in logs
                 .logResponses(true)
                 .build();
 
