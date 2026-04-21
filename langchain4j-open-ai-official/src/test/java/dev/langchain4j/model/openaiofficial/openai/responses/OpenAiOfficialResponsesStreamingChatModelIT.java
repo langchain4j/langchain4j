@@ -2,6 +2,11 @@ package dev.langchain4j.model.openaiofficial.openai.responses;
 
 import com.openai.core.ObjectMappers;
 import com.openai.models.ChatModel;
+import com.openai.core.JsonValue;
+import com.openai.models.responses.NamespaceTool;
+import com.openai.models.responses.Tool;
+import com.openai.models.responses.ToolSearchTool;
+import com.openai.models.responses.WebSearchTool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.TextContent;
@@ -20,7 +25,6 @@ import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatRequestParameters;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatRequestParameters;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel;
-import dev.langchain4j.model.openaiofficial.OpenAiOfficialServerTool;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialServerToolResult;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
@@ -175,11 +179,12 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(GPT_5_4)
-                .serverTools(OpenAiOfficialServerTool.builder()
-                        .type("web_search")
-                        .addAttribute("allowed_domains", List.of("developers.openai.com"))
-                        .build())
-                .returnServerToolResults(true)
+                .serverTools(Tool.ofWebSearch(WebSearchTool.builder()
+                        .type(WebSearchTool.Type.of("web_search"))
+                        .filters(WebSearchTool.Filters.builder()
+                                .allowedDomains(List.of("developers.openai.com"))
+                                .build())
+                        .build()))
                 .defaultRequestParameters(OpenAiOfficialResponsesChatRequestParameters.builder()
                         .toolChoice(ToolChoice.REQUIRED)
                         .build())
@@ -192,10 +197,9 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
         var response = handler.get();
         assertThat(response.aiMessage().text()).isNotBlank();
-        assertThat(response.aiMessage().attributes()).containsKey("server_tool_results");
-
-        List<OpenAiOfficialServerToolResult> serverToolResults =
-                response.aiMessage().attribute("server_tool_results", List.class);
+        OpenAiOfficialResponsesChatResponseMetadata metadata =
+                (OpenAiOfficialResponsesChatResponseMetadata) response.metadata();
+        List<OpenAiOfficialServerToolResult> serverToolResults = metadata.serverToolResults();
         assertThat(serverToolResults).isNotEmpty();
         assertThat(serverToolResults)
                 .extracting(OpenAiOfficialServerToolResult::type)
@@ -204,60 +208,42 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
     @Test
     void should_execute_real_tool_search_with_namespace_and_deferred_function_loading() {
-        OpenAiOfficialServerTool toolSearch =
-                OpenAiOfficialServerTool.builder().type("tool_search").build();
+        Tool toolSearch = Tool.ofSearch(ToolSearchTool.builder()
+                .type(JsonValue.from("tool_search"))
+                .build());
 
-        OpenAiOfficialServerTool namespace = OpenAiOfficialServerTool.builder()
-                .type("namespace")
+        Tool namespace = Tool.ofNamespace(NamespaceTool.builder()
+                .type(JsonValue.from("namespace"))
                 .name("crm")
-                .addAttribute("description", "CRM tools")
-                .addAttribute(
-                        "tools",
-                        List.of(
-                                Map.of(
-                                        "type",
-                                        "function",
-                                        "name",
-                                        "get_customer_profile",
-                                        "description",
-                                        "Fetch a customer profile by customer ID.",
-                                        "parameters",
-                                        Map.of(
-                                                "type",
-                                                "object",
-                                                "properties",
-                                                Map.of("customer_id", Map.of("type", "string")),
-                                                "required",
-                                                List.of("customer_id"),
-                                                "additionalProperties",
-                                                false)),
-                                Map.of(
-                                        "type",
-                                        "function",
-                                        "name",
-                                        "list_open_orders",
-                                        "description",
-                                        "List open orders for a customer ID.",
-                                        "defer_loading",
-                                        true,
-                                        "parameters",
-                                        Map.of(
-                                                "type",
-                                                "object",
-                                                "properties",
-                                                Map.of("customer_id", Map.of("type", "string")),
-                                                "required",
-                                                List.of("customer_id"),
-                                                "additionalProperties",
-                                                false))))
-                .build();
+                .description("CRM tools")
+                .addTool(NamespaceTool.Tool.ofFunction(NamespaceTool.Tool.Function.builder()
+                        .type(JsonValue.from("function"))
+                        .name("get_customer_profile")
+                        .description("Fetch a customer profile by customer ID.")
+                        .parameters(JsonValue.from(Map.of(
+                                "type", "object",
+                                "properties", Map.of("customer_id", Map.of("type", "string")),
+                                "required", List.of("customer_id"),
+                                "additionalProperties", false)))
+                        .build()))
+                .addTool(NamespaceTool.Tool.ofFunction(NamespaceTool.Tool.Function.builder()
+                        .type(JsonValue.from("function"))
+                        .name("list_open_orders")
+                        .description("List open orders for a customer ID.")
+                        .parameters(JsonValue.from(Map.of(
+                                "type", "object",
+                                "properties", Map.of("customer_id", Map.of("type", "string")),
+                                "required", List.of("customer_id"),
+                                "additionalProperties", false)))
+                        .putAdditionalProperty("defer_loading", JsonValue.from(true))
+                        .build()))
+                .build());
 
         StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(GPT_5_4)
                 .serverTools(toolSearch, namespace)
-                .returnServerToolResults(true)
                 .defaultRequestParameters(OpenAiOfficialResponsesChatRequestParameters.builder()
                         .parallelToolCalls(false)
                         .build())
@@ -267,10 +253,9 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         model.chat("List open orders for customer CUST-12345.", handler);
 
         var response = handler.get();
-        assertThat(response.aiMessage().attributes()).containsKey("server_tool_results");
-
-        List<OpenAiOfficialServerToolResult> serverToolResults =
-                response.aiMessage().attribute("server_tool_results", List.class);
+        OpenAiOfficialResponsesChatResponseMetadata metadata =
+                (OpenAiOfficialResponsesChatResponseMetadata) response.metadata();
+        List<OpenAiOfficialServerToolResult> serverToolResults = metadata.serverToolResults();
         assertThat(serverToolResults)
                 .extracting(OpenAiOfficialServerToolResult::type)
                 .contains("tool_search_call", "tool_search_output");

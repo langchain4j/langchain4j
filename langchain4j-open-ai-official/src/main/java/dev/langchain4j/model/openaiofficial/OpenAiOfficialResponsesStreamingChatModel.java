@@ -119,7 +119,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
     private static final Logger logger = LoggerFactory.getLogger(OpenAiOfficialResponsesStreamingChatModel.class);
     private static final String PROMPT_CACHE_RETENTION_FIELD = "prompt_cache_retention";
-    static final String SERVER_TOOL_RESULTS_KEY = "server_tool_results";
     private static final Set<String> EXCLUDED_SERVER_TOOL_RESULT_TYPES =
             Set.of("compaction", "custom_tool_call", "function_call", "message", "reasoning");
     private static final TypeReference<Map<String, Object>> STRING_OBJECT_MAP = new TypeReference<>() {};
@@ -130,8 +129,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     private final ExecutorService executorService;
     private final OpenAiOfficialResponsesChatRequestParameters defaultRequestParameters;
     private final List<ChatModelListener> listeners;
-    private final List<OpenAiOfficialServerTool> serverTools;
-    private final Boolean returnServerToolResults;
 
     private OpenAiOfficialResponsesStreamingChatModel(Builder builder) {
         this.client = builder.client != null
@@ -193,11 +190,10 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 .store(getOrDefault(builder.store, getOrDefault(responsesParameters.store(), false)))
                 .strictTools(getOrDefault(builder.strictTools, responsesParameters.strictTools()))
                 .strictJsonSchema(getOrDefault(builder.strictJsonSchema, responsesParameters.strictJsonSchema()))
+                .serverTools(getOrDefault(builder.serverTools, responsesParameters.serverTools()))
                 .build();
 
         this.listeners = copy(builder.listeners);
-        this.serverTools = copy(builder.serverTools);
-        this.returnServerToolResults = getOrDefault(builder.returnServerToolResults, false);
     }
 
     public static Builder builder() {
@@ -214,7 +210,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         Future<?> streamingFuture = null;
 
         try {
-            var params = buildRequestParams(chatRequest, parameters, serverTools);
+            var params = buildRequestParams(chatRequest, parameters);
             var streamResponse = client.responses().createStreaming(params);
 
             ResponsesStreamingHandle streamingHandle = new ResponsesStreamingHandle(() -> {
@@ -226,7 +222,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             });
 
             var eventHandler = new ResponsesEventHandler(
-                    handler, responseIdRef, parameters.modelName(), streamingHandle, returnServerToolResults);
+                    handler, responseIdRef, parameters.modelName(), streamingHandle);
 
             // The forEach call blocks, so it is submitted to the executor service to run asynchronously.
             // We keep this on our executor (instead of OpenAIClientAsync callbacks) to ensure that user
@@ -346,7 +342,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             String modelName,
             com.openai.models.responses.Response response,
             String finishReason,
-            OpenAiOfficialTokenUsage tokenUsage) {
+            OpenAiOfficialTokenUsage tokenUsage,
+            List<OpenAiOfficialServerToolResult> serverToolResults) {
         var builder = OpenAiOfficialResponsesChatResponseMetadata.builder()
                 .id(responseId)
                 .modelName(modelName)
@@ -358,6 +355,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         }
         if (tokenUsage != null) {
             builder.tokenUsage(tokenUsage);
+        }
+        if (serverToolResults != null && !serverToolResults.isEmpty()) {
+            builder.serverToolResults(serverToolResults);
         }
         return builder.build();
     }
@@ -392,13 +392,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
     static ResponseCreateParams buildRequestParams(
             ChatRequest chatRequest, OpenAiOfficialResponsesChatRequestParameters parameters) {
-        return buildRequestParams(chatRequest, parameters, List.of());
-    }
-
-    static ResponseCreateParams buildRequestParams(
-            ChatRequest chatRequest,
-            OpenAiOfficialResponsesChatRequestParameters parameters,
-            List<OpenAiOfficialServerTool> serverTools) {
         var paramsBuilder = ResponseCreateParams.builder()
                 .model(ResponsesModel.ofChat(ChatModel.of(parameters.modelName())))
                 .store(parameters.store());
@@ -470,7 +463,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         }
 
         boolean strictTools = Boolean.TRUE.equals(parameters.strictTools());
-        List<Tool> tools = toResponsesTools(parameters.toolSpecifications(), strictTools, serverTools);
+        List<Tool> tools = toResponsesTools(parameters.toolSpecifications(), strictTools, parameters.serverTools());
         if (!tools.isEmpty()) {
             for (Tool tool : tools) {
                 paramsBuilder.addTool(tool);
@@ -691,15 +684,15 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     }
 
     private static List<Tool> toResponsesTools(
-            List<ToolSpecification> toolSpecifications, boolean strict, List<OpenAiOfficialServerTool> serverTools) {
+            List<ToolSpecification> toolSpecifications, boolean strict, List<Tool> serverTools) {
         List<Tool> tools = new ArrayList<>();
         if (toolSpecifications != null) {
             for (ToolSpecification toolSpecification : toolSpecifications) {
                 tools.add(Tool.ofFunction(toResponsesTool(toolSpecification, strict)));
             }
         }
-        for (OpenAiOfficialServerTool serverTool : serverTools) {
-            tools.add(OpenAiOfficialServerToolMapper.toResponsesTool(serverTool));
+        if (serverTools != null) {
+            tools.addAll(serverTools);
         }
         return tools;
     }
@@ -849,8 +842,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private ToolChoice toolChoice;
         private ResponseFormat responseFormat;
         private ChatRequestParameters defaultRequestParameters;
-        private List<OpenAiOfficialServerTool> serverTools;
-        private Boolean returnServerToolResults;
+        private List<Tool> serverTools;
 
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -1100,18 +1092,13 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             return this;
         }
 
-        public Builder serverTools(List<OpenAiOfficialServerTool> serverTools) {
+        public Builder serverTools(List<Tool> serverTools) {
             this.serverTools = serverTools;
             return this;
         }
 
-        public Builder serverTools(OpenAiOfficialServerTool... serverTools) {
+        public Builder serverTools(Tool... serverTools) {
             return serverTools(asList(serverTools));
-        }
-
-        public Builder returnServerToolResults(Boolean returnServerToolResults) {
-            this.returnServerToolResults = returnServerToolResults;
-            return this;
         }
 
         public OpenAiOfficialResponsesStreamingChatModel build() {
@@ -1131,7 +1118,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private final Map<String, ToolExecutionRequest.Builder> toolCallBuilders = new HashMap<>();
         private final Map<String, Integer> toolCallIndices = new HashMap<>();
         private final List<ToolExecutionRequest> completedToolCalls = new ArrayList<>();
-        private final boolean returnServerToolResults;
         private final StringBuilder textBuilder = new StringBuilder();
         private OpenAiOfficialTokenUsage tokenUsage;
         private String responseId;
@@ -1142,13 +1128,11 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 StreamingChatResponseHandler handler,
                 AtomicReference<String> responseIdRef,
                 String modelName,
-                StreamingHandle streamingHandle,
-                boolean returnServerToolResults) {
+                StreamingHandle streamingHandle) {
             this.handler = handler;
             this.responseIdRef = responseIdRef;
             this.modelName = modelName;
             this.streamingHandle = streamingHandle;
-            this.returnServerToolResults = returnServerToolResults;
         }
 
         void handleEvent(ResponseStreamEvent event) {
@@ -1176,13 +1160,13 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 } else if (event.isReasoningSummaryTextDelta()) {
                     handleReasoningSummaryTextDelta(event.asReasoningSummaryTextDelta());
                 } else if (event.isWebSearchCallInProgress()) {
-                    handleWebSearchCallInProgress(event.asWebSearchCallInProgress());
+                    // No-op: this only signals hosted web search progress.
                 } else if (event.isWebSearchCallSearching()) {
-                    handleWebSearchCallSearching(event.asWebSearchCallSearching());
+                    // No-op: this only signals hosted web search progress.
                 } else if (event.isWebSearchCallCompleted()) {
-                    handleWebSearchCallCompleted(event.asWebSearchCallCompleted());
+                    // No-op: final hosted tool output is extracted from response.output().
                 } else if (event.isOutputTextAnnotationAdded()) {
-                    handleOutputTextAnnotationAdded(event.asOutputTextAnnotationAdded());
+                    // No-op: URL citations are already preserved in the final response text.
                 } else if (event.isFunctionCallArgumentsDelta()) {
                     handleFunctionCallArgumentsDelta(event.asFunctionCallArgumentsDelta());
                 } else if (event.isFunctionCallArgumentsDone()) {
@@ -1297,22 +1281,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             }
         }
 
-        private void handleWebSearchCallInProgress(Object event) {
-            // No-op - indicates that a server-side web search has started
-        }
-
-        private void handleWebSearchCallSearching(Object event) {
-            // No-op - indicates that the server-side web search is still running
-        }
-
-        private void handleWebSearchCallCompleted(Object event) {
-            // No-op - the final web search result is extracted from response.output()
-        }
-
-        private void handleOutputTextAnnotationAdded(Object event) {
-            // No-op - url citations are preserved in the final response text from OpenAI
-        }
-
         private void handleFunctionCallArgumentsDone(ResponseFunctionCallArgumentsDoneEvent event) {
             var itemId = event.itemId();
             var builder = toolCallBuilders.remove(itemId);
@@ -1380,21 +1348,16 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
         private void extractTokenUsageAndComplete(com.openai.models.responses.Response response) {
             var text = !textBuilder.isEmpty() ? textBuilder.toString() : null;
-            List<OpenAiOfficialServerToolResult> serverToolResults =
-                    returnServerToolResults ? extractServerToolResults(response.output()) : List.of();
+            List<OpenAiOfficialServerToolResult> serverToolResults = extractServerToolResults(response.output());
             var aiMessage = buildAiMessage(
                     text,
                     extractReasoningSummary(response),
                     completedToolCalls,
                     extractEncryptedReasoning(response));
-            if (!serverToolResults.isEmpty()) {
-                Map<String, Object> attributes = new HashMap<>(aiMessage.attributes());
-                attributes.put(SERVER_TOOL_RESULTS_KEY, serverToolResults);
-                aiMessage = aiMessage.toBuilder().attributes(attributes).build();
-            }
 
             tokenUsage = extractTokenUsage(response);
-            var metadata = buildResponseMetadata(responseId, modelName, response, finishReason, tokenUsage);
+            var metadata = buildResponseMetadata(
+                    responseId, modelName, response, finishReason, tokenUsage, serverToolResults);
 
             var chatResponse = ChatResponse.builder()
                     .aiMessage(aiMessage)

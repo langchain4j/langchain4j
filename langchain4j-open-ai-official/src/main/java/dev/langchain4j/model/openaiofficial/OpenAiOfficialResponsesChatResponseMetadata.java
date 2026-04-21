@@ -3,7 +3,10 @@ package dev.langchain4j.model.openaiofficial;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 
+import java.util.List;
 import java.util.Objects;
+
+import static dev.langchain4j.internal.Utils.copy;
 
 @Experimental
 public class OpenAiOfficialResponsesChatResponseMetadata extends ChatResponseMetadata {
@@ -11,12 +14,14 @@ public class OpenAiOfficialResponsesChatResponseMetadata extends ChatResponseMet
     private final Long createdAt;
     private final Long completedAt;
     private final String serviceTier;
+    private final List<OpenAiOfficialServerToolResult> serverToolResults;
 
     private OpenAiOfficialResponsesChatResponseMetadata(Builder builder) {
         super(builder);
         this.createdAt = builder.createdAt;
         this.completedAt = builder.completedAt;
         this.serviceTier = builder.serviceTier;
+        this.serverToolResults = copy(builder.serverToolResults);
     }
 
     @Override
@@ -36,12 +41,17 @@ public class OpenAiOfficialResponsesChatResponseMetadata extends ChatResponseMet
         return serviceTier;
     }
 
+    public List<OpenAiOfficialServerToolResult> serverToolResults() {
+        return serverToolResults;
+    }
+
     @Override
     public Builder toBuilder() {
         return ((Builder) super.toBuilder(builder()))
                 .createdAt(createdAt)
                 .completedAt(completedAt)
-                .serviceTier(serviceTier);
+                .serviceTier(serviceTier)
+                .serverToolResults(serverToolResults);
     }
 
     @Override
@@ -52,12 +62,13 @@ public class OpenAiOfficialResponsesChatResponseMetadata extends ChatResponseMet
         OpenAiOfficialResponsesChatResponseMetadata that = (OpenAiOfficialResponsesChatResponseMetadata) o;
         return Objects.equals(createdAt, that.createdAt)
                 && Objects.equals(completedAt, that.completedAt)
-                && Objects.equals(serviceTier, that.serviceTier);
+                && Objects.equals(serviceTier, that.serviceTier)
+                && Objects.equals(serverToolResults, that.serverToolResults);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), createdAt, completedAt, serviceTier);
+        return Objects.hash(super.hashCode(), createdAt, completedAt, serviceTier, serverToolResults);
     }
 
     public static Builder builder() {
@@ -69,6 +80,7 @@ public class OpenAiOfficialResponsesChatResponseMetadata extends ChatResponseMet
         private Long createdAt;
         private Long completedAt;
         private String serviceTier;
+        private List<OpenAiOfficialServerToolResult> serverToolResults;
 
         public Builder createdAt(Long createdAt) {
             this.createdAt = createdAt;
@@ -82,6 +94,11 @@ public class OpenAiOfficialResponsesChatResponseMetadata extends ChatResponseMet
 
         public Builder serviceTier(String serviceTier) {
             this.serviceTier = serviceTier;
+            return this;
+        }
+
+        public Builder serverToolResults(List<OpenAiOfficialServerToolResult> serverToolResults) {
+            this.serverToolResults = serverToolResults;
             return this;
         }
 
