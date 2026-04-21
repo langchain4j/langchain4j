@@ -487,4 +487,65 @@ class JsonSchemaElementUtilsTest {
 
         assertThat(map).containsEntry("foo", "bar");
     }
+
+    // --- inherited fields tests ---
+
+    static class Parent {
+        @Description("parent id")
+        int id;
+
+        String name;
+    }
+
+    static class Child extends Parent {
+        String extra;
+    }
+
+    static class GrandChild extends Child {
+        @Description("overridden name")
+        String name;
+    }
+
+    @Test
+    void should_not_include_inherited_fields_by_default() {
+        JsonSchemaElement schema = jsonSchemaElementFrom(Child.class, false);
+
+        assertThat(schema).isInstanceOf(JsonObjectSchema.class);
+        JsonObjectSchema obj = (JsonObjectSchema) schema;
+        assertThat(obj.properties()).containsKey("extra");
+        assertThat(obj.properties()).doesNotContainKey("id");
+        assertThat(obj.properties()).doesNotContainKey("name");
+    }
+
+    @Test
+    void should_include_inherited_fields_when_enabled() {
+        JsonSchemaElement schema = jsonSchemaElementFrom(Child.class, true);
+
+        assertThat(schema).isInstanceOf(JsonObjectSchema.class);
+        JsonObjectSchema obj = (JsonObjectSchema) schema;
+        assertThat(obj.properties()).containsKey("id");
+        assertThat(obj.properties()).containsKey("name");
+        assertThat(obj.properties()).containsKey("extra");
+    }
+
+    @Test
+    void child_field_should_shadow_parent_field() {
+        JsonSchemaElement schema = jsonSchemaElementFrom(GrandChild.class, true);
+
+        assertThat(schema).isInstanceOf(JsonObjectSchema.class);
+        JsonObjectSchema obj = (JsonObjectSchema) schema;
+        assertThat(obj.properties()).containsKey("name");
+        JsonSchemaElement nameSchema = obj.properties().get("name");
+        assertThat(nameSchema).isInstanceOf(JsonStringSchema.class);
+        assertThat(((JsonStringSchema) nameSchema).description()).isEqualTo("overridden name");
+    }
+
+    @Test
+    void should_preserve_parent_first_ordering() {
+        JsonSchemaElement schema = jsonSchemaElementFrom(Child.class, true);
+
+        JsonObjectSchema obj = (JsonObjectSchema) schema;
+        List<String> keys = new java.util.ArrayList<>(obj.properties().keySet());
+        assertThat(keys).containsExactly("id", "name", "extra");
+    }
 }

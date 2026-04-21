@@ -1,6 +1,5 @@
 package dev.langchain4j.service.tool;
 
-import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
@@ -13,6 +12,7 @@ import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -48,7 +48,6 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -116,8 +115,12 @@ public class ToolService {
     }
 
     public void tools(Collection<Object> objectsWithTools) {
+        tools(objectsWithTools, false);
+    }
+
+    public void tools(Collection<Object> objectsWithTools, boolean includeInheritedFields) {
         for (Object objectWithTools : objectsWithTools) {
-            for (AiServiceTool tool : findTools(objectWithTools)) {
+            for (AiServiceTool tool : findTools(objectWithTools, includeInheritedFields)) {
                 String toolName = tool.toolSpecification().name();
                 if (toolExecutors.containsKey(toolName)) {
                     throw new IllegalConfigurationException("Duplicated definition for tool: " + toolName);
@@ -151,6 +154,10 @@ public class ToolService {
      * @since 1.13.0
      */
     public static List<AiServiceTool> findTools(Object objectWithTools) {
+        return findTools(objectWithTools, false);
+    }
+
+    public static List<AiServiceTool> findTools(Object objectWithTools, boolean includeInheritedFields) {
         if (objectWithTools instanceof Class) {
             throw illegalConfiguration("Tool '%s' must be an object, not a class", objectWithTools);
         }
@@ -167,9 +174,10 @@ public class ToolService {
             if (annotatedMethod.isPresent()) {
                 Method toolMethod = annotatedMethod.get();
                 result.add(AiServiceTool.builder()
-                        .toolSpecification(toolSpecificationFrom(toolMethod))
+                        .toolSpecification(ToolSpecifications.toolSpecificationFrom(toolMethod, includeInheritedFields))
                         .toolExecutor(createToolExecutor(objectWithTools, toolMethod))
-                        .immediateReturn(toolMethod.getAnnotation(Tool.class).returnBehavior() == ReturnBehavior.IMMEDIATE)
+                        .immediateReturn(
+                                toolMethod.getAnnotation(Tool.class).returnBehavior() == ReturnBehavior.IMMEDIATE)
                         .build());
             }
         }
@@ -256,9 +264,8 @@ public class ToolService {
         this.toolSearchService = new ToolSearchService(toolSearchStrategy);
     }
 
-    public ToolServiceContext createContext(InvocationContext invocationContext,
-                                            UserMessage userMessage,
-                                            List<ChatMessage> messages) {
+    public ToolServiceContext createContext(
+            InvocationContext invocationContext, UserMessage userMessage, List<ChatMessage> messages) {
         ToolServiceContext context = createContextFromStaticToolsAndProviders(invocationContext, userMessage, messages);
         if (toolSearchService != null) {
             context = toolSearchService.adjust(context, messages, invocationContext);
@@ -267,9 +274,8 @@ public class ToolService {
         return context;
     }
 
-    private ToolServiceContext createContextFromStaticToolsAndProviders(InvocationContext invocationContext,
-                                                                        UserMessage userMessage,
-                                                                        List<ChatMessage> messages) {
+    private ToolServiceContext createContextFromStaticToolsAndProviders(
+            InvocationContext invocationContext, UserMessage userMessage, List<ChatMessage> messages) {
         if (this.toolProviders.isEmpty()) {
             if (this.toolSpecifications.isEmpty()) {
                 return ToolServiceContext.Empty.INSTANCE;
@@ -304,8 +310,7 @@ public class ToolService {
                         toolProviderResult.tools().entrySet()) {
                     String toolName = entry.getKey().name();
                     if (toolExecutors.putIfAbsent(toolName, entry.getValue()) != null) {
-                        throw new IllegalConfigurationException(
-                                "Duplicated definition for tool: " + toolName);
+                        throw new IllegalConfigurationException("Duplicated definition for tool: " + toolName);
                     }
                     toolSpecifications.add(entry.getKey());
                 }
@@ -458,9 +463,8 @@ public class ToolService {
      *
      * @since 1.13.0
      */
-    public static ToolServiceContext refreshDynamicProviders(ToolServiceContext toolServiceContext,
-                                                             List<ChatMessage> messages,
-                                                             InvocationContext invocationContext) {
+    public static ToolServiceContext refreshDynamicProviders(
+            ToolServiceContext toolServiceContext, List<ChatMessage> messages, InvocationContext invocationContext) {
         if (toolServiceContext == null) {
             return null;
         }
@@ -486,7 +490,8 @@ public class ToolService {
         for (ToolProvider dynamicProvider : dynamicProviders) {
             ToolProviderResult result = dynamicProvider.provideTools(request);
             if (result != null) {
-                for (Map.Entry<ToolSpecification, ToolExecutor> toolEntry : result.tools().entrySet()) {
+                for (Map.Entry<ToolSpecification, ToolExecutor> toolEntry :
+                        result.tools().entrySet()) {
                     String toolName = toolEntry.getKey().name();
                     if (!newToolExecutors.containsKey(toolName)) {
                         newEffectiveTools.add(toolEntry.getKey());
