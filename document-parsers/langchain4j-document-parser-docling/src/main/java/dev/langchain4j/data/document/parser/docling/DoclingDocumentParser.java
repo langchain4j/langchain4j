@@ -4,7 +4,6 @@ import ai.docling.api.serve.DoclingServeApi;
 import ai.docling.api.serve.convert.request.ConvertDocumentRequest;
 import ai.docling.api.serve.convert.request.source.FileSource;
 import ai.docling.api.serve.convert.response.ConvertDocumentResponse;
-import ai.docling.client.serve.DoclingServeClientBuilderFactory;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.Metadata;
@@ -23,14 +22,10 @@ import java.util.Base64;
  *
  * <p>Example usage:</p>
  * <pre>{@code
- * // With a pre-built DoclingServeApi instance
  * DoclingServeApi api = DoclingServeClientBuilderFactory.newBuilder()
  *         .baseUrl("http://localhost:5001")
  *         .build();
  * DoclingDocumentParser parser = new DoclingDocumentParser(api);
- *
- * // Convenience constructor using a server URL
- * DoclingDocumentParser parser = new DoclingDocumentParser("http://my-server:5001");
  *
  * Document document = parser.parse(inputStream);
  * }</pre>
@@ -46,10 +41,6 @@ public class DoclingDocumentParser implements DocumentParser {
     /**
      * Creates a new DoclingDocumentParser with a pre-built {@link DoclingServeApi} instance.
      *
-     * <p>This is the preferred constructor, as it decouples the parser from the client
-     * construction details. Downstream frameworks (Spring, Quarkus, etc.) can provide
-     * their own {@link DoclingServeApi} implementation.</p>
-     *
      * @param doclingClient a configured {@link DoclingServeApi} instance. Must not be null.
      * @throws IllegalArgumentException if doclingClient is null
      */
@@ -58,28 +49,6 @@ public class DoclingDocumentParser implements DocumentParser {
             throw new IllegalArgumentException("DoclingServeApi instance cannot be null.");
         }
         this.doclingClient = doclingClient;
-    }
-
-    /**
-     * Creates a new DoclingDocumentParser connecting to the default local server.
-     *
-     * <p>Connects to {@code http://localhost:5001} using the default client.</p>
-     */
-    public DoclingDocumentParser() {
-        this(DoclingServeClientBuilderFactory.newBuilder()
-                .baseUrl("http://localhost:5001")
-                .build());
-    }
-
-    /**
-     * Creates a new DoclingDocumentParser with a custom server URL.
-     *
-     * @param doclingServerUrl the URL of the docling-serve instance (e.g., "http://localhost:5001").
-     */
-    public DoclingDocumentParser(String doclingServerUrl) {
-        this(DoclingServeClientBuilderFactory.newBuilder()
-                .baseUrl(doclingServerUrl)
-                .build());
     }
 
     /**

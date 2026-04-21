@@ -28,14 +28,6 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- Docling Java Client (optional: downstream frameworks provide their own DoclingServeApi impl) -->
-        <dependency>
-            <groupId>ai.docling</groupId>
-            <artifactId>docling-serve-client</artifactId>
-            <version>${docling.version}</version>
-            <optional>true</optional>
-        </dependency>
-
         <dependency>
             <groupId>ai.docling</groupId>
             <artifactId>docling-serve-api</artifactId>
@@ -58,6 +50,14 @@
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Docling reference client - test only; production code only depends on docling-serve-api -->
+        <dependency>
+            <groupId>ai.docling</groupId>
+            <artifactId>docling-serve-client</artifactId>
+            <version>${docling.version}</version>
             <scope>test</scope>
         </dependency>
 

@@ -23,12 +23,6 @@ class DoclingDocumentParserTest {
     @Mock
     private DoclingServeApi mockApi;
 
-    @Mock
-    private ConvertDocumentResponse mockResponse;
-
-    @Mock
-    private DocumentResponse mockDocumentResponse;
-
     @Test
     void shouldThrowWhenInputStreamIsNull() {
         DoclingDocumentParser parser = new DoclingDocumentParser(mockApi);
@@ -41,9 +35,8 @@ class DoclingDocumentParserTest {
     @Test
     void shouldThrowWhenInputStreamIsEmpty() {
         DoclingDocumentParser parser = new DoclingDocumentParser(mockApi);
-        InputStream emptyStream = new ByteArrayInputStream(new byte[0]);
 
-        assertThatThrownBy(() -> parser.parse(emptyStream))
+        assertThatThrownBy(() -> parser.parse(new ByteArrayInputStream(new byte[0])))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("empty");
     }
@@ -56,10 +49,12 @@ class DoclingDocumentParserTest {
 
     @Test
     void shouldReturnDocumentWithParsedText() {
-        when(mockApi.convertSource(any())).thenReturn(mockResponse);
-        when(mockResponse.getDocument()).thenReturn(mockDocumentResponse);
-        when(mockResponse.getErrors()).thenReturn(null);
-        when(mockDocumentResponse.getMarkdownContent()).thenReturn("# Parsed Content");
+        when(mockApi.convertSource(any())).thenReturn(
+                ConvertDocumentResponse.builder()
+                        .document(DocumentResponse.builder()
+                                .markdownContent("# Parsed Content")
+                                .build())
+                        .build());
 
         DoclingDocumentParser parser = new DoclingDocumentParser(mockApi);
         Document document = parser.parse(new ByteArrayInputStream("some bytes".getBytes()));
@@ -70,10 +65,12 @@ class DoclingDocumentParserTest {
     @Test
     void shouldIncludeDocumentSizeBytesInMetadata() {
         byte[] content = "document content".getBytes();
-        when(mockApi.convertSource(any())).thenReturn(mockResponse);
-        when(mockResponse.getDocument()).thenReturn(mockDocumentResponse);
-        when(mockResponse.getErrors()).thenReturn(null);
-        when(mockDocumentResponse.getMarkdownContent()).thenReturn("Parsed text");
+        when(mockApi.convertSource(any())).thenReturn(
+                ConvertDocumentResponse.builder()
+                        .document(DocumentResponse.builder()
+                                .markdownContent("Parsed text")
+                                .build())
+                        .build());
 
         DoclingDocumentParser parser = new DoclingDocumentParser(mockApi);
         Document document = parser.parse(new ByteArrayInputStream(content));
@@ -95,10 +92,12 @@ class DoclingDocumentParserTest {
 
     @Test
     void shouldThrowWhenApiReturnsEmptyContent() {
-        when(mockApi.convertSource(any())).thenReturn(mockResponse);
-        when(mockResponse.getDocument()).thenReturn(mockDocumentResponse);
-        when(mockResponse.getErrors()).thenReturn(null);
-        when(mockDocumentResponse.getMarkdownContent()).thenReturn("");
+        when(mockApi.convertSource(any())).thenReturn(
+                ConvertDocumentResponse.builder()
+                        .document(DocumentResponse.builder()
+                                .markdownContent("")
+                                .build())
+                        .build());
 
         DoclingDocumentParser parser = new DoclingDocumentParser(mockApi);
 
@@ -109,7 +108,7 @@ class DoclingDocumentParserTest {
 
     @Test
     void shouldImplementDocumentParserInterface() {
-        DoclingDocumentParser parser = new DoclingDocumentParser(mockApi);
-        assertThat(parser).isInstanceOf(dev.langchain4j.data.document.DocumentParser.class);
+        assertThat(new DoclingDocumentParser(mockApi))
+                .isInstanceOf(dev.langchain4j.data.document.DocumentParser.class);
     }
 }
