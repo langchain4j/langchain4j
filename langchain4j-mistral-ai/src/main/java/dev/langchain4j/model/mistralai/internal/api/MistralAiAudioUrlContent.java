@@ -36,6 +36,6 @@ public class MistralAiAudioUrlContent extends MistralAiMessageContent {
 
     @Override
     public String toString() {
-        return "MistralAiAudioContent{" + "inputAudio=" + inputAudio + ", type=" + quoted(type) + '}';
+        return "MistralAiAudioUrlContent{" + "inputAudio=" + inputAudio + ", type=" + quoted(type) + '}';
     }
 }
