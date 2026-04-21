@@ -31,7 +31,8 @@ import org.mockito.InOrder;
 class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     static final StreamingChatModel ANTHROPIC_STREAMING_CHAT_MODEL = AnthropicStreamingChatModel.builder()
-            .apiKey(getenv("ANTHROPIC_API_KEY"))
+            .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
+            .apiKey(System.getenv("ANTHROPIC_API_KEY"))
             .modelName(CLAUDE_HAIKU_4_5_20251001)
             .temperature(0.0)
             .logRequests(false) // images are huge in logs
@@ -39,7 +40,8 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .build();
 
     static final StreamingChatModel ANTHROPIC_STREAMING_SCHEMA_MODEL = AnthropicStreamingChatModel.builder()
-            .apiKey(getenv("ANTHROPIC_API_KEY"))
+            .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
+            .apiKey(System.getenv("ANTHROPIC_API_KEY"))
             .modelName(CLAUDE_HAIKU_4_5_20251001)
             .beta("structured-outputs-2025-11-13")
             .temperature(0.0)
@@ -99,7 +101,8 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {
         return AnthropicStreamingChatModel.builder()
-                .apiKey(getenv("ANTHROPIC_API_KEY"))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .listeners(List.of(listener))
                 .build();
