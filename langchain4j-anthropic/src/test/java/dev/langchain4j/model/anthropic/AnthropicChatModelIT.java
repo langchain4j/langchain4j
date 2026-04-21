@@ -97,6 +97,7 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(null) // caching test requires no other caching
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
@@ -131,6 +132,7 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(null) // caching test requires no other caching
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
@@ -425,6 +427,7 @@ class AnthropicChatModelIT {
 
         // given
         AnthropicChatModel model = AnthropicChatModel.builder()
+                .baseUrl(null) // caching test requires no other caching
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
@@ -476,6 +479,7 @@ class AnthropicChatModelIT {
 
         // given
         AnthropicChatModel model = AnthropicChatModel.builder()
+                .baseUrl(null) // caching test requires no other caching
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheTools(true)
