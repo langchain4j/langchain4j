@@ -7,6 +7,7 @@ import static dev.langchain4j.service.TypeUtils.isImageType;
 
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.LoopCounter;
@@ -167,6 +168,9 @@ public class AgentUtil {
     }
 
     public static List<AgentArgument> argumentsFromMethod(Method method, Map<String, Object> defaultValues) {
+        if (method.getDeclaringClass() == UntypedAgent.class) {
+            return List.of();
+        }
         return Stream.of(method.getParameters())
                 .map(p -> {
                     String argName = parameterName(p);
