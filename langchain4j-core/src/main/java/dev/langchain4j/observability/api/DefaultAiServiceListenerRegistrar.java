@@ -60,9 +60,7 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
                 .ifPresent(eventListeners -> eventListeners.remove(listener));
     }
 
-
-   
-    // Test InvocationState contains every one flowstate of commands
+    // Holds ordered events for a single invocationId (thread-safe)
     private static final class InvocationState{
         private final List<AiServiceEvent> events = new ArrayList<>();
 
@@ -76,10 +74,7 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
 
     }
 
-    // Reintroduce Map data structure 
-    /* 
-      Test Map to instead be thread safe and store *started event* IDs with the events
-    */
+    // Holds the events for each invocationId
     private final Map<UUID, InvocationState> invocationStates = new ConcurrentHashMap<>();
     
 
@@ -88,6 +83,7 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
      *
      * @param <T>   The type of the event, which must be a subtype of {@link AiServiceEvent}.
      * @param event The event to be fired to the listeners. Must not be null.
+     * 
      */
     @Override
     public <T extends AiServiceEvent> void fireEvent(T event) {
@@ -95,9 +91,11 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
         Optional.ofNullable(this.listeners.get(event.eventClass()))
                 .map(l -> (EventListeners<T>) l)
                 .ifPresent(l -> l.fireEvent(event));
-
-        // Test features
           
+
+        // Tracks events per invocationId and emits a single AiServiceInteractionEvent
+        // when the invocation completes or errors. If invocationId is null, aggregation
+        // is skipped to preserve backward compatibility with existing events. 
         UUID invocationId = event.invocationContext().invocationId();
         if (invocationId == null) {
             return; 

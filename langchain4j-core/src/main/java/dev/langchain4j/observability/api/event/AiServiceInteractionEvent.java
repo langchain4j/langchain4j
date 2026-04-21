@@ -1,10 +1,15 @@
 package dev.langchain4j.observability.api.event;
 
-import dev.langchain4j.observability.event.DefaultAiServiceInteractionEvent;
-import java.util.List;
 import java.util.ArrayList;
-import dev.langchain4j.invocation.InvocationContext;
+import java.util.List;
 
+import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.observability.event.DefaultAiServiceInteractionEvent;
+
+/**
+ * Aggregates all AiServiceEvent instances for a single invocationId,
+ * preserving the order in which they were fired.
+ */
 public interface AiServiceInteractionEvent extends AiServiceEvent {
 
     List<AiServiceEvent> events();
