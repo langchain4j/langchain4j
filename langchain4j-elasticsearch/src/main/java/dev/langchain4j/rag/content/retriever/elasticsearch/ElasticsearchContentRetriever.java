@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.content.retriever.elasticsearch;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -52,7 +53,10 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
      * @param maxResults     Maximum number of results to retrieve
      * @param minScore       Minimum score threshold for retrieved results
      * @param filter         Filter to apply during retrieval
+     * @deprecated Use {@link #ElasticsearchContentRetriever(ElasticsearchConfiguration, ElasticsearchClient, String, EmbeddingModel, int, double, Filter)} instead.
      */
+    // TODO Remove this method and the import of elasticsearch-rest-client in pom.xml
+    @Deprecated(forRemoval = true)
     public ElasticsearchContentRetriever(
             ElasticsearchConfiguration configuration,
             RestClient restClient,
@@ -66,6 +70,33 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
         this.minScore = minScore;
         this.filter = filter;
         this.initialize(configuration, restClient, indexName);
+    }
+
+    /**
+     * Creates an instance of ElasticsearchContentRetriever using an ElasticsearchClient.
+     *
+     * @param configuration  Elasticsearch retriever configuration to use (knn, script, full text, hybrid, hybrid with reranker)
+     * @param client         Elasticsearch Client (mandatory)
+     * @param indexName      Elasticsearch index name (optional). Default value: "default".
+     *                       Index will be created automatically if not exists.
+     * @param embeddingModel Embedding model to be used by the retriever
+     * @param maxResults     Maximum number of results to retrieve
+     * @param minScore       Minimum score threshold for retrieved results
+     * @param filter         Filter to apply during retrieval
+     */
+    public ElasticsearchContentRetriever(
+            ElasticsearchConfiguration configuration,
+            ElasticsearchClient client,
+            String indexName,
+            EmbeddingModel embeddingModel,
+            final int maxResults,
+            final double minScore,
+            final Filter filter) {
+        this.embeddingModel = embeddingModel;
+        this.maxResults = maxResults;
+        this.minScore = minScore;
+        this.filter = filter;
+        this.initialize(configuration, client, indexName);
     }
 
     @Override
@@ -116,6 +147,7 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
     public static class Builder {
 
         private RestClient restClient;
+        private ElasticsearchClient client;
         private String indexName = "default";
         private ElasticsearchConfiguration configuration =
                 ElasticsearchConfigurationKnn.builder().build();
@@ -127,9 +159,20 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
         /**
          * @param restClient Elasticsearch RestClient.
          * @return builder
+         * @deprecated Use {@link #client(ElasticsearchClient)} instead.
          */
+        @Deprecated(forRemoval = true)
         public Builder restClient(RestClient restClient) {
             this.restClient = restClient;
+            return this;
+        }
+
+        /**
+         * @param client Elasticsearch Client.
+         * @return builder
+         */
+        public Builder client(ElasticsearchClient client) {
+            this.client = client;
             return this;
         }
 
@@ -172,6 +215,12 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
         }
 
         public ElasticsearchContentRetriever build() {
+            if (client != null) {
+                return new ElasticsearchContentRetriever(
+                        configuration, client, indexName, embeddingModel, maxResults, minScore, filter);
+            }
+            log.warn(
+                    "Using RestClient is deprecated and will be removed in future versions. Please use Elasticsearch Client instead (see client() method).");
             return new ElasticsearchContentRetriever(
                     configuration, restClient, indexName, embeddingModel, maxResults, minScore, filter);
         }

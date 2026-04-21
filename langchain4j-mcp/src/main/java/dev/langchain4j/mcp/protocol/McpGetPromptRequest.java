@@ -1,24 +1,16 @@
 package dev.langchain4j.mcp.protocol;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.langchain4j.Internal;
-import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Corresponds to the {@code GetPromptRequest} type from the MCP schema.
+ */
 @Internal
-public class McpGetPromptRequest extends McpClientMessage {
-
-    @JsonInclude
-    private Map<String, Object> params;
+public class McpGetPromptRequest extends McpClientRequest {
 
     public McpGetPromptRequest(Long id, String promptName, Map<String, Object> arguments) {
         super(id, McpClientMethod.PROMPTS_GET);
-        this.params = new HashMap<>();
-        this.params.put("name", promptName);
-        this.params.put("arguments", arguments);
-    }
-
-    public Map<String, Object> getParams() {
-        return params;
+        setParams(new McpGetPromptParams(promptName, arguments));
     }
 }

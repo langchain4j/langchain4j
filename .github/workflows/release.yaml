@@ -9,22 +9,37 @@ on:
       betaVersion:
         description: "Beta release version (e.g., 1.8.0-beta15)"
         required: true
+      branch:
+        description: "Branch to release from (e.g., 'main' for minor releases, 'release/x.y.z' for patch releases)"
+        required: false
+        default: "main"
 
 env:
   STABLE_VERSION: ${{ github.event.inputs.stableVersion || github.event.client_payload.stableVersion }}
   BETA_VERSION: ${{ github.event.inputs.betaVersion || github.event.client_payload.betaVersion }}
+  BRANCH: ${{ github.event.inputs.branch || github.event.client_payload.branch || 'main' }}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
+          ref: ${{ env.BRANCH }}
           fetch-depth: 0
+          # PAT is required to push the version commit and release tag to a protected branch
+          token: ${{ secrets.GH_RELEASE_AUTOMATION }}
 
       - name: Set up JDK 25
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with:
           java-version: '25'
           distribution: 'temurin'
@@ -37,12 +52,9 @@ jobs:
 
       - name: Show inputs
         run: |
-          echo "Stable version: ${{ env.STABLE_VERSION }}"
-          echo "Beta version: ${{ env.BETA_VERSION }}"
-
-      - name: Create release branch
-        run: |
-          git checkout -b release-${{ env.STABLE_VERSION }}
+          echo "Stable version: $STABLE_VERSION"
+          echo "Beta version: $BETA_VERSION"
+          echo "Branch to release from: $BRANCH"
 
       - name: Extract current stable SNAPSHOT version from POM property
         id: extract-stable-snapshot-version
@@ -51,10 +63,10 @@ jobs:
           echo "stableVersionSnapshot=$REVISION" >> $GITHUB_OUTPUT
 
       - name: Update stable versions
-        run: mvn versions:set -DnewVersion=${{ env.STABLE_VERSION }} -DoldVersion=${{ steps.extract-stable-snapshot-version.outputs.stableVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
+        run: mvn versions:set -DnewVersion="$STABLE_VERSION" -DoldVersion=${{ steps.extract-stable-snapshot-version.outputs.stableVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
 
       - name: Update stable version property
-        run: mvn versions:set-property -Dproperty=langchain4j.stable.version -DnewVersion=${{ env.STABLE_VERSION }} -DgenerateBackupPoms=false
+        run: mvn versions:set-property -Dproperty=langchain4j.stable.version -DnewVersion="$STABLE_VERSION" -DgenerateBackupPoms=false
 
       - name: Extract current beta SNAPSHOT version from POM property
         id: extract-beta-snapshot-version
@@ -63,25 +75,19 @@ jobs:
           echo "betaVersionSnapshot=$REVISION" >> $GITHUB_OUTPUT
 
       - name: Update beta versions
-        run: mvn versions:set -DnewVersion=${{ env.BETA_VERSION }} -DoldVersion=${{ steps.extract-beta-snapshot-version.outputs.betaVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
+        run: mvn versions:set -DnewVersion="$BETA_VERSION" -DoldVersion=${{ steps.extract-beta-snapshot-version.outputs.betaVersionSnapshot }} -DgroupId=* -DartifactId=* -DgenerateBackupPoms=false
 
       - name: Update beta version property
-        run: mvn versions:set-property -Dproperty=langchain4j.beta.version -DnewVersion=${{ env.BETA_VERSION }} -DgenerateBackupPoms=false
+        run: mvn versions:set-property -Dproperty=langchain4j.beta.version -DnewVersion="$BETA_VERSION" -DgenerateBackupPoms=false
 
-      - name: Remove integration-tests module from root POM
-        run: sed -i '/<module>integration-tests<\/module>/d' pom.xml
-
-      - name: Remove langchain4j-docu-chatbot-updater module from root POM
-        run: sed -i '/<module>internal\/langchain4j-docu-chatbot-updater<\/module>/d' pom.xml
-
-      - name: release_core_and_parent
-        run: mvn -B -U -pl langchain4j-core,langchain4j-parent -Psign clean deploy
+      - name: Release core and parent modules
+        run: mvn -B -U -pl internal/langchain4j-internal-test-retry,langchain4j-core,langchain4j-parent -Psign clean deploy
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
 
-      - name: release_embeddings
+      - name: Release in-process embeddings modules
         run: |
           EMBEDDING_MODULES=$(find embeddings -mindepth 1 -maxdepth 1 -type d -exec test -f "{}/pom.xml" \; -print | paste -sd , -)
           
@@ -94,18 +100,28 @@ jobs:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
 
-      - name: release_the_rest_of_modules
+      - name: Release the rest of the modules
         run: |
           EMBEDDING_MODULES=$(find embeddings -mindepth 1 -maxdepth 1 -type d -exec test -f "{}/pom.xml" \; -print | paste -sd , -)
           
-          EXCLUDES="!langchain4j-core,!langchain4j-parent"
+          EXCLUDES="!internal/langchain4j-internal-test-retry,!langchain4j-core,!langchain4j-parent"
 
           # Append embeddings exclusions (converted to !path syntax)
           if [ -n "$EMBEDDING_MODULES" ]; then
-            # Turn "embeddings/a,embeddings/b" into "!embeddings/a,!embeddings/b"
             EMBEDDING_MODULES_EXCLUDES=$(echo "$EMBEDDING_MODULES" | sed 's/[^,]*/!\0/g')
             EXCLUDES="$EXCLUDES,$EMBEDDING_MODULES_EXCLUDES"
           fi
+
+          # Exclude integration-tests and all its submodules
+          INTEGRATION_TEST_MODULES=$(find integration-tests -mindepth 1 -maxdepth 2 -type d -exec test -f "{}/pom.xml" \; -print | paste -sd , -)
+          EXCLUDES="$EXCLUDES,!integration-tests"
+          if [ -n "$INTEGRATION_TEST_MODULES" ]; then
+            INTEGRATION_TEST_EXCLUDES=$(echo "$INTEGRATION_TEST_MODULES" | sed 's/[^,]*/!\0/g')
+            EXCLUDES="$EXCLUDES,$INTEGRATION_TEST_EXCLUDES"
+          fi
+
+          # Exclude internal modules
+          EXCLUDES="$EXCLUDES,!internal/langchain4j-docu-chatbot-updater"
 
           echo "Excluding modules: $EXCLUDES"
     
@@ -122,33 +138,24 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "Release versions ${{ env.STABLE_VERSION }} and ${{ env.BETA_VERSION }}"
+          git add pom.xml '**/pom.xml'
+          git commit -m "Release versions $STABLE_VERSION and $BETA_VERSION"
 
-      - name: Push release branch
+      - name: Push
         run: |
-          git push origin release-${{ env.STABLE_VERSION }}
+          git push origin "$BRANCH"
 
       - name: Tag release
         run: |
-          git tag ${{ env.STABLE_VERSION }}
-          git push origin ${{ env.STABLE_VERSION }}
+          git tag "$STABLE_VERSION"
+          git push origin "$STABLE_VERSION"
 
       - name: Trigger release in the langchain4j/langchain4j-spring repo
-        uses: peter-evans/repository-dispatch@v4
-        with:
-          token: ${{ secrets.GH_RELEASE_AUTOMATION_PAT }}
-          repository: langchain4j/langchain4j-spring
-          event-type: trigger-release
-          client-payload: |
-            {
-              "stableVersion": "${{ env.STABLE_VERSION }}",
-              "betaVersion": "${{ env.BETA_VERSION }}"
-            }
-
-      - name: Publish Test Report
-        uses: mikepenz/action-junit-report@v5
-        if: success() || failure() # always run even if the previous step fails
-        with:
-          report_paths: '**/target/*-reports/TEST-*.xml'
-          annotate_only: true
+        env:
+          GH_TOKEN: ${{ secrets.GH_RELEASE_AUTOMATION }}
+        run: |
+          gh api repos/langchain4j/langchain4j-spring/dispatches \
+            -f event_type=trigger-release \
+            -f "client_payload[stableVersion]=$STABLE_VERSION" \
+            -f "client_payload[betaVersion]=$BETA_VERSION" \
+            -f "client_payload[branch]=$BRANCH"

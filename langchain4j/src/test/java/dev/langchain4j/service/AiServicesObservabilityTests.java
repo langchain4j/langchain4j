@@ -523,7 +523,7 @@ class AiServicesObservabilityTests {
         // Verify that all the listeners have the same invocationContext()
         assertThat(listeners)
                 .extracting(l -> l.event().invocationContext())
-                .usingRecursiveFieldByFieldElementComparator()
+                .usingRecursiveFieldByFieldElementComparatorIgnoringFields("userMessage")
                 .containsOnly(ic);
 
         // And because all the invocationContext() is the same, verify that it has the correct information

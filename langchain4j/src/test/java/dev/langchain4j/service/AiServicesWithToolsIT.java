@@ -2,6 +2,8 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
+import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.containsTool;
 import static dev.langchain4j.service.AiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
@@ -11,6 +13,8 @@ import static org.assertj.core.data.MapEntry.entry;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -25,6 +29,7 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -48,6 +53,7 @@ import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
 
 import java.time.LocalDate;
@@ -58,6 +64,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -70,6 +77,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
+import org.mockito.InOrder;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -443,6 +451,10 @@ class AiServicesWithToolsIT {
 
         Tools spyTools = spy(new Tools());
 
+        Map<String, Object> toolResults = new ConcurrentHashMap<>();
+        Map<String, Thread> beforeToolExecutionThreads = new ConcurrentHashMap<>();
+        Map<String, Thread> afterToolExecutionThreads = new ConcurrentHashMap<>();
+
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -450,6 +462,13 @@ class AiServicesWithToolsIT {
                 .chatMemory(chatMemory)
                 .tools(spyTools)
                 .executeToolsConcurrently(executor)
+                .beforeToolExecution(before -> {
+                    beforeToolExecutionThreads.put(before.request().name(), Thread.currentThread());
+                })
+                .afterToolExecution(exec -> {
+                    toolResults.put(exec.request().name(), exec.resultObject());
+                    afterToolExecutionThreads.put(exec.request().name(), Thread.currentThread());
+                })
                 .build();
 
         String userMessage = "What is the current time and temperature in Munich?";
@@ -473,6 +492,19 @@ class AiServicesWithToolsIT {
         assertThat(getCurrentTemperatureThread).isNotEqualTo(Thread.currentThread());
 
         assertThat(getCurrentTimeThread).isNotEqualTo(getCurrentTemperatureThread);
+
+        assertThat(toolResults)
+                .hasSize(2)
+                .containsEntry("getCurrentTime", Tools.CURRENT_TIME)
+                .containsEntry("getCurrentTemperature", Tools.CURRENT_TEMPERATURE);
+
+        assertThat(beforeToolExecutionThreads).hasSize(2);
+        assertThat(beforeToolExecutionThreads.get("getCurrentTime")).isEqualTo(getCurrentTimeThread);
+        assertThat(beforeToolExecutionThreads.get("getCurrentTemperature")).isEqualTo(getCurrentTemperatureThread);
+
+        assertThat(afterToolExecutionThreads).hasSize(2);
+        assertThat(afterToolExecutionThreads.get("getCurrentTime")).isEqualTo(getCurrentTimeThread);
+        assertThat(afterToolExecutionThreads.get("getCurrentTemperature")).isEqualTo(getCurrentTemperatureThread);
     }
 
     static List<Executor> executors() {
@@ -628,7 +660,7 @@ class AiServicesWithToolsIT {
         assistant.chat(userMessage);
 
         // then
-        verify(stringArrayProcessor).processStrings(new String[] {"cat", "dog"});
+        verify(stringArrayProcessor).processStrings(new String[]{"cat", "dog"});
         verifyNoMoreInteractions(stringArrayProcessor);
 
         List<ChatMessage> messages = chatMemory.messages();
@@ -685,6 +717,42 @@ class AiServicesWithToolsIT {
         }
     }
 
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_support_custom_tool_parameter_name(ChatModel chatModel) {
+
+        // given
+        class BashTool {
+
+            @Tool
+            String runBash(@P(name = "command") String cmd) {
+                return "Running command: " + cmd;
+            }
+        }
+
+        BashTool bashTool = spy(new BashTool());
+        ChatModel spyChatModel = spy(chatModel);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(spyChatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+                .tools(bashTool)
+                .build();
+
+        // when
+        Result<String> result = assistant.chat("Run a shell command 'ls -la'");
+
+        // then
+        verify(spyChatModel, atLeastOnce()).chat(argThat((ChatRequest request) -> {
+            ToolSpecification toolSpec = request.toolSpecifications().get(0);
+            return toolSpec.parameters().properties().containsKey("command");
+        }));
+
+        // verify that the tool method is called with the expected argument value
+        verify(bashTool).runBash("ls -la");
+        assertThat(result.content()).contains("ls -la");
+    }
+
     @Test
     void should_use_tool_provider() {
 
@@ -727,17 +795,17 @@ class AiServicesWithToolsIT {
 
         // given
         ToolProvider addToolProvider = (toolProviderRequest) -> {
-                ToolSpecification toolSpecification = ToolSpecification.builder()
-                        .name("add")
-                        .parameters(JsonObjectSchema.builder()
-                                .addNumberProperty("a")
-                                .addNumberProperty("b")
-                                .required("a", "b")
-                                .build())
-                        .build();
-                return ToolProviderResult.builder()
-                        .add(toolSpecification, (request, memoryId) -> "does not matter")
-                        .build();
+            ToolSpecification toolSpecification = ToolSpecification.builder()
+                    .name("add")
+                    .parameters(JsonObjectSchema.builder()
+                            .addNumberProperty("a")
+                            .addNumberProperty("b")
+                            .required("a", "b")
+                            .build())
+                    .build();
+            return ToolProviderResult.builder()
+                    .add(toolSpecification, (request, memoryId) -> "does not matter")
+                    .build();
         };
 
         ToolProvider multiplyToolProvider = (toolProviderRequest) -> {
@@ -844,8 +912,8 @@ class AiServicesWithToolsIT {
                 .build();
 
         assertThat(assertThrows(
-                        IllegalConfigurationException.class,
-                        () -> assistant.chat("Apply the function xyz on the number 2027")))
+                IllegalConfigurationException.class,
+                () -> assistant.chat("Apply the function xyz on the number 2027")))
                 .hasMessageContaining("xyz");
     }
 
@@ -1068,7 +1136,7 @@ class AiServicesWithToolsIT {
                             public ToolExecutionResult executeWithContext(
                                     ToolExecutionRequest request, InvocationContext context) {
                                 assertThat((boolean)
-                                                context.invocationParameters().get(includeToolsKey))
+                                        context.invocationParameters().get(includeToolsKey))
                                         .isEqualTo(true);
                                 Map<String, Object> arguments = toMap(request.arguments());
                                 assertThat(arguments).containsExactly(entry("number", 2027));
@@ -1121,7 +1189,8 @@ class AiServicesWithToolsIT {
 
     private static Map<String, Object> toMap(String arguments) {
         try {
-            return new ObjectMapper().readValue(arguments, new TypeReference<>() {});
+            return new ObjectMapper().readValue(arguments, new TypeReference<>() {
+            });
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -1271,7 +1340,8 @@ class AiServicesWithToolsIT {
 
         LocalDate now = LocalDate.of(2025, 2, 24);
 
-        record ToolResult(LocalDate localDate) {}
+        record ToolResult(LocalDate localDate) {
+        }
 
         class Tools {
 
@@ -1347,12 +1417,12 @@ class AiServicesWithToolsIT {
 
         @dev.langchain4j.service.UserMessage(
                 """
-            Analyze the following user request and categorize it as 'legal', 'medical' or 'technical',
-            then forward the request as it is to the corresponding expert provided as a tool.
-            Finally return the answer that you received from the expert without any modification.
-
-            The user request is: '{{it}}'.
-            """)
+                        Analyze the following user request and categorize it as 'legal', 'medical' or 'technical',
+                        then forward the request as it is to the corresponding expert provided as a tool.
+                        Finally return the answer that you received from the expert without any modification.
+                        
+                        The user request is: '{{it}}'.
+                        """)
         String askToExpert(String request);
     }
 
@@ -1360,10 +1430,10 @@ class AiServicesWithToolsIT {
 
         @dev.langchain4j.service.UserMessage(
                 """
-            You are a medical expert.
-            Analyze the following user request under a medical point of view and provide the best possible answer.
-            The user request is {{it}}.
-            """)
+                        You are a medical expert.
+                        Analyze the following user request under a medical point of view and provide the best possible answer.
+                        The user request is {{it}}.
+                        """)
         @Tool("A medical expert")
         String medicalRequest(String request);
     }
@@ -1372,10 +1442,10 @@ class AiServicesWithToolsIT {
 
         @dev.langchain4j.service.UserMessage(
                 """
-            You are a legal expert.
-            Analyze the following user request under a legal point of view and provide the best possible answer.
-            The user request is {{it}}.
-            """)
+                        You are a legal expert.
+                        Analyze the following user request under a legal point of view and provide the best possible answer.
+                        The user request is {{it}}.
+                        """)
         @Tool("A legal expert")
         String legalRequest(String request);
     }
@@ -1384,10 +1454,10 @@ class AiServicesWithToolsIT {
 
         @dev.langchain4j.service.UserMessage(
                 """
-            You are a technical expert.
-            Analyze the following user request under a technical point of view and provide the best possible answer.
-            The user request is {{it}}.
-            """)
+                        You are a technical expert.
+                        Analyze the following user request under a technical point of view and provide the best possible answer.
+                        The user request is {{it}}.
+                        """)
         @Tool("A technical expert")
         String technicalRequest(String request);
     }
@@ -1432,7 +1502,8 @@ class AiServicesWithToolsIT {
 
         LocalDate now = LocalDate.of(2025, 2, 24);
 
-        record ToolResult(LocalDate localDate) {}
+        record ToolResult(LocalDate localDate) {
+        }
 
         class Tools {
 
@@ -1470,7 +1541,8 @@ class AiServicesWithToolsIT {
 
         LocalDate now = LocalDate.of(2025, 2, 24);
 
-        record ToolResult(LocalDate localDate) {}
+        record ToolResult(LocalDate localDate) {
+        }
 
         class Tools {
 
@@ -1544,5 +1616,406 @@ class AiServicesWithToolsIT {
             result.set(prod);
             return prod;
         }
+    }
+
+    @Test
+    void should_call_static_tool_provider_once_and_dynamic_tool_provider_before_each_chat_model_request() {
+
+        // given
+        ToolProvider spyStaticProvider = spy(new ToolProvider() {
+            @Override
+            public ToolProviderResult provideTools(ToolProviderRequest request) {
+                ToolSpecification getWeather = ToolSpecification.builder()
+                        .name("getWeather")
+                        .description("Gets the weather for a city")
+                        .build();
+                return ToolProviderResult.builder()
+                        .add(getWeather, (req, memoryId) -> "sunny")
+                        .build();
+            }
+        });
+
+        ToolProvider spyDynamicProvider = spy(new ToolProvider() {
+            @Override
+            public ToolProviderResult provideTools(ToolProviderRequest request) {
+                ToolSpecification getTime = ToolSpecification.builder()
+                        .name("getTime")
+                        .description("Gets the current time")
+                        .build();
+                return ToolProviderResult.builder()
+                        .add(getTime, (req, memoryId) -> "12:00")
+                        .build();
+            }
+
+            @Override
+            public boolean isDynamic() {
+                return true;
+            }
+        });
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("getWeather")
+                        .arguments("{\"city\":\"London\"}")
+                        .build()),
+                AiMessage.from("It is sunny in London")
+        );
+        ChatModel spyChatModel = spy(chatModel);
+
+        interface SimpleAssistant {
+            String chat(String userMessage);
+        }
+
+        SimpleAssistant assistant = AiServices.builder(SimpleAssistant.class)
+                .chatModel(spyChatModel)
+                .toolProviders(spyStaticProvider, spyDynamicProvider)
+                .build();
+
+        // when
+        String answer = assistant.chat("What is the weather in London?");
+
+        // then
+        assertThat(answer).contains("sunny");
+
+        verify(spyStaticProvider, times(1)).provideTools(any());
+        verify(spyDynamicProvider, times(2)).provideTools(any());
+
+        verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
+                request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getWeather"))
+                        && request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getTime"))
+        ));
+    }
+
+    @Test
+    void dynamic_provider_new_tools_in_second_call_should_be_added() {
+
+        // given
+        AtomicInteger callCount = new AtomicInteger(0);
+
+        ToolProvider spyDynamicProvider = spy(new ToolProvider() {
+            @Override
+            public ToolProviderResult provideTools(ToolProviderRequest request) {
+                int call = callCount.incrementAndGet();
+                ToolProviderResult.Builder builder = ToolProviderResult.builder();
+                builder.add(
+                        ToolSpecification.builder().name("getWeather").description("Gets the weather").build(),
+                        (req, memoryId) -> "sunny"
+                );
+                if (call >= 2) {
+                    builder.add(
+                            ToolSpecification.builder().name("getTime").description("Gets the time").build(),
+                            (req, memoryId) -> "12:00"
+                    );
+                }
+                return builder.build();
+            }
+
+            @Override
+            public boolean isDynamic() {
+                return true;
+            }
+        });
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("getWeather")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("It is sunny and the time is 12:00")
+        );
+        ChatModel spyChatModel = spy(chatModel);
+
+        interface SimpleAssistant {
+            String chat(String userMessage);
+        }
+
+        SimpleAssistant assistant = AiServices.builder(SimpleAssistant.class)
+                .chatModel(spyChatModel)
+                .toolProviders(spyDynamicProvider)
+                .build();
+
+        // when
+        String answer = assistant.chat("What is the weather?");
+
+        // then
+        assertThat(answer).contains("sunny");
+
+        InOrder inOrder = inOrder(spyChatModel);
+
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                containsTool(request, "getWeather")
+                        && !containsTool(request, "getTime")
+        ));
+
+        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
+                containsTool(request, "getWeather")
+                        && containsTool(request, "getTime")
+        ));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
+    }
+
+    @Test
+    void dynamic_provider_not_returning_tool_in_second_call_should_still_have_it() {
+
+        // given
+        AtomicInteger callCount = new AtomicInteger(0);
+
+        ToolProvider spyDynamicProvider = spy(new ToolProvider() {
+            @Override
+            public ToolProviderResult provideTools(ToolProviderRequest request) {
+                int call = callCount.incrementAndGet();
+                ToolProviderResult.Builder builder = ToolProviderResult.builder();
+                builder.add(
+                        ToolSpecification.builder().name("getWeather").description("Gets the weather").build(),
+                        (req, memoryId) -> "sunny"
+                );
+                if (call == 1) {
+                    // Only returned on first call
+                    builder.add(
+                            ToolSpecification.builder().name("getTime").description("Gets the time").build(),
+                            (req, memoryId) -> "12:00"
+                    );
+                }
+                return builder.build();
+            }
+
+            @Override
+            public boolean isDynamic() {
+                return true;
+            }
+        });
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("getWeather")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("It is sunny and the time is 12:00")
+        );
+        ChatModel spyChatModel = spy(chatModel);
+
+        interface SimpleAssistant {
+            String chat(String userMessage);
+        }
+
+        SimpleAssistant assistant = AiServices.builder(SimpleAssistant.class)
+                .chatModel(spyChatModel)
+                .toolProviders(spyDynamicProvider)
+                .build();
+
+        // when
+        String answer = assistant.chat("What is the weather?");
+
+        // then
+        assertThat(answer).contains("sunny");
+
+        verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
+                containsTool(request, "getWeather")
+                        && containsTool(request, "getTime")
+        ));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
+    }
+
+    @Test
+    void should_send_null_as_text_to_LLM_when_tool_returns_null() {
+
+        // given
+        class ToolReturningNull {
+
+            @Tool("Returns nothing")
+            Integer doSomething() {
+                return null;
+            }
+        }
+
+        ToolReturningNull tools = spy(new ToolReturningNull());
+
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("doSomething")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("OK, got null")
+        ));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .build();
+
+        // when
+        assistant.chat("Do something");
+
+        // then
+        verify(tools).doSomething();
+
+        verify(chatModel, times(2)).chat(argThat((ChatRequest request) -> {
+            if (request.messages().size() < 3) {
+                return true; // first call
+            }
+            ToolExecutionResultMessage toolResult = request.messages().stream()
+                    .filter(ToolExecutionResultMessage.class::isInstance)
+                    .map(ToolExecutionResultMessage.class::cast)
+                    .findFirst()
+                    .orElse(null);
+            return toolResult != null && toolResult.text().equals("null");
+        }));
+    }
+
+    @Test
+    void should_send_ImageContent_to_LLM_when_tool_with_Object_return_type_returns_Image() {
+
+        // given
+        class ToolReturningObjectThatIsImage {
+
+            @Tool("Takes a photo")
+            Object takePhoto() {
+                return Image.builder()
+                        .base64Data("iVBOR")
+                        .mimeType("image/png")
+                        .build();
+            }
+        }
+
+        ToolReturningObjectThatIsImage tools = spy(new ToolReturningObjectThatIsImage());
+
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("takePhoto")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("I see a cat")
+        ));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .build();
+
+        // when
+        assistant.chat("Take a photo");
+
+        // then
+        verify(tools).takePhoto();
+
+        verify(chatModel, times(2)).chat(argThat((ChatRequest request) -> {
+            if (request.messages().size() < 3) {
+                return true; // first call
+            }
+            // second call should have ToolExecutionResultMessage with ImageContent
+            ToolExecutionResultMessage toolResult = request.messages().stream()
+                    .filter(ToolExecutionResultMessage.class::isInstance)
+                    .map(ToolExecutionResultMessage.class::cast)
+                    .findFirst()
+                    .orElse(null);
+            return toolResult != null
+                    && toolResult.contents().size() == 1
+                    && toolResult.contents().get(0) instanceof dev.langchain4j.data.message.ImageContent;
+        }));
+    }
+
+    @Test
+    void should_send_text_to_LLM_when_tool_with_Image_return_type_returns_null() {
+
+        // given
+        class ToolReturningNullImage {
+
+            @Tool("Takes a photo")
+            Image takePhoto() {
+                return null;
+            }
+        }
+
+        ToolReturningNullImage tools = spy(new ToolReturningNullImage());
+
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("takePhoto")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("No photo available")
+        ));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .build();
+
+        // when
+        assistant.chat("Take a photo");
+
+        // then
+        verify(tools).takePhoto();
+
+        verify(chatModel, times(2)).chat(argThat((ChatRequest request) -> {
+            if (request.messages().size() < 3) {
+                return true; // first call
+            }
+            // second call should have ToolExecutionResultMessage with text (null serialized)
+            ToolExecutionResultMessage toolResult = request.messages().stream()
+                    .filter(ToolExecutionResultMessage.class::isInstance)
+                    .map(ToolExecutionResultMessage.class::cast)
+                    .findFirst()
+                    .orElse(null);
+            return toolResult != null && toolResult.text().equals("null");
+        }));
+    }
+
+    @Test
+    void should_send_error_text_to_LLM_when_tool_with_Image_return_type_throws_exception() {
+
+        // given
+        class ToolThrowingException {
+
+            @Tool("Takes a photo")
+            Image takePhoto() {
+                throw new RuntimeException("Camera is broken");
+            }
+        }
+
+        ToolThrowingException tools = spy(new ToolThrowingException());
+
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("takePhoto")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("Sorry, the camera is broken")
+        ));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .build();
+
+        // when
+        assistant.chat("Take a photo");
+
+        // then
+        verify(tools).takePhoto();
+
+        verify(chatModel, times(2)).chat(argThat((ChatRequest request) -> {
+            if (request.messages().size() < 3) {
+                return true; // first call
+            }
+            // second call should have ToolExecutionResultMessage with error text
+            ToolExecutionResultMessage toolResult = request.messages().stream()
+                    .filter(ToolExecutionResultMessage.class::isInstance)
+                    .map(ToolExecutionResultMessage.class::cast)
+                    .findFirst()
+                    .orElse(null);
+            return toolResult != null
+                    && toolResult.text().contains("Camera is broken")
+                    && Boolean.TRUE.equals(toolResult.isError());
+        }));
     }
 }

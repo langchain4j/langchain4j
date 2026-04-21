@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
@@ -228,5 +229,89 @@ class ChatModelListenerTest {
 
         // then
         verify(listener2).onError(any());
+    }
+
+    @Test
+    void should_propagate_options_attributes_to_listener_on_request() {
+
+        // given
+        ChatModelListener listener = spy(new ChatModelListener() {
+            @Override
+            public void onRequest(ChatModelRequestContext requestContext) {
+                assertThat(requestContext.attributes()).containsEntry("tenantId", "acme-co");
+            }
+        });
+        TestChatModel model = new TestChatModel(List.of(listener));
+        ChatRequestOptions options = ChatRequestOptions.builder()
+                .addListenerAttribute("tenantId", "acme-co")
+                .build();
+
+        // when
+        model.chat(ChatRequest.builder().messages(UserMessage.from("hi")).build(), options);
+
+        // then
+        verify(listener).onRequest(any());
+    }
+
+    @Test
+    void should_propagate_options_attributes_to_listener_on_response() {
+
+        // given
+        ChatModelListener listener = spy(new ChatModelListener() {
+            @Override
+            public void onResponse(ChatModelResponseContext responseContext) {
+                assertThat(responseContext.attributes()).containsEntry("tenantId", "acme-co");
+            }
+        });
+        TestChatModel model = new TestChatModel(List.of(listener));
+        ChatRequestOptions options = ChatRequestOptions.builder()
+                .addListenerAttribute("tenantId", "acme-co")
+                .build();
+
+        // when
+        model.chat(ChatRequest.builder().messages(UserMessage.from("hi")).build(), options);
+
+        // then
+        verify(listener).onResponse(any());
+    }
+
+    @Test
+    void should_propagate_options_attributes_to_listener_on_error() {
+
+        // given
+        ChatModelListener listener = spy(new ChatModelListener() {
+            @Override
+            public void onError(ChatModelErrorContext errorContext) {
+                assertThat(errorContext.attributes()).containsEntry("tenantId", "acme-co");
+            }
+        });
+        TestChatModel model = new TestChatModel(List.of(listener)) {
+            @Override
+            public ChatResponse doChat(ChatRequest chatRequest) {
+                throw new RuntimeException("fail");
+            }
+        };
+        ChatRequestOptions options = ChatRequestOptions.builder()
+                .addListenerAttribute("tenantId", "acme-co")
+                .build();
+
+        // when
+        assertThatThrownBy(() -> model.chat(
+                ChatRequest.builder().messages(UserMessage.from("hi")).build(), options));
+
+        // then
+        verify(listener).onError(any());
+    }
+
+    @Test
+    void should_handle_null_options() {
+
+        // given
+        TestChatModel model = new TestChatModel(List.of());
+
+        // when/then
+        assertThatNoException()
+                .isThrownBy(() -> model.chat(
+                        ChatRequest.builder().messages(UserMessage.from("hi")).build(), (ChatRequestOptions) null));
     }
 }

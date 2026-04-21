@@ -1,5 +1,6 @@
 package dev.langchain4j.invocation;
 
+import dev.langchain4j.data.message.UserMessage;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +17,7 @@ public class DefaultInvocationContext implements InvocationContext {
     private final String interfaceName;
     private final String methodName;
     private final List<Object> methodArguments = new ArrayList<>();
+    private final UserMessage userMessage;
     private final Object chatMemoryId;
     private final InvocationParameters invocationParameters;
     private final Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters;
@@ -26,6 +28,7 @@ public class DefaultInvocationContext implements InvocationContext {
         this.interfaceName = builder.interfaceName();
         this.methodName = builder.methodName();
         this.methodArguments.addAll(builder.methodArguments());
+        this.userMessage = builder.userMessage();
         this.chatMemoryId = builder.chatMemoryId();
         this.invocationParameters = builder.invocationParameters();
         this.managedParameters = builder.managedParameters();
@@ -50,6 +53,11 @@ public class DefaultInvocationContext implements InvocationContext {
     @Override
     public List<Object> methodArguments() {
         return methodArguments;
+    }
+
+    @Override
+    public UserMessage userMessage() {
+        return userMessage;
     }
 
     @Override
@@ -81,6 +89,7 @@ public class DefaultInvocationContext implements InvocationContext {
                 && Objects.equals(interfaceName, that.interfaceName)
                 && Objects.equals(methodName, that.methodName)
                 && Objects.equals(methodArguments, that.methodArguments)
+                && Objects.equals(userMessage, that.userMessage)
                 && Objects.equals(chatMemoryId, that.chatMemoryId)
                 && Objects.equals(invocationParameters, that.invocationParameters)
                 && Objects.equals(managedParameters, that.managedParameters)
@@ -94,6 +103,7 @@ public class DefaultInvocationContext implements InvocationContext {
                 interfaceName,
                 methodName,
                 methodArguments,
+                userMessage,
                 chatMemoryId,
                 invocationParameters,
                 managedParameters,
@@ -107,6 +117,7 @@ public class DefaultInvocationContext implements InvocationContext {
                 ", interfaceName='" + interfaceName + '\'' +
                 ", methodName='" + methodName + '\'' +
                 ", methodArguments=" + methodArguments +
+                ", userMessage=" + userMessage +
                 ", chatMemoryId=" + chatMemoryId +
                 ", invocationParameters=" + invocationParameters +
                 ", managedParameters=" + managedParameters +

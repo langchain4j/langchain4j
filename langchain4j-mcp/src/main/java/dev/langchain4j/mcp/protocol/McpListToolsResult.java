@@ -5,6 +5,9 @@ import dev.langchain4j.Internal;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Corresponds to the {@code ListToolsResult} type from the MCP schema.
+ */
 @Internal
 public class McpListToolsResult extends McpJsonRpcMessage {
 

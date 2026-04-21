@@ -16,6 +16,7 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
     private final String systemFingerprint;
     private final SuccessfulHttpResponse rawHttpResponse;
     private final List<ServerSentEvent> rawServerSentEvents;
+    private final List<LogProb> logProbs;
 
     private OpenAiChatResponseMetadata(Builder builder) {
         super(builder);
@@ -24,6 +25,7 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
         this.systemFingerprint = builder.systemFingerprint;
         this.rawHttpResponse = builder.rawHttpResponse;
         this.rawServerSentEvents = copy(builder.rawServerSentEvents);
+        this.logProbs = builder.logProbs;
     }
 
     @Override
@@ -65,6 +67,10 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
         return rawServerSentEvents;
     }
 
+    public List<LogProb> logProbs() {
+        return logProbs;
+    }
+
     @Override
     public Builder toBuilder() {
         return ((Builder) super.toBuilder(builder()))
@@ -72,7 +78,8 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
                 .serviceTier(serviceTier)
                 .systemFingerprint(systemFingerprint)
                 .rawHttpResponse(rawHttpResponse)
-                .rawServerSentEvents(rawServerSentEvents);
+                .rawServerSentEvents(rawServerSentEvents)
+                .logProbs(logProbs);
     }
 
     @Override
@@ -85,13 +92,20 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
                 && Objects.equals(serviceTier, that.serviceTier)
                 && Objects.equals(systemFingerprint, that.systemFingerprint)
                 && Objects.equals(rawHttpResponse, that.rawHttpResponse)
-                && Objects.equals(rawServerSentEvents, that.rawServerSentEvents);
+                && Objects.equals(rawServerSentEvents, that.rawServerSentEvents)
+                && Objects.equals(logProbs, that.logProbs);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(
-                super.hashCode(), created, serviceTier, systemFingerprint, rawHttpResponse, rawServerSentEvents);
+                super.hashCode(),
+                created,
+                serviceTier,
+                systemFingerprint,
+                rawHttpResponse,
+                rawServerSentEvents,
+                logProbs);
     }
 
     @Override
@@ -105,7 +119,8 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
                 + serviceTier + '\'' + ", systemFingerprint='"
                 + systemFingerprint + '\'' + ", rawHttpResponse="
                 + rawHttpResponse + ", rawServerSentEvents="
-                + rawServerSentEvents + '}';
+                + rawServerSentEvents + ", logProbs="
+                + logProbs + '}';
     }
 
     public static Builder builder() {
@@ -119,6 +134,7 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
         private String systemFingerprint;
         private SuccessfulHttpResponse rawHttpResponse;
         private List<ServerSentEvent> rawServerSentEvents;
+        private List<LogProb> logProbs;
 
         public Builder created(Long created) {
             this.created = created;
@@ -142,6 +158,11 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
 
         public Builder rawServerSentEvents(List<ServerSentEvent> rawServerSentEvents) {
             this.rawServerSentEvents = rawServerSentEvents;
+            return this;
+        }
+
+        public Builder logProbs(List<LogProb> logProbs) {
+            this.logProbs = logProbs;
             return this;
         }
 

@@ -13,7 +13,7 @@ import com.ibm.watsonx.ai.core.Json;
 import com.ibm.watsonx.ai.core.auth.ibmcloud.IBMCloudAuthenticator;
 import com.ibm.watsonx.ai.core.provider.HttpClientProvider;
 import com.ibm.watsonx.ai.embedding.EmbeddingParameters;
-import com.ibm.watsonx.ai.embedding.EmbeddingRequest;
+import com.ibm.watsonx.ai.embedding.EmbeddingPayload;
 import com.ibm.watsonx.ai.embedding.EmbeddingResponse;
 import com.ibm.watsonx.ai.embedding.EmbeddingService;
 import dev.langchain4j.data.embedding.Embedding;
@@ -101,7 +101,7 @@ public class WatsonxEmbeddingModelTest {
             embeddingModel.embed(TextSegment.from("test1"));
 
             var embeddingRequest =
-                    Json.fromJson(HttpUtils.bodyPublisherToString(mockHttpRequest), EmbeddingRequest.class);
+                    Json.fromJson(HttpUtils.bodyPublisherToString(mockHttpRequest), EmbeddingPayload.class);
             assertEquals("model-name", embeddingRequest.modelId());
             assertEquals("project-id", embeddingRequest.projectId());
             assertEquals("space-id", embeddingRequest.spaceId());

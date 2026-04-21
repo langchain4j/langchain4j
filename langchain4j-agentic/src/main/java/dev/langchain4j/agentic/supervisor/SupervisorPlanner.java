@@ -143,7 +143,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
             if (argType != null) {
                 Object existingValue = agenticScope.readState(key);
                 // avoid overwriting a structured state with an unstructured argument generated from supervisor's LLM response
-                return !argType.isAssignableFrom(existingValue.getClass()) || value.getClass().isAssignableFrom(argType);
+                return !argType.isAssignableFrom(existingValue.getClass()) || argType.isAssignableFrom(value.getClass());
             }
         }
         return true;
@@ -212,6 +212,19 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
 
     private String agentId() {
         return outputKey + "@Supervisor";
+    }
+
+    @Override
+    public Map<String, Object> executionState() {
+        return Map.of("loopCount", loopCount);
+    }
+
+    @Override
+    public void restoreExecutionState(Map<String, Object> state) {
+        Object savedLoopCount = state.get("loopCount");
+        if (savedLoopCount instanceof Number n) {
+            this.loopCount = n.intValue();
+        }
     }
 
     @Override

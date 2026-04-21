@@ -90,10 +90,11 @@ class InternalOllamaHelper {
     static List<ToolExecutionRequest> toToolExecutionRequests(List<ToolCall> toolCalls) {
         return toolCalls.stream()
                 .map(toolCall -> ToolExecutionRequest.builder()
+                        .id(toolCall.getId())
                         .name(toolCall.getFunction().getName())
                         .arguments(toJsonWithoutIdent(toolCall.getFunction().getArguments()))
                         .build())
-                .toList();
+                .collect(Collectors.toList());
     }
 
     static String toOllamaResponseFormat(ResponseFormat responseFormat) {
@@ -175,6 +176,7 @@ class InternalOllamaHelper {
                         // numPredict and maxOutputTokens are semantically identical
                         .numPredict(requestParameters.maxOutputTokens())
                         .numCtx(requestParameters.numCtx())
+                        .numThread(requestParameters.numThread())
                         .stop(requestParameters.stopSequences())
                         .minP(requestParameters.minP())
                         .build())
@@ -235,7 +237,10 @@ class InternalOllamaHelper {
                                         .name(toolExecutionRequest.name())
                                         .arguments(fromJson(toolExecutionRequest.arguments(), typeReference))
                                         .build();
-                                return ToolCall.builder().function(functionCall).build();
+                                return ToolCall.builder()
+                                        .id(toolExecutionRequest.id())
+                                        .function(functionCall)
+                                        .build();
                             })
                             .collect(Collectors.toList()))
                     .orElse(null);
@@ -255,6 +260,10 @@ class InternalOllamaHelper {
         } else if (chatMessage instanceof AiMessage aiMessage) {
             return aiMessage.text();
         } else if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+            if (!toolExecutionResultMessage.hasSingleText()) {
+                throw new UnsupportedFeatureException("Ollama does not support non-text content in tool results. "
+                        + "Only text content is supported.");
+            }
             return toolExecutionResultMessage.text();
         } else {
             throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());

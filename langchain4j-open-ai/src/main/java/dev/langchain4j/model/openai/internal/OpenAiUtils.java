@@ -37,7 +37,6 @@ import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.video.Video;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.model.audio.AudioTranscriptionRequest;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -46,6 +45,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.openai.LogProb;
 import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.openai.OpenAiTokenUsage.InputTokensDetails;
@@ -60,6 +60,7 @@ import dev.langchain4j.model.openai.internal.chat.FunctionMessage;
 import dev.langchain4j.model.openai.internal.chat.ImageDetail;
 import dev.langchain4j.model.openai.internal.chat.ImageUrl;
 import dev.langchain4j.model.openai.internal.chat.InputAudio;
+import dev.langchain4j.model.openai.internal.chat.LogProbs;
 import dev.langchain4j.model.openai.internal.chat.Message;
 import dev.langchain4j.model.openai.internal.chat.PdfFile;
 import dev.langchain4j.model.openai.internal.chat.Tool;
@@ -89,7 +90,8 @@ public class OpenAiUtils {
         return toOpenAiMessages(messages, false, null);
     }
 
-    public static List<Message> toOpenAiMessages(List<ChatMessage> messages, boolean sendThinking, String thinkingFieldName) {
+    public static List<Message> toOpenAiMessages(
+            List<ChatMessage> messages, boolean sendThinking, String thinkingFieldName) {
         return messages.stream()
                 .map(message -> toOpenAiMessage(message, sendThinking, thinkingFieldName))
                 .collect(toList());
@@ -128,8 +130,7 @@ public class OpenAiUtils {
             }
 
             if (!aiMessage.hasToolExecutionRequests()) {
-                AssistantMessage.Builder builder = AssistantMessage.builder()
-                        .content(aiMessage.text());
+                AssistantMessage.Builder builder = AssistantMessage.builder().content(aiMessage.text());
                 if (thinking != null) {
                     builder.customParameter(thinkingFieldName, thinking);
                 }
@@ -162,9 +163,8 @@ public class OpenAiUtils {
                             .build())
                     .collect(toList());
 
-            AssistantMessage.Builder builder = AssistantMessage.builder()
-                    .content(aiMessage.text())
-                    .toolCalls(toolCalls);
+            AssistantMessage.Builder builder =
+                    AssistantMessage.builder().content(aiMessage.text()).toolCalls(toolCalls);
             if (thinking != null) {
                 builder.customParameter(thinkingFieldName, thinking);
             }
@@ -172,6 +172,11 @@ public class OpenAiUtils {
         }
 
         if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+            if (!toolExecutionResultMessage.hasSingleText()) {
+                throw new UnsupportedFeatureException(
+                        "OpenAI Chat Completions API does not support non-text content in tool results. "
+                                + "Only text content is supported.");
+            }
 
             if (toolExecutionResultMessage.id() == null) {
                 return FunctionMessage.from(toolExecutionResultMessage.toolName(), toolExecutionResultMessage.text());
@@ -419,6 +424,27 @@ public class OpenAiUtils {
                 .build();
     }
 
+    public static List<LogProb> logProbsFrom(LogProbs logProbs) {
+        if (logProbs == null || logProbs.content() == null) {
+            return null;
+        }
+        return logProbs.content().stream().map(OpenAiUtils::toLogProb).collect(toList());
+    }
+
+    private static LogProb toLogProb(dev.langchain4j.model.openai.internal.chat.LogProb internal) {
+        return LogProb.builder()
+                .token(internal.token())
+                .logprob(internal.logprob())
+                .bytes(internal.bytes())
+                .topLogprobs(
+                        internal.topLogprobs() == null
+                                ? null
+                                : internal.topLogprobs().stream()
+                                        .map(OpenAiUtils::toLogProb)
+                                        .collect(toList()))
+                .build();
+    }
+
     public static FinishReason finishReasonFrom(String openAiFinishReason) {
         if (openAiFinishReason == null) {
             return null;
@@ -541,6 +567,8 @@ public class OpenAiUtils {
                 .metadata(parameters.metadata())
                 .serviceTier(parameters.serviceTier())
                 .reasoningEffort(parameters.reasoningEffort())
+                .logprobs(parameters.logprobs())
+                .topLogprobs(parameters.topLogprobs())
                 .customParameters(parameters.customParameters());
     }
 }

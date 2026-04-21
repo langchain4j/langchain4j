@@ -9,10 +9,13 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.memory.ChatMemory;
 
@@ -382,5 +385,40 @@ public class UserMessage implements ChatMessage {
      */
     public static UserMessage userMessage(String name, List<Content> contents) {
         return from(name, contents);
+    }
+
+    public static Optional<UserMessage> findLast(Collection<ChatMessage> messages) {
+        return messages.stream()
+                .filter(UserMessage.class::isInstance)
+                .map(UserMessage.class::cast)
+                .reduce((first, second) -> second);
+    }
+
+    /**
+     * Replaces the last {@link UserMessage} in the given list with the specified replacement,
+     * if the last {@link UserMessage} differs from the replacement.
+     * Returns the original list if no replacement is needed.
+     *
+     * @param messages    the message list to search
+     * @param replacement the {@link UserMessage} to substitute in, or {@code null} for no-op
+     * @return a new list with the last {@link UserMessage} replaced, or the original list
+     * if {@code replacement} is {@code null}, matches the existing message, or no {@link UserMessage} is found
+     * @since 1.13.0
+     */
+    public static List<ChatMessage> replaceLast(List<ChatMessage> messages, UserMessage replacement) {
+        if (replacement == null) {
+            return messages;
+        }
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            if (messages.get(i) instanceof UserMessage existing) {
+                if (existing.equals(replacement)) {
+                    return messages;
+                }
+                List<ChatMessage> result = new ArrayList<>(messages);
+                result.set(i, replacement);
+                return result;
+            }
+        }
+        return messages;
     }
 }

@@ -114,7 +114,7 @@ class GoogleAiGeminiGoogleMapsTest {
             var request = requestCaptor.getValue();
             assertThat(request.tools()).isNotNull();
 
-            GeminiTool tool = request.tools();
+            GeminiTool tool = request.tools().get(0);
             assertThat(tool.googleMaps()).isNotNull();
             assertThat(tool.googleMaps().enableWidget()).isFalse();
         }
@@ -143,7 +143,7 @@ class GoogleAiGeminiGoogleMapsTest {
             var request = requestCaptor.getValue();
             assertThat(request.tools()).isNotNull();
 
-            GeminiTool tool = request.tools();
+            GeminiTool tool = request.tools().get(0);
             assertThat(tool.googleMaps()).isNotNull();
             assertThat(tool.googleMaps().enableWidget()).isTrue();
         }
@@ -199,7 +199,7 @@ class GoogleAiGeminiGoogleMapsTest {
                     null,
                     null);
 
-            var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(10, 10, 20);
+            var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(10, 10, 20, null, null);
             var response = new GeminiGenerateContentResponse(
                     "id", "model", List.of(candidate), usageMetadata, groundingMetadata);
 
@@ -277,7 +277,7 @@ class GoogleAiGeminiGoogleMapsTest {
                     null,
                     groundingMetadata); // Grounding metadata on candidate
 
-            var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(10, 10, 20);
+            var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(10, 10, 20, null, null);
             var response = new GeminiGenerateContentResponse(
                     "id", "model", List.of(candidate), usageMetadata, null); // Grounding metadata
             // null on response
@@ -314,7 +314,7 @@ class GoogleAiGeminiGoogleMapsTest {
                 GeminiFinishReason.STOP,
                 null,
                 null);
-        var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(0, 0, 0);
+        var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(0, 0, 0, null, null);
         return new GeminiGenerateContentResponse("id", "model", List.of(candidate), usageMetadata, null);
     }
 }

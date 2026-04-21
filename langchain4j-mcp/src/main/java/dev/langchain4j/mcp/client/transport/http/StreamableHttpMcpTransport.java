@@ -76,6 +76,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
         executor = getOrDefault(builder.executor, DefaultExecutorProvider.getDefaultExecutorService());
         HttpClient.Builder clientBuilder =
                 HttpClient.newBuilder().connectTimeout(timeout).version(httpVersion);
+        if (builder.followRedirects) {
+            clientBuilder.followRedirects(HttpClient.Redirect.NORMAL);
+        }
         if (builder.executor != null) {
             clientBuilder.executor(builder.executor);
         }
@@ -383,6 +386,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private SSLContext sslContext;
         private boolean forceHttpVersion1_1;
         private boolean subsidiaryChannelEnabled = false;
+        private boolean followRedirects = false;
 
         /**
          * The URL of the MCP server.
@@ -480,6 +484,18 @@ public class StreamableHttpMcpTransport implements McpTransport {
          */
         public StreamableHttpMcpTransport.Builder setHttpVersion1_1() {
             this.forceHttpVersion1_1 = true;
+            return this;
+        }
+
+        /**
+         * Enables or disables following HTTP redirects (3xx status codes).
+         * When enabled, the transport will automatically follow redirects
+         * using {@link HttpClient.Redirect#NORMAL} policy (always redirect,
+         * except from HTTPS to HTTP).
+         * Defaults to {@code false}.
+         */
+        public StreamableHttpMcpTransport.Builder followRedirects(boolean followRedirects) {
+            this.followRedirects = followRedirects;
             return this;
         }
 

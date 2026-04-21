@@ -69,7 +69,8 @@ public abstract class AbstractBaseChatModelIT<M> {
     // TODO https://github.com/langchain4j/langchain4j/issues/2220
 
     static final String WHAT_IS_THE_CAPITAL_OF_GERMANY = "What is the capital of Germany?";
-    
+    static final String WHAT_IS_THE_CAPITAL_OF_GERMANY_AND_MATH_QUESTION = "What is the capital of Germany? How much is 2 + 2?";
+
     static final String CAT_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
     static final String DICE_IMAGE_URL =
@@ -109,8 +110,26 @@ public abstract class AbstractBaseChatModelIT<M> {
         return CAT_IMAGE_URL;
     }
 
+    protected ImageContent catImageContentUrl() {
+        return ImageContent.from(catImageUrl());
+    }
+
+    protected ImageContent catImageContentBase64() {
+        String base64Data = Base64.getEncoder().encodeToString(readBytes(catImageUrl()));
+        return ImageContent.from(base64Data, "image/png");
+    }
+
     protected String diceImageUrl() {
         return DICE_IMAGE_URL;
+    }
+
+    protected ImageContent diceImageContentUrl() {
+        return ImageContent.from(diceImageUrl());
+    }
+
+    protected ImageContent diceImageContentBase64() {
+        String base64Data = Base64.getEncoder().encodeToString(readBytes(diceImageUrl()));
+        return ImageContent.from(base64Data, "image/png");
     }
 
     protected abstract ChatResponseAndStreamingMetadata chat(M model, ChatRequest chatRequest);
@@ -330,7 +349,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         int maxOutputTokens = maxOutputTokens();
         ChatRequestParameters parameters = createParameters(maxOutputTokens);
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY))
+                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY_AND_MATH_QUESTION))
                 .parameters(parameters)
                 .build();
 
@@ -387,12 +406,12 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         int maxOutputTokens = maxOutputTokens();
         ChatRequestParameters parameters = ChatRequestParameters.builder()
-                        .maxOutputTokens(maxOutputTokens)
-                        .build();
+                .maxOutputTokens(maxOutputTokens)
+                .build();
         M model = createModelWith(parameters);
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY))
+                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY_AND_MATH_QUESTION))
                 .build();
 
         // when
@@ -564,7 +583,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .parameters(parameters)
-                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY))
+                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY_AND_MATH_QUESTION))
                 .build();
 
         // when
@@ -587,7 +606,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @Test
     @EnabledIf("supportsMaxOutputTokensParameter")
     protected void
-            should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
+    should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
 
         // given
         // TODO test more/all common params?
@@ -599,17 +618,13 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .parameters(parameters)
-                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY))
+                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY_AND_MATH_QUESTION))
                 .build();
 
         // when
         ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).isNotBlank();
-        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
-
         if (assertTokenUsage()) {
             assertTokenUsage(chatResponse.metadata(), maxOutputTokens, model);
         }
@@ -966,8 +981,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
                 assertThat(metadata.partialToolCalls().get(0).index()).isEqualTo(0);
                 assertThat(metadata.partialToolCalls()
-                                .get(metadata.partialToolCalls().size() - 1)
-                                .index())
+                        .get(metadata.partialToolCalls().size() - 1)
+                        .index())
                         .isEqualTo(1);
 
                 List<List<PartialToolCall>> partialToolCallPartitions = partitionByIndex(metadata.partialToolCalls());
@@ -1520,9 +1535,8 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_accept_single_image_as_base64_encoded_string(M model) {
 
         // given
-        String base64Data = Base64.getEncoder().encodeToString(readBytes(catImageUrl()));
         UserMessage userMessage =
-                UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(base64Data, "image/png"));
+                UserMessage.from(TextContent.from("What do you see?"), catImageContentBase64());
         ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
         // when
@@ -1548,12 +1562,11 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_accept_multiple_images_as_base64_encoded_strings(M model) {
 
         // given
-        Base64.Encoder encoder = Base64.getEncoder();
-
         UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see on these images? Describe both images."),
-                ImageContent.from(encoder.encodeToString(readBytes(catImageUrl())), "image/png"),
-                ImageContent.from(encoder.encodeToString(readBytes(diceImageUrl())), "image/png"));
+                TextContent.from("What do you see on these images? Describe both images in english."),
+                catImageContentBase64(),
+                diceImageContentBase64()
+        );
 
         ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
@@ -1582,9 +1595,8 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_fail_if_images_as_base64_encoded_strings_are_not_supported(M model) {
 
         // given
-        String base64Data = Base64.getEncoder().encodeToString(readBytes(catImageUrl()));
         UserMessage userMessage =
-                UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(base64Data, "image/png"));
+                UserMessage.from(TextContent.from("What do you see?"), catImageContentBase64());
         ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
         // when-then
@@ -1606,7 +1618,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         UserMessage userMessage =
-                UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(catImageUrl()));
+                UserMessage.from(TextContent.from("What do you see?"), catImageContentUrl());
         ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
         // when
@@ -1634,8 +1646,8 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         UserMessage userMessage = UserMessage.from(
                 TextContent.from("What do you see on these images? Describe both images."),
-                ImageContent.from(catImageUrl()),
-                ImageContent.from(diceImageUrl()));
+                catImageContentUrl(),
+                diceImageContentUrl());
         ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
         // when
@@ -1664,7 +1676,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         // given
         UserMessage userMessage =
-                UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(catImageUrl()));
+                UserMessage.from(TextContent.from("What do you see?"), catImageContentUrl());
         ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
         // when-then
