@@ -110,13 +110,15 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                         && toolCall.name().equals("getWeather")
                         && !toolCall.partialArguments().isBlank()
         ), any());
-        io.verify(handler).onCompleteToolCall(argThat(toolCall -> {
-            ToolExecutionRequest request = toolCall.toolExecutionRequest();
-            return toolCall.index() == 0
-                    && request.id().equals(id)
-                    && request.name().equals("getWeather")
-                    && request.arguments().replace(" ", "").equals("{\"city\":\"Munich\"}");
-        }));
+        io.verify(handler).onCompleteToolCall(argThat(toolCall ->
+                {
+                    ToolExecutionRequest request = toolCall.toolExecutionRequest();
+                    return toolCall.index() == 0
+                            && request.id().equals(id)
+                            && request.name().equals("getWeather")
+                            && request.arguments().replace(" ", "").equals("{\"city\":\"Munich\"}");
+                }
+        ));
     }
 
     @Override
@@ -127,13 +129,15 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                         && toolCall.name().equals("getWeather")
                         && !toolCall.partialArguments().isBlank()
         ), any());
-        io.verify(handler).onCompleteToolCall(argThat(toolCall -> {
-            ToolExecutionRequest request = toolCall.toolExecutionRequest();
-            return toolCall.index() == 0
-                    && request.id().equals(id1)
-                    && request.name().equals("getWeather")
-                    && request.arguments().replace(" ", "").equals("{\"city\":\"Munich\"}");
-        }));
+        io.verify(handler).onCompleteToolCall(argThat(toolCall ->
+                {
+                    ToolExecutionRequest request = toolCall.toolExecutionRequest();
+                    return toolCall.index() == 0
+                            && request.id().equals(id1)
+                            && request.name().equals("getWeather")
+                            && request.arguments().replace(" ", "").equals("{\"city\":\"Munich\"}");
+                }
+        ));
 
         io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
                 toolCall.index() == 1
@@ -141,13 +145,15 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                         && toolCall.name().equals("getTime")
                         && !toolCall.partialArguments().isBlank()
         ), any());
-        io.verify(handler).onCompleteToolCall(argThat(toolCall -> {
-            ToolExecutionRequest request = toolCall.toolExecutionRequest();
-            return toolCall.index() == 1
-                    && request.id().equals(id2)
-                    && request.name().equals("getTime")
-                    && request.arguments().replace(" ", "").equals("{\"country\":\"France\"}");
-        }));
+        io.verify(handler).onCompleteToolCall(argThat(toolCall ->
+                {
+                    ToolExecutionRequest request = toolCall.toolExecutionRequest();
+                    return toolCall.index() == 1
+                            && request.id().equals(id2)
+                            && request.name().equals("getTime")
+                            && request.arguments().replace(" ", "").equals("{\"country\":\"France\"}");
+                }
+        ));
     }
 
     @Override
@@ -155,8 +161,12 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         return false;
     }
 
+    @Disabled("gpt-5.4-mini cannot do it properly")
+    @Override
+    protected void should_respect_JSON_response_format_with_schema(StreamingChatModel model) {
+    }
+
     @Test
-    @Disabled("Verifies that URL-based PDF inputs work against the live official Responses API; keep disabled by default.")
     void should_accept_pdf_file_content_as_public_url() {
         StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))

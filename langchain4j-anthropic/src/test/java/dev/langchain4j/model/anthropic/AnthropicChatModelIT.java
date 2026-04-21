@@ -97,6 +97,7 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(null) // caching test requires no other caching
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
@@ -131,6 +132,7 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(null) // caching test requires no other caching
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
@@ -421,10 +423,11 @@ class AnthropicChatModelIT {
     }
 
     @Test
-    void should_cache_system_message_and_tools() {
+    void should_cache_system_message_and_tools() throws InterruptedException {
 
         // given
         AnthropicChatModel model = AnthropicChatModel.builder()
+                .baseUrl(null) // caching test requires no other caching
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
@@ -460,6 +463,8 @@ class AnthropicChatModelIT {
         assertThat(createCacheTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
         assertThat(createCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
 
+        Thread.sleep(2000);
+
         // when
         ChatResponse response2 = model.chat(request);
 
@@ -474,6 +479,7 @@ class AnthropicChatModelIT {
 
         // given
         AnthropicChatModel model = AnthropicChatModel.builder()
+                .baseUrl(null) // caching test requires no other caching
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheTools(true)

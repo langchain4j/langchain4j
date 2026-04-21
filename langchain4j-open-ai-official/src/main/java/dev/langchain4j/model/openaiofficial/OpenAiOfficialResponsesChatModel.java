@@ -1,9 +1,17 @@
-package dev.langchain4j.model.openai;
+package dev.langchain4j.model.openaiofficial;
 
+import com.openai.azure.AzureOpenAIServiceVersion;
+import com.openai.client.OpenAIClient;
+import com.openai.credential.Credential;
+import com.openai.models.Reasoning;
+import com.openai.models.ReasoningEffort;
+import com.openai.models.responses.Response;
+import com.openai.models.responses.ResponseCreateParams;
 import dev.langchain4j.Experimental;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
@@ -14,31 +22,57 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.FinishReason;
 
+import java.net.Proxy;
+import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.buildAiMessage;
+import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.buildRequestParams;
+import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.buildResponseMetadata;
+import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.extractEncryptedReasoning;
+import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.extractReasoningSummary;
+import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.extractText;
+import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.extractTokenUsage;
+import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.extractToolExecutionRequests;
+import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.mapStatusToFinishReason;
+import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.validate;
+import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.setupSyncClient;
 import static java.util.Arrays.asList;
 
+/**
+ * ChatModel implementation using the official OpenAI Java client for the Responses API.
+ */
 @Experimental
-public class OpenAiResponsesChatModel implements ChatModel {
+public class OpenAiOfficialResponsesChatModel implements ChatModel {
 
-    private final OpenAiResponsesClient client;
-    private final OpenAiResponsesChatRequestParameters defaultRequestParameters;
+    private final OpenAIClient client;
+    private final OpenAiOfficialResponsesChatRequestParameters defaultRequestParameters;
     private final List<ChatModelListener> listeners;
 
-    private OpenAiResponsesChatModel(Builder builder) {
-        this.client = OpenAiResponsesClient.builder()
-                .httpClientBuilder(builder.httpClientBuilder)
-                .baseUrl(builder.baseUrl)
-                .apiKey(builder.apiKey)
-                .organizationId(builder.organizationId)
-                .logRequests(builder.logRequests)
-                .logResponses(builder.logResponses)
-                .build();
+    private OpenAiOfficialResponsesChatModel(Builder builder) {
+        this.client = builder.client != null
+                ? builder.client
+                : setupSyncClient(
+                builder.baseUrl,
+                builder.apiKey,
+                builder.credential,
+                builder.microsoftFoundryDeploymentName,
+                builder.azureOpenAIServiceVersion,
+                builder.organizationId,
+                builder.isMicrosoftFoundry,
+                builder.isGitHubModels,
+                builder.modelName,
+                builder.timeout,
+                builder.maxRetries,
+                builder.proxy,
+                builder.customHeaders);
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -48,12 +82,12 @@ public class OpenAiResponsesChatModel implements ChatModel {
             commonParameters = DefaultChatRequestParameters.EMPTY;
         }
 
-        OpenAiResponsesChatRequestParameters responsesParameters =
-                commonParameters instanceof OpenAiResponsesChatRequestParameters openAiResponsesParameters
-                        ? openAiResponsesParameters
-                        : OpenAiResponsesChatRequestParameters.EMPTY;
+        OpenAiOfficialResponsesChatRequestParameters responsesParameters =
+                commonParameters instanceof OpenAiOfficialResponsesChatRequestParameters p
+                        ? p
+                        : OpenAiOfficialResponsesChatRequestParameters.EMPTY;
 
-        this.defaultRequestParameters = OpenAiResponsesChatRequestParameters.builder()
+        this.defaultRequestParameters = OpenAiOfficialResponsesChatRequestParameters.builder()
 
                 .modelName(ensureNotNull(getOrDefault(builder.modelName, commonParameters.modelName()), "modelName"))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
@@ -91,23 +125,33 @@ public class OpenAiResponsesChatModel implements ChatModel {
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
         validate(chatRequest.parameters());
-        OpenAiResponsesChatRequestParameters parameters =
-                (OpenAiResponsesChatRequestParameters) chatRequest.parameters();
-        return client.chat(chatRequest, parameters);
-    }
+        OpenAiOfficialResponsesChatRequestParameters parameters =
+                (OpenAiOfficialResponsesChatRequestParameters) chatRequest.parameters();
 
-    private static void validate(final ChatRequestParameters parameters) {
-        if (parameters.topK() != null) {
-            throw new UnsupportedFeatureException("'topK' parameter is not supported by OpenAI Responses API");
-        }
-        if (parameters.frequencyPenalty() != null) {
-            throw new UnsupportedFeatureException("'frequencyPenalty' parameter is not supported by OpenAI Responses API");
-        }
-        if (parameters.presencePenalty() != null) {
-            throw new UnsupportedFeatureException("'presencePenalty' parameter is not supported by OpenAI Responses API");
-        }
-        if (parameters.stopSequences() != null && !parameters.stopSequences().isEmpty()) {
-            throw new UnsupportedFeatureException("'stopSequences' parameter is not supported by OpenAI Responses API");
+        try {
+            ResponseCreateParams params = buildRequestParams(chatRequest, parameters);
+            Response response = client.responses().create(params);
+
+            String text = extractText(response);
+            String thinking = extractReasoningSummary(response);
+            String encryptedReasoning = extractEncryptedReasoning(response);
+            List<ToolExecutionRequest> toolExecutionRequests = extractToolExecutionRequests(response);
+
+            AiMessage aiMessage = buildAiMessage(text, thinking, toolExecutionRequests, encryptedReasoning);
+
+            String finishReason = response.status()
+                    .map(status -> mapStatusToFinishReason(status.asString(), !toolExecutionRequests.isEmpty()))
+                    .orElse(null);
+
+            OpenAiOfficialResponsesChatResponseMetadata metadata = buildResponseMetadata(
+                    response.id(), parameters.modelName(), response, finishReason, extractTokenUsage(response));
+
+            return ChatResponse.builder()
+                    .aiMessage(aiMessage)
+                    .metadata(metadata)
+                    .build();
+        } catch (Exception e) {
+            throw ExceptionMapper.DEFAULT.mapException(e);
         }
     }
 
@@ -133,10 +177,20 @@ public class OpenAiResponsesChatModel implements ChatModel {
 
     public static class Builder {
 
-        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
+        private Credential credential;
+        private String microsoftFoundryDeploymentName;
+        private AzureOpenAIServiceVersion azureOpenAIServiceVersion;
         private String organizationId;
+        private boolean isMicrosoftFoundry;
+        private boolean isGitHubModels;
+        private Map<String, String> customHeaders;
+        private Duration timeout;
+        private Integer maxRetries;
+        private Proxy proxy;
+
+        private OpenAIClient client;
         private String modelName;
         private Double temperature;
         private Double topP;
@@ -151,24 +205,17 @@ public class OpenAiResponsesChatModel implements ChatModel {
         private String safetyIdentifier;
         private String promptCacheKey;
         private String promptCacheRetention;
-        private String reasoningEffort;
-        private String reasoningSummary;
+        private ReasoningEffort reasoningEffort;
+        private Reasoning.Summary reasoningSummary;
         private String textVerbosity;
         private Boolean store;
+        private List<ChatModelListener> listeners;
         private Boolean strictTools;
         private Boolean strictJsonSchema;
-        private ResponseFormat responseFormat;
         private List<ToolSpecification> toolSpecifications;
         private ToolChoice toolChoice;
-        private Boolean logRequests;
-        private Boolean logResponses;
-        private List<ChatModelListener> listeners;
+        private ResponseFormat responseFormat;
         private ChatRequestParameters defaultRequestParameters;
-
-        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
-            this.httpClientBuilder = httpClientBuilder;
-            return this;
-        }
 
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -180,8 +227,58 @@ public class OpenAiResponsesChatModel implements ChatModel {
             return this;
         }
 
+        public Builder credential(Credential credential) {
+            this.credential = credential;
+            return this;
+        }
+
+        public Builder microsoftFoundryDeploymentName(String microsoftFoundryDeploymentName) {
+            this.microsoftFoundryDeploymentName = microsoftFoundryDeploymentName;
+            return this;
+        }
+
+        public Builder azureOpenAIServiceVersion(AzureOpenAIServiceVersion azureOpenAIServiceVersion) {
+            this.azureOpenAIServiceVersion = azureOpenAIServiceVersion;
+            return this;
+        }
+
         public Builder organizationId(String organizationId) {
             this.organizationId = organizationId;
+            return this;
+        }
+
+        public Builder isMicrosoftFoundry(boolean isMicrosoftFoundry) {
+            this.isMicrosoftFoundry = isMicrosoftFoundry;
+            return this;
+        }
+
+        public Builder isGitHubModels(boolean isGitHubModels) {
+            this.isGitHubModels = isGitHubModels;
+            return this;
+        }
+
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
+            return this;
+        }
+
+        public Builder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public Builder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public Builder proxy(Proxy proxy) {
+            this.proxy = proxy;
+            return this;
+        }
+
+        public Builder client(OpenAIClient client) {
+            this.client = client;
             return this;
         }
 
@@ -235,6 +332,10 @@ public class OpenAiResponsesChatModel implements ChatModel {
             return this;
         }
 
+        /**
+         * When Enterprise Open AI subscription is used, service tier = "priority" puts requests into a
+         * faster pool.
+         */
         public Builder serviceTier(String serviceTier) {
             this.serviceTier = serviceTier;
             return this;
@@ -255,12 +356,12 @@ public class OpenAiResponsesChatModel implements ChatModel {
             return this;
         }
 
-        public Builder reasoningEffort(String reasoningEffort) {
+        public Builder reasoningEffort(ReasoningEffort reasoningEffort) {
             this.reasoningEffort = reasoningEffort;
             return this;
         }
 
-        public Builder reasoningSummary(String reasoningSummary) {
+        public Builder reasoningSummary(Reasoning.Summary reasoningSummary) {
             this.reasoningSummary = reasoningSummary;
             return this;
         }
@@ -275,6 +376,15 @@ public class OpenAiResponsesChatModel implements ChatModel {
             return this;
         }
 
+        public Builder listeners(List<ChatModelListener> listeners) {
+            this.listeners = listeners;
+            return this;
+        }
+
+        public Builder listeners(ChatModelListener... listeners) {
+            return this.listeners(asList(listeners));
+        }
+
         public Builder strictTools(Boolean strictTools) {
             this.strictTools = strictTools;
             return this;
@@ -282,11 +392,6 @@ public class OpenAiResponsesChatModel implements ChatModel {
 
         public Builder strictJsonSchema(Boolean strictJsonSchema) {
             this.strictJsonSchema = strictJsonSchema;
-            return this;
-        }
-
-        public Builder responseFormat(ResponseFormat responseFormat) {
-            this.responseFormat = responseFormat;
             return this;
         }
 
@@ -304,32 +409,18 @@ public class OpenAiResponsesChatModel implements ChatModel {
             return this;
         }
 
-        public Builder logRequests(Boolean logRequests) {
-            this.logRequests = logRequests;
+        public Builder responseFormat(ResponseFormat responseFormat) {
+            this.responseFormat = responseFormat;
             return this;
         }
 
-        public Builder logResponses(Boolean logResponses) {
-            this.logResponses = logResponses;
+        public Builder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
+            this.defaultRequestParameters = defaultRequestParameters;
             return this;
         }
 
-        public Builder listeners(List<ChatModelListener> listeners) {
-            this.listeners = listeners;
-            return this;
-        }
-
-        public Builder listeners(ChatModelListener... listeners) {
-            return listeners(asList(listeners));
-        }
-
-        public Builder defaultRequestParameters(ChatRequestParameters parameters) {
-            this.defaultRequestParameters = parameters;
-            return this;
-        }
-
-        public OpenAiResponsesChatModel build() {
-            return new OpenAiResponsesChatModel(this);
+        public OpenAiOfficialResponsesChatModel build() {
+            return new OpenAiOfficialResponsesChatModel(this);
         }
     }
 }

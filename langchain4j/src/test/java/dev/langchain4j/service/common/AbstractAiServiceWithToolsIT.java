@@ -1028,7 +1028,7 @@ public abstract class AbstractAiServiceWithToolsIT {
                 .tools(addTool, multiplyTool)
                 .build();
 
-        var text = adaptPrompt1("First add 2 and 3, then multiply the result by 4");
+        var text = adaptPrompt1("First add 2 and 3 by calling 'add' tool, then multiply the result by 4 by calling 'multiply' tool");
 
         // when
         var response = assistant.chat(text);
@@ -1165,7 +1165,7 @@ public abstract class AbstractAiServiceWithToolsIT {
         class Tools {
 
             @Tool
-            String modify() {
+            String modify(int ignored) {
                 return "";
             }
         }
@@ -1179,12 +1179,12 @@ public abstract class AbstractAiServiceWithToolsIT {
                 .tools(tools)
                 .build();
 
-        String text = "Call 'modify' tool";
+        String text = "Call tool 'modify' for argument '7'";
 
         // when-then
         assertThatNoException().isThrownBy(() -> assistant.chat(text));
 
-        verify(tools, atLeastOnce()).modify();
+        verify(tools, atLeastOnce()).modify(7);
 
         verify(model).chat(argThat((ChatRequest request) ->
                 request.messages().size() == 3
