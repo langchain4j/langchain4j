@@ -29,6 +29,7 @@ class Options {
     private Integer seed;
     private Integer numPredict;
     private Integer numCtx;
+    private Integer numThread;
     private List<String> stop;
     private Double minP;
 
@@ -46,6 +47,7 @@ class Options {
         this.seed = builder.seed;
         this.numPredict = builder.numPredict;
         this.numCtx = builder.numCtx;
+        this.numThread = builder.numThread;
         this.stop = builder.stop;
         this.minP = builder.minP;
     }
@@ -138,6 +140,14 @@ class Options {
         this.numCtx = numCtx;
     }
 
+    public Integer getNumThread() {
+        return numThread;
+    }
+
+    public void setNumThread(Integer numThread) {
+        this.numThread = numThread;
+    }
+
     public List<String> getStop() {
         return stop;
     }
@@ -171,6 +181,7 @@ class Options {
         private Integer seed;
         private Integer numPredict;
         private Integer numCtx;
+        private Integer numThread;
         private List<String> stop;
         private Double minP;
 
@@ -226,6 +237,11 @@ class Options {
 
         Builder numCtx(Integer numCtx) {
             this.numCtx = numCtx;
+            return this;
+        }
+
+        Builder numThread(Integer numThread) {
+            this.numThread = numThread;
             return this;
         }
 

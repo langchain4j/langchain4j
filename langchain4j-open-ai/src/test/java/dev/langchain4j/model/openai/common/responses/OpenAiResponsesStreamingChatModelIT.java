@@ -3,7 +3,10 @@ package dev.langchain4j.model.openai.common.responses;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.PdfFileContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -233,6 +236,32 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
         assertThat(metadata.id()).isNotBlank();
         assertThat(metadata.modelName()).isNotBlank();
         assertThat(metadata.finishReason()).isNotNull();
+    }
+
+    @Test
+    void should_accept_pdf_file_content_as_public_url() {
+
+        StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_5_4_MINI)
+                .logRequests(false) // PDF is huge in logs
+                .logResponses(true)
+                .build();
+
+        UserMessage userMessage = UserMessage.builder()
+                .addContent(TextContent.from(
+                        "What city appears in the attached PDF? Return only the city name."))
+                .addContent(PdfFileContent.from(PdfFile.builder()
+                        .url("https://orimi.com/pdf-test.pdf")
+                        .build()))
+                .build();
+
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(List.of(userMessage), handler);
+
+        assertThat(handler.get().aiMessage().text()).containsIgnoringCase("Whitehorse");
     }
 
     @Test
