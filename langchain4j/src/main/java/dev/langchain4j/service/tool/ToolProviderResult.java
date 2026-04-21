@@ -5,7 +5,6 @@ import static dev.langchain4j.internal.Utils.copy;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.service.IllegalConfigurationException;
-
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -16,22 +15,29 @@ public class ToolProviderResult {
     private final Map<ToolSpecification, ToolExecutor> tools;
     private final Map<String, ToolSpecification> toolsByName;
     private final Set<String> immediateReturnToolNames;
+    private final Set<String> immediateIfLastReturnToolNames;
 
     public ToolProviderResult(Builder builder) {
-        this(builder.tools, builder.toolsByName, builder.immediateReturnToolNames);
+        this(
+                builder.tools,
+                builder.toolsByName,
+                builder.immediateReturnToolNames,
+                builder.immediateIfLastReturnToolNames);
     }
 
     public ToolProviderResult(Map<ToolSpecification, ToolExecutor> tools) {
-        this(tools, indexTools(tools), Set.of());
+        this(tools, indexTools(tools), Set.of(), Set.of());
     }
 
     private ToolProviderResult(
             Map<ToolSpecification, ToolExecutor> tools,
             Map<String, ToolSpecification> toolsByName,
-            Set<String> immediateReturnToolNames) {
+            Set<String> immediateReturnToolNames,
+            Set<String> immediateIfLastReturnToolNames) {
         this.tools = copy(tools);
         this.toolsByName = copy(toolsByName);
         this.immediateReturnToolNames = copy(immediateReturnToolNames);
+        this.immediateIfLastReturnToolNames = copy(immediateIfLastReturnToolNames);
     }
 
     private static Map<String, ToolSpecification> indexTools(Map<ToolSpecification, ToolExecutor> tools) {
@@ -61,10 +67,15 @@ public class ToolProviderResult {
         return immediateReturnToolNames;
     }
 
+    public Set<String> immediateIfLastReturnToolNames() {
+        return immediateIfLastReturnToolNames;
+    }
+
     public Builder toBuilder() {
         return builder()
                 .addAll(tools)
-                .immediateReturnToolNames(immediateReturnToolNames);
+                .immediateReturnToolNames(immediateReturnToolNames)
+                .immediateIfLastReturnToolNames(immediateIfLastReturnToolNames);
     }
 
     public static Builder builder() {
@@ -76,6 +87,7 @@ public class ToolProviderResult {
         private final Map<ToolSpecification, ToolExecutor> tools = new HashMap<>();
         private final Map<String, ToolSpecification> toolsByName = new HashMap<>();
         private final Set<String> immediateReturnToolNames = new HashSet<>();
+        private final Set<String> immediateIfLastReturnToolNames = new HashSet<>();
 
         public Builder add(ToolSpecification tool, ToolExecutor executor) {
             return add(tool, executor, ReturnBehavior.TO_LLM);
@@ -88,6 +100,8 @@ public class ToolProviderResult {
             }
             if (returnBehavior == ReturnBehavior.IMMEDIATE) {
                 immediateReturnToolNames.add(tool.name());
+            } else if (returnBehavior == ReturnBehavior.IMMEDIATE_IF_LAST) {
+                immediateIfLastReturnToolNames.add(tool.name());
             }
             return this;
         }
@@ -100,6 +114,13 @@ public class ToolProviderResult {
         public Builder immediateReturnToolNames(Set<String> immediateReturnToolNames) {
             if (immediateReturnToolNames != null) {
                 this.immediateReturnToolNames.addAll(immediateReturnToolNames);
+            }
+            return this;
+        }
+
+        public Builder immediateIfLastReturnToolNames(Set<String> immediateIfLastReturnToolNames) {
+            if (immediateIfLastReturnToolNames != null) {
+                this.immediateIfLastReturnToolNames.addAll(immediateIfLastReturnToolNames);
             }
             return this;
         }

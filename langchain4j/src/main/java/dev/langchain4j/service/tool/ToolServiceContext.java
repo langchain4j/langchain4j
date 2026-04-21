@@ -1,17 +1,15 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.internal.Utils.copy;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
-
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.service.tool.search.ToolSearchStrategy;
-
-import static dev.langchain4j.internal.Utils.copy;
 
 @Internal
 public class ToolServiceContext {
@@ -20,6 +18,7 @@ public class ToolServiceContext {
     private final List<ToolSpecification> availableTools;
     private final Map<String, ToolExecutor> toolExecutors;
     private final Set<String> immediateReturnTools;
+    private final Set<String> immediateIfLastReturnTools;
     private final List<ToolProvider> dynamicToolProviders;
 
     public ToolServiceContext(Builder builder) {
@@ -27,6 +26,7 @@ public class ToolServiceContext {
         this.availableTools = copy(builder.availableTools);
         this.toolExecutors = copy(builder.toolExecutors);
         this.immediateReturnTools = copy(builder.immediateReturnTools);
+        this.immediateIfLastReturnTools = copy(builder.immediateIfLastReturnTools);
         this.dynamicToolProviders = copy(builder.dynamicToolProviders);
     }
 
@@ -39,6 +39,7 @@ public class ToolServiceContext {
         this.availableTools = copy(toolSpecifications);
         this.toolExecutors = copy(toolExecutors);
         this.immediateReturnTools = Set.of();
+        this.immediateIfLastReturnTools = Set.of();
         this.dynamicToolProviders = List.of();
     }
 
@@ -82,6 +83,10 @@ public class ToolServiceContext {
         return immediateReturnTools;
     }
 
+    public Set<String> immediateIfLastReturnTools() {
+        return immediateIfLastReturnTools;
+    }
+
     /**
      * Returns dynamic tool providers that are re-evaluated before each LLM call.
      *
@@ -97,6 +102,7 @@ public class ToolServiceContext {
                 .availableTools(availableTools)
                 .toolExecutors(toolExecutors)
                 .immediateReturnTools(immediateReturnTools)
+                .immediateIfLastReturnTools(immediateIfLastReturnTools)
                 .dynamicToolProviders(dynamicToolProviders);
     }
 
@@ -108,23 +114,30 @@ public class ToolServiceContext {
                 && Objects.equals(availableTools, that.availableTools)
                 && Objects.equals(toolExecutors, that.toolExecutors)
                 && Objects.equals(immediateReturnTools, that.immediateReturnTools)
+                && Objects.equals(immediateIfLastReturnTools, that.immediateIfLastReturnTools)
                 && Objects.equals(dynamicToolProviders, that.dynamicToolProviders);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(effectiveTools, availableTools, toolExecutors, immediateReturnTools, dynamicToolProviders);
+        return Objects.hash(
+                effectiveTools,
+                availableTools,
+                toolExecutors,
+                immediateReturnTools,
+                immediateIfLastReturnTools,
+                dynamicToolProviders);
     }
 
     @Override
     public String toString() {
-        return "ToolServiceContext{" +
-                "effectiveTools=" + effectiveTools +
-                ", availableTools=" + availableTools +
-                ", toolExecutors=" + toolExecutors +
-                ", immediateReturnTools=" + immediateReturnTools +
-                ", dynamicToolProviders=" + dynamicToolProviders +
-                '}';
+        return "ToolServiceContext{" + "effectiveTools="
+                + effectiveTools + ", availableTools="
+                + availableTools + ", toolExecutors="
+                + toolExecutors + ", immediateReturnTools="
+                + immediateReturnTools + ", immediateIfLastReturnTools="
+                + immediateIfLastReturnTools + ", dynamicToolProviders="
+                + dynamicToolProviders + '}';
     }
 
     public static Builder builder() {
@@ -137,6 +150,7 @@ public class ToolServiceContext {
         private List<ToolSpecification> availableTools;
         private Map<String, ToolExecutor> toolExecutors;
         private Set<String> immediateReturnTools;
+        private Set<String> immediateIfLastReturnTools;
         private List<ToolProvider> dynamicToolProviders;
 
         /**
@@ -181,6 +195,11 @@ public class ToolServiceContext {
 
         public Builder immediateReturnTools(Set<String> immediateReturnTools) {
             this.immediateReturnTools = immediateReturnTools;
+            return this;
+        }
+
+        public Builder immediateIfLastReturnTools(Set<String> immediateIfLastReturnTools) {
+            this.immediateIfLastReturnTools = immediateIfLastReturnTools;
             return this;
         }
 

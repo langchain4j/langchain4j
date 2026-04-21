@@ -1,9 +1,9 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Represents a tool managed by an AI Service, combining:
@@ -21,11 +21,13 @@ public class AiServiceTool {
     private final ToolSpecification toolSpecification;
     private final ToolExecutor toolExecutor;
     private final boolean immediateReturn;
+    private final boolean immediateIfLastReturn;
 
     private AiServiceTool(Builder builder) {
         this.toolSpecification = ensureNotNull(builder.toolSpecification, "toolSpecification");
         this.toolExecutor = ensureNotNull(builder.toolExecutor, "toolExecutor");
         this.immediateReturn = builder.immediateReturn;
+        this.immediateIfLastReturn = builder.immediateIfLastReturn;
     }
 
     public ToolSpecification toolSpecification() {
@@ -40,6 +42,10 @@ public class AiServiceTool {
         return immediateReturn;
     }
 
+    public boolean immediateIfLastReturn() {
+        return immediateIfLastReturn;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -49,6 +55,7 @@ public class AiServiceTool {
         private ToolSpecification toolSpecification;
         private ToolExecutor toolExecutor;
         private boolean immediateReturn;
+        private boolean immediateIfLastReturn;
 
         public Builder toolSpecification(ToolSpecification toolSpecification) {
             this.toolSpecification = toolSpecification;
@@ -62,6 +69,11 @@ public class AiServiceTool {
 
         public Builder immediateReturn(boolean immediateReturn) {
             this.immediateReturn = immediateReturn;
+            return this;
+        }
+
+        public Builder immediateIfLastReturn(boolean immediateIfLastReturn) {
+            this.immediateIfLastReturn = immediateIfLastReturn;
             return this;
         }
 
