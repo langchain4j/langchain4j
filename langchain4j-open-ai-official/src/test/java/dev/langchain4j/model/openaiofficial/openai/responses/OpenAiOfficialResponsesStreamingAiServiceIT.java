@@ -1,4 +1,4 @@
-package dev.langchain4j.model.openaiofficial.openai;
+package dev.langchain4j.model.openaiofficial.openai.responses;
 
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;

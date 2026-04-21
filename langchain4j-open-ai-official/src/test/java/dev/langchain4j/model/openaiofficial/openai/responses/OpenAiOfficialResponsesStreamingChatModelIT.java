@@ -1,4 +1,4 @@
-package dev.langchain4j.model.openaiofficial.openai;
+package dev.langchain4j.model.openaiofficial.openai.responses;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -301,5 +301,11 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
     @Disabled("gpt-5.4-mini cannot do it properly")
     @Override
-    protected void should_respect_JsonRawSchema_responseFormat(StreamingChatModel model) {}
+    protected void should_respect_JSON_response_format_with_schema(StreamingChatModel model) {
+    }
+
+    @Disabled("gpt-5.4-mini cannot do it properly")
+    @Override
+    protected void should_respect_JsonRawSchema_responseFormat(StreamingChatModel model) {
+    }
 }

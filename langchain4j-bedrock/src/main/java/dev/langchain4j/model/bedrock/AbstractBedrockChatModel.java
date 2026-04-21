@@ -68,6 +68,9 @@ import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.core.document.Document;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockruntime.model.AnyToolChoice;
+import software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock;
+import software.amazon.awssdk.services.bedrockruntime.model.CachePointType;
+import software.amazon.awssdk.services.bedrockruntime.model.CacheTTL;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ConversationRole;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
@@ -87,7 +90,6 @@ import software.amazon.awssdk.services.bedrockruntime.model.Message;
 import software.amazon.awssdk.services.bedrockruntime.model.OutputConfig;
 import software.amazon.awssdk.services.bedrockruntime.model.OutputFormat;
 import software.amazon.awssdk.services.bedrockruntime.model.OutputFormatStructure;
-import software.amazon.awssdk.services.bedrockruntime.model.OutputFormatType;
 import software.amazon.awssdk.services.bedrockruntime.model.ReasoningContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ReasoningTextBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ServiceTier;
@@ -115,13 +117,24 @@ abstract class AbstractBedrockChatModel {
     private static final int MAX_CACHE_POINTS_PER_REQUEST = 4;
 
     /**
-     * Reusable cache point block - AWS SDK model objects are immutable.
+     * Default cache point block with no TTL (5-minute default).
      */
-    private static final SystemContentBlock CACHE_POINT_BLOCK = SystemContentBlock.builder()
-            .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
-                    .type(software.amazon.awssdk.services.bedrockruntime.model.CachePointType.DEFAULT)
-                    .build())
-            .build();
+    private static final CachePointBlock DEFAULT_CACHE_POINT =
+            CachePointBlock.builder().type(CachePointType.DEFAULT).build();
+
+    /**
+     * Creates a CachePointBlock with the specified TTL.
+     * If cacheTtl is null, returns the default cache point (5-minute TTL).
+     */
+    private static CachePointBlock buildCachePoint(CacheTTL cacheTtl) {
+        if (cacheTtl == null) {
+            return DEFAULT_CACHE_POINT;
+        }
+        return CachePointBlock.builder()
+                .type(CachePointType.DEFAULT)
+                .ttl(cacheTtl)
+                .build();
+    }
 
     protected final Region region;
     protected final Duration timeout;
@@ -163,17 +176,22 @@ abstract class AbstractBedrockChatModel {
                 .toolChoice(commonParameters.toolChoice())
                 // Bedrock-specific parameters
                 .additionalModelRequestFields(bedrockParameters.additionalModelRequestFields())
-                .promptCaching(bedrockParameters.cachePointPlacement())
+                .promptCaching(bedrockParameters.cachePointPlacement(), bedrockParameters.cacheTtl())
                 .guardrailConfiguration(bedrockParameters.bedrockGuardrailConfiguration())
                 .build();
     }
 
     protected List<SystemContentBlock> extractSystemMessages(List<ChatMessage> messages) {
-        return extractSystemMessages(messages, null);
+        return extractSystemMessages(messages, null, null);
     }
 
     protected List<SystemContentBlock> extractSystemMessages(
             List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement) {
+        return extractSystemMessages(messages, cachePointPlacement, null);
+    }
+
+    protected List<SystemContentBlock> extractSystemMessages(
+            List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement, CacheTTL cacheTtl) {
         if (messages == null) {
             return new ArrayList<>();
         }
@@ -197,7 +215,9 @@ abstract class AbstractBedrockChatModel {
 
                         // Add cache point AFTER this content block if marked
                         if (textContent.hasCachePoint()) {
-                            systemBlocks.add(CACHE_POINT_BLOCK);
+                            systemBlocks.add(SystemContentBlock.builder()
+                                    .cachePoint(buildCachePoint(cacheTtl))
+                                    .build());
                         }
                     } else {
                         // Fail fast for unknown content types to prevent silent data loss
@@ -221,7 +241,9 @@ abstract class AbstractBedrockChatModel {
         // 3. The LAST system message was a core SystemMessage (not BedrockSystemMessage)
         if (cachePointPlacement == BedrockCachePointPlacement.AFTER_SYSTEM && !systemBlocks.isEmpty()) {
             if (lastWasCoreSystemMessage) {
-                systemBlocks.add(CACHE_POINT_BLOCK);
+                systemBlocks.add(SystemContentBlock.builder()
+                        .cachePoint(buildCachePoint(cacheTtl))
+                        .build());
             } else {
                 log.warn("BedrockCachePointPlacement.AFTER_SYSTEM is configured but ignored because "
                         + "the last system message is a BedrockSystemMessage with granular cache points. "
@@ -234,11 +256,16 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected List<Message> extractRegularMessages(List<ChatMessage> messages) {
-        return extractRegularMessages(messages, null);
+        return extractRegularMessages(messages, null, null);
     }
 
     protected List<Message> extractRegularMessages(
             List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement) {
+        return extractRegularMessages(messages, cachePointPlacement, null);
+    }
+
+    protected List<Message> extractRegularMessages(
+            List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement, CacheTTL cacheTtl) {
         if (messages == null) {
             return new ArrayList<>();
         }
@@ -284,9 +311,7 @@ abstract class AbstractBedrockChatModel {
                 if (shouldAddCachePoint) {
                     List<ContentBlock> contentWithCachePoint = new ArrayList<>(bedrockMessage.content());
                     contentWithCachePoint.add(ContentBlock.builder()
-                            .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
-                                    .type(software.amazon.awssdk.services.bedrockruntime.model.CachePointType.DEFAULT)
-                                    .build())
+                            .cachePoint(buildCachePoint(cacheTtl))
                             .build());
 
                     bedrockMessage = Message.builder()
@@ -343,7 +368,8 @@ abstract class AbstractBedrockChatModel {
             } else if (content instanceof ImageContent imageContent) {
                 SdkBytes bytes = fromByteArray(
                         nonNull(imageContent.image().base64Data())
-                                ? Base64.getDecoder().decode(imageContent.image().base64Data())
+                                ? Base64.getDecoder()
+                                        .decode(imageContent.image().base64Data())
                                 : readBytes(String.valueOf(imageContent.image().url())));
                 String imgFormat = extractAndValidateFormat(imageContent.image());
                 contentBlocks.add(ToolResultContentBlock.builder()
@@ -353,9 +379,8 @@ abstract class AbstractBedrockChatModel {
                                 .build())
                         .build());
             } else {
-                throw new UnsupportedFeatureException(
-                        "Bedrock does not support content type '" + content.type()
-                                + "' in tool results. Only text and image content are supported.");
+                throw new UnsupportedFeatureException("Bedrock does not support content type '" + content.type()
+                        + "' in tool results. Only text and image content are supported.");
             }
         }
         return ContentBlock.builder()
@@ -469,11 +494,16 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected ToolConfiguration extractToolConfigurationFrom(ChatRequest chatRequest) {
-        return extractToolConfigurationFrom(chatRequest, null);
+        return extractToolConfigurationFrom(chatRequest, null, null);
     }
 
     protected ToolConfiguration extractToolConfigurationFrom(
             ChatRequest chatRequest, BedrockCachePointPlacement cachePointPlacement) {
+        return extractToolConfigurationFrom(chatRequest, cachePointPlacement, null);
+    }
+
+    protected ToolConfiguration extractToolConfigurationFrom(
+            ChatRequest chatRequest, BedrockCachePointPlacement cachePointPlacement, CacheTTL cacheTtl) {
         List<ToolSpecification> toolSpecifications = chatRequest.toolSpecifications();
         ChatRequestParameters parameters = chatRequest.parameters();
 
@@ -499,11 +529,8 @@ abstract class AbstractBedrockChatModel {
             allTools.addAll(tools);
 
             if (cachePointPlacement == BedrockCachePointPlacement.AFTER_TOOLS) {
-                allTools.add(Tool.builder()
-                        .cachePoint(software.amazon.awssdk.services.bedrockruntime.model.CachePointBlock.builder()
-                                .type(software.amazon.awssdk.services.bedrockruntime.model.CachePointType.DEFAULT)
-                                .build())
-                        .build());
+                allTools.add(
+                        Tool.builder().cachePoint(buildCachePoint(cacheTtl)).build());
             }
         }
 
@@ -1024,8 +1051,7 @@ abstract class AbstractBedrockChatModel {
         if (jsonSchema.rootElement() instanceof JsonRawSchema rawSchema) {
             jsonSchemaString = rawSchema.schema();
         } else {
-            Map<String, Object> jsonSchemaMap =
-                    toMap(jsonSchema.rootElement(), true, true, "string");
+            Map<String, Object> jsonSchemaMap = toMap(jsonSchema.rootElement(), true, true, "string");
             jsonSchemaString = Json.toJson(jsonSchemaMap);
         }
 
