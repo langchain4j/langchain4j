@@ -169,18 +169,16 @@ class InternalOpenAiOfficialHelper {
                                 .inputAudio())
                         .build()));
             } else if (content instanceof PdfFileContent pdfFileContent) {
-                String fileData;
                 if (pdfFileContent.pdfFile().url() != null) {
-                    // URL-based PDF inputs are supported by the Responses API, but not by Chat Completions.
                     throw new UnsupportedFeatureException(
                             "OpenAI Official Chat Completions API does not support URL-based PDF inputs. "
                                     + "Provide PDF content as base64 data instead.");
-                } else {
-                    fileData = String.format(
-                            "data:%s;base64,%s",
-                            pdfFileContent.pdfFile().mimeType(),
-                            pdfFileContent.pdfFile().base64Data());
                 }
+
+                String fileData = String.format(
+                        "data:%s;base64,%s",
+                        pdfFileContent.pdfFile().mimeType(),
+                        pdfFileContent.pdfFile().base64Data());
 
                 parts.add(ChatCompletionContentPart.ofFile(ChatCompletionContentPart.File.builder()
                         .file(ChatCompletionContentPart.File.FileObject.builder()
