@@ -246,7 +246,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_5_4_MINI)
-                .logRequests(false)
+                .logRequests(false) // PDF is huge in logs
                 .logResponses(true)
                 .build();
 
