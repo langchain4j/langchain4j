@@ -32,6 +32,7 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
 
         OpenAiOfficialResponsesStreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
                 .modelName("gpt-5.4-mini")
+                .apiKey("banana")
                 .serverTools(webSearch)
                 .build();
 
@@ -47,6 +48,7 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
 
         OpenAiOfficialResponsesChatModel model = OpenAiOfficialResponsesChatModel.builder()
                 .modelName("gpt-5.4-mini")
+                .apiKey("banana")
                 .serverTools(toolSearch)
                 .build();
 
