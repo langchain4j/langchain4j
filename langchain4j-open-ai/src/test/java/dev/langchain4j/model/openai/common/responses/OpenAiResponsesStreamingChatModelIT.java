@@ -240,6 +240,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Test
     void should_accept_pdf_file_content_as_public_url() {
+
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
@@ -258,7 +259,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .build();
 
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat(ChatRequest.builder().messages(userMessage).build(), handler);
+        model.chat(List.of(userMessage), handler);
 
         assertThat(handler.get().aiMessage().text()).containsIgnoringCase("Whitehorse");
     }

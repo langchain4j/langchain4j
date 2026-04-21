@@ -1,4 +1,4 @@
-package dev.langchain4j.model.openaiofficial.openai;
+package dev.langchain4j.model.openaiofficial.openai.responses;
 
 import com.openai.models.ChatModel;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -168,6 +168,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
     @Test
     void should_accept_pdf_file_content_as_public_url() {
+
         StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
@@ -183,7 +184,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                 .build();
 
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat(ChatRequest.builder().messages(userMessage).build(), handler);
+        model.chat(List.of(userMessage), handler);
 
         assertThat(handler.get().aiMessage().text()).containsIgnoringCase("Whitehorse");
     }
