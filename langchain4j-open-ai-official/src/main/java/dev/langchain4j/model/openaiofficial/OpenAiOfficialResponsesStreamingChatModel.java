@@ -29,6 +29,7 @@ import com.openai.models.responses.ResponseInProgressEvent;
 import com.openai.models.responses.ResponseIncludable;
 import com.openai.models.responses.ResponseIncompleteEvent;
 import com.openai.models.responses.ResponseInputContent;
+import com.openai.models.responses.ResponseInputFile;
 import com.openai.models.responses.ResponseInputImage;
 import com.openai.models.responses.ResponseInputImageContent;
 import com.openai.models.responses.ResponseInputItem;
@@ -52,6 +53,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -594,6 +596,18 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                         .imageUrl(imageUrl)
                         .detail(toResponsesUserImageDetail(imageContent.detailLevel()))
                         .build()));
+            } else if (content instanceof PdfFileContent pdfFileContent) {
+                ResponseInputFile.Builder pdfInput = ResponseInputFile.builder();
+                if (pdfFileContent.pdfFile().url() != null) {
+                    pdfInput.fileUrl(pdfFileContent.pdfFile().url().toString());
+                } else if (pdfFileContent.pdfFile().base64Data() != null) {
+                    pdfInput.filename("pdf_file");
+                    pdfInput.fileData("data:" + pdfFileContent.pdfFile().mimeType() + ";base64,"
+                            + pdfFileContent.pdfFile().base64Data());
+                } else {
+                    throw new IllegalArgumentException("PDF must have either url or base64Data");
+                }
+                contentList.add(ResponseInputContent.ofInputFile(pdfInput.build()));
             }
         }
 
