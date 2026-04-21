@@ -57,12 +57,7 @@ class OllamaClient {
         HttpClientBuilder httpClientBuilder =
                 getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
 
-        HttpClient httpClient = httpClientBuilder
-                .connectTimeout(
-                        getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.connectTimeout()), ofSeconds(15)))
-                .readTimeout(
-                        getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.readTimeout()), ofSeconds(60)))
-                .build();
+        HttpClient httpClient = httpClientBuilder.build();
 
         if (builder.logRequests || builder.logResponses) {
             this.httpClient =
@@ -325,8 +320,6 @@ class OllamaClient {
         /**
          * Sets the {@link HttpClientBuilder} that will be used to create the {@link HttpClient}
          * that will be used to communicate with Ollama.
-         * <p>
-         * NOTE: {@link #timeout(Duration)} overrides timeouts set on the {@link HttpClientBuilder}.
          */
         Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -338,6 +331,10 @@ class OllamaClient {
             return this;
         }
 
+        /**
+         * @deprecated as of 2.0. Configure timeouts directly on the {@link HttpClientBuilder} instead.
+         */
+        @Deprecated(forRemoval = true)
         Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;

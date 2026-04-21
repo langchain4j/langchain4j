@@ -34,12 +34,7 @@ class VoyageAiClient {
         HttpClientBuilder httpClientBuilder =
                 getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
 
-        HttpClient httpClient = httpClientBuilder
-                .connectTimeout(
-                        getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.connectTimeout()), ofSeconds(15)))
-                .readTimeout(
-                        getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.readTimeout()), ofSeconds(60)))
-                .build();
+        HttpClient httpClient = httpClientBuilder.build();
 
         if (builder.logRequests != null && builder.logRequests
                 || builder.logResponses != null && builder.logResponses) {
