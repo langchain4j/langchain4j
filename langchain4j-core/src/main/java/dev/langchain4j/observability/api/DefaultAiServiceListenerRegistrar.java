@@ -1,21 +1,29 @@
 package dev.langchain4j.observability.api;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import dev.langchain4j.observability.api.event.AiServiceEvent;
-import dev.langchain4j.observability.api.listener.AiServiceListener;
+
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
+import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
+import dev.langchain4j.observability.api.event.AiServiceEvent;
+import dev.langchain4j.observability.api.event.AiServiceInteractionEvent;
+import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
+import dev.langchain4j.observability.api.listener.AiServiceListener;
 
 /**
  * A default registrar for registering {@link AiServiceListener}s.
@@ -52,6 +60,29 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
                 .ifPresent(eventListeners -> eventListeners.remove(listener));
     }
 
+
+   
+    // Test InvocationState contains every one flowstate of commands
+    private static final class InvocationState{
+        private final List<AiServiceEvent> events = new ArrayList<>();
+
+        synchronized void add(AiServiceEvent event){
+            events.add(event);
+        }
+
+        synchronized List<AiServiceEvent> snapshot(){
+            return List.copyOf(events);
+        }
+
+    }
+
+    // Reintroduce Map data structure 
+    /* 
+      Test Map to instead be thread safe and store *started event* IDs with the events
+    */
+    private final Map<UUID, InvocationState> invocationStates = new ConcurrentHashMap<>();
+    
+
     /**
      * Fires the given event to all registered {@link AiServiceListener}s.
      *
@@ -64,8 +95,46 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
         Optional.ofNullable(this.listeners.get(event.eventClass()))
                 .map(l -> (EventListeners<T>) l)
                 .ifPresent(l -> l.fireEvent(event));
+
+        // Test features
+          
+        UUID invocationId = event.invocationContext().invocationId();
+        if (invocationId == null) {
+            return; 
+        }
+
+        if (event instanceof AiServiceStartedEvent){
+            InvocationState state = invocationStates.computeIfAbsent(invocationId, id -> new InvocationState());
+            state.add(event);
+            return;
+        }
+
+        InvocationState state = invocationStates.get(invocationId);
+        if (state == null) {
+               return;
+            }
+        state.add(event);
+
+        if(event instanceof AiServiceCompletedEvent || event instanceof AiServiceErrorEvent){
+            List<AiServiceEvent> events = state.snapshot();
+            invocationStates.remove(invocationId);
+
+            AiServiceInteractionEvent interactionEvent =
+                AiServiceInteractionEvent.builder()
+                    .invocationContext(event.invocationContext())
+                    .events(events)
+                    .build();
+
+            Optional.ofNullable(this.listeners.get(interactionEvent.eventClass()))
+                .map(l -> (EventListeners<AiServiceInteractionEvent>) l)
+                .ifPresent(l -> l.fireEvent(interactionEvent));
+        }
+
+        
     }
 
+
+   
     @Override
     public void shouldThrowExceptionOnEventError(boolean shouldThrowExceptionOnEventError) {
         this.shouldThrowExceptionOnEventError.compareAndSet(!shouldThrowExceptionOnEventError, shouldThrowExceptionOnEventError);

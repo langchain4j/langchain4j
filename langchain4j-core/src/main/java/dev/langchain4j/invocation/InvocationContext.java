@@ -128,7 +128,7 @@ public interface InvocationContext {
         public Builder methodName(String methodName) {
             this.methodName = methodName;
             return this;
-        }
+        } 
 
         /**
          * Sets the method arguments for the builder. If the provided list of method arguments is not null,
