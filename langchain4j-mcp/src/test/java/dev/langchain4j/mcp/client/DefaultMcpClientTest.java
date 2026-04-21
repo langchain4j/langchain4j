@@ -17,8 +17,13 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.protocol.McpListToolsParams;
+import dev.langchain4j.mcp.protocol.McpListToolsRequest;
+import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -304,6 +309,209 @@ public class DefaultMcpClientTest {
                 .as("Listener must run before meta supplier so that listeners can set up context "
                         + "(e.g. a tracing span) that the meta supplier can then reference")
                 .containsExactly("listener", "meta");
+    }
+
+    @Test
+    public void should_use_custom_tool_result_extractor_for_content_responses() throws Exception {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        ObjectNode toolResult = JsonNodeFactory.instance.objectNode();
+        toolResult
+                .putObject("result")
+                .putArray("content")
+                .addObject()
+                .put("type", "text")
+                .put("text", "ok");
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(toolResult));
+
+        McpToolResultExtractor extractor = (content, isError) -> ToolExecutionResult.builder()
+                .result(Map.of("value", content.get(0).get("text").asText()))
+                .resultText("custom:" + content.get(0).get("text").asText())
+                .isError(isError)
+                .build();
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .toolResultExtractor(extractor)
+                .build();
+
+        ToolExecutionResult result = client.executeTool(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build());
+
+        assertThat(result.resultText()).isEqualTo("custom:ok");
+        assertThat(result.result()).isEqualTo(Map.of("value", "ok"));
+    }
+
+    @Test
+    public void should_use_custom_tool_result_extractor_for_timeout_fallback() {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        when(transport.executeOperationWithResponse(any(McpCallContext.class))).thenReturn(new CompletableFuture<>());
+
+        McpToolResultExtractor extractor = (content, isError) -> ToolExecutionResult.builder()
+                .resultText("custom-timeout:" + content.get(0).get("text").asText())
+                .isError(isError)
+                .build();
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .toolExecutionTimeout(java.time.Duration.ofMillis(1))
+                .toolResultExtractor(extractor)
+                .build();
+
+        ToolExecutionResult result = client.executeTool(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build());
+
+        assertThat(result.resultText()).isEqualTo("custom-timeout:There was a timeout executing the tool");
+    }
+
+    @Test
+    public void should_use_custom_tool_result_extractor_for_listener_application_level_error_path() throws Exception {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        ObjectNode toolResult = JsonNodeFactory.instance.objectNode();
+        ObjectNode resultNode = toolResult.putObject("result");
+        resultNode.put("isError", true);
+        resultNode.putArray("content").addObject().put("type", "text").put("text", "bad");
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(toolResult));
+
+        class CapturingListener implements McpClientListener {
+            ToolExecutionResult toolResult;
+
+            @Override
+            public void afterExecuteTool(McpCallContext context, ToolExecutionResult result, Map<String, Object> raw) {
+                this.toolResult = result;
+            }
+        }
+
+        CapturingListener listener = new CapturingListener();
+        McpToolResultExtractor extractor = (content, isError) -> ToolExecutionResult.builder()
+                .result(Map.of("message", content.get(0).get("text").asText()))
+                .resultText("custom-error")
+                .isError(isError)
+                .build();
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .listener(listener)
+                .toolResultExtractor(extractor)
+                .build();
+
+        assertThatThrownBy(() -> client.executeTool(ToolExecutionRequest.builder()
+                        .name("test")
+                        .arguments("{}")
+                        .build()))
+                .isInstanceOf(ToolExecutionException.class)
+                .hasMessage("custom-error");
+
+        assertThat(listener.toolResult).isNotNull();
+        assertThat(listener.toolResult.resultText()).isEqualTo("custom-error");
+        assertThat(listener.toolResult.result()).isEqualTo(Map.of("message", "bad"));
+        assertThat(listener.toolResult.isError()).isTrue();
+    }
+
+    @Test
+    public void should_throw_for_application_level_error_even_if_custom_extractor_does_not_propagate_is_error()
+            throws Exception {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        ObjectNode toolResult = JsonNodeFactory.instance.objectNode();
+        ObjectNode resultNode = toolResult.putObject("result");
+        resultNode.put("isError", true);
+        resultNode.putArray("content").addObject().put("type", "text").put("text", "bad");
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(toolResult));
+
+        McpToolResultExtractor extractor = (content, isError) -> ToolExecutionResult.builder()
+                .resultText(content.get(0).get("text").asText())
+                .isError(false)
+                .build();
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .toolResultExtractor(extractor)
+                .build();
+
+        assertThatThrownBy(() -> client.executeTool(ToolExecutionRequest.builder()
+                        .name("test")
+                        .arguments("{}")
+                        .build()))
+                .isInstanceOf(ToolExecutionException.class)
+                .hasMessage("bad");
+    }
+
+    @Test
+    public void should_throw_tool_execution_exception_for_application_level_error_with_multiple_result_contents()
+            throws Exception {
+        final McpTransport transport = getMinimalMcpTransportMock();
+        ObjectNode toolResult = JsonNodeFactory.instance.objectNode();
+        ObjectNode resultNode = toolResult.putObject("result");
+        resultNode.put("isError", true);
+        resultNode.putArray("content").addObject().put("type", "text").put("text", "bad");
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(toolResult));
+
+        McpToolResultExtractor extractor = (content, isError) -> ToolExecutionResult.builder()
+                .resultContents(List.of(TextContent.from("bad"), TextContent.from("details")))
+                .isError(isError)
+                .build();
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .toolResultExtractor(extractor)
+                .build();
+
+        assertThatThrownBy(() -> client.executeTool(ToolExecutionRequest.builder()
+                        .name("test")
+                        .arguments("{}")
+                        .build()))
+                .isInstanceOf(ToolExecutionException.class)
+                .hasMessage("bad\ndetails");
+    }
+
+    /**
+     * Verify that when a tool list operation returns a cursor, the client
+     * proceeds to another request using that cursor.
+     */
+    @Test
+    public void should_paginate_tool_list_using_cursor() throws Exception {
+        // given
+        final McpTransport transport = getMinimalMcpTransportMock();
+        final DefaultMcpClient client =
+                new DefaultMcpClient.Builder().transport(transport).build();
+
+        // first page: 2 tools + nextCursor
+        final ObjectNode firstPage = getToolResultJson(
+                new ToolDefinition("tool1", "First tool"), new ToolDefinition("tool2", "Second tool"));
+        ((ObjectNode) firstPage.get("result")).put("nextCursor", "cursor-page2");
+
+        // second page: 1 tool, no nextCursor
+        final ObjectNode secondPage = getToolResultJson(new ToolDefinition("tool3", "Third tool"));
+
+        final ArgumentCaptor<McpCallContext> callCaptor = ArgumentCaptor.forClass(McpCallContext.class);
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(firstPage))
+                .thenReturn(CompletableFuture.completedFuture(secondPage));
+
+        // when
+        final List<ToolSpecification> tools = client.listTools();
+
+        // then: all tools from both pages are returned
+        assertThat(tools).hasSize(3);
+        assertThat(tools.stream().map(ToolSpecification::name).collect(Collectors.toList()))
+                .containsExactly("tool1", "tool2", "tool3");
+
+        // and: the transport was called exactly twice
+        verify(transport, times(2)).executeOperationWithResponse(callCaptor.capture());
+
+        // and: the first request has no cursor
+        McpListToolsRequest firstRequest =
+                (McpListToolsRequest) callCaptor.getAllValues().get(0).message();
+        assertThat(firstRequest.getParams()).isNull();
+
+        // and: the second request carries the cursor from the first response
+        McpListToolsRequest secondRequest =
+                (McpListToolsRequest) callCaptor.getAllValues().get(1).message();
+        assertThat(secondRequest.getParams()).isInstanceOf(McpListToolsParams.class);
+        assertThat(((McpListToolsParams) secondRequest.getParams()).getCursor()).isEqualTo("cursor-page2");
     }
 
     private static McpTransport getMinimalMcpTransportMock() {

@@ -27,6 +27,7 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
     @Override
     protected ChatModel createModelWith(ChatRequestParameters parameters) {
         OpenAiOfficialChatModel.Builder openAiChatModelBuilder = OpenAiOfficialChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .defaultRequestParameters(parameters);
 
@@ -73,6 +74,7 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
 
         // given
         ChatModel model = OpenAiOfficialChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName("o4-mini")
                 .build();

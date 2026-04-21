@@ -29,6 +29,9 @@ public class McpOperationHandler {
     private final McpTransport transport;
     private final Consumer<McpLogMessage> logMessageConsumer;
     private final Runnable onToolListUpdate;
+    private final Runnable onResourceListUpdate;
+    private final Runnable onPromptListUpdate;
+    private final Consumer<String> onResourceUpdate;
     private final Supplier<List<McpRoot>> roots;
     private final McpProgressHandler progressHandler;
 
@@ -37,21 +40,18 @@ public class McpOperationHandler {
             Supplier<List<McpRoot>> roots,
             McpTransport transport,
             Consumer<McpLogMessage> logMessageConsumer,
-            Runnable onToolListUpdate) {
-        this(pendingOperations, roots, transport, logMessageConsumer, onToolListUpdate, null);
-    }
-
-    public McpOperationHandler(
-            Map<Long, CompletableFuture<JsonNode>> pendingOperations,
-            Supplier<List<McpRoot>> roots,
-            McpTransport transport,
-            Consumer<McpLogMessage> logMessageConsumer,
             Runnable onToolListUpdate,
+            Runnable onResourceListUpdate,
+            Runnable onPromptListUpdate,
+            Consumer<String> onResourceUpdate,
             McpProgressHandler progressHandler) {
         this.pendingOperations = pendingOperations;
         this.transport = transport;
         this.logMessageConsumer = logMessageConsumer;
         this.onToolListUpdate = onToolListUpdate;
+        this.onResourceListUpdate = onResourceListUpdate;
+        this.onPromptListUpdate = onPromptListUpdate;
+        this.onResourceUpdate = onResourceUpdate;
         this.roots = roots;
         this.progressHandler = progressHandler;
     }
@@ -109,6 +109,19 @@ public class McpOperationHandler {
             case NOTIFICATION_TOOLS_LIST_CHANGED:
                 onToolListUpdate.run();
                 break;
+            case NOTIFICATION_RESOURCES_LIST_CHANGED:
+                if (onResourceListUpdate != null) {
+                    onResourceListUpdate.run();
+                }
+                break;
+            case NOTIFICATION_PROMPTS_LIST_CHANGED:
+                if (onPromptListUpdate != null) {
+                    onPromptListUpdate.run();
+                }
+                break;
+            case NOTIFICATION_RESOURCES_UPDATED:
+                handleResourceUpdatedNotification(message);
+                break;
             case NOTIFICATION_PROGRESS:
                 handleProgressNotification(message);
                 break;
@@ -124,6 +137,17 @@ public class McpOperationHandler {
             }
         } else {
             log.warn("Received log message without params: {}", message);
+        }
+    }
+
+    private void handleResourceUpdatedNotification(JsonNode message) {
+        if (onResourceUpdate != null
+                && message.has("params")
+                && message.get("params").has("uri")) {
+            String uri = message.get("params").get("uri").asText();
+            onResourceUpdate.accept(uri);
+        } else if (message.has("params") && !message.get("params").has("uri")) {
+            log.warn("Received resource updated notification without uri: {}", message);
         }
     }
 

@@ -215,6 +215,19 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     }
 
     @Override
+    public Map<String, Object> executionState() {
+        return Map.of("loopCount", loopCount);
+    }
+
+    @Override
+    public void restoreExecutionState(Map<String, Object> state) {
+        Object savedLoopCount = state.get("loopCount");
+        if (savedLoopCount instanceof Number n) {
+            this.loopCount = n.intValue();
+        }
+    }
+
+    @Override
     public ChatMemoryAccess chatMemoryAccess(AgenticScope agenticScope) {
         return planner(agenticScope);
     }

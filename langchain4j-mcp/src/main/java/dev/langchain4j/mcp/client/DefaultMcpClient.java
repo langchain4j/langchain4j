@@ -38,6 +38,8 @@ import dev.langchain4j.mcp.protocol.McpListToolsRequest;
 import dev.langchain4j.mcp.protocol.McpPingRequest;
 import dev.langchain4j.mcp.protocol.McpReadResourceRequest;
 import dev.langchain4j.mcp.protocol.McpRootsListChangedNotification;
+import dev.langchain4j.mcp.protocol.McpSubscribeResourceRequest;
+import dev.langchain4j.mcp.protocol.McpUnsubscribeResourceRequest;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -51,10 +53,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,8 +92,15 @@ public class DefaultMcpClient implements McpClient {
     private final AtomicReference<List<McpResourceTemplate>> resourceTemplateRefs = new AtomicReference<>();
     private final AtomicReference<List<McpPrompt>> promptRefs = new AtomicReference<>();
     private final AtomicReference<List<ToolSpecification>> toolListRefs = new AtomicReference<>();
-    private final AtomicBoolean toolListOutOfDate = new AtomicBoolean(true);
-    private final AtomicReference<CompletableFuture<Void>> toolListUpdateInProgress = new AtomicReference<>(null);
+    private final AtomicReference<CompletableFuture<List<ToolSpecification>>> toolListUpdateInProgress =
+            new AtomicReference<>(null);
+    private final AtomicReference<CompletableFuture<List<McpResource>>> resourceListUpdateInProgress =
+            new AtomicReference<>(null);
+    private final AtomicReference<CompletableFuture<List<McpResourceTemplate>>> resourceTemplateListUpdateInProgress =
+            new AtomicReference<>(null);
+    private final AtomicReference<CompletableFuture<List<McpPrompt>>> promptListUpdateInProgress =
+            new AtomicReference<>(null);
+    private final BiConsumer<McpClient, String> onResourceUpdated;
     private final Duration reconnectInterval;
     private volatile boolean closed = false;
     private final Boolean autoHealthCheck;
@@ -96,8 +109,11 @@ public class DefaultMcpClient implements McpClient {
     private final ReentrantLock initializationLock = new ReentrantLock();
     private final AtomicReference<List<McpRoot>> mcpRoots;
     private final Boolean cacheToolList;
-    private final McpClientListener listener;
+    private final Boolean cacheResourceList;
+    private final Boolean cachePromptList;
+    private final List<McpClientListener> listeners;
     private final McpMetaSupplier metaSupplier;
+    private final McpToolResultExtractor toolResultExtractor;
 
     public DefaultMcpClient(Builder builder) {
         try {
@@ -116,7 +132,7 @@ public class DefaultMcpClient implements McpClient {
             reconnectInterval = getOrDefault(builder.reconnectInterval, Duration.ofSeconds(5));
             autoHealthCheck = getOrDefault(builder.autoHealthCheck, Boolean.TRUE);
             autoHealthCheckInterval = getOrDefault(builder.autoHealthCheckInterval, Duration.ofSeconds(30));
-            listener = builder.listener;
+            listeners = List.copyOf(builder.listeners);
             metaSupplier = builder.metaSupplier;
             healthCheckScheduler = autoHealthCheck
                     ? Executors.newSingleThreadScheduledExecutor(r -> {
@@ -129,13 +145,27 @@ public class DefaultMcpClient implements McpClient {
                     getOrDefault(builder.toolExecutionTimeoutErrorMessage, "There was a timeout executing the tool");
             mcpRoots = new AtomicReference<>(getOrDefault(builder.roots, new ArrayList<>()));
             cacheToolList = getOrDefault(builder.cacheToolList, Boolean.TRUE);
+            cacheResourceList = getOrDefault(builder.cacheResourceList, Boolean.TRUE);
+            cachePromptList = getOrDefault(builder.cachePromptList, Boolean.TRUE);
+            onResourceUpdated = builder.onResourceUpdated;
+            toolResultExtractor = getOrDefault(builder.toolResultExtractor, new DefaultMcpToolResultExtractor());
             RESULT_TIMEOUT = JsonNodeFactory.instance.objectNode();
             messageHandler = new McpOperationHandler(
                     pendingOperations,
                     mcpRoots::get,
                     transport,
                     logHandler::handleLogMessage,
-                    () -> toolListOutOfDate.set(true),
+                    () -> toolListRefs.set(null),
+                    () -> {
+                        resourceRefs.set(null);
+                        resourceTemplateRefs.set(null);
+                    },
+                    () -> promptRefs.set(null),
+                    uri -> {
+                        if (onResourceUpdated != null) {
+                            onResourceUpdated.accept(this, uri);
+                        }
+                    },
                     progressHandler);
             ((ObjectNode) RESULT_TIMEOUT)
                     .putObject("result")
@@ -214,32 +244,12 @@ public class DefaultMcpClient implements McpClient {
     @Override
     public List<ToolSpecification> listTools(InvocationContext invocationContext) {
         assertNotClosed();
-        if (isToolListRefreshNeeded()) {
-            CompletableFuture<Void> updateInProgress = this.toolListUpdateInProgress.get();
-            if (updateInProgress != null) {
-                // if an update is already in progress, wait for it to finish
-                updateInProgress.join();
-                return toolListRefs.get();
-            } else {
-                // if no update is in progress, start one
-                CompletableFuture<Void> update = new CompletableFuture<>();
-                this.toolListUpdateInProgress.set(update);
-                try {
-                    obtainToolList(invocationContext);
-                } finally {
-                    update.complete(null);
-                    toolListOutOfDate.set(false);
-                    toolListUpdateInProgress.set(null);
-                }
-                return toolListRefs.get();
-            }
-        } else {
-            return toolListRefs.get();
-        }
-    }
-
-    private boolean isToolListRefreshNeeded() {
-        return Boolean.FALSE.equals(cacheToolList) || toolListOutOfDate.get();
+        return retrieveWithPossibleCaching(
+                cacheToolList,
+                this::obtainToolList,
+                toolListUpdateInProgress,
+                () -> toolListRefs.get(),
+                invocationContext);
     }
 
     /**
@@ -248,7 +258,7 @@ public class DefaultMcpClient implements McpClient {
      * from the MCP server.
      */
     public void evictToolListCache() {
-        toolListOutOfDate.set(true);
+        toolListRefs.set(null);
     }
 
     @Override
@@ -278,24 +288,18 @@ public class DefaultMcpClient implements McpClient {
         JsonNode result = null;
         McpCallContext context = new McpCallContext(invocationContext, operation);
         try {
-            if (listener != null) {
-                listener.beforeExecuteTool(context);
-            }
+            notifyListeners(l -> l.beforeExecuteTool(context));
             applyMeta(operation, context);
             resultFuture = transport.executeOperationWithResponse(context);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
         } catch (TimeoutException timeout) {
-            if (listener != null) {
-                listener.onExecuteToolError(context, timeout);
-            }
+            notifyListeners(l -> l.onExecuteToolError(context, timeout));
             McpCancellationNotification cancellation = new McpCancellationNotification(operationId, "Timeout");
             applyMeta(cancellation, null);
             transport.executeOperationWithoutResponse(cancellation);
-            return ToolExecutionHelper.extractResult(RESULT_TIMEOUT, false);
+            return ToolExecutionHelper.extractResult(RESULT_TIMEOUT, false, toolResultExtractor);
         } catch (ExecutionException e) {
-            if (listener != null) {
-                listener.onExecuteToolError(context, e);
-            }
+            notifyListeners(l -> l.onExecuteToolError(context, e));
             throw new ToolExecutionException(e.getCause());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -303,27 +307,23 @@ public class DefaultMcpClient implements McpClient {
         } finally {
             pendingOperations.remove(operationId);
         }
+        final JsonNode finalResult = result;
         try {
-            ToolExecutionResult toolResult = ToolExecutionHelper.extractResult(result, false);
-            if (listener != null) {
-                listener.afterExecuteTool(
-                        context, toolResult, (Map<String, Object>) ToolExecutionHelper.toObject(result));
-            }
+            ToolExecutionResult toolResult = ToolExecutionHelper.extractResult(finalResult, false, toolResultExtractor);
+            notifyListeners(l -> l.afterExecuteTool(
+                    context, toolResult, (Map<String, Object>) ToolExecutionHelper.toObject(finalResult)));
             return toolResult;
         } catch (ToolExecutionException e) {
             if (e.errorCode() != null) {
                 // protocol error
-                if (listener != null) {
-                    listener.onExecuteToolError(context, e);
-                }
+                notifyListeners(l -> l.onExecuteToolError(context, e));
             } else {
                 // application-level error (called "Tool Execution Error" in MCP spec)
                 // -> we notify the listener with afterExecuteTool
-                if (listener != null) {
-                    listener.afterExecuteTool(
-                            context, ToolExecutionHelper.extractResult(result, true), (Map<String, Object>)
-                                    ToolExecutionHelper.toObject(result));
-                }
+                notifyListeners(l -> l.afterExecuteTool(
+                        context,
+                        ToolExecutionHelper.extractResult(finalResult, true, toolResultExtractor),
+                        (Map<String, Object>) ToolExecutionHelper.toObject(finalResult)));
             }
             throw e;
         }
@@ -337,10 +337,12 @@ public class DefaultMcpClient implements McpClient {
     @Override
     public List<McpResource> listResources(InvocationContext invocationContext) {
         assertNotClosed();
-        if (resourceRefs.get() == null) {
-            obtainResourceList(invocationContext);
-        }
-        return resourceRefs.get();
+        return retrieveWithPossibleCaching(
+                cacheResourceList,
+                this::obtainResourceList,
+                resourceListUpdateInProgress,
+                () -> resourceRefs.get(),
+                invocationContext);
     }
 
     @Override
@@ -357,31 +359,24 @@ public class DefaultMcpClient implements McpClient {
         long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
         JsonNode result = null;
         CompletableFuture<JsonNode> resultFuture = null;
-        if (listener != null) {
-            listener.beforeResourceGet(context);
-        }
+        notifyListeners(l -> l.beforeResourceGet(context));
         applyMeta(operation, context);
         try {
             resultFuture = transport.executeOperationWithResponse(context);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
             McpReadResourceResult resourceResult = ResourcesHelper.parseResourceContents(result);
-            if (listener != null) {
-                listener.afterResourceGet(
-                        context, resourceResult, (Map<String, Object>) ToolExecutionHelper.toObject(result));
-            }
+            final JsonNode finalResult = result;
+            notifyListeners(l -> l.afterResourceGet(
+                    context, resourceResult, (Map<String, Object>) ToolExecutionHelper.toObject(finalResult)));
             return resourceResult;
         } catch (ExecutionException | TimeoutException e) {
-            if (listener != null) {
-                listener.onResourceGetError(context, e);
-            }
+            notifyListeners(l -> l.onResourceGetError(context, e));
             throw new RuntimeException(e);
         } catch (InterruptedException e) {
             Thread.interrupted();
             throw new RuntimeException(e);
         } catch (McpException e) {
-            if (listener != null) {
-                listener.onResourceGetError(context, e);
-            }
+            notifyListeners(l -> l.onResourceGetError(context, e));
             throw e;
         } finally {
             pendingOperations.remove(operationId);
@@ -391,10 +386,8 @@ public class DefaultMcpClient implements McpClient {
     @Override
     public List<McpPrompt> listPrompts() {
         assertNotClosed();
-        if (promptRefs.get() == null) {
-            obtainPromptList();
-        }
-        return promptRefs.get();
+        return retrieveWithPossibleCaching(
+                cachePromptList, this::obtainPromptList, promptListUpdateInProgress, () -> promptRefs.get(), null);
     }
 
     @Override
@@ -407,31 +400,24 @@ public class DefaultMcpClient implements McpClient {
         long timeoutMillis = promptsTimeout.toMillis() == 0 ? Integer.MAX_VALUE : promptsTimeout.toMillis();
         JsonNode result = null;
         CompletableFuture<JsonNode> resultFuture = null;
-        if (listener != null) {
-            listener.beforePromptGet(context);
-        }
+        notifyListeners(l -> l.beforePromptGet(context));
         applyMeta(operation, context);
         try {
             resultFuture = transport.executeOperationWithResponse(context);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
             McpGetPromptResult promptResult = PromptsHelper.parsePromptContents(result);
-            if (listener != null) {
-                listener.afterPromptGet(
-                        context, promptResult, (Map<String, Object>) ToolExecutionHelper.toObject(result));
-            }
+            final JsonNode finalResult = result;
+            notifyListeners(l -> l.afterPromptGet(
+                    context, promptResult, (Map<String, Object>) ToolExecutionHelper.toObject(finalResult)));
             return promptResult;
         } catch (ExecutionException | TimeoutException e) {
-            if (listener != null) {
-                listener.onPromptGetError(context, e);
-            }
+            notifyListeners(l -> l.onPromptGetError(context, e));
             throw new RuntimeException(e);
         } catch (InterruptedException e) {
             Thread.interrupted();
             throw new RuntimeException(e);
         } catch (McpException e) {
-            if (listener != null) {
-                listener.onPromptGetError(context, e);
-            }
+            notifyListeners(l -> l.onPromptGetError(context, e));
             throw e;
         } finally {
             pendingOperations.remove(operationId);
@@ -464,6 +450,50 @@ public class DefaultMcpClient implements McpClient {
     }
 
     @Override
+    public void subscribeToResource(String uri) {
+        assertNotClosed();
+        if (onResourceUpdated == null) {
+            log.warn(
+                    "Subscribing to MCP resource '{}' but no onResourceUpdated callback was registered. The client will"
+                            + "not react to resource update notifications in any way.",
+                    uri);
+        }
+        long operationId = idGenerator.getAndIncrement();
+        McpSubscribeResourceRequest operation = new McpSubscribeResourceRequest(operationId, uri);
+        long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
+        try {
+            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(operation);
+            resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+        } catch (ExecutionException | TimeoutException e) {
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(operationId);
+        }
+    }
+
+    @Override
+    public void unsubscribeFromResource(String uri) {
+        assertNotClosed();
+        long operationId = idGenerator.getAndIncrement();
+        McpUnsubscribeResourceRequest operation = new McpUnsubscribeResourceRequest(operationId, uri);
+        long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
+        try {
+            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(operation);
+            resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+        } catch (ExecutionException | TimeoutException e) {
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } finally {
+            pendingOperations.remove(operationId);
+        }
+    }
+
+    @Override
     public List<McpResourceTemplate> listResourceTemplates() {
         return listResourceTemplates(null);
     }
@@ -471,71 +501,98 @@ public class DefaultMcpClient implements McpClient {
     @Override
     public List<McpResourceTemplate> listResourceTemplates(InvocationContext invocationContext) {
         assertNotClosed();
-        if (resourceTemplateRefs.get() == null) {
-            obtainResourceTemplateList(invocationContext);
-        }
-        return resourceTemplateRefs.get();
+        return retrieveWithPossibleCaching(
+                cacheResourceList,
+                this::obtainResourceTemplateList,
+                resourceTemplateListUpdateInProgress,
+                () -> resourceTemplateRefs.get(),
+                invocationContext);
     }
 
-    private synchronized void obtainToolList(InvocationContext invocationContext) {
-        McpListToolsRequest operation = new McpListToolsRequest(idGenerator.getAndIncrement());
-        McpCallContext context = new McpCallContext(invocationContext, operation);
-        applyMeta(operation, context);
-        CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(context);
-        JsonNode result = null;
-        try {
-            result = resultFuture.get();
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
-        } finally {
-            pendingOperations.remove(operation.getId());
+    /**
+     * Retrieves a value from the server (in this case, a list of tools/resources/prompts) taking
+     * a cache into account, if configured to use one. If the cache was invalidated and an update is needed,
+     * it launches a CompletableFuture that represents a running update so that we avoid
+     * updating multiple times concurrently. If an update is already running, this method
+     * will, instead of starting a new update, join on the existing update and return its result when available.
+     */
+    private <T> T retrieveWithPossibleCaching(
+            boolean useCache,
+            Function<InvocationContext, T> retriever,
+            AtomicReference<CompletableFuture<T>> updateInProgressReference,
+            Supplier<T> cachedReferenceSupplier,
+            InvocationContext invocationContext) {
+        if (useCache) {
+            T cachedValue = cachedReferenceSupplier.get();
+            if (cachedValue != null) {
+                // if there is a value in the cache, just return it
+                return cachedValue;
+            } else {
+                // we need to fetch a new value from the server
+                CompletableFuture<T> newUpdate = new CompletableFuture<>();
+                CompletableFuture<T> updateInProgress = updateInProgressReference.compareAndExchange(null, newUpdate);
+                if (updateInProgress == null) {
+                    // if no update is in progress, start one and retrieve a fresh value
+                    try {
+                        T result = retriever.apply(invocationContext);
+                        newUpdate.complete(result);
+                        return result;
+                    } catch (RuntimeException e) {
+                        newUpdate.completeExceptionally(e);
+                        throw e;
+                    } finally {
+                        updateInProgressReference.set(null);
+                    }
+                } else {
+                    // if an update is already in progress, wait for it to finish and return its result
+                    return updateInProgress.join();
+                }
+            }
+        } else {
+            // if not using cache, always fetch a fresh value
+            return retriever.apply(invocationContext);
         }
-
-        final List<ToolSpecification> toolList = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(
-                (ArrayNode) result.get("result").get("tools"));
-        toolListRefs.set(toolList);
     }
 
-    private synchronized void obtainResourceList(InvocationContext invocationContext) {
-        if (resourceRefs.get() != null) {
-            return;
-        }
-        McpListResourcesRequest operation = new McpListResourcesRequest(idGenerator.getAndIncrement());
-        McpCallContext context = new McpCallContext(invocationContext, operation);
-        applyMeta(operation, context);
-        long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
-        JsonNode result = null;
-        CompletableFuture<JsonNode> resultFuture = null;
-        try {
-            resultFuture = transport.executeOperationWithResponse(context);
-            result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
-            resourceRefs.set(ResourcesHelper.parseResourceRefs(result));
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
-            throw new RuntimeException(e);
-        } finally {
-            pendingOperations.remove(operation.getId());
-        }
+    private List<ToolSpecification> obtainToolList(InvocationContext invocationContext) {
+        List<ToolSpecification> list = fetchPaginatedList(
+                (id, cursor) -> new McpListToolsRequest(id, cursor),
+                toolExecutionTimeout,
+                invocationContext,
+                result -> ToolSpecificationHelper.toolSpecificationListFromMcpResponse(
+                        (ArrayNode) result.get("result").get("tools")));
+        toolListRefs.set(list);
+        return list;
     }
 
-    private synchronized void obtainResourceTemplateList(InvocationContext invocationContext) {
-        if (resourceTemplateRefs.get() != null) {
-            return;
-        }
-        McpListResourceTemplatesRequest operation = new McpListResourceTemplatesRequest(idGenerator.getAndIncrement());
-        McpCallContext context = new McpCallContext(invocationContext, operation);
-        applyMeta(operation, context);
-        long timeoutMillis = toolExecutionTimeout.toMillis() == 0 ? Integer.MAX_VALUE : toolExecutionTimeout.toMillis();
-        JsonNode result = null;
-        CompletableFuture<JsonNode> resultFuture = null;
-        try {
-            resultFuture = transport.executeOperationWithResponse(context);
-            result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
-            resourceTemplateRefs.set(ResourcesHelper.parseResourceTemplateRefs(result));
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
-            throw new RuntimeException(e);
-        } finally {
-            pendingOperations.remove(operation.getId());
-        }
+    private List<McpResource> obtainResourceList(InvocationContext invocationContext) {
+        List<McpResource> list = fetchPaginatedList(
+                (id, cursor) -> new McpListResourcesRequest(id, cursor),
+                resourcesTimeout,
+                invocationContext,
+                ResourcesHelper::parseResourceRefs);
+        resourceRefs.set(list);
+        return list;
+    }
+
+    private List<McpResourceTemplate> obtainResourceTemplateList(InvocationContext invocationContext) {
+        List<McpResourceTemplate> list = fetchPaginatedList(
+                (id, cursor) -> new McpListResourceTemplatesRequest(id, cursor),
+                resourcesTimeout,
+                invocationContext,
+                ResourcesHelper::parseResourceTemplateRefs);
+        resourceTemplateRefs.set(list);
+        return list;
+    }
+
+    private List<McpPrompt> obtainPromptList(InvocationContext invocationContext) {
+        List<McpPrompt> list = fetchPaginatedList(
+                (id, cursor) -> new McpListPromptsRequest(id, cursor),
+                promptsTimeout,
+                invocationContext,
+                PromptsHelper::parsePromptRefs);
+        promptRefs.set(list);
+        return list;
     }
 
     private void startAutoHealthCheck() {
@@ -569,24 +626,42 @@ public class DefaultMcpClient implements McpClient {
         }
     }
 
-    private synchronized void obtainPromptList() {
-        if (promptRefs.get() != null) {
-            return;
+    private <T> List<T> fetchPaginatedList(
+            BiFunction<Long, String, McpClientRequest> requestFactory,
+            Duration timeout,
+            InvocationContext invocationContext,
+            Function<JsonNode, List<T>> resultParser) {
+        long timeoutMillis = timeout.toMillis() == 0 ? Integer.MAX_VALUE : timeout.toMillis();
+        List<T> allItems = new ArrayList<>();
+        String cursor = null;
+        do {
+            McpClientRequest operation = requestFactory.apply(idGenerator.getAndIncrement(), cursor);
+            McpCallContext context = new McpCallContext(invocationContext, operation);
+            applyMeta(operation, context);
+            JsonNode result;
+            try {
+                CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(context);
+                result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            } catch (ExecutionException | InterruptedException | TimeoutException e) {
+                throw new RuntimeException(e);
+            } finally {
+                pendingOperations.remove(operation.getId());
+            }
+            allItems.addAll(resultParser.apply(result));
+            cursor = getNextCursor(result);
+        } while (cursor != null);
+        return allItems;
+    }
+
+    private static String getNextCursor(JsonNode response) {
+        JsonNode resultNode = response.get("result");
+        if (resultNode != null && resultNode.has("nextCursor")) {
+            String nextCursor = resultNode.get("nextCursor").asText();
+            if (!nextCursor.isEmpty()) {
+                return nextCursor;
+            }
         }
-        McpListPromptsRequest operation = new McpListPromptsRequest(idGenerator.getAndIncrement());
-        applyMeta(operation, null);
-        long timeoutMillis = promptsTimeout.toMillis() == 0 ? Integer.MAX_VALUE : promptsTimeout.toMillis();
-        JsonNode result = null;
-        CompletableFuture<JsonNode> resultFuture = null;
-        try {
-            resultFuture = transport.executeOperationWithResponse(operation);
-            result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
-            promptRefs.set(PromptsHelper.parsePromptRefs(result));
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
-            throw new RuntimeException(e);
-        } finally {
-            pendingOperations.remove(operation.getId());
-        }
+        return null;
     }
 
     @Override
@@ -623,6 +698,16 @@ public class DefaultMcpClient implements McpClient {
         }
     }
 
+    private void notifyListeners(Consumer<McpClientListener> action) {
+        for (McpClientListener listener : listeners) {
+            try {
+                action.accept(listener);
+            } catch (Exception e) {
+                log.warn("MCP client listener threw an exception", e);
+            }
+        }
+    }
+
     private void assertNotClosed() {
         if (closed) {
             throw new IllegalStateException("The client is closed");
@@ -652,9 +737,13 @@ public class DefaultMcpClient implements McpClient {
         private Duration autoHealthCheckInterval;
         private List<McpRoot> roots;
         private Boolean cacheToolList;
-        private McpClientListener listener;
+        private Boolean cacheResourceList;
+        private Boolean cachePromptList;
+        private final List<McpClientListener> listeners = new ArrayList<>();
         private McpProgressHandler progressHandler;
         private McpMetaSupplier metaSupplier;
+        private BiConsumer<McpClient, String> onResourceUpdated;
+        private McpToolResultExtractor toolResultExtractor;
 
         /**
          * Sets the transport protocol to use for communicating with the
@@ -827,12 +916,61 @@ public class DefaultMcpClient implements McpClient {
         }
 
         /**
+         * If set to true, the client will cache the resource and resource
+         * template lists obtained from the server until it's notified by
+         * the server that the resources have changed. If set to false,
+         * there is no caching and the client will always fetch the
+         * resource list from the server.
+         * The default is true.
+         */
+        public Builder cacheResourceList(boolean cacheResourceList) {
+            this.cacheResourceList = cacheResourceList;
+            return this;
+        }
+
+        /**
+         * If set to true, the client will cache the prompt list obtained
+         * from the server until it's notified by the server that the
+         * prompts have changed. If set to false, there is no caching
+         * and the client will always fetch the prompt list from the server.
+         * The default is true.
+         */
+        public Builder cachePromptList(boolean cachePromptList) {
+            this.cachePromptList = cachePromptList;
+            return this;
+        }
+
+        /**
          * Sets a listener to receive MCP client events.
          * A listener is notified before and after each call to the MCP server.
          * Currently, this applies to tool calls, resource retrievals, and prompt retrievals.
+         *
+         * @deprecated Use {@link #addListener(McpClientListener)} instead.
          */
+        @Deprecated
         public Builder listener(McpClientListener listener) {
-            this.listener = listener;
+            this.listeners.add(listener);
+            return this;
+        }
+
+        /**
+         * Adds a listener to receive MCP client events.
+         * Multiple listeners can be added; they will all be invoked
+         * before and after each call to the MCP server.
+         * Currently, this applies to tool calls, resource retrievals, and prompt retrievals.
+         */
+        public Builder addListener(McpClientListener listener) {
+            this.listeners.add(listener);
+            return this;
+        }
+
+        /**
+         * Adds multiple listeners to receive MCP client events.
+         * All listeners will be invoked before and after each call to the MCP server.
+         * Currently, this applies to tool calls, resource retrievals, and prompt retrievals.
+         */
+        public Builder addListeners(List<McpClientListener> listeners) {
+            this.listeners.addAll(listeners);
             return this;
         }
 
@@ -853,6 +991,33 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder metaSupplier(McpMetaSupplier metaSupplier) {
             this.metaSupplier = metaSupplier;
+            return this;
+        }
+
+        /**
+         * Sets the extractor used for MCP tool responses that return ordinary
+         * {@code CallToolResult.result.content[]} items.
+         * Responses with {@code structuredContent} are handled separately and
+         * are not affected by this setting.
+         * The default client only supports {@code structuredContent} and text
+         * content out of the box. More specialized extraction strategies, such as
+         * parsing text items and returning the first JSON object, can be implemented
+         * with a custom extractor.
+         */
+        public Builder toolResultExtractor(McpToolResultExtractor toolResultExtractor) {
+            this.toolResultExtractor = ensureNotNull(toolResultExtractor, "toolResultExtractor");
+            return this;
+        }
+
+        /**
+         * Sets a callback to be invoked when the server sends a
+         * {@code notifications/resources/updated} notification for a
+         * subscribed resource. The callback receives the instance
+         * of the affected MCP client and the URI of the
+         * updated resource.
+         */
+        public Builder onResourceUpdated(BiConsumer<McpClient, String> onResourceUpdated) {
+            this.onResourceUpdated = onResourceUpdated;
             return this;
         }
 

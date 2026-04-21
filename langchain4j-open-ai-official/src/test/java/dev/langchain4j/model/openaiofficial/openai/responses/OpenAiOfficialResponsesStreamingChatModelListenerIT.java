@@ -1,6 +1,5 @@
-package dev.langchain4j.model.openaiofficial.openai;
+package dev.langchain4j.model.openaiofficial.openai.responses;
 
-import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.models.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
@@ -13,12 +12,9 @@ class OpenAiOfficialResponsesStreamingChatModelListenerIT extends AbstractStream
 
     @Override
     protected StreamingChatModel createModel(ChatModelListener listener) {
-        var client = OpenAIOkHttpClient.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .build();
-
         return OpenAiOfficialResponsesStreamingChatModel.builder()
-                .client(client)
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName())
                 .temperature(temperature())
                 .topP(topP())
@@ -34,10 +30,8 @@ class OpenAiOfficialResponsesStreamingChatModelListenerIT extends AbstractStream
 
     @Override
     protected StreamingChatModel createFailingModel(ChatModelListener listener) {
-        var client = OpenAIOkHttpClient.builder().apiKey("banana").build();
-
         return OpenAiOfficialResponsesStreamingChatModel.builder()
-                .client(client)
+                .apiKey("banana")
                 .modelName(modelName())
                 .listeners(listener)
                 .build();

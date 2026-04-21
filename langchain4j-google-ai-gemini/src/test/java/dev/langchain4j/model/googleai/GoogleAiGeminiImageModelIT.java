@@ -123,8 +123,6 @@ class GoogleAiGeminiImageModelIT {
         Map<String, Object> searchEntryPoint = (Map<String, Object>) groundingMetadata.get("searchEntryPoint");
         assertThat(searchEntryPoint).containsKey("renderedContent");
         assertThat((String) searchEntryPoint.get("renderedContent")).isNotBlank();
-
-        saveImage(imageResponse.content(), "paris_weather_illustration");
     }
 
     private static void saveImage(Image image, String fileName) throws IOException {

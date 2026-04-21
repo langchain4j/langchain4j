@@ -9,12 +9,15 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.MalformedInputException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Loads skills from the classpath.
@@ -30,6 +33,8 @@ import java.util.stream.Stream;
  */
 @Experimental
 public class ClassPathSkillLoader {
+
+    private static final Logger log = LoggerFactory.getLogger(ClassPathSkillLoader.class);
 
     private ClassPathSkillLoader() {}
 
@@ -143,6 +148,9 @@ public class ClassPathSkillLoader {
                                     .relativePath(relativePath)
                                     .content(content)
                                     .build();
+                        } catch (MalformedInputException e) {
+                            log.warn("Skipping binary file that cannot be read as UTF-8 text: {}", path);
+                            return null;
                         } catch (IOException e) {
                             throw new RuntimeException("Failed to load skill resource from " + path, e);
                         }

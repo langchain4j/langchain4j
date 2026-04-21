@@ -1,9 +1,13 @@
 package dev.langchain4j.model.googleai;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
-public record GeminiThinkingConfig(Boolean includeThoughts, Integer thinkingBudget, String thinkingLevel) {
+public record GeminiThinkingConfig(
+        @JsonProperty("includeThoughts") Boolean includeThoughts,
+        @JsonProperty("thinkingBudget") Integer thinkingBudget,
+        @JsonProperty("thinkingLevel") String thinkingLevel) {
 
     public enum GeminiThinkingLevel {
         MINIMAL,

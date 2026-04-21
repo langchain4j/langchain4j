@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat.mock;
 
+import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
@@ -7,6 +8,7 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Arrays.asList;
+import static java.util.Collections.synchronizedList;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -17,6 +19,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Queue;
@@ -32,6 +35,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
     private final Queue<AiMessage> aiMessages;
     private final RuntimeException exception;
+    private final List<ChatRequest> requests = synchronizedList(new ArrayList<>());
 
     public StreamingChatModelMock(List<String> tokens) {
         this(List.of(toAiMessage(tokens)));
@@ -49,6 +53,8 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+        requests.add(chatRequest);
+
         if (exception != null) {
             handler.onError(exception);
         } else {
@@ -84,6 +90,18 @@ public class StreamingChatModelMock implements StreamingChatModel {
             } finally {
                 executor.shutdown();
             }
+        }
+    }
+
+    public List<ChatRequest> requests() {
+        return requests;
+    }
+
+    public ChatRequest request() {
+        if (requests.size() == 1) {
+            return requests.get(0);
+        } else {
+            throw runtime("Expected exactly 1 chat request, got: " + requests.size());
         }
     }
 

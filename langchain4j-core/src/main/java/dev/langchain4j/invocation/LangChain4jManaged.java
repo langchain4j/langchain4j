@@ -24,6 +24,11 @@ public interface LangChain4jManaged {
         return CURRENT.get();
     }
 
+    static <T extends LangChain4jManaged> T current(Class<T> clazz) {
+        var current = CURRENT.get();
+        return current != null ? clazz.cast(current.get(clazz)) : null;
+    }
+
     static void removeCurrent() {
         CURRENT.remove();
     }
