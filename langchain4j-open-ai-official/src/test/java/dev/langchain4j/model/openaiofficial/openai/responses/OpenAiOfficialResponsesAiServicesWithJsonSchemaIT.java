@@ -1,8 +1,9 @@
-package dev.langchain4j.model.openaiofficial.openai;
+package dev.langchain4j.model.openaiofficial.openai.responses;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.StreamingChatModelAdapter;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatRequestParameters;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithJsonSchemaIT;
@@ -16,12 +17,24 @@ class OpenAiOfficialResponsesAiServicesWithJsonSchemaIT extends AbstractAiServic
     @Override
     protected List<ChatModel> models() {
         return List.of(
-                createModel(true),
-                createModel(false)
+                syncModel(true),
+                syncModel(false),
+                streamingModel(true),
+                streamingModel(false)
         );
     }
 
-    private static ChatModel createModel(boolean strictJsonSchema) {
+    private static ChatModel syncModel(boolean strictTools) {
+        return OpenAiOfficialResponsesChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .modelName("gpt-5.4-mini")
+                .temperature(0.0)
+                .strictTools(strictTools)
+                .build();
+    }
+
+    private static ChatModel streamingModel(boolean strictJsonSchema) {
         StreamingChatModel streamingModel = OpenAiOfficialResponsesStreamingChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
