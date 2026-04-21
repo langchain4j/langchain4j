@@ -47,7 +47,7 @@ class AnthropicStreamingChatModelIT {
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey(getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
-                .maxTokens(1)
+                .maxTokens(5)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
