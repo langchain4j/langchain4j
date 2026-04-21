@@ -1,28 +1,29 @@
 package dev.langchain4j.observability.api;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
-import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
-import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
-import dev.langchain4j.observability.api.event.AiServiceInteractionEvent;
-
 import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import dev.langchain4j.observability.api.event.AiServiceEvent;
-import dev.langchain4j.observability.api.listener.AiServiceListener;
+
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
+import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
+import dev.langchain4j.observability.api.event.AiServiceEvent;
+import dev.langchain4j.observability.api.event.AiServiceInteractionEvent;
+import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
+import dev.langchain4j.observability.api.listener.AiServiceListener;
 
 /**
  * A default registrar for registering {@link AiServiceListener}s.
@@ -96,7 +97,11 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
                 .ifPresent(l -> l.fireEvent(event));
 
         // Test features
-        UUID invocationId  = event.invocationContext().invocationId();
+          
+        UUID invocationId = event.invocationContext().invocationId();
+        if (invocationId == null) {
+            return; 
+        }
 
         if (event instanceof AiServiceStartedEvent){
             InvocationState state = invocationStates.computeIfAbsent(invocationId, id -> new InvocationState());
