@@ -15,6 +15,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -86,6 +87,9 @@ class OpenAiResponsesClient {
     private static final String FIELD_DELTA = "delta";
     private static final String FIELD_TEXT = "text";
     private static final String FIELD_IMAGE_URL = "image_url";
+    private static final String FIELD_FILE_URL = "file_url";
+    private static final String FIELD_FILE_DATA = "file_data";
+    private static final String FIELD_FILENAME = "filename";
     private static final String FIELD_DETAIL = "detail";
     private static final String FIELD_ITEM = "item";
     private static final String FIELD_ID = "id";
@@ -139,6 +143,7 @@ class OpenAiResponsesClient {
     private static final String FIELD_CREATED_AT = "created_at";
     private static final String FIELD_COMPLETED_AT = "completed_at";
     private static final String DEFAULT_IMAGE_MIME_TYPE = "image/jpeg";
+    private static final String DEFAULT_PDF_FILENAME = "pdf_file";
 
     private static final String ROLE_SYSTEM = "system";
     private static final String ROLE_USER = "user";
@@ -154,6 +159,7 @@ class OpenAiResponsesClient {
     private static final String TYPE_OBJECT = "object";
     private static final String TYPE_INPUT_TEXT = "input_text";
     private static final String TYPE_INPUT_IMAGE = "input_image";
+    private static final String TYPE_INPUT_FILE = "input_file";
     private static final String TYPE_FUNCTION_CALL_OUTPUT = "function_call_output";
     private static final String TYPE_JSON_OBJECT = "json_object";
     private static final String TYPE_JSON_SCHEMA = "json_schema";
@@ -551,9 +557,12 @@ class OpenAiResponsesClient {
                     contentEntries.add(createInputTextContent(textContent.text()));
                 } else if (content instanceof ImageContent imageContent) {
                     contentEntries.add(createInputImageContent(imageContent.image(), imageContent.detailLevel()));
+                } else if (content instanceof PdfFileContent pdfFileContent) {
+                    contentEntries.add(createInputPdfContent(pdfFileContent));
                 } else {
                     throw new UnsupportedFeatureException("Unsupported content type: "
-                            + content.getClass().getName() + ". Only TextContent and ImageContent are supported.");
+                            + content.getClass().getName()
+                            + ". Only TextContent, ImageContent, and PdfFileContent are supported.");
                 }
             }
             return List.of(createMessageEntry(ROLE_USER, contentEntries));
@@ -657,6 +666,20 @@ class OpenAiResponsesClient {
         return content;
     }
 
+    private static Map<String, Object> createInputPdfContent(PdfFileContent pdfFileContent) {
+        var content = new LinkedHashMap<String, Object>();
+        content.put(FIELD_TYPE, TYPE_INPUT_FILE);
+        if (pdfFileContent.pdfFile().url() != null) {
+            content.put(FIELD_FILE_URL, pdfFileContent.pdfFile().url().toString());
+        } else if (pdfFileContent.pdfFile().base64Data() != null) {
+            content.put(FIELD_FILE_DATA, buildPdfFileData(pdfFileContent));
+            content.put(FIELD_FILENAME, DEFAULT_PDF_FILENAME);
+        } else {
+            throw new IllegalArgumentException("PDF must have either url or base64Data");
+        }
+        return content;
+    }
+
     private static String toDetailString(ImageContent.DetailLevel detailLevel) {
         return switch (detailLevel) {
             case LOW -> "low";
@@ -675,6 +698,15 @@ class OpenAiResponsesClient {
             return "data:" + mimeType + ";base64," + image.base64Data();
         } else {
             throw new IllegalArgumentException("Image must have either url or base64Data");
+        }
+    }
+
+    private static String buildPdfFileData(PdfFileContent pdfFileContent) {
+        if (pdfFileContent.pdfFile().base64Data() != null) {
+            return "data:" + pdfFileContent.pdfFile().mimeType() + ";base64,"
+                    + pdfFileContent.pdfFile().base64Data();
+        } else {
+            throw new IllegalArgumentException("PDF must have base64Data");
         }
     }
 
