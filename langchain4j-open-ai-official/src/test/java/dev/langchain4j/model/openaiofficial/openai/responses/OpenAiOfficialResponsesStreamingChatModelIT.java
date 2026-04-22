@@ -1,8 +1,10 @@
 package dev.langchain4j.model.openaiofficial.openai.responses;
 
-import com.openai.core.ObjectMappers;
 import com.openai.models.ChatModel;
+import com.openai.core.ObjectMappers;
 import com.openai.core.JsonValue;
+import com.openai.models.responses.Response;
+import com.openai.models.responses.ResponseOutputItem;
 import com.openai.models.responses.NamespaceTool;
 import com.openai.models.responses.Tool;
 import com.openai.models.responses.ToolSearchTool;
@@ -25,7 +27,6 @@ import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatRequestParameters;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatRequestParameters;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel;
-import dev.langchain4j.model.openaiofficial.OpenAiOfficialServerToolResult;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.LinkedHashMap;
@@ -199,10 +200,10 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         assertThat(response.aiMessage().text()).isNotBlank();
         OpenAiOfficialResponsesChatResponseMetadata metadata =
                 (OpenAiOfficialResponsesChatResponseMetadata) response.metadata();
-        List<OpenAiOfficialServerToolResult> serverToolResults = metadata.serverToolResults();
-        assertThat(serverToolResults).isNotEmpty();
-        assertThat(serverToolResults)
-                .extracting(OpenAiOfficialServerToolResult::type)
+        Response rawResponse = metadata.rawResponse();
+        assertThat(rawResponse).isNotNull();
+        assertThat(rawResponse.output())
+                .extracting(OpenAiOfficialResponsesStreamingChatModelIT::itemType)
                 .contains("web_search_call");
     }
 
@@ -255,15 +256,15 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         var response = handler.get();
         OpenAiOfficialResponsesChatResponseMetadata metadata =
                 (OpenAiOfficialResponsesChatResponseMetadata) response.metadata();
-        List<OpenAiOfficialServerToolResult> serverToolResults = metadata.serverToolResults();
-        assertThat(serverToolResults)
-                .extracting(OpenAiOfficialServerToolResult::type)
+        Response rawResponse = metadata.rawResponse();
+        assertThat(rawResponse.output())
+                .extracting(OpenAiOfficialResponsesStreamingChatModelIT::itemType)
                 .contains("tool_search_call", "tool_search_output");
 
-        Map<String, Object> toolSearchOutput = serverToolResults.stream()
-                .filter(result -> "tool_search_output".equals(result.type()))
+        Map<String, Object> toolSearchOutput = rawResponse.output().stream()
+                .map(OpenAiOfficialResponsesStreamingChatModelIT::rawItem)
+                .filter(item -> "tool_search_output".equals(item.get("type")))
                 .findFirst()
-                .map(result -> (Map<String, Object>) result.content())
                 .orElseThrow();
 
         assertThat(toolSearchOutput).containsEntry("type", "tool_search_output");
@@ -290,6 +291,18 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
             throw new RuntimeException(e);
         }
         assertThat(arguments).containsEntry("customer_id", "CUST-12345");
+    }
+
+    private static String itemType(ResponseOutputItem item) {
+        return String.valueOf(rawItem(item).get("type"));
+    }
+
+    private static Map<String, Object> rawItem(ResponseOutputItem item) {
+        return item._json()
+                .map(json -> json.convert(new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {}))
+                .orElseGet(() -> ObjectMappers.jsonMapper().convertValue(
+                        item,
+                        new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {}));
     }
 
     @Disabled("gpt-5.4-mini cannot do it properly")

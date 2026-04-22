@@ -39,7 +39,6 @@ import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStream
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.buildResponseMetadata;
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.extractEncryptedReasoning;
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.extractReasoningSummary;
-import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.extractServerToolResults;
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.extractText;
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.extractTokenUsage;
 import static dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel.extractToolExecutionRequests;
@@ -139,7 +138,6 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
             String thinking = extractReasoningSummary(response);
             String encryptedReasoning = extractEncryptedReasoning(response);
             List<ToolExecutionRequest> toolExecutionRequests = extractToolExecutionRequests(response);
-            List<OpenAiOfficialServerToolResult> serverToolResults = extractServerToolResults(response.output());
 
             AiMessage aiMessage = buildAiMessage(text, thinking, toolExecutionRequests, encryptedReasoning);
 
@@ -152,8 +150,7 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
                     parameters.modelName(),
                     response,
                     finishReason,
-                    extractTokenUsage(response),
-                    serverToolResults);
+                    extractTokenUsage(response));
 
             return ChatResponse.builder()
                     .aiMessage(aiMessage)

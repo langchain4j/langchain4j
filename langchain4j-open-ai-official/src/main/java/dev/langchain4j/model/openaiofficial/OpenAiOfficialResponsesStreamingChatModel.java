@@ -1,12 +1,10 @@
 package dev.langchain4j.model.openaiofficial;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
 import com.openai.core.JsonField;
 import com.openai.core.JsonMissing;
 import com.openai.core.JsonValue;
-import com.openai.core.ObjectMappers;
 import com.openai.credential.Credential;
 import com.openai.models.ChatModel;
 import com.openai.models.Reasoning;
@@ -119,9 +117,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
     private static final Logger logger = LoggerFactory.getLogger(OpenAiOfficialResponsesStreamingChatModel.class);
     private static final String PROMPT_CACHE_RETENTION_FIELD = "prompt_cache_retention";
-    private static final Set<String> EXCLUDED_SERVER_TOOL_RESULT_TYPES =
-            Set.of("compaction", "custom_tool_call", "function_call", "message", "reasoning");
-    private static final TypeReference<Map<String, Object>> STRING_OBJECT_MAP = new TypeReference<>() {};
     // do not change, will break backward compatibility!
     static final String ENCRYPTED_REASONING_KEY = "encrypted_reasoning";
 
@@ -342,12 +337,12 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             String modelName,
             com.openai.models.responses.Response response,
             String finishReason,
-            OpenAiOfficialTokenUsage tokenUsage,
-            List<OpenAiOfficialServerToolResult> serverToolResults) {
+            OpenAiOfficialTokenUsage tokenUsage) {
         var builder = OpenAiOfficialResponsesChatResponseMetadata.builder()
                 .id(responseId)
                 .modelName(modelName)
-                .createdAt((long) response.createdAt());
+                .createdAt((long) response.createdAt())
+                .rawResponse(response);
         response.completedAt().ifPresent(ts -> builder.completedAt(ts.longValue()));
         response.serviceTier().ifPresent(tier -> builder.serviceTier(tier.asString()));
         if (finishReason != null) {
@@ -355,9 +350,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         }
         if (tokenUsage != null) {
             builder.tokenUsage(tokenUsage);
-        }
-        if (serverToolResults != null && !serverToolResults.isEmpty()) {
-            builder.serverToolResults(serverToolResults);
         }
         return builder.build();
     }
@@ -695,51 +687,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             tools.addAll(serverTools);
         }
         return tools;
-    }
-
-    static List<OpenAiOfficialServerToolResult> extractServerToolResults(List<ResponseOutputItem> outputItems) {
-        List<OpenAiOfficialServerToolResult> results = new ArrayList<>();
-        for (ResponseOutputItem outputItem : outputItems) {
-            Map<String, Object> content = toRawServerToolResultContent(outputItem);
-            String type = stringValue(content, "type");
-            if (isServerToolResultType(type)) {
-                results.add(OpenAiOfficialServerToolResult.builder()
-                        .type(type)
-                        .toolUseId(firstNonBlank(stringValue(content, "call_id"), stringValue(content, "id")))
-                        .content(content)
-                        .build());
-            }
-        }
-        return results;
-    }
-
-    private static Map<String, Object> toRawServerToolResultContent(ResponseOutputItem outputItem) {
-        return outputItem
-                ._json()
-                .map(json -> json.convert(STRING_OBJECT_MAP))
-                .orElseGet(() -> ObjectMappers.jsonMapper().convertValue(outputItem, STRING_OBJECT_MAP));
-    }
-
-    private static boolean isServerToolResultType(String type) {
-        if (type == null || EXCLUDED_SERVER_TOOL_RESULT_TYPES.contains(type)) {
-            return false;
-        }
-        return type.endsWith("_call")
-                || type.endsWith("_output")
-                || "mcp_approval_request".equals(type)
-                || "mcp_list_tools".equals(type);
-    }
-
-    private static String stringValue(Map<String, Object> content, String key) {
-        Object value = content.get(key);
-        return value == null ? null : String.valueOf(value);
-    }
-
-    private static String firstNonBlank(String first, String second) {
-        if (first != null && !first.isBlank()) {
-            return first;
-        }
-        return (second != null && !second.isBlank()) ? second : null;
     }
 
     private static ToolChoiceOptions toResponsesToolChoice(ToolChoice toolChoice) {
@@ -1348,7 +1295,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
         private void extractTokenUsageAndComplete(com.openai.models.responses.Response response) {
             var text = !textBuilder.isEmpty() ? textBuilder.toString() : null;
-            List<OpenAiOfficialServerToolResult> serverToolResults = extractServerToolResults(response.output());
             var aiMessage = buildAiMessage(
                     text,
                     extractReasoningSummary(response),
@@ -1356,8 +1302,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                     extractEncryptedReasoning(response));
 
             tokenUsage = extractTokenUsage(response);
-            var metadata = buildResponseMetadata(
-                    responseId, modelName, response, finishReason, tokenUsage, serverToolResults);
+            var metadata = buildResponseMetadata(responseId, modelName, response, finishReason, tokenUsage);
 
             var chatResponse = ChatResponse.builder()
                     .aiMessage(aiMessage)
