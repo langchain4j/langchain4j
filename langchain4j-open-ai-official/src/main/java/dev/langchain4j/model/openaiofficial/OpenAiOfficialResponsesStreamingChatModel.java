@@ -1143,30 +1143,14 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             try {
                 if (event.isCreated()) {
                     handleCreated(event.asCreated());
-                } else if (event.isInProgress()) {
-                    handleInProgress(event.asInProgress());
-                } else if (event.contentPartAdded().isPresent()) {
-                    handleContentPartAdded(event.contentPartAdded().get());
                 } else if (event.isOutputTextDelta()) {
                     handleOutputTextDelta(event.asOutputTextDelta());
-                } else if (event.outputTextDone().isPresent()) {
-                    handleOutputTextDone(event.outputTextDone().get());
-                } else if (event.contentPartDone().isPresent()) {
-                    handleContentPartDone(event.contentPartDone().get());
                 } else if (event.isOutputItemAdded()) {
                     handleOutputItemAdded(event.asOutputItemAdded());
                 } else if (event.isReasoningTextDelta()) {
                     handleReasoningTextDelta(event.asReasoningTextDelta());
                 } else if (event.isReasoningSummaryTextDelta()) {
                     handleReasoningSummaryTextDelta(event.asReasoningSummaryTextDelta());
-                } else if (event.isWebSearchCallInProgress()) {
-                    // No-op: this only signals hosted web search progress.
-                } else if (event.isWebSearchCallSearching()) {
-                    // No-op: this only signals hosted web search progress.
-                } else if (event.isWebSearchCallCompleted()) {
-                    // No-op: final hosted tool output is extracted from response.output().
-                } else if (event.isOutputTextAnnotationAdded()) {
-                    // No-op: URL citations are already preserved in the final response text.
                 } else if (event.isFunctionCallArgumentsDelta()) {
                     handleFunctionCallArgumentsDelta(event.asFunctionCallArgumentsDelta());
                 } else if (event.isFunctionCallArgumentsDone()) {
@@ -1181,11 +1165,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                     handleFailed(event.asFailed());
                 } else if (event.isIncomplete()) {
                     handleIncomplete(event.asIncomplete());
-                } else {
-                    logger.warn(
-                            "Unhandled event type: {}, event details: {}",
-                            event.getClass().getName(),
-                            event);
                 }
             } catch (RuntimeException e) {
                 throw e;
@@ -1199,28 +1178,12 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             responseIdRef.set(responseId);
         }
 
-        private void handleInProgress(ResponseInProgressEvent event) {
-            // No-op
-        }
-
-        private void handleContentPartAdded(Object event) {
-            // No-op - just signals that a new content part is starting
-        }
-
         private void handleOutputTextDelta(ResponseTextDeltaEvent event) {
             var delta = event.delta();
             if (!delta.isEmpty()) {
                 textBuilder.append(delta);
                 onPartialResponse(handler, delta, streamingHandle);
             }
-        }
-
-        private void handleOutputTextDone(Object event) {
-            // No-op - text is already accumulated in textBuilder
-        }
-
-        private void handleContentPartDone(Object event) {
-            // No-op - signals that a content part is complete
         }
 
         private void handleOutputItemAdded(ResponseOutputItemAddedEvent event) {
