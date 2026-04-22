@@ -83,6 +83,16 @@ class PolymorphicAiServiceTest {
         MinimalSubTypeResponse reply(String userMessage);
     }
 
+    sealed interface SealedNotification permits PushNotification, EmailNotification {}
+
+    record PushNotification(String type, String token) implements SealedNotification {}
+
+    record EmailNotification(String type, String email) implements SealedNotification {}
+
+    interface SealedNotificationService {
+        SealedNotification notify(String userMessage);
+    }
+
     @Test
     void should_deserialize_text_response() {
         String json = """
@@ -237,6 +247,22 @@ class PolymorphicAiServiceTest {
 
         String prompt = model.userMessageText();
         assertThat(prompt).contains("discriminator 'type'").contains("type=MinimalOnly");
+    }
+
+    @Test
+    void should_deserialize_sealed_type_without_annotations() {
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("""
+                { "type": "PushNotification", "token": "abc123" }
+                """);
+
+        SealedNotificationService service = AiServices.builder(SealedNotificationService.class)
+                .chatModel(model)
+                .build();
+
+        SealedNotification response = service.notify("send push");
+
+        assertThat(response).isInstanceOf(PushNotification.class);
+        assertThat(((PushNotification) response).token()).isEqualTo("abc123");
     }
 
     @Test

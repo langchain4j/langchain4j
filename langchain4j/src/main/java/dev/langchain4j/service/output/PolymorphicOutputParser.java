@@ -34,12 +34,12 @@ class PolymorphicOutputParser<T> implements OutputParser<T> {
         this.type = ensureNotNull(type, "type");
 
         JsonTypeInfo jsonTypeInfo = type.getAnnotation(JsonTypeInfo.class);
-        if (jsonTypeInfo == null) {
-            throw illegalConfiguration("%s must be annotated with @JsonTypeInfo", type.getName());
+        if (jsonTypeInfo != null) {
+            String property = jsonTypeInfo.property();
+            this.discriminator = property == null || property.isEmpty() ? "type" : property;
+        } else {
+            this.discriminator = "type";
         }
-
-        String property = jsonTypeInfo.property();
-        this.discriminator = property == null || property.isEmpty() ? "type" : property;
 
         Class<?>[] subtypes = resolveSubtypes(type);
         this.discriminatorValuesToTypes = mappingFromJacksonAnnotations(type, subtypes);

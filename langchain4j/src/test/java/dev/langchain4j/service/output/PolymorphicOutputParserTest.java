@@ -42,10 +42,13 @@ class PolymorphicOutputParserTest {
     @JsonTypeName("dup")
     record Second(String type) implements BrokenDuplicate {}
 
-    private interface MissingTypeInfo {}
+    private interface NoSubtypesInterface {}
 
-    @JsonTypeName("missing")
-    record MissingTypeInfoImpl(String type) implements MissingTypeInfo {}
+    sealed interface SealedShape permits SealedCircle, SealedSquare {}
+
+    record SealedCircle(String type, double radius) implements SealedShape {}
+
+    record SealedSquare(String type, double side) implements SealedShape {}
 
     @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type", visible = true)
     @JsonSubTypes({@JsonSubTypes.Type(value = AlphaResponse.class), @JsonSubTypes.Type(value = BetaResponse.class)})
@@ -101,10 +104,29 @@ class PolymorphicOutputParserTest {
     }
 
     @Test
-    void should_fail_when_missing_type_info_annotation() {
-        assertThatThrownBy(() -> new PolymorphicOutputParser<>(MissingTypeInfo.class))
+    void should_fail_when_no_subtypes_found() {
+        assertThatThrownBy(() -> new PolymorphicOutputParser<>(NoSubtypesInterface.class))
                 .isInstanceOf(IllegalConfigurationException.class)
-                .hasMessageContaining("@JsonTypeInfo");
+                .hasMessageContaining("No subtypes found");
+    }
+
+    @Test
+    void should_parse_sealed_type_without_annotations() {
+        PolymorphicOutputParser<SealedShape> sealedParser = new PolymorphicOutputParser<>(SealedShape.class);
+
+        SealedShape result = sealedParser.parse("""
+                { "type": "SealedCircle", "radius": 5.0 }
+                """);
+
+        assertThat(result).isInstanceOf(SealedCircle.class);
+        assertThat(((SealedCircle) result).radius()).isEqualTo(5.0);
+    }
+
+    @Test
+    void should_default_discriminator_to_type_for_sealed_interface() {
+        PolymorphicOutputParser<SealedShape> sealedParser = new PolymorphicOutputParser<>(SealedShape.class);
+
+        assertThat(sealedParser.formatInstructions()).contains("discriminator 'type'");
     }
 
     @Test

@@ -58,7 +58,8 @@ class DefaultOutputParserFactory implements OutputParserFactory {
         }
 
         JsonTypeInfo jsonTypeInfo = rawClass.getAnnotation(JsonTypeInfo.class);
-        if (jsonTypeInfo != null && jsonTypeInfo.use() != JsonTypeInfo.Id.NONE) {
+        if ((jsonTypeInfo == null && rawClass.isSealed())
+                || (jsonTypeInfo != null && jsonTypeInfo.use() != JsonTypeInfo.Id.NONE)) {
             return new PolymorphicOutputParser<>(rawClass);
         }
 
