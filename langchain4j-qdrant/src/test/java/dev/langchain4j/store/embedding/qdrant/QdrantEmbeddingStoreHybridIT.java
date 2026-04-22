@@ -44,9 +44,9 @@ class QdrantEmbeddingStoreHybridIT {
 
     @BeforeAll
     static void setup() throws Exception {
-        QdrantClient client = new QdrantClient(QdrantGrpcClient.newBuilder(
-                        QDRANT_CONTAINER.getHost(), QDRANT_CONTAINER.getGrpcPort(), false)
-                .build());
+        QdrantClient client = new QdrantClient(
+                QdrantGrpcClient.newBuilder(QDRANT_CONTAINER.getHost(), QDRANT_CONTAINER.getGrpcPort(), false)
+                        .build());
 
         CreateCollection request = CreateCollection.newBuilder()
                 .setCollectionName(COLLECTION_NAME)
@@ -99,8 +99,7 @@ class QdrantEmbeddingStoreHybridIT {
                 .maxResults(3)
                 .build();
 
-        List<EmbeddingMatch<TextSegment>> matches =
-                store.search(request).matches();
+        List<EmbeddingMatch<TextSegment>> matches = store.search(request).matches();
 
         assertThat(matches).isNotEmpty();
         assertThat(matches.get(0).embedded().text()).contains("xylophone rutabaga");
@@ -111,9 +110,7 @@ class QdrantEmbeddingStoreHybridIT {
     @Test
     void should_respect_filter_in_hybrid_mode() {
         List<String> texts = List.of(
-                "Alpha keyword alpha filterable",
-                "Alpha keyword alpha unfilterable",
-                "Beta text has no keyword");
+                "Alpha keyword alpha filterable", "Alpha keyword alpha unfilterable", "Beta text has no keyword");
         List<String> tags = List.of("include", "exclude", "include");
 
         addTexts(texts, tags);
@@ -126,12 +123,12 @@ class QdrantEmbeddingStoreHybridIT {
                 .filter(MetadataFilterBuilder.metadataKey("tag").isEqualTo("include"))
                 .build();
 
-        List<EmbeddingMatch<TextSegment>> matches =
-                store.search(request).matches();
+        List<EmbeddingMatch<TextSegment>> matches = store.search(request).matches();
 
         assertThat(matches).isNotEmpty();
-        assertThat(matches).allSatisfy(m ->
-                assertThat(m.embedded().metadata().getString("tag")).isEqualTo("include"));
+        assertThat(matches)
+                .allSatisfy(m ->
+                        assertThat(m.embedded().metadata().getString("tag")).isEqualTo("include"));
     }
 
     @Test
@@ -160,7 +157,8 @@ class QdrantEmbeddingStoreHybridIT {
         List<TextSegment> segments = new ArrayList<>(texts.size());
         for (int i = 0; i < texts.size(); i++) {
             TextSegment seg = tagValues != null
-                    ? TextSegment.from(texts.get(i), dev.langchain4j.data.document.Metadata.from("tag", tagValues.get(i)))
+                    ? TextSegment.from(
+                            texts.get(i), dev.langchain4j.data.document.Metadata.from("tag", tagValues.get(i)))
                     : TextSegment.from(texts.get(i));
             segments.add(seg);
         }

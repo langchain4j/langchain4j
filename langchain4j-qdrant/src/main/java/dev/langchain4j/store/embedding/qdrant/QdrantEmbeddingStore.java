@@ -372,9 +372,8 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         // Converted once and applied to both prefetches so candidates are filtered
         // before RRF fusion, not only after.
-        Filter qdrantFilter = request.filter() != null
-                ? QdrantFilterConverter.convertExpression(request.filter())
-                : null;
+        Filter qdrantFilter =
+                request.filter() != null ? QdrantFilterConverter.convertExpression(request.filter()) : null;
 
         Points.PrefetchQuery.Builder sparsePrefetch = Points.PrefetchQuery.newBuilder()
                 .setQuery(nearest(sv.values(), sv.indices()))
