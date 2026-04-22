@@ -8,6 +8,7 @@ import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatResponseMetadata;
 import dev.langchain4j.model.googleai.GoogleAiGeminiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
@@ -81,5 +82,13 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
     @Override
     protected Class<? extends TokenUsage> tokenUsageType(ChatModel model) {
         return GoogleAiGeminiTokenUsage.class;
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }
