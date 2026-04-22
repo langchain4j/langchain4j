@@ -83,8 +83,8 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
                     yield null;
                 }
                 default ->
-                        throw new UnsupportedOperationException(
-                                "Unknown method on AiServiceResponseReceivedListener class : " + method.getName());
+                    throw new UnsupportedOperationException(
+                            "Unknown method on AiServiceResponseReceivedListener class : " + method.getName());
             };
         }
 
@@ -99,12 +99,12 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
             }
             return switch (method.getName()) {
                 case "lastUserMessage" ->
-                        lastUserMessage(lastResponseEvent.request().messages()).orElse(null);
+                    lastUserMessage(lastResponseEvent.request().messages()).orElse(null);
                 case "lastChatRequest" -> lastResponseEvent.request();
                 case "lastChatResponse" -> lastResponseEvent.response();
                 default ->
-                        throw new UnsupportedOperationException(
-                                "Unknown method on AgenticScopeOwner class : " + method.getName());
+                    throw new UnsupportedOperationException(
+                            "Unknown method on AgenticScopeOwner class : " + method.getName());
             };
         }
 
@@ -121,26 +121,26 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
                     yield agentProxy;
                 }
                 case "registry" ->
-                        throw new UnsupportedOperationException(
-                                "AgenticScopeOwner's registry method can be used only on the root agent of an agentic system.");
+                    throw new UnsupportedOperationException(
+                            "AgenticScopeOwner's registry method can be used only on the root agent of an agentic system.");
                 default ->
-                        throw new UnsupportedOperationException(
-                                "Unknown method on AgenticScopeOwner class : " + method.getName());
+                    throw new UnsupportedOperationException(
+                            "Unknown method on AgenticScopeOwner class : " + method.getName());
             };
         }
 
         if (method.getDeclaringClass() == ChatMemoryAccess.class) {
             return switch (method.getName()) {
                 case "getChatMemory" ->
-                        context.hasChatMemory()
-                                && (ChatMemoryService.DEFAULT.equals(args[0]) || builder.hasNonDefaultChatMemory())
-                                ? context.chatMemoryService.getChatMemory(args[0])
-                                : null;
+                    context.hasChatMemory()
+                                    && (ChatMemoryService.DEFAULT.equals(args[0]) || builder.hasNonDefaultChatMemory())
+                            ? context.chatMemoryService.getChatMemory(args[0])
+                            : null;
                 case "evictChatMemory" ->
-                        context.hasChatMemory() && context.chatMemoryService.evictChatMemory(args[0]) != null;
+                    context.hasChatMemory() && context.chatMemoryService.evictChatMemory(args[0]) != null;
                 default ->
-                        throw new UnsupportedOperationException(
-                                "Unknown method on ChatMemoryAccess class : " + method.getName());
+                    throw new UnsupportedOperationException(
+                            "Unknown method on ChatMemoryAccess class : " + method.getName());
             };
         }
 
@@ -157,7 +157,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
                 case "toString" -> "Agent<" + builder.agentServiceClass.getSimpleName() + ">";
                 case "hashCode" -> System.identityHashCode(agent);
                 default ->
-                        throw new UnsupportedOperationException("Unknown method on Object class : " + method.getName());
+                    throw new UnsupportedOperationException("Unknown method on Object class : " + method.getName());
             };
         }
 
