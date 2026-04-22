@@ -13,17 +13,16 @@ import dev.langchain4j.agentic.internal.AgentInvoker;
 import io.a2a.spec.AgentCard;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
+import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
+import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 
 public class A2AClientAgentInvoker implements AgentInvoker {
 
     private String agentId;
-    private final String[] inputKeys;
+    private final List<AgentArgument> arguments;
 
     private final A2AClientInstance a2AClientInstance;
 
@@ -37,15 +36,15 @@ public class A2AClientAgentInvoker implements AgentInvoker {
         this.a2AClientInstance = a2AClientInstance;
         this.agentCard = a2AClientInstance.agentCard();
         this.agentId = name();
-        this.inputKeys = inputKeys(a2AClientInstance);
+        this.arguments = arguments(a2AClientInstance);
     }
 
-    private String[] inputKeys(A2AClientInstance a2AClientInstance) {
-        return isUntyped()
-                ? a2AClientInstance.inputKeys()
-                : Stream.of(method.getParameters())
-                        .map(AgentInvoker::parameterName)
-                        .toArray(String[]::new);
+    private List<AgentArgument> arguments(A2AClientInstance a2AClientInstance) {
+        return isUntyped() ?
+                Stream.of(a2AClientInstance.inputKeys())
+                        .map(input -> new AgentArgument(Object.class, input))
+                        .toList() :
+                argumentsFromMethod(method);
     }
 
     @Override
@@ -95,7 +94,7 @@ public class A2AClientAgentInvoker implements AgentInvoker {
 
     @Override
     public List<AgentArgument> arguments() {
-        return Stream.of(inputKeys).map(input -> new AgentArgument(Object.class, input)).toList();
+        return arguments;
     }
 
     @Override
@@ -107,20 +106,7 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) {
         return isUntyped()
                 ? new AgentInvocationArguments(agenticScope.state(), new Object[] {agenticScope.state()})
-                : agentInvocationArguments(agenticScope);
-    }
-
-    private AgentInvocationArguments agentInvocationArguments(AgenticScope agenticScope) {
-        Map<String, Object> namedArgs = new HashMap<>();
-        Object[] positionalArgs = new Object[inputKeys.length];
-
-        int i = 0;
-        for (String argName : inputKeys) {
-            Object argValue = agenticScope.readState(argName);
-            positionalArgs[i++] = argValue;
-            namedArgs.put(argName, argValue);
-        }
-        return new AgentInvocationArguments(namedArgs, positionalArgs);
+                : agentInvocationArguments(agenticScope, arguments);
     }
 
     private boolean isUntyped() {
