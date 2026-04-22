@@ -8,6 +8,11 @@
           "code": "java.class.nonPublicPartOfAPI",
           "old": "class dev.langchain4j.model.bedrock.BedrockTitanEmbeddingResponse",
           "justification": "AbstractBedrockEmbeddingModel is package-private, so the generic type parameter cannot leak to external subclasses"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class software.amazon.awssdk.services.bedrockruntime.model.CacheTTL",
+          "justification": "AWS SDK type intentionally exposed by the Bedrock integration for prompt caching TTL configuration"
         }
       ]
     }

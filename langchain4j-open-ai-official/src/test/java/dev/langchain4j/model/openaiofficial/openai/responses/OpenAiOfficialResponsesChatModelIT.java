@@ -1,4 +1,4 @@
-package dev.langchain4j.model.openai.common.responses;
+package dev.langchain4j.model.openaiofficial.openai.responses;
 
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.TextContent;
@@ -9,10 +9,10 @@ import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
-import dev.langchain4j.model.openai.OpenAiResponsesChatModel;
-import dev.langchain4j.model.openai.OpenAiResponsesChatRequestParameters;
-import dev.langchain4j.model.openai.OpenAiResponsesChatResponseMetadata;
-import dev.langchain4j.model.openai.OpenAiTokenUsage;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatRequestParameters;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatModel;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatResponseMetadata;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -24,35 +24,29 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
-class OpenAiResponsesChatModelIT extends AbstractChatModelIT {
+class OpenAiOfficialResponsesChatModelIT extends AbstractChatModelIT {
 
     private static final String GPT_5_4_MINI = "gpt-5.4-mini";
     private static final int MAX_OUTPUT_TOKENS_MIN_VALUE = 16;
 
     @Override
     protected List<ChatModel> models() {
-        return List.of(
-                OpenAiResponsesChatModel.builder()
-                        .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                        .apiKey(System.getenv("OPENAI_API_KEY"))
-                        .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                        .modelName(GPT_5_4_MINI)
-                        .logRequests(false) // images are huge in logs
-                        .logResponses(true)
-                        .build()
-        );
+        ChatModel model = OpenAiOfficialResponsesChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .modelName(GPT_5_4_MINI)
+                .build();
+
+        return List.of(model);
     }
 
     @Override
     protected ChatModel createModelWith(ChatRequestParameters parameters) {
-        return OpenAiResponsesChatModel.builder()
+        return OpenAiOfficialResponsesChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .defaultRequestParameters(parameters)
-                .modelName(getOrDefault(parameters.modelName(), GPT_5_4_MINI))
-                .logRequests(true)
-                .logResponses(true)
+                .modelName(getOrDefault(parameters.modelName(), "gpt-5.4-mini"))
                 .build();
     }
 
@@ -69,25 +63,24 @@ class OpenAiResponsesChatModelIT extends AbstractChatModelIT {
     @Override
     protected ChatRequestParameters saveTokens(ChatRequestParameters parameters) {
         return parameters.overrideWith(ChatRequestParameters.builder()
-                .maxOutputTokens(MAX_OUTPUT_TOKENS_MIN_VALUE)
-                .build());
+                .maxOutputTokens(MAX_OUTPUT_TOKENS_MIN_VALUE).build());
     }
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return OpenAiResponsesChatRequestParameters.builder()
+        return OpenAiOfficialChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
                 .build();
     }
 
     @Override
     protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(ChatModel model) {
-        return OpenAiResponsesChatResponseMetadata.class;
+        return OpenAiOfficialResponsesChatResponseMetadata.class;
     }
 
     @Override
     protected Class<? extends TokenUsage> tokenUsageType(ChatModel model) {
-        return OpenAiTokenUsage.class;
+        return OpenAiOfficialTokenUsage.class;
     }
 
     @Override
@@ -103,13 +96,10 @@ class OpenAiResponsesChatModelIT extends AbstractChatModelIT {
     @Test
     void should_accept_pdf_file_content_as_public_url() {
 
-        ChatModel model = OpenAiResponsesChatModel.builder()
+        ChatModel model = OpenAiOfficialResponsesChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
-                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_5_4_MINI)
-                .logRequests(false) // PDF is huge in logs
-                .logResponses(true)
                 .build();
 
         UserMessage userMessage = UserMessage.builder()

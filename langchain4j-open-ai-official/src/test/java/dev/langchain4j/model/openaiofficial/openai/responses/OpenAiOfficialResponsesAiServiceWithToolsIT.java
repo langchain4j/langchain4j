@@ -1,8 +1,9 @@
-package dev.langchain4j.model.openaiofficial.openai;
+package dev.langchain4j.model.openaiofficial.openai.responses;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.StreamingChatModelAdapter;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -15,18 +16,30 @@ class OpenAiOfficialResponsesAiServiceWithToolsIT extends AbstractAiServiceWithT
     @Override
     protected List<ChatModel> models() {
         return List.of(
-                createModel(true),
-                createModel(false)
+                syncModel(true),
+                syncModel(false),
+                streamingModel(true),
+                streamingModel(false)
         );
     }
 
-    private static ChatModel createModel(boolean strictTools) {
-        StreamingChatModel streamingModel = OpenAiOfficialResponsesStreamingChatModel.builder()
+    private static ChatModel syncModel(boolean strictTools) {
+        return OpenAiOfficialResponsesChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName("gpt-5.4-mini")
                 .temperature(0.0)
                 .strictTools(strictTools)
+                .build();
+    }
+
+    private static ChatModel streamingModel(boolean strictJsonSchema) {
+        StreamingChatModel streamingModel = OpenAiOfficialResponsesStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .modelName("gpt-5.4-mini")
+                .temperature(0.0)
+                .strictJsonSchema(strictJsonSchema)
                 .build();
         return StreamingChatModelAdapter.adapt(streamingModel);
     }

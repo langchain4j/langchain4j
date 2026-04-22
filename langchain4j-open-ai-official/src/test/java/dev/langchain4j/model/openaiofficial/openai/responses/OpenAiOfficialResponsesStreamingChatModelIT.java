@@ -1,10 +1,16 @@
-package dev.langchain4j.model.openaiofficial.openai;
+package dev.langchain4j.model.openaiofficial.openai.responses;
 
 import com.openai.models.ChatModel;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.PdfFileContent;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -14,12 +20,14 @@ import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChat
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
 
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeast;
@@ -155,6 +163,29 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
     @Disabled("gpt-5.4-mini cannot do it properly")
     @Override
-    protected void should_respect_JsonRawSchema_responseFormat(StreamingChatModel model) {
+    protected void should_respect_JSON_response_format_with_schema(StreamingChatModel model) {
+    }
+
+    @Test
+    void should_accept_pdf_file_content_as_public_url() {
+
+        StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .modelName(GPT_5_4_MINI)
+                .build();
+
+        UserMessage userMessage = UserMessage.builder()
+                .addContent(TextContent.from(
+                        "What city appears in the attached PDF? Return only the city name."))
+                .addContent(PdfFileContent.from(PdfFile.builder()
+                        .url("https://orimi.com/pdf-test.pdf")
+                        .build()))
+                .build();
+
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(List.of(userMessage), handler);
+
+        assertThat(handler.get().aiMessage().text()).containsIgnoringCase("Whitehorse");
     }
 }
