@@ -20,6 +20,7 @@ import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.TokenStream;
 import java.lang.annotation.Annotation;
@@ -264,7 +265,14 @@ public class AgentUtil {
                 case "double", "java.lang.Double" -> Double.parseDouble(s);
                 case "float", "java.lang.Float" -> Float.parseFloat(s);
                 case "boolean", "java.lang.Boolean" -> Boolean.parseBoolean(s);
-                default -> throw new IllegalArgumentException("Unsupported type: " + type);
+                default -> {
+                    try {
+                        yield Json.fromJson(s, type);
+                    } catch (Exception e) {
+                        throw new IllegalArgumentException(
+                                "Cannot deserialize value '" + s + "' to type " + type.getName(), e);
+                    }
+                }
             };
         }
         if (value instanceof Number n) {
