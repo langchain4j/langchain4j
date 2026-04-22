@@ -5,5 +5,4 @@ import java.util.List;
 /**
  * A sparse vector represented as parallel lists of indices and values.
  */
-public record SparseVector(List<Integer> indices, List<Float> values) {
-}
+public record SparseVector(List<Integer> indices, List<Float> values) {}
