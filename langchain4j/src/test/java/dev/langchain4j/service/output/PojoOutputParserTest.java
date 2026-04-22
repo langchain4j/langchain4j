@@ -2,10 +2,53 @@ package dev.langchain4j.service.output;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.model.output.structured.Description;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class PojoOutputParserTest {
+
+    abstract static class Parent {
+        @Description("status")
+        String status;
+
+        String message;
+    }
+
+    static class Child extends Parent {
+        String payload;
+    }
+
+    static class GrandChild extends Child {
+        // shadow parent field; subclass value should win (and no duplicate entry)
+        String status;
+    }
+
+    @Test
+    void should_include_inherited_fields_in_format_instructions() {
+
+        PojoOutputParser<Child> parser = new PojoOutputParser<>(Child.class);
+
+        String formatInstructions = parser.formatInstructions();
+
+        assertThat(formatInstructions)
+                .contains("\"payload\":")
+                .contains("\"status\":")
+                .contains("\"message\":");
+    }
+
+    @Test
+    void should_not_duplicate_shadowed_fields() {
+
+        PojoOutputParser<GrandChild> parser = new PojoOutputParser<>(GrandChild.class);
+
+        String formatInstructions = parser.formatInstructions();
+
+        int firstStatus = formatInstructions.indexOf("\"status\":");
+        int lastStatus = formatInstructions.lastIndexOf("\"status\":");
+        assertThat(firstStatus).isGreaterThanOrEqualTo(0);
+        assertThat(firstStatus).isEqualTo(lastStatus);
+    }
 
     @Test
     void should_create_schema_for_enum_with_custom_toString() {
