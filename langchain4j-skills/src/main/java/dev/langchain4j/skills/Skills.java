@@ -3,6 +3,7 @@ package dev.langchain4j.skills;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
@@ -170,8 +171,10 @@ public class Skills {
                     return skillManagementResult;
                 }
 
-                Map<ToolSpecification, ToolExecutor> allTools = new HashMap<>(skillManagementResult.tools());
-                Set<String> immediateReturnToolNames = new HashSet<>(skillManagementResult.immediateReturnToolNames());
+                // Two activated skills may expose the same tool; dedupe by ToolSpecification (last wins).
+                Map<ToolSpecification, AiServiceTool> toolsBySpec = new LinkedHashMap<>();
+                skillManagementResult.aiServiceTools()
+                        .forEach(tool -> toolsBySpec.put(tool.toolSpecification(), tool));
 
                 for (String skillName : activatedSkillNames) {
                     List<ToolProvider> delegates = skillScopedProviders.get(skillName);
@@ -179,16 +182,15 @@ public class Skills {
                         for (ToolProvider delegate : delegates) {
                             ToolProviderResult delegateResult = delegate.provideTools(request);
                             if (delegateResult != null) {
-                                allTools.putAll(delegateResult.tools());
-                                immediateReturnToolNames.addAll(delegateResult.immediateReturnToolNames());
+                                delegateResult.aiServiceTools()
+                                        .forEach(tool -> toolsBySpec.put(tool.toolSpecification(), tool));
                             }
                         }
                     }
                 }
 
                 return ToolProviderResult.builder()
-                        .addAll(allTools)
-                        .immediateReturnToolNames(immediateReturnToolNames)
+                        .addAll(toolsBySpec.values())
                         .build();
             }
 

@@ -1,5 +1,7 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
+import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.copy;
@@ -31,6 +33,7 @@ import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.IllegalConfigurationException;
+import dev.langchain4j.service.Result;
 import dev.langchain4j.service.tool.search.ToolSearchService;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import java.lang.reflect.Method;
@@ -38,7 +41,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -70,7 +72,7 @@ public class ToolService {
 
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
-    private final Set<String> immediateReturnTools = new HashSet<>();
+    private final Map<String, ReturnBehavior> returnBehaviors = new HashMap<>();
     private final Set<ToolProvider> toolProviders = new LinkedHashSet<>();
     private Executor executor;
     private int maxSequentialToolsInvocations = 100;
@@ -112,22 +114,13 @@ public class ToolService {
 
     public void tools(Map<ToolSpecification, ToolExecutor> tools, Set<String> immediateReturnToolNames) {
         this.tools(tools);
-        immediateReturnTools.addAll(immediateReturnToolNames);
+        immediateReturnToolNames.forEach(name -> returnBehaviors.put(name, IMMEDIATE));
     }
 
     public void tools(Collection<Object> objectsWithTools) {
         for (Object objectWithTools : objectsWithTools) {
-            for (AiServiceTool tool : findTools(objectWithTools)) {
-                String toolName = tool.toolSpecification().name();
-                if (toolExecutors.containsKey(toolName)) {
-                    throw new IllegalConfigurationException("Duplicated definition for tool: " + toolName);
-                }
-                toolSpecifications.add(tool.toolSpecification());
-                toolExecutors.put(toolName, tool.toolExecutor());
-                if (tool.immediateReturn()) {
-                    immediateReturnTools.add(toolName);
-                }
-            }
+            List<AiServiceTool> tools = findTools(objectWithTools);
+            addTools(tools, this.toolExecutors, this.toolSpecifications, this.returnBehaviors);
         }
     }
 
@@ -169,7 +162,7 @@ public class ToolService {
                 result.add(AiServiceTool.builder()
                         .toolSpecification(toolSpecificationFrom(toolMethod))
                         .toolExecutor(createToolExecutor(objectWithTools, toolMethod))
-                        .immediateReturn(toolMethod.getAnnotation(Tool.class).returnBehavior() == ReturnBehavior.IMMEDIATE)
+                        .returnBehavior(toolMethod.getAnnotation(Tool.class).returnBehavior())
                         .build());
             }
         }
@@ -279,13 +272,13 @@ public class ToolService {
                     .effectiveTools(this.toolSpecifications)
                     .availableTools(this.toolSpecifications)
                     .toolExecutors(this.toolExecutors)
-                    .immediateReturnTools(this.immediateReturnTools)
+                    .returnBehaviors(this.returnBehaviors)
                     .build();
         }
 
         List<ToolSpecification> toolSpecifications = new ArrayList<>(this.toolSpecifications);
         Map<String, ToolExecutor> toolExecutors = new HashMap<>(this.toolExecutors);
-        Set<String> immediateReturnTools = new HashSet<>(this.immediateReturnTools);
+        Map<String, ReturnBehavior> returnBehaviors = new HashMap<>(this.returnBehaviors);
         List<ToolProvider> dynamicToolProviders = new ArrayList<>();
 
         ToolProviderRequest toolProviderRequest = ToolProviderRequest.builder()
@@ -300,18 +293,7 @@ public class ToolService {
             }
             ToolProviderResult toolProviderResult = toolProvider.provideTools(toolProviderRequest);
             if (toolProviderResult != null) {
-                for (Map.Entry<ToolSpecification, ToolExecutor> entry :
-                        toolProviderResult.tools().entrySet()) {
-                    String toolName = entry.getKey().name();
-                    if (toolExecutors.putIfAbsent(toolName, entry.getValue()) != null) {
-                        throw new IllegalConfigurationException(
-                                "Duplicated definition for tool: " + toolName);
-                    }
-                    toolSpecifications.add(entry.getKey());
-                }
-                if (toolProviderResult.immediateReturnToolNames() != null) {
-                    immediateReturnTools.addAll(toolProviderResult.immediateReturnToolNames());
-                }
+                addTools(toolProviderResult.aiServiceTools(), toolExecutors, toolSpecifications, returnBehaviors);
             }
         });
 
@@ -319,9 +301,22 @@ public class ToolService {
                 .effectiveTools(toolSpecifications)
                 .availableTools(toolSpecifications)
                 .toolExecutors(toolExecutors)
-                .immediateReturnTools(immediateReturnTools)
+                .returnBehaviors(returnBehaviors)
                 .dynamicToolProviders(dynamicToolProviders)
                 .build();
+    }
+
+    private static void addTools(List<AiServiceTool> tools,
+                                 Map<String, ToolExecutor> toolExecutors,
+                                 List<ToolSpecification> toolSpecifications,
+                                 Map<String, ReturnBehavior> returnBehaviors) {
+        for (AiServiceTool tool : tools) {
+            if (toolExecutors.putIfAbsent(tool.name(), tool.toolExecutor()) != null) {
+                throw new IllegalConfigurationException("Duplicated definition for tool: " + tool.name());
+            }
+            toolSpecifications.add(tool.toolSpecification());
+            returnBehaviors.put(tool.name(), tool.returnBehavior());
+        }
     }
 
     public ToolServiceResult executeInferenceAndToolsLoop(
@@ -361,13 +356,15 @@ public class ToolService {
 
             intermediateResponses.add(chatResponse);
 
+            List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults =
-                    execute(aiMessage.toolExecutionRequests(), toolServiceContext.toolExecutors(), invocationContext);
+                    execute(toolExecutionRequests, toolServiceContext.toolExecutors(), invocationContext);
 
             boolean immediateToolReturn = true;
-            for (Map.Entry<ToolExecutionRequest, ToolExecutionResult> entry : toolResults.entrySet()) {
-                ToolExecutionRequest request = entry.getKey();
-                ToolExecutionResult result = entry.getValue();
+            ToolExecution lastToolExecution = null;
+            for (int i = 0; i < toolExecutionRequests.size(); i++) {
+                ToolExecutionRequest request = toolExecutionRequests.get(i);
+                ToolExecutionResult result = toolResults.get(request);
                 ToolExecutionResultMessage resultMessage = toResultMessage(request, result);
 
                 ToolExecution toolExecution = ToolExecution.builder()
@@ -388,19 +385,32 @@ public class ToolService {
                 if (immediateToolReturn) {
                     if (result.isError()) {
                         immediateToolReturn = false;
-                    } else if (toolServiceContext.immediateReturnTools().contains(request.name())) {
+                    } else if (toolServiceContext.returnBehavior(request.name()) == IMMEDIATE) {
                         if (!isReturnTypeResult) {
                             throw illegalConfiguration(
-                                    "Tool '%s' with immediate return is not allowed on a AI service not returning Result.",
-                                    request.name());
+                                    "Tool '%s' with ReturnBehavior.%s is not allowed on a AI service not returning %s type", // TODO
+                                    request.name(), IMMEDIATE, Result.class.getName());
                         }
                     } else {
                         immediateToolReturn = false;
                     }
                 }
+
+                if (i == toolExecutionRequests.size() - 1) {
+                    lastToolExecution = toolExecution;
+                }
             }
 
-            if (immediateToolReturn) {
+            boolean immediateIfLastToolReturn = lastToolExecution != null
+                    && !lastToolExecution.hasFailed()
+                    && toolServiceContext.returnBehavior(lastToolExecution.request().name()) == IMMEDIATE_IF_LAST;
+            if (immediateIfLastToolReturn && !isReturnTypeResult) {
+                throw illegalConfiguration(
+                        "Tool '%s' with ReturnBehavior.%s is not allowed on a AI service not returning %s type", // TODO
+                        lastToolExecution.request().name(), IMMEDIATE_IF_LAST, Result.class.getName());
+            }
+
+            if (immediateToolReturn || immediateIfLastToolReturn) {
                 ChatResponse finalResponse = intermediateResponses.remove(intermediateResponses.size() - 1);
                 return ToolServiceResult.builder()
                         .intermediateResponses(intermediateResponses)
@@ -480,22 +490,21 @@ public class ToolService {
         List<ToolSpecification> newEffectiveTools = new ArrayList<>(toolServiceContext.effectiveTools());
         List<ToolSpecification> newAvailableTools = new ArrayList<>(toolServiceContext.availableTools());
         Map<String, ToolExecutor> newToolExecutors = new HashMap<>(toolServiceContext.toolExecutors());
-        Set<String> newImmediateReturnTools = new HashSet<>(toolServiceContext.immediateReturnTools());
+        Map<String, ReturnBehavior> newReturnBehaviors = new HashMap<>(toolServiceContext.returnBehaviors());
         boolean changed = false;
 
         for (ToolProvider dynamicProvider : dynamicProviders) {
             ToolProviderResult result = dynamicProvider.provideTools(request);
             if (result != null) {
-                for (Map.Entry<ToolSpecification, ToolExecutor> toolEntry : result.tools().entrySet()) {
-                    String toolName = toolEntry.getKey().name();
-                    if (!newToolExecutors.containsKey(toolName)) {
-                        newEffectiveTools.add(toolEntry.getKey());
-                        newAvailableTools.add(toolEntry.getKey());
-                        newToolExecutors.put(toolName, toolEntry.getValue());
+                for (AiServiceTool tool : result.aiServiceTools()) {
+                    if (!newToolExecutors.containsKey(tool.name())) {
+                        newEffectiveTools.add(tool.toolSpecification());
+                        newAvailableTools.add(tool.toolSpecification());
+                        newToolExecutors.put(tool.name(), tool.toolExecutor());
+                        newReturnBehaviors.put(tool.name(), tool.returnBehavior());
                         changed = true;
                     }
                 }
-                newImmediateReturnTools.addAll(result.immediateReturnToolNames());
             }
         }
 
@@ -507,7 +516,7 @@ public class ToolService {
                 .effectiveTools(newEffectiveTools)
                 .availableTools(newAvailableTools)
                 .toolExecutors(newToolExecutors)
-                .immediateReturnTools(newImmediateReturnTools)
+                .returnBehaviors(newReturnBehaviors)
                 .build();
     }
 
@@ -748,8 +757,21 @@ public class ToolService {
         throw new IllegalStateException("There are multiple ToolProvider configured, use toolProviders() instead");
     }
 
-    public boolean isImmediateTool(String toolName) {
-        return immediateReturnTools.contains(toolName);
+    /**
+     * Returns the effective {@link ReturnBehavior} for the given tool, as configured on this service.
+     * Unknown tools and tools without an explicit behavior default to {@link ReturnBehavior#TO_LLM}.
+     *
+     * @since 1.14.0
+     */
+    public ReturnBehavior returnBehavior(String toolName) {
+        return returnBehaviors.getOrDefault(toolName, ReturnBehavior.TO_LLM);
     }
 
+    /**
+     * @deprecated use {@link #returnBehavior(String)} instead
+     */
+    @Deprecated(since = "1.14.0")
+    public boolean isImmediateTool(String toolName) {
+        return returnBehaviors.get(toolName) == IMMEDIATE;
+    }
 }

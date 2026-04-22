@@ -1,5 +1,7 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
+import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
@@ -294,6 +296,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
             boolean immediateToolReturn = true;
             List<ToolExecutionResult> toolResults = new ArrayList<>();
+            ToolRequestResult lastToolRequestResult = null;
 
             if (toolExecutor != null) {
                 for (Future<ToolRequestResult> toolExecutionFuture : toolExecutionFutures) {
@@ -306,9 +309,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                         ToolExecutionResultMessage toolExecutionResultMessage =
                                 toResultMessage(toolRequest, toolResult);
                         addToMemory(toolExecutionResultMessage);
-                        immediateToolReturn = immediateToolReturn
-                                && !toolResult.isError()
-                                && context.toolService.isImmediateTool(toolExecutionResultMessage.toolName());
+                        immediateToolReturn = isImmediateToolReturn(immediateToolReturn, toolRequestResult);
+                        lastToolRequestResult = toolRequestResult;
                     } catch (ExecutionException e) {
                         if (e.getCause() instanceof RuntimeException re) {
                             throw re;
@@ -329,13 +331,12 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     ToolExecutionResultMessage toolExecutionResultMessage =
                             toResultMessage(toolRequest, toolResult);
                     addToMemory(toolExecutionResultMessage);
-                    immediateToolReturn = immediateToolReturn
-                            && !toolResult.isError()
-                            && context.toolService.isImmediateTool(toolRequest.name());
+                    immediateToolReturn = isImmediateToolReturn(immediateToolReturn, toolRequestResult);
+                    lastToolRequestResult = toolRequestResult;
                 }
             }
 
-            if (immediateToolReturn) {
+            if (immediateToolReturn || isImmediateIfLastToolReturn(lastToolRequestResult)) {
                 ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
                 fireInvocationComplete(finalChatResponse);
 
@@ -423,6 +424,18 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 fireInvocationComplete(finalChatResponse);
             }
         }
+    }
+
+    private boolean isImmediateToolReturn(boolean immediateToolReturn, ToolRequestResult toolRequestResult) {
+        return immediateToolReturn
+                && !toolRequestResult.result().isError()
+                && context.toolService.returnBehavior(toolRequestResult.request.name()) == IMMEDIATE;
+    }
+
+    private boolean isImmediateIfLastToolReturn(ToolRequestResult lastToolRequestResult) {
+        return lastToolRequestResult != null
+                && !lastToolRequestResult.result().isError()
+                && context.toolService.returnBehavior(lastToolRequestResult.request().name()) == IMMEDIATE_IF_LAST;
     }
 
     private ChatResponse finalResponse(ChatResponse completeResponse, AiMessage aiMessage) {
