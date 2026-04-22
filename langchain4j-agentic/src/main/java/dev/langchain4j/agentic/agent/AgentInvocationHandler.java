@@ -60,10 +60,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
     private final Map<Object, AiServiceResponseReceivedEvent> lastResponseEvents = new ConcurrentHashMap<>();
 
     AgentInvocationHandler(
-            AiServiceContext context,
-            Object agent,
-            AgentBuilder<?, ?> builder,
-            boolean agenticScopeDependent) {
+            AiServiceContext context, Object agent, AgentBuilder<?, ?> builder, boolean agenticScopeDependent) {
         this.context = context;
         this.agent = agent;
         this.builder = builder;
@@ -74,18 +71,20 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
-        if (method.getDeclaringClass() == AiServiceListener.class || method.getDeclaringClass() == AiServiceResponseReceivedListener.class) {
+        if (method.getDeclaringClass() == AiServiceListener.class
+                || method.getDeclaringClass() == AiServiceResponseReceivedListener.class) {
             return switch (method.getName()) {
                 case "getEventClass" -> AiServiceResponseReceivedEvent.class;
                 case "onEvent" -> {
                     AiServiceResponseReceivedEvent event = (AiServiceResponseReceivedEvent) args[0];
-                    AgenticScope agenticScope = (AgenticScope) event.invocationContext().managedParameters().get(AgenticScope.class);
+                    AgenticScope agenticScope = (AgenticScope)
+                            event.invocationContext().managedParameters().get(AgenticScope.class);
                     lastResponseEvents.put(agenticScope.memoryId(), event);
                     yield null;
                 }
                 default ->
-                        throw new UnsupportedOperationException(
-                                "Unknown method on AiServiceResponseReceivedListener class : " + method.getName());
+                    throw new UnsupportedOperationException(
+                            "Unknown method on AiServiceResponseReceivedListener class : " + method.getName());
             };
         }
 
@@ -99,7 +98,8 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
                 return null;
             }
             return switch (method.getName()) {
-                case "lastUserMessage" -> lastUserMessage(lastResponseEvent.request().messages()).orElse(null);
+                case "lastUserMessage" ->
+                    lastUserMessage(lastResponseEvent.request().messages()).orElse(null);
                 case "lastChatRequest" -> lastResponseEvent.request();
                 case "lastChatResponse" -> lastResponseEvent.response();
                 default ->
@@ -132,9 +132,10 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         if (method.getDeclaringClass() == ChatMemoryAccess.class) {
             return switch (method.getName()) {
                 case "getChatMemory" ->
-                    context.hasChatMemory() && (ChatMemoryService.DEFAULT.equals(args[0]) || builder.hasNonDefaultChatMemory()) ?
-                            context.chatMemoryService.getChatMemory(args[0]) :
-                            null;
+                    context.hasChatMemory()
+                                    && (ChatMemoryService.DEFAULT.equals(args[0]) || builder.hasNonDefaultChatMemory())
+                            ? context.chatMemoryService.getChatMemory(args[0])
+                            : null;
                 case "evictChatMemory" ->
                     context.hasChatMemory() && context.chatMemoryService.evictChatMemory(args[0]) != null;
                 default ->
@@ -156,15 +157,15 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
                 case "toString" -> "Agent<" + builder.agentServiceClass.getSimpleName() + ">";
                 case "hashCode" -> System.identityHashCode(agent);
                 default ->
-                        throw new UnsupportedOperationException(
-                                "Unknown method on Object class : " + method.getName());
+                    throw new UnsupportedOperationException("Unknown method on Object class : " + method.getName());
             };
         }
 
         AgenticScope agenticScope = LangChain4jManaged.current(AgenticScope.class);
         Map<String, Object> namedArgs = agenticScope == null ? argToMap(method, args) : null;
         if (agenticScope == null) {
-            LOGGER.warn("Improper invocation of a standalone agent outside of an agentic system, consider using AiServices instead.");
+            LOGGER.warn(
+                    "Improper invocation of a standalone agent outside of an agentic system, consider using AiServices instead.");
             LangChain4jManaged.setCurrent(Map.of(AgenticScope.class, ephemeralAgenticScope()));
         }
         try {
@@ -215,7 +216,8 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
     @Override
     public void setParent(InternalAgent parent) {
         if (builder.hasChatMemory() && parent != null && !parent.allowChatMemory()) {
-            throw new AgenticSystemConfigurationException("Agents with chat memory can't be a subagent of " + parent.type());
+            throw new AgenticSystemConfigurationException(
+                    "Agents with chat memory can't be a subagent of " + parent.type());
         }
         this.parent = parent;
         registerInheritedParentListener(parent.listener());
@@ -223,7 +225,9 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
 
     @Override
     public void registerInheritedParentListener(AgentListener parentListener) {
-        if (parentListener != null && parentListener.inheritedBySubagents() && isNewListener(agentListener, parentListener)) {
+        if (parentListener != null
+                && parentListener.inheritedBySubagents()
+                && isNewListener(agentListener, parentListener)) {
             agentListener = composeWithInherited(agentListener, parentListener);
             context.toolService.beforeToolExecution(beforeToolExecution ->
                     agentListener.beforeAgentToolExecution(new BeforeAgentToolExecution(this, beforeToolExecution)));
