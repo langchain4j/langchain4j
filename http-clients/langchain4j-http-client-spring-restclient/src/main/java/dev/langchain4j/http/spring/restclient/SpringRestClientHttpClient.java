@@ -1,6 +1,8 @@
 package dev.langchain4j.http.spring.restclient;
 
 import dev.langchain4j.http.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.web.client.ClientHttpRequestFactories;
 import org.springframework.boot.web.client.ClientHttpRequestFactorySettings;
 import org.springframework.http.HttpHeaders;
@@ -18,6 +20,8 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 
 public class SpringRestClientHttpClient extends AbstractHttpClient {
 
+    private static final Logger log = LoggerFactory.getLogger(SpringRestClientHttpClient.class);
+
     private final RestClient restClient;
     private final boolean logRequests;
     private final boolean logResponses;
@@ -25,16 +29,58 @@ public class SpringRestClientHttpClient extends AbstractHttpClient {
     public SpringRestClientHttpClient(SpringRestClientHttpClientBuilder builder) {
         RestClient.Builder restClientBuilder = getOrDefault(builder.restClientBuilder(), RestClient::builder);
 
-        ClientHttpRequestFactorySettings settings = ClientHttpRequestFactorySettings.DEFAULTS
-                .withConnectTimeout(builder.connectTimeout())
-                .withReadTimeout(builder.readTimeout());
-        ClientHttpRequestFactory clientHttpRequestFactory = ClientHttpRequestFactories.get(settings);
+        // Check if a custom requestFactory is already configured
+        // If not, auto-detect (which may select Apache HttpClient 5)
+        ClientHttpRequestFactory clientHttpRequestFactory = detectHttpClientFactory(builder);
 
         this.restClient = restClientBuilder
                 .requestFactory(clientHttpRequestFactory)
                 .build();
         this.logRequests = builder.logRequests();
         this.logResponses = builder.logResponses();
+    }
+
+    /**
+     * Detects and configures the HTTP client factory.
+     * Logs a warning when Apache HttpClient 5 is detected/used, as it can cause
+     * streaming performance issues (tokens arriving in bursts instead of real-time).
+     * 
+     * @param builder the client builder
+     * @return the configured ClientHttpRequestFactory
+     */
+    private ClientHttpRequestFactory detectHttpClientFactory(SpringRestClientHttpClientBuilder builder) {
+        ClientHttpRequestFactorySettings settings = ClientHttpRequestFactorySettings.DEFAULTS
+                .withConnectTimeout(builder.connectTimeout())
+                .withReadTimeout(builder.readTimeout());
+        
+        // ClientHttpRequestFactories.get(settings) performs auto-detection:
+        // - If Apache HttpClient 5 (httpclient5) is on classpath -> uses HttpComponentsClientHttpRequestFactory
+        // - Otherwise falls back to JDK HttpClient
+        ClientHttpRequestFactory factory = ClientHttpRequestFactories.get(settings);
+        
+        // Log warning about potential streaming issues with Hc5
+        if (isApacheHttpClient5(factory)) {
+            log.warn("SpringRestClient is using Apache HttpClient 5 (httpclient5) which can cause "
+                    + "streaming tokens to arrive in bursts instead of real-time. "
+                    + "Consider using JDK's java.net.http.HttpClient instead for better streaming performance, "
+                    + "or explicitly configure a different requestFactory on RestClient.Builder. "
+                    + "See: https://github.com/langchain4j/langchain4j/issues/4918");
+        }
+        
+        return factory;
+    }
+
+    /**
+     * Checks if the given factory is Apache HttpClient 5 based.
+     * 
+     * @param factory the ClientHttpRequestFactory to check
+     * @return true if factory is HttpComponentsClientHttpRequestFactory (Hc5)
+     */
+    private boolean isApacheHttpClient5(ClientHttpRequestFactory factory) {
+        // HttpComponentsClientHttpRequestFactory in Spring 6.1+ uses Apache HttpClient 5
+        String className = factory.getClass().getName();
+        return "org.springframework.http.client.HttpComponentsClientHttpRequestFactory"
+                .equals(className);
     }
 
     @Override
