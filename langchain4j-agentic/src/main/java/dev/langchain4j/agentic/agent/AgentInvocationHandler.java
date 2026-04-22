@@ -1,5 +1,13 @@
 package dev.langchain4j.agentic.agent;
 
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgentInvocation;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentError;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentInvocation;
+import static dev.langchain4j.agentic.scope.DefaultAgenticScope.ephemeralAgenticScope;
+
+import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AfterAgentToolExecution;
 import dev.langchain4j.agentic.observability.AgentListener;
@@ -9,7 +17,6 @@ import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
-import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
@@ -22,23 +29,21 @@ import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
 import dev.langchain4j.service.AiServiceContext;
+import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.memory.ChatMemoryService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
-import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
-import static dev.langchain4j.agentic.scope.DefaultAgenticScope.ephemeralAgenticScope;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AgentInvocationHandler implements InvocationHandler, InternalAgent {
 
@@ -157,17 +162,41 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         }
 
         AgenticScope agenticScope = LangChain4jManaged.current(AgenticScope.class);
+        Map<String, Object> namedArgs = agenticScope == null ? argToMap(method, args) : null;
         if (agenticScope == null) {
             LOGGER.warn("Improper invocation of a standalone agent outside of an agentic system, consider using AiServices instead.");
             LangChain4jManaged.setCurrent(Map.of(AgenticScope.class, ephemeralAgenticScope()));
         }
         try {
-            return method.invoke(agent, args);
+            beforeAgentInvocation(agentListener, agenticScope, this, namedArgs);
+            Object result = method.invoke(agent, args);
+            afterAgentInvocation(agentListener, agenticScope, this, namedArgs, result);
+
+            return result;
+        } catch (Exception e) {
+            AgentInvocationException invocationException =
+                    new AgentInvocationException("Failed to invoke agent method: " + method, e);
+            agentError(agentListener, agenticScope, this, namedArgs, invocationException);
+            throw invocationException;
         } finally {
             if (agenticScope == null) {
                 LangChain4jManaged.removeCurrent();
             }
         }
+    }
+
+    private static Map<String, Object> argToMap(Method method, Object[] args) {
+        if (method.getParameterCount() == 1 && Map.class.isAssignableFrom(method.getParameters()[0].getType())) {
+            return (Map<String, Object>) args[0];
+        }
+        if (args == null || args.length == 0) {
+            return Map.of();
+        }
+        Map<String, Object> namedArgs = new HashMap<>();
+        for (int i = 0; i < args.length; i++) {
+            namedArgs.put(ParameterNameResolver.name(method.getParameters()[i]), args[i]);
+        }
+        return namedArgs;
     }
 
     private static Optional<UserMessage> lastUserMessage(Collection<ChatMessage> messages) {
