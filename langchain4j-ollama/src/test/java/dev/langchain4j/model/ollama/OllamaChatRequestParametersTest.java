@@ -92,7 +92,8 @@ class OllamaChatRequestParametersTest {
 
     @Test
     void new_parameters_should_be_null_when_not_set() {
-        OllamaChatRequestParameters params = OllamaChatRequestParameters.builder().build();
+        OllamaChatRequestParameters params =
+                OllamaChatRequestParameters.builder().build();
 
         assertThat(params.numKeep()).isNull();
         assertThat(params.typicalP()).isNull();
@@ -143,7 +144,8 @@ class OllamaChatRequestParametersTest {
                 .mainGPU(0)
                 .useMmap(true)
                 .build();
-        OllamaChatRequestParameters override = OllamaChatRequestParameters.builder().build();
+        OllamaChatRequestParameters override =
+                OllamaChatRequestParameters.builder().build();
 
         ChatRequestParameters result = original.overrideWith(override);
 
@@ -156,5 +158,4 @@ class OllamaChatRequestParametersTest {
         assertThat(ollamaResult.mainGPU()).isEqualTo(0);
         assertThat(ollamaResult.useMmap()).isTrue();
     }
-
 }

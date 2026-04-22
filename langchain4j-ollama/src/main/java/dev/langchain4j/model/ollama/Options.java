@@ -224,7 +224,6 @@ class Options {
         this.numKeep = numKeep;
     }
 
-
     static Builder builder() {
         return new Builder();
     }
@@ -351,7 +350,6 @@ class Options {
             this.numBatch = numBatch;
             return this;
         }
-
 
         Options build() {
             return new Options(this);
