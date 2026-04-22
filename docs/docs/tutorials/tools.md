@@ -921,7 +921,7 @@ One can configure a `ToolProvider` that will be called each time the AI service 
 and will provide the tools that should be included in the current request to the LLM.
 The `ToolProvider` accepts a `ToolProviderRequest`
 (that contains the `UserMessage`, chat memory ID and [`InvocationParameters`](/tutorials/tools#invocationparameters))
-and returns a `ToolProviderResult` that contains tools in a form of a `Map` from `ToolSpecification` to `ToolExecutor`.
+and returns a `ToolProviderResult` that contains tools.
 
 Here is an example of how to add the `get_booking_details` tool only when the user's message contains the word "booking":
 ```java
@@ -948,6 +948,8 @@ Assistant assistant = AiServices.builder(Assistant.class)
     .build();
 ```
 
+It is possible for an AI service to use both programmatically and dynamically specified tools in the same invocation.
+
 #### Configuring Immediate Return in Dynamic Tools
 
 When building `ToolProviderResult`, you can mark tools for [immediate return](/tutorials/tools#returning-immediately-the-result-of-a-tool-execution-request) using the ToolProviderResult.builder():
@@ -960,19 +962,6 @@ ToolProvider toolProvider = (toolProviderRequest) -> {
         .build();
 };
 ```
-
-You can also mark multiple tools by name:
-
-```java
-ToolProvider toolProvider = (toolProviderRequest) -> {
-    return ToolProviderResult.builder()
-        .addAll(allTools)
-        .immediateReturnToolNames(Set.of("get_booking_details", "cancel_booking"))
-        .build();
-};
-```
-
-It is possible for an AI service to use both programmatically and dynamically specified tools in the same invocation.
 
 ### Tool Search
 
