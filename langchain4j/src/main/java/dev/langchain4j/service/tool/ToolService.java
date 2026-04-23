@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
 import dev.langchain4j.Internal;
@@ -48,7 +49,6 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -68,6 +68,12 @@ public class ToolService {
         return ToolErrorHandlerResult.text(errorMessage);
     };
 
+    static final String TOOL_LIMIT_EXCEEDED_MESSAGE =
+            "Tool '%s' has reached its execution limit of %d. Please proceed without it.";
+
+    static final String TOOL_LOOP_ENDED_MESSAGE =
+            "Tool loop ended because another tool reached its execution limit. Please proceed without tools.";
+
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
     private final Set<String> immediateReturnTools = new HashSet<>();
@@ -82,6 +88,11 @@ public class ToolService {
 
     private Consumer<BeforeToolExecution> beforeToolExecution = null;
     private Consumer<ToolExecution> afterToolExecution = null;
+
+    private int defaultMaxToolExecutions = Integer.MAX_VALUE;
+    private final Map<String, Integer> perToolMaxExecutions = new HashMap<>();
+    private ToolLimitExceededBehavior defaultToolLimitExceededBehavior = ToolLimitExceededBehavior.CONTINUE;
+    private final Map<String, ToolLimitExceededBehavior> perToolLimitExceededBehaviors = new HashMap<>();
 
     public void hallucinatedToolNameStrategy(
             Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy) {
@@ -169,7 +180,8 @@ public class ToolService {
                 result.add(AiServiceTool.builder()
                         .toolSpecification(toolSpecificationFrom(toolMethod))
                         .toolExecutor(createToolExecutor(objectWithTools, toolMethod))
-                        .immediateReturn(toolMethod.getAnnotation(Tool.class).returnBehavior() == ReturnBehavior.IMMEDIATE)
+                        .immediateReturn(
+                                toolMethod.getAnnotation(Tool.class).returnBehavior() == ReturnBehavior.IMMEDIATE)
                         .build());
             }
         }
@@ -205,6 +217,31 @@ public class ToolService {
 
     public int maxSequentialToolsInvocations() {
         return maxSequentialToolsInvocations;
+    }
+
+    /**
+     * Applies a {@link ToolExecutionLimits} configuration: the default limit, per-tool overrides,
+     * the default behavior, and per-tool behavior overrides. Replaces any previously supplied
+     * limits.
+     *
+     * @since 1.14.0
+     */
+    public void toolExecutionLimits(ToolExecutionLimits limits) {
+        ensureNotNull(limits, "limits");
+        this.defaultMaxToolExecutions = limits.defaultLimit();
+        this.perToolMaxExecutions.clear();
+        this.perToolMaxExecutions.putAll(limits.perToolLimits());
+        this.defaultToolLimitExceededBehavior = limits.defaultBehavior();
+        this.perToolLimitExceededBehaviors.clear();
+        this.perToolLimitExceededBehaviors.putAll(limits.perToolBehaviors());
+    }
+
+    public int maxToolExecutionsFor(String toolName) {
+        return perToolMaxExecutions.getOrDefault(toolName, defaultMaxToolExecutions);
+    }
+
+    public ToolLimitExceededBehavior toolLimitExceededBehaviorFor(String toolName) {
+        return perToolLimitExceededBehaviors.getOrDefault(toolName, defaultToolLimitExceededBehavior);
     }
 
     /**
@@ -256,9 +293,8 @@ public class ToolService {
         this.toolSearchService = new ToolSearchService(toolSearchStrategy);
     }
 
-    public ToolServiceContext createContext(InvocationContext invocationContext,
-                                            UserMessage userMessage,
-                                            List<ChatMessage> messages) {
+    public ToolServiceContext createContext(
+            InvocationContext invocationContext, UserMessage userMessage, List<ChatMessage> messages) {
         ToolServiceContext context = createContextFromStaticToolsAndProviders(invocationContext, userMessage, messages);
         if (toolSearchService != null) {
             context = toolSearchService.adjust(context, messages, invocationContext);
@@ -267,9 +303,8 @@ public class ToolService {
         return context;
     }
 
-    private ToolServiceContext createContextFromStaticToolsAndProviders(InvocationContext invocationContext,
-                                                                        UserMessage userMessage,
-                                                                        List<ChatMessage> messages) {
+    private ToolServiceContext createContextFromStaticToolsAndProviders(
+            InvocationContext invocationContext, UserMessage userMessage, List<ChatMessage> messages) {
         if (this.toolProviders.isEmpty()) {
             if (this.toolSpecifications.isEmpty()) {
                 return ToolServiceContext.Empty.INSTANCE;
@@ -304,8 +339,7 @@ public class ToolService {
                         toolProviderResult.tools().entrySet()) {
                     String toolName = entry.getKey().name();
                     if (toolExecutors.putIfAbsent(toolName, entry.getValue()) != null) {
-                        throw new IllegalConfigurationException(
-                                "Duplicated definition for tool: " + toolName);
+                        throw new IllegalConfigurationException("Duplicated definition for tool: " + toolName);
                     }
                     toolSpecifications.add(entry.getKey());
                 }
@@ -337,6 +371,7 @@ public class ToolService {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
+        Map<String, Integer> toolExecutionCounts = new HashMap<>();
 
         int sequentialToolsInvocationsLeft = maxSequentialToolsInvocations;
         while (true) {
@@ -359,13 +394,119 @@ public class ToolService {
                 break;
             }
 
+            // Separate tool requests into within-budget and over-budget.
+            // Use a projected count to handle parallel calls to the same tool in one response.
+            List<ToolExecutionRequest> withinBudgetRequests = new ArrayList<>();
+            Map<ToolExecutionRequest, ToolExecutionResult> overBudgetResults = new LinkedHashMap<>();
+            Map<String, Integer> projectedCounts = new HashMap<>(toolExecutionCounts);
+            boolean endLoop = false;
+
+            for (ToolExecutionRequest request : aiMessage.toolExecutionRequests()) {
+                String toolName = request.name();
+                int currentCount = projectedCounts.getOrDefault(toolName, 0);
+                int limit = maxToolExecutionsFor(toolName);
+
+                if (currentCount >= limit) {
+                    ToolLimitExceededBehavior behavior = toolLimitExceededBehaviorFor(toolName);
+                    switch (behavior) {
+                        case ERROR:
+                            throw new ToolExecutionLimitExceededException(toolName, limit, currentCount + 1);
+                        case END:
+                            endLoop = true;
+                            break;
+                        case CONTINUE:
+                            overBudgetResults.put(
+                                    request,
+                                    ToolExecutionResult.builder()
+                                            .isError(true)
+                                            .resultText(String.format(TOOL_LIMIT_EXCEEDED_MESSAGE, toolName, limit))
+                                            .build());
+                            break;
+                    }
+                    if (endLoop) {
+                        break;
+                    }
+                } else {
+                    withinBudgetRequests.add(request);
+                    projectedCounts.merge(toolName, 1, Integer::sum);
+                }
+            }
+
+            if (endLoop) {
+                // END behavior: skip executing any tools from this response and make one
+                // final LLM call with no tools, so the model can produce a text answer.
+                // Add error results for each tool request so the conversation history is valid
+                // (models expect a ToolExecutionResultMessage for each tool call).
+                for (ToolExecutionRequest request : aiMessage.toolExecutionRequests()) {
+                    String name = request.name();
+                    int reqLimit = maxToolExecutionsFor(name);
+                    int count = toolExecutionCounts.getOrDefault(name, 0);
+                    String text = count >= reqLimit
+                            ? String.format(TOOL_LIMIT_EXCEEDED_MESSAGE, name, reqLimit)
+                            : TOOL_LOOP_ENDED_MESSAGE;
+                    ToolExecutionResultMessage resultMessage = ToolExecutionResultMessage.builder()
+                            .id(request.id())
+                            .toolName(name)
+                            .text(text)
+                            .isError(true)
+                            .build();
+                    if (chatMemory != null) {
+                        chatMemory.add(resultMessage);
+                    } else {
+                        messages.add(resultMessage);
+                    }
+                }
+
+                if (chatMemory != null) {
+                    messages = chatMemory.messages();
+                }
+
+                parameters = parameters.overrideWith(ChatRequestParameters.builder()
+                        .toolSpecifications(List.of())
+                        .build());
+
+                ChatRequest chatRequest = context.chatRequestTransformer.apply(
+                        ChatRequest.builder()
+                                .messages(messages)
+                                .parameters(parameters)
+                                .build(),
+                        memoryId);
+
+                fireRequestIssuedEvent(chatRequest, invocationContext, context.eventListenerRegistrar);
+                chatResponse = context.chatModel.chat(chatRequest);
+                fireResponseReceivedEvent(chatRequest, chatResponse, invocationContext, context.eventListenerRegistrar);
+                aggregateTokenUsage = TokenUsage.sum(
+                        aggregateTokenUsage, chatResponse.metadata().tokenUsage());
+                break;
+            }
+
             intermediateResponses.add(chatResponse);
 
-            Map<ToolExecutionRequest, ToolExecutionResult> toolResults =
-                    execute(aiMessage.toolExecutionRequests(), toolServiceContext.toolExecutors(), invocationContext);
+            // Execute within-budget tool requests
+            Map<ToolExecutionRequest, ToolExecutionResult> toolResults;
+            if (!withinBudgetRequests.isEmpty()) {
+                toolResults = execute(withinBudgetRequests, toolServiceContext.toolExecutors(), invocationContext);
+            } else {
+                toolResults = new LinkedHashMap<>();
+            }
+
+            // Increment counts for executed tools
+            for (ToolExecutionRequest request : withinBudgetRequests) {
+                toolExecutionCounts.merge(request.name(), 1, Integer::sum);
+            }
+
+            // Merge over-budget results (preserving original request order)
+            Map<ToolExecutionRequest, ToolExecutionResult> allResults = new LinkedHashMap<>();
+            for (ToolExecutionRequest request : aiMessage.toolExecutionRequests()) {
+                if (toolResults.containsKey(request)) {
+                    allResults.put(request, toolResults.get(request));
+                } else if (overBudgetResults.containsKey(request)) {
+                    allResults.put(request, overBudgetResults.get(request));
+                }
+            }
 
             boolean immediateToolReturn = true;
-            for (Map.Entry<ToolExecutionRequest, ToolExecutionResult> entry : toolResults.entrySet()) {
+            for (Map.Entry<ToolExecutionRequest, ToolExecutionResult> entry : allResults.entrySet()) {
                 ToolExecutionRequest request = entry.getKey();
                 ToolExecutionResult result = entry.getValue();
                 ToolExecutionResultMessage resultMessage = toResultMessage(request, result);
@@ -408,6 +549,7 @@ public class ToolService {
                         .toolExecutions(toolExecutions)
                         .aggregateTokenUsage(aggregateTokenUsage)
                         .immediateToolReturn(true)
+                        .toolExecutionCounts(toolExecutionCounts)
                         .build();
             }
 
@@ -419,9 +561,22 @@ public class ToolService {
             }
 
             toolServiceContext = refreshDynamicProviders(toolServiceContext, messages, invocationContext);
+            Set<String> exhausted = findExhaustedTools(toolExecutionCounts);
             if (toolSearchService != null) {
-                toolServiceContext = ToolSearchService.addFoundTools(toolServiceContext, toolResults.values());
+                toolServiceContext =
+                        ToolSearchService.addFoundTools(toolServiceContext, allResults.values(), exhausted);
             }
+
+            // Level 1: Remove exhausted tools before the next LLM call
+            toolServiceContext = toolServiceContext.withoutTools(exhausted);
+
+            // Rebuild the ToolSearchExecutor with a fresh searchableTools snapshot so the
+            // tool-search strategy cannot re-surface an exhausted tool in the next round.
+            if (toolSearchService != null && !exhausted.isEmpty()) {
+                toolServiceContext =
+                        toolSearchService.refreshSearchExecutors(toolServiceContext, invocationContext, exhausted);
+            }
+
             parameters = parameters.overrideWith(ChatRequestParameters.builder()
                     .toolSpecifications(toolServiceContext.effectiveTools())
                     .build());
@@ -445,6 +600,7 @@ public class ToolService {
                 .finalResponse(chatResponse)
                 .toolExecutions(toolExecutions)
                 .aggregateTokenUsage(aggregateTokenUsage)
+                .toolExecutionCounts(toolExecutionCounts)
                 .build();
     }
 
@@ -458,9 +614,8 @@ public class ToolService {
      *
      * @since 1.13.0
      */
-    public static ToolServiceContext refreshDynamicProviders(ToolServiceContext toolServiceContext,
-                                                             List<ChatMessage> messages,
-                                                             InvocationContext invocationContext) {
+    public static ToolServiceContext refreshDynamicProviders(
+            ToolServiceContext toolServiceContext, List<ChatMessage> messages, InvocationContext invocationContext) {
         if (toolServiceContext == null) {
             return null;
         }
@@ -486,7 +641,8 @@ public class ToolService {
         for (ToolProvider dynamicProvider : dynamicProviders) {
             ToolProviderResult result = dynamicProvider.provideTools(request);
             if (result != null) {
-                for (Map.Entry<ToolSpecification, ToolExecutor> toolEntry : result.tools().entrySet()) {
+                for (Map.Entry<ToolSpecification, ToolExecutor> toolEntry :
+                        result.tools().entrySet()) {
                     String toolName = toolEntry.getKey().name();
                     if (!newToolExecutors.containsKey(toolName)) {
                         newEffectiveTools.add(toolEntry.getKey());
@@ -712,6 +868,38 @@ public class ToolService {
                 .build();
     }
 
+    /**
+     * Rebuilds the tool-search executor's {@code searchableTools} snapshot to exclude
+     * {@code exhaustedToolNames}. No-op if no tool-search strategy is configured or the
+     * exhausted set is empty.
+     *
+     * @since 1.14.0
+     */
+    public ToolServiceContext refreshSearchExecutorsIfNeeded(
+            ToolServiceContext toolServiceContext,
+            InvocationContext invocationContext,
+            Set<String> exhaustedToolNames) {
+        if (toolSearchService == null || exhaustedToolNames.isEmpty()) {
+            return toolServiceContext;
+        }
+        return toolSearchService.refreshSearchExecutors(toolServiceContext, invocationContext, exhaustedToolNames);
+    }
+
+    /**
+     * Returns the set of tool names that have reached their execution limits.
+     *
+     * @since 1.14.0
+     */
+    public Set<String> findExhaustedTools(Map<String, Integer> toolExecutionCounts) {
+        Set<String> exhausted = new HashSet<>();
+        for (Map.Entry<String, Integer> entry : toolExecutionCounts.entrySet()) {
+            if (entry.getValue() >= maxToolExecutionsFor(entry.getKey())) {
+                exhausted.add(entry.getKey());
+            }
+        }
+        return exhausted;
+    }
+
     public List<ToolSpecification> toolSpecifications() {
         return toolSpecifications;
     }
@@ -751,5 +939,4 @@ public class ToolService {
     public boolean isImmediateTool(String toolName) {
         return immediateReturnTools.contains(toolName);
     }
-
 }
