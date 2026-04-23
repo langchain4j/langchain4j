@@ -89,7 +89,7 @@ public final class ChatCompletionRequest {
     private final Map<String, String> metadata;
 
     @JsonProperty
-    private final String reasoningEffort;
+    private final Map<String, Object> reasoning;
 
     @JsonProperty
     private final String serviceTier;
@@ -132,7 +132,7 @@ public final class ChatCompletionRequest {
         this.parallelToolCalls = builder.parallelToolCalls;
         this.store = builder.store;
         this.metadata = builder.metadata;
-        this.reasoningEffort = builder.reasoningEffort;
+        this.reasoning = builder.reasoning;
         this.serviceTier = builder.serviceTier;
         this.logprobs = builder.logprobs;
         this.topLogprobs = builder.topLogprobs;
@@ -225,8 +225,8 @@ public final class ChatCompletionRequest {
         return metadata;
     }
 
-    public String reasoningEffort() {
-        return reasoningEffort;
+    public Map<String, Object> reasoning() {
+        return reasoning;
     }
 
     public String serviceTier() {
@@ -286,7 +286,7 @@ public final class ChatCompletionRequest {
                 && Objects.equals(parallelToolCalls, another.parallelToolCalls)
                 && Objects.equals(store, another.store)
                 && Objects.equals(metadata, another.metadata)
-                && Objects.equals(reasoningEffort, another.reasoningEffort)
+                && Objects.equals(reasoning, another.reasoning)
                 && Objects.equals(serviceTier, another.serviceTier)
                 && Objects.equals(logprobs, another.logprobs)
                 && Objects.equals(topLogprobs, another.topLogprobs)
@@ -320,7 +320,7 @@ public final class ChatCompletionRequest {
         h += (h << 5) + Objects.hashCode(parallelToolCalls);
         h += (h << 5) + Objects.hashCode(store);
         h += (h << 5) + Objects.hashCode(metadata);
-        h += (h << 5) + Objects.hashCode(reasoningEffort);
+        h += (h << 5) + Objects.hashCode(reasoning);
         h += (h << 5) + Objects.hashCode(serviceTier);
         h += (h << 5) + Objects.hashCode(logprobs);
         h += (h << 5) + Objects.hashCode(topLogprobs);
@@ -355,7 +355,7 @@ public final class ChatCompletionRequest {
                 + ", parallelToolCalls=" + parallelToolCalls
                 + ", store=" + store
                 + ", metadata=" + metadata
-                + ", reasoningEffort=" + reasoningEffort
+                + ", reasoning=" + reasoning
                 + ", serviceTier=" + serviceTier
                 + ", logprobs=" + logprobs
                 + ", topLogprobs=" + topLogprobs
@@ -395,7 +395,7 @@ public final class ChatCompletionRequest {
         private Boolean parallelToolCalls;
         private Boolean store;
         private Map<String, String> metadata;
-        private String reasoningEffort;
+        private Map<String, Object> reasoning;
         private String serviceTier;
         private Boolean logprobs;
         private Integer topLogprobs;
@@ -430,7 +430,7 @@ public final class ChatCompletionRequest {
             parallelToolCalls(instance.parallelToolCalls);
             store(instance.store);
             metadata(instance.metadata);
-            reasoningEffort(instance.reasoningEffort);
+            reasoning(instance.reasoning);
             serviceTier(instance.serviceTier);
             logprobs(instance.logprobs);
             topLogprobs(instance.topLogprobs);
@@ -620,8 +620,15 @@ public final class ChatCompletionRequest {
             return this;
         }
 
-        public Builder reasoningEffort(String reasoningEffort) {
-            this.reasoningEffort = reasoningEffort;
+        public Builder reasoning(Map<String, Object> reasoning) {
+            this.reasoning = reasoning;
+            return this;
+        }
+
+        public Builder reasoningEffort(String effort) {
+            if (effort != null) {
+                this.reasoning = Map.of("effort", effort);
+            }
             return this;
         }
 
