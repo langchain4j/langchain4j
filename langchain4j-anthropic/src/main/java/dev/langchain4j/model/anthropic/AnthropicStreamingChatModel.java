@@ -66,6 +66,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     private final boolean cacheTools;
     private final String thinkingType;
     private final Integer thinkingBudgetTokens;
+    private final String thinkingDisplay;
     private final boolean returnThinking;
     private final boolean sendThinking;
     private final List<ChatModelListener> listeners;
@@ -115,6 +116,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         this.cacheTools = getOrDefault(builder.cacheTools, false);
         this.thinkingType = builder.thinkingType;
         this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
+        this.thinkingDisplay = builder.thinkingDisplay;
         this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.sendThinking = getOrDefault(builder.sendThinking, true);
         this.listeners = copy(builder.listeners);
@@ -152,6 +154,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Boolean cacheTools;
         private String thinkingType;
         private Integer thinkingBudgetTokens;
+        private String thinkingDisplay;
         private Boolean returnThinking;
         private Boolean sendThinking;
         private Duration timeout;
@@ -267,6 +270,24 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
          */
         public AnthropicStreamingChatModelBuilder thinkingBudgetTokens(Integer thinkingBudgetTokens) {
             this.thinkingBudgetTokens = thinkingBudgetTokens;
+            return this;
+        }
+
+        /**
+         * Controls how thinking content is returned in API responses.
+         * <p>
+         * Accepts {@code "summarized"} or {@code "omitted"}.
+         * On Claude Opus 4.7+, the default is {@code "omitted"} (thinking text is suppressed),
+         * which reduces time-to-first-text-token but hides the reasoning trace.
+         * Set to {@code "summarized"} to receive a summary of the model's reasoning.
+         * <p>
+         * Note: you are still charged for the full thinking tokens regardless of this setting.
+         *
+         * @param thinkingDisplay the display mode: {@code "summarized"} or {@code "omitted"}
+         * @see #thinkingType(String)
+         */
+        public AnthropicStreamingChatModelBuilder thinkingDisplay(String thinkingDisplay) {
+            this.thinkingDisplay = thinkingDisplay;
             return this;
         }
 
@@ -460,7 +481,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         validate(chatRequest.parameters());
         AnthropicCreateMessageRequest anthropicRequest = createAnthropicRequest(
                 chatRequest,
-                toThinking(thinkingType, thinkingBudgetTokens),
+                toThinking(thinkingType, thinkingBudgetTokens, thinkingDisplay),
                 sendThinking,
                 cacheSystemMessages ? EPHEMERAL : NO_CACHE,
                 cacheTools ? EPHEMERAL : NO_CACHE,

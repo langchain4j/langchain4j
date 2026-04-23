@@ -53,6 +53,7 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .cacheTools(...)
     .thinkingType(...)
     .thinkingBudgetTokens(...)
+    .thinkingDisplay(...)
     .returnThinking(...)
     .sendThinking(...)
     .timeout(...)
@@ -428,6 +429,8 @@ Both `AnthropicChatModel` and `AnthropicStreamingChatModel` support
 It is controlled by the following parameters:
 - `thinkingType` and `thinkingBudgetTokens`: enable thinking,
   see more details [here](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking).
+- `thinkingDisplay`: controls how thinking content is returned. Accepts `"summarized"` or `"omitted"`.
+  On Claude Opus 4.7+, the default is `"omitted"`. Set to `"summarized"` to receive thinking summaries.
 - `returnThinking`: controls whether to return thinking (if available) inside `AiMessage.thinking()`
   and whether to invoke `StreamingChatResponseHandler.onPartialThinking()` and `TokenStream.onPartialThinking()`
   callbacks when using `BedrockStreamingChatModel`.
@@ -442,6 +445,7 @@ ChatModel model = AnthropicChatModel.builder()
         .modelName("claude-sonnet-4-5-20250929")
         .thinkingType("enabled")
         .thinkingBudgetTokens(1024)
+        .thinkingDisplay("summarized")
         .maxTokens(1024 + 100)
         .returnThinking(true)
         .sendThinking(true)
