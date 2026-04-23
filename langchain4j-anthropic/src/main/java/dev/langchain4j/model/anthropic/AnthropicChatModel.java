@@ -69,6 +69,7 @@ public class AnthropicChatModel implements ChatModel {
     private final boolean cacheTools;
     private final String thinkingType;
     private final Integer thinkingBudgetTokens;
+    private final String thinkingDisplay;
     private final boolean returnThinking;
     private final boolean sendThinking;
     private final int maxRetries;
@@ -101,6 +102,7 @@ public class AnthropicChatModel implements ChatModel {
         this.cacheTools = getOrDefault(builder.cacheTools, false);
         this.thinkingType = builder.thinkingType;
         this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
+        this.thinkingDisplay = builder.thinkingDisplay;
         this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.sendThinking = getOrDefault(builder.sendThinking, true);
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
@@ -166,6 +168,7 @@ public class AnthropicChatModel implements ChatModel {
         private Boolean cacheTools;
         private String thinkingType;
         private Integer thinkingBudgetTokens;
+        private String thinkingDisplay;
         private Boolean returnThinking;
         private Boolean sendThinking;
         private Duration timeout;
@@ -357,6 +360,22 @@ public class AnthropicChatModel implements ChatModel {
         }
 
         /**
+         * Controls how thinking content is returned in the response.
+         * <p>
+         * Valid values: {@code "summarized"} and {@code "omitted"}. On Claude Opus 4.7
+         * the server default is {@code "omitted"}; on earlier Opus/Sonnet models the
+         * default is {@code "summarized"}. Set to {@code "summarized"} explicitly on
+         * Opus 4.7+ to restore visible thinking text for UIs that render it.
+         *
+         * @see #thinkingType(String)
+         * @see #returnThinking(Boolean)
+         */
+        public AnthropicChatModelBuilder thinkingDisplay(String thinkingDisplay) {
+            this.thinkingDisplay = thinkingDisplay;
+            return this;
+        }
+
+        /**
          * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}.
          * Please note that this does not enable thinking/reasoning for the LLM;
          * it only controls whether to parse the {@code thinking} field from the API response
@@ -479,7 +498,7 @@ public class AnthropicChatModel implements ChatModel {
 
         AnthropicCreateMessageRequest anthropicRequest = createAnthropicRequest(
                 chatRequest,
-                toThinking(thinkingType, thinkingBudgetTokens),
+                toThinking(thinkingType, thinkingBudgetTokens, thinkingDisplay),
                 sendThinking,
                 cacheSystemMessages ? EPHEMERAL : NO_CACHE,
                 cacheTools ? EPHEMERAL : NO_CACHE,
@@ -514,11 +533,12 @@ public class AnthropicChatModel implements ChatModel {
                 .build();
     }
 
-    static AnthropicThinking toThinking(String thinkingType, Integer thinkingBudgetTokens) {
+    static AnthropicThinking toThinking(String thinkingType, Integer thinkingBudgetTokens, String thinkingDisplay) {
         if (thinkingType != null || thinkingBudgetTokens != null) {
             return AnthropicThinking.builder()
                     .type(thinkingType)
                     .budgetTokens(thinkingBudgetTokens)
+                    .display(thinkingDisplay)
                     .build();
         }
         return null;
