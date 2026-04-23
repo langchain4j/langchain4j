@@ -48,7 +48,7 @@ public @interface Tool {
      * while a {@code RuntimeException} will be thrown attempting to use a tool with immediate return with an AI service having a different return type.
      * - If {@link ReturnBehavior#IMMEDIATE_IF_LAST} is used, halts only when this tool is the last tool call
      * in the LLM response. Useful for tools that explicitly close an execution loop after other actions.
-     * Same return-type restriction as {@link ReturnBehavior#IMMEDIATE} applies.
+     * Same return-type restriction as {@link ReturnBehavior#IMMEDIATE} applies. TODO
      *
      * @return return behavior of the tool.
      */
