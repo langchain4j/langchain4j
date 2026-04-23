@@ -60,7 +60,7 @@ public enum ReturnBehavior {
     TO_LLM,
 
     /**
-     * Halts AI Service execution loop and returns tool call result(s) to the caller (as
+     * Halts AI Service execution loop and returns tool call result(s) to the caller (inside the
      * {@code dev.langchain4j.service.Result}) when the entire response is halt-causing —
      * i.e. every tool in the response is {@code IMMEDIATE} or {@link #IMMEDIATE_IF_LAST},
      * and no tool errored.

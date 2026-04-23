@@ -389,8 +389,8 @@ public class ToolService {
             if (shouldReturnImmediately(anyToolErrored, returnBehaviors)) {
                 if (!isReturnTypeResult) {
                     throw illegalConfiguration(
-                            "Tools with ReturnBehavior.%s/%s are not allowed on a AI service not returning %s type", // TODO
-                            IMMEDIATE, IMMEDIATE_IF_LAST, Result.class.getName());
+                            "AI Service method must return a %s type to use tools with ReturnBehavior.%s/%s",
+                            Result.class.getName(), IMMEDIATE, IMMEDIATE_IF_LAST);
                 }
                 ChatResponse finalResponse = intermediateResponses.remove(intermediateResponses.size() - 1);
                 return ToolServiceResult.builder()

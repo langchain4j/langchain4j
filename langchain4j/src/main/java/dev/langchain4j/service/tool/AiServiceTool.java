@@ -51,6 +51,10 @@ public class AiServiceTool {
         return returnBehavior;
     }
 
+    /**
+     * @deprecated use {@link #returnBehavior()} instead
+     */
+    @Deprecated(since = "1.14.0")
     public boolean immediateReturn() {
         return returnBehavior == ReturnBehavior.IMMEDIATE;
     }
