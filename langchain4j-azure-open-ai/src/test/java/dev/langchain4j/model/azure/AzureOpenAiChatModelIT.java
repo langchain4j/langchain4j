@@ -230,7 +230,45 @@ class AzureOpenAiChatModelIT {
 
         // then
         assertThat(answer).contains("Berlin");
-    }    
+    }
+
+    @Test
+    void should_support_stream_parameter() {
+
+        // given
+        ChatModel model = AzureOpenAiChatModel.builder()
+                .endpoint(getAzureOpenaiEndpoint())
+                .apiKey(getAzureOpenaiKey())
+                .deploymentName("o4-mini")
+                .stream(true)
+                .logRequestsAndResponses(true)
+                .build();
+
+        // when
+        String answer = model.chat("What is the capital of France?");
+
+        // then
+        assertThat(answer).contains("Paris");
+    }
+
+    @Test
+    void should_support_promptCacheKey() {
+
+        // given
+        ChatModel model = AzureOpenAiChatModel.builder()
+                .endpoint(getAzureOpenaiEndpoint())
+                .apiKey(getAzureOpenaiKey())
+                .deploymentName("o4-mini")
+                .promptCacheKey("test-cache-key")
+                .logRequestsAndResponses(true)
+                .build();
+
+        // when
+        String answer = model.chat("What is 2+2?");
+
+        // then
+        assertThat(answer).isNotBlank();
+    }
 
     @AfterEach
     void afterEach() throws InterruptedException {

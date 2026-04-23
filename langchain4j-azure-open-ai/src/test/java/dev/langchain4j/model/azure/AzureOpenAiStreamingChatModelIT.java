@@ -196,7 +196,47 @@ class AzureOpenAiStreamingChatModelIT {
 
         // then
         assertThat(handler.get().aiMessage().text()).contains("Berlin");
-    }      
+    }
+
+    @Test
+    void should_support_stream_parameter() {
+
+        // given
+        StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
+                .endpoint(getAzureOpenaiEndpoint())
+                .apiKey(getAzureOpenaiKey())
+                .deploymentName("o4-mini")
+                .stream(true)
+                .logRequestsAndResponses(true)
+                .build();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat("What is the capital of France?", handler);
+
+        // then
+        assertThat(handler.get().aiMessage().text()).contains("Paris");
+    }
+
+    @Test
+    void should_support_promptCacheKey() {
+
+        // given
+        StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
+                .endpoint(getAzureOpenaiEndpoint())
+                .apiKey(getAzureOpenaiKey())
+                .deploymentName("o4-mini")
+                .promptCacheKey("test-cache-key")
+                .logRequestsAndResponses(true)
+                .build();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat("What is 2+2?", handler);
+
+        // then
+        assertThat(handler.get().aiMessage().text()).isNotBlank();
+    }
 
     @AfterEach
     void afterEach() throws InterruptedException {
