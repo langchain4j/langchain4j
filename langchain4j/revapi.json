@@ -8,6 +8,11 @@
           "code": "java.method.visibilityIncreased",
           "new": "method void dev.langchain4j.service.tool.ToolProviderResult::<init>(java.util.List<dev.langchain4j.service.tool.AiServiceTool>)",
           "justification": "If ToolProviderResult were extended and the subclass already declared a constructor with this same signature at lesser visibility, this change would be a breaking change. ToolProviderResult is not expected to be extended, so this is acceptable."
+        },
+        {
+          "code": "java.annotation.removed",
+          "new": "class dev.langchain4j.service.tool.AiServiceTool",
+          "justification": "@Internal removed intentionally: AiServiceTool is now part of the public API and can be constructed and passed to AiServices directly by users (e.g. via AiServices.tools(List<AiServiceTool>))."
         }
       ]
     }
