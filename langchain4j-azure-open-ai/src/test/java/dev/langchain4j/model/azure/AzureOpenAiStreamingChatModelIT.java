@@ -196,7 +196,27 @@ class AzureOpenAiStreamingChatModelIT {
 
         // then
         assertThat(handler.get().aiMessage().text()).contains("Berlin");
-    }      
+    }
+
+    @Test
+    void should_support_promptCacheKey_in_streaming() {
+
+        // given
+        StreamingChatModel model = AzureOpenAiStreamingChatModel.builder()
+                .endpoint(getAzureOpenaiEndpoint())
+                .apiKey(getAzureOpenaiKey())
+                .deploymentName("gpt-4o")
+                .promptCacheKey("streaming-test-cache-key")
+                .logRequestsAndResponses(true)
+                .build();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat("What is the capital of France?", handler);
+
+        // then
+        assertThat(handler.get().aiMessage().text()).contains("Paris");
+    }
 
     @AfterEach
     void afterEach() throws InterruptedException {

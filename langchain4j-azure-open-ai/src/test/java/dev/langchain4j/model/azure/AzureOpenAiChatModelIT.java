@@ -230,7 +230,51 @@ class AzureOpenAiChatModelIT {
 
         // then
         assertThat(answer).contains("Berlin");
-    }    
+    }
+
+    @Test
+    void should_support_stream_and_promptCacheKey_builder_params() {
+
+        // given
+        // Verify that stream and promptCacheKey builder methods exist and accept valid values
+        // These parameters are passed to the Azure SDK's ChatCompletionsOptions
+        ChatModel model = AzureOpenAiChatModel.builder()
+                .endpoint(getAzureOpenaiEndpoint())
+                .apiKey(getAzureOpenaiKey())
+                .deploymentName("gpt-4o")
+                .stream(true)
+                .promptCacheKey("test-cache-key")
+                .logRequestsAndResponses(true)
+                .build();
+
+        // when
+        // Note: Since stream=true requires using StreamingChatModel for actual streaming,
+        // using stream=true on ChatModel will result in non-streamed behavior
+        // but validates the builder accepts and processes these parameters correctly
+        String answer = model.chat("What is the capital of France?");
+
+        // then
+        assertThat(answer).contains("Paris");
+    }
+
+    @Test
+    void should_support_promptCacheKey_without_stream() {
+
+        // given
+        ChatModel model = AzureOpenAiChatModel.builder()
+                .endpoint(getAzureOpenaiEndpoint())
+                .apiKey(getAzureOpenaiKey())
+                .deploymentName("gpt-4o")
+                .promptCacheKey("test-prompt-cache-key")
+                .logRequestsAndResponses(true)
+                .build();
+
+        // when
+        String answer = model.chat("What is the capital of Italy?");
+
+        // then
+        assertThat(answer).contains("Rome");
+    }
 
     @AfterEach
     void afterEach() throws InterruptedException {

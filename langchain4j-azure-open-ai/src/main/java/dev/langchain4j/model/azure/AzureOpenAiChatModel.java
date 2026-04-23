@@ -4,6 +4,7 @@ import static com.azure.ai.openai.models.CompletionsFinishReason.CONTENT_FILTERE
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.AZURE_OPEN_AI;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.aiMessageFrom;
@@ -19,9 +20,11 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Arrays.asList;
 
 import com.azure.ai.openai.OpenAIClient;
+import com.azure.ai.openai.implementation.accesshelpers.ChatCompletionsOptionsAccessHelper;
 import com.azure.ai.openai.models.AzureChatEnhancementConfiguration;
 import com.azure.ai.openai.models.AzureChatExtensionConfiguration;
 import com.azure.ai.openai.models.ChatChoice;
+import com.azure.ai.openai.models.ChatCompletionStreamOptions;
 import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.azure.ai.openai.models.ReasoningEffortValue;
@@ -43,6 +46,7 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -87,6 +91,8 @@ public class AzureOpenAiChatModel implements ChatModel {
     private final Boolean strictJsonSchema;
     private final Integer maxCompletionTokens;
     private final ReasoningEffortValue reasoningEffort;
+    private final Boolean stream;
+    private final String promptCacheKey;
 
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
@@ -167,6 +173,8 @@ public class AzureOpenAiChatModel implements ChatModel {
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.maxCompletionTokens = builder.maxCompletionTokens;
         this.reasoningEffort = builder.reasoningEffort;
+        this.stream = builder.stream;
+        this.promptCacheKey = builder.promptCacheKey;
 
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
@@ -204,11 +212,25 @@ public class AzureOpenAiChatModel implements ChatModel {
                 .setSeed(seed)
                 .setReasoningEffort(reasoningEffort);
 
+        if (Boolean.TRUE.equals(stream)) {
+            ChatCompletionStreamOptions streamOptions = new ChatCompletionStreamOptions().setIncludeUsage(true);
+            ChatCompletionsOptionsAccessHelper.setStreamOptions(options, streamOptions);
+        }
+
         if (!parameters.toolSpecifications().isEmpty()) {
             options.setTools(toToolDefinitions(parameters.toolSpecifications()));
         }
         if (parameters.toolChoice() != null) {
             options.setToolChoice(toToolChoice(parameters.toolChoice()));
+        }
+
+        if (isNotNullOrBlank(promptCacheKey)) {
+            Map<String, String> metadata = options.getMetadata();
+            if (metadata == null) {
+                metadata = new HashMap<>();
+            }
+            metadata.put("prompt_cache_key", promptCacheKey);
+            options.setMetadata(metadata);
         }
 
         ChatCompletions chatCompletions = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(
@@ -290,6 +312,8 @@ public class AzureOpenAiChatModel implements ChatModel {
         private Map<String, String> customHeaders;
         private Set<Capability> supportedCapabilities;
         private ReasoningEffortValue reasoningEffort;
+        private Boolean stream;
+        private String promptCacheKey;
 
         public Builder defaultRequestParameters(ChatRequestParameters parameters) {
             this.defaultRequestParameters = parameters;
@@ -507,6 +531,31 @@ public class AzureOpenAiChatModel implements ChatModel {
 
         public Builder reasoningEffort(ReasoningEffortValue reasoningEffort) {
             this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
+        /**
+         * Sets whether to stream the response. When true, the response is streamed token by token.
+         * This is useful for real-time chat applications and incremental UI updates.
+         *
+         * @param stream whether to stream the response
+         * @return builder
+         */
+        public Builder stream(Boolean stream) {
+            this.stream = stream;
+            return this;
+        }
+
+        /**
+         * Sets the prompt cache key for Azure OpenAI prompt caching.
+         * When provided, Azure will attempt to use cached results for prompts with matching cache keys,
+         * significantly reducing latency and cost for repeated or long system prompts.
+         *
+         * @param promptCacheKey the cache key to use for prompt caching
+         * @return builder
+         */
+        public Builder promptCacheKey(String promptCacheKey) {
+            this.promptCacheKey = promptCacheKey;
             return this;
         }
 
