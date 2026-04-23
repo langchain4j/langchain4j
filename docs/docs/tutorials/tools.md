@@ -1211,16 +1211,32 @@ while the actual response of `124` will have to be retrieved from the `result.to
 Without the immediate return, the LLM would have to reprocess the result of the `add` tool execution request,
 thus returning a response like: `The result of adding 37 and 87 is 124.`
 
-#### Halt rule with multiple tool calls in a single response
+#### Immediate-return rule with multiple tool calls in a single response
 
 When the LLM returns multiple tool calls in a single response,
-the loop halts (and the result is returned to the caller) only when **both** of the following hold:
+the loop returns immediately (without sending the results back to the LLM) only when **both** of the following hold:
 
 1. **No tool errored.** Any error in any tool call forces reprocessing so the LLM can react to the error on the next turn.
 2. **Either** every tool in the response is `IMMEDIATE` (no `TO_LLM` tools mixed in) **or** the last tool is `IMMEDIATE_IF_LAST` (see next section).
 
-A response that mixes `TO_LLM` and `IMMEDIATE` tools (without an `IMMEDIATE_IF_LAST` tool last) is reprocessed.
-See the Javadoc of `ReturnBehavior` for the full halt-vs-reprocess matrix.
+Examples (tools listed in the order returned by the LLM in a single response;
+`(err)` marks a tool whose execution errored):
+
+| Tool calls in the response                     | Outcome            | Why                                                          |
+|------------------------------------------------|--------------------|--------------------------------------------------------------|
+| `[IMMEDIATE]`                                  | return immediately | only tool is `IMMEDIATE`                                     |
+| `[IMMEDIATE, IMMEDIATE]`                       | return immediately | every tool is `IMMEDIATE`/`IMMEDIATE_IF_LAST`                |
+| `[IMMEDIATE, TO_LLM]`                          | reprocess          | `TO_LLM` disqualifies the all-immediate rule                 |
+| `[IMMEDIATE_IF_LAST]`                          | return immediately | last tool is `IMMEDIATE_IF_LAST`                             |
+| `[TO_LLM, IMMEDIATE_IF_LAST]`                  | return immediately | last tool is `IMMEDIATE_IF_LAST`                             |
+| `[IMMEDIATE_IF_LAST, TO_LLM]`                  | reprocess          | not last, and `TO_LLM` disqualifies the all-immediate rule   |
+| `[IMMEDIATE, IMMEDIATE_IF_LAST]`               | return immediately | last tool is `IMMEDIATE_IF_LAST`                             |
+| `[IMMEDIATE_IF_LAST, IMMEDIATE]`               | return immediately | every tool is `IMMEDIATE`/`IMMEDIATE_IF_LAST`                |
+| `[TO_LLM, IMMEDIATE_IF_LAST, IMMEDIATE]`       | reprocess          | not last, and `TO_LLM` disqualifies the all-immediate rule   |
+| `[IMMEDIATE_IF_LAST(err)]`                     | reprocess          | any error disables immediate return                          |
+| `[TO_LLM(err), IMMEDIATE_IF_LAST]`             | reprocess          | any error disables immediate return                          |
+
+See the Javadoc of `ReturnBehavior` for the full immediate-return-vs-reprocess matrix.
 
 #### `IMMEDIATE_IF_LAST` for tools that explicitly close an action sequence
 
@@ -1229,12 +1245,12 @@ the end of a multi-step action — for example, an `endExecutionAndGetFinalResul
 the LLM appendsafter a sequence of clicks, navigations, etc.
 
 Without `IMMEDIATE_IF_LAST`, the LLM would typically need two turns to close out execution:
-one turn that mixes work tools (`TO_LLM`) with the halt tool,
+one turn that mixes work tools (`TO_LLM`) with the closing tool,
 and a second turn where the LLM, after seeing all the results,
-calls the halt tool alone. The loop only halts on the second turn.
+calls the closing tool alone. The loop only returns immediately on the second turn.
 
-With `IMMEDIATE_IF_LAST`, the loop halts as soon as the LLM places the tool last
-in its response— saving one full LLM round trip per invocation.
+With `IMMEDIATE_IF_LAST`, the loop returns immediately as soon as the LLM places the tool last
+in its response — saving one full LLM round trip per invocation.
 
 ```java
 class ScreenAutomation {
@@ -1251,13 +1267,13 @@ class ScreenAutomation {
 ```
 
 For an LLM response of `[leftMouseClick, typeText, endExecutionAndGetFinalResult]`,
-the loop halts immediately after executing all three tools.
-If the LLM puts the halt tool anywhere other than last
+the loop returns immediately after executing all three tools.
+If the LLM puts the closing tool anywhere other than last
 (e.g. `[endExecutionAndGetFinalResult, leftMouseClick]`),
 the loop continues and sends all results back to the LLM.
 
-`IMMEDIATE_IF_LAST` also counts as "halt-causing" for the all-immediate halt rule of `IMMEDIATE`:
-a response made up only of `IMMEDIATE` and/or `IMMEDIATE_IF_LAST` tools halts
+`IMMEDIATE_IF_LAST` also counts toward the all-immediate rule of `IMMEDIATE`:
+a response made up only of `IMMEDIATE` and/or `IMMEDIATE_IF_LAST` tools returns immediately
 regardless of which one is last (still subject to the no-errors rule).
 
 Like `IMMEDIATE`, `IMMEDIATE_IF_LAST` is only allowed on AI services with a `Result<T>` return type.

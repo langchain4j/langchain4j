@@ -23,7 +23,7 @@ import java.util.stream.Stream;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
 import static dev.langchain4j.agent.tool.ReturnBehavior.TO_LLM;
-import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.Outcome.HALT;
+import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.Outcome.RETURN_IMMEDIATELY;
 import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.Outcome.REPROCESS;
 import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.ToolStep.err;
 import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.ToolStep.ok;
@@ -31,7 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 /**
- * Parameterized verification of the halt/reprocess decision for every interesting combination
+ * Parameterized verification of the immediate-return/reprocess decision for every interesting combination
  * of {@link ReturnBehavior}s in a single LLM response. Each step is either {@link ToolStep#ok}
  * (executes successfully) or {@link ToolStep#err} (throws). Any error in any tool is expected
  * to force REPROCESS regardless of the other steps' behaviors.
@@ -83,7 +83,7 @@ class ReturnBehaviorCombinationsTest {
     }
 
     enum Outcome {
-        HALT,
+        RETURN_IMMEDIATELY,
         REPROCESS
     }
 
@@ -110,25 +110,25 @@ class ReturnBehaviorCombinationsTest {
                 arguments(List.of(ok(TO_LLM), ok(TO_LLM)), REPROCESS),
 
                 // --- IMMEDIATE / TO_LLM ---
-                arguments(List.of(ok(IMMEDIATE)), HALT),
-                arguments(List.of(ok(IMMEDIATE), ok(IMMEDIATE)), HALT),
+                arguments(List.of(ok(IMMEDIATE)), RETURN_IMMEDIATELY),
+                arguments(List.of(ok(IMMEDIATE), ok(IMMEDIATE)), RETURN_IMMEDIATELY),
                 arguments(List.of(ok(TO_LLM), ok(IMMEDIATE)), REPROCESS),
                 arguments(List.of(ok(IMMEDIATE), ok(TO_LLM)), REPROCESS),
 
                 // --- IMMEDIATE_IF_LAST / TO_LLM ---
-                arguments(List.of(ok(IMMEDIATE_IF_LAST)), HALT),
-                arguments(List.of(ok(IMMEDIATE_IF_LAST), ok(IMMEDIATE_IF_LAST)), HALT),
-                arguments(List.of(ok(TO_LLM), ok(IMMEDIATE_IF_LAST)), HALT),
+                arguments(List.of(ok(IMMEDIATE_IF_LAST)), RETURN_IMMEDIATELY),
+                arguments(List.of(ok(IMMEDIATE_IF_LAST), ok(IMMEDIATE_IF_LAST)), RETURN_IMMEDIATELY),
+                arguments(List.of(ok(TO_LLM), ok(IMMEDIATE_IF_LAST)), RETURN_IMMEDIATELY),
                 arguments(List.of(ok(IMMEDIATE_IF_LAST), ok(TO_LLM)), REPROCESS),
 
                 // --- IMMEDIATE / IMMEDIATE_IF_LAST ---
-                arguments(List.of(ok(IMMEDIATE), ok(IMMEDIATE_IF_LAST)), HALT),
-                arguments(List.of(ok(IMMEDIATE_IF_LAST), ok(IMMEDIATE)), HALT),
+                arguments(List.of(ok(IMMEDIATE), ok(IMMEDIATE_IF_LAST)), RETURN_IMMEDIATELY),
+                arguments(List.of(ok(IMMEDIATE_IF_LAST), ok(IMMEDIATE)), RETURN_IMMEDIATELY),
 
                 // --- IMMEDIATE / IMMEDIATE_IF_LAST / TO_LLM ---
-                arguments(List.of(ok(TO_LLM), ok(IMMEDIATE), ok(IMMEDIATE_IF_LAST)), HALT),
+                arguments(List.of(ok(TO_LLM), ok(IMMEDIATE), ok(IMMEDIATE_IF_LAST)), RETURN_IMMEDIATELY),
                 arguments(List.of(ok(TO_LLM), ok(IMMEDIATE_IF_LAST), ok(IMMEDIATE)), REPROCESS),
-                arguments(List.of(ok(IMMEDIATE), ok(TO_LLM), ok(IMMEDIATE_IF_LAST)), HALT),
+                arguments(List.of(ok(IMMEDIATE), ok(TO_LLM), ok(IMMEDIATE_IF_LAST)), RETURN_IMMEDIATELY),
                 arguments(List.of(ok(IMMEDIATE), ok(IMMEDIATE_IF_LAST), ok(TO_LLM)), REPROCESS),
                 arguments(List.of(ok(IMMEDIATE_IF_LAST), ok(TO_LLM), ok(IMMEDIATE)), REPROCESS),
                 arguments(List.of(ok(IMMEDIATE_IF_LAST), ok(IMMEDIATE), ok(TO_LLM)), REPROCESS),
@@ -137,19 +137,19 @@ class ReturnBehaviorCombinationsTest {
 
                 // single tool errors (the only call in the response errors)
                 arguments(List.of(err(TO_LLM)), REPROCESS),
-                arguments(List.of(err(IMMEDIATE)), REPROCESS),                // would HALT without error
-                arguments(List.of(err(IMMEDIATE_IF_LAST)), REPROCESS),        // would HALT without error
+                arguments(List.of(err(IMMEDIATE)), REPROCESS),                // would return immediately without error
+                arguments(List.of(err(IMMEDIATE_IF_LAST)), REPROCESS),        // would return immediately without error
 
                 // two tools, one errors — covers both first-errors and last-errors positions
-                arguments(List.of(err(IMMEDIATE), ok(IMMEDIATE)), REPROCESS), // would HALT without error
-                arguments(List.of(ok(IMMEDIATE), err(IMMEDIATE)), REPROCESS), // would HALT without error
-                arguments(List.of(err(TO_LLM), ok(IMMEDIATE_IF_LAST)), REPROCESS),  // would HALT without error
-                arguments(List.of(ok(TO_LLM), err(IMMEDIATE_IF_LAST)), REPROCESS),  // would HALT without error (last itself errors)
+                arguments(List.of(err(IMMEDIATE), ok(IMMEDIATE)), REPROCESS), // would return immediately without error
+                arguments(List.of(ok(IMMEDIATE), err(IMMEDIATE)), REPROCESS), // would return immediately without error
+                arguments(List.of(err(TO_LLM), ok(IMMEDIATE_IF_LAST)), REPROCESS),  // would return immediately without error
+                arguments(List.of(ok(TO_LLM), err(IMMEDIATE_IF_LAST)), REPROCESS),  // would return immediately without error (last itself errors)
                 arguments(List.of(err(IMMEDIATE_IF_LAST), ok(TO_LLM)), REPROCESS),  // already REPROCESS without error
-                arguments(List.of(err(IMMEDIATE), ok(IMMEDIATE_IF_LAST)), REPROCESS),  // would HALT without error
-                arguments(List.of(ok(IMMEDIATE), err(IMMEDIATE_IF_LAST)), REPROCESS),  // would HALT without error (last itself errors)
+                arguments(List.of(err(IMMEDIATE), ok(IMMEDIATE_IF_LAST)), REPROCESS),  // would return immediately without error
+                arguments(List.of(ok(IMMEDIATE), err(IMMEDIATE_IF_LAST)), REPROCESS),  // would return immediately without error (last itself errors)
 
-                // three tools, error in any position — would-HALT mixes
+                // three tools, error in any position — would-return-immediately mixes
                 arguments(List.of(err(TO_LLM), ok(IMMEDIATE), ok(IMMEDIATE_IF_LAST)), REPROCESS),
                 arguments(List.of(ok(TO_LLM), err(IMMEDIATE), ok(IMMEDIATE_IF_LAST)), REPROCESS),
                 arguments(List.of(ok(TO_LLM), ok(IMMEDIATE), err(IMMEDIATE_IF_LAST)), REPROCESS));
@@ -174,12 +174,12 @@ class ReturnBehaviorCombinationsTest {
 
         Result<String> result = assistant.chat("go");
 
-        if (expectedOutcome == HALT) {
+        if (expectedOutcome == RETURN_IMMEDIATELY) {
             assertThat(model.requests())
-                    .as("HALT means a single LLM call (no reprocessing round trip)")
+                    .as("immediate return means a single LLM call (no reprocessing round trip)")
                     .hasSize(1);
             assertThat(result.content())
-                    .as("HALT means no LLM-generated text content")
+                    .as("immediate return means no LLM-generated text content")
                     .isNull();
         } else {
             assertThat(model.requests())
@@ -218,12 +218,12 @@ class ReturnBehaviorCombinationsTest {
 
         ChatResponse finalResponse = future.get(10, TimeUnit.SECONDS);
 
-        if (expectedOutcome == HALT) {
+        if (expectedOutcome == RETURN_IMMEDIATELY) {
             assertThat(model.requests())
-                    .as("HALT means a single LLM call (no reprocessing round trip)")
+                    .as("immediate return means a single LLM call (no reprocessing round trip)")
                     .hasSize(1);
             assertThat(finalResponse.aiMessage().hasToolExecutionRequests())
-                    .as("HALT means the final response carries the tool calls, not LLM text")
+                    .as("immediate return means the final response carries the tool calls, not LLM text")
                     .isTrue();
         } else {
             assertThat(model.requests())

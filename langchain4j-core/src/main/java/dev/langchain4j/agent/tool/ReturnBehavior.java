@@ -11,31 +11,32 @@ import dev.langchain4j.Experimental;
  * short-circuit the loop and return tool call result(s) directly to the caller inside the
  * {@code dev.langchain4j.service.Result}.
  * <p>
- * <b>Halt rule</b> applied after each LLM response: AI Service execution loop halts iff
+ * <b>Immediate-return rule</b> applied after each LLM response: AI Service execution loop
+ * returns immediately iff
  * <ol>
  *   <li>no tool in the response errored, AND</li>
  *   <li>either the last tool is {@link #IMMEDIATE_IF_LAST}, or every tool is
  *       {@link #IMMEDIATE}/{@link #IMMEDIATE_IF_LAST} (no {@link #TO_LLM} mixed in).</li>
  * </ol>
  * <p>
- * <b>Halt vs. reprocess for every order of behaviors</b> (no errors), as exercised by
- * {@code ReturnBehaviorCombinationsTest}:
+ * <b>Immediate return vs. reprocess for every order of behaviors</b> (no errors), as
+ * exercised by {@code ReturnBehaviorCombinationsTest}:
  * <pre>
  *   [TO_LLM]                                 -&gt; reprocess
  *   [TO_LLM, TO_LLM]                         -&gt; reprocess
- *   [IMMEDIATE]                              -&gt; halt
- *   [IMMEDIATE, IMMEDIATE]                   -&gt; halt
+ *   [IMMEDIATE]                              -&gt; return immediately
+ *   [IMMEDIATE, IMMEDIATE]                   -&gt; return immediately
  *   [TO_LLM, IMMEDIATE]                      -&gt; reprocess
  *   [IMMEDIATE, TO_LLM]                      -&gt; reprocess
- *   [IMMEDIATE_IF_LAST]                      -&gt; halt
- *   [IMMEDIATE_IF_LAST, IMMEDIATE_IF_LAST]   -&gt; halt
- *   [TO_LLM, IMMEDIATE_IF_LAST]              -&gt; halt
+ *   [IMMEDIATE_IF_LAST]                      -&gt; return immediately
+ *   [IMMEDIATE_IF_LAST, IMMEDIATE_IF_LAST]   -&gt; return immediately
+ *   [TO_LLM, IMMEDIATE_IF_LAST]              -&gt; return immediately
  *   [IMMEDIATE_IF_LAST, TO_LLM]              -&gt; reprocess
- *   [IMMEDIATE, IMMEDIATE_IF_LAST]           -&gt; halt
- *   [IMMEDIATE_IF_LAST, IMMEDIATE]           -&gt; halt
- *   [TO_LLM, IMMEDIATE, IMMEDIATE_IF_LAST]   -&gt; halt
+ *   [IMMEDIATE, IMMEDIATE_IF_LAST]           -&gt; return immediately
+ *   [IMMEDIATE_IF_LAST, IMMEDIATE]           -&gt; return immediately
+ *   [TO_LLM, IMMEDIATE, IMMEDIATE_IF_LAST]   -&gt; return immediately
  *   [TO_LLM, IMMEDIATE_IF_LAST, IMMEDIATE]   -&gt; reprocess
- *   [IMMEDIATE, TO_LLM, IMMEDIATE_IF_LAST]   -&gt; halt
+ *   [IMMEDIATE, TO_LLM, IMMEDIATE_IF_LAST]   -&gt; return immediately
  *   [IMMEDIATE, IMMEDIATE_IF_LAST, TO_LLM]   -&gt; reprocess
  *   [IMMEDIATE_IF_LAST, TO_LLM, IMMEDIATE]   -&gt; reprocess
  *   [IMMEDIATE_IF_LAST, IMMEDIATE, TO_LLM]   -&gt; reprocess
@@ -46,8 +47,8 @@ import dev.langchain4j.Experimental;
  * <p>
  * {@link #IMMEDIATE} and {@link #IMMEDIATE_IF_LAST} are only allowed on AI services declaring
  * {@code dev.langchain4j.service.Result} as their return type. Using either on a service with
- * a different return type causes an {@code IllegalConfigurationException} the first time a
- * halt would occur.
+ * a different return type causes an {@code IllegalConfigurationException} the first time an
+ * immediate return would occur.
  */
 @Experimental
 public enum ReturnBehavior {
@@ -59,21 +60,20 @@ public enum ReturnBehavior {
     TO_LLM,
 
     /**
-     * Halts AI Service execution loop and returns tool call result(s) to the caller (inside the
-     * {@code dev.langchain4j.service.Result}) when the entire response is halt-causing —
-     * i.e. every tool in the response is {@code IMMEDIATE} or {@link #IMMEDIATE_IF_LAST},
-     * and no tool errored.
+     * Returns AI Service execution loop result(s) to the caller (inside the
+     * {@code dev.langchain4j.service.Result}) when every tool in the response is
+     * {@code IMMEDIATE} or {@link #IMMEDIATE_IF_LAST}, and no tool errored.
      * <p>
-     * A single {@link #TO_LLM} tool anywhere in the response prevents the halt and the loop
-     * runs another turn. Errors in any tool also prevent the halt so the LLM can react to
-     * the error.
+     * A single {@link #TO_LLM} tool anywhere in the response prevents the immediate return and
+     * the loop runs another turn. Errors in any tool also prevent the immediate return so the
+     * LLM can react to the error.
      * <p>
      * Examples (full matrix in the {@link ReturnBehavior class-level Javadoc}):
      * <pre>
-     *   [IMMEDIATE]                              -&gt; halt
-     *   [IMMEDIATE, IMMEDIATE]                   -&gt; halt
-     *   [IMMEDIATE, IMMEDIATE_IF_LAST]           -&gt; halt   (both halt-causing)
-     *   [IMMEDIATE_IF_LAST, IMMEDIATE]           -&gt; halt   (both halt-causing)
+     *   [IMMEDIATE]                              -&gt; return immediately
+     *   [IMMEDIATE, IMMEDIATE]                   -&gt; return immediately
+     *   [IMMEDIATE, IMMEDIATE_IF_LAST]           -&gt; return immediately   (every tool is IMMEDIATE/IMMEDIATE_IF_LAST)
+     *   [IMMEDIATE_IF_LAST, IMMEDIATE]           -&gt; return immediately   (every tool is IMMEDIATE/IMMEDIATE_IF_LAST)
      *   [TO_LLM, IMMEDIATE]                      -&gt; reprocess
      *   [IMMEDIATE, TO_LLM]                      -&gt; reprocess
      * </pre>
@@ -83,27 +83,28 @@ public enum ReturnBehavior {
     IMMEDIATE,
 
     /**
-     * Halts AI Service execution loop when this tool is positioned <b>last</b> in the LLM response.
-     * Intended for tools the LLM uses to explicitly close an action sequence — placing the tool last is the LLM's
-     * signal that no further LLM processing is needed.
+     * Returns AI Service execution loop result(s) to the caller when this tool is positioned
+     * <b>last</b> in the LLM response. Intended for tools the LLM uses to explicitly close an
+     * action sequence — placing the tool last is the LLM's signal that no further LLM processing
+     * is needed.
      * <p>
-     * Also counts as a halt-causing tool for the all-halt-causing rule of {@link #IMMEDIATE}:
-     * a response made up only of {@code IMMEDIATE} and/or {@code IMMEDIATE_IF_LAST} tools
-     * halts regardless of which one is last.
+     * Also counts toward the all-immediate rule of {@link #IMMEDIATE}: a response made up only
+     * of {@code IMMEDIATE} and/or {@code IMMEDIATE_IF_LAST} tools returns immediately regardless
+     * of which one is last.
      * <p>
      * If positioned anywhere other than last, AND any other tool in the response is
      * {@link #TO_LLM}, the loop runs another turn — all tool call results (including this one)
-     * are sent to the LLM. Errors in any tool also prevent the halt so the LLM can react to
-     * the error.
+     * are sent to the LLM. Errors in any tool also prevent the immediate return so the LLM can
+     * react to the error.
      * <p>
      * Examples (full matrix in the {@link ReturnBehavior class-level Javadoc}):
      * <pre>
-     *   [IMMEDIATE_IF_LAST]                      -&gt; halt
-     *   [TO_LLM, IMMEDIATE_IF_LAST]              -&gt; halt   (last is IMMEDIATE_IF_LAST)
-     *   [IMMEDIATE_IF_LAST, IMMEDIATE_IF_LAST]   -&gt; halt
-     *   [IMMEDIATE_IF_LAST, IMMEDIATE]           -&gt; halt   (all halt-causing)
-     *   [IMMEDIATE_IF_LAST, TO_LLM]              -&gt; reprocess  (not last; TO_LLM disqualifies all-rule)
-     *   [TO_LLM, IMMEDIATE_IF_LAST, IMMEDIATE]   -&gt; reprocess  (not last; TO_LLM disqualifies all-rule)
+     *   [IMMEDIATE_IF_LAST]                      -&gt; return immediately
+     *   [TO_LLM, IMMEDIATE_IF_LAST]              -&gt; return immediately   (last is IMMEDIATE_IF_LAST)
+     *   [IMMEDIATE_IF_LAST, IMMEDIATE_IF_LAST]   -&gt; return immediately
+     *   [IMMEDIATE_IF_LAST, IMMEDIATE]           -&gt; return immediately   (every tool is IMMEDIATE/IMMEDIATE_IF_LAST)
+     *   [IMMEDIATE_IF_LAST, TO_LLM]              -&gt; reprocess  (not last; TO_LLM disqualifies all-immediate rule)
+     *   [TO_LLM, IMMEDIATE_IF_LAST, IMMEDIATE]   -&gt; reprocess  (not last; TO_LLM disqualifies all-immediate rule)
      * </pre>
      * <p>
      * Only allowed on AI services returning {@code dev.langchain4j.service.Result}.
