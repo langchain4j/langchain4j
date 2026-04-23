@@ -4,7 +4,6 @@ import dev.langchain4j.Experimental;
 
 /**
  * Per-tool setting controlling what happens with a tool's result after execution.
- * Configured via {@link Tool#returnBehavior()}. TODO
  * <p>
  * In the default case ({@link #TO_LLM}), every tool result is appended to the conversation
  * and sent back to the LLM for further processing — AI Service execution loop runs another turn.
