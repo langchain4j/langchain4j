@@ -1,6 +1,5 @@
 package dev.langchain4j.service.tool;
 
-import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.ToolSpecification;
 
@@ -19,7 +18,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  *
  * @since 1.13.0
  */
-@Internal
 public class AiServiceTool {
 
     private final ToolSpecification toolSpecification;

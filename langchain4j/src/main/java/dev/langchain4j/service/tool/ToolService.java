@@ -124,6 +124,13 @@ public class ToolService {
         }
     }
 
+    /**
+     * @since 1.14.0
+     */
+    public void tools(List<AiServiceTool> tools) {
+        addTools(tools, this.toolExecutors, this.toolSpecifications, this.returnBehaviors);
+    }
+
     private static ToolExecutor createToolExecutor(Object object, Method method) {
         return DefaultToolExecutor.builder()
                 .object(object)
