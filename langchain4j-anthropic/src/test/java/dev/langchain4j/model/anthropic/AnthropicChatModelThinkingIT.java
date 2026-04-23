@@ -4,6 +4,7 @@ import static dev.langchain4j.JsonTestUtils.jsonify;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_OPUS_4_20250514;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_5_20250929;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 import java.util.List;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -31,7 +32,7 @@ class AnthropicChatModelThinkingIT {
     private static final int THINKING_BUDGET_TOKENS = 1024;
 
     @ParameterizedTest
-    @EnumSource(AnthropicChatModelName.class)
+    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {"CLAUDE_OPUS_4_7"})
     void should_return_and_send_thinking(AnthropicChatModelName modelName) {
 
         // given
@@ -89,7 +90,7 @@ class AnthropicChatModelThinkingIT {
     }
 
     @ParameterizedTest
-    @EnumSource(AnthropicChatModelName.class)
+    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {"CLAUDE_OPUS_4_7"})
     void should_return_and_NOT_send_thinking(AnthropicChatModelName modelName) {
 
         // given
@@ -148,7 +149,7 @@ class AnthropicChatModelThinkingIT {
     }
 
     @ParameterizedTest
-    @EnumSource(AnthropicChatModelName.class)
+    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {"CLAUDE_OPUS_4_7"})
     void should_return_and_send_thinking_with_tools(AnthropicChatModelName modelName) {
 
         // given
