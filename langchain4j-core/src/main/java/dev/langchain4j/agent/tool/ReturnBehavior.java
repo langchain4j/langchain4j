@@ -16,14 +16,15 @@ public enum ReturnBehavior {
 
     /**
      * Returns immediately to the caller the value returned by the tool without allowing the LLM
-     * to further process it. Immediate return is only allowed on AI services returning {@code dev.langchain4j.service.Result},
-     * while a {@code RuntimeException} will be thrown attempting to use a tool with immediate return with an
-     * AI service having a different return type.
+     * to further process it.
      * <p>
      * When the LLM returns multiple tool calls in a single response, execution halts only if
-     * <b>all</b> requested tools are {@code IMMEDIATE} and none of them errored. If this tool is
-     * meant to explicitly signal end-of-execution when placed last by the LLM (e.g. among several
-     * other non-immediate tool calls), consider using {@link #IMMEDIATE_IF_LAST} instead.
+     * <b>all</b> requested tools are {@code IMMEDIATE} TODO and none of them errored.
+     * <p>
+     * An error in <b>any</b> tool call in the response (this tool or
+     * any other) prevents the halt and lets the LLM react to the error on the next turn. TODO test, document
+     * <p>
+     * Immediate return is only allowed on AI services returning {@code dev.langchain4j.service.Result}.
      */
     IMMEDIATE,
 
@@ -34,25 +35,22 @@ public enum ReturnBehavior {
      * <p>
      * Intended for tools that the LLM uses to explicitly close an execution loop after
      * performing a sequence of other tool calls.
-     * Saves one round trip to the LLM compared to waiting for the LLM to issue the halt
-     * tool on its own in the next turn.
      * <p>
      * <b>Differences from {@link #IMMEDIATE}:</b>
      * <ul>
      *   <li>{@code IMMEDIATE} halts only when <b>every</b> tool in the response is
-     *       {@code IMMEDIATE} and none errored — a single non-{@code IMMEDIATE} tool or any
-     *       error elsewhere in the response causes the loop to continue.</li>
-     *   <li>{@code IMMEDIATE_IF_LAST} halts if <b>this</b> tool is positioned last,
-     *       <b>regardless of the other tool calls</b> in the same response: the other tools'
-     *       results are <b>not</b> sent back to the LLM, their {@link ReturnBehavior} values
-     *       are ignored, and errors in those other tools do <b>not</b> prevent the halt. TODO
-     *       Only an error in <b>this</b> tool itself prevents the halt.
-     *       The contract is "the LLM placed me last on purpose to close out execution;
-     *       honor that intent."</li>
+     *       {@code IMMEDIATE} — a single non-{@code IMMEDIATE} tool causes the loop to continue.</li>
+     *   <li>{@code IMMEDIATE_IF_LAST} halts as long as <b>this</b> tool is positioned last,
+     *       <b>regardless of the {@link ReturnBehavior} of the other tool calls</b> in the same
+     *       response — their results are <b>not</b> sent back to the LLM and their behaviors
+     *       are ignored. The contract is "the LLM placed me last on purpose to close out
+     *       execution; honor that intent."</li>
      * </ul>
      * <p>
-     * Same return-type restriction as {@link #IMMEDIATE} applies: only allowed on AI services
-     * returning {@code dev.langchain4j.service.Result}.
+     * Like {@link #IMMEDIATE}, an error in <b>any</b> tool call in the response (this tool or
+     * any other) prevents the halt and lets the LLM react to the error on the next turn. TODO test, document
+     * <p>
+     * Immediate return is only allowed on AI services returning {@code dev.langchain4j.service.Result}.
      */
     IMMEDIATE_IF_LAST;
 }

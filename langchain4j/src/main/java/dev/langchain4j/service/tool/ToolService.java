@@ -360,10 +360,10 @@ public class ToolService {
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults =
                     execute(toolExecutionRequests, toolServiceContext.toolExecutors(), invocationContext);
 
-            boolean immediateToolReturn = true;
-            ToolExecution lastToolExecution = null;
-            for (int i = 0; i < toolExecutionRequests.size(); i++) {
-                ToolExecutionRequest request = toolExecutionRequests.get(i);
+            boolean anyToolErrored = false;
+            List<ReturnBehavior> returnBehaviors = new ArrayList<>(toolExecutionRequests.size());
+
+            for (ToolExecutionRequest request : toolExecutionRequests) {
                 ToolExecutionResult result = toolResults.get(request);
                 ToolExecutionResultMessage resultMessage = toResultMessage(request, result);
 
@@ -382,35 +382,16 @@ public class ToolService {
                     messages.add(resultMessage);
                 }
 
-                if (immediateToolReturn) {
-                    if (result.isError()) {
-                        immediateToolReturn = false;
-                    } else if (toolServiceContext.returnBehavior(request.name()) == IMMEDIATE) {
-                        if (!isReturnTypeResult) {
-                            throw illegalConfiguration(
-                                    "Tool '%s' with ReturnBehavior.%s is not allowed on a AI service not returning %s type", // TODO
-                                    request.name(), IMMEDIATE, Result.class.getName());
-                        }
-                    } else {
-                        immediateToolReturn = false;
-                    }
-                }
-
-                if (i == toolExecutionRequests.size() - 1) {
-                    lastToolExecution = toolExecution;
-                }
+                anyToolErrored = anyToolErrored || result.isError();
+                returnBehaviors.add(toolServiceContext.returnBehavior(request.name()));
             }
 
-            boolean immediateIfLastToolReturn = lastToolExecution != null
-                    && !lastToolExecution.hasFailed()
-                    && toolServiceContext.returnBehavior(lastToolExecution.request().name()) == IMMEDIATE_IF_LAST;
-            if (immediateIfLastToolReturn && !isReturnTypeResult) {
-                throw illegalConfiguration(
-                        "Tool '%s' with ReturnBehavior.%s is not allowed on a AI service not returning %s type", // TODO
-                        lastToolExecution.request().name(), IMMEDIATE_IF_LAST, Result.class.getName());
-            }
-
-            if (immediateToolReturn || immediateIfLastToolReturn) {
+            if (shouldReturnImmediately(anyToolErrored, returnBehaviors)) {
+                if (!isReturnTypeResult) {
+                    throw illegalConfiguration(
+                            "Tools with ReturnBehavior.%s/%s are not allowed on a AI service not returning %s type", // TODO
+                            IMMEDIATE, IMMEDIATE_IF_LAST, Result.class.getName());
+                }
                 ChatResponse finalResponse = intermediateResponses.remove(intermediateResponses.size() - 1);
                 return ToolServiceResult.builder()
                         .intermediateResponses(intermediateResponses)
@@ -456,6 +437,16 @@ public class ToolService {
                 .toolExecutions(toolExecutions)
                 .aggregateTokenUsage(aggregateTokenUsage)
                 .build();
+    }
+
+    public static boolean shouldReturnImmediately(boolean anyToolErrored, List<ReturnBehavior> returnBehaviors) {
+        if (anyToolErrored) {
+            return false; // if any tool call failed, LLM should receive an error so that it can attempt to fix it
+        }
+        if (returnBehaviors.get(returnBehaviors.size() - 1) == IMMEDIATE_IF_LAST) {
+            return true;
+        }
+        return returnBehaviors.stream().allMatch(rb -> rb == IMMEDIATE || rb == IMMEDIATE_IF_LAST);
     }
 
     /**

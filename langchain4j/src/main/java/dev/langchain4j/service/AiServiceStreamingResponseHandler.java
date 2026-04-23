@@ -1,15 +1,15 @@
 package dev.langchain4j.service;
 
-import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
-import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
 import static dev.langchain4j.service.tool.ToolService.refreshDynamicProviders;
 
+import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.service.tool.search.ToolSearchService;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -294,9 +294,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 intermediateResponseHandler.accept(chatResponse);
             }
 
-            boolean immediateToolReturn = true;
             List<ToolExecutionResult> toolResults = new ArrayList<>();
-            ToolRequestResult lastToolRequestResult = null;
+            boolean anyToolErrored = false;
+            List<ReturnBehavior> returnBehaviors = new ArrayList<>();
 
             if (toolExecutor != null) {
                 for (Future<ToolRequestResult> toolExecutionFuture : toolExecutionFutures) {
@@ -309,8 +309,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                         ToolExecutionResultMessage toolExecutionResultMessage =
                                 toResultMessage(toolRequest, toolResult);
                         addToMemory(toolExecutionResultMessage);
-                        immediateToolReturn = isImmediateToolReturn(immediateToolReturn, toolRequestResult);
-                        lastToolRequestResult = toolRequestResult;
+                        anyToolErrored = anyToolErrored || toolResult.isError();
+                        returnBehaviors.add(context.toolService.returnBehavior(toolRequest.name()));
                     } catch (ExecutionException e) {
                         if (e.getCause() instanceof RuntimeException re) {
                             throw re;
@@ -331,12 +331,12 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     ToolExecutionResultMessage toolExecutionResultMessage =
                             toResultMessage(toolRequest, toolResult);
                     addToMemory(toolExecutionResultMessage);
-                    immediateToolReturn = isImmediateToolReturn(immediateToolReturn, toolRequestResult);
-                    lastToolRequestResult = toolRequestResult;
+                    anyToolErrored = anyToolErrored || toolResult.isError();
+                    returnBehaviors.add(context.toolService.returnBehavior(toolRequest.name()));
                 }
             }
 
-            if (immediateToolReturn || isImmediateIfLastToolReturn(lastToolRequestResult)) {
+            if (ToolService.shouldReturnImmediately(anyToolErrored, returnBehaviors)) {
                 ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
                 fireInvocationComplete(finalChatResponse);
 
@@ -424,18 +424,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 fireInvocationComplete(finalChatResponse);
             }
         }
-    }
-
-    private boolean isImmediateToolReturn(boolean immediateToolReturn, ToolRequestResult toolRequestResult) {
-        return immediateToolReturn
-                && !toolRequestResult.result().isError()
-                && context.toolService.returnBehavior(toolRequestResult.request.name()) == IMMEDIATE;
-    }
-
-    private boolean isImmediateIfLastToolReturn(ToolRequestResult lastToolRequestResult) {
-        return lastToolRequestResult != null
-                && !lastToolRequestResult.result().isError()
-                && context.toolService.returnBehavior(lastToolRequestResult.request().name()) == IMMEDIATE_IF_LAST;
     }
 
     private ChatResponse finalResponse(ChatResponse completeResponse, AiMessage aiMessage) {
