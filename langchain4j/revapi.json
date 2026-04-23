@@ -1,0 +1,15 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.method.visibilityIncreased",
+          "new": "method void dev.langchain4j.service.tool.ToolProviderResult::<init>(java.util.List<dev.langchain4j.service.tool.AiServiceTool>)",
+          "justification": "If ToolProviderResult were extended and the subclass already declared a constructor with this same signature at lesser visibility, this change would be a breaking change. ToolProviderResult is not expected to be extended, so this is acceptable."
+        }
+      ]
+    }
+  }
+]
