@@ -314,4 +314,17 @@ public class Agents {
         @Agent("Evaluate a loan application.")
         String evaluate(@V("loanApplication") LoanApplication loanApplication);
     }
+
+    // Custom POJO for testing SupervisorAgent POJO parameter support (#4897)
+    public record ExerciseRequirement(String topic, String difficulty, int count) { }
+
+    public interface ExerciseGenerator {
+
+        @UserMessage("""
+            Generate exactly {{count}} {{difficulty}} exercises about {{topic}}.
+            Return a numbered list of exercises.
+            """)
+        @Agent(outputKey = "exercises")
+        String generateExercises(@V("exerciseRequirement") ExerciseRequirement exerciseRequirement);
+    }
 }

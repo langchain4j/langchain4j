@@ -18,6 +18,7 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.Agents.LegalExpert;
+import dev.langchain4j.agentic.Agents.ExerciseGenerator;
 import dev.langchain4j.agentic.Agents.LoanApplicationEvaluator;
 import dev.langchain4j.agentic.Agents.LoanApplicationExtractor;
 import dev.langchain4j.agentic.Agents.MedicalExpert;
@@ -923,6 +924,35 @@ public class SupervisorAgentIT {
         String result = loanAgent.invoke("John Doe submitted a loan application of 80000. He is 30 years old. Evaluate his application.");
         assertThat(result).containsIgnoringCase("rejected");
     }
+
+    /**
+     * Test for issue #4897: SupervisorAgent should handle custom POJO parameters.
+     * This test verifies that sub-agents can receive custom POJO parameters
+     * (like ExerciseRequirement) via @V annotation without IllegalArgumentException.
+     */
+    @Test
+    void custom_pojo_parameter_test() {
+        ExerciseGenerator exerciseGenerator = AgenticServices.agentBuilder(ExerciseGenerator.class)
+                .chatModel(baseModel())
+                .build();
+
+        SupervisorAgent exerciseSupervisor = AgenticServices.supervisorBuilder()
+                .chatModel(plannerModel())
+                .responseStrategy(SupervisorResponseStrategy.LAST)
+                .subAgents(exerciseGenerator)
+                .build();
+
+        // The supervisor should be able to invoke the sub-agent with a custom POJO parameter
+        // without throwing IllegalArgumentException
+        assertDoesNotThrow(() -> {
+            String result = exerciseSupervisor.invoke(
+                    "Generate 3 easy Python exercises about functions and return the exercises.");
+            assertThat(result).isNotNull();
+            // Verify the sub-agent was invoked and produced output
+            assertThat(result.toLowerCase()).contains("python");
+        });
+    }
+
 
     static class PlannerModelReturningDoneWithoutResponse implements ChatModel {
 

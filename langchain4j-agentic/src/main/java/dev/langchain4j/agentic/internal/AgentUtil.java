@@ -257,25 +257,10 @@ public class AgentUtil {
             return value;
         }
         if (value instanceof String s) {
-            return switch (type.getName()) {
-                case "java.lang.String", "java.lang.Object" -> s;
-                case "int", "java.lang.Integer" -> Integer.parseInt(s);
-                case "long", "java.lang.Long" -> Long.parseLong(s);
-                case "double", "java.lang.Double" -> Double.parseDouble(s);
-                case "float", "java.lang.Float" -> Float.parseFloat(s);
-                case "boolean", "java.lang.Boolean" -> Boolean.parseBoolean(s);
-                default -> throw new IllegalArgumentException("Unsupported type: " + type);
-            };
+            return adaptStringToType(s, type);
         }
         if (value instanceof Number n) {
-            return switch (type.getName()) {
-                case "java.lang.String" -> "" + n;
-                case "int", "java.lang.Integer" -> n.intValue();
-                case "long", "java.lang.Long" -> n.longValue();
-                case "double", "java.lang.Double" -> n.doubleValue();
-                case "float", "java.lang.Float" -> n.floatValue();
-                default -> value;
-            };
+            return adaptNumberToType(n, type);
         }
         if (value instanceof Image image && type == ImageContent.class) {
             return ImageContent.from(image);
@@ -283,7 +268,37 @@ public class AgentUtil {
         if (value instanceof ImageContent imageContent && type == Image.class) {
             return imageContent.image();
         }
+        // Try POJO deserialization for Maps (JSON objects)
+        if (value instanceof Map) {
+            return PojoDeserializer.deserialize(value, type);
+        }
         return value;
+    }
+
+    private static Object adaptStringToType(String s, Class<?> type) {
+        return switch (type.getName()) {
+            case "java.lang.String", "java.lang.Object" -> s;
+            case "int", "java.lang.Integer" -> Integer.parseInt(s);
+            case "long", "java.lang.Long" -> Long.parseLong(s);
+            case "double", "java.lang.Double" -> Double.parseDouble(s);
+            case "float", "java.lang.Float" -> Float.parseFloat(s);
+            case "boolean", "java.lang.Boolean" -> Boolean.parseBoolean(s);
+            default -> {
+                // Try POJO deserialization
+                yield PojoDeserializer.deserialize(s, type);
+            }
+        };
+    }
+
+    private static Object adaptNumberToType(Number n, Class<?> type) {
+        return switch (type.getName()) {
+            case "java.lang.String" -> "" + n;
+            case "int", "java.lang.Integer" -> n.intValue();
+            case "long", "java.lang.Long" -> n.longValue();
+            case "double", "java.lang.Double" -> n.doubleValue();
+            case "float", "java.lang.Float" -> n.floatValue();
+            default -> n;
+        };
     }
 
     public static Method validateAgentClass(Class<?> agentServiceClass) {
