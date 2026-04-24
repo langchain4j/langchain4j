@@ -5,12 +5,23 @@ import dev.langchain4j.http.client.HttpClientTimeoutIT;
 import java.net.SocketTimeoutException;
 import java.time.Duration;
 import java.util.List;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.core5.util.Timeout;
 
 class ApacheHttpClientTimeoutIT extends HttpClientTimeoutIT {
 
     @Override
     protected List<HttpClient> clients(Duration readTimeout) {
-        return List.of(ApacheHttpClient.builder().readTimeout(readTimeout).build());
+        return List.of(
+                // Using deprecated builder method
+                ApacheHttpClient.builder().readTimeout(readTimeout).build(),
+                // Using underlying HTTP client builder directly (recommended way)
+                ApacheHttpClient.builder()
+                        .httpClientBuilder(org.apache.hc.client5.http.impl.classic.HttpClients.custom()
+                                .setDefaultRequestConfig(RequestConfig.custom()
+                                        .setResponseTimeout(Timeout.ofMilliseconds(readTimeout.toMillis()))
+                                        .build()))
+                        .build());
     }
 
     @Override

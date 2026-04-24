@@ -3,6 +3,11 @@ package dev.langchain4j.http.client;
 import dev.langchain4j.Internal;
 import java.time.Duration;
 
+/**
+ * Mock builder for testing purposes.
+ * @deprecated as of 2.0.0, use {@link dev.langchain4j.http.client.HttpClient} directly
+ */
+@Deprecated
 @Internal
 public class MockHttpClientBuilder implements HttpClientBuilder {
 
@@ -12,21 +17,37 @@ public class MockHttpClientBuilder implements HttpClientBuilder {
         this.httpClient = httpClient;
     }
 
+    /**
+     * @deprecated timeouts should be configured on the underlying HTTP client
+     */
+    @Deprecated
     @Override
     public Duration connectTimeout() {
         return null;
     }
 
+    /**
+     * @deprecated timeouts should be configured on the underlying HTTP client
+     */
+    @Deprecated
     @Override
     public HttpClientBuilder connectTimeout(Duration timeout) {
         return this;
     }
 
+    /**
+     * @deprecated timeouts should be configured on the underlying HTTP client
+     */
+    @Deprecated
     @Override
     public Duration readTimeout() {
         return null;
     }
 
+    /**
+     * @deprecated timeouts should be configured on the underlying HTTP client
+     */
+    @Deprecated
     @Override
     public HttpClientBuilder readTimeout(Duration timeout) {
         return this;

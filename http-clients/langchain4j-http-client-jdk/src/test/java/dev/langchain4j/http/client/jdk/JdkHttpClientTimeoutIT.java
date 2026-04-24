@@ -12,10 +12,15 @@ class JdkHttpClientTimeoutIT extends HttpClientTimeoutIT {
     @Override
     protected List<HttpClient> clients(Duration readTimeout) {
         return List.of(
+                // Using deprecated builder method
                 JdkHttpClient.builder()
                         .readTimeout(readTimeout)
-                        .build()
-        );
+                        .build(),
+                // Using underlying HTTP client builder directly (recommended way)
+                JdkHttpClient.builder()
+                        .httpClientBuilder(java.net.http.HttpClient.newBuilder()
+                                .connectTimeout(java.time.Duration.ofMillis(readTimeout.toMillis())))
+                        .build());
     }
 
     @Override
