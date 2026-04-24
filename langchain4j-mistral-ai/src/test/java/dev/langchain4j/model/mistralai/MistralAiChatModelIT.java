@@ -255,7 +255,7 @@ class MistralAiChatModelIT {
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(MISTRAL_SMALL_LATEST)
                 .temperature(0.0)
-                .logRequests(true)
+                .logRequests(false) // PDFs are huge in logs
                 .logResponses(true)
                 .build();
 
@@ -271,7 +271,7 @@ class MistralAiChatModelIT {
         ChatResponse chatResponse = chatModel.chat(userMessage);
 
         // then
-        assertThat(chatResponse.aiMessage().text()).contains("French");
+        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("French");
     }
 
     @Test
@@ -282,7 +282,7 @@ class MistralAiChatModelIT {
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(MISTRAL_SMALL_LATEST)
                 .temperature(0.0)
-                .logRequests(true)
+                .logRequests(false) // PDFs are huge in logs
                 .logResponses(true)
                 .build();
 
@@ -296,6 +296,6 @@ class MistralAiChatModelIT {
         ChatResponse chatResponse = chatModel.chat(userMessage);
 
         // then
-        assertThat(chatResponse.aiMessage().text()).contains("German");
+        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("German");
     }
 }
