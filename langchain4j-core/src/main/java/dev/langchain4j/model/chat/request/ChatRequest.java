@@ -50,6 +50,11 @@ public class ChatRequest {
             validate(builder, "maxOutputTokens");
             parametersBuilder.maxOutputTokens(builder.maxOutputTokens);
         }
+        if (builder.maxCompletionTokens != null)
+        {
+            validate(builder, "maxCompletionTokens");
+            parametersBuilder.maxCompletionTokens(builder.maxCompletionTokens);
+        }
         if (!isNullOrEmpty(builder.stopSequences)) {
             validate(builder, "stopSequences");
             parametersBuilder.stopSequences(builder.stopSequences);
@@ -108,6 +113,10 @@ public class ChatRequest {
 
     public Integer maxOutputTokens() {
         return parameters.maxOutputTokens();
+    }
+
+    public Integer maxCompletionTokens() {
+        return parameters.maxCompletionTokens();
     }
 
     public List<String> stopSequences() {
@@ -170,6 +179,7 @@ public class ChatRequest {
         private Double frequencyPenalty;
         private Double presencePenalty;
         private Integer maxOutputTokens;
+        private Integer maxCompletionTokens;
         private List<String> stopSequences;
         private List<ToolSpecification> toolSpecifications;
         private ToolChoice toolChoice;
@@ -228,6 +238,11 @@ public class ChatRequest {
 
         public Builder maxOutputTokens(Integer maxOutputTokens) {
             this.maxOutputTokens = maxOutputTokens;
+            return this;
+        }
+
+        public Builder maxCompletionTokens(Integer maxCompletionTokens) {
+            this.maxCompletionTokens = maxCompletionTokens;
             return this;
         }
 
