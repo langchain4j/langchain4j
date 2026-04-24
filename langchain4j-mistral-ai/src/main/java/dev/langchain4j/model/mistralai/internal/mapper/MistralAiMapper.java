@@ -106,9 +106,8 @@ public class MistralAiMapper {
 
         if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
             if (!toolExecutionResultMessage.hasSingleText()) {
-                throw new UnsupportedFeatureException(
-                        "Mistral AI does not support non-text content in tool results. "
-                                + "Only text content is supported.");
+                throw new UnsupportedFeatureException("Mistral AI does not support non-text content in tool results. "
+                        + "Only text content is supported.");
             }
             return MistralAiChatMessage.builder()
                     .role(MistralAiRole.TOOL)

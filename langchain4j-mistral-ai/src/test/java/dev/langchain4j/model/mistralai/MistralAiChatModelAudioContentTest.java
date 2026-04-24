@@ -28,8 +28,7 @@ class MistralAiChatModelAudioContentTest {
     @Test
     void should_handle_audio_content_with_url() {
         // given
-        String jsonResponse =
-                """
+        String jsonResponse = """
                 {
                     "id": "abc123",
                     "created": 1769421662,
@@ -76,8 +75,7 @@ class MistralAiChatModelAudioContentTest {
     @Test
     void should_handle_audio_content_with_base64() {
         // given
-        String jsonResponse =
-                """
+        String jsonResponse = """
                 {
                     "id": "abc123",
                     "created": 1769421662,
@@ -109,10 +107,8 @@ class MistralAiChatModelAudioContentTest {
 
         // Create a small WAV file header as test data
         String base64Audio = Base64.getEncoder().encodeToString("RIFF".getBytes());
-        Audio audio = Audio.builder()
-                .base64Data(base64Audio)
-                .mimeType("audio/wav")
-                .build();
+        Audio audio =
+                Audio.builder().base64Data(base64Audio).mimeType("audio/wav").build();
         UserMessage userMessage = UserMessage.from(AudioContent.from(audio));
 
         // when
@@ -131,8 +127,7 @@ class MistralAiChatModelAudioContentTest {
     @Test
     void should_handle_mixed_text_and_audio_content() {
         // given
-        String jsonResponse =
-                """
+        String jsonResponse = """
                 {
                     "id": "abc123",
                     "created": 1769421662,
@@ -183,8 +178,7 @@ class MistralAiChatModelAudioContentTest {
     @Test
     void should_use_voxtral_small_latest_model() {
         // given
-        String jsonResponse =
-                """
+        String jsonResponse = """
                 {
                     "id": "abc123",
                     "created": 1769421662,
