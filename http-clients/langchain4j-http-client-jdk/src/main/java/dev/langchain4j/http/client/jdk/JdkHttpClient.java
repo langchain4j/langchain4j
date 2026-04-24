@@ -11,6 +11,11 @@ import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import dev.langchain4j.http.client.sse.StreamingHttpEvent;
 
+import mutiny.zero.BackpressureStrategy;
+import mutiny.zero.Tube;
+import mutiny.zero.TubeConfiguration;
+import mutiny.zero.ZeroPublisher;
+
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -19,6 +24,7 @@ import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpRequest.BodyPublisher;
 import java.net.http.HttpRequest.BodyPublishers;
+import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.net.http.HttpTimeoutException;
 import java.nio.ByteBuffer;
@@ -31,7 +37,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
-import java.util.concurrent.TimeUnit;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -183,7 +188,9 @@ public class JdkHttpClient implements HttpClient {
         }
     }
 
-    static class StreamingHttpEventPublisher implements Publisher<StreamingHttpEvent> { // TODO name, location
+    static class StreamingHttpEventPublisher implements Publisher<StreamingHttpEvent> {
+
+        private static final int TUBE_BUFFER_SIZE = 1024;
 
         private final java.net.http.HttpClient client;
         private final java.net.http.HttpRequest request;
@@ -195,68 +202,74 @@ public class JdkHttpClient implements HttpClient {
 
         @Override
         public void subscribe(Subscriber<? super StreamingHttpEvent> subscriber) {
-            // TODO should send request on subscription or on first request(n)?
-            // TODO verify there is only one subscription
-
-            client.sendAsync(request, BodyHandlers.ofPublisher())
-                    .thenAccept(jdkResponse -> handleResponse(jdkResponse, subscriber))
-                    .exceptionally(throwable -> {
-                        handleException(throwable, subscriber);
-                        return null;
-                    });
-        }
-
-        private void handleResponse(
-                java.net.http.HttpResponse<Publisher<List<ByteBuffer>>> jdkResponse,
-                Subscriber<? super StreamingHttpEvent> subscriber) {
-
-            if (!isSuccessful(jdkResponse)) {
-                String errorMessage = "Request failed";
-                try {
-                    errorMessage = readErrorBody(jdkResponse.body());
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-                subscriber.onError(new HttpException(jdkResponse.statusCode(), errorMessage));
-                return;
+            if (subscriber == null) {
+                throw new NullPointerException("subscriber");
             }
 
-            SuccessfulHttpResponse response = fromJdkResponse(jdkResponse, null);
+            TubeConfiguration config = new TubeConfiguration()
+                    .withBackpressureStrategy(BackpressureStrategy.BUFFER)
+                    .withBufferSize(TUBE_BUFFER_SIZE);
 
-            jdkResponse.body().subscribe(new SSEBodySubscriber(subscriber, response));
+            Publisher<StreamingHttpEvent> publisher = ZeroPublisher.create(config, tube -> {
+                CompletableFuture<HttpResponse<Publisher<List<ByteBuffer>>>> future =
+                        client.sendAsync(request, BodyHandlers.ofPublisher());
+
+                tube.whenCancelled(() -> future.cancel(true));
+
+                future.thenAccept(jdkResponse -> {
+                    if (tube.cancelled()) {
+                        return;
+                    }
+                    if (!isSuccessful(jdkResponse)) {
+                        readErrorBodyAsync(jdkResponse.body()).whenComplete((body, err) -> {
+                            if (err != null) {
+                                tube.fail(err);
+                            } else {
+                                tube.fail(new HttpException(jdkResponse.statusCode(), body));
+                            }
+                        });
+                        return;
+                    }
+                    tube.send(fromJdkResponse(jdkResponse, null));
+                    jdkResponse.body().subscribe(new SseByteToEventSubscriber(tube));
+                }).exceptionally(throwable -> {
+                    if (!tube.cancelled()) {
+                        Throwable cause = throwable.getCause();
+                        if (cause instanceof HttpTimeoutException) {
+                            tube.fail(new TimeoutException(throwable));
+                        } else {
+                            tube.fail(throwable);
+                        }
+                    }
+                    return null;
+                });
+            });
+
+            publisher.subscribe(subscriber);
         }
 
-        private String readErrorBody(Publisher<List<ByteBuffer>> publisher) throws Exception { // TODO reimplement
-            var future = new CompletableFuture<String>();
-
-            publisher.subscribe(new Subscriber<>() {
-
+        private static CompletableFuture<String> readErrorBodyAsync(Publisher<List<ByteBuffer>> body) {
+            CompletableFuture<String> future = new CompletableFuture<>();
+            body.subscribe(new Subscriber<>() {
                 private final ByteArrayOutputStream out = new ByteArrayOutputStream();
-                private Subscription subscription;
 
                 @Override
                 public void onSubscribe(Subscription subscription) {
-                    this.subscription = subscription;
                     subscription.request(Long.MAX_VALUE);
                 }
 
                 @Override
-                public void onNext(List<ByteBuffer> item) {
-                    try {
-                        for (ByteBuffer buffer : item) {
-                            byte[] bytes = new byte[buffer.remaining()];
-                            buffer.get(bytes);
-                            out.write(bytes);
-                        }
-                    } catch (Exception ex) {
-                        future.completeExceptionally(ex);
-                        subscription.cancel();
+                public void onNext(List<ByteBuffer> buffers) {
+                    for (ByteBuffer buf : buffers) {
+                        byte[] bytes = new byte[buf.remaining()];
+                        buf.get(bytes);
+                        out.write(bytes, 0, bytes.length);
                     }
                 }
 
                 @Override
                 public void onError(Throwable throwable) {
-                    future.completeExceptionally(throwable);
+                    future.complete("Cannot read error response body: " + throwable.getMessage());
                 }
 
                 @Override
@@ -264,137 +277,98 @@ public class JdkHttpClient implements HttpClient {
                     future.complete(out.toString(StandardCharsets.UTF_8));
                 }
             });
-
-            return future.get(30, TimeUnit.SECONDS);
-        }
-
-        private void handleException(Throwable throwable, Subscriber<? super StreamingHttpEvent> subscriber) {
-            if (throwable.getCause() instanceof HttpTimeoutException) {
-                subscriber.onError(new TimeoutException(throwable));
-            } else {
-                subscriber.onError(throwable);
-            }
+            return future;
         }
     }
 
-    private static class SSEBodySubscriber implements Subscriber<List<ByteBuffer>> {
+    private static class SseByteToEventSubscriber implements Subscriber<List<ByteBuffer>> {
 
-        private final Subscriber<? super StreamingHttpEvent> downstream;
-        private final SuccessfulHttpResponse response;
+        private final Tube<StreamingHttpEvent> tube;
+        private final StringBuilder incompleteLineBuffer = new StringBuilder();
+        private final StringBuilder currentData = new StringBuilder();
+        private String currentEvent;
         private Subscription subscription;
-        private final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        private volatile boolean openEventSent = false;
 
-        SSEBodySubscriber(Subscriber<? super StreamingHttpEvent> downstream, SuccessfulHttpResponse response) {
-            this.downstream = downstream;
-            this.response = response;
+        SseByteToEventSubscriber(Tube<StreamingHttpEvent> tube) {
+            this.tube = tube;
         }
 
         @Override
         public void onSubscribe(Subscription subscription) {
             this.subscription = subscription;
-
-            downstream.onSubscribe(new Subscription() {
-
-                @Override
-                public void request(long n) {
-                    if (!openEventSent) {
-                        openEventSent = true;
-                        downstream.onNext(response);
-                    }
-                    subscription.request(n); // TODO n or n-1 if response was sent?
-                }
-
-                @Override
-                public void cancel() {
-                    subscription.cancel();
-                }
-            });
+            if (tube.cancelled()) {
+                subscription.cancel();
+                return;
+            }
+            tube.whenCancelled(subscription::cancel);
+            subscription.request(Long.MAX_VALUE);
         }
 
         @Override
         public void onNext(List<ByteBuffer> buffers) {
-            try {
-                for (ByteBuffer buf : buffers) {
-                    byte[] bytes = new byte[buf.remaining()];
-                    buf.get(bytes);
-                    buffer.write(bytes);
-                }
-
-                parseAndEmitEvents();
-//                subscription.request(1); // TODO?
-
-            } catch (Exception e) {
-                subscription.cancel();
-                downstream.onError(e);
+            if (tube.cancelled()) {
+                return;
+            }
+            StringBuilder chunk = new StringBuilder();
+            for (ByteBuffer buf : buffers) {
+                byte[] bytes = new byte[buf.remaining()];
+                buf.get(bytes);
+                chunk.append(new String(bytes, StandardCharsets.UTF_8));
+            }
+            for (ServerSentEvent event : parseChunk(chunk.toString())) {
+                tube.send(event);
             }
         }
 
-        private void parseAndEmitEvents() {
-            String data = buffer.toString(StandardCharsets.UTF_8);
-//            System.out.println("OLOLO BUFFER: " + data);
-
-            List<ServerSentEvent> serverSentEvents = parseChunk(data);
-            for (ServerSentEvent serverSentEvent : serverSentEvents) {
-                downstream.onNext(serverSentEvent); // TODO implement buffering, send only requested events
+        @Override
+        public void onError(Throwable throwable) {
+            if (!tube.cancelled()) {
+                tube.fail(throwable);
             }
-
-            buffer.reset(); // TODO?
         }
 
-        // TODO reimplement
-        private StringBuilder incompleteLineBuffer = new StringBuilder();
-        private String currentEvent = null;
-        private StringBuilder currentData = new StringBuilder();
+        @Override
+        public void onComplete() {
+            if (tube.cancelled()) {
+                return;
+            }
+            for (ServerSentEvent event : flush()) {
+                tube.send(event);
+            }
+            tube.complete();
+        }
 
-        public List<ServerSentEvent> parseChunk(String chunk) {
+        private List<ServerSentEvent> parseChunk(String chunk) {
             List<ServerSentEvent> events = new ArrayList<>();
-
-            // Append chunk to any incomplete line from previous chunk
             incompleteLineBuffer.append(chunk);
             String buffer = incompleteLineBuffer.toString();
-
-            // Split by newlines but keep incomplete last line
             String[] lines = buffer.split("\n", -1);
-
-            // Process all complete lines (all except the last one which might be incomplete)
             for (int i = 0; i < lines.length - 1; i++) {
-                String line = lines[i].trim();
-                processLine(line, events);
+                processLine(lines[i].trim(), events);
             }
-
-            // Keep the last line (might be incomplete) for next chunk
             incompleteLineBuffer.setLength(0);
             if (lines.length > 0) {
                 incompleteLineBuffer.append(lines[lines.length - 1]);
             }
-
             return events;
         }
 
-        public List<ServerSentEvent> flush() { // TODO?
+        private List<ServerSentEvent> flush() {
             List<ServerSentEvent> events = new ArrayList<>();
-
-            // Process any remaining incomplete line
             if (incompleteLineBuffer.length() > 0) {
-                String line = incompleteLineBuffer.toString().trim();
-                processLine(line, events);
+                processLine(incompleteLineBuffer.toString().trim(), events);
                 incompleteLineBuffer.setLength(0);
             }
-
-            // Emit final event if data buffer has content
             if (!currentData.isEmpty()) {
                 events.add(new ServerSentEvent(currentEvent, currentData.toString()));
                 currentEvent = null;
                 currentData.setLength(0);
             }
-
             return events;
         }
 
         private void processLine(String line, List<ServerSentEvent> events) {
             if (line.isEmpty()) {
-                // Empty line signals end of event
                 if (!currentData.isEmpty()) {
                     events.add(new ServerSentEvent(currentEvent, currentData.toString()));
                     currentEvent = null;
@@ -402,7 +376,6 @@ public class JdkHttpClient implements HttpClient {
                 }
                 return;
             }
-
             if (line.startsWith("event:")) {
                 currentEvent = line.substring("event:".length()).trim();
             } else if (line.startsWith("data:")) {
@@ -412,18 +385,6 @@ public class JdkHttpClient implements HttpClient {
                 }
                 currentData.append(content.trim());
             }
-            // Ignore other SSE fields (id:, retry:, comment lines starting with :)
-        }
-
-        @Override
-        public void onError(Throwable throwable) {
-            downstream.onError(throwable);
-        }
-
-        @Override
-        public void onComplete() {
-//            downstream.onNext(new StreamingHttpEvent.Close()); TODO
-            downstream.onComplete();
         }
     }
 }

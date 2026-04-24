@@ -17,8 +17,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static org.reactivestreams.FlowAdapters.toPublisher;
 
-// TODO move to the core http module?
-public class StreamingHttpEventPublisherIT extends PublisherVerification<StreamingHttpEvent> {
+public class StreamingHttpEventPublisherTckTest extends PublisherVerification<StreamingHttpEvent> {
 
     private static final long DEFAULT_TIMEOUT_MILLIS = 2_000L;
     private static final long DEFAULT_NO_SIGNALS_TIMEOUT_MILLIS = DEFAULT_TIMEOUT_MILLIS;
@@ -32,7 +31,7 @@ public class StreamingHttpEventPublisherIT extends PublisherVerification<Streami
     private static WireMockServer wireMockServer;
     private static HttpClient jdkClient;
 
-    public StreamingHttpEventPublisherIT() {
+    public StreamingHttpEventPublisherTckTest() {
         super(
                 new TestEnvironment(DEFAULT_TIMEOUT_MILLIS, DEFAULT_NO_SIGNALS_TIMEOUT_MILLIS, DEFAULT_POLL_TIMEOUT_MILLIS),
                 PUBLISHER_REFERENCE_CLEANUP_TIMEOUT_MILLIS);
