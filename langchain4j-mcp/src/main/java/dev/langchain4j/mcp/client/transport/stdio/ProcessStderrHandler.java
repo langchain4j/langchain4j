@@ -19,11 +19,12 @@ class ProcessStderrHandler implements Runnable, Closeable {
 
     @Override
     public void run() {
+        log.info("MCP server stderr messages will be logged with [MCP stderr] prefix");
         try (InputStreamReader inputStreamReader = new InputStreamReader(process.getErrorStream())) {
             try (BufferedReader reader = new BufferedReader(inputStreamReader)) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    log.debug("[ERROR] {}", line);
+                    log.debug("[MCP stderr] {}", line);
                 }
             } catch (IOException e) {
                 // If this handler was closed, it means the MCP server process is shutting down,
