@@ -70,6 +70,7 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
     private final Boolean enablePromptCaching;
     private final List<ChatModelListener> listeners;
     private final String location;
+    private final Integer thinkingBudgetTokens;
 
     public VertexAiAnthropicChatModel(VertexAiAnthropicChatModelBuilder builder) {
         this.client = new VertexAiAnthropicClient(
@@ -82,6 +83,7 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
         this.temperature = ValidationUtils.validateTemperature(builder.temperature);
         this.topP = ValidationUtils.validateTopP(builder.topP);
         this.topK = ValidationUtils.validateTopK(builder.topK);
+        this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
         this.stopSequences = builder.stopSequences;
         this.logRequests = getOrDefault(builder.logRequests, false);
         this.logResponses = getOrDefault(builder.logResponses, false);
@@ -127,7 +129,8 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
                                     && !parameters.stopSequences().isEmpty()
                             ? parameters.stopSequences()
                             : stopSequences,
-                    enablePromptCaching);
+                    enablePromptCaching,
+                    thinkingBudgetTokens);
 
             if (logRequests) {
                 logger.debug("Anthropic request: {}", anthropicRequest);
@@ -180,6 +183,7 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
         private Boolean enablePromptCaching;
         private List<ChatModelListener> listeners;
         private GoogleCredentials credentials;
+        private Integer thinkingBudgetTokens;
 
         public VertexAiAnthropicChatModelBuilder project(String project) {
             this.project = project;
@@ -258,6 +262,11 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
          */
         public VertexAiAnthropicChatModelBuilder credentials(GoogleCredentials credentials) {
             this.credentials = credentials;
+            return this;
+        }
+
+        public VertexAiAnthropicChatModelBuilder thinkingBudgetTokens(Integer thinkingBudgetTokens) {
+            this.thinkingBudgetTokens = thinkingBudgetTokens;
             return this;
         }
 
