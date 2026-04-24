@@ -51,6 +51,7 @@ import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.openai.OpenAiTokenUsage.InputTokensDetails;
 import dev.langchain4j.model.openai.OpenAiTokenUsage.OutputTokensDetails;
 import dev.langchain4j.model.openai.internal.chat.AssistantMessage;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.ContentType;
@@ -348,34 +349,53 @@ public class OpenAiUtils {
     }
 
     public static AiMessage aiMessageFrom(ChatCompletionResponse response, boolean returnThinking) {
-        AssistantMessage assistantMessage = response.choices().get(0).message();
-
-        String refusal = assistantMessage.refusal();
-        if (isNotNullOrBlank(refusal)) {
-            throw new ContentFilteredException(refusal);
-        }
-
-        String content = assistantMessage.content();
-
+        // Some OpenAI-compatible providers split text and tool_calls across multiple choices.
+        // For example: choices[0] has content="...", choices[1] has tool_calls=[...].
+        // We must iterate all choices and merge tool_calls from any choice.
+        List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
+        String content = null;
         String reasoningContent = null;
-        if (returnThinking) {
-            reasoningContent = assistantMessage.reasoningContent();
-        }
 
-        List<ToolExecutionRequest> toolExecutionRequests =
-                getOrDefault(assistantMessage.toolCalls(), List.of()).stream()
-                        .filter(toolCall -> toolCall.type() == FUNCTION)
-                        .map(OpenAiUtils::toToolExecutionRequest)
-                        .collect(toList());
+        for (ChatCompletionChoice choice : response.choices()) {
+            AssistantMessage assistantMessage = choice.message();
 
-        // legacy
-        FunctionCall functionCall = assistantMessage.functionCall();
-        if (functionCall != null) {
-            ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                    .name(functionCall.name())
-                    .arguments(functionCall.arguments())
-                    .build();
-            toolExecutionRequests.add(toolExecutionRequest);
+            String refusal = assistantMessage.refusal();
+            if (isNotNullOrBlank(refusal)) {
+                throw new ContentFilteredException(refusal);
+            }
+
+            // Prefer content from a choice that does NOT have tool_calls,
+            // to avoid silently dropping text when providers split them across choices.
+            // If a choice has both content and tool_calls in the same message, still take it.
+            if (content == null) {
+                if (isNotNullOrBlank(assistantMessage.content())) {
+                    content = assistantMessage.content();
+                }
+            } else if (isNotNullOrBlank(assistantMessage.content()) && isNullOrEmpty(assistantMessage.toolCalls())) {
+                // content already set; only overwrite if this choice has content but no tool_calls
+                content = assistantMessage.content();
+            }
+
+            if (returnThinking && reasoningContent == null) {
+                reasoningContent = assistantMessage.reasoningContent();
+            }
+
+            // Extract tool_calls from every choice
+            List<ToolCall> toolCalls = getOrDefault(assistantMessage.toolCalls(), List.of());
+            for (ToolCall toolCall : toolCalls) {
+                if (toolCall.type() == FUNCTION) {
+                    toolExecutionRequests.add(toToolExecutionRequest(toolCall));
+                }
+            }
+
+            // legacy
+            FunctionCall functionCall = assistantMessage.functionCall();
+            if (functionCall != null) {
+                toolExecutionRequests.add(ToolExecutionRequest.builder()
+                        .name(functionCall.name())
+                        .arguments(functionCall.arguments())
+                        .build());
+            }
         }
 
         return AiMessage.builder()
