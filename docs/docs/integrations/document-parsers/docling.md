@@ -19,7 +19,9 @@ This integration communicates with a running [docling-serve](https://github.com/
 </dependency>
 ```
 
-You will also need a client implementation for `DoclingServeApi`, such as:
+This module depends on `docling-serve-api` (the interface) and includes `docling-serve-client` (the reference HTTP client) as an optional runtime dependency.
+
+**If you are not using Spring Boot or Quarkus** (which may provide their own `DoclingServeApi` implementation), you must also add the reference client explicitly:
 
 ```xml
 <dependency>

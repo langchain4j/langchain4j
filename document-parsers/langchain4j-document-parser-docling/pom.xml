@@ -53,12 +53,13 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Docling reference client - test only; production code only depends on docling-serve-api -->
+        <!-- Docling reference client - runtime optional; frameworks like Spring/Quarkus provide their own impl -->
         <dependency>
             <groupId>ai.docling</groupId>
             <artifactId>docling-serve-client</artifactId>
             <version>${docling.version}</version>
-            <scope>test</scope>
+            <scope>runtime</scope>
+            <optional>true</optional>
         </dependency>
 
         <!-- Docling Testcontainers for integration testing -->
