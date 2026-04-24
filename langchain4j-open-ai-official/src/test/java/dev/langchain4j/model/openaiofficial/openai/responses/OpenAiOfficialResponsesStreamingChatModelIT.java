@@ -251,7 +251,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                 .build();
 
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        model.chat("List open orders for customer CUST-12345.", handler);
+        model.chat("List open orders for customer CUST-12345. Use tool search to discover available tools", handler);
 
         var response = handler.get();
         OpenAiOfficialResponsesChatResponseMetadata metadata =
