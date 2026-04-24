@@ -13,7 +13,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic</artifactId>
-    <version>1.13.0</version>
+    <version>1.13.1</version>
 </dependency>
 ```
 
@@ -53,6 +53,7 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .cacheTools(...)
     .thinkingType(...)
     .thinkingBudgetTokens(...)
+    .thinkingDisplay(...)
     .returnThinking(...)
     .sendThinking(...)
     .timeout(...)
@@ -419,21 +420,34 @@ To enable prompt caching for a `UserMessage`, you need to set the `cache_control
 ```java
 UserMessage userMessage = UserMessage.from("Hello cached world");
 userMessage.attributes().put("cache_control", "ephemeral");
+```
 
 ## Thinking
 
 Both `AnthropicChatModel` and `AnthropicStreamingChatModel` support
-[thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking) feature.
+[extended thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking)
+and [adaptive thinking](https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking) features.
 
 It is controlled by the following parameters:
 - `thinkingType` and `thinkingBudgetTokens`: enable thinking,
   see more details [here](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking).
+- `thinkingDisplay`: controls how thinking content is returned. Valid values are `"summarized"` and `"omitted"`.
 - `returnThinking`: controls whether to return thinking (if available) inside `AiMessage.thinking()`
   and whether to invoke `StreamingChatResponseHandler.onPartialThinking()` and `TokenStream.onPartialThinking()`
   callbacks when using `BedrockStreamingChatModel`.
   Disabled by default. If enabled, tinking signatures will also be stored and returned inside the `AiMessage.attributes()`.
 - `sendThinking`: controls whether to send thinking and signatures stored in `AiMessage` to the LLM in follow-up requests.
 Enabled by default.
+
+In order to configure `effort` parameter, set `customParameters` when building the model:
+```java
+ChatModel model = AnthropicChatModel.builder()
+        .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+        .modelName("claude-sonnet-4-7")
+        .customParameters(Map.of("output_config", Map.of("effort", "max")))
+        ...
+        .build();
+```
 
 Here is an example of how to configure thinking:
 ```java
@@ -568,7 +582,7 @@ Import Spring Boot starter for Anthropic:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic-spring-boot-starter</artifactId>
-    <version>1.13.0-beta23</version>
+    <version>1.13.1-beta23</version>
 </dependency>
 ```
 

@@ -7,6 +7,7 @@ import static dev.langchain4j.service.TypeUtils.isImageType;
 
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.LoopCounter;
@@ -19,6 +20,7 @@ import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.TokenStream;
 import java.lang.annotation.Annotation;
@@ -167,6 +169,9 @@ public class AgentUtil {
     }
 
     public static List<AgentArgument> argumentsFromMethod(Method method, Map<String, Object> defaultValues) {
+        if (method.getDeclaringClass() == UntypedAgent.class) {
+            return List.of();
+        }
         return Stream.of(method.getParameters())
                 .map(p -> {
                     String argName = parameterName(p);
@@ -260,7 +265,14 @@ public class AgentUtil {
                 case "double", "java.lang.Double" -> Double.parseDouble(s);
                 case "float", "java.lang.Float" -> Float.parseFloat(s);
                 case "boolean", "java.lang.Boolean" -> Boolean.parseBoolean(s);
-                default -> throw new IllegalArgumentException("Unsupported type: " + type);
+                default -> {
+                    try {
+                        yield Json.fromJson(s, type);
+                    } catch (Exception e) {
+                        throw new IllegalArgumentException(
+                                "Cannot deserialize value '" + s + "' to type " + type.getName(), e);
+                    }
+                }
             };
         }
         if (value instanceof Number n) {

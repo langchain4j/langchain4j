@@ -1,18 +1,17 @@
-package dev.langchain4j.model.openaiofficial.openai;
+package dev.langchain4j.model.openaiofficial.openai.responses;
 
-import com.openai.models.ChatModel;
-import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.common.AbstractChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatModel;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
-class OpenAiOfficialResponsesStreamingChatModelListenerIT extends AbstractStreamingChatModelListenerIT {
+class OpenAiOfficialResponsesChatModelListenerIT extends AbstractChatModelListenerIT {
 
     @Override
-    protected StreamingChatModel createModel(ChatModelListener listener) {
-        return OpenAiOfficialResponsesStreamingChatModel.builder()
+    protected ChatModel createModel(ChatModelListener listener) {
+        return OpenAiOfficialResponsesChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName())
@@ -25,12 +24,12 @@ class OpenAiOfficialResponsesStreamingChatModelListenerIT extends AbstractStream
 
     @Override
     protected String modelName() {
-        return ChatModel.GPT_4O_MINI.toString();
+        return "gpt-4o-mini";
     }
 
     @Override
-    protected StreamingChatModel createFailingModel(ChatModelListener listener) {
-        return OpenAiOfficialResponsesStreamingChatModel.builder()
+    protected ChatModel createFailingModel(ChatModelListener listener) {
+        return OpenAiOfficialResponsesChatModel.builder()
                 .apiKey("banana")
                 .modelName(modelName())
                 .listeners(listener)

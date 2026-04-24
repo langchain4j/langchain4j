@@ -176,6 +176,13 @@ class InternalOllamaHelper {
                         // numPredict and maxOutputTokens are semantically identical
                         .numPredict(requestParameters.maxOutputTokens())
                         .numCtx(requestParameters.numCtx())
+                        .numThread(requestParameters.numThread())
+                        .numKeep(requestParameters.numKeep())
+                        .typicalP(requestParameters.typicalP())
+                        .numBatch(requestParameters.numBatch())
+                        .numGPU(requestParameters.numGPU())
+                        .mainGPU(requestParameters.mainGPU())
+                        .useMmap(requestParameters.useMmap())
                         .stop(requestParameters.stopSequences())
                         .minP(requestParameters.minP())
                         .build())
