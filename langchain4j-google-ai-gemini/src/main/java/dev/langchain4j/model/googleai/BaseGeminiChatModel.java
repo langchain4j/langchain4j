@@ -54,7 +54,8 @@ class BaseGeminiChatModel {
     protected final Boolean enableEnhancedCivicAnswers;
     protected final GeminiMediaResolutionLevel mediaResolution;
     protected final boolean mediaResolutionPerPartEnabled;
-    protected final GeminiGenerationConfig.GeminiImageConfig imageConfig;
+    protected final String aspectRatio;
+    protected final String imageSize;
 
     protected final ChatRequestParameters defaultRequestParameters;
 
@@ -79,7 +80,8 @@ class BaseGeminiChatModel {
         this.logprobs = builder.logprobs;
         this.mediaResolution = builder.mediaResolution;
         this.mediaResolutionPerPartEnabled = getOrDefault(builder.mediaResolutionPerPartEnabled, false);
-        this.imageConfig = buildImageConfig(builder.aspectRatio, builder.imageSize);
+        this.aspectRatio = builder.aspectRatio;
+        this.imageSize = builder.imageSize;
 
         ChatRequestParameters parameters;
         if (builder.defaultRequestParameters != null) {
@@ -156,7 +158,8 @@ class BaseGeminiChatModel {
                         .logprobs(logprobs)
                         .thinkingConfig(this.thinkingConfig)
                         .mediaResolution(this.mediaResolution)
-                        .imageConfig(this.imageConfig)
+                        .imageConfig(buildImageConfig(
+                                this.aspectRatio, this.imageSize, parameters.aspectRatio(), parameters.imageSize()))
                         .build())
                 .safetySettings(this.safetySettings)
                 .tools(fromToolSpecsToGTools(
@@ -224,13 +227,16 @@ class BaseGeminiChatModel {
         };
     }
 
-    private static GeminiGenerationConfig.GeminiImageConfig buildImageConfig(String aspectRatio, String imageSize) {
-        if (aspectRatio == null && imageSize == null) {
+    protected static GeminiGenerationConfig.GeminiImageConfig buildImageConfig(
+            String aspectRatio, String imageSize, String requestAspectRatio, String requestImageSize) {
+        String finalAspectRatio = requestAspectRatio != null ? requestAspectRatio : aspectRatio;
+        String finalImageSize = requestImageSize != null ? requestImageSize : imageSize;
+        if (finalAspectRatio == null && finalImageSize == null) {
             return null;
         }
         return GeminiGenerationConfig.GeminiImageConfig.builder()
-                .aspectRatio(aspectRatio)
-                .imageSize(imageSize)
+                .aspectRatio(finalAspectRatio)
+                .imageSize(finalImageSize)
                 .build();
     }
 

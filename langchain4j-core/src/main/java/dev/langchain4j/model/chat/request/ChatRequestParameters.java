@@ -35,6 +35,22 @@ public interface ChatRequestParameters {
     ResponseFormat responseFormat();
 
     /**
+     * The target aspect ratio for generated images.
+     * This is serialized to {@code generationConfig.imageConfig.aspectRatio}.
+     *
+     * @return the aspect ratio for image generation
+     */
+    String aspectRatio();
+
+    /**
+     * The target image size for generated images.
+     * This is serialized to {@code generationConfig.imageConfig.imageSize}.
+     *
+     * @return the image size for image generation
+     */
+    String imageSize();
+
+    /**
      * Creates a new {@link ChatRequestParameters} by combining the current parameters with the specified ones.
      * Values from the specified parameters override values from the current parameters when there is overlap.
      * Neither the current nor the specified {@link ChatRequestParameters} objects are modified.

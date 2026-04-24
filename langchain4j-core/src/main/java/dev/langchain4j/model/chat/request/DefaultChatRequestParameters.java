@@ -27,6 +27,8 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
     private final List<ToolSpecification> toolSpecifications;
     private final ToolChoice toolChoice;
     private final ResponseFormat responseFormat;
+    private final String aspectRatio;
+    private final String imageSize;
 
     protected DefaultChatRequestParameters(Builder<?> builder) {
         this.modelName = builder.modelName;
@@ -40,6 +42,8 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
         this.toolSpecifications = copy(builder.toolSpecifications);
         this.toolChoice = builder.toolChoice;
         this.responseFormat = builder.responseFormat;
+        this.aspectRatio = builder.aspectRatio;
+        this.imageSize = builder.imageSize;
     }
 
     @Override
@@ -97,6 +101,14 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
         return responseFormat;
     }
 
+    public String aspectRatio() {
+        return aspectRatio;
+    }
+
+    public String imageSize() {
+        return imageSize;
+    }
+
     @Override
     public ChatRequestParameters overrideWith(ChatRequestParameters that) {
         return DefaultChatRequestParameters.builder()
@@ -129,7 +141,9 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
                 && Objects.equals(stopSequences, that.stopSequences)
                 && Objects.equals(toolSpecifications, that.toolSpecifications)
                 && Objects.equals(toolChoice, that.toolChoice)
-                && Objects.equals(responseFormat, that.responseFormat);
+                && Objects.equals(responseFormat, that.responseFormat)
+                && Objects.equals(aspectRatio, that.aspectRatio)
+                && Objects.equals(imageSize, that.imageSize);
     }
 
     @Override
@@ -146,7 +160,9 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
                 stopSequences,
                 toolSpecifications,
                 toolChoice,
-                responseFormat);
+                responseFormat,
+                aspectRatio,
+                imageSize);
     }
 
     @Override
@@ -163,7 +179,9 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
                 + stopSequences + ", toolSpecifications="
                 + toolSpecifications + ", toolChoice="
                 + toolChoice + ", responseFormat="
-                + responseFormat + '}';
+                + responseFormat + ", aspectRatio='"
+                + aspectRatio + '\'' + ", imageSize='"
+                + imageSize + '\'' + '}';
     }
 
     public static Builder<?> builder() {
@@ -183,6 +201,8 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
         private List<ToolSpecification> toolSpecifications;
         private ToolChoice toolChoice;
         private ResponseFormat responseFormat;
+        private String aspectRatio;
+        private String imageSize;
 
         public T overrideWith(ChatRequestParameters parameters) {
             modelName(getOrDefault(parameters.modelName(), modelName));
@@ -196,6 +216,8 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
             toolSpecifications(getOrDefault(parameters.toolSpecifications(), toolSpecifications));
             toolChoice(getOrDefault(parameters.toolChoice(), toolChoice));
             responseFormat(getOrDefault(parameters.responseFormat(), responseFormat));
+            aspectRatio(getOrDefault(parameters.aspectRatio(), aspectRatio));
+            imageSize(getOrDefault(parameters.imageSize(), imageSize));
             return (T) this;
         }
 
@@ -274,6 +296,16 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
          */
         public T responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
+            return (T) this;
+        }
+
+        public T aspectRatio(String aspectRatio) {
+            this.aspectRatio = aspectRatio;
+            return (T) this;
+        }
+
+        public T imageSize(String imageSize) {
+            this.imageSize = imageSize;
             return (T) this;
         }
 

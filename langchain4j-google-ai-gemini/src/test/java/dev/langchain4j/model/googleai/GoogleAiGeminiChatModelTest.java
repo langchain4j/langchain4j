@@ -378,6 +378,7 @@ class GoogleAiGeminiChatModelTest {
                     .imageSize("2K")
                     .build(mockGeminiService);
 
+
             var chatRequest = ChatRequest.builder()
                     .messages(new UserMessage("Generate image"))
                     .build();
@@ -393,6 +394,140 @@ class GoogleAiGeminiChatModelTest {
             assertThat(request.generationConfig().imageConfig())
                     .isEqualTo(GeminiImageConfig.builder()
                             .aspectRatio("16:9")
+                            .imageSize("2K")
+                            .build());
+        }
+
+        @Test
+        void shouldOverrideImageConfigFromRequest() {
+            // Given - request-level should override builder-level
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .imageAspectRatio("16:9")
+                    .imageSize("2K")
+                    .build(mockGeminiService);
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(new UserMessage("Generate image"))
+                    .parameters(ChatRequestParameters.builder()
+                            .aspectRatio("1:1")
+                            .imageSize("1K")
+                            .build())
+                    .build();
+
+            // When
+            subject.chat(chatRequest);
+
+            // Then - request-level values should be used
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            var request = requestCaptor.getValue();
+
+            assertThat(request.generationConfig()).isNotNull();
+            assertThat(request.generationConfig().imageConfig())
+                    .isEqualTo(GeminiImageConfig.builder()
+                            .aspectRatio("1:1")
+                            .imageSize("1K")
+                            .build());
+        }
+
+        @Test
+        void shouldUseBuilderImageConfigWhenRequestLevelAbsent() {
+            // Given - builder-level should be used when request-level is absent
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .imageAspectRatio("4:5")
+                    .imageSize("1024x1024")
+                    .build(mockGeminiService);
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(new UserMessage("Generate image"))
+                    .parameters(ChatRequestParameters.builder().build())
+                    .build();
+
+            // When
+            subject.chat(chatRequest);
+
+            // Then - builder-level values should be used
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            var request = requestCaptor.getValue();
+
+            assertThat(request.generationConfig()).isNotNull();
+            assertThat(request.generationConfig().imageConfig())
+                    .isEqualTo(GeminiImageConfig.builder()
+                            .aspectRatio("4:5")
+                            .imageSize("1024x1024")
+                            .build());
+        }
+
+        @Test
+        void shouldNotIncludeImageConfigWhenNoValuesProvided() {
+            // Given - no image config at any level
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .build(mockGeminiService);
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(new UserMessage("Generate image"))
+                    .build();
+
+
+            // When
+            subject.chat(chatRequest);
+
+            // Then - imageConfig should not be sent
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            var request = requestCaptor.getValue();
+
+            assertThat(request.generationConfig()).isNotNull();
+            assertThat(request.generationConfig().imageConfig()).isNull();
+        }
+
+        @Test
+        void shouldAllowPartialRequestLevelOverride() {
+            // Given - request-level can override only aspectRatio, keeping builder's imageSize
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .imageSize("2K")
+                    .build(mockGeminiService);
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(new UserMessage("Generate image"))
+                    .parameters(ChatRequestParameters.builder()
+                            .aspectRatio("9:16")
+                            .build())
+                    .build();
+
+            // When
+            subject.chat(chatRequest);
+
+            // Then - request-level aspectRatio with builder-level imageSize
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            var request = requestCaptor.getValue();
+
+            assertThat(request.generationConfig()).isNotNull();
+            assertThat(request.generationConfig().imageConfig())
+                    .isEqualTo(GeminiImageConfig.builder()
+                            .aspectRatio("9:16")
                             .imageSize("2K")
                             .build());
         }
