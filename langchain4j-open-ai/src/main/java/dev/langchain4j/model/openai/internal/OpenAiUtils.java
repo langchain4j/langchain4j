@@ -51,11 +51,11 @@ import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.openai.OpenAiTokenUsage.InputTokensDetails;
 import dev.langchain4j.model.openai.OpenAiTokenUsage.OutputTokensDetails;
 import dev.langchain4j.model.openai.internal.chat.AssistantMessage;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.ContentType;
 import dev.langchain4j.model.openai.internal.chat.Function;
-import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.FunctionCall;
 import dev.langchain4j.model.openai.internal.chat.FunctionMessage;
 import dev.langchain4j.model.openai.internal.chat.ImageDetail;
@@ -371,8 +371,7 @@ public class OpenAiUtils {
                 if (isNotNullOrBlank(assistantMessage.content())) {
                     content = assistantMessage.content();
                 }
-            } else if (isNotNullOrBlank(assistantMessage.content())
-                    && isNullOrEmpty(assistantMessage.toolCalls())) {
+            } else if (isNotNullOrBlank(assistantMessage.content()) && isNullOrEmpty(assistantMessage.toolCalls())) {
                 // content already set; only overwrite if this choice has content but no tool_calls
                 content = assistantMessage.content();
             }

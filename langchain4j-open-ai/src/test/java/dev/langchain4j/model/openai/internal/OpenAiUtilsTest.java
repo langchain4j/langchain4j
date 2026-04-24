@@ -262,9 +262,7 @@ class OpenAiUtilsTest {
         String functionArguments = "{}";
 
         ChatCompletionChoice textChoice = ChatCompletionChoice.builder()
-                .message(AssistantMessage.builder()
-                        .content(textContent)
-                        .build())
+                .message(AssistantMessage.builder().content(textContent).build())
                 .build();
 
         ChatCompletionChoice toolCallChoice = ChatCompletionChoice.builder()
@@ -285,7 +283,6 @@ class OpenAiUtilsTest {
 
         // when
         AiMessage aiMessage = aiMessageFrom(response);
-
 
         // then
         assertThat(aiMessage.text()).isEqualTo(textContent);
