@@ -5,9 +5,11 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import static java.util.Collections.singletonList;
 
+@EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")
 class VertexAiGeminiStreamingChatModelListenerIT extends AbstractStreamingChatModelListenerIT {
 
     @Override

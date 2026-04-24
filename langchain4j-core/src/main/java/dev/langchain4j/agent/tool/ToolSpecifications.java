@@ -1,15 +1,22 @@
 package dev.langchain4j.agent.tool;
 
-import dev.langchain4j.invocation.LangChain4jManaged;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static java.util.Arrays.stream;
+import static java.util.stream.Collectors.toList;
+
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.JsonSchemaElementUtils;
+import dev.langchain4j.internal.JsonSchemaElementUtils.VisitedClassMetadata;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
-import dev.langchain4j.internal.JsonSchemaElementUtils.VisitedClassMetadata;
+import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
-import dev.langchain4j.internal.JsonSchemaElementUtils;
-
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -18,17 +25,33 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static java.util.Arrays.stream;
-import static java.util.stream.Collectors.toList;
+import static dev.langchain4j.agent.tool.SearchBehavior.SEARCHABLE;
+import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
 
 /**
  * Utility methods for {@link ToolSpecification}s.
  */
 public class ToolSpecifications {
 
-    private ToolSpecifications() {
-    }
+    private static final Type MAP_TYPE = new ParameterizedType() {
+
+        @Override
+        public Type[] getActualTypeArguments() {
+            return new Type[] {String.class, Object.class};
+        }
+
+        @Override
+        public Type getRawType() {
+            return Map.class;
+        }
+
+        @Override
+        public Type getOwnerType() {
+            return null;
+        }
+    };
+
+    private ToolSpecifications() {}
 
     /**
      * Returns {@link ToolSpecification}s for all methods annotated with @{@link Tool} within the specified class.
@@ -62,13 +85,15 @@ public class ToolSpecifications {
      *
      * @param toolSpecifications list of ToolSpecification to be validated.
      */
-    public static void validateSpecifications(List<ToolSpecification> toolSpecifications) throws IllegalArgumentException {
+    public static void validateSpecifications(List<ToolSpecification> toolSpecifications)
+            throws IllegalArgumentException {
 
         // Checks for duplicates methods
         Set<String> names = new HashSet<>();
         for (ToolSpecification toolSpecification : toolSpecifications) {
             if (!names.add(toolSpecification.name())) {
-                throw new IllegalArgumentException(String.format("Tool names must be unique. The tool '%s' appears several times", toolSpecification.name()));
+                throw new IllegalArgumentException(String.format(
+                        "Tool names must be unique. The tool '%s' appears several times", toolSpecification.name()));
             }
         }
     }
@@ -80,23 +105,30 @@ public class ToolSpecifications {
      * @return the {@link ToolSpecification}.
      */
     public static ToolSpecification toolSpecificationFrom(Method method) {
-
-        Tool annotation = method.getAnnotation(Tool.class);
-
-        String name = isNullOrBlank(annotation.name()) ? method.getName() : annotation.name();
-
-        String description = String.join("\n", annotation.value());
-        if (description.isEmpty()) {
-            description = null;
-        }
-
-        JsonObjectSchema parameters = parametersFrom(method.getParameters());
-
+        Tool tool = method.getAnnotation(Tool.class);
         return ToolSpecification.builder()
-                .name(name)
-                .description(description)
-                .parameters(parameters)
+                .name(getName(tool, method))
+                .description(getDescription(tool))
+                .parameters(parametersFrom(method.getParameters()))
+                .metadata(getMetadata(tool))
                 .build();
+    }
+
+    private static String getName(Tool tool, Method method) {
+        return isNullOrBlank(tool.name()) ? method.getName() : tool.name();
+    }
+
+    private static String getDescription(Tool tool) {
+        String description = String.join("\n", tool.value());
+        return description.isEmpty() ? null : description;
+    }
+
+    private static Map<String, Object> getMetadata(Tool annotation) {
+        Map<String, Object> metadata = Json.fromJson(annotation.metadata(), MAP_TYPE);
+        if (annotation.searchBehavior() != SEARCHABLE) {
+            metadata.put(METADATA_SEARCH_BEHAVIOR, annotation.searchBehavior());
+        }
+        return metadata;
     }
 
     private static JsonObjectSchema parametersFrom(Parameter[] parameters) {
@@ -114,13 +146,21 @@ public class ToolSpecifications {
                 continue;
             }
 
-            boolean isRequired = Optional.ofNullable(parameter.getAnnotation(P.class))
-                    .map(P::required)
-                    .orElse(true);
+            boolean isOptional = Optional.class.equals(parameter.getType());
+            P pAnnotation = parameter.getAnnotation(P.class);
+            boolean isRequired = !isOptional
+                    && Optional.ofNullable(pAnnotation)
+                            .map(P::required)
+                            .orElse(true);
 
-            properties.put(parameter.getName(), jsonSchemaElementFrom(parameter, visited));
+            String parameterName = Optional.ofNullable(pAnnotation)
+                    .map(P::name)
+                    .filter(name -> isNotNullOrBlank(name))
+                    .orElse(parameter.getName());
+
+            properties.put(parameterName, jsonSchemaElementFrom(parameter, visited));
             if (isRequired) {
-                required.add(parameter.getName());
+                required.add(parameterName);
             }
         }
 
@@ -142,16 +182,38 @@ public class ToolSpecifications {
                 .build();
     }
 
-    private static JsonSchemaElement jsonSchemaElementFrom(Parameter parameter,
-                                                           Map<Class<?>, VisitedClassMetadata> visited) {
+    private static JsonSchemaElement jsonSchemaElementFrom(
+            Parameter parameter, Map<Class<?>, VisitedClassMetadata> visited) {
         P annotation = parameter.getAnnotation(P.class);
-        String description = annotation == null ? null : annotation.value();
-        return JsonSchemaElementUtils.jsonSchemaElementFrom(
-                parameter.getType(),
-                parameter.getParameterizedType(),
-                description,
-                true,
-                visited
-        );
+        String description = null;
+
+        if (annotation != null) {
+            if (isNotNullOrBlank(annotation.value()) && isNotNullOrBlank(annotation.description())) {
+                throw new IllegalArgumentException(String.format(
+                        "Parameter '%s' has both 'value' and 'description' set in @P. Use one or the other, but not both.",
+                        parameter.getName()));
+            }
+            if (isNotNullOrBlank(annotation.description())) {
+                description = annotation.description();
+            } else if (isNotNullOrBlank(annotation.value())) {
+                description = annotation.value();
+            }
+        }
+
+        Type type = parameter.getParameterizedType();
+        Class<?> clazz = parameter.getType();
+
+        if (clazz == Optional.class && type instanceof ParameterizedType parameterizedType) {
+            // Use the variable 'parameterizedType' directly without casting
+            type = parameterizedType.getActualTypeArguments()[0];
+
+            if (type instanceof Class) {
+                clazz = (Class<?>) type;
+            } else if (type instanceof ParameterizedType parameterizedType1) {
+                clazz = (Class<?>) parameterizedType1.getRawType();
+            }
+        }
+
+        return JsonSchemaElementUtils.jsonSchemaElementFrom(clazz, type, description, true, visited);
     }
 }

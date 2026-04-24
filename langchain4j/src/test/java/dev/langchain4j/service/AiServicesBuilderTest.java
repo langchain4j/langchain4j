@@ -9,6 +9,8 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import java.util.Arrays;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -93,5 +95,69 @@ class AiServicesBuilderTest {
                 AiServices.builder(TestService.class).chatModel(chatModel).build();
 
         assertThat(service).isNotNull();
+    }
+
+    @Test
+    void should_raise_an_error_when_object_has_no_tool_methods() {
+        class ObjectWithoutTools {
+            public void doSomething() {
+                // no @Tool annotation
+            }
+        }
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() -> AiServices.builder(TestService.class)
+                        .chatModel(chatModel)
+                        .tools(new ObjectWithoutTools())
+                        .build())
+                .withMessageContaining("does not have any methods annotated with @Tool");
+    }
+
+    @Test
+    void should_raise_an_error_when_nested_collection_is_passed_as_tool() {
+        class ToolClass {
+            @Tool("Say hello")
+            void sayHello(String name) {
+                System.out.printf("Hello %s!", name);
+            }
+        }
+
+        // This simulates the case where someone accidentally wraps tools in a nested collection
+        // e.g., tools(Arrays.asList(toolsList)) instead of tools(toolsList)
+        List<Object> innerTools = Arrays.asList(new ToolClass());
+        List<Object> outerCollection = Arrays.asList(innerTools);
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() -> AiServices.builder(TestService.class)
+                        .chatModel(chatModel)
+                        .tools(outerCollection) // passing a nested collection
+                        .build())
+                .withMessageContaining("is an Iterable");
+    }
+
+    @Test
+    void should_raise_an_error_when_list_is_passed_as_tool_element() {
+        class ToolClass {
+            @Tool("Say hello")
+            void sayHello(String name) {
+                System.out.printf("Hello %s!", name);
+            }
+        }
+
+        // The varargs version: tools(listOfTools) where listOfTools is itself a list
+        List<Object> listOfTools = Arrays.asList(new ToolClass());
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() -> AiServices.builder(TestService.class)
+                        .chatModel(chatModel)
+                        .tools((Object) listOfTools) // passing a List as a single tool object
+                        .build())
+                .withMessageContaining("is an Iterable");
     }
 }

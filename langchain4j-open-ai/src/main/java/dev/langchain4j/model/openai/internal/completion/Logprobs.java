@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,12 +56,14 @@ public final class Logprobs {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof Logprobs
                 && equalTo((Logprobs) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(Logprobs another) {
         return Objects.equals(tokens, another.tokens)
                 && Objects.equals(tokenLogprobs, another.tokenLogprobs)
@@ -69,6 +72,7 @@ public final class Logprobs {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(tokens);
@@ -79,6 +83,7 @@ public final class Logprobs {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "Logprobs{"
                 + "tokens=" + tokens

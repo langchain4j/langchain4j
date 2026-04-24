@@ -11,5 +11,9 @@ public interface LoopAgentService<T> extends AgenticService<LoopAgentService<T>,
 
     LoopAgentService<T> exitCondition(Predicate<AgenticScope> exitCondition);
     LoopAgentService<T> exitCondition(BiPredicate<AgenticScope, Integer> exitCondition);
+
+    LoopAgentService<T> exitCondition(String exitConditionDescription, Predicate<AgenticScope> exitCondition);
+    LoopAgentService<T> exitCondition(String exitConditionDescription, BiPredicate<AgenticScope, Integer> exitCondition);
+
     LoopAgentService<T> testExitAtLoopEnd(boolean checkExitConditionAtLoopEnd);
 }

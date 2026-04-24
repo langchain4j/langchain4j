@@ -312,4 +312,529 @@ class ContentsMapperTest {
                         .getName())
                 .isEqualTo("fetchData");
     }
+
+    @Test
+    void should_handle_tool_result_as_json_object() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(null, "getData", "{\"name\": \"John\", \"age\": 30}"));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        assertThat(response.getFieldsMap().get("name").getStringValue()).isEqualTo("John");
+        assertThat(response.getFieldsMap().get("age").getNumberValue()).isEqualTo(30.0);
+    }
+
+    @Test
+    void should_handle_tool_result_as_json_array() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(null, "getList", "[1, 2, 3]"));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        assertThat(response.getFieldsMap()).containsKey("result");
+        assertThat(response.getFieldsMap().get("result").getListValue().getValuesCount())
+                .isEqualTo(3);
+        assertThat(response.getFieldsMap()
+                        .get("result")
+                        .getListValue()
+                        .getValues(0)
+                        .getNumberValue())
+                .isEqualTo(1.0);
+        assertThat(response.getFieldsMap()
+                        .get("result")
+                        .getListValue()
+                        .getValues(1)
+                        .getNumberValue())
+                .isEqualTo(2.0);
+    }
+
+    @Test
+    void should_handle_tool_result_as_json_number() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(null, "calculate", "42"));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        assertThat(response.getFieldsMap()).containsKey("result");
+        assertThat(response.getFieldsMap().get("result").getNumberValue()).isEqualTo(42.0);
+    }
+
+    @Test
+    void should_handle_tool_result_as_json_boolean() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(null, "checkStatus", "true"));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        assertThat(response.getFieldsMap()).containsKey("result");
+        assertThat(response.getFieldsMap().get("result").getBoolValue()).isTrue();
+    }
+
+    @Test
+    void should_handle_tool_result_as_json_string() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(null, "getMessage", "\"hello world\""));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        assertThat(response.getFieldsMap()).containsKey("result");
+        assertThat(response.getFieldsMap().get("result").getStringValue()).isEqualTo("hello world");
+    }
+
+    @Test
+    void should_handle_tool_result_as_plain_text() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(null, "describe", "This is plain text output"));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        assertThat(response.getFieldsMap()).containsKey("result");
+        assertThat(response.getFieldsMap().get("result").getStringValue()).isEqualTo("This is plain text output");
+    }
+
+    @Test
+    void should_handle_tool_result_as_plain_text_with_embedded_quotes() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(null, "add", "The result is \"79376135377\"."));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        assertThat(response.getFieldsMap()).containsKey("result");
+        assertThat(response.getFieldsMap().get("result").getStringValue()).isEqualTo("The result is \"79376135377\".");
+    }
+
+    @Test
+    void should_handle_tool_result_as_json_null() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(null, "findItem", "null"));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        assertThat(response.getFieldsMap()).containsKey("result");
+        assertThat(response.getFieldsMap().get("result").hasNullValue()).isTrue();
+    }
+
+    @Test
+    void should_handle_tool_result_as_nested_json_object() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(
+                null, "getNestedData", "{\"user\": {\"name\": \"Alice\", \"address\": {\"city\": \"Paris\"}}}"));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        Struct user = response.getFieldsMap().get("user").getStructValue();
+        assertThat(user.getFieldsMap().get("name").getStringValue()).isEqualTo("Alice");
+        Struct address = user.getFieldsMap().get("address").getStructValue();
+        assertThat(address.getFieldsMap().get("city").getStringValue()).isEqualTo("Paris");
+    }
+
+    @Test
+    void should_handle_tool_result_as_negative_number() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(null, "getDifference", "-42"));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        assertThat(response.getFieldsMap().get("result").getNumberValue()).isEqualTo(-42.0);
+    }
+
+    @Test
+    void should_handle_tool_result_as_floating_point_number() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(null, "getFloat", "5.64659"));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        assertThat(response.getFieldsMap().get("result").getNumberValue()).isEqualTo(5.64659);
+    }
+
+    @Test
+    void should_handle_tool_result_as_empty_json_array() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(null, "getEmptyList", "[]"));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        assertThat(response.getFieldsMap().get("result").getListValue().getValuesCount())
+                .isZero();
+    }
+
+    @Test
+    void should_handle_tool_result_as_array_of_objects() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(null, "getUsers", "[{\"name\": \"Alice\"}, {\"name\": \"Bob\"}]"));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        assertThat(response.getFieldsMap().get("result").getListValue().getValuesCount())
+                .isEqualTo(2);
+        assertThat(response.getFieldsMap()
+                        .get("result")
+                        .getListValue()
+                        .getValues(0)
+                        .getStructValue()
+                        .getFieldsMap()
+                        .get("name")
+                        .getStringValue())
+                .isEqualTo("Alice");
+    }
+
+    @Test
+    void should_handle_tool_result_with_special_characters() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(null, "getSpecial", "{\"text\": \"Line1\\nLine2\\tTabbed\"}"));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        assertThat(response.getFieldsMap().get("text").getStringValue()).isEqualTo("Line1\nLine2\tTabbed");
+    }
+
+    @Test
+    void should_handle_tool_result_with_unicode_characters() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(null, "getEmoji", "{\"message\": \"Hello 👋 World 🌍\"}"));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        assertThat(response.getFieldsMap().get("message").getStringValue()).isEqualTo("Hello 👋 World 🌍");
+    }
+
+    @Test
+    void should_handle_tool_result_as_scientific_notation_number() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(null, "getScientific", "1.5e10"));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        assertThat(response.getFieldsMap().get("result").getNumberValue()).isEqualTo(1.5e10);
+    }
+
+    @Test
+    void should_handle_tool_result_with_json_containing_backslashes() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(null, "getPath", "{\"path\": \"C:\\\\Users\\\\test\"}"));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        assertThat(response.getFieldsMap().get("path").getStringValue()).isEqualTo("C:\\Users\\test");
+    }
+
+    @Test
+    void should_handle_tool_result_as_mixed_type_array() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(null, "getMixed", "[1, \"two\", true, null]"));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        assertThat(response.getFieldsMap().get("result").getListValue().getValuesCount())
+                .isEqualTo(4);
+        assertThat(response.getFieldsMap()
+                        .get("result")
+                        .getListValue()
+                        .getValues(0)
+                        .getNumberValue())
+                .isEqualTo(1.0);
+        assertThat(response.getFieldsMap()
+                        .get("result")
+                        .getListValue()
+                        .getValues(1)
+                        .getStringValue())
+                .isEqualTo("two");
+        assertThat(response.getFieldsMap()
+                        .get("result")
+                        .getListValue()
+                        .getValues(2)
+                        .getBoolValue())
+                .isTrue();
+        assertThat(response.getFieldsMap()
+                        .get("result")
+                        .getListValue()
+                        .getValues(3)
+                        .hasNullValue())
+                .isTrue();
+    }
+
+    @Test
+    void should_handle_tool_result_as_empty_json_object() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(null, "getEmptyObject", "{}"));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        assertThat(response.getFieldsCount()).isZero();
+    }
+
+    @Test
+    void should_handle_tool_result_text_starting_with_curly_brace_but_invalid_json() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(null, "getInvalid", "{not valid json}"));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        assertThat(response.getFieldsMap()).containsKey("result");
+        assertThat(response.getFieldsMap().get("result").getStringValue()).isEqualTo("{not valid json}");
+    }
+
+    @Test
+    void should_handle_tool_result_text_starting_with_bracket_but_invalid_json() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(null, "getInvalidArray", "[not, valid, json"));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        assertThat(response.getFieldsMap()).containsKey("result");
+        assertThat(response.getFieldsMap().get("result").getStringValue()).isEqualTo("[not, valid, json");
+    }
+
+    @Test
+    void should_handle_tool_result_with_html_content() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(null, "getHtml", "<html><body>Hello</body></html>"));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        assertThat(response.getFieldsMap()).containsKey("result");
+        assertThat(response.getFieldsMap().get("result").getStringValue()).isEqualTo("<html><body>Hello</body></html>");
+    }
+
+    @Test
+    void should_handle_tool_result_with_xml_content() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(
+                null, "getXml", "<?xml version=\"1.0\"?><root><item>value</item></root>"));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        assertThat(response.getFieldsMap()).containsKey("result");
+        assertThat(response.getFieldsMap().get("result").getStringValue())
+                .isEqualTo("<?xml version=\"1.0\"?><root><item>value</item></root>");
+    }
+
+    @Test
+    void should_handle_tool_result_with_json_containing_url() {
+        // given
+        List<ChatMessage> msgs = new ArrayList<>();
+        msgs.add(ToolExecutionResultMessage.from(
+                null, "getUrl", "{\"url\": \"https://example.com/path?query=value&other=123\"}"));
+
+        // when
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
+
+        // then
+        Struct response = instructionAndContent
+                .contents
+                .get(0)
+                .getParts(0)
+                .getFunctionResponse()
+                .getResponse();
+        assertThat(response.getFieldsMap().get("url").getStringValue())
+                .isEqualTo("https://example.com/path?query=value&other=123");
+    }
 }

@@ -1,5 +1,16 @@
 package dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
+import static dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore.MappingUtils.toEmbeddingMatch;
+import static dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore.MappingUtils.toMongoDbDocument;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
+import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
+import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
+
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCommandException;
@@ -17,6 +28,15 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
@@ -26,25 +46,6 @@ import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
-import static dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore.MappingUtils.toEmbeddingMatch;
-import static dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore.MappingUtils.toMongoDbDocument;
-import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
-import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
-import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 /**
  * Represents an Azure CosmosDB Mongo vCore as an embedding store.
@@ -111,8 +112,8 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
             Integer efConstruction,
             Integer efSearch) {
         if (mongoClient == null && isNullOrEmpty(connectionString)) {
-            throw new IllegalArgumentException("You need to pass either the mongoClient or " +
-                    "the connectionString required for connecting to Azure CosmosDB Mongo vCore");
+            throw new IllegalArgumentException("You need to pass either the mongoClient or "
+                    + "the connectionString required for connecting to Azure CosmosDB Mongo vCore");
         }
 
         if (isNullOrEmpty(databaseName) || isNullOrEmpty(collectionName)) {
@@ -136,19 +137,20 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         CodecRegistry codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(), pojoCodecRegistry);
 
         if (mongoClient == null) {
-            mongoClient = MongoClients.create(
-                    MongoClientSettings.builder()
-                            .applyConnectionString(new ConnectionString(connectionString))
-                            .applicationName(applicationName)
-                            .build());
+            mongoClient = MongoClients.create(MongoClientSettings.builder()
+                    .applyConnectionString(new ConnectionString(connectionString))
+                    .applicationName(applicationName)
+                    .build());
         }
 
         MongoDatabase database = mongoClient.getDatabase(databaseName);
         // create collection if not exist
         if (!isCollectionExist(database, collectionName)) {
-            createCollection(database, collectionName, getOrDefault(createCollectionOptions, new CreateCollectionOptions()));
+            createCollection(
+                    database, collectionName, getOrDefault(createCollectionOptions, new CreateCollectionOptions()));
         }
-        this.collection = database.getCollection(collectionName, AzureCosmosDbMongoVCoreDocument.class).withCodecRegistry(codecRegistry);
+        this.collection = database.getCollection(collectionName, AzureCosmosDbMongoVCoreDocument.class)
+                .withCodecRegistry(codecRegistry);
 
         // create index if not exist
         if (Boolean.TRUE.equals(createIndex) && !isIndexExist(this.indexName)) {
@@ -181,9 +183,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
 
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
-        List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
-                .collect(toList());
+        List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());
         addAll(ids, embeddings, null);
         return ids;
     }
@@ -199,7 +199,8 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         return new EmbeddingSearchResult<>(matches);
     }
 
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
+    public List<EmbeddingMatch<TextSegment>> findRelevant(
+            Embedding referenceEmbedding, int maxResults, double minScore) {
 
         List<Bson> pipeline = new ArrayList<>();
 
@@ -216,8 +217,12 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
             AggregateIterable<BsonDocument> results = collection.aggregate(pipeline, BsonDocument.class);
 
             return StreamSupport.stream(results.spliterator(), false)
-                    .filter(doc -> RelevanceScore.fromCosineSimilarity(doc.getDouble("similarityScore").getValue()) >= minScore)
-                    .map(doc -> toEmbeddingMatch(mapBsonToAzureCosmosDbMongoVCoreMatchedDocument(doc.getDocument("document"), doc.getDouble("similarityScore").getValue())))
+                    .filter(doc -> RelevanceScore.fromCosineSimilarity(
+                                    doc.getDouble("similarityScore").getValue())
+                            >= minScore)
+                    .map(doc -> toEmbeddingMatch(mapBsonToAzureCosmosDbMongoVCoreMatchedDocument(
+                            doc.getDocument("document"),
+                            doc.getDouble("similarityScore").getValue())))
                     .collect(Collectors.toList());
 
         } catch (MongoCommandException e) {
@@ -229,17 +234,20 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         List<Bson> pipeline = new ArrayList<>();
 
         // First stage: $search
-        Document searchStage = new Document("$search", new Document("cosmosSearch",
-                new Document("vector", queryVector.vectorAsList())
-                        .append("path", "embedding")
-                        .append("k", maxResults))
-                .append("returnStoredSource", true));
+        Document searchStage = new Document(
+                "$search",
+                new Document(
+                                "cosmosSearch",
+                                new Document("vector", queryVector.vectorAsList())
+                                        .append("path", "embedding")
+                                        .append("k", maxResults))
+                        .append("returnStoredSource", true));
         pipeline.add(searchStage);
 
         // Second stage: $project
-        Document projectStage = new Document("$project", new Document("similarityScore",
-                new Document("$meta", "searchScore"))
-                .append("document", "$$ROOT"));
+        Document projectStage = new Document(
+                "$project",
+                new Document("similarityScore", new Document("$meta", "searchScore")).append("document", "$$ROOT"));
         pipeline.add(projectStage);
 
         return pipeline;
@@ -249,23 +257,27 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         List<Bson> pipeline = new ArrayList<>();
 
         // First stage: $search
-        Document searchStage = new Document("$search", new Document("cosmosSearch",
-                new Document("vector", queryVector.vectorAsList())
-                        .append("path", "embedding")
-                        .append("k", maxResults)
-                        .append("efSearch", this.efSearch)));
+        Document searchStage = new Document(
+                "$search",
+                new Document(
+                        "cosmosSearch",
+                        new Document("vector", queryVector.vectorAsList())
+                                .append("path", "embedding")
+                                .append("k", maxResults)
+                                .append("efSearch", this.efSearch)));
         pipeline.add(searchStage);
 
         // Second stage: $project
-        Document projectStage = new Document("$project", new Document("similarityScore",
-                new Document("$meta", "searchScore"))
-                .append("document", "$$ROOT"));
+        Document projectStage = new Document(
+                "$project",
+                new Document("similarityScore", new Document("$meta", "searchScore")).append("document", "$$ROOT"));
         pipeline.add(projectStage);
 
         return pipeline;
     }
 
-    private AzureCosmosDbMongoVCoreMatchedDocument mapBsonToAzureCosmosDbMongoVCoreMatchedDocument(BsonDocument bsonDocument, Double score) {
+    private AzureCosmosDbMongoVCoreMatchedDocument mapBsonToAzureCosmosDbMongoVCoreMatchedDocument(
+            BsonDocument bsonDocument, Double score) {
         AzureCosmosDbMongoVCoreMatchedDocument document = new AzureCosmosDbMongoVCoreMatchedDocument();
 
         // Extract id
@@ -311,27 +323,52 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
             return;
         }
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
+        ensureTrue(
+                embedded == null || embeddings.size() == embedded.size(),
+                "embeddings size is not equal to embedded size");
 
         List<AzureCosmosDbMongoVCoreDocument> documents = new ArrayList<>(ids.size());
         for (int i = 0; i < ids.size(); i++) {
-            AzureCosmosDbMongoVCoreDocument document = toMongoDbDocument(ids.get(i), embeddings.get(i), embedded == null ? null : embedded.get(i));
+            AzureCosmosDbMongoVCoreDocument document =
+                    toMongoDbDocument(ids.get(i), embeddings.get(i), embedded == null ? null : embedded.get(i));
             documents.add(document);
         }
 
         InsertManyResult result = collection.insertMany(documents);
         if (!result.wasAcknowledged()) {
-            String errMsg = String.format("[AzureCosmosDbMongoVCoreEmbeddingStore] Add document failed, Document=%s", documents);
+            String errMsg = String.format(
+                    "[AzureCosmosDbMongoVCoreEmbeddingStore] Add document failed, Document=%s", documents);
             throw new RuntimeException(errMsg);
         }
     }
 
-    private boolean isCollectionExist(MongoDatabase database, String collectionName) {
-        return StreamSupport.stream(database.listCollectionNames().spliterator(), false)
+    @SuppressWarnings("unchecked")
+    static Iterable<String> listCollectionNames(MongoDatabase database) {
+        try {
+            Method m = MongoDatabase.class.getMethod("listCollectionNames");
+            Object result = m.invoke(database);
+            if (result instanceof Iterable) {
+                return (Iterable<String>) result;
+            }
+            throw new IllegalStateException("MongoDatabase.listCollectionNames() returned non-Iterable: " + result);
+        } catch (NoSuchMethodException e) {
+            throw new IllegalStateException("MongoDatabase.listCollectionNames() not found", e);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException("Failed to invoke MongoDatabase.listCollectionNames()", e);
+        }
+    }
+
+    static boolean collectionExists(MongoDatabase database, String collectionName) {
+        return StreamSupport.stream(listCollectionNames(database).spliterator(), false)
                 .anyMatch(collectionName::equals);
     }
 
-    private void createCollection(MongoDatabase database, String collectionName, CreateCollectionOptions createCollectionOptions) {
+    private boolean isCollectionExist(MongoDatabase database, String collectionName) {
+        return collectionExists(database, collectionName);
+    }
+
+    private void createCollection(
+            MongoDatabase database, String collectionName, CreateCollectionOptions createCollectionOptions) {
         database.createCollection(collectionName, createCollectionOptions);
     }
 
@@ -358,11 +395,13 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         Document indexDefinition = new Document()
                 .append("name", indexName)
                 .append("key", new Document("embedding", "cosmosSearch"))
-                .append("cosmosSearchOptions", new Document()
-                        .append("kind", this.kind.getValue())
-                        .append("numLists", this.numLists)
-                        .append("similarity", SimilarityMetric.COS)
-                        .append("dimensions", this.dimensions));
+                .append(
+                        "cosmosSearchOptions",
+                        new Document()
+                                .append("kind", this.kind.getValue())
+                                .append("numLists", this.numLists)
+                                .append("similarity", SimilarityMetric.COS)
+                                .append("dimensions", this.dimensions));
 
         BsonDocument bsonIndexDefinition = indexDefinition.toBsonDocument();
 
@@ -371,19 +410,22 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
 
         return new Document()
                 .append("createIndexes", collectionName)
-                .append("indexes", bsonArray).toBsonDocument();
+                .append("indexes", bsonArray)
+                .toBsonDocument();
     }
 
     private BsonDocument getIndexDefinitionVectorHNSW(String indexName, String collectionName) {
         Document indexDefinition = new Document()
                 .append("name", indexName)
                 .append("key", new Document("embedding", "cosmosSearch"))
-                .append("cosmosSearchOptions", new Document()
-                        .append("kind", this.kind.getValue())
-                        .append("m", this.m)
-                        .append("efConstruction", this.efConstruction)
-                        .append("similarity", SimilarityMetric.COS)
-                        .append("dimensions", this.dimensions));
+                .append(
+                        "cosmosSearchOptions",
+                        new Document()
+                                .append("kind", this.kind.getValue())
+                                .append("m", this.m)
+                                .append("efConstruction", this.efConstruction)
+                                .append("similarity", SimilarityMetric.COS)
+                                .append("dimensions", this.dimensions));
 
         BsonDocument bsonIndexDefinition = indexDefinition.toBsonDocument();
 
@@ -392,7 +434,8 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
 
         return new Document()
                 .append("createIndexes", collectionName)
-                .append("indexes", bsonArray).toBsonDocument();
+                .append("indexes", bsonArray)
+                .toBsonDocument();
     }
 
     public static class Builder {
@@ -537,9 +580,21 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         }
 
         public AzureCosmosDbMongoVCoreEmbeddingStore build() {
-            return new AzureCosmosDbMongoVCoreEmbeddingStore(mongoClient, connectionString, databaseName, collectionName, indexName, applicationName,
-                    createCollectionOptions, createIndex, kind, numLists, dimensions, m,
-                    efConstruction, efSearch);
+            return new AzureCosmosDbMongoVCoreEmbeddingStore(
+                    mongoClient,
+                    connectionString,
+                    databaseName,
+                    collectionName,
+                    indexName,
+                    applicationName,
+                    createCollectionOptions,
+                    createIndex,
+                    kind,
+                    numLists,
+                    dimensions,
+                    m,
+                    efConstruction,
+                    efSearch);
         }
     }
 
@@ -560,8 +615,8 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
             return Arrays.stream(SimilarityMetric.values())
                     .filter(k -> k.getValue().equals(similarityString))
                     .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("This similarity metric is not supported: "
-                            +similarityString));
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "This similarity metric is not supported: " + similarityString));
         }
     }
 
@@ -583,7 +638,8 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
             return Arrays.stream(VectorIndexType.values())
                     .filter(k -> k.getValue().equals(kindString))
                     .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("This vector index type is not supported: " +kindString));
+                    .orElseThrow(() ->
+                            new IllegalArgumentException("This vector index type is not supported: " + kindString));
         }
     }
 }

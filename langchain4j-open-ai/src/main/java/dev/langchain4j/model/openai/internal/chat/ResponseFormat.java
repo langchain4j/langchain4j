@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 import java.util.Objects;
 
@@ -36,18 +37,21 @@ public class ResponseFormat {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof ResponseFormat
                 && equalTo((ResponseFormat) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(ResponseFormat another) {
         return Objects.equals(type, another.type)
                 && Objects.equals(jsonSchema, another.jsonSchema);
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(type);
@@ -56,6 +60,7 @@ public class ResponseFormat {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "ResponseFormat{" +
                 "type=" + type +

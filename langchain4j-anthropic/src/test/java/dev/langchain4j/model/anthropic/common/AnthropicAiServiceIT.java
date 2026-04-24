@@ -4,7 +4,6 @@ import static dev.langchain4j.model.anthropic.common.AnthropicChatModelIT.ANTHRO
 
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.common.AbstractAiServiceIT;
 import java.util.List;

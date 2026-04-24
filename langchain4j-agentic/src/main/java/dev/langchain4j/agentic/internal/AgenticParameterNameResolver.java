@@ -1,14 +1,20 @@
 package dev.langchain4j.agentic.internal;
 
-import java.lang.reflect.Parameter;
-import java.util.Optional;
-import dev.langchain4j.agentic.declarative.K;
-import dev.langchain4j.service.ParameterNameResolver;
-import dev.langchain4j.service.V;
+import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
 
-import static dev.langchain4j.agentic.internal.AgentUtil.stateName;
+import dev.langchain4j.agentic.declarative.K;
+import dev.langchain4j.service.MemoryId;
+import dev.langchain4j.service.ParameterNameResolver;
+import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
+import java.lang.reflect.Parameter;
 
 public class AgenticParameterNameResolver implements ParameterNameResolver {
+
+    @Override
+    public boolean hasVariableName(final Parameter parameter) {
+        return getVariableName(parameter) != null;
+    }
 
     @Override
     public String getVariableName(Parameter parameter) {
@@ -19,9 +25,20 @@ public class AgenticParameterNameResolver implements ParameterNameResolver {
 
         K k = parameter.getAnnotation(K.class);
         if (k != null) {
-            return stateName(k.value());
+            return keyName(k.value());
         }
 
-        return parameter.isNamePresent() ? parameter.getName() : null;
+        if (parameter.getAnnotation(MemoryId.class) != null) {
+            return "@MemoryId";
+        }
+        if (parameter.getAnnotation(UserMessage.class) != null) {
+            return "@UserMessage";
+        }
+
+        if (parameter.isNamePresent()) {
+            return parameter.getName();
+        }
+
+        return null;
     }
 }

@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 import java.util.Objects;
 
@@ -42,12 +43,14 @@ public final class ToolMessage implements Message {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof ToolMessage
                 && equalTo((ToolMessage) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(ToolMessage another) {
         return Objects.equals(role, another.role)
                 && Objects.equals(toolCallId, another.toolCallId)
@@ -55,6 +58,7 @@ public final class ToolMessage implements Message {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(role);
@@ -64,6 +68,7 @@ public final class ToolMessage implements Message {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "ToolMessage{"
                 + "role=" + role

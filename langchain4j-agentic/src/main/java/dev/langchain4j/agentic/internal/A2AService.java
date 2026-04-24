@@ -6,11 +6,9 @@ import java.util.ServiceLoader;
 
 public interface A2AService {
 
-    boolean isPresent();
-
     <T> A2AClientBuilder<T> a2aBuilder(String a2aServerUrl, Class<T> agentServiceClass);
 
-    Optional<AgentExecutor> methodToAgentExecutor(AgentSpecification a2aClient, Method method);
+    Optional<AgentExecutor> methodToAgentExecutor(InternalAgent a2aClient, Method method);
 
     static A2AService get() {
         return Provider.a2aService;
@@ -38,18 +36,13 @@ public interface A2AService {
         private DummyA2AService() { }
 
         @Override
-        public boolean isPresent() {
-            return false;
-        }
-
-        @Override
         public <T> A2AClientBuilder<T> a2aBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
             throw noA2AException();
         }
 
         @Override
-        public Optional<AgentExecutor> methodToAgentExecutor(AgentSpecification agent, Method method) {
-            throw noA2AException();
+        public Optional<AgentExecutor> methodToAgentExecutor(InternalAgent agent, Method method) {
+            return Optional.empty();
         }
 
         private static UnsupportedOperationException noA2AException() {

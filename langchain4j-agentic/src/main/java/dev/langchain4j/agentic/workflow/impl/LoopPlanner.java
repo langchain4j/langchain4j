@@ -1,13 +1,16 @@
 package dev.langchain4j.agentic.workflow.impl;
 
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiPredicate;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.workflow.LoopAgentInstance;
 
 public class LoopPlanner implements Planner {
 
@@ -17,14 +20,16 @@ public class LoopPlanner implements Planner {
     private final boolean testExitAtLoopEnd;
 
     private final BiPredicate<AgenticScope, Integer> exitCondition;
+    private final String exitConditionDescription;
 
     private List<AgentInstance> agents;
     private int agentCursor = 0;
 
-    public LoopPlanner(int maxIterations, boolean testExitAtLoopEnd, BiPredicate<AgenticScope, Integer> exitCondition) {
+    public LoopPlanner(int maxIterations, boolean testExitAtLoopEnd, BiPredicate<AgenticScope, Integer> exitCondition, String exitConditionDescription) {
         this.maxIterations = maxIterations;
         this.testExitAtLoopEnd = testExitAtLoopEnd;
         this.exitCondition = exitCondition;
+        this.exitConditionDescription = exitConditionDescription;
     }
 
     @Override
@@ -49,5 +54,50 @@ public class LoopPlanner implements Planner {
             return done();
         }
         return call(agents.get(agentCursor));
+    }
+
+    @Override
+    public AgenticSystemTopology topology() {
+        return AgenticSystemTopology.LOOP;
+    }
+
+    @Override
+    public <T extends AgentInstance> T as(Class<T> agentInstanceClass, AgentInstance agentInstance) {
+        if (agentInstanceClass != LoopAgentInstance.class) {
+            throw new ClassCastException("Cannot cast to " + agentInstanceClass.getName() + ": incompatible type");
+        }
+        return (T) new DefaultLoopAgentInstance(agentInstance, this);
+    }
+
+    public int maxIterations() {
+        return maxIterations;
+    }
+
+    public boolean testExitAtLoopEnd() {
+        return testExitAtLoopEnd;
+    }
+
+    public String exitCondition() {
+        return exitConditionDescription;
+    }
+
+    @Override
+    public Map<String, Object> executionState() {
+        // Save the current cursor and iteration counter.
+        // LoopPlanner's firstAction() does NOT advance state (it just calls agents.get(agentCursor)),
+        // so the saved values can be restored directly.
+        return Map.of("cursor", agentCursor, "iteration", iterationsCounter);
+    }
+
+    @Override
+    public void restoreExecutionState(Map<String, Object> state) {
+        Object savedCursor = state.get("cursor");
+        if (savedCursor instanceof Number n) {
+            this.agentCursor = n.intValue();
+        }
+        Object savedIteration = state.get("iteration");
+        if (savedIteration instanceof Number n) {
+            this.iterationsCounter = n.intValue();
+        }
     }
 }

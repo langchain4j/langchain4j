@@ -25,17 +25,23 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageReques
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
+import dev.langchain4j.model.anthropic.internal.client.ParsedAndRawResponse;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 
 /**
@@ -63,6 +69,7 @@ public class AnthropicChatModel implements ChatModel {
     private final boolean cacheTools;
     private final String thinkingType;
     private final Integer thinkingBudgetTokens;
+    private final String thinkingDisplay;
     private final boolean returnThinking;
     private final boolean sendThinking;
     private final int maxRetries;
@@ -70,8 +77,13 @@ public class AnthropicChatModel implements ChatModel {
     private final ChatRequestParameters defaultRequestParameters;
     private final String toolChoiceName;
     private final Boolean disableParallelToolUse;
+    private final List<AnthropicServerTool> serverTools;
+    private final boolean returnServerToolResults;
+    private final Set<String> toolMetadataKeysToSend;
     private final String userId;
     private final Map<String, Object> customParameters;
+    private final Boolean strictTools;
+    private final Set<Capability> supportedCapabilities;
 
     public AnthropicChatModel(AnthropicChatModelBuilder builder) {
         this.client = AnthropicClient.builder()
@@ -90,14 +102,20 @@ public class AnthropicChatModel implements ChatModel {
         this.cacheTools = getOrDefault(builder.cacheTools, false);
         this.thinkingType = builder.thinkingType;
         this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
+        this.thinkingDisplay = builder.thinkingDisplay;
         this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.sendThinking = getOrDefault(builder.sendThinking, true);
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.listeners = copy(builder.listeners);
         this.toolChoiceName = builder.toolChoiceName;
         this.disableParallelToolUse = builder.disableParallelToolUse;
+        this.serverTools = copy(builder.serverTools);
+        this.returnServerToolResults = getOrDefault(builder.returnServerToolResults, false);
+        this.toolMetadataKeysToSend = copy(builder.toolMetadataKeysToSend);
         this.userId = builder.userId;
         this.customParameters = copy(builder.customParameters);
+        this.strictTools = builder.strictTools;
+        this.supportedCapabilities = copy(builder.supportedCapabilities);
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -117,6 +135,7 @@ public class AnthropicChatModel implements ChatModel {
                 .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
                 .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
                 .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
+                .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
                 .build();
     }
 
@@ -137,14 +156,19 @@ public class AnthropicChatModel implements ChatModel {
         private Integer topK;
         private Integer maxTokens;
         private List<String> stopSequences;
+        private ResponseFormat responseFormat;
         private List<ToolSpecification> toolSpecifications;
         private ToolChoice toolChoice;
         private String toolChoiceName;
         private Boolean disableParallelToolUse;
+        private List<AnthropicServerTool> serverTools;
+        private Boolean returnServerToolResults;
+        private Set<String> toolMetadataKeysToSend;
         private Boolean cacheSystemMessages;
         private Boolean cacheTools;
         private String thinkingType;
         private Integer thinkingBudgetTokens;
+        private String thinkingDisplay;
         private Boolean returnThinking;
         private Boolean sendThinking;
         private Duration timeout;
@@ -156,6 +180,8 @@ public class AnthropicChatModel implements ChatModel {
         private ChatRequestParameters defaultRequestParameters;
         private String userId;
         private Map<String, Object> customParameters;
+        private Boolean strictTools;
+        private Set<Capability> supportedCapabilities;
 
         public AnthropicChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -217,6 +243,11 @@ public class AnthropicChatModel implements ChatModel {
             return this;
         }
 
+        public AnthropicChatModelBuilder responseFormat(ResponseFormat responseFormat) {
+            this.responseFormat = responseFormat;
+            return this;
+        }
+
         public AnthropicChatModelBuilder toolSpecifications(List<ToolSpecification> toolSpecifications) {
             this.toolSpecifications = toolSpecifications;
             return this;
@@ -232,13 +263,74 @@ public class AnthropicChatModel implements ChatModel {
         }
 
         public AnthropicChatModelBuilder toolChoiceName(String toolChoiceName) {
-            this.toolChoiceName = this.toolChoiceName;
+            this.toolChoiceName = toolChoiceName;
             return this;
         }
 
         public AnthropicChatModelBuilder disableParallelToolUse(Boolean disableParallelToolUse) {
             this.disableParallelToolUse = disableParallelToolUse;
             return this;
+        }
+
+        /**
+         * Specifies server tools to be included in each request to the Anthropic API. For example:
+         * <pre>
+         * AnthropicServerTool webSearchTool = AnthropicServerTool.builder()
+         *     .type("web_search_20250305")
+         *     .name("web_search")
+         *     .addAttribute("max_uses", 5)
+         *     .addAttribute("allowed_domains", List.of("accuweather.com"))
+         *     .build();
+         * </pre>
+         */
+        public AnthropicChatModelBuilder serverTools(List<AnthropicServerTool> serverTools) {
+            this.serverTools = serverTools;
+            return this;
+        }
+
+        /**
+         * Controls whether to return server tool results (e.g., web_search, code_execution)
+         * inside {@link AiMessage#attributes()} under the key "server_tool_results".
+         * <p>
+         * Disabled by default to avoid polluting ChatMemory with potentially large data.
+         * If enabled, server tool results will be stored as a {@code List<AnthropicServerToolResult>}
+         * within the AiMessage attributes.
+         *
+         * @see #serverTools(List)
+         */
+        public AnthropicChatModelBuilder returnServerToolResults(Boolean returnServerToolResults) {
+            this.returnServerToolResults = returnServerToolResults;
+            return this;
+        }
+
+        /**
+         * Specifies server tools to be included in each request to the Anthropic API. For example:
+         * <pre>
+         * AnthropicServerTool webSearchTool = AnthropicServerTool.builder()
+         *     .type("web_search_20250305")
+         *     .name("web_search")
+         *     .addAttribute("max_uses", 5)
+         *     .addAttribute("allowed_domains", List.of("accuweather.com"))
+         *     .build();
+         * </pre>
+         */
+        public AnthropicChatModelBuilder serverTools(AnthropicServerTool... serverTools) {
+            return serverTools(asList(serverTools));
+        }
+
+        /**
+         * Specifies metadata keys from the {@link ToolSpecification#metadata()} to be included in the request.
+         */
+        public AnthropicChatModelBuilder toolMetadataKeysToSend(Set<String> toolMetadataKeysToSend) {
+            this.toolMetadataKeysToSend = toolMetadataKeysToSend;
+            return this;
+        }
+
+        /**
+         * Specifies metadata keys from the {@link ToolSpecification#metadata()} to be included in the request.
+         */
+        public AnthropicChatModelBuilder toolMetadataKeysToSend(String... toolMetadataKeysToSend) {
+            return toolMetadataKeysToSend(new HashSet<>(asList(toolMetadataKeysToSend)));
         }
 
         public AnthropicChatModelBuilder cacheSystemMessages(Boolean cacheSystemMessages) {
@@ -264,6 +356,22 @@ public class AnthropicChatModel implements ChatModel {
          */
         public AnthropicChatModelBuilder thinkingBudgetTokens(Integer thinkingBudgetTokens) {
             this.thinkingBudgetTokens = thinkingBudgetTokens;
+            return this;
+        }
+
+        /**
+         * Controls how thinking content is returned in the response.
+         * <p>
+         * Valid values: {@code "summarized"} and {@code "omitted"}. On Claude Opus 4.7
+         * the server default is {@code "omitted"}; on earlier Opus/Sonnet models the
+         * default is {@code "summarized"}. Set to {@code "summarized"} explicitly on
+         * Opus 4.7+ to restore visible thinking text for UIs that render it.
+         *
+         * @see #thinkingType(String)
+         * @see #returnThinking(Boolean)
+         */
+        public AnthropicChatModelBuilder thinkingDisplay(String thinkingDisplay) {
+            this.thinkingDisplay = thinkingDisplay;
             return this;
         }
 
@@ -336,6 +444,10 @@ public class AnthropicChatModel implements ChatModel {
             return this;
         }
 
+        public AnthropicChatModelBuilder listeners(ChatModelListener... listeners) {
+            return listeners(asList(listeners));
+        }
+
         public AnthropicChatModelBuilder defaultRequestParameters(ChatRequestParameters parameters) {
             this.defaultRequestParameters = parameters;
             return this;
@@ -360,6 +472,21 @@ public class AnthropicChatModel implements ChatModel {
             return this;
         }
 
+        public AnthropicChatModelBuilder strictTools(Boolean strictTools) {
+            this.strictTools = strictTools;
+            return this;
+        }
+
+        public AnthropicChatModelBuilder supportedCapabilities(Capability... supportedCapabilities) {
+            this.supportedCapabilities = Arrays.stream(supportedCapabilities).collect(Collectors.toSet());
+            return this;
+        }
+
+        public AnthropicChatModelBuilder supportedCapabilities(Set<Capability> supportedCapabilities) {
+            this.supportedCapabilities = supportedCapabilities;
+            return this;
+        }
+
         public AnthropicChatModel build() {
             return new AnthropicChatModel(this);
         }
@@ -371,41 +498,47 @@ public class AnthropicChatModel implements ChatModel {
 
         AnthropicCreateMessageRequest anthropicRequest = createAnthropicRequest(
                 chatRequest,
-                toThinking(thinkingType, thinkingBudgetTokens),
+                toThinking(thinkingType, thinkingBudgetTokens, thinkingDisplay),
                 sendThinking,
                 cacheSystemMessages ? EPHEMERAL : NO_CACHE,
                 cacheTools ? EPHEMERAL : NO_CACHE,
                 false,
                 toolChoiceName,
                 disableParallelToolUse,
+                serverTools,
+                toolMetadataKeysToSend,
                 userId,
-                customParameters);
+                customParameters,
+                strictTools);
 
-        AnthropicCreateMessageResponse response =
-                withRetryMappingExceptions(() -> client.createMessage(anthropicRequest), maxRetries);
+        ParsedAndRawResponse response =
+                withRetryMappingExceptions(() -> client.createMessageWithRawResponse(anthropicRequest), maxRetries);
 
         return createChatResponse(response);
     }
 
-    private ChatResponse createChatResponse(AnthropicCreateMessageResponse response) {
-        ChatResponseMetadata responseMetadata = ChatResponseMetadata.builder()
+    private ChatResponse createChatResponse(ParsedAndRawResponse parsedAndRawResponse) {
+        AnthropicCreateMessageResponse response = parsedAndRawResponse.parsedResponse();
+        AnthropicChatResponseMetadata responseMetadata = AnthropicChatResponseMetadata.builder()
                 .id(response.id)
                 .modelName(response.model)
                 .tokenUsage(toTokenUsage(response.usage))
                 .finishReason(toFinishReason(response.stopReason))
+                .rawHttpResponse(parsedAndRawResponse.rawResponse())
                 .build();
 
         return ChatResponse.builder()
-                .aiMessage(toAiMessage(response.content, returnThinking))
+                .aiMessage(toAiMessage(response.content, returnThinking, returnServerToolResults))
                 .metadata(responseMetadata)
                 .build();
     }
 
-    static AnthropicThinking toThinking(String thinkingType, Integer thinkingBudgetTokens) {
+    static AnthropicThinking toThinking(String thinkingType, Integer thinkingBudgetTokens, String thinkingDisplay) {
         if (thinkingType != null || thinkingBudgetTokens != null) {
             return AnthropicThinking.builder()
                     .type(thinkingType)
                     .budgetTokens(thinkingBudgetTokens)
+                    .display(thinkingDisplay)
                     .build();
         }
         return null;
@@ -424,5 +557,10 @@ public class AnthropicChatModel implements ChatModel {
     @Override
     public ChatRequestParameters defaultRequestParameters() {
         return defaultRequestParameters;
+    }
+
+    @Override
+    public Set<Capability> supportedCapabilities() {
+        return supportedCapabilities;
     }
 }

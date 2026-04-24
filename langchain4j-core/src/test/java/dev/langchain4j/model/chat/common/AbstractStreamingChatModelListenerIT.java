@@ -32,26 +32,8 @@ import org.junit.jupiter.api.Test;
  * <dependency>
  *     <groupId>dev.langchain4j</groupId>
  *     <artifactId>langchain4j-core</artifactId>
- *     <scope>test</scope>
- * </dependency>
- *
- * <dependency>
- *     <groupId>dev.langchain4j</groupId>
- *     <artifactId>langchain4j-core</artifactId>
  *     <classifier>tests</classifier>
  *     <type>test-jar</type>
- *     <scope>test</scope>
- * </dependency>
- *
- * <dependency>
- *     <groupId>org.mockito</groupId>
- *     <artifactId>mockito-core</artifactId>
- *     <scope>test</scope>
- * </dependency>
- *
- * <dependency>
- *     <groupId>org.mockito</groupId>
- *     <artifactId>mockito-junit-jupiter</artifactId>
  *     <scope>test</scope>
  * </dependency>
  *
@@ -154,7 +136,9 @@ public abstract class AbstractStreamingChatModelListenerIT {
         assertThat(parameters.modelName()).isEqualTo(modelName());
         assertThat(parameters.temperature()).isCloseTo(temperature(), Percentage.withPercentage(1));
         assertThat(parameters.topP()).isEqualTo(topP());
-        assertThat(parameters.maxOutputTokens()).isEqualTo(maxTokens());
+        if (assertMaxOutputTokens()) {
+            assertThat(parameters.maxOutputTokens()).isEqualTo(maxTokens());
+        }
         if (supportsTools()) {
             assertThat(parameters.toolSpecifications()).containsExactly(toolSpecification);
         }
@@ -200,6 +184,10 @@ public abstract class AbstractStreamingChatModelListenerIT {
     }
 
     protected boolean assertFinishReason() {
+        return true;
+    }
+
+    protected boolean assertMaxOutputTokens() {
         return true;
     }
 

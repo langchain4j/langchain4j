@@ -2,12 +2,13 @@ package dev.langchain4j.model.mistralai.internal.api;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import java.util.List;
 import java.util.Objects;
 import java.util.StringJoiner;
@@ -15,24 +16,30 @@ import java.util.StringJoiner;
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonNaming(SnakeCaseStrategy.class)
-@JsonDeserialize(builder = MistralAiDeltaMessage.MistralAiDeltaMessageBuilder.class)
 public class MistralAiDeltaMessage {
 
     private MistralAiRole role;
-    private String content;
+
+    @JsonDeserialize(using = MistralAiMessageContentDeserializer.class)
+    private List<MistralAiMessageContent> content;
+
     private List<MistralAiToolCall> toolCalls;
 
-    private MistralAiDeltaMessage(MistralAiDeltaMessageBuilder builder) {
-        this.role = builder.role;
-        this.content = builder.content;
-        this.toolCalls = builder.toolCalls;
+    @JsonCreator
+    public MistralAiDeltaMessage(
+            @JsonProperty("role") MistralAiRole role,
+            @JsonProperty("content") List<MistralAiMessageContent> content,
+            @JsonProperty("tool_calls") List<MistralAiToolCall> toolCalls) {
+        this.role = role;
+        this.content = content;
+        this.toolCalls = toolCalls;
     }
 
     public MistralAiRole getRole() {
         return this.role;
     }
 
-    public String getContent() {
+    public List<MistralAiMessageContent> getContent() {
         return this.content;
     }
 
@@ -70,47 +77,5 @@ public class MistralAiDeltaMessage {
                 .add("content=" + this.getContent())
                 .add("toolCalls=" + this.getToolCalls())
                 .toString();
-    }
-
-    public static MistralAiDeltaMessageBuilder builder() {
-        return new MistralAiDeltaMessageBuilder();
-    }
-
-    @JsonPOJOBuilder(withPrefix = "")
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(SnakeCaseStrategy.class)
-    public static class MistralAiDeltaMessageBuilder {
-        private MistralAiRole role;
-        private String content;
-        private List<MistralAiToolCall> toolCalls;
-
-        private MistralAiDeltaMessageBuilder() {}
-        /**
-         * @return {@code this}.
-         */
-        public MistralAiDeltaMessageBuilder role(MistralAiRole role) {
-            this.role = role;
-            return this;
-        }
-
-        /**
-         * @return {@code this}.
-         */
-        public MistralAiDeltaMessageBuilder content(String content) {
-            this.content = content;
-            return this;
-        }
-
-        /**
-         * @return {@code this}.
-         */
-        public MistralAiDeltaMessageBuilder toolCalls(List<MistralAiToolCall> toolCalls) {
-            this.toolCalls = toolCalls;
-            return this;
-        }
-
-        public MistralAiDeltaMessage build() {
-            return new MistralAiDeltaMessage(this);
-        }
     }
 }

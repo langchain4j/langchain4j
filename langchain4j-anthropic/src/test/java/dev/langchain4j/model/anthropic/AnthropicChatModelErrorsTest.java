@@ -1,6 +1,5 @@
 package dev.langchain4j.model.anthropic;
 
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -36,7 +35,7 @@ class AnthropicChatModelErrorsTest {
     private static final ChatModel model = AnthropicChatModel.builder()
             .apiKey("dummy-key")
             .baseUrl(MOCK.baseUrl() + "/v1")
-            .modelName(CLAUDE_3_5_HAIKU_20241022)
+            .modelName("does not matter")
             .maxTokens(20)
             .timeout(TIMEOUT)
             .logRequests(true)
@@ -105,7 +104,7 @@ class AnthropicChatModelErrorsTest {
         ChatModel model = AnthropicChatModel.builder()
                 .apiKey("dummy-key")
                 .baseUrl(MOCK.baseUrl() + "/v1")
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName("does not matter")
                 .maxTokens(20)
                 .timeout(timeout)
                 .logRequests(true)

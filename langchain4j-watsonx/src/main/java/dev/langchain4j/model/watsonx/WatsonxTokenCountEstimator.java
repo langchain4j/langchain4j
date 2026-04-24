@@ -5,8 +5,6 @@ import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Objects.nonNull;
 
-import com.ibm.watsonx.ai.CloudRegion;
-import com.ibm.watsonx.ai.core.auth.iam.IAMAuthenticator;
 import com.ibm.watsonx.ai.tokenization.TokenizationParameters;
 import com.ibm.watsonx.ai.tokenization.TokenizationResponse;
 import com.ibm.watsonx.ai.tokenization.TokenizationResponse.Result;
@@ -42,13 +40,10 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
     private final TokenizationService tokenizationService;
 
     private WatsonxTokenCountEstimator(Builder builder) {
-        var tokenizationServiceBuilder = TokenizationService.builder();
-        if (nonNull(builder.authenticationProvider)) {
-            tokenizationServiceBuilder.authenticationProvider(builder.authenticationProvider);
-        } else {
-            tokenizationServiceBuilder.authenticationProvider(
-                    IAMAuthenticator.builder().apiKey(builder.apiKey).build());
-        }
+
+        var tokenizationServiceBuilder = nonNull(builder.authenticator)
+                ? TokenizationService.builder().authenticator(builder.authenticator)
+                : TokenizationService.builder().apiKey(builder.apiKey);
 
         tokenizationService = tokenizationServiceBuilder
                 .baseUrl(builder.baseUrl)
@@ -59,6 +54,8 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
                 .timeout(builder.timeout)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
+                .httpClient(builder.httpClient)
+                .verifySsl(builder.verifySsl)
                 .build();
     }
 
@@ -92,17 +89,17 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
                 List<CompletableFuture<TokenizationResponse>> futures = new ArrayList<>();
 
                 if (isNotNullOrEmpty(aiMessage.thinking()))
-                    futures.add(tokenizationService.asyncTokenize(aiMessage.thinking()));
+                    futures.add(tokenizationService.tokenizeAsync(aiMessage.thinking()));
 
                 if (isNotNullOrEmpty(aiMessage.text()))
-                    futures.add(tokenizationService.asyncTokenize(aiMessage.text()));
+                    futures.add(tokenizationService.tokenizeAsync(aiMessage.text()));
 
                 if (aiMessage.hasToolExecutionRequests()) {
                     for (var toolExecutionRequest : aiMessage.toolExecutionRequests()) {
-                        futures.add(tokenizationService.asyncTokenize(toolExecutionRequest.id()));
-                        futures.add(tokenizationService.asyncTokenize(toolExecutionRequest.name()));
+                        futures.add(tokenizationService.tokenizeAsync(toolExecutionRequest.id()));
+                        futures.add(tokenizationService.tokenizeAsync(toolExecutionRequest.name()));
                         if (!isNullOrBlank(toolExecutionRequest.arguments()))
-                            futures.add(tokenizationService.asyncTokenize(toolExecutionRequest.arguments()));
+                            futures.add(tokenizationService.tokenizeAsync(toolExecutionRequest.arguments()));
                     }
                 }
 
@@ -120,11 +117,11 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
                 List<CompletableFuture<TokenizationResponse>> futures = new ArrayList<>();
 
                 if (isNotNullOrBlank(userMessage.name()))
-                    futures.add(tokenizationService.asyncTokenize(userMessage.name()));
+                    futures.add(tokenizationService.tokenizeAsync(userMessage.name()));
 
                 for (Content content : userMessage.contents()) {
                     switch (content.type()) {
-                        case TEXT -> futures.add(tokenizationService.asyncTokenize(((TextContent) content).text()));
+                        case TEXT -> futures.add(tokenizationService.tokenizeAsync(((TextContent) content).text()));
                         case AUDIO, IMAGE, PDF, VIDEO ->
                             throw new UnsupportedOperationException(
                                     "The " + content.type().name()
@@ -182,10 +179,6 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
         private String modelName;
 
         private Builder() {}
-
-        public Builder baseUrl(CloudRegion cloudRegion) {
-            return super.baseUrl(cloudRegion.getMlEndpoint());
-        }
 
         public Builder modelName(String modelName) {
             this.modelName = modelName;

@@ -1,10 +1,15 @@
 package dev.langchain4j.agentic.scope;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agentic.observability.AgentListener;
+import org.jspecify.annotations.NonNull;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import java.util.Set;
+
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgenticScopeDestroyed;
+import static dev.langchain4j.agentic.scope.DefaultAgenticScope.ephemeralAgenticScope;
 
 /**
  * Singleton registry for managing AgenticScope instances.
@@ -47,17 +52,14 @@ public class AgenticScopeRegistry {
         return agenticScope;
     }
 
-    public DefaultAgenticScope getOrCreate(Object memoryId) {
-        DefaultAgenticScope agenticScope = get(memoryId);
-        if (agenticScope == null) {
-            agenticScope = new DefaultAgenticScope(memoryId, hasStore() ? DefaultAgenticScope.Kind.PERSISTENT : DefaultAgenticScope.Kind.REGISTERED);
-            register(agenticScope);
-        }
+    public DefaultAgenticScope create(Object memoryId) {
+        DefaultAgenticScope agenticScope = new DefaultAgenticScope(memoryId, hasStore() ? DefaultAgenticScope.Kind.PERSISTENT : DefaultAgenticScope.Kind.REGISTERED);
+        register(agenticScope);
         return agenticScope;
     }
 
     public DefaultAgenticScope createEphemeralAgenticScope() {
-        DefaultAgenticScope agenticScope = new DefaultAgenticScope(DefaultAgenticScope.Kind.EPHEMERAL);
+        DefaultAgenticScope agenticScope = ephemeralAgenticScope();
         register(agenticScope);
         return agenticScope;
     }
@@ -67,20 +69,17 @@ public class AgenticScopeRegistry {
         update(agenticScope);
     }
 
-    public boolean evict(Object memoryId) {
+    public boolean evict(Object memoryId, AgentListener listener) {
         AgenticScopeKey key = new AgenticScopeKey(agentId, memoryId);
-        boolean removed = inMemoryAgenticScope.remove(key) != null;
+        DefaultAgenticScope agenticScope = inMemoryAgenticScope.remove(key);
+        boolean removed = agenticScope != null;
+        if (removed) {
+            beforeAgenticScopeDestroyed(listener, agenticScope);
+        }
         if (hasStore()) {
             return store.delete(key) || removed;
         }
         return removed;
-    }
-
-    public Set<AgenticScopeKey> getAllAgenticScopeKeys() {
-        if (hasStore()) {
-            return store.getAllKeys();
-        }
-        return getAllAgenticScopeKeysInMemory();
     }
 
     public Set<AgenticScopeKey> getAllAgenticScopeKeysInMemory() {

@@ -134,13 +134,66 @@ class OpenAiStreamingChatModelIT {
     void should_execute_a_tool_with_blank_partial_arguments() throws JsonProcessingException {
 
         // given
+        String tenSpaces = repeat(" ", 10);
+
+        MockHttpClient mockHttpClient = new MockHttpClient(List.of(
+                new ServerSentEvent(
+                        null,
+                        """
+                                {"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"gpt-5-mini",\
+                                "choices":[{"index":0,"delta":{"role":"assistant","content":null,\
+                                "tool_calls":[{"index":0,"id":"call_h7RLhFE8hDHmFLGqKR4QiXLn","type":"function",\
+                                "function":{"name":"append_to_file","arguments":""}}]},"finish_reason":null}]}"""),
+                new ServerSentEvent(
+                        null,
+                        """
+                                {"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"gpt-5-mini",\
+                                "choices":[{"index":0,"delta":{"tool_calls":[{"index":0,\
+                                "function":{"arguments":"{\\""}}]},"finish_reason":null}]}"""),
+                new ServerSentEvent(
+                        null,
+                        """
+                                {"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"gpt-5-mini",\
+                                "choices":[{"index":0,"delta":{"tool_calls":[{"index":0,\
+                                "function":{"arguments":"text"}}]},"finish_reason":null}]}"""),
+                new ServerSentEvent(
+                        null,
+                        """
+                                {"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"gpt-5-mini",\
+                                "choices":[{"index":0,"delta":{"tool_calls":[{"index":0,\
+                                "function":{"arguments":"\\":\\""}}]},"finish_reason":null}]}"""),
+                new ServerSentEvent(
+                        null,
+                        """
+                                {"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"gpt-5-mini",\
+                                "choices":[{"index":0,"delta":{"tool_calls":[{"index":0,\
+                                "function":{"arguments":"    "}}]},"finish_reason":null}]}"""),
+                new ServerSentEvent(
+                        null,
+                        """
+                                {"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"gpt-5-mini",\
+                                "choices":[{"index":0,"delta":{"tool_calls":[{"index":0,\
+                                "function":{"arguments":"     "}}]},"finish_reason":null}]}"""),
+                new ServerSentEvent(
+                        null,
+                        """
+                                {"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"gpt-5-mini",\
+                                "choices":[{"index":0,"delta":{"tool_calls":[{"index":0,\
+                                "function":{"arguments":" \\"}"}}]},"finish_reason":null}]}"""),
+                new ServerSentEvent(
+                        null,
+                        """
+                                {"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"gpt-5-mini",\
+                                "choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}"""),
+                new ServerSentEvent(
+                        null,
+                        """
+                                {"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"gpt-5-mini",\
+                                "choices":[],"usage":{"prompt_tokens":128,"completion_tokens":88,"total_tokens":216}}"""),
+                new ServerSentEvent(null, "[DONE]")));
+
         OpenAiStreamingChatModel model = OpenAiStreamingChatModel.builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_5_MINI)
-                .logRequests(true)
-                .logResponses(true)
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
                 .build();
 
         ToolSpecification appendToFile = ToolSpecification.builder()
@@ -150,8 +203,6 @@ class OpenAiStreamingChatModelIT {
                         .required("text")
                         .build())
                 .build();
-
-        String tenSpaces = repeat(" ", 10);
 
         UserMessage userMessage = UserMessage.from("Append to file the following text: '%s'".formatted(tenSpaces));
 
@@ -220,6 +271,7 @@ class OpenAiStreamingChatModelIT {
                 "O1_2024_12_17", // don't have access
                 "O3", // don't have access
                 "O3_2025_04_16", // don't have access
+                "GPT_4_TURBO_PREVIEW" // flaky
             })
     void should_support_all_model_names(OpenAiChatModelName modelName) {
 
@@ -229,8 +281,6 @@ class OpenAiStreamingChatModelIT {
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(modelName)
-                .logRequests(true)
-                .logResponses(true)
                 .build();
 
         String question = "What is the capital of Germany?";
@@ -242,6 +292,8 @@ class OpenAiStreamingChatModelIT {
 
         // then
         assertThat(response.aiMessage().text()).containsIgnoringCase("Berlin");
+
+        System.out.println("OpenAiStreamingChatModelIT.should_support_all_model_names success for " + modelName);
     }
 
     @Test

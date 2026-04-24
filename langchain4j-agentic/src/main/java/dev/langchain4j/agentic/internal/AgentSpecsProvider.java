@@ -1,12 +1,14 @@
 package dev.langchain4j.agentic.internal;
 
-public interface AgentSpecsProvider {
+import dev.langchain4j.agentic.observability.AgentListener;
 
-    String inputKey();
+public interface AgentSpecsProvider {
 
     String outputKey();
 
     String description();
 
     boolean async();
+
+    AgentListener listener();
 }

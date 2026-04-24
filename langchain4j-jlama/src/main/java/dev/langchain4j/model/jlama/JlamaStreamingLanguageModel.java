@@ -87,7 +87,6 @@ public class JlamaStreamingLanguageModel implements StreamingLanguageModel {
 
         public JlamaStreamingLanguageModelBuilder() {
             // This is public, so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         public JlamaStreamingLanguageModelBuilder modelCachePath(Path modelCachePath) {

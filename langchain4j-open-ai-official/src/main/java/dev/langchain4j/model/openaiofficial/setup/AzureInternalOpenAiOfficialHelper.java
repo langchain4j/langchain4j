@@ -6,7 +6,7 @@ import com.openai.credential.BearerTokenCredential;
 import com.openai.credential.Credential;
 
 /**
- * Specific configuration for authenticating on Azure.
+ * Specific configuration for authenticating on Microsoft Foundry.
  *  * This is in a separate class to avoid needing the Azure SDK dependencies
  *  * when not using Azure as a platform.
  */

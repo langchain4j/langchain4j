@@ -45,6 +45,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.openai.LogProb;
 import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.openai.OpenAiTokenUsage.InputTokensDetails;
@@ -59,6 +60,7 @@ import dev.langchain4j.model.openai.internal.chat.FunctionMessage;
 import dev.langchain4j.model.openai.internal.chat.ImageDetail;
 import dev.langchain4j.model.openai.internal.chat.ImageUrl;
 import dev.langchain4j.model.openai.internal.chat.InputAudio;
+import dev.langchain4j.model.openai.internal.chat.LogProbs;
 import dev.langchain4j.model.openai.internal.chat.Message;
 import dev.langchain4j.model.openai.internal.chat.PdfFile;
 import dev.langchain4j.model.openai.internal.chat.Tool;
@@ -85,16 +87,26 @@ public class OpenAiUtils {
     public static final String DEFAULT_USER_AGENT = "langchain4j-openai";
 
     public static List<Message> toOpenAiMessages(List<ChatMessage> messages) {
-        return messages.stream().map(OpenAiUtils::toOpenAiMessage).collect(toList());
+        return toOpenAiMessages(messages, false, null);
+    }
+
+    public static List<Message> toOpenAiMessages(
+            List<ChatMessage> messages, boolean sendThinking, String thinkingFieldName) {
+        return messages.stream()
+                .map(message -> toOpenAiMessage(message, sendThinking, thinkingFieldName))
+                .collect(toList());
     }
 
     public static Message toOpenAiMessage(ChatMessage message) {
+        return toOpenAiMessage(message, false, null);
+    }
+
+    public static Message toOpenAiMessage(ChatMessage message, boolean sendThinking, String thinkingFieldName) {
         if (message instanceof SystemMessage) {
             return dev.langchain4j.model.openai.internal.chat.SystemMessage.from(((SystemMessage) message).text());
         }
 
         if (message instanceof UserMessage userMessage) {
-
             if (userMessage.hasSingleText()) {
                 return dev.langchain4j.model.openai.internal.chat.UserMessage.builder()
                         .content(userMessage.singleText())
@@ -112,8 +124,17 @@ public class OpenAiUtils {
 
         if (message instanceof AiMessage aiMessage) {
 
+            String thinking = null;
+            if (sendThinking && !isNullOrEmpty(aiMessage.thinking())) {
+                thinking = aiMessage.thinking();
+            }
+
             if (!aiMessage.hasToolExecutionRequests()) {
-                return AssistantMessage.from(aiMessage.text());
+                AssistantMessage.Builder builder = AssistantMessage.builder().content(aiMessage.text());
+                if (thinking != null) {
+                    builder.customParameter(thinkingFieldName, thinking);
+                }
+                return builder.build();
             }
 
             ToolExecutionRequest toolExecutionRequest =
@@ -124,7 +145,11 @@ public class OpenAiUtils {
                         .arguments(toolExecutionRequest.arguments())
                         .build();
 
-                return AssistantMessage.builder().functionCall(functionCall).build();
+                AssistantMessage.Builder builder = AssistantMessage.builder().functionCall(functionCall);
+                if (thinking != null) {
+                    builder.customParameter(thinkingFieldName, thinking);
+                }
+                return builder.build();
             }
 
             List<ToolCall> toolCalls = aiMessage.toolExecutionRequests().stream()
@@ -138,13 +163,20 @@ public class OpenAiUtils {
                             .build())
                     .collect(toList());
 
-            return AssistantMessage.builder()
-                    .content(aiMessage.text())
-                    .toolCalls(toolCalls)
-                    .build();
+            AssistantMessage.Builder builder =
+                    AssistantMessage.builder().content(aiMessage.text()).toolCalls(toolCalls);
+            if (thinking != null) {
+                builder.customParameter(thinkingFieldName, thinking);
+            }
+            return builder.build();
         }
 
         if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+            if (!toolExecutionResultMessage.hasSingleText()) {
+                throw new UnsupportedFeatureException(
+                        "OpenAI Chat Completions API does not support non-text content in tool results. "
+                                + "Only text content is supported.");
+            }
 
             if (toolExecutionResultMessage.id() == null) {
                 return FunctionMessage.from(toolExecutionResultMessage.toolName(), toolExecutionResultMessage.text());
@@ -246,7 +278,13 @@ public class OpenAiUtils {
         if (detailLevel == null) {
             return null;
         }
-        return ImageDetail.valueOf(detailLevel.name());
+
+        return switch (detailLevel) {
+            case LOW -> ImageDetail.LOW;
+            case HIGH -> ImageDetail.HIGH;
+            case AUTO -> ImageDetail.AUTO;
+            default -> throw new UnsupportedFeatureException("Unsupported detail level: " + detailLevel);
+        };
     }
 
     public static List<Tool> toTools(Collection<ToolSpecification> toolSpecifications, boolean strict) {
@@ -386,6 +424,27 @@ public class OpenAiUtils {
                 .build();
     }
 
+    public static List<LogProb> logProbsFrom(LogProbs logProbs) {
+        if (logProbs == null || logProbs.content() == null) {
+            return null;
+        }
+        return logProbs.content().stream().map(OpenAiUtils::toLogProb).collect(toList());
+    }
+
+    private static LogProb toLogProb(dev.langchain4j.model.openai.internal.chat.LogProb internal) {
+        return LogProb.builder()
+                .token(internal.token())
+                .logprob(internal.logprob())
+                .bytes(internal.bytes())
+                .topLogprobs(
+                        internal.topLogprobs() == null
+                                ? null
+                                : internal.topLogprobs().stream()
+                                        .map(OpenAiUtils::toLogProb)
+                                        .collect(toList()))
+                .build();
+    }
+
     public static FinishReason finishReasonFrom(String openAiFinishReason) {
         if (openAiFinishReason == null) {
             return null;
@@ -474,8 +533,19 @@ public class OpenAiUtils {
             OpenAiChatRequestParameters parameters,
             Boolean strictTools,
             Boolean strictJsonSchema) {
+        return toOpenAiChatRequest(chatRequest, parameters, false, null, strictTools, strictJsonSchema);
+    }
+
+    public static ChatCompletionRequest.Builder toOpenAiChatRequest(
+            ChatRequest chatRequest,
+            OpenAiChatRequestParameters parameters,
+            boolean sendThinking,
+            String thinkingFieldName,
+            Boolean strictTools,
+            Boolean strictJsonSchema) {
+
         return ChatCompletionRequest.builder()
-                .messages(toOpenAiMessages(chatRequest.messages()))
+                .messages(toOpenAiMessages(chatRequest.messages(), sendThinking, thinkingFieldName))
                 // common parameters
                 .model(parameters.modelName())
                 .temperature(parameters.temperature())
@@ -497,6 +567,8 @@ public class OpenAiUtils {
                 .metadata(parameters.metadata())
                 .serviceTier(parameters.serviceTier())
                 .reasoningEffort(parameters.reasoningEffort())
+                .logprobs(parameters.logprobs())
+                .topLogprobs(parameters.topLogprobs())
                 .customParameters(parameters.customParameters());
     }
 }

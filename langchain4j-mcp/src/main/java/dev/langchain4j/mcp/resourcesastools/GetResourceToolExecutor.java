@@ -1,16 +1,18 @@
 package dev.langchain4j.mcp.resourcesastools;
 
-import java.util.List;
-import java.util.Optional;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.Json;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.McpResourceContents;
 import dev.langchain4j.mcp.client.McpTextResourceContents;
-import dev.langchain4j.exception.ToolArgumentsException;
-import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * Default executor for the 'get_resource' synthetic tool that can retrieve a resource from an MCP server.
@@ -25,7 +27,8 @@ class GetResourceToolExecutor implements ToolExecutor {
     }
 
     @Override
-    public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
+    public ToolExecutionResult executeWithContext(
+            ToolExecutionRequest toolExecutionRequest, InvocationContext context) {
         ObjectNode arguments = parseArguments(toolExecutionRequest);
         if (!arguments.has("mcpServer")) {
             throw new ToolArgumentsException("ERROR: missing argument 'mcpServer'");
@@ -42,7 +45,8 @@ class GetResourceToolExecutor implements ToolExecutor {
             throw new ToolArgumentsException("ERROR: unknown MCP server: " + mcpServerKey);
         } else {
             StringBuilder result = new StringBuilder();
-            List<McpResourceContents> contents = client.get().readResource(uri).contents();
+            List<McpResourceContents> contents =
+                    client.get().readResource(uri, context).contents();
             for (McpResourceContents content : contents) {
                 if (content instanceof McpTextResourceContents) {
                     result.append(((McpTextResourceContents) content).text());
@@ -50,8 +54,13 @@ class GetResourceToolExecutor implements ToolExecutor {
                     throw new ToolExecutionException("ERROR: binary content was requested, this is not supported yet");
                 }
             }
-            return result.toString();
+            return ToolExecutionResult.builder().resultText(result.toString()).build();
         }
+    }
+
+    @Override
+    public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
+        return executeWithContext(toolExecutionRequest, null).resultText();
     }
 
     private static ObjectNode parseArguments(ToolExecutionRequest toolExecutionRequest) {

@@ -53,7 +53,7 @@ public class Updater {
 
         EmbeddingModel embeddingModel = GoogleAiEmbeddingModel.builder()
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-                .modelName("text-embedding-004") // chatbot app expects this embedding model
+                .modelName("gemini-embedding-001") // chatbot app expects this embedding model
                 .build();
 
         log.info("about to rename collection '" + COLLECTION_NAME + "' into '" + COLLECTION_NAME_OLD + "'");

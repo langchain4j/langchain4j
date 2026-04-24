@@ -11,12 +11,11 @@ This is the documentation for the `OpenAI` integration, that uses a custom Java 
 If you are using Quarkus, please refer to the
 [Quarkus LangChain4j documentation](https://docs.quarkiverse.io/quarkus-langchain4j/dev/openai.html).
 
-LangChain4j provides 4 different integrations with OpenAI for using chat models, and this is #1 :
+LangChain4j provides 3 different integrations with OpenAI for using chat models, and this is #1 :
 
 - [OpenAI](/integrations/language-models/open-ai) uses a custom Java implementation of the OpenAI REST API, that works best with Quarkus (as it uses the Quarkus REST client) and Spring (as it uses Spring's RestClient).
 - [OpenAI Official SDK](/integrations/language-models/open-ai-official) uses the official OpenAI Java SDK.
 - [Azure OpenAI](/integrations/language-models/azure-open-ai) uses the Azure SDK from Microsoft, and works best if you are using the Microsoft Java stack, including advanced Azure authentication mechanisms.
-- [GitHub Models](/integrations/language-models/github-models) uses the Azure AI Inference API to access GitHub Models.
 
 :::
 
@@ -32,7 +31,7 @@ LangChain4j provides 4 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.9.0</version>
+    <version>1.13.1</version>
 </dependency>
 ```
 
@@ -41,7 +40,7 @@ LangChain4j provides 4 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.9.0-beta16</version>
+    <version>1.13.1-beta23</version>
 </dependency>
 ```
 
@@ -201,6 +200,11 @@ ChatModel model = OpenAiChatModel.builder()
         .returnThinking(true)
         .build();
 ```
+
+When the `sendThinking` parameter is enabled while building `OpenAiChatModel` or `OpenAiStreamingChatModel`,
+the `AiMessage.thinking()` will be sent in the request to the DeepSeek API.
+The name of the field can be configured by using the `sendThinking(boolean, String)` builder method.
+By default, the `reasoning_content` field name is used.
 
 ## Creating `OpenAiStreamingChatModel`
 
@@ -387,6 +391,162 @@ the Spring's `RestClient` is used as the default HTTP client.
 
 You can customize it or use any other HTTP client of your choice.
 More information can be found [here](/tutorials/customizable-http-client).
+
+## OpenAI Responses API
+
+:::note
+This feature is experimental and may change in future releases.
+:::
+
+OpenAI's [Responses API](https://platform.openai.com/docs/api-reference/responses) (`/v1/responses`) is an alternative to the Chat Completions API.
+
+### Creating `OpenAiResponsesChatModel`
+
+```java
+ChatModel model = OpenAiResponsesChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-5.4")
+        .build();
+```
+
+### Creating `OpenAiResponsesStreamingChatModel`
+
+```java
+StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-4o-mini")
+        .build();
+```
+
+### `OpenAiResponsesChatRequestParameters`
+
+`OpenAiResponsesChatRequestParameters` extends `DefaultChatRequestParameters` with Responses API-specific fields:
+`previousResponseId`, `maxToolCalls`, `parallelToolCalls`, `topLogprobs`, `truncation`, `include`,
+`serviceTier`, `safetyIdentifier`, `promptCacheKey`, `promptCacheRetention`, `reasoningEffort`,
+`reasoningSummary`, `textVerbosity`, `streamIncludeObfuscation`, `store`, `strictTools`, `strictJsonSchema`.
+
+These parameters can be configured as defaults when creating the model (via `defaultRequestParameters` on the builder),
+or passed per-request via `ChatRequest` (per-request parameters override the defaults):
+```java
+ChatRequest chatRequest = ChatRequest.builder()
+        .messages(UserMessage.from("Hello"))
+        .parameters(OpenAiResponsesChatRequestParameters.builder()
+                .modelName("gpt-4o-mini")
+                .previousResponseId("resp_abc123")
+                .store(true)
+                .build())
+        .build();
+```
+
+### Thinking / Reasoning
+OpenAI reasoning models (e.g. `gpt-5.4`, `gpt-5-mini`) support
+[reasoning summaries](https://developers.openai.com/api/docs/guides/reasoning#reasoning-summaries)
+that expose a summary of the model's internal reasoning.
+
+To enable reasoning summaries, set `reasoningSummary` to `"auto"` on the builder
+(or via `OpenAiResponsesChatRequestParameters`).
+You can also control how much effort the model puts into reasoning with `reasoningEffort`.
+
+```java
+ChatModel model = OpenAiResponsesChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-5-mini")
+        .reasoningEffort("low")
+        .reasoningSummary("auto")
+        .build();
+
+ChatResponse response = model.chat("What is the capital of Germany?");
+response.aiMessage().text();     // "The capital of Germany is Berlin."
+response.aiMessage().thinking(); // reasoning summary text
+```
+
+When `reasoningSummary` is set for `OpenAiResponsesStreamingChatModel`,
+the `StreamingChatResponseHandler.onPartialThinking()` callback will be invoked
+as reasoning summary tokens are streamed:
+
+```java
+StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-5-mini")
+        .reasoningEffort("low")
+        .reasoningSummary("auto")
+        .build();
+```
+
+The reasoning summary in `AiMessage.thinking()` is informational and does not need to be sent back
+in follow-up requests — OpenAI discards it between turns. To actually preserve the model's reasoning
+state across turns (e.g. between tool calls), use encrypted reasoning instead, described below.
+
+#### Encrypted Reasoning (Keeping Reasoning in Context)
+
+When `store` is `false` (by default) or your organization has zero data retention,
+the model's reasoning context is lost between turns.
+To preserve it, request [encrypted reasoning content](https://developers.openai.com/api/docs/guides/reasoning#keeping-reasoning-items-in-context)
+via the `include` parameter:
+
+```java
+ChatModel model = OpenAiResponsesChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-5-mini")
+        .reasoningEffort("medium")
+        .include(List.of("reasoning.encrypted_content"))
+        .build();
+```
+
+When `include` contains `"reasoning.encrypted_content"`, the response's reasoning items
+will contain an opaque encrypted blob. This is automatically stored in
+`AiMessage.attributes()` under the key `"encrypted_reasoning"`.
+
+When you pass that `AiMessage` back in a follow-up request (e.g. after a tool call),
+the encrypted reasoning is automatically included in the request,
+allowing the model to resume its reasoning context:
+
+```java
+// Turn 1: model calls a tool
+ChatResponse response1 = model.chat(ChatRequest.builder()
+        .messages(userMessage)
+        .parameters(ChatRequestParameters.builder()
+                .toolSpecifications(weatherTool)
+                .build())
+        .build());
+
+AiMessage aiMessage1 = response1.aiMessage();
+// aiMessage1.attribute("encrypted_reasoning", String.class) is not null
+
+// Turn 2: send tool result back — encrypted reasoning is sent automatically
+ChatResponse response2 = model.chat(ChatRequest.builder()
+        .messages(
+                userMessage,
+                aiMessage1, // contains encrypted reasoning in attributes
+                ToolExecutionResultMessage.from(aiMessage1.toolExecutionRequests().get(0), "sunny"))
+        .parameters(ChatRequestParameters.builder()
+                .toolSpecifications(weatherTool)
+                .build())
+        .build());
+```
+
+This works identically for `OpenAiResponsesStreamingChatModel`.
+
+### `OpenAiResponsesChatResponseMetadata`
+
+The response metadata for the Responses API provides additional fields beyond the standard `ChatResponseMetadata`:
+
+```java
+OpenAiResponsesChatResponseMetadata metadata =
+        (OpenAiResponsesChatResponseMetadata) chatResponse.metadata();
+
+metadata.id();               // Response ID (can be used as previousResponseId)
+metadata.modelName();        // Model name used for the request
+metadata.finishReason();     // Finish reason (STOP, LENGTH, TOOL_EXECUTION, OTHER)
+metadata.tokenUsage();       // Returns OpenAiTokenUsage with detailed token counts
+metadata.createdAt();        // Timestamp when the response was created
+metadata.completedAt();      // Timestamp when the response was completed
+metadata.serviceTier();      // Service tier used for the request
+
+// Raw HTTP access (same as Chat Completions API)
+metadata.rawHttpResponse();
+metadata.rawServerSentEvents();
+```
 
 ## Examples
 - [OpenAI Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/open-ai-examples/src/main/java)

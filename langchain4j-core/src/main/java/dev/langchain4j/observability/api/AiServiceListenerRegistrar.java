@@ -1,10 +1,10 @@
 package dev.langchain4j.observability.api;
 
+import java.util.Arrays;
+import java.util.ServiceLoader;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import dev.langchain4j.spi.observability.AiServiceListenerRegistrarFactory;
-import java.util.Arrays;
-import java.util.ServiceLoader;
 
 /**
  * A registrar for registering {@link AiServiceListener}s.
@@ -84,16 +84,48 @@ public interface AiServiceListenerRegistrar {
     <T extends AiServiceEvent> void fireEvent(T event);
 
     /**
+     * Configures whether exceptions should be thrown when an error occurs during event processing.
+     * If set to {@code true}, any error that occurs while processing an event will result in an exception
+     * propagating to the caller. If set to {@code false}, errors will be silently handled or logged
+     * without interrupting the normal execution flow.
+     *
+     * @param shouldThrowExceptionOnEventError Indicates whether to throw exceptions on event errors.
+     *                                         If {@code true}, exceptions will be thrown; otherwise, errors
+     *                                         will be handled silently. Default is {@code false}.
+     */
+    void shouldThrowExceptionOnEventError(boolean shouldThrowExceptionOnEventError);
+
+    /**
      * Retrieves an instance of {@link AiServiceListenerRegistrar}.
      *
      * This method first attempts to load an instance of {@link AiServiceListenerRegistrar}
      * using {@link ServiceLoader}. If no implementation is found, the default
      * instance provided by {@link DefaultAiServiceListenerRegistrar#newInstance()} is returned.
+     * <p>
+     *     Simply calls {@link #newInstance(boolean)}, passing {@code false} as the argument.
+     * </p>
      */
     static AiServiceListenerRegistrar newInstance() {
-        return ServiceLoader.load(AiServiceListenerRegistrarFactory.class)
+        return newInstance(false);
+    }
+
+    /**
+     * Retrieves an instance of {@link AiServiceListenerRegistrar}.
+     *
+     * This method first attempts to load an instance of {@link AiServiceListenerRegistrar}
+     * using {@link ServiceLoader}. If no implementation is found, the default
+     * instance provided by {@link DefaultAiServiceListenerRegistrar#newInstance()} is returned.
+     * @param shouldThrowExceptionOnEventError Indicates whether to throw exceptions on event errors.
+     *                                         If {@code true}, exceptions will be thrown; otherwise, errors
+     *                                         will be handled silently.
+     */
+    static AiServiceListenerRegistrar newInstance(boolean shouldThrowExceptionOnEventError) {
+        var registrar = ServiceLoader.load(AiServiceListenerRegistrarFactory.class)
                 .findFirst()
                 .map(AiServiceListenerRegistrarFactory::get)
                 .orElseGet(DefaultAiServiceListenerRegistrar::new);
+
+        registrar.shouldThrowExceptionOnEventError(shouldThrowExceptionOnEventError);
+        return registrar;
     }
 }

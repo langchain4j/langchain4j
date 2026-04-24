@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client.integration;
 
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.destroyProcessTree;
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
 
 import dev.langchain4j.mcp.client.DefaultMcpClient;
@@ -36,7 +37,7 @@ class McpReconnectHttpTransportIT extends McpReconnectTestBase {
             mcpClient.close();
         }
         if (process != null) {
-            process.destroyForcibly();
+            destroyProcessTree(process);
         }
     }
 }

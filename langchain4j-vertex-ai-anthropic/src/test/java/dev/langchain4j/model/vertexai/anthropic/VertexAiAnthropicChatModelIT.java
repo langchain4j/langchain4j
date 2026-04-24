@@ -2,18 +2,26 @@ package dev.langchain4j.model.vertexai.anthropic;
 
 import static dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicFixtures.DEFAULT_LOCATION;
 import static dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicFixtures.DEFAULT_MODEL_NAME;
+import static java.time.DayOfWeek.MONDAY;
+import static org.junit.jupiter.api.condition.JRE.JAVA_17;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.output.TokenUsage;
+import java.time.LocalDate;
 import java.util.List;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.condition.EnabledOnJre;
 
+@EnabledIf(value = "isMonday", disabledReason = "Not enough quota to run it more often")
+@EnabledOnJre(value = JAVA_17, disabledReason = "Not enough quota to run it more often")
 @EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")
 class VertexAiAnthropicChatModelIT extends AbstractChatModelIT {
 
-    static final ChatModel VERTEX_AI_ANTHROPIC_CHAT_MODEL = VertexAiAnthropicChatModel.builder()
+    private final ChatModel model = VertexAiAnthropicChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
             .location(DEFAULT_LOCATION)
             .modelName(DEFAULT_MODEL_NAME)
@@ -24,16 +32,17 @@ class VertexAiAnthropicChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatModel> models() {
-        return List.of(VERTEX_AI_ANTHROPIC_CHAT_MODEL);
+        return List.of(model);
     }
 
     @Override
     protected ChatModel createModelWith(ChatRequestParameters parameters) {
-        VertexAiAnthropicChatModel.VertexAiAnthropicChatModelBuilder vertexAiAnthropicChatModelBuilder = VertexAiAnthropicChatModel.builder()
-                .project(System.getenv("GCP_PROJECT_ID"))
-                .location(DEFAULT_LOCATION)
-                .logRequests(true)
-                .logResponses(true);
+        VertexAiAnthropicChatModel.VertexAiAnthropicChatModelBuilder vertexAiAnthropicChatModelBuilder =
+                VertexAiAnthropicChatModel.builder()
+                        .project(System.getenv("GCP_PROJECT_ID"))
+                        .location(DEFAULT_LOCATION)
+                        .logRequests(true)
+                        .logResponses(true);
         if (parameters.modelName() == null) {
             vertexAiAnthropicChatModelBuilder.modelName(DEFAULT_MODEL_NAME);
         } else {
@@ -97,5 +106,17 @@ class VertexAiAnthropicChatModelIT extends AbstractChatModelIT {
     @Override
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
         return false;
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_VERTEX_AI_ANTHROPIC");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
+    }
+
+    public static boolean isMonday() {
+        return LocalDate.now().getDayOfWeek() == MONDAY;
     }
 }

@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.internal.Utils.firstNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import dev.langchain4j.Experimental;
@@ -108,7 +109,7 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
 
         return new BatchList<>(
                 response.nextPageToken(),
-                response.operations().stream()
+                firstNotNull("operationsResponse", response.operations(), List.of()).stream()
                         .map(operation -> processResponse((Operation<API_RESPONSE>) operation, preparer))
                         .toList());
     }
@@ -127,8 +128,9 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
                         extractBatchState(operation.metadata()),
                         operation.error().details());
             } else {
+                var extractedResults = preparer.extractResults(operation.response());
                 return new BatchSuccess<>(
-                        new BatchName(operation.name()), preparer.extractResponses(operation.response()));
+                        new BatchName(operation.name()), extractedResults.responses(), extractedResults.errors());
             }
         } else {
             return new BatchRequestResponse.BatchIncomplete<>(
@@ -153,6 +155,8 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
         }
     }
 
+    record ExtractedBatchResults<T>(List<T> responses, List<BatchRequestResponse.Operation.Status> errors) {}
+
     /**
      * Interface for preparing requests and extracting responses.
      */
@@ -161,6 +165,6 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
 
         API_REQUEST createInlinedRequest(REQUEST request);
 
-        List<RESPONSE> extractResponses(BatchCreateResponse<API_RESPONSE> response);
+        ExtractedBatchResults<RESPONSE> extractResults(BatchCreateResponse<API_RESPONSE> response);
     }
 }

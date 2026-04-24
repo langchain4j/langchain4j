@@ -10,8 +10,8 @@ import dev.langchain4j.memory.chat.TokenWindowChatMemory;
 import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import java.util.Arrays;
 import dev.langchain4j.service.AiServices;
+import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 

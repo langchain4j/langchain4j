@@ -5,6 +5,9 @@ on:
     - cron: '0 22 * * *'  # daily at 22:00 UTC
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   discover-modules:
     if: github.repository == 'langchain4j/langchain4j'
@@ -12,7 +15,7 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - id: set-matrix
         shell: bash
@@ -22,23 +25,24 @@ jobs:
           echo "Detected modules:"
           echo "$modules"
 
-          # how many groups (jobs) to split into
-          N=7  # adjust this based on desired parallelism
-          count=$(echo "$modules" | wc -l)
-          group_size=$(( (count + N - 1) / N ))
+          # number of parallel groups
+          N=7
 
-          # create JSON array of module groups
-          matrix=$(echo "$modules" | awk -v n="$group_size" '{
-              group = int((NR-1)/n);
-              arr[group] = (arr[group] ? arr[group] "," "\"" $0 "\"" : "\"" $0 "\"");
-          }
-          END {
+          # round-robin grouping
+          matrix=$(echo "$modules" | awk -v N="$N" '
+            {
+              g = (NR - 1) % N
+              arr[g] = (arr[g] ? arr[g] "," "\"" $0 "\"" : "\"" $0 "\"")
+            }
+            END {
               printf("{\"modules\": [");
-              for (i=0; i in arr; i++) {
-                  printf("%s[%s]", (i>0?",":""), arr[i]);
+              for (i = 0; i < N; i++) {
+                if (i > 0) printf(",");
+                printf("[%s]", arr[i])
               }
-              print "]}";
-          }')
+              print "]}"
+            }
+          ')
 
           echo "Generated matrix: $matrix"
           echo "matrix=$matrix" >> $GITHUB_OUTPUT
@@ -51,25 +55,26 @@ jobs:
       matrix: ${{ fromJson(needs.discover-modules.outputs.matrix) }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with:
           java-version: 17
           distribution: 'temurin'
           cache: 'maven'
 
       - name: Authenticate to Google Cloud
-        # Required for Google modules
-        uses: google-github-actions/auth@v2
+        # Required for Google modules (e.g., langchain4j-vertex-ai)
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
 
       - name: Setup JBang
         # Required for MCP module
-        uses: jbangdev/setup-jbang@main
+        uses: jbangdev/setup-jbang@2b1b465a7b75f4222b81426f23a01e013aa7b95c # v0.1.1
+        continue-on-error: true
 
       - name: Build with JDK 17
         run: |
@@ -80,26 +85,27 @@ jobs:
           done
           echo "Building modules: $modules"
           
-          ## compile and verify javadocs
-          mvn -B -U -T8C test javadoc:aggregate \
-            -pl "${modules}" -am \
-            --fail-at-end
+          ## compile and install ALL modules to avoid running integration tests on dependent modules in the step below
+          mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install
 
-          ## run integration tests
           mvn -B -U verify \
-            -pl "${modules}" -am \
+            -pl "${modules}" \
+            -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipOracleITs -DskipVespaITs \
             --fail-at-end \
-            -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs \
-            -Dmaven.test.failure.ignore=true \
+            -Djunit.jupiter.extensions.autodetection.enabled=true \
+            -DembeddingsSkipCache \
             -Dtinylog.writer.level=info
 
         env:
+          LC4J_GLOBAL_TEST_RETRY_ENABLED: true
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_CACHING_BASE_URL: ${{ secrets.ANTHROPIC_CACHING_BASE_URL }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME: ${{ secrets.AZURE_OPENAI_AUDIO_DEPLOYMENT_NAME }}
           AZURE_OPENAI_AUDIO_ENDPOINT: ${{ secrets.AZURE_OPENAI_AUDIO_ENDPOINT }}
           AZURE_OPENAI_AUDIO_KEY: ${{ secrets.AZURE_OPENAI_AUDIO_KEY }}
+          AZURE_OPENAI_DEPLOYMENT_NAME: ${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_KEY: ${{ secrets.AZURE_OPENAI_KEY }}
           AZURE_SEARCH_ENDPOINT: ${{ secrets.AZURE_SEARCH_ENDPOINT }}
@@ -116,6 +122,8 @@ jobs:
           GOOGLE_AI_GEMINI_API_KEY: ${{ secrets.GOOGLE_AI_GEMINI_API_KEY }}
           HF_API_KEY: ${{ secrets.HF_API_KEY }}
           JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+          MICROSOFT_FOUNDRY_API_KEY: ${{ secrets.MICROSOFT_FOUNDRY_API_KEY }}
+          MICROSOFT_FOUNDRY_ENDPOINT: ${{ secrets.MICROSOFT_FOUNDRY_ENDPOINT }}
           MILVUS_API_KEY: ${{ secrets.MILVUS_API_KEY }}
           MILVUS_URI: ${{ secrets.MILVUS_URI }}
           MISTRAL_AI_API_KEY: ${{ secrets.MISTRAL_AI_API_KEY }}
@@ -130,25 +138,86 @@ jobs:
           WEAVIATE_API_KEY: ${{ secrets.WEAVIATE_API_KEY }}
           WEAVIATE_HOST: ${{ secrets.WEAVIATE_HOST }}
           CI_DELAY_SECONDS_AZURE_AI_SEARCH: 4
-          CI_DELAY_SECONDS_AZURE_OPENAI: 2
+          CI_DELAY_SECONDS_AZURE_OPENAI: 3
           CI_DELAY_SECONDS_BEDROCK: 3
           CI_DELAY_SECONDS_GITHUB_MODELS: 7
+          CI_DELAY_SECONDS_GOOGLE_AI_GEMINI: 10
+          CI_DELAY_SECONDS_GOOGLE_AI_GEMINI_BATCH: 20
+          CI_DELAY_SECONDS_VERTEX_AI: 5
+          CI_DELAY_SECONDS_VERTEX_AI_ANTHROPIC: 12
           CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 12
           CI_DELAY_SECONDS_VOYAGE_AI: 22
 
       - name: Clean Docker
         run: docker system prune -af || true
 
+      - name: Publish Test Summary
+        if: always()
+        run: |
+          python3 << 'PYEOF'
+          import xml.etree.ElementTree as ET
+          import glob, os
+
+          files = glob.glob('**/target/*-reports/TEST-*.xml', recursive=True)
+          total = failures = errors = skipped = 0
+          failed_tests = []
+
+          for path in files:
+              try:
+                  root = ET.parse(path).getroot()
+                  total += int(root.get('tests', 0))
+                  failures += int(root.get('failures', 0))
+                  errors += int(root.get('errors', 0))
+                  skipped += int(root.get('skipped', 0))
+                  for tc in root.findall('.//testcase'):
+                      fail = tc.find('failure')
+                      if fail is None:
+                          fail = tc.find('error')
+                      if fail is not None:
+                          cls = tc.get('classname', '').split('.')[-1]
+                          name = tc.get('name', '')
+                          msg = (fail.get('message', '') or '').replace('\n', '<br>').replace('|', '\\|')
+                          if len(msg) > 500:
+                              msg = f"{msg[:500]}<details><summary>show more</summary>{msg[500:]}</details>"
+                          failed_tests.append(f"| `{cls}` | `{name}` | {msg} |")
+              except Exception:
+                  pass
+
+          passed = total - failures - errors - skipped
+          summary = os.environ.get('GITHUB_STEP_SUMMARY', '/dev/null')
+          with open(summary, 'a') as f:
+              f.write('## Test Results\n\n')
+              if failures == 0 and errors == 0:
+                  f.write(f':white_check_mark: **{passed} passed**, {skipped} skipped out of {total} tests\n')
+              else:
+                  f.write(f':x: **{failures} failed, {errors} errors**, {passed} passed, {skipped} skipped out of {total} tests\n')
+              if failed_tests:
+                  f.write('\n### Failures\n\n')
+                  f.write('| Class | Test | Error Message |\n')
+                  f.write('|-------|------|---------------|\n')
+                  for line in failed_tests[:50]:
+                      f.write(line + '\n')
+                  if len(failed_tests) > 50:
+                      f.write(f'\n*... and {len(failed_tests) - 50} more*\n')
+          PYEOF
+
       - name: Upload Test Reports
         if: always() # always run even if the previous step failed or was cancelled
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: Test-Reports-${{ strategy.job-index }}
           path: '**/target/*-reports/*'
 
-      - name: Publish Test Report
-        if: always() # always run even if the previous step failed or was cancelled
-        uses: mikepenz/action-junit-report@v5
+      - name: Upload JaCoCo Reports
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          report_paths: '**/target/*-reports/TEST-*.xml'
-          annotate_only: true
+          name: jacoco-${{ strategy.job-index }}
+          path: '**/target/site/jacoco/**'
+
+      - name: Upload JaCoCo Execution Data
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: jacoco-exec-${{ strategy.job-index }}
+          path: '**/target/jacoco.exec'

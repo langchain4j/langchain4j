@@ -33,11 +33,19 @@ public enum MistralAiChatModelName {
 
     MISTRAL_LARGE_LATEST("mistral-large-latest"), // aka mistral-large-2402
 
+    MAGISTRAL_SMALL_LATEST("magistral-small-latest"),
+
+    MAGISTRAL_MEDIUM_LATEST("magistral-medium-latest"),
+
     MISTRAL_MODERATION_LATEST("mistral-moderation-latest"),
 
     OPEN_MISTRAL_NEMO("open-mistral-nemo"), // aka open-mistral-nemo-2407
 
-    CODESTRAL_LATEST("codestral-latest"); // aka codestral-latest
+    CODESTRAL_LATEST("codestral-latest"), // aka codestral-latest
+
+    VOXTRAL_MINI_LATEST("voxtral-mini-latest"),
+
+    VOXTRAL_SMALL_LATEST("voxtral-small-latest");
 
     private final String value;
 

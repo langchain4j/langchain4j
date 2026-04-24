@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 import java.util.Objects;
 
@@ -34,18 +35,21 @@ public class FunctionCall {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof FunctionCall
                 && equalTo((FunctionCall) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(FunctionCall another) {
         return Objects.equals(name, another.name)
                 && Objects.equals(arguments, another.arguments);
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(name);
@@ -54,6 +58,7 @@ public class FunctionCall {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "FunctionCall{"
                 + "name=" + name

@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client.integration;
 
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.destroyProcessTree;
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.startServerHttp;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,13 +61,13 @@ class MultipleMcpToolsIT {
             mcpBaseClient.close();
         }
         if (process1 != null && process1.isAlive()) {
-            process1.destroyForcibly();
+            destroyProcessTree(process1);
         }
         if (mcpNumericClient != null) {
             mcpNumericClient.close();
         }
         if (process2 != null && process2.isAlive()) {
-            process2.destroyForcibly();
+            destroyProcessTree(process2);
         }
     }
 

@@ -1,11 +1,11 @@
 package dev.langchain4j.web.search.google.customsearch;
 
 import static com.google.api.services.customsearch.v1.model.Search.Queries;
+import static dev.langchain4j.internal.UriUtils.createUriSafely;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.web.search.google.customsearch.GoogleCustomWebSearchUtils.createUriSafely;
 import static java.util.stream.Collectors.toList;
 
 import com.google.api.client.json.GenericJson;

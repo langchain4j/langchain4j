@@ -20,6 +20,7 @@ import dev.langchain4j.model.openai.spi.OpenAiStreamingLanguageModelBuilderFacto
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 
 /**
@@ -47,7 +48,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel {
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .logger(builder.logger)
                 .userAgent(DEFAULT_USER_AGENT)
-                .customHeaders(builder.customHeaders)
+                .customHeaders(builder.customHeadersSupplier)
                 .customQueryParams(builder.customQueryParams)
                 .build();
         this.modelName = builder.modelName;
@@ -115,7 +116,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private Logger logger;
-        private Map<String, String> customHeaders;
+        private Supplier<Map<String, String>> customHeadersSupplier;
         private Map<String, String> customQueryParams;
 
         public OpenAiStreamingLanguageModelBuilder() {
@@ -186,8 +187,21 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel {
             return this;
         }
 
+        /**
+         * Sets custom HTTP headers.
+         */
         public OpenAiStreamingLanguageModelBuilder customHeaders(Map<String, String> customHeaders) {
-            this.customHeaders = customHeaders;
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets a supplier for custom HTTP headers.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         */
+        public OpenAiStreamingLanguageModelBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 

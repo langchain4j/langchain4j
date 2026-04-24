@@ -25,12 +25,12 @@ public class WatsonxChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected String customModelName() {
-        return "ibm/granite-3-3-8b-instruct";
+        return "ibm/granite-4-h-small";
     }
 
     @Override
     protected ChatModel createModelWith(ChatRequestParameters parameters) {
-        return createChatModel("ibm/granite-3-3-8b-instruct")
+        return createChatModel("ibm/granite-4-h-small")
                 .defaultRequestParameters(parameters)
                 .build();
     }
@@ -51,59 +51,55 @@ public class WatsonxChatModelIT extends AbstractChatModelIT {
     @Override
     protected void should_execute_a_tool_then_answer(ChatModel model) {
         super.should_execute_a_tool_then_answer(
-                createChatModel("mistralai/mistral-small-3-1-24b-instruct-2503").build());
+                createChatModel("ibm/granite-4-h-small").build());
     }
 
     @Override
     protected void should_execute_a_tool_without_arguments_then_answer(ChatModel model) {
         super.should_execute_a_tool_without_arguments_then_answer(
-                createChatModel("mistralai/mistral-small-3-1-24b-instruct-2503").build());
+                createChatModel("ibm/granite-4-h-small").build());
     }
 
     @Override
     protected void should_execute_multiple_tools_in_parallel_then_answer(ChatModel model) {
         super.should_execute_multiple_tools_in_parallel_then_answer(
-                createChatModel("mistralai/mistral-small-3-1-24b-instruct-2503").build());
+                createChatModel("ibm/granite-4-h-small").build());
     }
 
     @Override
     protected void should_force_LLM_to_execute_any_tool(ChatModel model) {
         super.should_force_LLM_to_execute_any_tool(
-                createChatModel("mistralai/mistral-small-3-1-24b-instruct-2503").build());
+                createChatModel("ibm/granite-4-h-small").build());
     }
 
     @Override
     protected void should_force_LLM_to_execute_specific_tool(ChatModel model) {
         super.should_force_LLM_to_execute_specific_tool(
-                createChatModel("mistralai/mistral-small-3-1-24b-instruct-2503").build());
+                createChatModel("ibm/granite-4-h-small").build());
     }
 
     @Override
     protected void should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(ChatModel model) {
-        // Maverick doesn't work for this test. It is better to use meta-llama/llama-3-3-70b-instruct instead.
         super.should_execute_a_tool_then_answer_respecting_JSON_response_format_with_schema(
-                createChatModel("meta-llama/llama-3-3-70b-instruct").build());
+                createChatModel("ibm/granite-4-h-small").build());
     }
 
     @Override
     protected void should_respect_user_message(ChatModel model) {
-        // Maverick doesn't work for this test. It is better to use meta-llama/llama-3-3-70b-instruct instead.
         super.should_respect_user_message(
-                createChatModel("meta-llama/llama-3-3-70b-instruct").build());
+                createChatModel("ibm/granite-4-h-small").build());
     }
 
     @Override
     protected void should_respect_JSON_response_format(ChatModel model) {
-        // Maverick doesn't work for this test. It is better to use meta-llama/llama-3-3-70b-instruct instead.
         super.should_respect_JSON_response_format(
-                createChatModel("meta-llama/llama-3-3-70b-instruct").build());
+                createChatModel("ibm/granite-4-h-small").build());
     }
 
     @Override
     protected void should_respect_JSON_response_format_with_schema(ChatModel model) {
-        // Maverick doesn't work for this test. It is better to use meta-llama/llama-3-3-70b-instruct instead.
         super.should_respect_JSON_response_format_with_schema(
-                createChatModel("meta-llama/llama-3-3-70b-instruct").build());
+                createChatModel("ibm/granite-4-h-small").build());
     }
 
     private WatsonxChatModel.Builder createChatModel(String model) {
@@ -112,8 +108,6 @@ public class WatsonxChatModelIT extends AbstractChatModelIT {
                 .apiKey(API_KEY)
                 .projectId(PROJECT_ID)
                 .modelName(model)
-                .logRequests(true)
-                .logResponses(true)
                 .timeout(Duration.ofSeconds(30));
     }
 }

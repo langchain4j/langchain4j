@@ -6,6 +6,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNegative;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+
 import java.util.Objects;
 
 /**
@@ -16,6 +18,7 @@ import java.util.Objects;
  * @since 1.2.0
  */
 @Experimental
+@JacocoIgnoreCoverageGenerated
 public class PartialToolCall implements StreamingEvent {
 
     private final int index;

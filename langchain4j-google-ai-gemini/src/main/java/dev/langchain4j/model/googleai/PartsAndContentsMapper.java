@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.data.message.AiMessage.GENERATED_IMAGES_KEY;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -35,34 +36,42 @@ import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiFunctionRes
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 final class PartsAndContentsMapper {
+
     private PartsAndContentsMapper() {}
 
     static final String THINKING_SIGNATURE_KEY =
             "thinking_signature"; // do not change, will break backward compatibility!
-    static final String GENERATED_IMAGES_KEY =
-            "generated_images"; // key for storing generated images in AiMessage attributes
 
     private static final CustomMimeTypesFileTypeDetector mimeTypeDetector = new CustomMimeTypesFileTypeDetector();
-    
+
     // Pattern to parse data URIs: data:[<mediatype>][;base64],<data>
     private static final Pattern DATA_URI_PATTERN = Pattern.compile("^data:([^;,]+)(?:;[^,]*)?,(.*)$");
 
     static GeminiContent.GeminiPart fromContentToGPart(Content content) {
+        return fromContentToGPart(content, false);
+    }
+
+    static GeminiContent.GeminiPart fromContentToGPart(Content content, boolean mediaResolutionPerPartEnabled) {
         if (content instanceof TextContent textContent) {
             return GeminiContent.GeminiPart.builder().text(textContent.text()).build();
         } else if (content instanceof ImageContent imageContent) {
             Image image = imageContent.image();
+            GeminiMediaResolution mediaResolution =
+                    mediaResolutionPerPartEnabled ? toGeminiMediaResolution(imageContent.detailLevel()) : null;
 
             if (!isNullOrBlank(image.base64Data())) {
                 return GeminiContent.GeminiPart.builder()
                         .inlineData(new GeminiBlob(image.mimeType(), image.base64Data()))
+                        .mediaResolution(mediaResolution)
                         .build();
             } else if (image.url() != null) {
                 URI url = image.url();
@@ -70,6 +79,7 @@ final class PartsAndContentsMapper {
                 if (url.getScheme() != null && url.getScheme().equals("data")) {
                     return GeminiContent.GeminiPart.builder()
                             .inlineData(parseDataUri(url))
+                            .mediaResolution(mediaResolution)
                             .build();
                 } else if (url.getScheme() != null && url.getScheme().startsWith("http")) {
                     byte[] imageBytes = readBytes(url.toString());
@@ -77,12 +87,14 @@ final class PartsAndContentsMapper {
                     return GeminiContent.GeminiPart.builder()
                             .inlineData(new GeminiBlob(
                                     getOrDefault(image.mimeType(), mimeTypeDetector.probeContentType(url)), base64Data))
+                            .mediaResolution(mediaResolution)
                             .build();
                 } else {
                     return GeminiContent.GeminiPart.builder()
                             .fileData(new GeminiFileData(
                                     getOrDefault(image.mimeType(), mimeTypeDetector.probeContentType(url)),
                                     url.toString()))
+                            .mediaResolution(mediaResolution)
                             .build();
                 }
             } else {
@@ -148,6 +160,25 @@ final class PartsAndContentsMapper {
         } else {
             throw new UnsupportedFeatureException("Unsupported content type: " + content.type());
         }
+    }
+
+    /**
+     * Maps DetailLevel from ImageContent to GeminiMediaResolution.
+     *
+     * @param detailLevel the detail level from ImageContent
+     * @return the corresponding GeminiMediaResolution, or null if detailLevel is null
+     */
+    private static GeminiMediaResolution toGeminiMediaResolution(ImageContent.DetailLevel detailLevel) {
+        if (detailLevel == null) {
+            return null;
+        }
+        return switch (detailLevel) {
+            case LOW -> GeminiMediaResolution.of(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_LOW);
+            case MEDIUM -> GeminiMediaResolution.of(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_MEDIUM);
+            case HIGH -> GeminiMediaResolution.of(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH);
+            case ULTRA_HIGH -> GeminiMediaResolution.of(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_ULTRA_HIGH);
+            case AUTO -> GeminiMediaResolution.of(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_UNSPECIFIED);
+        };
     }
 
     static AiMessage fromGPartsToAiMessage(
@@ -255,6 +286,14 @@ final class PartsAndContentsMapper {
 
     static List<GeminiContent> fromMessageToGContent(
             List<ChatMessage> messages, GeminiContent systemInstruction, boolean sendThinking) {
+        return fromMessageToGContent(messages, systemInstruction, sendThinking, false);
+    }
+
+    static List<GeminiContent> fromMessageToGContent(
+            List<ChatMessage> messages,
+            GeminiContent systemInstruction,
+            boolean sendThinking,
+            boolean mediaResolutionPerPartEnabled) {
         return messages.stream()
                 .map(msg -> {
                     switch (msg.type()) {
@@ -310,11 +349,35 @@ final class PartsAndContentsMapper {
 
                             return new GeminiContent(
                                     userMessage.contents().stream()
-                                            .map(PartsAndContentsMapper::fromContentToGPart)
-                                            .toList(),
+                                            .map(content -> fromContentToGPart(content, mediaResolutionPerPartEnabled))
+                                            .collect(Collectors.toList()),
                                     GeminiRole.USER.toString());
                         case TOOL_EXECUTION_RESULT:
                             ToolExecutionResultMessage toolResultMessage = (ToolExecutionResultMessage) msg;
+
+                            if (!toolResultMessage.hasSingleText()) {
+                                List<GeminiContent.GeminiPart> toolParts = new ArrayList<>();
+                                Map<String, String> responseMap = new HashMap<>();
+                                for (dev.langchain4j.data.message.Content content : toolResultMessage.contents()) {
+                                    if (content instanceof TextContent textContent) {
+                                        responseMap.put("response", textContent.text());
+                                    } else if (content instanceof ImageContent imageContent) {
+                                        toolParts.add(fromContentToGPart(imageContent, mediaResolutionPerPartEnabled));
+                                    } else {
+                                        throw new UnsupportedFeatureException(
+                                                "Google AI Gemini does not support content type '"
+                                                        + content.type() + "' in tool results.");
+                                    }
+                                }
+                                if (responseMap.isEmpty()) {
+                                    responseMap.put("response", "");
+                                }
+                                toolParts.add(0, GeminiContent.GeminiPart.builder()
+                                        .functionResponse(new GeminiFunctionResponse(
+                                                toolResultMessage.toolName(), responseMap))
+                                        .build());
+                                return new GeminiContent(toolParts, GeminiRole.USER.toString());
+                            }
 
                             return new GeminiContent(
                                     List.of(GeminiContent.GeminiPart.builder()
@@ -328,12 +391,12 @@ final class PartsAndContentsMapper {
                     }
                 })
                 .filter(Objects::nonNull)
-                .toList();
+                .collect(Collectors.toList());
     }
 
     /**
      * Parses a data URI and returns a GeminiBlob with the extracted MIME type and base64 data.
-     * 
+     *
      * @param uri the data URI to parse (e.g., "data:image/png;base64,iVBORw0KG...")
      * @return a GeminiBlob containing the MIME type and base64 data
      * @throws IllegalArgumentException if the URI is not a valid data URI
@@ -341,13 +404,13 @@ final class PartsAndContentsMapper {
     private static GeminiBlob parseDataUri(URI uri) {
         String urlString = uri.toString();
         Matcher matcher = DATA_URI_PATTERN.matcher(urlString);
-        
+
         if (matcher.matches()) {
             String mimeType = matcher.group(1);
             String base64Data = matcher.group(2);
             return new GeminiBlob(mimeType, base64Data);
         }
-        
+
         throw new IllegalArgumentException("Invalid data URI format: " + urlString);
     }
 

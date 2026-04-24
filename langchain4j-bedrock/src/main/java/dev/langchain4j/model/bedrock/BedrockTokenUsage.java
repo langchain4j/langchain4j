@@ -1,9 +1,15 @@
 package dev.langchain4j.model.bedrock;
 
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.Objects;
 
 /**
- * @since 1.9.0
+ * Bedrock-specific token usage that includes cache-related metrics.
+ * <p>
+ * This class extends {@link TokenUsage} to include AWS Bedrock prompt caching
+ * metrics: {@link #cacheWriteInputTokens()} and {@link #cacheReadInputTokens()}.
+ *
+ * @since 1.0.0-beta2
  */
 public class BedrockTokenUsage extends TokenUsage {
 
@@ -62,6 +68,21 @@ public class BedrockTokenUsage extends TokenUsage {
         } else {
             return this.cacheReadInputTokens;
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        BedrockTokenUsage that = (BedrockTokenUsage) o;
+        return Objects.equals(cacheWriteInputTokens, that.cacheWriteInputTokens)
+                && Objects.equals(cacheReadInputTokens, that.cacheReadInputTokens);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), cacheWriteInputTokens, cacheReadInputTokens);
     }
 
     @Override

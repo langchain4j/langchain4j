@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+
 import java.util.Objects;
 
 @JsonDeserialize(builder = VideoUrl.Builder.class)
@@ -26,16 +28,19 @@ public class VideoUrl {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof VideoUrl && equalTo((VideoUrl) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(VideoUrl another) {
         return Objects.equals(url, another.url);
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(url);
@@ -43,6 +48,7 @@ public class VideoUrl {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "VideoUrl{" + "url=" + url + "}";
     }

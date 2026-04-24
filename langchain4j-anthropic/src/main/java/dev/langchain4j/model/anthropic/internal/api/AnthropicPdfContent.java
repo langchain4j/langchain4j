@@ -15,6 +15,11 @@ public class AnthropicPdfContent extends AnthropicMessageContent {
 
     public AnthropicPdfContentSource source;
 
+    public AnthropicPdfContent(AnthropicPdfContentSource source) {
+        super("document");
+        this.source = source;
+    }
+
     public AnthropicPdfContent(String mediaType, String base64Data) {
         super("document");
         this.source = new AnthropicPdfContentSource("base64", mediaType, base64Data);
@@ -22,6 +27,14 @@ public class AnthropicPdfContent extends AnthropicMessageContent {
 
     public AnthropicPdfContent(String base64Data) {
         this("application/pdf", base64Data);
+    }
+
+    public static AnthropicPdfContent fromBase64(String mediaType, String data) {
+        return new AnthropicPdfContent(AnthropicPdfContentSource.fromBase64(mediaType, data));
+    }
+
+    public static AnthropicPdfContent fromUrl(String url) {
+        return new AnthropicPdfContent(AnthropicPdfContentSource.fromUrl(url));
     }
 
     @Override

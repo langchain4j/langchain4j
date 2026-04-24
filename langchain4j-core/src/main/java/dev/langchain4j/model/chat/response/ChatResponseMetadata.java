@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat.response;
 
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -9,6 +10,7 @@ import java.util.Objects;
  * Represents common chat response metadata supported by most LLM providers.
  * Specific LLM provider integrations can extend this interface to add provider-specific metadata.
  */
+@JacocoIgnoreCoverageGenerated
 public class ChatResponseMetadata {
 
     private final String id;

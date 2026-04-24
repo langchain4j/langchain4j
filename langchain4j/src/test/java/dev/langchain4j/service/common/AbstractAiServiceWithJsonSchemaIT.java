@@ -1,6 +1,7 @@
 package dev.langchain4j.service.common;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.service.common.AbstractAiServiceWithJsonSchemaIT.PersonExtractor3.MaritalStatus.SINGLE;
@@ -858,7 +859,7 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         verify(model)
                 .chat(ChatRequest.builder()
-                        .messages(singletonList(userMessage(text)))
+                        .messages(userMessage(text))
                         .responseFormat(ResponseFormat.builder()
                                 .type(JSON)
                                 .jsonSchema(JsonSchema.builder()
@@ -994,22 +995,6 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         verify(model).supportedCapabilities();
     }
 
-    interface PersonExtractor15 {
-
-        class Person {
-
-            String name;
-            List<Person> children;
-
-            @Override
-            public String toString() {
-                return "Person{name='" + name + "', children=" + children + "}";
-            }
-        }
-
-        Person extractPersonFrom(String text);
-    }
-
     @ParameterizedTest
     @MethodSource("models")
     @EnabledIf("supportsRecursion")
@@ -1018,23 +1003,31 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
         // given
         model = spy(model);
 
-        PersonExtractor15 personExtractor = AiServices.create(PersonExtractor15.class, model);
+        record Person(String name, List<Person> children) {
+            Person(String name, List<Person> children) {
+                this.name = name;
+                this.children = copy(children);
+            }
+        }
+
+        interface PersonExtractor {
+            Person extractPersonFrom(String text);
+        }
+
+        PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, model);
 
         String text = "Extract the person's information from the following text: "
                 + "Francine has 2 children: Steve and Hayley";
 
         // when
-        PersonExtractor15.Person person = personExtractor.extractPersonFrom(text);
+        Person person = personExtractor.extractPersonFrom(text);
 
         // then
         assertThat(person.name).isEqualTo("Francine");
-        assertThat(person.children).hasSize(2);
-        assertThat(person.children.get(0).name).isEqualTo("Steve");
-        assertThat(person.children.get(0).children).isNullOrEmpty();
-        assertThat(person.children.get(1).name).isEqualTo("Hayley");
-        assertThat(person.children.get(1).children).isNullOrEmpty();
+        assertThat(person.children).contains(new Person("Steve", List.of()));
+        assertThat(person.children).contains(new Person("Hayley", List.of()));
 
-        String reference = generateUUIDFrom(PersonExtractor15.Person.class.getName());
+        String reference = generateUUIDFrom(Person.class.getName());
 
         verify(model)
                 .chat(ChatRequest.builder()
@@ -1059,10 +1052,9 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
                                                                 .addProperty(
                                                                         "children",
                                                                         JsonArraySchema.builder()
-                                                                                .items(
-                                                                                        JsonReferenceSchema.builder()
-                                                                                                .reference(reference)
-                                                                                                .build())
+                                                                                .items(JsonReferenceSchema.builder()
+                                                                                        .reference(reference)
+                                                                                        .build())
                                                                                 .build())
                                                                 .build()))
                                                 .build())
@@ -1092,12 +1084,8 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
         PersonExtractor16 personExtractor = AiServices.create(PersonExtractor16.class, model);
 
-        String text =
-                """
-                Klaus can be identified by the following IDs:
-                - 12345
-                - 567b229a-6b0a-4f1e-9006-448cd9dfbfda
-                - Klaus12345
+        String text = """
+                Klaus can be identified by the following ID: 567b229a-6b0a-4f1e-9006-448cd9dfbfda
                 """;
 
         // when

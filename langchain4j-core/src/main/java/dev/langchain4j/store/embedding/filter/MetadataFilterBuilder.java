@@ -6,6 +6,7 @@ import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import dev.langchain4j.store.embedding.filter.comparison.ContainsString;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
@@ -23,6 +24,7 @@ import java.util.UUID;
 /**
  * A helper class for building a {@link Filter} for {@link Metadata} key.
  */
+@JacocoIgnoreCoverageGenerated
 public class MetadataFilterBuilder {
 
     private final String key;

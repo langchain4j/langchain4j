@@ -58,7 +58,11 @@ public class MistralAiResponseFormat {
     }
 
     public static MistralAiResponseFormat fromSchema(JsonSchema schema) {
-        MistralAiJsonSchema mistralAiJsonSchema = MistralAiJsonSchema.fromJsonSchema(schema);
+        return fromSchema(schema, false);
+    }
+
+    public static MistralAiResponseFormat fromSchema(JsonSchema schema, boolean strict) {
+        MistralAiJsonSchema mistralAiJsonSchema = MistralAiJsonSchema.fromJsonSchema(schema, strict);
         return MistralAiResponseFormat.builder()
                 .type("json_schema")
                 .jsonSchema(mistralAiJsonSchema)

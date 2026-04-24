@@ -92,7 +92,6 @@ public class JlamaEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         public JlamaEmbeddingModelBuilder() {
             // This is public, so it can be extended
-            // By default with Lombok it becomes package private
         }
 
         public JlamaEmbeddingModelBuilder modelCachePath(Path modelCachePath) {

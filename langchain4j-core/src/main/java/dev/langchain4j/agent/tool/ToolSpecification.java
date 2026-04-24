@@ -1,13 +1,15 @@
 package dev.langchain4j.agent.tool;
 
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.mutableCopy;
+import static dev.langchain4j.internal.Utils.quoted;
 
+import dev.langchain4j.internal.ToolSpecificationJsonUtils;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-
-import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.Utils.quoted;
 
 /**
  * Describes a tool that language model can execute.
@@ -15,6 +17,8 @@ import static dev.langchain4j.internal.Utils.quoted;
  * Can be generated automatically from methods annotated with {@link Tool} using {@link ToolSpecifications} helper.
  */
 public class ToolSpecification {
+
+    public static final String METADATA_SEARCH_BEHAVIOR = "searchBehavior";
 
     private final String name;
     private final String description;
@@ -60,6 +64,11 @@ public class ToolSpecification {
 
     /**
      * Returns the metadata relevant to the tool.
+     * <p>
+     * NOTE: this metadata is not sent to the LLM provider API by default,
+     * you must explicitly specify which metadata keys should be sent when creating a {@link ChatModel}.
+     * <p>
+     * NOTE: Currently, tool metadata is supported only by the {@code langchain4j-anthropic} module.
      */
     public Map<String, Object> metadata() {
         return metadata;
@@ -68,14 +77,14 @@ public class ToolSpecification {
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof ToolSpecification ts
-                && equalTo(ts);
+        return another instanceof ToolSpecification ts && equalTo(ts);
     }
 
     private boolean equalTo(ToolSpecification another) {
         return Objects.equals(name, another.name)
                 && Objects.equals(description, another.description)
-                && Objects.equals(parameters, another.parameters);
+                && Objects.equals(parameters, another.parameters)
+                && Objects.equals(metadata, another.metadata);
     }
 
     @Override
@@ -84,6 +93,7 @@ public class ToolSpecification {
         h += (h << 5) + Objects.hashCode(name);
         h += (h << 5) + Objects.hashCode(description);
         h += (h << 5) + Objects.hashCode(parameters);
+        h += (h << 5) + Objects.hashCode(metadata);
         return h;
     }
 
@@ -93,14 +103,37 @@ public class ToolSpecification {
                 + " name = " + quoted(name)
                 + ", description = " + quoted(description)
                 + ", parameters = " + parameters
+                + ", metadata = " + metadata
                 + " }";
+    }
+
+    /**
+     * Serializes this {@link ToolSpecification} to a JSON string.
+     *
+     * @return a JSON string representing this tool specification.
+     * @see #fromJson(String)
+     */
+    public String toJson() {
+        return ToolSpecificationJsonUtils.toJson(this);
+    }
+
+    /**
+     * Deserializes a {@link ToolSpecification} from a JSON string.
+     *
+     * @param json the JSON string to deserialize.
+     * @return the deserialized {@link ToolSpecification}.
+     * @see #toJson()
+     */
+    public static ToolSpecification fromJson(String json) {
+        return ToolSpecificationJsonUtils.fromJson(json);
     }
 
     public Builder toBuilder() {
         return builder()
                 .name(name)
                 .description(description)
-                .parameters(parameters);
+                .parameters(parameters)
+                .metadata(mutableCopy(metadata));
     }
 
     /**

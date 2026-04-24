@@ -3,6 +3,7 @@ package dev.langchain4j.service;
 import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
@@ -23,10 +24,13 @@ import java.util.function.Function;
 @Internal
 public class AiServiceContext {
 
-    private static final Function<Object, Optional<String>> DEFAULT_MESSAGE_PROVIDER = x -> Optional.empty();
+    private static final Function<Object, Optional<String>> DEFAULT_USER_MESSAGE_PROVIDER = x -> Optional.empty();
+    private static final Function<Object, Optional<String>> DEFAULT_SYSTEM_MESSAGE_PROVIDER = x -> Optional.empty();
 
     public final Class<?> aiServiceClass;
     public final AiServiceListenerRegistrar eventListenerRegistrar = AiServiceListenerRegistrar.newInstance();
+
+    public Class<?> returnType;
 
     public ChatModel chatModel;
     public StreamingChatModel streamingChatModel;
@@ -42,7 +46,12 @@ public class AiServiceContext {
 
     public RetrievalAugmentor retrievalAugmentor;
 
-    public Function<Object, Optional<String>> systemMessageProvider = DEFAULT_MESSAGE_PROVIDER;
+    public boolean storeRetrievedContentInChatMemory = true;
+
+    public Function<Object, Optional<String>> userMessageProvider = DEFAULT_USER_MESSAGE_PROVIDER;
+    public Function<Object, Optional<String>> systemMessageProvider = DEFAULT_SYSTEM_MESSAGE_PROVIDER;
+
+    public BiFunction<String, InvocationContext, String> systemMessageTransformer = null;
 
     public BiFunction<ChatRequest, Object, ChatRequest> chatRequestTransformer = (req, memId) -> req;
 
@@ -71,6 +80,10 @@ public class AiServiceContext {
 
     public void initChatMemories(ChatMemoryProvider chatMemoryProvider) {
         chatMemoryService = new ChatMemoryService(chatMemoryProvider);
+    }
+
+    public boolean hasModerationModel() {
+        return moderationModel != null;
     }
 
     public GuardrailService guardrailService() {

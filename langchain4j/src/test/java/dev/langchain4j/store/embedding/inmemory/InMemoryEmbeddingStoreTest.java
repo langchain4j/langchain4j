@@ -1,5 +1,8 @@
 package dev.langchain4j.store.embedding.inmemory;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -9,16 +12,12 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class InMemoryEmbeddingStoreTest extends EmbeddingStoreWithFilteringIT {
 
@@ -48,17 +47,16 @@ class InMemoryEmbeddingStoreTest extends EmbeddingStoreWithFilteringIT {
         Path filePath = temporaryDirectory.resolve("embedding-store.json");
 
         assertThatExceptionOfType(RuntimeException.class)
-                .isThrownBy(() -> originalEmbeddingStore
-                        .serializeToFile(temporaryDirectory.resolve("missing/store.json")))
+                .isThrownBy(
+                        () -> originalEmbeddingStore.serializeToFile(temporaryDirectory.resolve("missing/store.json")))
                 .withCauseInstanceOf(NoSuchFileException.class);
 
         assertThatExceptionOfType(RuntimeException.class)
-                .isThrownBy(() -> InMemoryEmbeddingStore
-                        .fromFile(temporaryDirectory.resolve("missing/store.json")))
+                .isThrownBy(() -> InMemoryEmbeddingStore.fromFile(temporaryDirectory.resolve("missing/store.json")))
                 .withCauseInstanceOf(NoSuchFileException.class);
         assertThatExceptionOfType(RuntimeException.class)
-                .isThrownBy(() -> InMemoryEmbeddingStore
-                        .fromFile(temporaryDirectory.resolve("missing/store.json").toString()))
+                .isThrownBy(() -> InMemoryEmbeddingStore.fromFile(
+                        temporaryDirectory.resolve("missing/store.json").toString()))
                 .withCauseInstanceOf(NoSuchFileException.class);
 
         {
@@ -118,9 +116,15 @@ class InMemoryEmbeddingStoreTest extends EmbeddingStoreWithFilteringIT {
 
         InMemoryEmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
 
+        assertThat(embeddingStore.size()).isEqualTo(0);
+        assertThat(embeddingStore.isEmpty()).isEqualTo(true);
+
         TextSegment segment = TextSegment.from("first");
         Embedding embedding = embeddingModel.embed(segment).content();
         embeddingStore.add(embedding, segment);
+
+        assertThat(embeddingStore.size()).isEqualTo(1);
+        assertThat(embeddingStore.isEmpty()).isEqualTo(false);
 
         TextSegment segmentWithMetadata = TextSegment.from("second", Metadata.from("key", "value"));
         Embedding embedding2 = embeddingModel.embed(segmentWithMetadata).content();

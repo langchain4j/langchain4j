@@ -1,20 +1,19 @@
 package dev.langchain4j.mcp.client.integration;
 
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.destroyProcessTree;
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.startServerHttp;
+
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.transport.McpTransport;
-import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import dev.langchain4j.mcp.client.transport.websocket.WebSocketMcpTransport;
+import java.io.IOException;
+import java.time.Duration;
+import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.time.Duration;
-import java.util.concurrent.TimeoutException;
-
-import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
-import static dev.langchain4j.mcp.client.integration.McpServerHelper.startServerHttp;
 
 class McpLoggingWebSocketTransportIT extends McpLoggingTestBase {
 
@@ -44,7 +43,7 @@ class McpLoggingWebSocketTransportIT extends McpLoggingTestBase {
             mcpClient.close();
         }
         if (process != null && process.isAlive()) {
-            process.destroyForcibly();
+            destroyProcessTree(process);
         }
     }
 }

@@ -1,6 +1,8 @@
 package dev.langchain4j.model.googleai.common;
 
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.googleai.GoogleAiGeminiTokenUsage;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.common.AbstractAiServiceIT;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -14,6 +16,11 @@ class GoogleAiGeminiAiServiceIT extends AbstractAiServiceIT {
     @Override
     protected List<ChatModel> models() {
         return List.of(GOOGLE_AI_GEMINI_CHAT_MODEL);
+    }
+
+    @Override
+    protected Class<? extends TokenUsage> tokenUsageType(ChatModel chatModel) {
+        return GoogleAiGeminiTokenUsage.class;
     }
 
     @Override

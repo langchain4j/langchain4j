@@ -59,7 +59,7 @@ public class DefaultMcpRegistryClient implements McpRegistryClient {
                     return LocalDateTime.parse(node.asText(), ISO_DATE_TIME);
                 }
             });
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
+    static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .setVisibility(FIELD, ANY)
             .registerModule(JACKSON_MODULE)
             // the servers might add new properties over time, let's not allow that to break the client

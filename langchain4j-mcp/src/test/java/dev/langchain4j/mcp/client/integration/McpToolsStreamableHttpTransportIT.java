@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client.integration;
 
+import static dev.langchain4j.mcp.client.integration.McpServerHelper.destroyProcessTree;
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIfJbangNotAvailable;
 import static dev.langchain4j.mcp.client.integration.McpServerHelper.startServerHttp;
 
@@ -44,7 +45,7 @@ class McpToolsStreamableHttpTransportIT extends McpToolsTestBase {
             mcpClient.close();
         }
         if (process != null && process.isAlive()) {
-            process.destroyForcibly();
+            destroyProcessTree(process);
         }
     }
 
@@ -56,7 +57,7 @@ class McpToolsStreamableHttpTransportIT extends McpToolsTestBase {
         Assertions.assertDoesNotThrow(() -> mcpClient.checkHealth(), "Health check should pass initially");
 
         // Simulate server crash
-        process.destroyForcibly();
+        destroyProcessTree(process);
 
         // Expect failure as server is down
         Assertions.assertThrows(

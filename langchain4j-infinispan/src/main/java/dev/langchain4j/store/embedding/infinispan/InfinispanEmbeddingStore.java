@@ -34,7 +34,6 @@ import org.infinispan.commons.marshall.ProtoStreamMarshaller;
 import org.infinispan.protostream.FileDescriptorSource;
 import org.infinispan.protostream.SerializationContext;
 import org.infinispan.protostream.schema.Schema;
-import org.infinispan.query.remote.client.ProtobufMetadataManagerConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -109,9 +108,7 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         // Uploads the schema to the server
         if (storeConfiguration.registerSchema()) {
-            RemoteCache<String, String> metadataCache =
-                    rmc.getCache(ProtobufMetadataManagerConstants.PROTOBUF_METADATA_CACHE_NAME);
-            metadataCache.put(storeConfiguration.fileName(), schemaContent);
+            rmc.administration().schemas().createOrUpdate(schema);
         }
 
         this.remoteCache = rmc.getCache(storeConfiguration.cacheName());

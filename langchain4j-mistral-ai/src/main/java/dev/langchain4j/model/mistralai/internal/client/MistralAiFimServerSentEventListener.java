@@ -1,5 +1,13 @@
 package dev.langchain4j.model.mistralai.internal.client;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.mistralai.internal.client.MistralAiJsonUtils.fromJson;
+import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.finishReasonFrom;
+import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.toToolExecutionRequests;
+import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.tokenUsageFrom;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -8,22 +16,15 @@ import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionChoice;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionResponse;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiMessageContent;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiTextContent;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiToolCall;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiUsage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.util.List;
 import java.util.function.BiFunction;
-
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
-import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.mistralai.internal.client.MistralAiJsonUtils.fromJson;
-import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.finishReasonFrom;
-import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.toToolExecutionRequests;
-import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.tokenUsageFrom;
 
 @Internal
 class MistralAiFimServerSentEventListener implements ServerSentEventListener {
@@ -37,7 +38,8 @@ class MistralAiFimServerSentEventListener implements ServerSentEventListener {
     private FinishReason finishReason;
 
     public MistralAiFimServerSentEventListener(
-            StreamingResponseHandler<String> handler, BiFunction<String, List<ToolExecutionRequest>, String> toResponse) {
+            StreamingResponseHandler<String> handler,
+            BiFunction<String, List<ToolExecutionRequest>, String> toResponse) {
         this.contentBuilder = new StringBuffer();
         this.handler = handler;
         this.toResponse = toResponse;
@@ -60,13 +62,18 @@ class MistralAiFimServerSentEventListener implements ServerSentEventListener {
             MistralAiChatCompletionChoice choice =
                     chatCompletionResponse.getChoices().get(0);
 
-            String chunk = choice.getDelta().getContent();
-            if (isNotNullOrEmpty(chunk)) {
-                contentBuilder.append(chunk);
-                try {
-                    handler.onNext(chunk);
-                } catch (Exception e) {
-                    withLoggingExceptions(() -> handler.onError(e));
+            List<MistralAiMessageContent> chunks = choice.getDelta().getContent();
+            for (var chunk : chunks) {
+                if (chunk instanceof MistralAiTextContent textContent) {
+                    String text = textContent.getText();
+                    if (isNotNullOrEmpty(text)) {
+                        contentBuilder.append(text);
+                        try {
+                            handler.onNext(text);
+                        } catch (Exception e) {
+                            withLoggingExceptions(() -> handler.onError(e));
+                        }
+                    }
                 }
             }
 

@@ -13,10 +13,11 @@ import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;
-import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
+import org.slf4j.Logger;
 
 /**
  * An implementation of a {@link ScoringModel} that uses
@@ -57,7 +58,7 @@ public class VoyageAiScoringModel implements ScoringModel {
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
-                .customHeaders(customHeaders)
+                .customHeaders(() -> customHeaders)
                 .build();
     }
 
@@ -77,7 +78,7 @@ public class VoyageAiScoringModel implements ScoringModel {
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .logger(builder.logger)
-                .customHeaders(builder.customHeaders)
+                .customHeaders(builder.customHeadersSupplier)
                 .build();
     }
 
@@ -108,7 +109,7 @@ public class VoyageAiScoringModel implements ScoringModel {
     public static class Builder {
 
         private HttpClientBuilder httpClientBuilder;
-        private Map<String, String> customHeaders;
+        private Supplier<Map<String, String>> customHeadersSupplier;
         private String baseUrl;
         private Duration timeout;
         private Integer maxRetries;
@@ -119,6 +120,29 @@ public class VoyageAiScoringModel implements ScoringModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private Logger logger;
+
+        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        /**
+         * Sets custom HTTP headers.
+         */
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets a supplier for custom HTTP headers.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         */
+        public Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
+            return this;
+        }
 
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;

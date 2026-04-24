@@ -11,10 +11,9 @@ sidebar_position: 4
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-document-parser-yaml</artifactId>
-    <version>1.7.0-beta13</version>
+    <version>1.13.1-beta23</version>
 </dependency>
 ```
-
 
 ## APIs
 

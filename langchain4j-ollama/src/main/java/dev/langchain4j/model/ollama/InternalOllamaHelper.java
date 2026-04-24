@@ -9,14 +9,6 @@ import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJsonWithoutIdent;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -36,10 +28,19 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 @Internal
 class InternalOllamaHelper {
@@ -89,16 +90,17 @@ class InternalOllamaHelper {
     static List<ToolExecutionRequest> toToolExecutionRequests(List<ToolCall> toolCalls) {
         return toolCalls.stream()
                 .map(toolCall -> ToolExecutionRequest.builder()
+                        .id(toolCall.getId())
                         .name(toolCall.getFunction().getName())
                         .arguments(toJsonWithoutIdent(toolCall.getFunction().getArguments()))
                         .build())
-                .toList();
+                .collect(Collectors.toList());
     }
 
     static String toOllamaResponseFormat(ResponseFormat responseFormat) {
-        if (responseFormat == null || responseFormat == ResponseFormat.TEXT) {
+        if (responseFormat == null || responseFormat.type() == ResponseFormatType.TEXT) {
             return null;
-        } else if (responseFormat == ResponseFormat.JSON && responseFormat.jsonSchema() == null) {
+        } else if (responseFormat.type() == ResponseFormatType.JSON && responseFormat.jsonSchema() == null) {
             return "json";
         } else {
             return toJson(toMap(responseFormat.jsonSchema().rootElement()));
@@ -174,6 +176,13 @@ class InternalOllamaHelper {
                         // numPredict and maxOutputTokens are semantically identical
                         .numPredict(requestParameters.maxOutputTokens())
                         .numCtx(requestParameters.numCtx())
+                        .numThread(requestParameters.numThread())
+                        .numKeep(requestParameters.numKeep())
+                        .typicalP(requestParameters.typicalP())
+                        .numBatch(requestParameters.numBatch())
+                        .numGPU(requestParameters.numGPU())
+                        .mainGPU(requestParameters.mainGPU())
+                        .useMmap(requestParameters.useMmap())
                         .stop(requestParameters.stopSequences())
                         .minP(requestParameters.minP())
                         .build())
@@ -234,7 +243,10 @@ class InternalOllamaHelper {
                                         .name(toolExecutionRequest.name())
                                         .arguments(fromJson(toolExecutionRequest.arguments(), typeReference))
                                         .build();
-                                return ToolCall.builder().function(functionCall).build();
+                                return ToolCall.builder()
+                                        .id(toolExecutionRequest.id())
+                                        .function(functionCall)
+                                        .build();
                             })
                             .collect(Collectors.toList()))
                     .orElse(null);
@@ -254,6 +266,10 @@ class InternalOllamaHelper {
         } else if (chatMessage instanceof AiMessage aiMessage) {
             return aiMessage.text();
         } else if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+            if (!toolExecutionResultMessage.hasSingleText()) {
+                throw new UnsupportedFeatureException("Ollama does not support non-text content in tool results. "
+                        + "Only text content is supported.");
+            }
             return toolExecutionResultMessage.text();
         } else {
             throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
@@ -278,12 +294,12 @@ class InternalOllamaHelper {
                 .filter(Objects::nonNull)
                 .flatMap(List::stream)
                 .map(Content::type)
-                .collect(Collectors.toSet()) ;
+                .collect(Collectors.toSet());
         if (contentTypes.size() > 2) {
-            return false;   // contains more than 2 supported content types
+            return false; // contains more than 2 supported content types
         }
         contentTypes.remove(TEXT);
         contentTypes.remove(IMAGE);
-        return contentTypes.isEmpty();  // no remaining other content type
+        return contentTypes.isEmpty(); // no remaining other content type
     }
 }

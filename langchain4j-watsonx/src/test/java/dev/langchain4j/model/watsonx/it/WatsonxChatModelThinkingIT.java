@@ -44,8 +44,6 @@ public class WatsonxChatModelThinkingIT {
                 .apiKey(API_KEY)
                 .projectId(PROJECT_ID)
                 .modelName("ibm/granite-3-3-8b-instruct")
-                .logRequests(true)
-                .logResponses(true)
                 .build();
 
         var chatResponse = chatModel.chat(UserMessage.from("Why the sky is blue?"));
@@ -83,8 +81,6 @@ public class WatsonxChatModelThinkingIT {
                 .projectId(PROJECT_ID)
                 .modelName(model)
                 .thinking(ExtractionTags.of("think", "response"))
-                .logRequests(true)
-                .logResponses(true)
                 .maxOutputTokens(0)
                 .timeout(Duration.ofSeconds(30));
     }

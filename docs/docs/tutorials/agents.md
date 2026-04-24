@@ -157,7 +157,26 @@ public interface UntypedAgent {
 
 The values in that input map are copied into the `AgenticScope` shared variables, so that they can be accessed by the subagents. The output of the `novelCreator` agent is also taken from the `AgenticScope` shared variable named "story", which has been formerly rewritten by all other agents during the novel creation and editing workflow execution.
 
-Optionally, the workflow agent can also be provided with typed interface, so that it can be invoked with a strongly typed input and output. In this case, the `UntypedAgent` interface can be replaced with a more specific one, like:
+Note that also single agents can be defined as `UntypedAgent` instances, without the need of providing a typed interface. For example, the `CreativeWriter` agent could have been defined as follows:
+
+```java
+UntypedAgent creativeWriter = AgenticServices.agentBuilder()
+        .chatModel(BASE_MODEL)
+        .description("Generate a story based on the given topic")
+        .userMessage("""
+                You are a creative writer.
+                Generate a draft of a story no more than
+                3 sentences long around the given topic.
+                Return only the story and nothing else.
+                The topic is {{topic}}.
+                """)
+        .inputKey(String.class, "topic")
+        .returnType(String.class) // String is the default return type for untyped agents
+        .outputKey("story")
+        .build();
+```
+
+On the other side, even the workflow agent can optionally be provided with a typed interface, so that it can be invoked with a strongly typed input and output. In this case, the `UntypedAgent` interface can be replaced with a more specific one, like:
 
 ```java
 public interface NovelCreator {
@@ -344,6 +363,65 @@ List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 
 Here the `output` function of the `AgenticScope` defined in the `EveningPlannerAgent` allows to assemble the outputs of the two subagents, creating a list of `EveningPlan` objects that combine a movie and a meal matching the given mood. The `output` method, even if especially relevant for parallel workflows, can be actually used in any workflow pattern to define how to combine the outputs of the subagents into a single result, instead of simply returning a value from the `AgenticScope`. The `executor` method also allows to optionally provide an `Executor` that will be used to execute the subagents in parallel, otherwise an internal cached thread pool will be used by default.
 
+### Parallel mapper workflow
+
+The parallel mapper workflow is a variation of the parallel workflow where the same sub-agent is executed multiple times in parallel, once for each item in a collection. In other words, it maps all the items of a list, processing each of them independently invoking the same sub-agent multiple times. This is useful when you need to apply the same operation to a batch of inputs concurrently.
+
+For example, let's create an agent that generates personalized horoscopes for a list of people:
+
+```java
+public interface PersonAstrologyAgent {
+
+    @SystemMessage("""
+        You are an astrologist that generates horoscopes based on the user's name and zodiac sign.
+        """)
+    @UserMessage("""
+        Generate the horoscope for {{person}}.
+        The person has a name and a zodiac sign. Use both to create a personalized horoscope.
+        """)
+    @Agent(description = "An astrologist that generates horoscopes for a person", outputKey = "horoscope")
+    String horoscope(@V("person") Person person);
+}
+```
+
+Using `AgenticServices.parallelMapperBuilder()`, you can create a workflow that fans out this agent over a collection, automatically creating one instance per item:
+
+```java
+PersonAstrologyAgent personAstrologyAgent = AgenticServices
+        .agentBuilder(PersonAstrologyAgent.class)
+        .chatModel(BASE_MODEL)
+        .outputKey("horoscope")
+        .build();
+
+BatchHoroscopeAgent agent = AgenticServices
+        .parallelMapperBuilder(BatchHoroscopeAgent.class)
+        .subAgents(personAstrologyAgent)
+        .itemsProvider("persons")
+        .executor(Executors.newFixedThreadPool(3))
+        .build();
+
+List<Person> persons = List.of(
+        new Person("Mario", "aries"),
+        new Person("Luigi", "pisces"),
+        new Person("Peach", "leo"));
+
+List<String> horoscopes = agent.generateHoroscopes(persons);
+```
+
+where the `BatchHoroscopeAgent` is defined as follows:
+
+```java
+public interface BatchHoroscopeAgent extends AgentInstance {
+
+    @Agent
+    List<String> generateHoroscopes(@V("persons") List<Person> persons);
+}
+```
+
+The `itemsProvider` specifies which argument contains the collection to iterate over. However, if there are no ambiguities and there is only one argument that can be iterated (a Collection or an array), as in this example, it can be safely omitted. Each instance of the sub-agent receives one item from the collection, and once all instances complete, their individual results are automatically aggregated into a list and returned as the workflow result. As with the parallel workflow, an `Executor` can be optionally provided.
+
+Note that, since the same agent is invoked indepently to perform repeatdly the same task with different arguments, it doesn't make sense to hold any `ChatMemory` for it. For this reason LangChain4j throws an exception, in case the parallel mapper workflow tries to use a sub-agent configured to use a `ChatMemory`.
+
 ### Conditional workflow
 
 Another frequent need is to invoke a certain agent only if a specific condition is satisfied. For example, it could be useful to categorize a user request before processing it, so that the processing can be done by different agents depending on the category of the request. This can be achieved by using the following `CategoryRouter`
@@ -434,6 +512,49 @@ ExpertRouterAgent expertRouterAgent = AgenticServices
 String response = expertRouterAgent.ask("I broke my leg what should I do");
 ```
 
+## Optional agents
+
+In some cases a sub-agent in a workflow may not be required to execute if its input arguments are not available in the `AgenticScope`. By default, when an agent cannot find one of its required arguments, the entire agentic system fails with a `MissingArgumentException`. However, it is possible to mark an agent as optional, so that its execution is silently skipped when any of its arguments is missing, instead of making the whole workflow fail.
+
+This can be done by using the `optional` method of the agent builder. For example, considering the sequential workflow defined above, it is possible to make the `AudienceEditor` agent optional, so that the story is still generated and style-edited even when no audience is provided in the input.
+
+```java
+CreativeWriter creativeWriter = AgenticServices
+        .agentBuilder(CreativeWriter.class)
+        .chatModel(BASE_MODEL)
+        .outputKey("story")
+        .build();
+
+AudienceEditor audienceEditor = AgenticServices
+        .agentBuilder(AudienceEditor.class)
+        .chatModel(BASE_MODEL)
+        .optional(true)
+        .outputKey("story")
+        .build();
+
+StyleEditor styleEditor = AgenticServices
+        .agentBuilder(StyleEditor.class)
+        .chatModel(BASE_MODEL)
+        .outputKey("story")
+        .build();
+
+UntypedAgent novelCreator = AgenticServices
+        .sequenceBuilder()
+        .subAgents(creativeWriter, audienceEditor, styleEditor)
+        .outputKey("story")
+        .build();
+
+// No "audience" key is provided, so the audienceEditor will be skipped
+Map<String, Object> input = Map.of(
+        "topic", "dragons and wizards",
+        "style", "fantasy"
+);
+
+String story = (String) novelCreator.invoke(input);
+```
+
+Here the `audienceEditor` agent is configured as optional. Since the input map does not contain the "audience" key required by the `AudienceEditor`, its invocation is skipped and the workflow proceeds directly with the `StyleEditor`. The same agent can also be marked as optional declaratively using the `@Agent` annotation attribute `@Agent(optional = true)`.
+
 ## Asynchronous agents
 
 By default, all agents invocations are performed in the same thread that invoked the root agent of the agentic system, and therefore they are synchronous, meaning that the execution of the agentic system waits for the completion of each agent before proceeding to the next one. However, in many cases this is not necessary, and it could be useful to invoke an agent in an asynchronous way, allowing the execution of the agentic system to proceed without waiting for the completion of that agent.
@@ -479,6 +600,79 @@ EveningPlannerAgent eveningPlannerAgent = AgenticServices
 
 List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 ```
+
+## Streaming agents
+
+In order to support streaming, it is also possible to create an agent that returns a `TokenStream` 
+
+```java
+public interface StreamingCreativeWriter {
+
+    @UserMessage("""
+            You are a creative writer.
+            Generate a draft of a story no more than
+            3 sentences long around the given topic.
+            Return only the story and nothing else.
+            The topic is {{topic}}.
+            """)
+    @Agent("Generates a story based on the given topic")
+    TokenStream generateStory(@V("topic") String topic);
+}
+```
+
+and then configure it to use a `StreamingChatModel`, so that the result can be consumed as it is being generated, instead of waiting for the completion of the agent invocation.
+
+```java
+StreamingCreativeWriter creativeWriter = AgenticServices.agentBuilder(StreamingCreativeWriter.class)
+        .streamingChatModel(streamingBaseModel())
+        .outputKey("story")
+        .build();
+
+TokenStream tokenStream = creativeWriter.generateStory("dragons and wizards");
+```
+
+When used inside an agentic system, a streaming agent can propagate its streaming response to the whole system only if it is the last agent to be invoked. In all other cases it behaves like an asynchronous agent, so that the subsequent agents would need to wait for the completion of its streaming response to get and use its result.
+
+For example, the following `StreamingReviewedWriter` agent 
+
+```java
+public interface StreamingReviewedWriter {
+    @Agent
+    TokenStream writeStory(@V("topic") String topic, @V("audience") String audience, @V("style") String style);
+}
+```
+
+is implemented with a sequence of 3 streaming agents
+
+```java
+StreamingCreativeWriter creativeWriter = AgenticServices.agentBuilder(StreamingCreativeWriter.class)
+        .streamingChatModel(streamingBaseModel())
+        .outputKey("story")
+        .build();
+
+StreamingAudienceEditor audienceEditor = AgenticServices.agentBuilder(StreamingAudienceEditor.class)
+        .streamingChatModel(streamingBaseModel())
+        .outputKey("story")
+        .build();
+
+StreamingStyleEditor styleEditor = AgenticServices.agentBuilder(StreamingStyleEditor.class)
+        .streamingChatModel(streamingBaseModel())
+        .outputKey("story")
+        .build();
+
+StreamingReviewedWriter novelCreator = AgenticServices.sequenceBuilder(StreamingReviewedWriter.class)
+        .subAgents(creativeWriter, audienceEditor, styleEditor)
+        .outputKey("story")
+        .build();
+```
+
+When this `novelCreator` agent is invoked
+
+```java
+TokenStream tokenStream = novelCreator.writeStory("dragons and wizards", "young adults", "fantasy");
+```
+
+the streaming responses of the first two agents are internally fully consumed before the invocation of the subsequent agents can start, and only the streaming response of the last `StyleEditor` agent is propagated as the streaming response of the whole `novelCreator` agent.
 
 ## Error handling
 
@@ -539,18 +733,173 @@ UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
 
 ## Observability
 
-Tracking and logging the agents' invocations can be crucial for debugging and understanding the aggregate behavior of the whole agentic system in which those agents participate. For this reason, the `langchain4j-agentic` module allows to register two different listeners through the `beforeAgentInvocation` and `afterAgentInvocation` methods of the agent builders, that are notified respectively immediately before the invocation of an agent and immediately after it has completed its task and returned a result. For instance the following configuration of the `CreativeWriter` agent will log to the console when it is invoked and what is the story it generated.
+Tracking and logging the agents' invocations can be crucial for debugging and understanding the aggregate behavior of the whole agentic system in which those agents participate. For this reason, the `langchain4j-agentic` module allows to register an `AgentListener` through the `listener` method of the agent builders, that is notified of all agents invocations and their results, and it is defined as follows:
+
+```java
+public interface AgentListener {
+
+    default void beforeAgentInvocation(AgentRequest agentRequest) { }
+    default void afterAgentInvocation(AgentResponse agentResponse) { }
+    default void onAgentInvocationError(AgentInvocationError agentInvocationError) { }
+
+    default void afterAgenticScopeCreated(AgenticScope agenticScope) { }
+    default void beforeAgenticScopeDestroyed(AgenticScope agenticScope) { }
+
+    default void beforeToolExecution(BeforeToolExecution beforeToolExecution) { }
+    default void afterToolExecution(ToolExecution toolExecution) { }
+
+    default boolean inheritedBySubagents() {
+        return false;
+    }
+}
+```
+
+Note that all methods of this interface have a default empty implementation, so that it is possible to implement only the methods of interest. This will also allow to add new methods in future releases without breaking existing implementations.
+
+For instance the following configuration of the `CreativeWriter` agent will log to the console when it is invoked and what is the story it generated.
 
 ```java
 CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
-    .chatModel(baseModel())
-    .outputKey("story")
-    .beforeAgentInvocation(request -> System.out.println("Invoking CreativeWriter with topic: " + request.inputs().get("topic")))
-    .afterAgentInvocation(response -> System.out.println("CreativeWriter generated this story: " + response.output()))
-    .build();
+        .chatModel(baseModel())
+        .outputKey("story")
+        .listener(new AgentListener() {
+            @Override
+            public void beforeAgentInvocation(AgentRequest request) {
+                System.out.println("Invoking CreativeWriter with topic: " + request.inputs().get("topic"));
+            }
+        
+            @Override
+            public void afterAgentInvocation(AgentResponse response) {
+                System.out.println("CreativeWriter generated this story: " + response.output());
+            }
+        })
+        .build();
 ```
 
-These listeners receive as argument respectively an `AgentRequest` and an `AgentResponse` that provide useful information about the agent invocation, like its name, the inputs it received and the output it produced, together with the instance of the `AgenticScope` used for that invocation. Note that these listeners are invoked in the same thread used to also perform the agent invocation, so they are synchronous with it and should not perform long blocking operations.
+These listener methods receive as argument respectively an `AgentRequest` and an `AgentResponse` that provide useful information about the agent invocation, like its name, the inputs it received and the output it produced, together with the instance of the `AgenticScope` used for that invocation. Note that these methods are invoked in the same thread used to also perform the agent invocation, so they are synchronous with it and should not perform long blocking operations.
+
+`AgentListener`s have 2 important properties, they are:
+- **composable**, meaning that you can register multiple listeners to the same agent, by invoking the `listener` method more than once, and they will be notified in the order they were registered; 
+- **optionally hierarchical**, meaning that by default they are only local to the agent where they are directly registered, but they can also be inherited by all its subagents, simply making its `inheritedBySubagents` method to return `true`. In that case a listener registered on a top level agent will also be notified of the invocations to all its subagents at any level and composed with all listeners that these subagents could have registered on their own.
+
+### Monitoring
+
+Leveraging the observability features provided by the `AgentListener` interface, the `langchain4j-agentic` module also provides a built-in implementation of this interface, configured to be inherited by all subagents, named `AgentMonitor`, having the goal of recording all agents invocations in an in-memory tree structure, allowing to inspect the sequence of invocations and their results during or after the execution of the agentic system. This monitor can be registered as a listener to the root agent of the agentic system using the `listener` method of the agent builder.
+
+To provide a more comprehensive example, let's reconsider the loop workflow intended to generate and iteratively refine a story until it meets the required style quality, and register a few listeners on it, including an `AgentMonitor`.
+
+```java
+AgentMonitor monitor = new AgentMonitor();
+
+CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
+        .listener(new AgentListener() {
+            @Override
+            public void beforeAgentInvocation(AgentRequest request) {
+                System.out.println("Invoking CreativeWriter with topic: " + request.inputs().get("topic"));
+            }
+        })
+        .chatModel(baseModel())
+        .outputKey("story")
+        .build();
+
+StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
+        .chatModel(baseModel())
+        .outputKey("story")
+        .build();
+
+StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
+        .name("styleScorer")
+        .chatModel(baseModel())
+        .outputKey("score")
+        .build();
+
+UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
+        .subAgents(styleScorer, styleEditor)
+        .maxIterations(5)
+        .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+        .build();
+
+UntypedAgent styledWriter = AgenticServices.sequenceBuilder()
+        .subAgents(creativeWriter, styleReviewLoop)
+        .listener(monitor)
+        .listener(new AgentListener() {
+            @Override
+            public void afterAgentInvocation(AgentResponse response) {
+                if (response.agentName().equals("styleScorer")) {
+                    System.out.println("Current score: " + response.output());
+                }
+            }
+        })
+        .outputKey("story")
+        .build();
+```
+
+Here a first listener is registered directly on the `creativeWriter` agent, so that it logs the request topic for the story to be generated only when that agent is invoked. A second listener is registered on the top level `styledWriter` agent, so that it will be also invoked for all subagents in the hierarchy of that agent at any level. That is why the `afterAgentInvocation` method of that listener checks if the agent being invoked is the `styleScorer`, and only in that case it logs the current score assigned to the style of the generated story.
+
+Finally, the `AgentMonitor` instance is also registered, and automatically composed with the other 2 listeners, as a further listener to the `styledWriter` top level agent, so that it can track all agents invocations in the whole agentic system. 
+
+When invoking the `styledWriter` agent as follows:
+
+```java
+Map<String, Object> input = Map.of(
+        "topic", "dragons and wizards",
+        "style", "comedy");
+String story = styledWriter.invoke(input);
+```
+
+the `AgentMonitor` records all agents invocations in a tree structure that also keeps track of the start time, finish time, duration, tokens, inputs and output of each agent invocation. At this point it is possible to retrieve the recorded executions from the monitor and for instance print it to the console for inspection.
+
+```java
+MonitoredExecution execution = monitor.successfulExecutions().get(0);
+System.out.println(execution);
+```
+
+so it will reveal the nested sequence of agents invocations necessary to generate and refine the story, like it follows:
+
+```
+AgentInvocation{agent=Sequential, startTime=2026-03-18T17:27:28.099439515, finishTime=2026-03-18T17:27:38.683498783, duration=10584 ms, tokens=0, inputs={topic=dragons and wiz..., style=comedy}, output=In a realm wher...}
+|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.13.1287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
+|=> AgentInvocation{agent=reviewLoop, startTime=2026-03-18T17:27:31.035952285, finishTime=2026-03-18T17:27:38.683438433, duration=7647 ms, tokens=0, inputs={score=0.8, topic=dragons and wiz..., style=comedy, story=In a realm wher...}, output=null}
+    |=> AgentInvocation{agent=scoreStyle, iteration=0, startTime=2026-03-18T17:27:31.036155107, finishTime=2026-03-18T17:27:31.671478699, duration=635 ms, tokens=152, inputs={style=comedy, story=In a realm wher...}, output=0.2}
+    |=> AgentInvocation{agent=editStory, iteration=0, startTime=2026-03-18T17:27:31.671711250, finishTime=2026-03-18T17:27:38.182881941, duration=6511 ms, tokens=491, inputs={style=comedy, story=In a realm wher...}, output=In a realm wher...}
+    |=> AgentInvocation{agent=scoreStyle, iteration=1, startTime=2026-03-18T17:27:38.183021641, finishTime=2026-03-18T17:27:38.683085876, duration=500 ms, tokens=439, inputs={style=comedy, story=In a realm wher...}, output=0.8}
+```
+
+Finally, using the static `generateReport` method esposed by `HtmlReportGenerator` class, it is also possible to generate a visual HTML report of the data collected by the `AgentMonitor` for both the topology of the agentic system and the recorded executions. For instance, generating this report for the former execution: 
+
+```java
+HtmlReportGenerator.generateReport(monitor, Path.of("review-loop.html"));
+```
+
+will produce a report file `review-loop.html` in the current working directory similar to this:
+
+![](/img/agent-monitor.png)
+
+Another alternative to manually creating an `AgentMonitor` and registering it as a listener, is making your agent service interface to extend the `MonitoredAgent` one. When doing so, the builder automatically creates and registers an `AgentMonitor` as a listener, and this monitor becomes accessible directly from the agent instance via the `agentMonitor()` method.
+
+For example, the sequence agent defined in the previous examples can be turned into a typed and monitored agent by defining an interface `StyledWriter` that also extends the `MonitoredAgent` interface:
+
+```java
+public interface StyledWriter extends MonitoredAgent {
+    @Agent("Write a creative story about the given topic")
+    String generateStoryWithStyle(@V("topic") String topic, @V("style") String style);
+}
+```
+
+When building this agent, there is no need to explicitly create or register an `AgentMonitor`:
+
+```java
+StyledWriter styledWriter = AgenticServices.sequenceBuilder(StyledWriter.class)
+        .subAgents(creativeWriter, styleReviewLoop)
+        .outputKey("story")
+        .build();
+```
+
+The monitor is automatically registered and can be retrieved at any time from the agent itself:
+
+```java
+AgentMonitor monitor = styledWriter.agentMonitor();
+```
 
 ## Declarative API
 
@@ -621,11 +970,11 @@ In a very similar way, annotating other `static` methods in the agent interface,
 | Annotation Name               | Description                                                                                                                                                   |
 |-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `@ChatModelSupplier`          | Returns the `ChatModel` to be used by this agent.                                                                                                             |
+| `@StreamingChatModelSupplier` | Returns the `StreamingChatModel` to be used by this agent.                                                                                                             |
 | `@ChatMemorySupplier`         | Returns the `ChatMemory` to be used by this agent.                                                                                                            |
 | `@ChatMemoryProviderSupplier` | Returns the `ChatMemoryProvider` to be used by this agent.<br/>This method requires as argument an `Object` to be used as the memoryId of the created memory. |
 | `@ContentRetrieverSupplier`   | Returns the `ContentRetriever` to be used by this agent.                                                                                                      |
-| `@BeforeAgentInvocation`      | Notified immediately before to perform an agent invocation.<br/>This method requires as argument an `AgentRequest`.                                           |
-| `@AfterAgentInvocation`       | Notified when an agent invocation has been completed.<br/>This method requires as argument an `AgentResponse`.                                                |
+| `@AgentListenerSupplier`      | Returns the `AgentListener` to be used by this agent.                                                                                                      |
 | `@RetrievalAugmentorSupplier` | Returns the `RetrievalAugmentor` to be used by this agent.                                                                                                    |
 | `@ToolsSupplier`              | Returns the tool or set of tools to be used by this agent.<br/> It can return either a single `Object` or a `Object[]`                                        |
 | `@ToolProviderSupplier`       | Returns the `ToolProvider` to be used by this agent.                                                                                                          |
@@ -797,128 +1146,6 @@ String response = expertChatbot.ask("I broke my leg what should I do");
 ```
 
 The `routerAgent` doesn't need to programmatically specify the output key, since it is already defined in its interface through the `typedOutputKey` attribute of the `@Agent` annotation, while the 3 expert agents still need to specify it programmatically, since their interfaces don't define it, so as usual it is possible to use either one of the 2 approaches. Also, it worth to note that, when reading the values from the `AgenticScope`, like in the conditional workflow definition, there is no need to perform any type check or cast, since the typed keys already provide the necessary type information.
-
-## Memory and context engineering
-
-All agents discussed so far are stateless, meaning that they do not maintain any context or memory of previous interactions. However, like for any other AI service, it is possible to provide agents with a `ChatMemory`, allowing them to maintain context across multiple invocations. 
-
-To provide the former `MedicalExpert` with a memory, it is sufficient to add a field annotated with `@MemoryId` to its signature.
-
-```java
-public interface MedicalExpertWithMemory {
-
-    @UserMessage("""
-        You are a medical expert.
-        Analyze the following user request under a medical point of view and provide the best possible answer.
-        The user request is {{request}}.
-        """)
-    @Agent("A medical expert")
-    String medical(@MemoryId String memoryId, @V("request") String request);
-}
-```
-
-and set a memory provider when building the agent:
-
-```java
-MedicalExpertWithMemory medicalExpert = AgenticServices
-        .agentBuilder(MedicalExpertWithMemory.class)
-        .chatModel(BASE_MODEL)
-        .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-        .outputKey("response")
-        .build();
-```
-
-Generally this is enough for single agents used in isolation, but can be limiting for agents participating in an agentic system. Supposing that also the technical and legal experts have been provided with a memory, and also the `ExpertRouterAgent` has been redefined to have it:
-
-```java
-public interface ExpertRouterAgentWithMemory {
-
-    @Agent
-    String ask(@MemoryId String memoryId, @V("request") String request);
-}
-```
-
-The sequence of these two invocations to this agent
-
-```java
-String response1 = expertRouterAgent.ask("1", "I broke my leg, what should I do?");
-
-String legalResponse1 = expertRouterAgent.ask("1", "Should I sue my neighbor who caused this damage?");
-```
-
-won't give the expected result, because the second question will be routed to the legal expert, which is now invoked for the first time and has no memory of the previous question.
-
-To solve this problem it is necessary to provide the legal expert with the context and what happened before its invocation, and this is another use case where the information automatically stored in the `AgenticScope` can come to help.
-
-In particular the `AgenticScope` keeps track of the sequence of invocations of all agents, and can produce a context concatenating those invocations in a single conversation. This context can be used as it is or if necessary summarized to a shorter version, for instance defining a `ContextSummarizer` agent.
-
-```java
-public interface ContextSummarizer {
-
-    @UserMessage("""
-        Create a very short summary, 2 sentences at most, of the
-        following conversation between an AI agent and a user.
-
-        The user conversation is: '{{it}}'.
-        """)
-    String summarize(String conversation);
-}
-```
-
-Using this agent, the legal expert can be redefined and provided with a context summarization of the previous conversation, so that it can take into account the previous interactions when answering the new question.
-
-```java
-LegalExpertWithMemory legalExpert = AgenticServices
-        .agentBuilder(LegalExpertWithMemory.class)
-        .chatModel(BASE_MODEL)
-        .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-        .context(agenticScope -> contextSummarizer.summarize(agenticScope.contextAsConversation()))
-        .outputKey("response")
-        .build();
-```
-
-More in general the context provided to an agent can be any function of the `AgenticScope` state. With this setup, the legal expert, when asked if the neighbor should be sued for the damage he caused, will be able to take into account the previous conversation with the medical expert and provide a more informed answer.
-
-Internally the agentic framework provides the additional context to the legal expert by automatically rewriting the user message sent to it, so that it contains the summarized context of the previous conversation, so in this case the actual user message will be something like:
-
-```
-"Considering this context \"The user asked about what to do after breaking their leg, and the AI provided medical advice on immediate actions like immobilizing the leg, applying ice, and seeking medical attention.\"
-You are a legal expert.
-Analyze the following user request under a legal point of view and provide the best possible answer.
-The user request is Should I sue my neighbor who caused this damage?."
-```
-
-The summarized context discussed here as an example of possible context generation for an agent is of general usefulness, so it is possible to define it on an agent in a more convenient way, using the `summarizedContext` method, like in:
-
-```java
-LegalExpertWithMemory legalExpert = AgenticServices
-        .agentBuilder(LegalExpertWithMemory.class)
-        .chatModel(BASE_MODEL)
-        .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-        .summarizedContext("medical", "technical")
-        .outputKey("response")
-        .build();
-```
-
-By doing so it internally uses the `ContextSummarizer` agent discussed before, executing it with the same chat model of the agent where it has been defined. It is also possible to add to this method a varargs of the names of the agents whose context should be summarized, so that the summarization is done only for those agents, and not for all the ones used in the agentic system.
-
-### AgenticScope registry and persistence
-
-The `AgenticScope` is a transient data structure that is created and used during the execution of an agentic system. There is a single `AgenticScope` per user per agentic system. For stateless executions, when no memory is used, the `AgenticScope` is automatically discarded at the end of the execution, and its state is not persisted anywhere. 
-
-Conversely, when the agentic system uses a memory, the `AgenticScope` is saved in an internal registry. In this case the `AgenticScope` remains in the registry forever to allow users to interact with the agentic system in a stateful and conversational way. For this reason, when a `AgenticScope` with a specific ID is no longer needed, it has to be explicitly evicted from the registry. In order to do so the root agent of the agentic system needs to implement the interface `AgenticScopeAccess` so it is possible to call the `evictAgenticScope` method on it, passing the ID of the `AgenticScope` that has to be removed from the registry.:
-
-```java
-agent.evictAgenticScope(memoryId);
-```
-
-Both the `AgenticScope`s and their registry are purely in memory data structures. This is usually sufficient for simple agentic systems, but in some cases it can be useful to persist the `AgenticScope` state to a more durable storage, like a database or a file system. To achieve this the `langchain4j-agentic` module provides an SPI to plug in a custom persistence layer that is an implementation of the `AgenticScopeStore` interface. It is possible to set this persistence layer either programmatically:
-
-```java
-AgenticScopePersister.setStore(new MyAgenticScopeStore());
-```
-
-or using the standard Java Service Provider interface creating a file named `META-INF/services/dev.langchain4j.agentic.scope.AgenticScopeStore` containing the fully qualified name of the class implementing the `AgenticScopeStore` interface.
 
 ## Pure agentic AI
 
@@ -1718,19 +1945,18 @@ UntypedAgent editor = AgenticServices.sequenceBuilder()
 Another common need when building agentic systems is to have a human in the loop, allowing the system to ask user's input for missing information or approval before proceeding with certain actions. This human-in-the-loop capability can be also seen as a special non-AI agent and thus implemented as such.
 
 ```java
-public record HumanInTheLoop(Consumer<String> requestWriter, Supplier<String> responseReader) {
+public record HumanInTheLoop(Function<AgenticScope, ?> responseProvider) {
 
     @Agent("An agent that asks the user for missing information")
-    public String askUser(String request) {
-        requestWriter.accept(request);
-        return responseReader.get();
+    public Object askUser(AgenticScope scope) {
+        return responseProvider.apply(scope);
     }
 }
 ```
 
-This quite naive, but also very generic, implementation is based on the use of two functions, a `Consumer` of the AI request intended to forward it to the user and a `Supplier`, eventually waiting in a blocking way, of the response provided by the user.
+This quite naive, but also very generic, implementation is based on the use of a single function that takes the current `AgenticScope` as input, from which it will be possible to extract the context to ask an appropriate question, and returns the response that should be provided to the user.
 
-The `HumanInTheLoop` agent provided out-of-the-box by the `langchain4j-agentic` module allows to define these two functions together with the agent description, the state variable of the `AgenticScope` used as input to generate the request for the user and the output variable where the user's response will be written.
+The `HumanInTheLoop` agent provided out-of-the-box by the `langchain4j-agentic` module allows to define this function together with the agent description, and the output variable where the user's response will be written.
 
 For instance, having defined an `AstrologyAgent` like:
 
@@ -1747,48 +1973,261 @@ public interface AstrologyAgent {
 }
 ```
 
-it is possible to create a `SupervisorAgent` that uses both this AI agent and a `HumanInTheLoop` one to ask the user for their zodiac sign before generating the horoscope, sending its question to the console standard output and reading the user's response from the standard input, as follows:
+it is possible to create a sequence workflow that uses both this AI agent and a `HumanInTheLoop` one to ask the user for their zodiac sign before generating the horoscope, sending its question to the console standard output and reading the user's response from the standard input, as follows:
 
 ```java
-AstrologyAgent astrologyAgent = AgenticServices
-        .agentBuilder(AstrologyAgent.class)
-        .chatModel(BASE_MODEL)
-        .build();
-
-HumanInTheLoop humanInTheLoop = AgenticServices
-        .humanInTheLoopBuilder()
+HumanInTheLoop humanInTheLoop = AgenticServices.humanInTheLoopBuilder()
         .description("An agent that asks the zodiac sign of the user")
         .outputKey("sign")
-        .requestWriter(request -> {
-            System.out.println(request);
+        .responseProvider(scope -> {
+            System.out.println("Hi " + scope.readState("name") + ", what is your sign?");
             System.out.print("> ");
+            try {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+                return reader.readLine();
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to read input", e);
+            }
         })
-        .responseReader(() -> System.console().readLine())
         .build();
 
-SupervisorAgent horoscopeAgent = AgenticServices
-        .supervisorBuilder()
-        .chatModel(PLANNER_MODEL)
-        .subAgents(astrologyAgent, humanInTheLoop)
+AstrologyAgent astrologyAgent = AgenticServices.agentBuilder(AstrologyAgent.class)
+        .chatModel(baseModel())
+        .outputKey("horoscope")
+        .build();
+
+UntypedAgent horoscopeAgent = AgenticServices.sequenceBuilder()
+        .subAgents(humanInTheLoop, astrologyAgent)
+        .outputKey("horoscope")
         .build();
 ```
 
 In this way if the user invokes the `horoscopeAgent` with a request like
 
 ```java
-horoscopeAgent.invoke("My name is Mario. What is my horoscope?")
+horoscopeAgent.invoke(Map.of("name", "Mario"));
 ```
 
-the supervisor agent will see that the user's zodiac sign is missing, and will invoke the `HumanInTheLoop` agent to ask the user for it, producing the following output:
+the sequence will first invoke the `HumanInTheLoop` agent to ask the user for the missing zodiac sign, producing the following output:
 
 ```
-What is your zodiac sign?
+Hi Mario, what is your sign?
 > 
 ```
 
 waiting for the user to provide the answer, which will be then used to invoke the `AstrologyAgent` and generate the horoscope.
 
-Since the user may take some time to provide the answer, it is possible, and actually recommended, to configure the `HumanInTheLoop` agent as an asynchronous one. In this way the agents that don't need the user's input can proceed with their execution while the agentic system is waiting for the user to provide the answer. Note however that the supervisor always enforces blocking execution for all agents in order to allow the planning of the next action to take into account the complete state of the `AgenticScope`. For this reason configuring the `HumanInTheLoop` agent in asynchronous mode wouldn't have any effect in the former example.
+Since the user may take some time to provide the answer, it is possible, and actually recommended, to configure the `HumanInTheLoop` agent as an asynchronous one. In this way the agents that don't need the user's input can proceed with their execution while the agentic system is waiting for the user to provide the answer.
+
+## Memory and context engineering
+
+All agents discussed so far are stateless, meaning that they do not maintain any context or memory of previous interactions. However, like for any other AI service, it is possible to provide agents with a `ChatMemory`, allowing them to maintain context across multiple invocations.
+
+To provide the former `MedicalExpert` with a memory, it is sufficient to add a field annotated with `@MemoryId` to its signature.
+
+```java
+public interface MedicalExpertWithMemory {
+
+    @UserMessage("""
+        You are a medical expert.
+        Analyze the following user request under a medical point of view and provide the best possible answer.
+        The user request is {{request}}.
+        """)
+    @Agent("A medical expert")
+    String medical(@MemoryId String memoryId, @V("request") String request);
+}
+```
+
+and set a memory provider when building the agent:
+
+```java
+MedicalExpertWithMemory medicalExpert = AgenticServices
+        .agentBuilder(MedicalExpertWithMemory.class)
+        .chatModel(BASE_MODEL)
+        .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+        .outputKey("response")
+        .build();
+```
+
+Generally this is enough for single agents used in isolation, but can be limiting for agents participating in an agentic system. Supposing that also the technical and legal experts have been provided with a memory, and also the `ExpertRouterAgent` has been redefined to have it:
+
+```java
+public interface ExpertRouterAgentWithMemory {
+
+    @Agent
+    String ask(@MemoryId String memoryId, @V("request") String request);
+}
+```
+
+The sequence of these two invocations to this agent
+
+```java
+String response1 = expertRouterAgent.ask("1", "I broke my leg, what should I do?");
+
+String legalResponse1 = expertRouterAgent.ask("1", "Should I sue my neighbor who caused this damage?");
+```
+
+won't give the expected result, because the second question will be routed to the legal expert, which is now invoked for the first time and has no memory of the previous question.
+
+To solve this problem it is necessary to provide the legal expert with the context and what happened before its invocation, and this is another use case where the information automatically stored in the `AgenticScope` can come to help.
+
+In particular the `AgenticScope` keeps track of the sequence of invocations of all agents, and can produce a context concatenating those invocations in a single conversation. This context can be used as it is or if necessary summarized to a shorter version, for instance defining a `ContextSummarizer` agent.
+
+```java
+public interface ContextSummarizer {
+
+    @UserMessage("""
+        Create a very short summary, 2 sentences at most, of the
+        following conversation between an AI agent and a user.
+
+        The user conversation is: '{{it}}'.
+        """)
+    String summarize(String conversation);
+}
+```
+
+Using this agent, the legal expert can be redefined and provided with a context summarization of the previous conversation, so that it can take into account the previous interactions when answering the new question.
+
+```java
+LegalExpertWithMemory legalExpert = AgenticServices
+        .agentBuilder(LegalExpertWithMemory.class)
+        .chatModel(BASE_MODEL)
+        .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+        .context(agenticScope -> contextSummarizer.summarize(agenticScope.contextAsConversation()))
+        .outputKey("response")
+        .build();
+```
+
+More in general the context provided to an agent can be any function of the `AgenticScope` state. With this setup, the legal expert, when asked if the neighbor should be sued for the damage he caused, will be able to take into account the previous conversation with the medical expert and provide a more informed answer.
+
+Internally the agentic framework provides the additional context to the legal expert by automatically rewriting the user message sent to it, so that it contains the summarized context of the previous conversation, so in this case the actual user message will be something like:
+
+```
+"Considering this context \"The user asked about what to do after breaking their leg, and the AI provided medical advice on immediate actions like immobilizing the leg, applying ice, and seeking medical attention.\"
+You are a legal expert.
+Analyze the following user request under a legal point of view and provide the best possible answer.
+The user request is Should I sue my neighbor who caused this damage?."
+```
+
+The summarized context discussed here as an example of possible context generation for an agent is of general usefulness, so it is possible to define it on an agent in a more convenient way, using the `summarizedContext` method, like in:
+
+```java
+LegalExpertWithMemory legalExpert = AgenticServices
+        .agentBuilder(LegalExpertWithMemory.class)
+        .chatModel(BASE_MODEL)
+        .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+        .summarizedContext("medical", "technical")
+        .outputKey("response")
+        .build();
+```
+
+By doing so it internally uses the `ContextSummarizer` agent discussed before, executing it with the same chat model of the agent where it has been defined. It is also possible to add to this method a varargs of the names of the agents whose context should be summarized, so that the summarization is done only for those agents, and not for all the ones used in the agentic system.
+
+### AgenticScope registry and persistence
+
+The `AgenticScope` is a transient data structure that is created and used during the execution of an agentic system. There is a single `AgenticScope` per user per agentic system. For stateless executions, when no memory is used, the `AgenticScope` is automatically discarded at the end of the execution, and its state is not persisted anywhere.
+
+Conversely, when the agentic system uses a memory, the `AgenticScope` is saved in an internal registry. In this case the `AgenticScope` remains in the registry forever to allow users to interact with the agentic system in a stateful and conversational way. For this reason, when a `AgenticScope` with a specific ID is no longer needed, it has to be explicitly evicted from the registry. In order to do so the root agent of the agentic system needs to implement the interface `AgenticScopeAccess` so it is possible to call the `evictAgenticScope` method on it, passing the ID of the `AgenticScope` that has to be removed from the registry.
+
+```java
+agent.evictAgenticScope(memoryId);
+```
+
+Both the `AgenticScope`s and their registry are purely in memory data structures. This is usually sufficient for simple agentic systems, but in some cases it can be useful to persist the `AgenticScope` state to a more durable storage, like a database or a file system. To achieve this the `langchain4j-agentic` module provides an SPI to plug in a custom persistence layer that is an implementation of the `AgenticScopeStore` interface. It is possible to set this persistence layer either programmatically:
+
+```java
+AgenticScopePersister.setStore(new MyAgenticScopeStore());
+```
+
+or using the standard Java Service Provider interface creating a file named `META-INF/services/dev.langchain4j.agentic.scope.AgenticScopeStore` containing the fully qualified name of the class implementing the `AgenticScopeStore` interface.
+
+### AgenticScope and agentic systems recoverability
+
+When an `AgenticScopeStore` is configured, the `langchain4j-agentic` module provides built-in recoverability support that allows agentic systems to resume execution from where they left off after a crash or process restart. This is especially valuable for long-running workflows that include human-in-the-loop steps, where the process may be intentionally stopped and restarted later.
+
+Recoverability is based on two mechanisms working together: **per-step checkpointing** and **planner execution state persistence**.
+
+After each agent invocation, the current `AgenticScope` is automatically checkpointed to the configured store. This means that all intermediate state written by agents (via `writeState`) is durably persisted. Additionally, the execution loop saves the planner's internal position (e.g., which agent in a sequence has been reached) so that on recovery the workflow resumes from the correct step rather than restarting from scratch.
+
+An implementation of the `Planner` interface can optionally participate in this mechanism through two methods:
+
+```java
+// Returns the planner's current internal state for persistence
+default Map<String, Object> executionState() { return Map.of(); }
+
+// Restores internal state from a previously saved map
+default void restoreExecutionState(Map<String, Object> state) { }
+```
+
+For instance, stateful planners like the sequential and the loop ones implement these methods to save and restore their cursor position and iteration counters. Stateless planners (like `ParallelPlanner` or `ConditionalPlanner`) use the default no-op implementations. Custom `Planner` implementations can override these methods to participate in recoverability as well.
+
+To give a practical example of how this works, consider an order processing workflow where a large order must be reviewed by a human before it is fulfilled. The workflow has three steps: validate the order, wait for human approval, and ship the order.
+
+```java
+public interface OrderWorkflow extends AgenticScopeAccess {
+    @Agent
+    String processOrder(@MemoryId String orderId, @V("order") String orderDetails);
+}
+```
+
+The `@MemoryId` annotation is essential — it activates persistent scope, which is required for recoverability. Build the workflow as a sequence of three agents:
+
+```java
+// Step 1: Validate the order and write results to shared state
+AgenticScopeAction validateOrder = AgenticServices.agentAction(scope -> {
+    String order = scope.readState("order", "");
+    scope.writeState("validated_order", "VALIDATED: " + order);
+});
+
+// Step 2: Pause for human approval using PendingResponse
+HumanInTheLoop approvalGate = AgenticServices.humanInTheLoopBuilder()
+        .description("Wait for manager approval on large orders")
+        .outputKey("approval")
+        .responseProvider(scope -> new PendingResponse<>("manager-approval"))
+        .build();
+
+// Step 3: Finalize based on the approval decision
+AgenticScopeAction shipOrder = AgenticServices.agentAction(scope -> {
+    String validated = scope.readState("validated_order", "");
+    String approval = scope.readState("approval", "");
+    scope.writeState("result", "Order " + validated + " — " + approval);
+});
+
+OrderWorkflow workflow = AgenticServices.sequenceBuilder(OrderWorkflow.class)
+        .subAgents(validateOrder, approvalGate, shipOrder)
+        .outputKey("result")
+        .build();
+```
+
+When this workflow runs, it validates the order, then blocks at the `HumanInTheLoop` step waiting for external input. At this point the full scope — including the validated order data, the planner's cursor position (step 2 completed), and the `PendingResponse` — is checkpointed to the store.
+
+The `PendingResponse` class is an implementation of the `DelayedResponse` that can be completed externally without spawning a background thread. Unlike `AsyncResponse`, which immediately starts executing on a thread pool, `PendingResponse` creates an initially incomplete future that must be explicitly completed via its `complete()` method. After serialization and deserialization, a new incomplete future is created, allowing an external system to reconnect and complete the response.
+
+If the process crashes or restarts, the scope can be recovered and the workflow resumed:
+
+```java
+// After restart: load the persisted scope and provide the human response
+AgenticScope recovered = workflow.getAgenticScope("order-12345");
+
+// Replace the PendingResponse with the actual human decision
+recovered.writeState("approval", "APPROVED by manager");
+
+// Re-invoke with the same order ID — the planner resumes from step 3
+String result = workflow.processOrder("order-12345", "1000 widgets");
+// → "Order VALIDATED: 1000 widgets — APPROVED by manager"
+```
+
+The `SequentialPlanner` restores its cursor from the checkpointed state and skips the already-completed steps (validate and approval gate), executing only the final shipping step.
+
+Alternatively, if the process is still running and the workflow is simply waiting for human input, the `PendingResponse` can be completed directly without restarting:
+
+```java
+// Complete the pending response in-flight (e.g., from a REST endpoint)
+AgenticScope scope = workflow.getAgenticScope("order-12345");
+scope.completePendingResponse("manager-approval", "APPROVED by manager");
+```
+
+This unblocks the waiting thread and the workflow continues to the shipping step without any restart.
 
 ## A2A Integration
 
@@ -1828,3 +2267,67 @@ A2ACreativeWriter creativeWriter = AgenticServices
 This agent can then be used in the same way as a local agent, and mixed with them, when defining a workflow or using it as a subagent for a supervisor.
 
 The remote A2A agent must return a [Task](https://a2a-protocol.org/latest/specification/#61-task-object) type.
+
+## MCP-based Tool Agents
+
+The additional `langchain4j-agentic-mcp` module allows wrapping a single [MCP](https://modelcontextprotocol.io/) tool as a non-AI agent in the agentic system. Unlike regular agents that use an LLM, an MCP tool agent simply executes the MCP tool directly and returns its result. This makes it possible to compose MCP tools with other agents in larger agentic systems, without involving an LLM for the tool execution itself.
+
+To create an MCP tool agent, use `McpAgent.builder()` providing the `McpClient` instance. The builder queries the MCP server for the tool specification (name, description, input schema) and creates an agent that forwards invocations to that tool.
+
+For example, if an MCP server exposes a `generate_story` tool, it can be wrapped as an untyped agent:
+
+```java
+McpClient mcpClient = new DefaultMcpClient.Builder()
+        .transport(myMcpTransport)
+        .build();
+
+UntypedAgent storyGenerator = McpAgent.builder(mcpClient)
+        .toolName("generate_story")
+        .inputKeys("topic")
+        .outputKey("story")
+        .build();
+
+String story = (String) storyGenerator.invoke(Map.of("topic", "dragons and wizards"));
+```
+
+The `toolName` specifies which tool to bind when the MCP server exposes multiple tools. If the server exposes only one tool, `toolName` can be omitted and the single available tool will be selected automatically. The `inputKeys` specify the names of the tool's input parameters; for untyped agents these are also automatically derived from the tool's JSON schema if not provided explicitly.
+
+As with other agents, MCP tool agents can also be created with a typed interface:
+
+```java
+public interface StoryGenerator {
+
+    @Agent
+    String generateStory(@V("topic") String topic);
+}
+
+StoryGenerator storyGenerator = McpAgent.builder(mcpClient, StoryGenerator.class)
+        .toolName("generate_story")
+        .outputKey("story")
+        .build();
+
+String story = storyGenerator.generateStory("dragons and wizards");
+```
+
+In this case, the input parameter names are derived from the method parameters (or their `@V` annotations), and the return type determines how the tool's text result is parsed.
+
+Finally, MCP tool agents can also be defined declaratively using the `@McpClientAgent` annotation. The `@McpClientSupplier` annotation marks a static method that provides the `McpClient` instance.
+
+```java
+public interface DeclarativeMcpStoryGenerator {
+
+    @McpClientAgent(toolName = "generate_story", outputKey = "story",
+            description = "Generates a story based on the given topic")
+    String generateStory(@V("topic") String topic);
+
+    @McpClientSupplier
+    static McpClient mcpClient() {
+        McpTransport transport = new StreamableHttpMcpTransport.Builder()
+                .url("http://localhost:8081/mcp")
+                .build();
+        return new DefaultMcpClient.Builder()
+                .transport(transport)
+                .build();
+    }
+}
+```

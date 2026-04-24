@@ -1,14 +1,14 @@
 package dev.langchain4j.model.anthropic;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.internal.Utils.randomString;
 import static dev.langchain4j.internal.Utils.readBytes;
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_5_20250929;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -31,7 +31,6 @@ import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -45,8 +44,9 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .logRequests(false) // base64-encoded PDFs are huge
                 .logResponses(true)
                 .build();
@@ -71,8 +71,9 @@ class AnthropicChatModelIT {
         List<String> stopSequences = List.of("World", " World");
 
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .stopSequences(stopSequences)
                 .logRequests(true)
                 .logResponses(true)
@@ -95,16 +96,16 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(null) // caching test requires no other caching
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .beta("prompt-caching-2024-07-31")
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
 
         SystemMessage systemMessage =
-                SystemMessage.from("What types of messages are supported in LangChain?".repeat(172) + randomString(2));
+                SystemMessage.from("What types of messages are supported in LangChain?".repeat(350) + randomString(2));
         UserMessage userMessage =
                 new UserMessage(TextContent.from("What types of messages are supported in LangChain?"));
 
@@ -130,18 +131,18 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(null) // caching test requires no other caching
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .beta("prompt-caching-2024-07-31")
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
 
         SystemMessage systemMessage =
-                SystemMessage.from("What types of messages are supported in LangChain?".repeat(87) + randomString(2));
+                SystemMessage.from("What types of messages are supported in LangChain?".repeat(180) + randomString(2));
         SystemMessage systemMessage2 =
-                SystemMessage.from("What types of messages are supported in LangChain?".repeat(87) + randomString(2));
+                SystemMessage.from("What types of messages are supported in LangChain?".repeat(180) + randomString(2));
         UserMessage userMessage =
                 new UserMessage(TextContent.from("What types of messages are supported in LangChain?"));
 
@@ -167,9 +168,9 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .beta("prompt-caching-2024-07-31")
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
                 .logRequests(true)
                 .logResponses(true)
@@ -193,12 +194,11 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
-                .baseUrl("https://api.anthropic.com/v1/")
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .version("2023-06-01")
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .temperature(1.0)
-                .topP(1.0)
                 .topK(1)
                 .maxTokens(3)
                 .stopSequences(asList("hello", "world"))
@@ -218,18 +218,15 @@ class AnthropicChatModelIT {
     }
 
     @ParameterizedTest
-    @EnumSource(
-            value = AnthropicChatModelName.class,
-            mode = EXCLUDE,
-            names = {"CLAUDE_OPUS_4_20250514" // Run manually before release. Expensive to run very often.
-            })
+    @EnumSource(AnthropicChatModelName.class)
     void should_support_all_enum_model_names(AnthropicChatModelName modelName) {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
-                .maxTokens(1)
+                .maxTokens(5)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -244,20 +241,17 @@ class AnthropicChatModelIT {
     }
 
     @ParameterizedTest
-    @EnumSource(
-            value = AnthropicChatModelName.class,
-            mode = EXCLUDE,
-            names = {"CLAUDE_OPUS_4_20250514" // Run manually before release. Expensive to run very often.
-            })
+    @EnumSource(AnthropicChatModelName.class)
     void should_support_all_string_model_names(AnthropicChatModelName modelName) {
 
         // given
         String modelNameString = modelName.toString();
 
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelNameString)
-                .maxTokens(1)
+                .maxTokens(5)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -284,8 +278,9 @@ class AnthropicChatModelIT {
         // given
         String expectedToolName = "get_weather";
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
@@ -333,8 +328,9 @@ class AnthropicChatModelIT {
     void should_force_execution_without_tools_when_pass_tool_choice_none() {
         // given
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
@@ -378,8 +374,9 @@ class AnthropicChatModelIT {
     void should_execute_one_tool_and_ignore_another_tool_with_parallel_tool_disabled() {
         // given
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
@@ -421,20 +418,20 @@ class AnthropicChatModelIT {
     }
 
     @Test
-    void should_cache_system_message_and_tools() {
+    void should_cache_system_message_and_tools() throws InterruptedException {
 
         // given
         AnthropicChatModel model = AnthropicChatModel.builder()
+                .baseUrl(null) // caching test requires no other caching
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .beta("prompt-caching-2024-07-31")
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
                 .cacheTools(true)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
 
-        SystemMessage systemMessage = SystemMessage.from("returns a sum of two numbers".repeat(210) + randomString(2));
+        SystemMessage systemMessage = SystemMessage.from("returns a sum of two numbers".repeat(430) + randomString(2));
 
         UserMessage userMessage = userMessage("How much is 2+2 and 3+3? Call tools in parallel!");
 
@@ -461,6 +458,8 @@ class AnthropicChatModelIT {
         assertThat(createCacheTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
         assertThat(createCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
 
+        Thread.sleep(2000);
+
         // when
         ChatResponse response2 = model.chat(request);
 
@@ -471,13 +470,13 @@ class AnthropicChatModelIT {
     }
 
     @Test
-    void should_cache_tools() {
+    void should_cache_tools() throws InterruptedException {
 
         // given
         AnthropicChatModel model = AnthropicChatModel.builder()
+                .baseUrl(null) // caching test requires no other caching
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .beta("prompt-caching-2024-07-31")
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheTools(true)
                 .logRequests(true)
                 .logResponses(true)
@@ -487,7 +486,7 @@ class AnthropicChatModelIT {
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("calculator")
-                .description("returns a sum of two numbers".repeat(214) + randomString(2))
+                .description("returns a sum of two numbers".repeat(500) + randomString(10))
                 .parameters(JsonObjectSchema.builder()
                         .addIntegerProperty("first")
                         .addIntegerProperty("second")
@@ -505,8 +504,11 @@ class AnthropicChatModelIT {
 
         // then
         AnthropicTokenUsage createCacheTokenUsage = (AnthropicTokenUsage) response.tokenUsage();
-        assertThat(createCacheTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
+        int minCacheableTokenThresholdForHaiku = 4096;
+        assertThat(createCacheTokenUsage.cacheCreationInputTokens()).isGreaterThan(minCacheableTokenThresholdForHaiku);
         assertThat(createCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
+
+        Thread.sleep(2000);
 
         // when
         ChatResponse response2 = model.chat(request);
@@ -522,8 +524,9 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -544,17 +547,20 @@ class AnthropicChatModelIT {
     }
 
     @Test
-    void should_send_custom_parameters() {
+    void should_set_custom_parameters_and_get_raw_response() {
 
         // given
         record Edit(String type) {}
-        record ContextManagement(List<Edit> edits) { }
-        Map<String, Object> customParameters = Map.of("context_management", new ContextManagement(List.of(new Edit("clear_tool_uses_20250919"))));
+        record ContextManagement(List<Edit> edits) {}
+        Map<String, Object> customParameters =
+                Map.of("context_management", new ContextManagement(List.of(new Edit("clear_tool_uses_20250919"))));
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
 
         ChatModel model = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_SONNET_4_5_20250929)
                 .beta("context-management-2025-06-27")
@@ -573,16 +579,245 @@ class AnthropicChatModelIT {
         // then
         assertThat(chatResponse.aiMessage().text()).contains("Berlin");
 
-        assertThat(spyingHttpClient.request().body().contains("context_management"));
+        assertThat(spyingHttpClient.request().body()).contains("context_management");
+
+        AnthropicChatResponseMetadata metadata = (AnthropicChatResponseMetadata) chatResponse.metadata();
+        assertThat(metadata.rawHttpResponse().headers()).containsKey("anthropic-organization-id");
+        assertThat(metadata.rawHttpResponse().body()).contains("Berlin");
+        assertThat(metadata.rawServerSentEvents()).isEmpty();
     }
 
-    static String randomString(int length) {
-        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        Random random = new Random();
-        StringBuilder result = new StringBuilder(length);
-        for (int i = 0; i < length; i++) {
-            result.append(characters.charAt(random.nextInt(characters.length())));
-        }
-        return result.toString();
+    @Test
+    void should_support_code_execution_tool() {
+
+        // given
+        AnthropicServerTool codeExecutionTool = AnthropicServerTool.builder()
+                .type("code_execution_20250825")
+                .name("code_execution")
+                .build();
+
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
+
+        ChatModel model = AnthropicChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .beta("code-execution-2025-08-25")
+                .modelName(CLAUDE_SONNET_4_5_20250929)
+                .serverTools(codeExecutionTool)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Calculate the average of [1, 2, 3, 4, 5]"))
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        assertThat(spyingHttpClient.request().body()).contains(codeExecutionTool.type());
+
+        assertThat(chatResponse.aiMessage().text()).contains("3");
+        assertThat(chatResponse.aiMessage().toolExecutionRequests()).isEmpty();
+    }
+
+    @Test
+    void should_support_web_search_tool() {
+
+        // given
+        AnthropicServerTool webSearchTool = AnthropicServerTool.builder()
+                .type("web_search_20250305")
+                .name("web_search")
+                .addAttribute("max_uses", 5)
+                .addAttribute("allowed_domains", List.of("accuweather.com"))
+                .build();
+
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
+
+        ChatModel model = AnthropicChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_SONNET_4_5_20250929)
+                .serverTools(webSearchTool)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("What is the weather in Munich?"))
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        assertThat(spyingHttpClient.request().body()).contains(webSearchTool.type());
+
+        assertThat(chatResponse.aiMessage().text()).isNotBlank();
+        assertThat(chatResponse.aiMessage().toolExecutionRequests()).isEmpty();
+    }
+
+    @Test
+    void should_support_tool_search_tool() {
+
+        // given
+        AnthropicServerTool toolSearchTool = AnthropicServerTool.builder()
+                .type("tool_search_tool_regex_20251119")
+                .name("tool_search_tool_regex")
+                .build();
+
+        Map<String, Object> toolMetadata = Map.of("defer_loading", true);
+
+        ToolSpecification weatherTool = ToolSpecification.builder()
+                .name("get_weather")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("location")
+                        .required("location")
+                        .build())
+                .metadata(toolMetadata)
+                .build();
+
+        ToolSpecification timeTool = ToolSpecification.builder()
+                .name("get_time")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("location")
+                        .required("location")
+                        .build())
+                .build();
+
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
+
+        ChatModel model = AnthropicChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_SONNET_4_5_20250929)
+                .beta("advanced-tool-use-2025-11-20")
+                .serverTools(toolSearchTool)
+                .toolMetadataKeysToSend(toolMetadata.keySet())
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("What is the weather in Munich? Use tool search if needed."))
+                .toolSpecifications(weatherTool, timeTool)
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        assertThat(spyingHttpClient.request().body())
+                .contains(toolSearchTool.type())
+                .contains(toolMetadata.keySet().iterator().next());
+
+        List<ToolExecutionRequest> toolExecutionRequests =
+                chatResponse.aiMessage().toolExecutionRequests();
+        assertThat(toolExecutionRequests).hasSize(1);
+        assertThat(toolExecutionRequests.get(0).name()).isEqualTo(weatherTool.name());
+    }
+
+    @Test
+    void should_send_strict_true_in_tools_definition() {
+        // given
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
+
+        ChatModel model = AnthropicChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_SONNET_4_5_20250929)
+                .temperature(0.0)
+                .toolChoice(ToolChoice.REQUIRED)
+                .disableParallelToolUse(true)
+                // when
+                .beta("structured-outputs-2025-11-13")
+                .strictTools(true)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ToolSpecification weatherTool = ToolSpecification.builder()
+                .name("get_weather")
+                .description("Get the current weather in a given location")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("location")
+                        .required("location")
+                        .build())
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("What's the weather in Munich? "
+                        + "When calling tools, include a parameter unit='celsius' in the tool input."))
+                .toolSpecifications(weatherTool)
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        String body = spyingHttpClient.request().body();
+
+        assertThat(body)
+                .contains("\"name\" : \"get_weather\"")
+                .contains("\"strict\" : true")
+                .contains("\"additionalProperties\" : false");
+
+        AiMessage aiMessage = chatResponse.aiMessage();
+        List<ToolExecutionRequest> toolCalls = aiMessage.toolExecutionRequests();
+        assertThat(toolCalls).hasSize(1);
+
+        ToolExecutionRequest call = toolCalls.get(0);
+        assertThat(call.name()).isEqualTo("get_weather");
+
+        assertThat(call.arguments()).contains("\"location\"").doesNotContain("\"unit\"");
+    }
+
+    @Test
+    void should_return_server_tool_results_in_attributes_when_enabled() {
+
+        // given
+        AnthropicServerTool webSearchTool = AnthropicServerTool.builder()
+                .type("web_search_20250305")
+                .name("web_search")
+                .addAttribute("max_uses", 3)
+                .build();
+
+        ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_SONNET_4_5_20250929)
+                .serverTools(webSearchTool)
+                .returnServerToolResults(true)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("What is the weather in Munich right now?"))
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).isNotBlank();
+
+        List<AnthropicServerToolResult> results = aiMessage.attribute("server_tool_results", List.class);
+        assertThat(results).isNotEmpty();
+
+        AnthropicServerToolResult result = results.get(0);
+        assertThat(result.type()).isEqualTo("web_search_tool_result");
+        assertThat(result.toolUseId()).isNotBlank();
+        assertThat(result.content()).isNotNull();
     }
 }

@@ -1,6 +1,6 @@
 package dev.langchain4j.model.openaiofficial.openai;
 
-import static dev.langchain4j.model.openaiofficial.azureopenai.InternalAzureOpenAiOfficialTestHelper.EMBEDDING_MODEL_NAME;
+import static dev.langchain4j.model.openaiofficial.microsoftfoundry.InternalMicrosoftFoundryTestHelper.EMBEDDING_MODEL_NAME;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -73,6 +73,7 @@ class OpenAiOfficialEmbeddingModelIT {
         int totalSegmentsToEmbed = 50;
 
         EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(EMBEDDING_MODEL_NAME)
                 .maxSegmentsPerBatch(maxSegmentsPerBatch)
@@ -107,6 +108,7 @@ class OpenAiOfficialEmbeddingModelIT {
         int dimension = 42;
 
         EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(EMBEDDING_MODEL_NAME)
                 .dimensions(dimension)

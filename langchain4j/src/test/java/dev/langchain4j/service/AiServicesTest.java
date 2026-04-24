@@ -1,11 +1,17 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.data.message.SystemMessage.systemMessage;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import org.junit.jupiter.api.Test;
 
 class AiServicesTest {
@@ -120,5 +126,100 @@ class AiServicesTest {
     void should_preserve_interface_type() {
         assertThat(assistant).isInstanceOf(Assistant.class);
         assertThat(Assistant.class.isAssignableFrom(assistant.getClass())).isTrue();
+    }
+
+    interface ChefAssistant {
+
+        @SystemMessage("You are a professional chef.")
+        String answer(String question);
+    }
+
+    @Test
+    void should_transform_system_message() {
+
+        // given
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds("Grill for 30 minutes."));
+
+        ChefAssistant chef = AiServices.builder(ChefAssistant.class)
+                .chatModel(chatModel)
+                .systemMessageTransformer(msg -> msg + " Keep your answer to one sentence.")
+                .build();
+
+        // when
+        chef.answer("How long should I grill chicken?");
+
+        // then
+        verify(chatModel).chat(ChatRequest.builder()
+                .messages(
+                        systemMessage("You are a professional chef. Keep your answer to one sentence."),
+                        userMessage("How long should I grill chicken?"))
+                .build());
+    }
+
+    @Test
+    void should_transform_system_message_with_invocation_context() {
+
+        // given
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds("Grill for 30 minutes."));
+
+        ChefAssistant chef = AiServices.builder(ChefAssistant.class)
+                .chatModel(chatModel)
+                .systemMessageTransformer((msg, ctx) -> msg + " Method: " + ctx.methodName() + ".")
+                .build();
+
+        // when
+        chef.answer("How long should I grill chicken?");
+
+        // then
+        verify(chatModel).chat(ChatRequest.builder()
+                .messages(
+                        systemMessage("You are a professional chef. Method: answer."),
+                        userMessage("How long should I grill chicken?"))
+                .build());
+    }
+
+    @Test
+    void should_add_system_message_via_transformer_when_none_is_configured() {
+
+        // given
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds("4"));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .systemMessageTransformer(msg -> "You are a helpful assistant.")
+                .build();
+
+        // when
+        assistant.chat("What is 2 + 2?");
+
+        // then
+        verify(chatModel).chat(ChatRequest.builder()
+                .messages(
+                        systemMessage("You are a helpful assistant."),
+                        userMessage("What is 2 + 2?"))
+                .build());
+    }
+
+    @Test
+    void should_transform_system_message_from_system_message_provider() {
+
+        // given
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds("4"));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .systemMessageProvider(memoryId -> "You are a helpful assistant.")
+                .systemMessageTransformer(msg -> msg + " Always be concise.")
+                .build();
+
+        // when
+        assistant.chat("What is 2 + 2?");
+
+        // then
+        verify(chatModel).chat(ChatRequest.builder()
+                .messages(
+                        systemMessage("You are a helpful assistant. Always be concise."),
+                        userMessage("What is 2 + 2?"))
+                .build());
     }
 }

@@ -4,7 +4,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.10.0-beta17-SNAPSHOT</version>
+        <version>1.14.0-beta24-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -23,27 +23,114 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.10.0-SNAPSHOT</version>
+            <version>1.14.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-ollama</artifactId>
-            <version>1.10.0-SNAPSHOT</version>
+            <version>1.14.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-open-ai</artifactId>
-            <version>1.10.0-SNAPSHOT</version>
+            <version>1.14.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-google-ai-gemini</artifactId>
-            <version>1.10.0-SNAPSHOT</version>
+            <version>1.14.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.revapi</groupId>
+                    <artifactId>revapi-maven-plugin</artifactId>
+                    <version>0.15.1</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.revapi</groupId>
+                            <artifactId>revapi-java</artifactId>
+                            <version>0.28.4</version>
+                        </dependency>
+                    </dependencies>
+                    <configuration>
+                        <oldVersion>RELEASE</oldVersion>
+                        <analysisConfigurationFiles>
+                            <configurationFile>
+                                <path>${project.basedir}/revapi.json</path>
+                            </configurationFile>
+                        </analysisConfigurationFiles>
+                        <failOnMissingConfigurationFiles>false</failOnMissingConfigurationFiles>
+                        <checkDependencies>false</checkDependencies>
+                        <analysisConfiguration>
+                            <revapi.filter>
+                                <elements>
+                                    <exclude>
+                                        <item>
+                                            <matcher>java</matcher>
+                                            <match>@dev.langchain4j.Internal ^*;</match>
+                                        </item>
+                                        <item>
+                                            <matcher>java-package</matcher>
+                                            <match>/.*\.internal(\..*)?/</match>
+                                        </item>
+                                    </exclude>
+                                </elements>
+                            </revapi.filter>
+                            <revapi.differences>
+                                <ignore>true</ignore>
+                                <differences>
+                                    <item>
+                                        <regex>true</regex>
+                                        <code>.*</code>
+                                        <old>.*\.internal\..*</old>
+                                        <justification>Internal API is not subject to backward compatibility checks</justification>
+                                    </item>
+                                    <item>
+                                        <regex>true</regex>
+                                        <code>.*</code>
+                                        <new>.*\.internal\..*</new>
+                                        <justification>Internal API is not subject to backward compatibility checks</justification>
+                                    </item>
+                                    <item>
+                                        <regex>true</regex>
+                                        <code>.*</code>
+                                        <old>.*Internal.*</old>
+                                        <justification>Internal API is not subject to backward compatibility checks</justification>
+                                    </item>
+                                    <item>
+                                        <regex>true</regex>
+                                        <code>.*</code>
+                                        <new>.*Internal.*</new>
+                                        <justification>Internal API is not subject to backward compatibility checks</justification>
+                                    </item>
+                                    <item>
+                                        <code>java.method.varargOverloadsOnlyDifferInVarargParameter</code>
+                                        <justification>Varargs overloads differing only in element type are intentional for API convenience</justification>
+                                    </item>
+                                    <item>
+                                        <code>java.missing.oldClass</code>
+                                        <justification>Dependencies are not checked, so their classes are expectedly missing</justification>
+                                    </item>
+                                    <item>
+                                        <code>java.missing.newClass</code>
+                                        <justification>Dependencies are not checked, so their classes are expectedly missing</justification>
+                                    </item>
+                                </differences>
+                            </revapi.differences>
+                        </analysisConfiguration>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
 
 </project>

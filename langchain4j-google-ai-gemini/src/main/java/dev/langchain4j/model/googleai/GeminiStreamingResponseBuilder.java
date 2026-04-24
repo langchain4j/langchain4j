@@ -8,7 +8,6 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
 import dev.langchain4j.model.output.FinishReason;
@@ -60,7 +59,12 @@ class GeminiStreamingResponseBuilder {
             return new TextAndTools(Optional.empty(), Optional.empty(), List.of());
         }
 
-        GeminiCandidate firstCandidate = partialResponse.candidates().get(0);
+        List<GeminiCandidate> candidates = partialResponse.candidates();
+        if (candidates == null || candidates.isEmpty()) {
+            return new TextAndTools(Optional.empty(), Optional.empty(), List.of());
+        }
+
+        GeminiCandidate firstCandidate = candidates.get(0);
 
         updateId(partialResponse);
         updateModelName(partialResponse);
@@ -90,7 +94,7 @@ class GeminiStreamingResponseBuilder {
         AiMessage aiMessage = createAiMessage();
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
-                .metadata(ChatResponseMetadata.builder()
+                .metadata(GoogleAiGeminiChatResponseMetadata.builder()
                         .id(id.get())
                         .modelName(modelName.get())
                         .tokenUsage(tokenUsage.get())
@@ -113,10 +117,13 @@ class GeminiStreamingResponseBuilder {
 
     private void updateTokenUsage(GeminiUsageMetadata usageMetadata) {
         if (usageMetadata != null) {
-            TokenUsage tokenUsage = new TokenUsage(
-                    usageMetadata.promptTokenCount(),
-                    usageMetadata.candidatesTokenCount(),
-                    usageMetadata.totalTokenCount());
+            TokenUsage tokenUsage = GoogleAiGeminiTokenUsage.builder()
+                    .inputTokenCount(usageMetadata.promptTokenCount())
+                    .outputTokenCount(usageMetadata.candidatesTokenCount())
+                    .totalTokenCount(usageMetadata.totalTokenCount())
+                    .cachedContentTokenCount(usageMetadata.cachedContentTokenCount())
+                    .thoughtsTokenCount(usageMetadata.thoughtsTokenCount())
+                    .build();
             this.tokenUsage.set(tokenUsage);
         }
     }

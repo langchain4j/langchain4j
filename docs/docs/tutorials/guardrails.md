@@ -70,6 +70,7 @@ Some examples of things you could do:
 - Check that there are enough documents in the augmentation results
 - Ensure the user is not asking the same question multiple times
 - Mitigate potential prompt injection attack
+- Rewrite eligible single-text input with the community [Prompt Repetition](/integrations/prompt-repetition/) module
 
 Input guardrails can be used whether the operation is synchronous or asynchronous/streaming.
 
@@ -121,6 +122,10 @@ var assistant = AiServices.builder(Assistant.class)
     .inputGuardrails(new FirstInputGuardrail(), new SecondInputGuardrail())
     .build();
 ```
+
+:::info
+If you want a ready-made experimental input guardrail that rewrites eligible single-text input using prompt repetition, see the community [Prompt Repetition](/integrations/prompt-repetition/) module.
+:::
 
 In the first scenario, classes that implement `InputGuardrail` are passed. New instances of these classes are created dynamically using reflection.
 
@@ -230,6 +235,14 @@ class Tests {
 :::info
 See the [`GuardrailAssertions`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-test/src/main/java/dev/langchain4j/test/guardrail/GuardrailAssertions.java) and [`InputGuardrailResultAssert`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-test/src/main/java/dev/langchain4j/test/guardrail/InputGuardrailResultAssert.java) classes for more details.
 :::
+
+### Out-of-the-box Input Guardrails
+
+There are several common use cases where implementations of an input guardrail are provided by LangChain4j:
+
+| Guardrail class                                                                                                                                                                              | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`MessageModeratorInputGuardrail`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-guardrails/src/main/java/dev/langchain4j/guardrails/MessageModeratorInputGuardrail.java) | An input guardrail that validates user messages using a [`ModerationModel`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/model/moderation/ModerationModel.java) to detect potentially harmful, inappropriate, or policy-violating content.<br/> - Checks incoming messages for hate speech, violence, self-harm, sexual content, or other categories defined by the moderation model.<br/> - If the message is flagged, validation fails with a fatal result, preventing the message from being processed further.<br/> - Useful for ensuring user inputs comply with content policies before being sent to an LLM. |
 
 ## Output Guardrails
 

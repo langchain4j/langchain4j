@@ -22,8 +22,8 @@ public class OracleContainerTestBase {
     static void beforeAll() throws SQLException {
         if (System.getenv("ORACLE_JDBC_URL") == null) {
             container = new OracleContainer(ORACLE_IMAGE_NAME)
-                    .withStartupTimeout(Duration.ofSeconds(600))
-                    .withConnectTimeoutSeconds(600)
+                    .withStartupTimeout(Duration.ofSeconds(60 * 20))
+                    .withConnectTimeoutSeconds(60 * 20)
                     .withDatabaseName("pdb1")
                     .withUsername("testuser")
                     .withPassword("testpwd");

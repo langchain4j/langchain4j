@@ -2,24 +2,53 @@ package dev.langchain4j.model.anthropic;
 
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTANT;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.SERVER_TOOL_RESULTS_KEY;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.retainKeys;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAiMessage;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSchema;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTool;
 import static java.util.Arrays.asList;
-import static java.util.Collections.*;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptyMap;
+import static java.util.Collections.singletonList;
+import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.message.*;
-import dev.langchain4j.model.anthropic.internal.api.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicImageContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicMessageContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicPdfContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import java.net.URI;
 import java.util.AbstractMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -196,7 +225,25 @@ class AnthropicMapperTest {
                                 USER,
                                 asList(
                                         new AnthropicTextContent("Describe this image"),
-                                        AnthropicImageContent.fromUrl(DICE_IMAGE_URL))))));
+                                        AnthropicImageContent.fromUrl(DICE_IMAGE_URL))))),
+                Arguments.of(
+                        singletonList(
+                                UserMessage.from(PdfFileContent.from(URI.create("https://example.com/document.pdf")))),
+                        singletonList(new AnthropicMessage(
+                                USER, singletonList(AnthropicPdfContent.fromUrl("https://example.com/document.pdf"))))),
+                Arguments.of(
+                        singletonList(UserMessage.from(PdfFileContent.from("base64data", "application/pdf"))),
+                        singletonList(new AnthropicMessage(
+                                USER, singletonList(AnthropicPdfContent.fromBase64("application/pdf", "base64data"))))),
+                Arguments.of(
+                        singletonList(UserMessage.from(
+                                TextContent.from("Analyze this document"),
+                                PdfFileContent.from(URI.create("https://example.com/document.pdf")))),
+                        singletonList(new AnthropicMessage(
+                                USER,
+                                asList(
+                                        new AnthropicTextContent("Analyze this document"),
+                                        AnthropicPdfContent.fromUrl("https://example.com/document.pdf"))))));
     }
 
     @ParameterizedTest
@@ -208,6 +255,75 @@ class AnthropicMapperTest {
 
         // then
         assertThat(anthropicTool).isEqualTo(expectedAnthropicTool);
+    }
+
+    @Test
+    void test_toAnthropicSchema_with_objects() throws JsonProcessingException {
+
+        // given
+        JsonSchemaElement jsonSchemaElement = JsonObjectSchema.builder()
+                .addStringProperty("name")
+                .addStringProperty("email")
+                .addStringProperty("plan_interest")
+                .addBooleanProperty("demo_requested")
+                .required("name", "email", "plan_interest", "demo_requested")
+                .build();
+
+        // when
+        Map<String, Object> map = toAnthropicSchema(jsonSchemaElement);
+
+        // then
+        assertThat(new ObjectMapper().writeValueAsString(map))
+                .isEqualToIgnoringWhitespace(
+                        """
+                        {
+                          "type": "object",
+                          "properties": {
+                              "name": {"type": "string"},
+                              "email": {"type": "string"},
+                              "plan_interest": {"type": "string"},
+                              "demo_requested": {"type": "boolean"}
+                          },
+                          "required": ["name", "email", "plan_interest", "demo_requested"],
+                          "additionalProperties": false
+                        }
+                       """);
+    }
+
+    @Test
+    void test_toAnthropicSchema_with_optional_fields() throws JsonProcessingException {
+
+        // given
+        JsonSchemaElement bookRecord = JsonObjectSchema.builder()
+                .addStringProperty("author")
+                .addStringProperty("title")
+                .addEnumProperty("style", List.of("classical", "modern"))
+                .addIntegerProperty("publicationYear")
+                .required("author", "title")
+                .build();
+
+        // when
+        Map<String, Object> map = toAnthropicSchema(bookRecord);
+
+        // then
+        assertThat(new ObjectMapper().writeValueAsString(map))
+                .isEqualToIgnoringWhitespace(
+                        """
+                        {
+                          "type": "object",
+                          "properties": {
+                              "author": { "type": "string" },
+                              "title": { "type": "string" },
+                              "style": {
+                                "type": "string",
+                                "enum": ["classical", "modern"]
+                              },
+                              "publicationYear": { "type": "integer" }
+                          },
+                          "required": ["author", "title"],
+                          "additionalProperties": false
+                        }
+                       """);
     }
 
     static Stream<Arguments> test_toAnthropicTool() {
@@ -238,6 +354,118 @@ class AnthropicMapperTest {
                                         .required(emptyList())
                                         .build())
                                 .build()));
+    }
+
+    @Test
+    void should_retain_keys() {
+        assertThat(retainKeys(Map.of(), Set.of())).isEqualTo(Map.of());
+        assertThat(retainKeys(Map.of("one", "one"), Set.of("one"))).isEqualTo(Map.of("one", "one"));
+        assertThat(retainKeys(Map.of("one", "one"), Set.of("two"))).isEqualTo(Map.of());
+        assertThat(retainKeys(Map.of("one", "one", "two", "two"), Set.of("one")))
+                .isEqualTo(Map.of("one", "one"));
+    }
+
+    @Test
+    void should_extract_server_tool_results_when_enabled() {
+        // given
+        AnthropicContent textContent = AnthropicContent.builder()
+                .type("text")
+                .text("Here are the search results")
+                .build();
+
+        AnthropicContent webSearchResult = AnthropicContent.builder()
+                .type("web_search_tool_result")
+                .toolUseId("srvtoolu_123")
+                .content(List.of(Map.of(
+                        "type", "web_search_result",
+                        "url", "https://example.com",
+                        "title", "Example")))
+                .build();
+
+        List<AnthropicContent> contents = List.of(textContent, webSearchResult);
+
+        // when
+        AiMessage aiMessage = toAiMessage(contents, false, true);
+
+        // then
+        assertThat(aiMessage.text()).isEqualTo("Here are the search results");
+
+        List<AnthropicServerToolResult> results = aiMessage.attribute(SERVER_TOOL_RESULTS_KEY, List.class);
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).type()).isEqualTo("web_search_tool_result");
+        assertThat(results.get(0).toolUseId()).isEqualTo("srvtoolu_123");
+        assertThat(results.get(0).content()).isNotNull();
+    }
+
+    @Test
+    void should_not_extract_server_tool_results_when_disabled() {
+        // given
+        AnthropicContent webSearchResult = AnthropicContent.builder()
+                .type("web_search_tool_result")
+                .toolUseId("srvtoolu_123")
+                .content(List.of(Map.of("url", "https://example.com")))
+                .build();
+
+        // when
+        AiMessage aiMessage = toAiMessage(List.of(webSearchResult), false, false);
+
+        // then
+        assertThat(aiMessage.attributes()).doesNotContainKey(SERVER_TOOL_RESULTS_KEY);
+    }
+
+    @Test
+    void should_map_user_message_with_cache_control_metadata() {
+        // Given
+        UserMessage userMessage = UserMessage.from("Hello cached world");
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // When
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // Then
+        assertThat(anthropicMessages).hasSize(1);
+        AnthropicMessage message = anthropicMessages.get(0);
+
+        assertThat(message.content).hasSize(1);
+
+        AnthropicMessageContent content = message.content.get(0);
+
+        assertThat(content).isInstanceOf(AnthropicTextContent.class);
+
+        AnthropicTextContent textContent = (AnthropicTextContent) content;
+
+        assertThat(textContent.text).isEqualTo("Hello cached world");
+
+        assertThat(textContent.cacheControl).isNotNull();
+        assertThat(textContent.cacheControl).extracting("type").isEqualTo("ephemeral");
+    }
+
+    @Test
+    void should_only_apply_cache_control_to_last_item_when_multiple_items_present() {
+        // Given
+        UserMessage userMessage = UserMessage.from(TextContent.from("First item"), TextContent.from("Second item"));
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // When
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // Then
+        assertThat(anthropicMessages).hasSize(1);
+        AnthropicMessage message = anthropicMessages.get(0);
+        assertThat(message.content).hasSize(2);
+
+        // First item should NOT have cache control
+        AnthropicTextContent first = (AnthropicTextContent) message.content.get(0);
+        assertThat(first.text).isEqualTo("First item");
+        assertThat(first.cacheControl).isNull();
+
+        // Second (last) item SHOULD have cache control
+        AnthropicTextContent second = (AnthropicTextContent) message.content.get(1);
+        assertThat(second.text).isEqualTo("Second item");
+
+        // FIX: Use extracting("type") to access the internal class field safely
+        assertThat(second.cacheControl).isNotNull();
+        assertThat(second.cacheControl).extracting("type").isEqualTo("ephemeral");
     }
 
     @SafeVarargs
