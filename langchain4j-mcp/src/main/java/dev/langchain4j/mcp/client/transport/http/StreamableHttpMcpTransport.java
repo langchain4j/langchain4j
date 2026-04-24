@@ -174,7 +174,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
      * captured from the {@code Mcp-Session-Id} response header during initialization
      * and reused on subsequent requests via the same header.
      */
-    public String mcpSessionId() {
+    public String getMcpSessionId() {
         return mcpSessionId.get();
     }
 
