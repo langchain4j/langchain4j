@@ -88,4 +88,32 @@ class DefaultChatRequestParametersTest {
         assertThat(result.toolSpecifications()).hasSize(2);
         assertThat(result.toolChoice()).isEqualTo(AUTO);
     }
+
+    @Test
+    void deserialize_json() {
+
+        // given
+        String json = """
+                {
+                    "temperature": 0.2,
+                    "top_p": 0.8,
+                    "frequency_penalty": 0.2,
+                    "presence_penalty": 0.0,
+                    "stop": ["\\n"],
+                    "max_tokens": 1024
+                }
+                """;
+
+        // when
+        ChatRequestParameters crp = ChatRequestParametersDeserializer.chatRequestParametersFromJson(json);
+
+        // then
+        assertThat(crp.temperature()).isEqualTo(0.2);
+        assertThat(crp.topP()).isEqualTo(0.8);
+        assertThat(crp.frequencyPenalty()).isEqualTo(0.2);
+        assertThat(crp.presencePenalty()).isEqualTo(0.0);
+        assertThat(crp.maxOutputTokens()).isEqualTo(1024);
+        assertThat(crp.stopSequences().get(0)).isEqualTo("\n");
+        assertThat(crp.modelName()).isEqualTo(null);
+    }
 }
