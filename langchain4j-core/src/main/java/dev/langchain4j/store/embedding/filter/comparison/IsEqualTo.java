@@ -3,6 +3,8 @@ package dev.langchain4j.store.embedding.filter.comparison;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.store.embedding.filter.Filter;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -37,6 +39,12 @@ public class IsEqualTo implements Filter {
 
         if (!metadata.containsKey(key)) {
             return false;
+        }
+
+        // Check if it's a collection metadata
+        List<Object> collectionValue = metadata.getCollection(key);
+        if (collectionValue != null) {
+            return collectionValue.contains(comparisonValue);
         }
 
         Object actualValue = metadata.toMap().get(key);

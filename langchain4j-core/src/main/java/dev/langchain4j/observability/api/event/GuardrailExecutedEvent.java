@@ -51,6 +51,21 @@ public interface GuardrailExecutedEvent<
      */
     Duration duration();
 
+    /**
+     * Retrieves the name of the guardrail.
+     * <p>
+     * The default implementation returns the simple name of {@link #guardrailClass()}.
+     * However, when guardrails are wrapped in decorators or adapters, the actual
+     * guardrail identity can be lost — use {@link Guardrail#name()} on the
+     * underlying guardrail instance for a reliable logical name.
+     *
+     * @return the name of the guardrail, or the simple class name of the guardrail class
+     *         if no explicit name is available.
+     */
+    default String guardrailName() {
+        return guardrailClass().getSimpleName();
+    }
+
     abstract class GuardrailExecutedEventBuilder<
                     P extends GuardrailRequest<P>,
                     R extends GuardrailResult<R>,
@@ -61,6 +76,7 @@ public interface GuardrailExecutedEvent<
         private P request;
         private R result;
         private Class<G> guardrailClass;
+        private String guardrailName;
         private Duration duration;
 
         protected GuardrailExecutedEventBuilder() {}
@@ -70,6 +86,7 @@ public interface GuardrailExecutedEvent<
             request(src.request());
             result(src.result());
             guardrailClass(src.guardrailClass());
+            guardrailName(src.guardrailName());
             duration(src.duration());
         }
 
@@ -89,6 +106,10 @@ public interface GuardrailExecutedEvent<
             return duration;
         }
 
+        public String guardrailName() {
+            return guardrailName;
+        }
+
         public GuardrailExecutedEventBuilder<P, R, G, T> request(P request) {
             this.request = request;
             return this;
@@ -105,6 +126,11 @@ public interface GuardrailExecutedEvent<
 
         public <C extends G> GuardrailExecutedEventBuilder<P, R, G, T> guardrailClass(Class<C> guardrailClass) {
             this.guardrailClass = (Class<G>) guardrailClass;
+            return this;
+        }
+
+        public GuardrailExecutedEventBuilder<P, R, G, T> guardrailName(String guardrailName) {
+            this.guardrailName = guardrailName;
             return this;
         }
 

@@ -4,6 +4,8 @@ import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AfterAgentToolExecution;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentMonitor;
+import dev.langchain4j.agentic.observability.AgentRequest;
+import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.observability.MonitoredAgent;
@@ -22,6 +24,7 @@ import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
 import dev.langchain4j.service.AiServiceContext;
+import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import org.slf4j.Logger;
@@ -38,6 +41,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgentInvocation;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentInvocation;
 import static dev.langchain4j.agentic.scope.DefaultAgenticScope.ephemeralAgenticScope;
 
 public class AgentInvocationHandler implements InvocationHandler, InternalAgent {
@@ -157,17 +162,39 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         }
 
         AgenticScope agenticScope = LangChain4jManaged.current(AgenticScope.class);
+        boolean ephemeralScope = false;
         if (agenticScope == null) {
             LOGGER.warn("Improper invocation of a standalone agent outside of an agentic system, consider using AiServices instead.");
-            LangChain4jManaged.setCurrent(Map.of(AgenticScope.class, ephemeralAgenticScope()));
+            agenticScope = ephemeralAgenticScope();
+            LangChain4jManaged.setCurrent(Map.of(AgenticScope.class, agenticScope));
+            ephemeralScope = true;
         }
+        Map<String, Object> inputs = argToMap(method, args);
+        beforeAgentInvocation(agentListener, agenticScope, this, inputs);
         try {
-            return method.invoke(agent, args);
+            Object result = method.invoke(agent, args);
+            afterAgentInvocation(agentListener, agenticScope, this, inputs, result);
+            return result;
         } finally {
-            if (agenticScope == null) {
+            if (ephemeralScope) {
                 LangChain4jManaged.removeCurrent();
             }
         }
+    }
+
+    private static Map<String, Object> argToMap(Method method, Object[] args) {
+        if (method.getParameterCount() == 1 && Map.class.isAssignableFrom(method.getParameters()[0].getType())) {
+            return args != null && args.length > 0 ? (Map<String, Object>) args[0] : Map.of();
+        }
+        if (args == null || args.length == 0) {
+            return Map.of();
+        }
+        Map<String, Object> namedArgs = new java.util.HashMap<>();
+        java.lang.reflect.Parameter[] parameters = method.getParameters();
+        for (int i = 0; i < parameters.length; i++) {
+            namedArgs.put(ParameterNameResolver.name(parameters[i]), args[i]);
+        }
+        return namedArgs;
     }
 
     private static Optional<UserMessage> lastUserMessage(Collection<ChatMessage> messages) {

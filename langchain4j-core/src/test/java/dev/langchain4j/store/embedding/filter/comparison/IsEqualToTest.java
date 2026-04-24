@@ -5,6 +5,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import dev.langchain4j.data.document.Metadata;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -99,6 +100,30 @@ class IsEqualToTest {
     void shouldHandleFloatingPointComparison() {
         IsEqualTo isEqualTo = new IsEqualTo("key", 0.1);
         Metadata metadata = new Metadata(Map.of("key", 0.1));
+        assertThat(isEqualTo.test(metadata)).isTrue();
+    }
+
+    @Test
+    void shouldReturnTrueWhenValueExistsInCollection() {
+        IsEqualTo isEqualTo = new IsEqualTo("tags", "b");
+        Metadata metadata = new Metadata();
+        metadata.putCollection("tags", List.of("a", "b", "c"));
+        assertThat(isEqualTo.test(metadata)).isTrue();
+    }
+
+    @Test
+    void shouldReturnFalseWhenValueDoesNotExistInCollection() {
+        IsEqualTo isEqualTo = new IsEqualTo("tags", "x");
+        Metadata metadata = new Metadata();
+        metadata.putCollection("tags", List.of("a", "b", "c"));
+        assertThat(isEqualTo.test(metadata)).isFalse();
+    }
+
+    @Test
+    void shouldHandleIntegerInCollection() {
+        IsEqualTo isEqualTo = new IsEqualTo("scores", 42);
+        Metadata metadata = new Metadata();
+        metadata.putCollection("scores", List.of(10, 42, 100));
         assertThat(isEqualTo.test(metadata)).isTrue();
     }
 }

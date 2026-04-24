@@ -3,6 +3,7 @@ package dev.langchain4j.data.document;
 import static java.util.Collections.singletonMap;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.assertj.core.api.WithAssertions;
@@ -381,5 +382,81 @@ class MetadataTest implements WithAssertions {
 
         assertThatThrownBy(() -> new Metadata().putAll(Map.of("k", new Object())))
                 .isExactlyInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void putCollection_and_getCollection() {
+        Metadata m = new Metadata();
+        
+        // Test that initially returns null
+        assertThat(m.getCollection("tags")).isNull();
+        
+        // Put a collection
+        m.putCollection("tags", List.of("a", "b", "c"));
+        
+        // Verify retrieval
+        List<Object> tags = m.getCollection("tags");
+        assertThat(tags).isNotNull();
+        assertThat(tags).containsExactly("a", "b", "c");
+        
+        // Verify containsKey works
+        assertThat(m.containsKey("tags")).isTrue();
+        
+        // Verify toMap includes the collection
+        Map<String, Object> map = m.toMap();
+        assertThat(map).containsKey("tags");
+        assertThat(map.get("tags")).isEqualTo(List.of("a", "b", "c"));
+    }
+
+    @Test
+    void putCollection_with_integers() {
+        Metadata m = new Metadata();
+        m.putCollection("scores", List.of(1, 2, 3));
+        
+        List<Object> scores = m.getCollection("scores");
+        assertThat(scores).containsExactly(1, 2, 3);
+    }
+
+    @Test
+    void putCollection_rejects_invalid_types() {
+        Metadata m = new Metadata();
+        assertThatThrownBy(() -> m.putCollection("invalid", List.of(new Object())))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("unsupported type");
+    }
+
+    @Test
+    void putCollection_rejects_null_values() {
+        Metadata m = new Metadata();
+        assertThatThrownBy(() -> m.putCollection("key", null))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cannot be null");
+    }
+
+    @Test
+    void collection_metadata_in_equals_and_hashCode() {
+        Metadata m1 = new Metadata();
+        m1.putCollection("tags", List.of("a", "b"));
+        
+        Metadata m2 = new Metadata();
+        m2.putCollection("tags", List.of("a", "b"));
+        
+        Metadata m3 = new Metadata();
+        m3.putCollection("tags", List.of("a", "c"));
+        
+        assertThat(m1).isEqualTo(m2);
+        assertThat(m1).isNotEqualTo(m3);
+        assertThat(m1).hasSameHashCodeAs(m2);
+    }
+
+    @Test
+    void collection_metadata_in_toString() {
+        Metadata m = new Metadata();
+        m.put("scalar", "value");
+        m.putCollection("tags", List.of("a", "b"));
+        
+        String str = m.toString();
+        assertThat(str).contains("scalar");
+        assertThat(str).contains("tags");
     }
 }

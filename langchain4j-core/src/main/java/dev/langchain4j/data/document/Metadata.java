@@ -7,9 +7,11 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -55,11 +57,14 @@ public class Metadata {
 
     private final Map<String, Object> metadata;
 
+    private final Map<String, List<Object>> collectionMetadata;
+
     /**
      * Construct a Metadata object with an empty map of key-value pairs.
      */
     public Metadata() {
         this.metadata = new HashMap<>();
+        this.collectionMetadata = new HashMap<>();
     }
 
     /**
@@ -71,6 +76,7 @@ public class Metadata {
     public Metadata(Map<String, ?> metadata) {
         validate(metadata);
         this.metadata = new HashMap<>(metadata);
+        this.collectionMetadata = new HashMap<>();
     }
 
     private static void validate(Map<String, ?> metadata) {
@@ -88,6 +94,25 @@ public class Metadata {
     private static void validate(String key, Object value) {
         ensureNotBlank(key, "The metadata key with the value '" + value + "'");
         ensureNotNull(value, "The metadata value for the key '" + key + "'");
+        if (!SUPPORTED_VALUE_TYPES.contains(value.getClass()) && !(value instanceof Collection)) {
+            throw illegalArgument(
+                    "The metadata key '%s' has the value '%s', which is of the unsupported type '%s'. "
+                            + "Currently, the supported types are: %s",
+                    key, value, value.getClass().getName(), SUPPORTED_VALUE_TYPES);
+        }
+    }
+
+    private static void validateCollection(String key, Collection<?> value) {
+        ensureNotBlank(key, "The metadata key for the collection value '" + value + "'");
+        ensureNotNull(value, "The metadata collection value for the key '" + key + "'");
+        for (Object item : value) {
+            if (!SUPPORTED_VALUE_TYPES.contains(item.getClass())) {
+                throw illegalArgument(
+                        "The metadata key '%s' has a collection containing an item of unsupported type '%s'. "
+                                + "Currently, the supported types are: %s",
+                        key, item.getClass().getName(), SUPPORTED_VALUE_TYPES);
+            }
+        }
     }
 
     /**
@@ -282,13 +307,28 @@ public class Metadata {
     }
 
     /**
+     * Returns the {@code List<Object>} value associated with the given key.
+     *
+     * @param key the key
+     * @return the {@code List<Object>} value associated with the given key, or {@code null} if the key is not present.
+     * @throws RuntimeException if the value is not of type Collection
+     */
+    @Nullable
+    public List<Object> getCollection(String key) {
+        if (!containsKey(key)) {
+            return null;
+        }
+        return collectionMetadata.get(key);
+    }
+
+    /**
      * Check whether this {@code Metadata} contains a given key.
      *
      * @param key the key
      * @return {@code true} if this metadata contains a given key; {@code false} otherwise.
      */
     public boolean containsKey(String key) {
-        return metadata.containsKey(key);
+        return metadata.containsKey(key) || collectionMetadata.containsKey(key);
     }
 
     /**
@@ -376,6 +416,19 @@ public class Metadata {
     }
 
     /**
+     * Adds a collection value to the metadata.
+     *
+     * @param key   the key
+     * @param value the collection value
+     * @return {@code this}
+     */
+    public Metadata putCollection(String key, Collection<?> value) {
+        validateCollection(key, value);
+        this.collectionMetadata.put(key, new java.util.ArrayList<>(value));
+        return this;
+    }
+
+    /**
      * Removes the given key from the metadata.
      *
      * @param key the key
@@ -401,7 +454,9 @@ public class Metadata {
      * @return the metadata as a map of key-value pairs.
      */
     public Map<String, Object> toMap() {
-        return new HashMap<>(metadata);
+        Map<String, Object> result = new HashMap<>(metadata);
+        result.putAll(collectionMetadata);
+        return result;
     }
 
     @Override
@@ -409,17 +464,21 @@ public class Metadata {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Metadata that = (Metadata) o;
-        return Objects.equals(this.metadata, that.metadata);
+        return Objects.equals(this.metadata, that.metadata)
+                && Objects.equals(this.collectionMetadata, that.collectionMetadata);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(metadata);
+        return Objects.hash(metadata, collectionMetadata);
     }
 
     @Override
     public String toString() {
-        return "Metadata {" + " metadata = " + metadata + " }";
+        if (collectionMetadata.isEmpty()) {
+            return "Metadata { metadata = " + metadata + " }";
+        }
+        return "Metadata { " + " metadata = " + metadata + ", collectionMetadata = " + collectionMetadata + " }";
     }
 
     /**

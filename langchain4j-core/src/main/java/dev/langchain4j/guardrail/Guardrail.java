@@ -11,6 +11,20 @@ package dev.langchain4j.guardrail;
  */
 public interface Guardrail<P extends GuardrailRequest, R extends GuardrailResult<R>> {
     /**
+     * Returns the name of this guardrail.
+     * <p>
+     * The default implementation returns the simple class name.
+     * Subclasses or decorators may override this to provide a more descriptive name,
+     * which is useful for observability systems to identify the guardrail
+     * independently of any wrapper/adapter class.
+     *
+     * @return the name of this guardrail
+     */
+    default String name() {
+        return getClass().getSimpleName();
+    }
+
+    /**
      * Validate the interaction between the model and the user in one of the two directions.
      *
      * @param request
