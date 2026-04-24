@@ -566,9 +566,7 @@ public class OpenAiUtils {
                 .store(parameters.store())
                 .metadata(parameters.metadata())
                 .serviceTier(parameters.serviceTier())
-                .reasoning(parameters.reasoningEffort() != null
-                        ? Map.of("effort", parameters.reasoningEffort())
-                        : null)
+                .reasoning(parameters.reasoningEffort() != null ? Map.of("effort", parameters.reasoningEffort()) : null)
                 .logprobs(parameters.logprobs())
                 .topLogprobs(parameters.topLogprobs())
                 .customParameters(parameters.customParameters());

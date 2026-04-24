@@ -55,12 +55,12 @@ class ChatCompletionRequestSerializationTest {
         // Test that the "reasoning" field itself can be deserialized
         // using the from() builder pattern
         String json = "{\"reasoning\":{\"effort\":\"medium\"}}";
-        
+
         ChatCompletionRequest request = ChatCompletionRequest.builder()
                 .model("gpt-4o-mini")
                 .reasoning(Map.of("effort", "medium"))
                 .build();
-        
+
         assertThat(request.reasoning()).isEqualTo(Map.of("effort", "medium"));
     }
 }
