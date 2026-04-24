@@ -18,7 +18,6 @@ import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingEvent;
 
-
 import java.util.List;
 import java.util.Map;
 import java.util.Set;

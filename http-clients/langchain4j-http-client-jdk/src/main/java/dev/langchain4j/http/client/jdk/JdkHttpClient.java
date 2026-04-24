@@ -1,14 +1,10 @@
 package dev.langchain4j.http.client.jdk;
 
-import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static java.util.stream.Collectors.joining;
-
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
+import dev.langchain4j.http.client.FormDataFile;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
-import dev.langchain4j.http.client.FormDataFile;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
@@ -30,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
@@ -40,7 +37,6 @@ import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignor
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.joining;
-import java.util.Map;
 
 public class JdkHttpClient implements HttpClient {
 
@@ -125,7 +121,7 @@ public class JdkHttpClient implements HttpClient {
         return null; // TODO
     }
 
-    private java.net.http.HttpRequest toJdkRequest(HttpRequest request) {
+    java.net.http.HttpRequest toJdkRequest(HttpRequest request) {
         java.net.http.HttpRequest.Builder builder =
                 java.net.http.HttpRequest.newBuilder().uri(URI.create(request.url()));
 
@@ -180,7 +176,7 @@ public class JdkHttpClient implements HttpClient {
 
     private static String readBody(java.net.http.HttpResponse<InputStream> response) {
         try (InputStream inputStream = response.body();
-                BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
             return reader.lines().collect(joining(System.lineSeparator()));
         } catch (IOException e) {
             return "Cannot read error response body: " + e.getMessage();
