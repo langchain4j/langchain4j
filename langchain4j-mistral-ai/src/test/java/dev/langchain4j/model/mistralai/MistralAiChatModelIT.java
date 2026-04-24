@@ -11,8 +11,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -243,5 +245,57 @@ class MistralAiChatModelIT {
 
         // then
         assertThat(chatResponse.aiMessage().text()).contains("Spanish");
+    }
+
+    @Test
+    void should_accept_pdf_content_from_base64_data() throws Exception {
+
+        // given
+        ChatModel chatModel = MistralAiChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(MISTRAL_SMALL_LATEST)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        Path file =
+                Paths.get(getClass().getClassLoader().getResource("test.pdf").toURI());
+        String base64Content = Base64.getEncoder().encodeToString(Files.readAllBytes(file));
+
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("What's the language in this PDF?"),
+                PdfFileContent.from(base64Content, PdfFile.DEFAULT_MIME_TYPE));
+
+        // when
+        ChatResponse chatResponse = chatModel.chat(userMessage);
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).contains("French");
+    }
+
+    @Test
+    void should_accept_pdf_content_from_url() {
+
+        // given
+        ChatModel chatModel = MistralAiChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(MISTRAL_SMALL_LATEST)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        String pdfUrl = "https://upload.wikimedia.org/wikipedia/commons/f/f9/"
+                + "Entwicklung_der_t%C3%A4glichen_Neuinfektionen_mit_dem_Corona-Virus_in_Deutschland.pdf";
+
+        UserMessage userMessage =
+                UserMessage.from(TextContent.from("What's the language in this PDF?"), PdfFileContent.from(pdfUrl));
+
+        // when
+        ChatResponse chatResponse = chatModel.chat(userMessage);
+
+        // then
+        assertThat(chatResponse.aiMessage().text()).contains("German");
     }
 }
