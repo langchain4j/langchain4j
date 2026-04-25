@@ -7,6 +7,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.AZURE_OPEN_AI;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.aiMessageFrom;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.chatCompletionsWithThinking;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.finishReasonFrom;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toAzureOpenAiResponseFormat;
@@ -86,6 +87,7 @@ public class AzureOpenAiChatModel implements ChatModel {
     private final Long seed;
     private final Boolean strictJsonSchema;
     private final Integer maxCompletionTokens;
+    private final Boolean returnThinking;
     private final ReasoningEffortValue reasoningEffort;
 
     private final List<ChatModelListener> listeners;
@@ -166,6 +168,7 @@ public class AzureOpenAiChatModel implements ChatModel {
         this.seed = builder.seed;
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.maxCompletionTokens = builder.maxCompletionTokens;
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.reasoningEffort = builder.reasoningEffort;
 
         this.listeners = copy(builder.listeners);
@@ -211,8 +214,18 @@ public class AzureOpenAiChatModel implements ChatModel {
             options.setToolChoice(toToolChoice(parameters.toolChoice()));
         }
 
-        ChatCompletions chatCompletions = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(
-                () -> client.getChatCompletions(parameters.modelName(), options));
+        ChatCompletions chatCompletions;
+        String thinking = null;
+        if (returnThinking) {
+            InternalAzureOpenAiHelper.ChatCompletionsWithThinking response =
+                    AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(
+                            () -> chatCompletionsWithThinking(client, parameters.modelName(), options));
+            chatCompletions = response.chatCompletions();
+            thinking = response.thinking();
+        } else {
+            chatCompletions = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(
+                    () -> client.getChatCompletions(parameters.modelName(), options));
+        }
 
         ChatChoice chatChoice = chatCompletions.getChoices().get(0);
 
@@ -227,7 +240,7 @@ public class AzureOpenAiChatModel implements ChatModel {
         }
 
         return ChatResponse.builder()
-                .aiMessage(aiMessageFrom(chatChoice.getMessage()))
+                .aiMessage(aiMessageFrom(chatChoice.getMessage(), thinking))
                 .metadata(ChatResponseMetadata.builder()
                         .id(chatCompletions.getId())
                         .modelName(chatCompletions.getModel())
@@ -279,6 +292,7 @@ public class AzureOpenAiChatModel implements ChatModel {
         private Long seed;
         private ResponseFormat responseFormat;
         private Boolean strictJsonSchema;
+        private Boolean returnThinking;
         private Duration timeout;
         private Integer maxRetries;
         private RetryOptions retryOptions;
@@ -442,6 +456,15 @@ public class AzureOpenAiChatModel implements ChatModel {
 
         public Builder strictJsonSchema(Boolean strictJsonSchema) {
             this.strictJsonSchema = strictJsonSchema;
+            return this;
+        }
+
+        /**
+         * Controls whether to expose provider-specific reasoning text inside {@link dev.langchain4j.data.message.AiMessage#thinking()}.
+         * When disabled, reasoning text (if any) is ignored.
+         */
+        public Builder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
             return this;
         }
 
