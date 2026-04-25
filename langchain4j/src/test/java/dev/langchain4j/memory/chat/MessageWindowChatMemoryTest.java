@@ -11,6 +11,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.HitCountChatMemoryStore.HitCounts;
+import java.util.List;
 import java.util.function.Function;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
@@ -634,5 +635,140 @@ class MessageWindowChatMemoryTest implements WithAssertions {
             chatMemory.set(userMessage("world"), aiMessage("hi"));
         });
         assertThat(counts).isEqualTo(new HitCounts(0, 1, 0));
+    }
+
+    @Test
+    void should_not_modify_messages_when_auto_recover_is_disabled() {
+
+        var store = new HitCountChatMemoryStore();
+
+        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("tool")
+                .arguments("{}")
+                .build();
+        AiMessage aiMessageWithTools = AiMessage.from(toolRequest);
+
+        // Pre-populate store with an incomplete tool block
+        store.updateMessages("default", List.of(userMessage("hello"), aiMessageWithTools));
+
+        // Default: autoRecoverOrphanedToolMessages is false
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(10)
+                .chatMemoryStore(store)
+                .build();
+
+        // messages() should NOT clean up the incomplete block
+        assertThat(chatMemory.messages()).containsExactly(userMessage("hello"), aiMessageWithTools);
+    }
+
+    @Test
+    void should_remove_orphaned_tool_messages_when_auto_recover_is_enabled() {
+
+        var store = new HitCountChatMemoryStore();
+
+        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("tool")
+                .arguments("{}")
+                .build();
+        AiMessage aiMessageWithTools = AiMessage.from(toolRequest);
+
+        // Pre-populate store with an incomplete tool block
+        store.updateMessages("default", List.of(userMessage("hello"), aiMessageWithTools));
+
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(10)
+                .chatMemoryStore(store)
+                .autoRecoverOrphanedToolMessages(true)
+                .build();
+
+        // messages() should clean up the incomplete block
+        assertThat(chatMemory.messages()).containsExactly(userMessage("hello"));
+    }
+
+    @Test
+    void messages_should_not_write_back_to_store_when_auto_recover_cleans_up() {
+
+        var store = new HitCountChatMemoryStore();
+
+        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("tool")
+                .arguments("{}")
+                .build();
+        AiMessage aiMessageWithTools = AiMessage.from(toolRequest);
+
+        // Pre-populate store with an incomplete tool block
+        store.updateMessages("default", List.of(userMessage("hello"), aiMessageWithTools));
+
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(10)
+                .chatMemoryStore(store)
+                .autoRecoverOrphanedToolMessages(true)
+                .build();
+
+        // messages() should only read, not write back
+        var counts = store.measureHitCounts(chatMemory::messages);
+        assertThat(counts).isEqualTo(new HitCounts(1, 0, 0));
+
+        // Store still contains the dirty data
+        assertThat(store.getMessages("default")).containsExactly(userMessage("hello"), aiMessageWithTools);
+    }
+
+    @Test
+    void add_should_not_persist_cleaned_messages_when_auto_recover_is_enabled() {
+
+        var store = new HitCountChatMemoryStore();
+
+        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("tool")
+                .arguments("{}")
+                .build();
+        AiMessage aiMessageWithTools = AiMessage.from(toolRequest);
+
+        // Pre-populate store with an incomplete tool block
+        store.updateMessages("default", List.of(userMessage("hello"), aiMessageWithTools));
+
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(10)
+                .chatMemoryStore(store)
+                .autoRecoverOrphanedToolMessages(true)
+                .build();
+
+        chatMemory.add(userMessage("world"));
+
+        // Recovery is a read-time concern; add() should not clean and rewrite the store
+        assertThat(store.getMessages("default"))
+                .containsExactly(userMessage("hello"), aiMessageWithTools, userMessage("world"));
+    }
+
+    @Test
+    void should_not_remove_in_flight_tool_block_during_add_when_auto_recover_is_enabled() {
+
+        var store = new HitCountChatMemoryStore();
+
+        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("tool")
+                .arguments("{}")
+                .build();
+        AiMessage aiMessageWithTools = AiMessage.from(toolRequest);
+        ToolExecutionResultMessage resultMessage = ToolExecutionResultMessage.from(toolRequest, "result");
+
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(10)
+                .chatMemoryStore(store)
+                .autoRecoverOrphanedToolMessages(true)
+                .build();
+
+        chatMemory.add(userMessage("hello"));
+        chatMemory.add(aiMessageWithTools);
+        chatMemory.add(resultMessage);
+
+        assertThat(store.getMessages("default"))
+                .containsExactly(userMessage("hello"), aiMessageWithTools, resultMessage);
+        assertThat(chatMemory.messages()).containsExactly(userMessage("hello"), aiMessageWithTools, resultMessage);
     }
 }
