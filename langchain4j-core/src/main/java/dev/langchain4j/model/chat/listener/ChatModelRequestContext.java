@@ -15,6 +15,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  */
 public class ChatModelRequestContext {
 
+    private static final ThreadLocal<ChatModelRequestContext> CURRENT = new ThreadLocal<>();
+
     private final ChatRequest chatRequest;
     private final ModelProvider modelProvider;
     private final Map<Object, Object> attributes;
@@ -41,5 +43,29 @@ public class ChatModelRequestContext {
      */
     public Map<Object, Object> attributes() {
         return attributes;
+    }
+
+    /**
+     * Returns the current thread-local {@link ChatModelRequestContext}, if any.
+     * This enables thread-safe access to the request context from within tools and prompts.
+     *
+     * @return the current context, or {@code null} if not set for the current thread
+     */
+    public static ChatModelRequestContext current() {
+        return CURRENT.get();
+    }
+
+    /**
+     * Sets the current thread-local {@link ChatModelRequestContext}.
+     * This is intended for internal use by the framework.
+     *
+     * @param context the context to set as current
+     */
+    public static void setCurrent(ChatModelRequestContext context) {
+        if (context == null) {
+            CURRENT.remove();
+        } else {
+            CURRENT.set(context);
+        }
     }
 }
