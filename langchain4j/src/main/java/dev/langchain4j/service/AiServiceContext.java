@@ -3,6 +3,7 @@ package dev.langchain4j.service;
 import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
@@ -25,7 +26,8 @@ import java.util.function.Function;
 public class AiServiceContext {
 
     private static final Function<Object, Optional<String>> DEFAULT_USER_MESSAGE_PROVIDER = x -> Optional.empty();
-    private static final Function<Object, Optional<String>> DEFAULT_SYSTEM_MESSAGE_PROVIDER = x -> Optional.empty();
+    private static final BiFunction<Object, UserMessage, Optional<String>> DEFAULT_SYSTEM_MESSAGE_PROVIDER =
+            (memoryId, userMessage) -> Optional.empty();
 
     public final Class<?> aiServiceClass;
     public final AiServiceListenerRegistrar eventListenerRegistrar = AiServiceListenerRegistrar.newInstance();
@@ -49,7 +51,7 @@ public class AiServiceContext {
     public boolean storeRetrievedContentInChatMemory = true;
 
     public Function<Object, Optional<String>> userMessageProvider = DEFAULT_USER_MESSAGE_PROVIDER;
-    public Function<Object, Optional<String>> systemMessageProvider = DEFAULT_SYSTEM_MESSAGE_PROVIDER;
+    public BiFunction<Object, UserMessage, Optional<String>> systemMessageProvider = DEFAULT_SYSTEM_MESSAGE_PROVIDER;
 
     public BiFunction<String, InvocationContext, String> systemMessageTransformer = null;
 

@@ -13,6 +13,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
@@ -271,8 +272,32 @@ public abstract class AiServices<T> {
      *                              or a system message template containing unresolved template variables (e.g. "{{name}}"),
      *                              which will be resolved using the values of method parameters annotated with @{@link V}.
      * @return builder
+     * @deprecated Use {@link #systemMessageProvider(BiFunction)} instead to also receive the in-flight {@link dev.langchain4j.data.message.UserMessage}.
      */
+    @Deprecated
     public AiServices<T> systemMessageProvider(Function<Object, String> systemMessageProvider) {
+        return systemMessageProvider((memoryId, userMessage) -> systemMessageProvider.apply(memoryId));
+    }
+
+    /**
+     * Configures the system message provider, which provides a system message to be used each time an AI service is invoked.
+     * <br>
+     * When both {@code @SystemMessage} and the system message provider are configured,
+     * {@code @SystemMessage} takes precedence.
+     *
+     * @param systemMessageProvider A {@link BiFunction} that accepts a chat memory ID
+     *                              (a value of a method parameter annotated with @{@link MemoryId})
+     *                              and the current in-flight {@link dev.langchain4j.data.message.UserMessage},
+     *                              and returns a system message to be used.
+     *                              If there is no parameter annotated with {@code @MemoryId},
+     *                              the value of memory ID is "default".
+     *                              The returned {@link String} can be either a complete system message
+     *                              or a system message template containing unresolved template variables (e.g. "{{name}}"),
+     *                              which will be resolved using the values of method parameters annotated with @{@link V}.
+     * @return builder
+     * @since 1.14.0
+     */
+    public AiServices<T> systemMessageProvider(BiFunction<Object, UserMessage, String> systemMessageProvider) {
         context.systemMessageProvider = systemMessageProvider.andThen(Optional::ofNullable);
         return this;
     }

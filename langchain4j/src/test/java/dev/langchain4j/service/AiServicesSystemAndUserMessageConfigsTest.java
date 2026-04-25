@@ -583,4 +583,65 @@ class AiServicesSystemAndUserMessageConfigsTest {
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("The parameter 'arg1' in the method 'illegalChat2' of the class dev.langchain4j.service.AiServicesSystemAndUserMessageConfigsTest$AiService" + VALIDATION_ERROR_MESSAGE_SUFFIX);
     }
+
+    /**
+     * Tests that systemMessageProvider receives the current UserMessage,
+     * enabling dynamic system prompt customization based on user input.
+     */
+    @Test
+    void system_message_provider_receives_user_message() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(model)
+                .systemMessageProvider((memoryId, userMessage) -> {
+                    String userText = userMessage.contents().stream()
+                            .filter(c -> c instanceof dev.langchain4j.data.message.TextContent)
+                            .map(c -> ((dev.langchain4j.data.message.TextContent) c).text())
+                            .findFirst()
+                            .orElse("");
+                    // Customize system prompt based on user message content
+                    if (userText.contains("Germany")) {
+                        return "You are a German geography expert. Answer in capital letters.";
+                    } else if (userText.contains("France")) {
+                        return "You are a French culture expert. Answer with Haiku.";
+                    }
+                    return "You are a helpful assistant.";
+                })
+                .build();
+
+        // when-then - Germany path
+        assertThat(aiService.chat11("What is the capital of Germany?"))
+                .containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("You are a German geography expert. Answer in capital letters."),
+                                userMessage("What is the capital of Germany?"))
+                        .build());
+    }
+
+    /**
+     * Tests backward compatibility: the deprecated Function-based systemMessageProvider
+     * still works and is auto-wrapped to the new BiFunction signature.
+     */
+    @Test
+    @SuppressWarnings("deprecation")
+    void deprecated_function_based_system_message_provider_still_works() {
+
+        // given - using deprecated API
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(model)
+                .systemMessageProvider(chatMemoryId -> "Static fallback system message")
+                .build();
+
+        // when-then
+        assertThat(aiService.chat11("Hello")).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Static fallback system message"),
+                                userMessage("Hello"))
+                        .build());
+    }
 }
