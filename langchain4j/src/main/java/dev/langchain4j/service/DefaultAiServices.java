@@ -169,7 +169,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 ? context.chatMemoryService.getOrCreateChatMemory(memoryId)
                                 : null;
 
-                        Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
+                        var userMessageTemplate = getUserMessageTemplate(memoryId, method, args);
+                        var variables = InternalReflectionVariableResolver.findTemplateVariables(
+                                userMessageTemplate, method, args);
+                        UserMessage originalUserMessage =
+                                prepareUserMessage(method, args, userMessageTemplate, variables);
+
+                        Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args, originalUserMessage);
                         if (context.systemMessageTransformer != null) {
                             String transformedSystemMessage = context.systemMessageTransformer.apply(
                                     systemMessage.map(SystemMessage::text).orElse(null), invocationContext);
@@ -177,11 +183,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     ? Optional.of(SystemMessage.from(transformedSystemMessage))
                                     : Optional.empty();
                         }
-                        var userMessageTemplate = getUserMessageTemplate(memoryId, method, args);
-                        var variables = InternalReflectionVariableResolver.findTemplateVariables(
-                                userMessageTemplate, method, args);
-                        UserMessage originalUserMessage =
-                                prepareUserMessage(method, args, userMessageTemplate, variables);
 
                         context.eventListenerRegistrar.fireEvent(AiServiceStartedEvent.builder()
                                 .invocationContext(invocationContext)
@@ -531,14 +532,14 @@ class DefaultAiServices<T> extends AiServices<T> {
         return (T) responseFromLLM;
     }
 
-    private Optional<SystemMessage> prepareSystemMessage(Object memoryId, Method method, Object[] args) {
-        return findSystemMessageTemplate(memoryId, method).map(systemMessageTemplate -> PromptTemplate.from(
+    private Optional<SystemMessage> prepareSystemMessage(Object memoryId, Method method, Object[] args, UserMessage userMessage) {
+        return findSystemMessageTemplate(memoryId, method, userMessage).map(systemMessageTemplate -> PromptTemplate.from(
                         systemMessageTemplate)
                 .apply(InternalReflectionVariableResolver.findTemplateVariables(systemMessageTemplate, method, args))
                 .toSystemMessage());
     }
 
-    private Optional<String> findSystemMessageTemplate(Object memoryId, Method method) {
+    private Optional<String> findSystemMessageTemplate(Object memoryId, Method method, UserMessage userMessage) {
         dev.langchain4j.service.SystemMessage annotation =
                 method.getAnnotation(dev.langchain4j.service.SystemMessage.class);
         if (annotation != null) {
@@ -546,7 +547,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                     method, "System", annotation.fromResource(), annotation.value(), annotation.delimiter()));
         }
 
-        return context.systemMessageProvider.apply(memoryId);
+        return context.systemMessageProvider.apply(memoryId, userMessage);
     }
 
     private static UserMessage prepareUserMessage(
