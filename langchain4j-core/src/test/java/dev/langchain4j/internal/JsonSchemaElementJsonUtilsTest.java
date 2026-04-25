@@ -36,6 +36,7 @@ class JsonSchemaElementJsonUtilsTest {
     @Test
     void should_round_trip_scalar_types() {
         assertRoundTrip(JsonStringSchema.builder().description("a name").build());
+        assertRoundTrip(JsonStringSchema.builder().description("a date").format("date").build());
         assertRoundTrip(new JsonStringSchema());
         assertRoundTrip(JsonIntegerSchema.builder().description("count").build());
         assertRoundTrip(new JsonIntegerSchema());
@@ -269,11 +270,12 @@ class JsonSchemaElementJsonUtilsTest {
     // ---- raw fallback for extra keywords ----
 
     @Test
-    void should_fallback_to_raw_for_string_with_format() {
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("type", "string");
-        map.put("format", "date-time");
-        assertRawFallback(map);
+    void should_round_trip_string_with_format() {
+        JsonStringSchema schema = JsonStringSchema.builder()
+                .description("timestamp")
+                .format("date-time")
+                .build();
+        assertRoundTrip(schema);
     }
 
     @Test
@@ -309,7 +311,7 @@ class JsonSchemaElementJsonUtilsTest {
 
     @Test
     void should_round_trip_nested_with_raw_fallback_child() {
-        // outer object is typed, child with format falls back to raw
+        // outer object is typed, child with format remains typed string schema
         Map<String, Object> childMap = new LinkedHashMap<>();
         childMap.put("type", "string");
         childMap.put("format", "date-time");
@@ -327,7 +329,8 @@ class JsonSchemaElementJsonUtilsTest {
         assertThat(element).isInstanceOf(JsonObjectSchema.class);
         JsonObjectSchema obj = (JsonObjectSchema) element;
         assertThat(obj.properties().get("name")).isInstanceOf(JsonStringSchema.class);
-        assertThat(obj.properties().get("timestamp")).isInstanceOf(JsonRawSchema.class);
+        assertThat(obj.properties().get("timestamp"))
+                .isEqualTo(JsonStringSchema.builder().format("date-time").build());
 
         // round-trip should preserve structure
         Map<String, Object> restored = JsonSchemaElementJsonUtils.toMap(element);
@@ -380,6 +383,14 @@ class JsonSchemaElementJsonUtilsTest {
         assertThatThrownBy(() -> JsonSchemaElementJsonUtils.fromMap(map))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("description");
+    }
+
+    @Test
+    void should_reject_non_string_format_in_string() {
+        Map<String, Object> map = Map.of("type", "string", "format", 99);
+        assertThatThrownBy(() -> JsonSchemaElementJsonUtils.fromMap(map))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("format");
     }
 
     // ---- enum type validation ----
