@@ -251,13 +251,25 @@ public class OpenAiImageModel implements ImageModel {
     }
 
     private GenerateImagesRequest.Builder requestBuilder(String prompt) {
-        return GenerateImagesRequest.builder()
+        GenerateImagesRequest.Builder builder = GenerateImagesRequest.builder()
                 .model(modelName)
                 .prompt(prompt)
                 .size(size)
                 .quality(quality)
                 .style(style)
-                .user(user)
-                .responseFormat(responseFormat);
+                .user(user);
+        if (!isGptImageModel(modelName)) {
+            builder.responseFormat(responseFormat);
+        }
+        return builder;
+    }
+
+    /**
+     * gpt-image-* models always return base64 image data and reject the {@code response_format}
+     * parameter. Detection is centralized here so both the generation and edit paths apply the
+     * same rule.
+     */
+    static boolean isGptImageModel(String modelName) {
+        return modelName != null && modelName.startsWith("gpt-image-");
     }
 }
