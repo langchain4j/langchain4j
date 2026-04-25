@@ -251,6 +251,17 @@ class InternalOllamaHelper {
                             .collect(Collectors.toList()))
                     .orElse(null);
         }
+
+        // Handle ToolExecutionResultMessage with full field support
+        if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+            return Message.builder()
+                    .role(Role.TOOL)
+                    .content(toText(chatMessage))
+                    .toolName(toolExecutionResultMessage.toolName())
+                    .isError(toolExecutionResultMessage.isError())
+                    .build();
+        }
+
         return Message.builder()
                 .role(toOllamaRole(chatMessage.type()))
                 .content(toText(chatMessage))
