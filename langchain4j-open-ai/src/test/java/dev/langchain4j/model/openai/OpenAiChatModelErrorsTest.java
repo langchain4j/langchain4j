@@ -146,7 +146,14 @@ class OpenAiChatModelErrorsTest {
                 .isExactlyInstanceOf(dev.langchain4j.exception.ContentFilteredException.class)
                 .hasMessage("I'm sorry, I cannot assist with that request.");
     }
-
+    @Test
+    void should_throw_descriptive_exception_when_choices_is_empty() {
+        String userMessage = "Hello";
+        assertThatThrownBy(() -> model.chat(userMessage))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("no choices");
+    }
+}
     @AfterEach
     void afterEach() {
         MOCK.verifyNoUnmatchedRequests();
