@@ -54,4 +54,48 @@ public interface ImageModel {
     default Response<Image> edit(Image image, Image mask, String prompt) {
         throw new IllegalArgumentException("Operation is not supported");
     }
+
+    /**
+     * Given one or more existing images, edit them following the given prompt.
+     *
+     * <p>Supported by providers that accept multiple input images per edit request
+     * (e.g. OpenAI's gpt-image-* models). For single-image-only providers, prefer
+     * {@link #edit(Image, String)}.
+     *
+     * @param images The images to be edited.
+     * @param prompt The prompt to edit the images.
+     * @return The generated image Response.
+     * @throws IllegalArgumentException if the operation is not supported.
+     */
+    default Response<Image> edit(List<Image> images, String prompt) {
+        throw new IllegalArgumentException("Operation is not supported");
+    }
+
+    /**
+     * Given one or more existing images, edit them following the given prompt and
+     * return {@code n} variations.
+     *
+     * @param images The images to be edited.
+     * @param prompt The prompt to edit the images.
+     * @param n      The number of edited images to return.
+     * @return The generated images Response.
+     * @throws IllegalArgumentException if the operation is not supported.
+     */
+    default Response<List<Image>> edit(List<Image> images, String prompt, int n) {
+        throw new IllegalArgumentException("Operation is not supported");
+    }
+
+    /**
+     * Given one or more existing images, edit them following the given prompt and apply
+     * the changes only to the part specified by the given mask.
+     *
+     * @param images The images to be edited.
+     * @param mask   The image mask to apply to delimit the area to edit.
+     * @param prompt The prompt to edit the images.
+     * @return The generated image Response.
+     * @throws IllegalArgumentException if the operation is not supported.
+     */
+    default Response<Image> edit(List<Image> images, Image mask, String prompt) {
+        throw new IllegalArgumentException("Operation is not supported");
+    }
 }
