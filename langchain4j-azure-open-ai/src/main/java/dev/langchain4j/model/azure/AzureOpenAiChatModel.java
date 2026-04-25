@@ -4,6 +4,7 @@ import static com.azure.ai.openai.models.CompletionsFinishReason.CONTENT_FILTERE
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.AZURE_OPEN_AI;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.aiMessageFrom;
@@ -15,6 +16,8 @@ import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolChoice
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolDefinitions;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.tokenUsageFrom;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.validate;
+
+import com.azure.ai.openai.models.ChatChoice;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Arrays.asList;
 
@@ -25,6 +28,9 @@ import com.azure.ai.openai.models.ChatChoice;
 import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.azure.ai.openai.models.ReasoningEffortValue;
+import com.azure.ai.openai.implementation.accesshelpers.ChatCompletionsOptionsAccessHelper;
+import com.azure.ai.openai.models.PredictionContent;
+import com.azure.core.util.BinaryData;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
@@ -87,6 +93,8 @@ public class AzureOpenAiChatModel implements ChatModel {
     private final Boolean strictJsonSchema;
     private final Integer maxCompletionTokens;
     private final ReasoningEffortValue reasoningEffort;
+    private final Boolean stream;
+    private final String promptCacheKey;
 
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
@@ -167,6 +175,8 @@ public class AzureOpenAiChatModel implements ChatModel {
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.maxCompletionTokens = builder.maxCompletionTokens;
         this.reasoningEffort = builder.reasoningEffort;
+        this.stream = builder.stream;
+        this.promptCacheKey = builder.promptCacheKey;
 
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
@@ -204,6 +214,14 @@ public class AzureOpenAiChatModel implements ChatModel {
                 .setSeed(seed)
                 .setReasoningEffort(reasoningEffort);
 
+        if (stream != null && stream) {
+            ChatCompletionsOptionsAccessHelper.setStream(options, true);
+        }
+
+        if (promptCacheKey != null) {
+            options.setPrediction(new PredictionContent(BinaryData.fromString("{\"prompt_cache_key\":\"" + promptCacheKey + "\"}")));
+        }
+
         if (!parameters.toolSpecifications().isEmpty()) {
             options.setTools(toToolDefinitions(parameters.toolSpecifications()));
         }
@@ -214,7 +232,12 @@ public class AzureOpenAiChatModel implements ChatModel {
         ChatCompletions chatCompletions = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(
                 () -> client.getChatCompletions(parameters.modelName(), options));
 
-        ChatChoice chatChoice = chatCompletions.getChoices().get(0);
+        List<ChatChoice> choices = chatCompletions.getChoices();
+        if (isNullOrEmpty(choices)) {
+            throw new IllegalArgumentException("Azure OpenAI response has no choices");
+        }
+
+        ChatChoice chatChoice = choices.get(0);
 
         if (chatChoice.getFinishReason() == CONTENT_FILTERED) {
             String details;
@@ -290,6 +313,8 @@ public class AzureOpenAiChatModel implements ChatModel {
         private Map<String, String> customHeaders;
         private Set<Capability> supportedCapabilities;
         private ReasoningEffortValue reasoningEffort;
+        private Boolean stream;
+        private String promptCacheKey;
 
         public Builder defaultRequestParameters(ChatRequestParameters parameters) {
             this.defaultRequestParameters = parameters;
@@ -507,6 +532,29 @@ public class AzureOpenAiChatModel implements ChatModel {
 
         public Builder reasoningEffort(ReasoningEffortValue reasoningEffort) {
             this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
+        /**
+         * Sets whether to stream responses. When true, the response is streamed token by token.
+         *
+         * @param stream whether to stream the response
+         * @return builder
+         */
+        public Builder stream(Boolean stream) {
+            this.stream = stream;
+            return this;
+        }
+
+        /**
+         * Sets the prompt cache key for prompt caching. This enables reusing cached prompts
+         * for cost and latency optimization with Azure OpenAI prompt caching.
+         *
+         * @param promptCacheKey the prompt cache key
+         * @return builder
+         */
+        public Builder promptCacheKey(String promptCacheKey) {
+            this.promptCacheKey = promptCacheKey;
             return this;
         }
 
