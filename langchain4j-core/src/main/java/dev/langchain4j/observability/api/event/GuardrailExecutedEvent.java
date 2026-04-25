@@ -45,6 +45,30 @@ public interface GuardrailExecutedEvent<
     Class<G> guardrailClass();
 
     /**
+     * Returns the logical name of the guardrail that was executed.
+     *
+     * <p>This is a convenience method for observability integrations (e.g. OpenInference
+     * {@code validator_name} attribute). The default implementation delegates to
+     * {@link Guardrail#name()}, which returns the simple class name. When guardrails are
+     * wrapped by adapters or decorators, the adapter should override {@link Guardrail#name()}
+     * to expose the underlying guardrail's name, so that this method correctly identifies
+     * the logical guardrail rather than the wrapper class.
+     *
+     * <p>Example:
+     * <pre>{@code
+     * listener.onEvent(event -> {
+     *     // "PromptInjectionGuardrail" rather than "InputGuardrailAdapter"
+     *     String name = event.guardrailName();
+     * });
+     * }</pre>
+     *
+     * @return the logical name of the executed guardrail; never {@code null}
+     */
+    default String guardrailName() {
+        return guardrailClass().getSimpleName();
+    }
+
+    /**
      * Retrieves the duration of the guardrail execution.
      *
      * @return the duration of the guardrail validation process.
