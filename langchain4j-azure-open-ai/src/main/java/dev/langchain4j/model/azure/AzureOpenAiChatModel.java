@@ -2,6 +2,7 @@ package dev.langchain4j.model.azure;
 
 import static com.azure.ai.openai.models.CompletionsFinishReason.CONTENT_FILTERED;
 import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -229,7 +230,11 @@ public class AzureOpenAiChatModel implements ChatModel {
         ChatCompletions chatCompletions = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(
                 () -> client.getChatCompletions(parameters.modelName(), options));
 
-        ChatChoice chatChoice = chatCompletions.getChoices().get(0);
+        List<ChatChoice> choices = chatCompletions.getChoices();
+        if (isNullOrEmpty(choices)) {
+            throw illegalArgument("Azure OpenAI response has no choices");
+        }
+        ChatChoice chatChoice = choices.get(0);
 
         if (chatChoice.getFinishReason() == CONTENT_FILTERED) {
             String details;
