@@ -166,7 +166,8 @@ public class DefaultMcpClient implements McpClient {
                             onResourceUpdated.accept(this, uri);
                         }
                     },
-                    progressHandler);
+                    progressHandler,
+                    listeners.isEmpty() ? null : listeners.get(0));
             ((ObjectNode) RESULT_TIMEOUT)
                     .putObject("result")
                     .putArray("content")
@@ -206,6 +207,7 @@ public class DefaultMcpClient implements McpClient {
             JsonNode capabilities =
                     transport.initialize(request).get(initializationTimeout.toMillis(), TimeUnit.MILLISECONDS);
             log.debug("MCP server capabilities: {}", capabilities.get("result"));
+            notifyListeners(l -> l.onInitialized());
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
@@ -434,6 +436,7 @@ public class DefaultMcpClient implements McpClient {
         try {
             CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(ping);
             resultFuture.get(pingTimeout.toMillis(), TimeUnit.MILLISECONDS);
+            notifyListeners(l -> l.onPong());
         } catch (ExecutionException | InterruptedException | TimeoutException e) {
             throw new RuntimeException(e);
         } finally {
