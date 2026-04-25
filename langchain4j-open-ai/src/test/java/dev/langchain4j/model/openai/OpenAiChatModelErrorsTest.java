@@ -16,8 +16,8 @@ import io.ktor.http.HttpStatusCode;
 import java.time.Duration;
 import java.util.stream.Stream;
 import me.kpavlov.aimocks.openai.MockOpenai;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -145,6 +145,31 @@ class OpenAiChatModelErrorsTest {
         assertThatThrownBy(() -> model.chat(userMessage))
                 .isExactlyInstanceOf(dev.langchain4j.exception.ContentFilteredException.class)
                 .hasMessage("I'm sorry, I cannot assist with that request.");
+    }
+
+    @Test
+    void should_throw_on_empty_choices() {
+
+        // given
+        final var userMessage = "empty choices";
+        MOCK.completion(req -> req.userMessageContains(userMessage)).respondsError(res -> {
+            res.setHttpStatus(HttpStatusCode.Companion.fromValue(200));
+            // language=json
+            res.setBody("""
+                    {
+                      "id": "chatcmpl-empty",
+                      "object": "chat.completion",
+                      "created": 1721596428,
+                      "model": "gpt-4o-2024-08-06",
+                      "choices": []
+                    }
+                    """);
+        });
+
+        // when-then
+        assertThatThrownBy(() -> model.chat(userMessage))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("no choices");
     }
 
     @AfterEach

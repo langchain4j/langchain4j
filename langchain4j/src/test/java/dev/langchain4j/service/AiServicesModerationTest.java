@@ -99,7 +99,9 @@ class AiServicesModerationTest {
                 .build();
 
         // when/then
-        assertThatThrownBy(() -> aiMessageFrom(response)).isInstanceOf(IndexOutOfBoundsException.class);
+        assertThatThrownBy(() -> aiMessageFrom(response))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("no choices");
     }
 
     @Test

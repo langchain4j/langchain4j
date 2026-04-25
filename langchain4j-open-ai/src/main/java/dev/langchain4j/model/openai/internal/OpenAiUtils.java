@@ -348,6 +348,10 @@ public class OpenAiUtils {
     }
 
     public static AiMessage aiMessageFrom(ChatCompletionResponse response, boolean returnThinking) {
+        if (isNullOrEmpty(response.choices())) {
+            throw illegalArgument("OpenAI response contains no choices. "
+                    + "This can happen on content filtering, quota errors, or malformed upstream responses.");
+        }
         AssistantMessage assistantMessage = response.choices().get(0).message();
 
         String refusal = assistantMessage.refusal();
