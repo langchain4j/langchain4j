@@ -21,6 +21,8 @@ class Message {
     private String thinking;
     private List<String> images;
     private List<ToolCall> toolCalls;
+    private String toolName;
+    private Boolean isError;
     private Map<String, Object> additionalFields;
 
     Message() {}
@@ -31,6 +33,8 @@ class Message {
         this.thinking = builder.thinking;
         this.images = builder.images;
         this.toolCalls = builder.toolCalls;
+        this.toolName = builder.toolName;
+        this.isError = builder.isError;
         this.additionalFields = builder.additionalFields;
     }
 
@@ -70,6 +74,22 @@ class Message {
         this.toolCalls = toolCalls;
     }
 
+    public String getToolName() {
+        return toolName;
+    }
+
+    public void setToolName(String toolName) {
+        this.toolName = toolName;
+    }
+
+    public Boolean getIsError() {
+        return isError;
+    }
+
+    public void setIsError(Boolean isError) {
+        this.isError = isError;
+    }
+
     @JsonAnyGetter
     public Map<String, Object> getAdditionalFields() {
         return additionalFields;
@@ -95,6 +115,8 @@ class Message {
         private String thinking;
         private List<String> images;
         private List<ToolCall> toolCalls;
+        private String toolName;
+        private Boolean isError;
         private Map<String, Object> additionalFields;
 
         Builder role(Role role) {
@@ -119,6 +141,16 @@ class Message {
 
         Builder toolCalls(List<ToolCall> toolCalls) {
             this.toolCalls = toolCalls;
+            return this;
+        }
+
+        Builder toolName(String toolName) {
+            this.toolName = toolName;
+            return this;
+        }
+
+        Builder isError(Boolean isError) {
+            this.isError = isError;
             return this;
         }
 
