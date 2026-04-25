@@ -35,6 +35,10 @@ public class OpenAiImageModel implements ImageModel {
     private final String style;
     private final String user;
     private final String responseFormat;
+    private final String background;
+    private final String moderation;
+    private final Integer outputCompression;
+    private final String outputFormat;
 
     private final OpenAiClient client;
 
@@ -65,6 +69,10 @@ public class OpenAiImageModel implements ImageModel {
         this.style = builder.style;
         this.user = builder.user;
         this.responseFormat = builder.responseFormat;
+        this.background = builder.background;
+        this.moderation = builder.moderation;
+        this.outputCompression = builder.outputCompression;
+        this.outputFormat = builder.outputFormat;
     }
 
     public String modelName() {
@@ -113,6 +121,10 @@ public class OpenAiImageModel implements ImageModel {
         private String style;
         private String user;
         private String responseFormat;
+        private String background;
+        private String moderation;
+        private Integer outputCompression;
+        private String outputFormat;
         private Duration timeout;
         private Integer maxRetries;
         private Boolean logRequests;
@@ -182,6 +194,41 @@ public class OpenAiImageModel implements ImageModel {
 
         public OpenAiImageModelBuilder responseFormat(String responseFormat) {
             this.responseFormat = responseFormat;
+            return this;
+        }
+
+        /**
+         * Background of the generated image. Supported by gpt-image-* models.
+         * One of {@code transparent}, {@code opaque}, {@code auto}.
+         */
+        public OpenAiImageModelBuilder background(String background) {
+            this.background = background;
+            return this;
+        }
+
+        /**
+         * Moderation level. Supported by gpt-image-* models. One of {@code low}, {@code auto}.
+         */
+        public OpenAiImageModelBuilder moderation(String moderation) {
+            this.moderation = moderation;
+            return this;
+        }
+
+        /**
+         * Output image compression (0-100). Supported by gpt-image-* models when
+         * {@link #outputFormat(String)} is {@code webp} or {@code jpeg}.
+         */
+        public OpenAiImageModelBuilder outputCompression(Integer outputCompression) {
+            this.outputCompression = outputCompression;
+            return this;
+        }
+
+        /**
+         * Output image format. Supported by gpt-image-* models. One of {@code png},
+         * {@code jpeg}, {@code webp}.
+         */
+        public OpenAiImageModelBuilder outputFormat(String outputFormat) {
+            this.outputFormat = outputFormat;
             return this;
         }
 
@@ -257,7 +304,11 @@ public class OpenAiImageModel implements ImageModel {
                 .size(size)
                 .quality(quality)
                 .style(style)
-                .user(user);
+                .user(user)
+                .background(background)
+                .moderation(moderation)
+                .outputCompression(outputCompression)
+                .outputFormat(outputFormat);
         if (!isGptImageModel(modelName)) {
             builder.responseFormat(responseFormat);
         }
