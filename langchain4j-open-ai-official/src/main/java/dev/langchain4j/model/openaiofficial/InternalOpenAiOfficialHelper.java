@@ -67,6 +67,13 @@ import java.util.stream.Collectors;
 
 class InternalOpenAiOfficialHelper {
 
+    private static final String REASONING_CONTENT = "reasoning_content";
+    private static final String REASONING_CONTENT_CAMEL_CASE = "reasoningContent";
+    private static final String THINKING = "thinking";
+    // OpenAI-compatible providers do not expose reasoning consistently:
+    // some use snake_case, some camelCase, and some a plain `thinking` field.
+    private static final String[] THINKING_PROPERTY_NAMES = {REASONING_CONTENT, REASONING_CONTENT_CAMEL_CASE, THINKING};
+
     static List<ChatCompletionMessageParam> toOpenAiMessages(List<ChatMessage> messages) {
         return messages.stream()
                 .map(InternalOpenAiOfficialHelper::toOpenAiMessage)
@@ -253,8 +260,13 @@ class InternalOpenAiOfficialHelper {
     }
 
     static AiMessage aiMessageFrom(ChatCompletion chatCompletion) {
+        return aiMessageFrom(chatCompletion, false);
+    }
+
+    static AiMessage aiMessageFrom(ChatCompletion chatCompletion, boolean returnThinking) {
         ChatCompletionMessage assistantMessage = chatCompletion.choices().get(0).message();
         Optional<String> text = assistantMessage.content();
+        String thinking = returnThinking ? thinkingFrom(assistantMessage) : null;
 
         Optional<List<ChatCompletionMessageToolCall>> toolCalls = assistantMessage.toolCalls();
         if (toolCalls.isPresent()) {
@@ -264,15 +276,52 @@ class InternalOpenAiOfficialHelper {
                     .collect(toList());
 
             if (text.isEmpty()) {
-                return AiMessage.from(toolExecutionRequests);
+                return AiMessage.builder()
+                        .thinking(thinking)
+                        .toolExecutionRequests(toolExecutionRequests)
+                        .build();
             } else if (toolExecutionRequests.isEmpty()) {
-                return AiMessage.from(text.get());
+                return AiMessage.builder().text(text.get()).thinking(thinking).build();
             } else {
-                return AiMessage.from(text.get(), toolExecutionRequests);
+                return AiMessage.builder()
+                        .text(text.get())
+                        .thinking(thinking)
+                        .toolExecutionRequests(toolExecutionRequests)
+                        .build();
             }
         }
 
-        return AiMessage.from(text.orElse(""));
+        return AiMessage.builder().text(text.orElse("")).thinking(thinking).build();
+    }
+
+    static String thinkingFrom(ChatCompletionMessage assistantMessage) {
+        return thinkingFrom(assistantMessage._additionalProperties());
+    }
+
+    static String thinkingFrom(ChatCompletionChunk.Choice.Delta delta) {
+        return thinkingFrom(delta._additionalProperties());
+    }
+
+    private static String thinkingFrom(Map<String, JsonValue> additionalProperties) {
+        return firstNonBlankString(additionalProperties, THINKING_PROPERTY_NAMES);
+    }
+
+    private static String firstNonBlankString(Map<String, JsonValue> additionalProperties, String... keys) {
+        for (String key : keys) {
+            JsonValue value = additionalProperties.get(key);
+            if (value == null) {
+                continue;
+            }
+            try {
+                String stringValue = value.convert(String.class);
+                if (stringValue != null && !stringValue.isBlank()) {
+                    return stringValue;
+                }
+            } catch (Exception ignored) {
+                // Ignore non-string provider-specific values.
+            }
+        }
+        return null;
     }
 
     private static ToolExecutionRequest toToolExecutionRequest(ChatCompletionMessageToolCall toolCall) {
