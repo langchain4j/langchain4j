@@ -4,6 +4,7 @@ import static com.azure.ai.openai.models.CompletionsFinishReason.CONTENT_FILTERE
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.AZURE_OPEN_AI;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.aiMessageFrom;
@@ -15,6 +16,8 @@ import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolChoice
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolDefinitions;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.tokenUsageFrom;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.validate;
+
+import com.azure.ai.openai.models.ChatChoice;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Arrays.asList;
 
@@ -229,7 +232,12 @@ public class AzureOpenAiChatModel implements ChatModel {
         ChatCompletions chatCompletions = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(
                 () -> client.getChatCompletions(parameters.modelName(), options));
 
-        ChatChoice chatChoice = chatCompletions.getChoices().get(0);
+        List<ChatChoice> choices = chatCompletions.getChoices();
+        if (isNullOrEmpty(choices)) {
+            throw new IllegalArgumentException("Azure OpenAI response has no choices");
+        }
+
+        ChatChoice chatChoice = choices.get(0);
 
         if (chatChoice.getFinishReason() == CONTENT_FILTERED) {
             String details;
