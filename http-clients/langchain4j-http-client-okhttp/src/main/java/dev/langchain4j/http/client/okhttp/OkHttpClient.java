@@ -32,16 +32,10 @@ public class OkHttpClient implements HttpClient {
     private final okhttp3.OkHttpClient client;
 
     public OkHttpClient(OkHttpClientBuilder builder) {
+        // Timeouts are applied by OkHttpClientBuilder.build() on the underlying builder.
+        // OkHttpClient now uses the pre-configured okHttpClientBuilder.
         okhttp3.OkHttpClient.Builder okBuilder =
                 getOrDefault(builder.okHttpClientBuilder(), okhttp3.OkHttpClient.Builder::new);
-
-        if (builder.connectTimeout() != null) {
-            okBuilder.connectTimeout(builder.connectTimeout().toMillis(), TimeUnit.MILLISECONDS);
-        }
-        if (builder.readTimeout() != null) {
-            okBuilder.readTimeout(builder.readTimeout().toMillis(), TimeUnit.MILLISECONDS);
-        }
-
         this.client = okBuilder.build();
     }
 

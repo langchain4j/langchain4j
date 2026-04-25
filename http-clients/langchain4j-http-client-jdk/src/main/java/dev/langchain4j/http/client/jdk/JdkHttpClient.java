@@ -30,11 +30,9 @@ public class JdkHttpClient implements HttpClient {
     private final Duration readTimeout;
 
     public JdkHttpClient(JdkHttpClientBuilder builder) {
+        // Timeouts are applied by JdkHttpClientBuilder.build() on the underlying builder.
         java.net.http.HttpClient.Builder httpClientBuilder =
                 getOrDefault(builder.httpClientBuilder(), java.net.http.HttpClient::newBuilder);
-        if (builder.connectTimeout() != null) {
-            httpClientBuilder.connectTimeout(builder.connectTimeout());
-        }
         this.delegate = httpClientBuilder.build();
         this.readTimeout = builder.readTimeout();
     }

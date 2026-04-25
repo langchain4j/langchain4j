@@ -159,9 +159,6 @@ public class DefaultAnthropicClient extends AnthropicClient {
     /**
      * Constructs a new {@link DefaultAnthropicClient} using the provided builder configuration.
      *
-     * <p>Initializes the HTTP client with configured timeouts (defaulting to 15s connect, 60s read)
-     * and optionally wraps it with {@link LoggingHttpClient} if request/response logging is enabled.</p>
-     *
      * @param builder the builder containing configuration parameters
      * @throws IllegalArgumentException if {@code baseUrl}, {@code apiKey}, or {@code version} are blank
      */
@@ -170,12 +167,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
         HttpClientBuilder httpClientBuilder =
                 getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
 
-        HttpClient httpClient = httpClientBuilder
-                .connectTimeout(getOrDefault(
-                        getOrDefault(builder.timeout, httpClientBuilder.connectTimeout()), Duration.ofSeconds(15)))
-                .readTimeout(getOrDefault(
-                        getOrDefault(builder.timeout, httpClientBuilder.readTimeout()), Duration.ofSeconds(60)))
-                .build();
+        HttpClient httpClient = httpClientBuilder.build();
 
         if (builder.logRequests != null && builder.logRequests
                 || builder.logResponses != null && builder.logResponses) {

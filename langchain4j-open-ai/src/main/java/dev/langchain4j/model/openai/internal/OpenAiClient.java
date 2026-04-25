@@ -113,11 +113,19 @@ public abstract class OpenAiClient {
             return (B) this;
         }
 
+        /**
+         * @deprecated as of 2.0. Configure connect timeout on the underlying HTTP client builder instead.
+         */
+        @Deprecated(forRemoval = true)
         public B connectTimeout(Duration connectTimeout) {
             this.connectTimeout = connectTimeout;
             return (B) this;
         }
 
+        /**
+         * @deprecated as of 2.0. Configure read timeout on the underlying HTTP client builder instead.
+         */
+        @Deprecated(forRemoval = true)
         public B readTimeout(Duration readTimeout) {
             this.readTimeout = readTimeout;
             return (B) this;

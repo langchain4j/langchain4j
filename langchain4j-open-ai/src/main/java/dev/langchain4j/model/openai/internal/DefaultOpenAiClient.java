@@ -43,12 +43,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
         HttpClientBuilder httpClientBuilder =
                 getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
 
-        HttpClient httpClient = httpClientBuilder
-                .connectTimeout(getOrDefault(
-                        getOrDefault(builder.connectTimeout, httpClientBuilder.connectTimeout()), ofSeconds(15)))
-                .readTimeout(
-                        getOrDefault(getOrDefault(builder.readTimeout, httpClientBuilder.readTimeout()), ofSeconds(60)))
-                .build();
+        HttpClient httpClient = httpClientBuilder.build();
 
         if (builder.logRequests || builder.logResponses) {
             this.httpClient =
