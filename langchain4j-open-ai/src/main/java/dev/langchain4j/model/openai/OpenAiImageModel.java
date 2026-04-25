@@ -11,12 +11,15 @@ import dev.langchain4j.data.image.Image;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.image.EditImageFile;
+import dev.langchain4j.model.openai.internal.image.EditImagesRequest;
 import dev.langchain4j.model.openai.internal.image.GenerateImagesRequest;
 import dev.langchain4j.model.openai.internal.image.GenerateImagesResponse;
 import dev.langchain4j.model.openai.internal.image.ImageData;
 import dev.langchain4j.model.openai.spi.OpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -39,6 +42,7 @@ public class OpenAiImageModel implements ImageModel {
     private final String moderation;
     private final Integer outputCompression;
     private final String outputFormat;
+    private final String inputFidelity;
 
     private final OpenAiClient client;
 
@@ -73,6 +77,7 @@ public class OpenAiImageModel implements ImageModel {
         this.moderation = builder.moderation;
         this.outputCompression = builder.outputCompression;
         this.outputFormat = builder.outputFormat;
+        this.inputFidelity = builder.inputFidelity;
     }
 
     public String modelName() {
@@ -100,6 +105,42 @@ public class OpenAiImageModel implements ImageModel {
                 response.data().stream().map(OpenAiImageModel::fromImageData).collect(Collectors.toList()));
     }
 
+    @Override
+    public Response<Image> edit(Image image, String prompt) {
+        return edit(List.of(image), prompt);
+    }
+
+    @Override
+    public Response<Image> edit(Image image, Image mask, String prompt) {
+        return edit(List.of(image), mask, prompt);
+    }
+
+    @Override
+    public Response<Image> edit(List<Image> images, String prompt) {
+        EditImagesRequest request = editRequestBuilder(images, null, prompt).build();
+        GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesEdit(request), maxRetries)
+                .execute();
+        return Response.from(fromImageData(response.data().get(0)));
+    }
+
+    @Override
+    public Response<List<Image>> edit(List<Image> images, String prompt, int n) {
+        EditImagesRequest request =
+                editRequestBuilder(images, null, prompt).n(n).build();
+        GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesEdit(request), maxRetries)
+                .execute();
+        return Response.from(
+                response.data().stream().map(OpenAiImageModel::fromImageData).collect(Collectors.toList()));
+    }
+
+    @Override
+    public Response<Image> edit(List<Image> images, Image mask, String prompt) {
+        EditImagesRequest request = editRequestBuilder(images, mask, prompt).build();
+        GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesEdit(request), maxRetries)
+                .execute();
+        return Response.from(fromImageData(response.data().get(0)));
+    }
+
     public static OpenAiImageModelBuilder builder() {
         for (OpenAiImageModelBuilderFactory factory : loadFactories(OpenAiImageModelBuilderFactory.class)) {
             return factory.get();
@@ -125,6 +166,7 @@ public class OpenAiImageModel implements ImageModel {
         private String moderation;
         private Integer outputCompression;
         private String outputFormat;
+        private String inputFidelity;
         private Duration timeout;
         private Integer maxRetries;
         private Boolean logRequests;
@@ -232,6 +274,16 @@ public class OpenAiImageModel implements ImageModel {
             return this;
         }
 
+        /**
+         * Input fidelity for image-edit requests. Supported by gpt-image-* models.
+         * One of {@code low}, {@code high}. Only consulted by {@code edit(...)};
+         * ignored by {@code generate(...)}.
+         */
+        public OpenAiImageModelBuilder inputFidelity(String inputFidelity) {
+            this.inputFidelity = inputFidelity;
+            return this;
+        }
+
         public OpenAiImageModelBuilder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
@@ -322,5 +374,48 @@ public class OpenAiImageModel implements ImageModel {
      */
     static boolean isGptImageModel(String modelName) {
         return modelName != null && modelName.startsWith("gpt-image-");
+    }
+
+    EditImagesRequest.Builder editRequestBuilder(List<Image> images, Image mask, String prompt) {
+        if (images == null || images.isEmpty()) {
+            throw new IllegalArgumentException("images must not be null or empty");
+        }
+        List<EditImageFile> imageFiles = new ArrayList<>(images.size());
+        for (int i = 0; i < images.size(); i++) {
+            imageFiles.add(EditImageFile.from(images.get(i), defaultImageFileName(images.get(i), i)));
+        }
+        EditImageFile maskFile = mask == null ? null : EditImageFile.from(mask, "mask.png");
+
+        EditImagesRequest.Builder builder = EditImagesRequest.builder()
+                .model(modelName)
+                .prompt(prompt)
+                .images(imageFiles)
+                .mask(maskFile)
+                .size(size)
+                .quality(quality)
+                .user(user)
+                .background(background)
+                .inputFidelity(inputFidelity)
+                .moderation(moderation)
+                .outputFormat(outputFormat)
+                .outputCompression(outputCompression);
+        if (!isGptImageModel(modelName)) {
+            builder.responseFormat(responseFormat);
+        }
+        return builder;
+    }
+
+    private static String defaultImageFileName(Image image, int index) {
+        String mimeType = image.mimeType();
+        String extension = "png";
+        if (mimeType != null) {
+            extension = switch (mimeType) {
+                case "image/png" -> "png";
+                case "image/jpeg", "image/jpg" -> "jpg";
+                case "image/webp" -> "webp";
+                default -> "png";
+            };
+        }
+        return "image-" + index + "." + extension;
     }
 }
