@@ -34,6 +34,8 @@ import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.azure.ai.openai.models.ChatCompletionsToolCall;
 import com.azure.ai.openai.models.ChatResponseMessage;
 import com.azure.ai.openai.models.ReasoningEffortValue;
+import com.azure.core.util.BinaryData;
+import com.azure.ai.openai.models.PredictionContent;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
@@ -105,6 +107,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
     private final boolean strictJsonSchema;
     private final Integer maxCompletionTokens;
     private final ReasoningEffortValue reasoningEffort;
+    private final Boolean stream;
+    private final String promptCacheKey;
 
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
@@ -184,6 +188,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.maxCompletionTokens = builder.maxCompletionTokens;
         this.reasoningEffort = builder.reasoningEffort;
+        this.stream = builder.stream;
+        this.promptCacheKey = builder.promptCacheKey;
 
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
@@ -220,6 +226,14 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                 .setEnhancements(enhancements)
                 .setSeed(seed)
                 .setReasoningEffort(reasoningEffort);
+
+        if (stream != null && stream) {
+            ChatCompletionsOptionsAccessHelper.setStream(options, true);
+        }
+
+        if (promptCacheKey != null) {
+            options.setPrediction(new PredictionContent(BinaryData.fromString("{\"prompt_cache_key\":\"" + promptCacheKey + "\"}")));
+        }
 
         ChatCompletionStreamOptions streamOptions = new ChatCompletionStreamOptions().setIncludeUsage(true);
         ChatCompletionsOptionsAccessHelper.setStreamOptions(options, streamOptions);
@@ -392,6 +406,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         private Map<String, String> customHeaders;
         private Set<Capability> supportedCapabilities;
         private ReasoningEffortValue reasoningEffort;
+        private Boolean stream;
+        private String promptCacheKey;
 
         public Builder defaultRequestParameters(ChatRequestParameters parameters) {
             this.defaultRequestParameters = parameters;
@@ -609,6 +625,29 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
 
         public Builder reasoningEffort(ReasoningEffortValue reasoningEffort) {
             this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
+        /**
+         * Sets whether to stream responses. When true, the response is streamed token by token.
+         *
+         * @param stream whether to stream the response
+         * @return builder
+         */
+        public Builder stream(Boolean stream) {
+            this.stream = stream;
+            return this;
+        }
+
+        /**
+         * Sets the prompt cache key for prompt caching. This enables reusing cached prompts
+         * for cost and latency optimization with Azure OpenAI prompt caching.
+         *
+         * @param promptCacheKey the prompt cache key
+         * @return builder
+         */
+        public Builder promptCacheKey(String promptCacheKey) {
+            this.promptCacheKey = promptCacheKey;
             return this;
         }
 

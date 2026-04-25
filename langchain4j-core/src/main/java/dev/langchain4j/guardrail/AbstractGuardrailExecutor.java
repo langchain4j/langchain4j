@@ -125,8 +125,27 @@ public abstract sealed class AbstractGuardrailExecutor<
                         .request(request)
                         .result(result)
                         .guardrailClass((Class<G>) guardrail.getClass())
+                        .guardrailName(guardrailName(guardrail))
                         .duration(duration)
                         .build());
+    }
+
+    private static <P extends GuardrailRequest<P>, R extends GuardrailResult<R>, G extends Guardrail<P, R>>
+            String guardrailName(G guardrail) {
+        // If the guardrail has a getName() method, use it; otherwise fall back to class simple name
+        if (guardrail instanceof NamedGuardrail named) {
+            return named.getName();
+        }
+        return guardrail.getClass().getSimpleName();
+    }
+
+    /**
+     * Interface for guardrails that expose a logical name distinct from their class name.
+     * Implementations of decorators or adapters should implement this interface
+     * to delegate to the wrapped guardrail's name.
+     */
+    public interface NamedGuardrail<P extends GuardrailRequest<P>, R extends GuardrailResult<R>> {
+        String getName();
     }
 
     protected R executeGuardrails(P request) {

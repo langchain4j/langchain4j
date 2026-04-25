@@ -45,6 +45,19 @@ public interface GuardrailExecutedEvent<
     Class<G> guardrailClass();
 
     /**
+     * Retrieves the logical name of the guardrail.
+     * <p>
+     * When guardrails are wrapped by decorators or adapters, this method returns the name of the
+     * actual guardrail implementation rather than the wrapper class name, providing correct
+     * identity for observability systems.
+     *
+     * @return the simple class name of the actual guardrail being executed
+     */
+    default String guardrailName() {
+        return guardrailClass().getSimpleName();
+    }
+
+    /**
      * Retrieves the duration of the guardrail execution.
      *
      * @return the duration of the guardrail validation process.
@@ -62,6 +75,7 @@ public interface GuardrailExecutedEvent<
         private R result;
         private Class<G> guardrailClass;
         private Duration duration;
+        private String guardrailName;
 
         protected GuardrailExecutedEventBuilder() {}
 
@@ -71,6 +85,7 @@ public interface GuardrailExecutedEvent<
             result(src.result());
             guardrailClass(src.guardrailClass());
             duration(src.duration());
+            guardrailName(src.guardrailName());
         }
 
         public Class<G> guardrailClass() {
@@ -87,6 +102,10 @@ public interface GuardrailExecutedEvent<
 
         public Duration duration() {
             return duration;
+        }
+
+        public String guardrailName() {
+            return guardrailName;
         }
 
         public GuardrailExecutedEventBuilder<P, R, G, T> request(P request) {
@@ -110,6 +129,11 @@ public interface GuardrailExecutedEvent<
 
         public GuardrailExecutedEventBuilder<P, R, G, T> duration(Duration duration) {
             this.duration = duration;
+            return this;
+        }
+
+        public GuardrailExecutedEventBuilder<P, R, G, T> guardrailName(String guardrailName) {
+            this.guardrailName = guardrailName;
             return this;
         }
     }
