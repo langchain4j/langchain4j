@@ -20,7 +20,8 @@ class PojoListOutputParserTest {
     void should_parse_list_of_pojo(String json, List<Person> expected) {
 
         // when
-        List<Person> people = new PojoListOutputParser<>(Person.class).parse(json);
+        List<Person> people =
+                new PojoListOutputParser<>(Person.class, new PojoOutputParser<>(Person.class)).parse(json);
 
         // then
         assertThat(people).isEqualTo(expected);
@@ -43,7 +44,8 @@ class PojoListOutputParserTest {
     @ValueSource(strings = {"{}", "{\"values\": null}"})
     void should_fail_to_parse_empty_input(String input) {
 
-        assertThatThrownBy(() -> new PojoListOutputParser<>(Person.class).parse(input))
+        assertThatThrownBy(() ->
+                        new PojoListOutputParser<>(Person.class, new PojoOutputParser<>(Person.class)).parse(input))
                 .isExactlyInstanceOf(OutputParsingException.class)
                 .hasMessageContaining("Failed to parse")
                 .hasMessageContaining("Person");
@@ -61,7 +63,8 @@ class PojoListOutputParserTest {
             })
     void should_fail_to_parse_invalid_input(String text) {
 
-        assertThatThrownBy(() -> new PojoListOutputParser<>(Person.class).parse(text))
+        assertThatThrownBy(() ->
+                        new PojoListOutputParser<>(Person.class, new PojoOutputParser<>(Person.class)).parse(text))
                 .isExactlyInstanceOf(OutputParsingException.class)
                 .hasMessageContaining("Failed to parse")
                 .hasMessageContaining("Person");
@@ -71,7 +74,8 @@ class PojoListOutputParserTest {
     @MethodSource
     void should_parse_person_with_null_name(String json, List<Person> expected) {
         // when
-        List<Person> people = new PojoListOutputParser<>(Person.class).parse(json);
+        List<Person> people =
+                new PojoListOutputParser<>(Person.class, new PojoOutputParser<>(Person.class)).parse(json);
 
         // then
         assertThat(people).isEqualTo(expected);
@@ -89,7 +93,8 @@ class PojoListOutputParserTest {
     @MethodSource
     void should_parse_person_with_missing_name(String json, List<Person> expected) {
         // when
-        List<Person> people = new PojoListOutputParser<>(Person.class).parse(json);
+        List<Person> people =
+                new PojoListOutputParser<>(Person.class, new PojoOutputParser<>(Person.class)).parse(json);
 
         // then
         assertThat(people).isEqualTo(expected);
@@ -111,7 +116,8 @@ class PojoListOutputParserTest {
                 "{\"values\":[\"Alice\"]}",
             })
     void should_fail_to_parse_malformed_json(String malformedJson) {
-        assertThatThrownBy(() -> new PojoListOutputParser<>(Person.class).parse(malformedJson))
+        assertThatThrownBy(() -> new PojoListOutputParser<>(Person.class, new PojoOutputParser<>(Person.class))
+                        .parse(malformedJson))
                 .isExactlyInstanceOf(OutputParsingException.class)
                 .hasMessageContaining("Failed to parse");
     }
@@ -123,7 +129,8 @@ class PojoListOutputParserTest {
                 "{\"values\":[{\"name\":{\"object\":\"value\"}}]}",
             })
     void should_fail_to_parse_wrong_type_for_name(String json) {
-        assertThatThrownBy(() -> new PojoListOutputParser<>(Person.class).parse(json))
+        assertThatThrownBy(() ->
+                        new PojoListOutputParser<>(Person.class, new PojoOutputParser<>(Person.class)).parse(json))
                 .isExactlyInstanceOf(OutputParsingException.class)
                 .hasMessageContaining("Failed to parse");
     }
@@ -132,7 +139,8 @@ class PojoListOutputParserTest {
     @MethodSource
     void should_handle_whitespace_in_json(String json, List<Person> expected) {
         // when
-        List<Person> people = new PojoListOutputParser<>(Person.class).parse(json);
+        List<Person> people =
+                new PojoListOutputParser<>(Person.class, new PojoOutputParser<>(Person.class)).parse(json);
 
         // then
         assertThat(people).isEqualTo(expected);
@@ -152,7 +160,8 @@ class PojoListOutputParserTest {
     @MethodSource
     void should_parse_escaped_characters(String json, List<Person> expected) {
         // when
-        List<Person> people = new PojoListOutputParser<>(Person.class).parse(json);
+        List<Person> people =
+                new PojoListOutputParser<>(Person.class, new PojoOutputParser<>(Person.class)).parse(json);
 
         // then
         assertThat(people).isEqualTo(expected);
@@ -174,7 +183,8 @@ class PojoListOutputParserTest {
             })
     void should_handle_or_fail_duplicate_keys(String json) {
         try {
-            List<Person> people = new PojoListOutputParser<>(Person.class).parse(json);
+            List<Person> people =
+                    new PojoListOutputParser<>(Person.class, new PojoOutputParser<>(Person.class)).parse(json);
             assertThat(people).isNotNull();
         } catch (OutputParsingException e) {
             assertThat(e.getMessage()).contains("Failed to parse");
