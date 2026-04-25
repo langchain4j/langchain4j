@@ -172,11 +172,12 @@ public class OkHttpClient implements HttpClient {
                 multipartBuilder.addFormDataPart(entry.getKey(), entry.getValue());
             }
 
-            for (Map.Entry<String, FormDataFile> entry : request.formDataFiles().entrySet()) {
-                FormDataFile file = entry.getValue();
-                RequestBody fileBody = RequestBody.create(
-                        file.content(), MediaType.parse(file.contentType()));
-                multipartBuilder.addFormDataPart(entry.getKey(), file.fileName(), fileBody);
+            for (Map.Entry<String, List<FormDataFile>> entry : request.formDataFiles().entrySet()) {
+                for (FormDataFile file : entry.getValue()) {
+                    RequestBody fileBody = RequestBody.create(
+                            file.content(), MediaType.parse(file.contentType()));
+                    multipartBuilder.addFormDataPart(entry.getKey(), file.fileName(), fileBody);
+                }
             }
 
             return multipartBuilder.build();
