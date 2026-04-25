@@ -348,7 +348,11 @@ public class OpenAiUtils {
     }
 
     public static AiMessage aiMessageFrom(ChatCompletionResponse response, boolean returnThinking) {
-        AssistantMessage assistantMessage = response.choices().get(0).message();
+        List<ChatCompletionChoice> choices = response.choices();
+        if (isNullOrEmpty(choices)) {
+            throw illegalArgument("OpenAI response has no choices");
+        }
+        AssistantMessage assistantMessage = choices.get(0).message();
 
         String refusal = assistantMessage.refusal();
         if (isNotNullOrBlank(refusal)) {
