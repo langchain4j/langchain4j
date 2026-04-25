@@ -145,7 +145,7 @@ public class OpenAiStreamingResponseBuilder {
             this.contentBuilder.append(content);
         }
 
-        String reasoningContent = delta.reasoningContent();
+        String reasoningContent = delta.reasoning();
         if (returnThinking && !isNullOrEmpty(reasoningContent)) {
             this.reasoningContentBuilder.append(reasoningContent);
         }
