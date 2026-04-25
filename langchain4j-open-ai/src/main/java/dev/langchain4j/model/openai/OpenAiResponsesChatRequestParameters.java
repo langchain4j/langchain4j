@@ -1,13 +1,13 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
-
-import java.util.List;
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestParameters {
 
@@ -31,6 +31,7 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
     private final Boolean store;
     private final Boolean strictTools;
     private final Boolean strictJsonSchema;
+    private final List<Map<String, Object>> serverTools;
 
     private OpenAiResponsesChatRequestParameters(Builder builder) {
         super(builder);
@@ -51,6 +52,7 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
         this.store = builder.store;
         this.strictTools = builder.strictTools;
         this.strictJsonSchema = builder.strictJsonSchema;
+        this.serverTools = copy(builder.serverTools);
     }
 
     public String previousResponseId() {
@@ -121,6 +123,10 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
         return strictJsonSchema;
     }
 
+    public List<Map<String, Object>> serverTools() {
+        return serverTools;
+    }
+
     @Override
     public OpenAiResponsesChatRequestParameters overrideWith(ChatRequestParameters that) {
         return OpenAiResponsesChatRequestParameters.builder()
@@ -159,7 +165,8 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
                 && Objects.equals(streamIncludeObfuscation, that.streamIncludeObfuscation)
                 && Objects.equals(store, that.store)
                 && Objects.equals(strictTools, that.strictTools)
-                && Objects.equals(strictJsonSchema, that.strictJsonSchema);
+                && Objects.equals(strictJsonSchema, that.strictJsonSchema)
+                && Objects.equals(serverTools, that.serverTools);
     }
 
     @Override
@@ -182,7 +189,8 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
                 streamIncludeObfuscation,
                 store,
                 strictTools,
-                strictJsonSchema);
+                strictJsonSchema,
+                serverTools);
     }
 
     public static Builder builder() {
@@ -208,6 +216,7 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
         private Boolean store;
         private Boolean strictTools;
         private Boolean strictJsonSchema;
+        private List<Map<String, Object>> serverTools;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
@@ -230,6 +239,7 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
                 store(getOrDefault(p.store(), store));
                 strictTools(getOrDefault(p.strictTools(), strictTools));
                 strictJsonSchema(getOrDefault(p.strictJsonSchema(), strictJsonSchema));
+                serverTools(getOrDefault(p.serverTools(), serverTools));
             }
             return this;
         }
@@ -316,6 +326,11 @@ public class OpenAiResponsesChatRequestParameters extends DefaultChatRequestPara
 
         public Builder strictJsonSchema(Boolean strictJsonSchema) {
             this.strictJsonSchema = strictJsonSchema;
+            return this;
+        }
+
+        public Builder serverTools(List<Map<String, Object>> serverTools) {
+            this.serverTools = serverTools;
             return this;
         }
 
