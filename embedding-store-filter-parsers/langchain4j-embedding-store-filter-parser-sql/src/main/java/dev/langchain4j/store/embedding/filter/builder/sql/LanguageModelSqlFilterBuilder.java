@@ -100,26 +100,62 @@ public class LanguageModelSqlFilterBuilder {
             + "Based on your instructions, here is the SQL query I have generated to answer the question `{{query}}`:\n"
             + "```sql");
 
+    private static final PromptTemplate SIMPLE_PROMPT_TEMPLATE = PromptTemplate.from("### Instructions:\n"
+            + "Generate a simple SQL SELECT query with a WHERE clause for the question below.\n"
+            + "IMPORTANT: Only use simple comparisons (=, !=, <, >, <=, >=, IN, NOT IN, BETWEEN).\n"
+            + "Do NOT use JOINs, subqueries, or complex expressions.\n"
+            + "Return ONLY the SQL query, nothing else.\n"
+            + "\n"
+            + "### Schema:\n"
+            + "{{create_table_statement}}\n"
+            + "\n"
+            + "### Question:\n"
+            + "{{query}}\n"
+            + "\n"
+            + "### SQL:\n"
+            + "```sql");
+
+    private static final PromptTemplate RETRY_PROMPT_TEMPLATE = PromptTemplate.from("### Instructions:\n"
+            + "The following SQL query failed to parse. Please fix it.\n"
+            + "\n"
+            + "### Original Query:\n"
+            + "{{original_sql}}\n"
+            + "\n"
+            + "### Error:\n"
+            + "{{error_message}}\n"
+            + "\n"
+            + "### Schema:\n"
+            + "{{create_table_statement}}\n"
+            + "\n"
+            + "### Fixed SQL:\n"
+            + "```sql");
+
     protected final ChatModel chatModel;
     protected final TableDefinition tableDefinition;
     protected final String createTableStatement;
     protected final PromptTemplate promptTemplate;
     protected final SqlFilterParser sqlFilterParser;
+    protected final RetryStrategy retryStrategy;
+    protected final int maxRetries;
 
     public LanguageModelSqlFilterBuilder(ChatModel chatModel, TableDefinition tableDefinition) {
-        this(chatModel, tableDefinition, DEFAULT_PROMPT_TEMPLATE, new SqlFilterParser());
+        this(chatModel, tableDefinition, DEFAULT_PROMPT_TEMPLATE, new SqlFilterParser(), RetryStrategy.NONE, 1);
     }
 
     private LanguageModelSqlFilterBuilder(
             ChatModel chatModel,
             TableDefinition tableDefinition,
             PromptTemplate promptTemplate,
-            SqlFilterParser sqlFilterParser) {
+            SqlFilterParser sqlFilterParser,
+            RetryStrategy retryStrategy,
+            int maxRetries) {
         this.chatModel = ensureNotNull(chatModel, "chatModel");
         this.tableDefinition = ensureNotNull(tableDefinition, "tableDefinition");
         this.createTableStatement = format(tableDefinition);
         this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
         this.sqlFilterParser = getOrDefault(sqlFilterParser, SqlFilterParser::new);
+        this.retryStrategy = getOrDefault(retryStrategy, RetryStrategy.NONE);
+        this.maxRetries = maxRetries > 0 ? maxRetries : 1;
     }
 
     public static LanguageModelSqlFilterBuilderBuilder builder() {
@@ -141,13 +177,134 @@ public class LanguageModelSqlFilterBuilder {
             return sqlFilterParser.parse(cleanedSql);
         } catch (Exception e) {
             log.warn("Failed parsing the following SQL: '{}'", cleanedSql, e);
-            // TODO implement additional strategies (configurable):
-            //  - feed the error to the LLM and retry
-            //  - return predefined filter
-            //  - return partial filter if the filter is composite and some parts were parsed successfully
-            //  - etc
-            return fallback(query, generatedSql, cleanedSql, e);
+            return handleParsingFailure(query, generatedSql, cleanedSql, e, 0);
         }
+    }
+
+    /**
+     * Handles parsing failure with configurable retry strategies.
+     */
+    protected Filter handleParsingFailure(
+            Query query, String generatedSql, String cleanedSql, Exception e, int attempt) {
+        // First, try to extract SQL from the response
+        String extractedSql = extractSelectStatement(generatedSql);
+        if (!isNullOrBlank(extractedSql) && !extractedSql.equals(cleanedSql)) {
+            try {
+                log.trace("Extracted SQL: '{}'", extractedSql);
+                return sqlFilterParser.parse(extractedSql);
+            } catch (Exception e2) {
+                log.warn("Failed parsing extracted SQL: '{}'", extractedSql, e2);
+            }
+        }
+
+        // If extraction failed and we have retries left, apply retry strategy
+        if (attempt < maxRetries && retryStrategy != RetryStrategy.NONE) {
+            return applyRetryStrategy(query, generatedSql, e, attempt);
+        }
+
+        // All attempts exhausted
+        log.trace("All retry attempts exhausted, giving up");
+        return null;
+    }
+
+    /**
+     * Applies the configured retry strategy.
+     */
+    protected Filter applyRetryStrategy(Query query, String generatedSql, Exception e, int attempt) {
+        switch (retryStrategy) {
+            case RETRY_WITH_ERROR_FEEDBACK:
+                return retryWithErrorFeedback(query, generatedSql, e, attempt);
+            case RETRY_SIMPLIFIED:
+                return retrySimplified(query, generatedSql, attempt);
+            case RETRY_WITH_SIMPLE_PROMPT:
+                return retryWithSimplePrompt(query, attempt);
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * Retries by sending the error back to the LLM.
+     */
+    protected Filter retryWithErrorFeedback(Query query, String generatedSql, Exception e, int attempt) {
+        log.debug("Retrying with error feedback (attempt {})", attempt + 1);
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("original_sql", generatedSql);
+        variables.put("error_message", e.getMessage());
+        variables.put("create_table_statement", createTableStatement);
+
+        Prompt retryPrompt = RETRY_PROMPT_TEMPLATE.apply(variables);
+        ChatResponse response = chatModel.chat(retryPrompt.toUserMessage());
+        String newSql = clean(response.aiMessage().text());
+
+        try {
+            return sqlFilterParser.parse(newSql);
+        } catch (Exception e2) {
+            log.warn("Retry with error feedback failed: '{}'", newSql, e2);
+            return handleParsingFailure(query, newSql, newSql, e2, attempt + 1);
+        }
+    }
+
+    /**
+     * Retries with a simplified prompt.
+     */
+    protected Filter retryWithSimplePrompt(Query query, int attempt) {
+        log.debug("Retrying with simple prompt (attempt {})", attempt + 1);
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("create_table_statement", createTableStatement);
+        variables.put("query", query.text());
+
+        Prompt simplePrompt = SIMPLE_PROMPT_TEMPLATE.apply(variables);
+        ChatResponse response = chatModel.chat(simplePrompt.toUserMessage());
+        String newSql = clean(response.aiMessage().text());
+
+        try {
+            return sqlFilterParser.parse(newSql);
+        } catch (Exception e2) {
+            log.warn("Retry with simple prompt failed: '{}'", newSql, e2);
+            return handleParsingFailure(query, newSql, newSql, e2, attempt + 1);
+        }
+    }
+
+    /**
+     * Retries by simplifying the generated SQL.
+     */
+    protected Filter retrySimplified(Query query, String generatedSql, int attempt) {
+        log.debug("Retrying with simplified SQL (attempt {})", attempt + 1);
+        String simplifiedSql = simplifySql(generatedSql);
+        if (isNullOrBlank(simplifiedSql)) {
+            return null;
+        }
+
+        try {
+            return sqlFilterParser.parse(simplifiedSql);
+        } catch (Exception e2) {
+            log.warn("Retry with simplified SQL failed: '{}'", simplifiedSql, e2);
+            return handleParsingFailure(query, simplifiedSql, simplifiedSql, e2, attempt + 1);
+        }
+    }
+
+    /**
+     * Attempts to simplify SQL by removing complex parts like JOINs and subqueries.
+     */
+    protected String simplifySql(String sql) {
+        if (isNullOrBlank(sql)) {
+            return null;
+        }
+
+        // Remove JOINs
+        String simplified = sql.replaceAll(
+                "(?i)\\s+(INNER|LEFT|RIGHT|FULL|CROSS)?\\s*JOIN\\s+.+?\\s+ON\\s+.+?(?=\\s+WHERE|\\s+GROUP|\\s+ORDER|\\s*$)",
+                " ");
+
+        // Remove ORDER BY and GROUP BY clauses
+        simplified = simplified.replaceAll("(?i)\\s+ORDER\\s+BY\\s+.+?(?=\\s+LIMIT|\\s+OFFSET|;|$)", "");
+        simplified = simplified.replaceAll("(?i)\\s+GROUP\\s+BY\\s+.+?(?=\\s+HAVING|\\s+ORDER|\\s+LIMIT|;|$)", "");
+        simplified = simplified.replaceAll("(?i)\\s+HAVING\\s+.+?(?=\\s+ORDER|\\s+LIMIT|;|$)", "");
+        simplified = simplified.replaceAll("(?i)\\s+LIMIT\\s+\\d+", "");
+        simplified = simplified.replaceAll("(?i)\\s+OFFSET\\s+\\d+", "");
+
+        return simplified.trim();
     }
 
     protected Prompt createPrompt(Query query) {
@@ -161,53 +318,65 @@ public class LanguageModelSqlFilterBuilder {
         return sql.trim();
     }
 
-    protected Filter fallback(Query query, String generatedSql, String cleanedSql, Exception e) {
-
-        String extractedSql = extractSelectStatement(generatedSql);
-        if (isNullOrBlank(extractedSql)) {
-            log.trace("Cannot extract SQL, giving up");
-            return null;
-        }
-
-        try {
-            log.trace("Extracted SQL: '{}'", extractedSql);
-            return sqlFilterParser.parse(extractedSql);
-        } catch (Exception e2) {
-            log.warn("Failed parsing the following SQL, giving up: '{}'", extractedSql, e2);
-            return null;
-        }
-    }
-
+    /**
+     * Extracts a valid SQL SELECT statement from potentially noisy LLM output.
+     * <br>
+     * Uses multiple strategies to find valid SQL:
+     * <ol>
+     *     <li>Look for SQL in code blocks (```sql ... ```)</li>
+     *     <li>Split by SELECT keyword and find WHERE clause</li>
+     * </ol>
+     *
+     * @param dirtySql the potentially noisy SQL string from LLM
+     * @return extracted SQL statement, or null if extraction fails
+     */
     protected String extractSelectStatement(String dirtySql) {
-        // TODO improve
+        if (isNullOrBlank(dirtySql)) {
+            return null;
+        }
+
+        // Strategy 1: Handle code blocks
         if (dirtySql.contains("```sql")) {
             for (String part : dirtySql.split("```sql")) {
                 if (part.toUpperCase().contains("SELECT") && part.toUpperCase().contains("WHERE")) {
-                    return part.split("```")[0].trim();
+                    return cleanExtractedSql(part.split("```")[0].trim());
                 }
             }
         } else if (dirtySql.contains("```")) {
             for (String part : dirtySql.split("```")) {
                 if (part.toUpperCase().contains("SELECT") && part.toUpperCase().contains("WHERE")) {
-                    return part.split("```")[0].trim();
+                    return cleanExtractedSql(part.split("```")[0].trim());
                 }
             }
         } else {
+            // Strategy 2: Split by SELECT and find the part with WHERE
             for (String part : dirtySql.split("SELECT")) {
                 if (part.toUpperCase().contains("WHERE")) {
                     if (part.contains("\n")) {
                         for (String part2 : part.split("\n")) {
                             if (part2.toUpperCase().contains("WHERE")) {
-                                return "SELECT " + part2.trim();
+                                return cleanExtractedSql("SELECT " + part2.trim());
                             }
                         }
                     } else {
-                        return "SELECT " + part.trim();
+                        return cleanExtractedSql("SELECT " + part.trim());
                     }
                 }
             }
         }
+
+        log.trace("Could not extract SQL from: '{}'", dirtySql);
         return null;
+    }
+
+    /**
+     * Cleans extracted SQL by removing trailing semicolons and extra whitespace.
+     */
+    private String cleanExtractedSql(String sql) {
+        if (isNullOrBlank(sql)) {
+            return null;
+        }
+        return sql.replaceAll(";\\s*$", "").trim();
     }
 
     protected String format(TableDefinition tableDefinition) {
@@ -233,6 +402,8 @@ public class LanguageModelSqlFilterBuilder {
         private TableDefinition tableDefinition;
         private PromptTemplate promptTemplate;
         private SqlFilterParser sqlFilterParser;
+        private RetryStrategy retryStrategy;
+        private int maxRetries = 1;
 
         LanguageModelSqlFilterBuilderBuilder() {}
 
@@ -256,15 +427,43 @@ public class LanguageModelSqlFilterBuilder {
             return this;
         }
 
+        /**
+         * Sets the retry strategy to use when SQL parsing fails.
+         *
+         * @param retryStrategy the retry strategy
+         * @return this builder
+         */
+        public LanguageModelSqlFilterBuilderBuilder retryStrategy(RetryStrategy retryStrategy) {
+            this.retryStrategy = retryStrategy;
+            return this;
+        }
+
+        /**
+         * Sets the maximum number of retry attempts when using a retry strategy.
+         *
+         * @param maxRetries the maximum number of retries (default is 1)
+         * @return this builder
+         */
+        public LanguageModelSqlFilterBuilderBuilder maxRetries(int maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
         public LanguageModelSqlFilterBuilder build() {
             return new LanguageModelSqlFilterBuilder(
-                    this.chatModel, this.tableDefinition, this.promptTemplate, this.sqlFilterParser);
+                    this.chatModel,
+                    this.tableDefinition,
+                    this.promptTemplate,
+                    this.sqlFilterParser,
+                    this.retryStrategy,
+                    this.maxRetries);
         }
 
         public String toString() {
             return "LanguageModelSqlFilterBuilder.LanguageModelSqlFilterBuilderBuilder(chatModel=" + this.chatModel
                     + ", tableDefinition=" + this.tableDefinition + ", promptTemplate=" + this.promptTemplate
-                    + ", sqlFilterParser=" + this.sqlFilterParser + ")";
+                    + ", sqlFilterParser=" + this.sqlFilterParser + ", retryStrategy=" + this.retryStrategy
+                    + ", maxRetries=" + this.maxRetries + ")";
         }
     }
 }
