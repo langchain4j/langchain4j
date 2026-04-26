@@ -8,6 +8,7 @@ import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.aiMessageFrom;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.finishReasonFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.fromOpenAiResponseFormat;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.logProbsFrom;
@@ -32,6 +33,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
 import java.time.Duration;
@@ -158,16 +160,21 @@ public class OpenAiChatModel implements ChatModel {
 
         ChatCompletionResponse openAiResponse = parsedAndRawResponse.parsedResponse();
 
+        List<ChatCompletionChoice> choices = openAiResponse.choices();
+        if (isNullOrEmpty(choices)) {
+            throw new IllegalArgumentException("OpenAI response has no choices");
+        }
+
         OpenAiChatResponseMetadata responseMetadata = OpenAiChatResponseMetadata.builder()
                 .id(openAiResponse.id())
                 .modelName(openAiResponse.model())
                 .tokenUsage(tokenUsageFrom(openAiResponse.usage()))
-                .finishReason(finishReasonFrom(openAiResponse.choices().get(0).finishReason()))
+                .finishReason(finishReasonFrom(choices.get(0).finishReason()))
                 .created(openAiResponse.created())
                 .serviceTier(openAiResponse.serviceTier())
                 .systemFingerprint(openAiResponse.systemFingerprint())
                 .rawHttpResponse(parsedAndRawResponse.rawHttpResponse())
-                .logProbs(logProbsFrom(openAiResponse.choices().get(0).logprobs()))
+                .logProbs(logProbsFrom(choices.get(0).logprobs()))
                 .build();
 
         return ChatResponse.builder()
