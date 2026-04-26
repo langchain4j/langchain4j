@@ -1,5 +1,8 @@
 package dev.langchain4j.model.openai.common.responses;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
@@ -14,14 +17,10 @@ import dev.langchain4j.model.openai.OpenAiResponsesChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiResponsesChatResponseMetadata;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import java.util.List;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiResponsesChatModelIT extends AbstractChatModelIT {
@@ -31,16 +30,14 @@ class OpenAiResponsesChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected List<ChatModel> models() {
-        return List.of(
-                OpenAiResponsesChatModel.builder()
-                        .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                        .apiKey(System.getenv("OPENAI_API_KEY"))
-                        .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                        .modelName(GPT_5_4_MINI)
-                        .logRequests(false) // images are huge in logs
-                        .logResponses(true)
-                        .build()
-        );
+        return List.of(OpenAiResponsesChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_5_4_MINI)
+                .logRequests(false) // images are huge in logs
+                .logResponses(true)
+                .build());
     }
 
     @Override
@@ -97,8 +94,7 @@ class OpenAiResponsesChatModelIT extends AbstractChatModelIT {
 
     @Disabled("gpt-5.4-mini cannot do it properly")
     @Override
-    protected void should_respect_JsonRawSchema_responseFormat(ChatModel model) {
-    }
+    protected void should_respect_JsonRawSchema_responseFormat(ChatModel model) {}
 
     @Test
     void should_accept_pdf_file_content_as_public_url() {
@@ -113,11 +109,9 @@ class OpenAiResponsesChatModelIT extends AbstractChatModelIT {
                 .build();
 
         UserMessage userMessage = UserMessage.builder()
-                .addContent(TextContent.from(
-                        "What city appears in the attached PDF? Return only the city name."))
-                .addContent(PdfFileContent.from(PdfFile.builder()
-                        .url("https://orimi.com/pdf-test.pdf")
-                        .build()))
+                .addContent(TextContent.from("What city appears in the attached PDF? Return only the city name."))
+                .addContent(PdfFileContent.from(
+                        PdfFile.builder().url("https://orimi.com/pdf-test.pdf").build()))
                 .build();
 
         ChatResponse response = model.chat(userMessage);
