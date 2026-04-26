@@ -1,5 +1,13 @@
 package dev.langchain4j.model.openai.common.responses;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.atLeast;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -24,20 +32,11 @@ import dev.langchain4j.model.openai.OpenAiResponsesChatResponseMetadata;
 import dev.langchain4j.model.openai.OpenAiResponsesStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
-
-import java.util.List;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.atLeast;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
@@ -120,56 +119,53 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
-        io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
-                toolCall.index() == 0
-                        && toolCall.id().equals(id)
-                        && toolCall.name().equals("getWeather")
-                        && !toolCall.partialArguments().isBlank()
-        ), any());
-        io.verify(handler).onCompleteToolCall(argThat(toolCall ->
-                {
-                    ToolExecutionRequest request = toolCall.toolExecutionRequest();
-                    return toolCall.index() == 0
-                            && request.id().equals(id)
-                            && request.name().equals("getWeather")
-                            && request.arguments().replace(" ", "").equals("{\"city\":\"Munich\"}");
-                }
-        ));
+        io.verify(handler, atLeast(1))
+                .onPartialToolCall(
+                        argThat(toolCall -> toolCall.index() == 0
+                                && toolCall.id().equals(id)
+                                && toolCall.name().equals("getWeather")
+                                && !toolCall.partialArguments().isBlank()),
+                        any());
+        io.verify(handler).onCompleteToolCall(argThat(toolCall -> {
+            ToolExecutionRequest request = toolCall.toolExecutionRequest();
+            return toolCall.index() == 0
+                    && request.id().equals(id)
+                    && request.name().equals("getWeather")
+                    && request.arguments().replace(" ", "").equals("{\"city\":\"Munich\"}");
+        }));
     }
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
-        io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
-                toolCall.index() == 0
-                        && toolCall.id().equals(id1)
-                        && toolCall.name().equals("getWeather")
-                        && !toolCall.partialArguments().isBlank()
-        ), any());
-        io.verify(handler).onCompleteToolCall(argThat(toolCall ->
-                {
-                    ToolExecutionRequest request = toolCall.toolExecutionRequest();
-                    return toolCall.index() == 0
-                            && request.id().equals(id1)
-                            && request.name().equals("getWeather")
-                            && request.arguments().replace(" ", "").equals("{\"city\":\"Munich\"}");
-                }
-        ));
+        io.verify(handler, atLeast(1))
+                .onPartialToolCall(
+                        argThat(toolCall -> toolCall.index() == 0
+                                && toolCall.id().equals(id1)
+                                && toolCall.name().equals("getWeather")
+                                && !toolCall.partialArguments().isBlank()),
+                        any());
+        io.verify(handler).onCompleteToolCall(argThat(toolCall -> {
+            ToolExecutionRequest request = toolCall.toolExecutionRequest();
+            return toolCall.index() == 0
+                    && request.id().equals(id1)
+                    && request.name().equals("getWeather")
+                    && request.arguments().replace(" ", "").equals("{\"city\":\"Munich\"}");
+        }));
 
-        io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
-                toolCall.index() == 1
-                        && toolCall.id().equals(id2)
-                        && toolCall.name().equals("getTime")
-                        && !toolCall.partialArguments().isBlank()
-        ), any());
-        io.verify(handler).onCompleteToolCall(argThat(toolCall ->
-                {
-                    ToolExecutionRequest request = toolCall.toolExecutionRequest();
-                    return toolCall.index() == 1
-                            && request.id().equals(id2)
-                            && request.name().equals("getTime")
-                            && request.arguments().replace(" ", "").equals("{\"country\":\"France\"}");
-                }
-        ));
+        io.verify(handler, atLeast(1))
+                .onPartialToolCall(
+                        argThat(toolCall -> toolCall.index() == 1
+                                && toolCall.id().equals(id2)
+                                && toolCall.name().equals("getTime")
+                                && !toolCall.partialArguments().isBlank()),
+                        any());
+        io.verify(handler).onCompleteToolCall(argThat(toolCall -> {
+            ToolExecutionRequest request = toolCall.toolExecutionRequest();
+            return toolCall.index() == 1
+                    && request.id().equals(id2)
+                    && request.name().equals("getTime")
+                    && request.arguments().replace(" ", "").equals("{\"country\":\"France\"}");
+        }));
     }
 
     @Override
@@ -179,8 +175,7 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Disabled("gpt-5.4-mini cannot do it properly")
     @Override
-    protected void should_respect_JsonRawSchema_responseFormat(StreamingChatModel model) {
-    }
+    protected void should_respect_JsonRawSchema_responseFormat(StreamingChatModel model) {}
 
     @Test
     void should_return_model_specific_response_metadata() {
@@ -251,11 +246,9 @@ class OpenAiResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .build();
 
         UserMessage userMessage = UserMessage.builder()
-                .addContent(TextContent.from(
-                        "What city appears in the attached PDF? Return only the city name."))
-                .addContent(PdfFileContent.from(PdfFile.builder()
-                        .url("https://orimi.com/pdf-test.pdf")
-                        .build()))
+                .addContent(TextContent.from("What city appears in the attached PDF? Return only the city name."))
+                .addContent(PdfFileContent.from(
+                        PdfFile.builder().url("https://orimi.com/pdf-test.pdf").build()))
                 .build();
 
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();

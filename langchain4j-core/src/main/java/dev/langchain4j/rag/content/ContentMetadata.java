@@ -3,5 +3,7 @@ package dev.langchain4j.rag.content;
 public enum ContentMetadata {
     SCORE,
     RERANKED_SCORE,
-    EMBEDDING_ID
+    EMBEDDING_ID,
+    ORIGINAL_SCORE,
+    DOMAIN_NAME
 }
