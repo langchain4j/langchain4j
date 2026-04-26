@@ -77,7 +77,9 @@ class OpenAiImageEditTest {
                 .containsEntry("input_fidelity", "high")
                 .containsEntry("background", "transparent")
                 .doesNotContainKey("response_format");
-        assertThat(http.captured.formDataFiles().get("image")).hasSize(3);
+        // OpenAI requires the `image[]` array-form name when more than one image is sent.
+        assertThat(http.captured.formDataFiles()).doesNotContainKey("image");
+        assertThat(http.captured.formDataFiles().get("image[]")).hasSize(3);
     }
 
     @Test

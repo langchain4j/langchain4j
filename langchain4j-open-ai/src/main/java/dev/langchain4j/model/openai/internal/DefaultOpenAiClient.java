@@ -206,8 +206,11 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .addHeader("Content-Type", "multipart/form-data; boundary=----LangChain4j")
                 .addHeaders(buildRequestHeaders());
 
+        // OpenAI requires array syntax (`image[]`) when sending multiple input images;
+        // dall-e-2 (single only) and the gpt-image-* single-image case use `image`.
+        String imageFieldName = request.images().size() > 1 ? "image[]" : "image";
         for (EditImageFile image : request.images()) {
-            httpRequestBuilder.addFormDataFile("image", image.fileName(), image.mimeType(), image.content());
+            httpRequestBuilder.addFormDataFile(imageFieldName, image.fileName(), image.mimeType(), image.content());
         }
 
         if (request.mask() != null) {
