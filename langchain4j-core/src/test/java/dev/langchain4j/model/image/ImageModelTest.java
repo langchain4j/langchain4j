@@ -39,11 +39,11 @@ class ImageModelTest implements WithAssertions {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Operation is not supported");
 
-        assertThatThrownBy(() -> model.edit(null, "prompt"))
+        assertThatThrownBy(() -> model.edit((Image) null, "prompt"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Operation is not supported");
 
-        assertThatThrownBy(() -> model.edit(null, null, "prompt"))
+        assertThatThrownBy(() -> model.edit((Image) null, null, "prompt"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Operation is not supported");
     }

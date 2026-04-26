@@ -32,4 +32,19 @@ public class DisabledImageModel implements ImageModel {
     public Response<Image> edit(Image image, Image mask, String prompt) {
         throw new ModelDisabledException("ImageModel is disabled");
     }
+
+    @Override
+    public Response<Image> edit(List<Image> images, String prompt) {
+        throw new ModelDisabledException("ImageModel is disabled");
+    }
+
+    @Override
+    public Response<List<Image>> edit(List<Image> images, String prompt, int n) {
+        throw new ModelDisabledException("ImageModel is disabled");
+    }
+
+    @Override
+    public Response<Image> edit(List<Image> images, Image mask, String prompt) {
+        throw new ModelDisabledException("ImageModel is disabled");
+    }
 }
