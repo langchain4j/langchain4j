@@ -52,9 +52,17 @@ public class McpOperationHandler {
             Runnable onPromptListUpdate,
             Consumer<String> onResourceUpdate,
             McpProgressHandler progressHandler) {
-        this(pendingOperations, roots, transport, logMessageConsumer,
-                onToolListUpdate, onResourceListUpdate, onPromptListUpdate,
-                onResourceUpdate, progressHandler, null);
+        this(
+                pendingOperations,
+                roots,
+                transport,
+                logMessageConsumer,
+                onToolListUpdate,
+                onResourceListUpdate,
+                onPromptListUpdate,
+                onResourceUpdate,
+                progressHandler,
+                null);
     }
 
     public McpOperationHandler(

@@ -61,8 +61,7 @@ public interface McpClientListener {
     /**
      * Called after getting a prompt.
      */
-    default void afterPromptGet(
-            McpCallContext context, McpGetPromptResult result, Map<String, Object> rawResult) {}
+    default void afterPromptGet(McpCallContext context, McpGetPromptResult result, Map<String, Object> rawResult) {}
 
     /**
      * Called when getting a prompt fails.

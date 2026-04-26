@@ -12,7 +12,6 @@ import dev.langchain4j.mcp.client.McpClientListener;
 import dev.langchain4j.mcp.client.logging.McpLogMessage;
 import dev.langchain4j.mcp.client.progress.McpProgressNotification;
 import dev.langchain4j.mcp.client.transport.stdio.StdioMcpTransport;
-import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -80,8 +79,10 @@ public class McpClientListenerServerNotificationsIT {
     @Test
     void shouldFireOnProgressDuringToolExecution() {
         // Trigger a tool that sends progress notifications
-        var result = mcpClient.executeTool(
-                ToolExecutionRequest.builder().name("progressOperation").arguments("{}").build());
+        var result = mcpClient.executeTool(ToolExecutionRequest.builder()
+                .name("progressOperation")
+                .arguments("{}")
+                .build());
 
         assertThat(result.isError()).isFalse();
         assertThat(result.resultText()).isEqualTo("done");
@@ -103,11 +104,11 @@ public class McpClientListenerServerNotificationsIT {
     void shouldFireOnLogMessageWhenServerSendsLog() {
         // The progress_mcp_server logs at INFO level
         // We verify the listener can receive log messages by calling onLogMessage directly
-        McpLogMessage msg = new McpLogMessage(
-                dev.langchain4j.mcp.client.logging.McpLogLevel.INFO, "test.logger", null);
+        McpLogMessage msg = new McpLogMessage(dev.langchain4j.mcp.client.logging.McpLogLevel.INFO, "test.logger", null);
         testListener.onLogMessage(msg);
         assertThat(testListener.logMessages.size()).isEqualTo(1);
-        assertThat(testListener.logMessages.get(0).level()).isEqualTo(dev.langchain4j.mcp.client.logging.McpLogLevel.INFO);
+        assertThat(testListener.logMessages.get(0).level())
+                .isEqualTo(dev.langchain4j.mcp.client.logging.McpLogLevel.INFO);
     }
 
     @Test
@@ -122,8 +123,7 @@ public class McpClientListenerServerNotificationsIT {
     @Test
     void shouldFireOnProgressWithCorrectNotification() {
         testListener.clear();
-        McpProgressNotification notification =
-                new McpProgressNotification("token-123", 0.5, 1.0, "Halfway done");
+        McpProgressNotification notification = new McpProgressNotification("token-123", 0.5, 1.0, "Halfway done");
         testListener.onProgress(notification);
 
         assertThat(testListener.progressNotifications.size()).isEqualTo(1);
