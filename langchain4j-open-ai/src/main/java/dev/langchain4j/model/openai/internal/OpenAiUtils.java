@@ -51,6 +51,7 @@ import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.openai.OpenAiTokenUsage.InputTokensDetails;
 import dev.langchain4j.model.openai.OpenAiTokenUsage.OutputTokensDetails;
 import dev.langchain4j.model.openai.internal.chat.AssistantMessage;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.ContentType;
@@ -348,7 +349,11 @@ public class OpenAiUtils {
     }
 
     public static AiMessage aiMessageFrom(ChatCompletionResponse response, boolean returnThinking) {
-        AssistantMessage assistantMessage = response.choices().get(0).message();
+        List<ChatCompletionChoice> choices = response.choices();
+        if (isNullOrEmpty(choices)) {
+            throw new IllegalArgumentException("OpenAI response has no choices");
+        }
+        AssistantMessage assistantMessage = choices.get(0).message();
 
         String refusal = assistantMessage.refusal();
         if (isNotNullOrBlank(refusal)) {

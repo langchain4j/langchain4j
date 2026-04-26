@@ -147,6 +147,36 @@ class OpenAiChatModelErrorsTest {
                 .hasMessage("I'm sorry, I cannot assist with that request.");
     }
 
+    @Test
+    void should_throw_descriptive_exception_when_response_has_empty_choices() {
+
+        // given
+        final var userMessage = "Trigger empty choices";
+        MOCK.completion(req -> req.userMessageContains(userMessage)).respondsError(res -> {
+            res.setHttpStatus(HttpStatusCode.Companion.fromValue(200));
+            // language=json
+            res.setBody("""
+                    {
+                      "id": "chatcmpl-empty",
+                      "object": "chat.completion",
+                      "created": 1721596428,
+                      "model": "gpt-4o-mini",
+                      "choices": [],
+                      "usage": {
+                        "prompt_tokens": 10,
+                        "completion_tokens": 0,
+                        "total_tokens": 10
+                      }
+                    }
+                    """);
+        });
+
+        // when-then
+        assertThatThrownBy(() -> model.chat(userMessage))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("OpenAI response has no choices");
+    }
+
     @AfterEach
     void afterEach() {
         MOCK.verifyNoUnmatchedRequests();
