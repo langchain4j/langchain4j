@@ -16,6 +16,9 @@ import dev.langchain4j.model.openai.internal.image.EditImagesRequest;
 import dev.langchain4j.model.openai.internal.image.GenerateImagesRequest;
 import dev.langchain4j.model.openai.internal.image.GenerateImagesResponse;
 import dev.langchain4j.model.openai.internal.image.ImageData;
+import dev.langchain4j.model.openai.internal.image.TokenDetails;
+import dev.langchain4j.model.openai.internal.image.Usage;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.openai.spi.OpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
@@ -91,7 +94,7 @@ public class OpenAiImageModel implements ImageModel {
         GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesGeneration(request), maxRetries)
                 .execute();
 
-        return Response.from(fromImageData(response.data().get(0)));
+        return singleImageResponse(response);
     }
 
     @Override
@@ -101,8 +104,7 @@ public class OpenAiImageModel implements ImageModel {
         GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesGeneration(request), maxRetries)
                 .execute();
 
-        return Response.from(
-                response.data().stream().map(OpenAiImageModel::fromImageData).collect(Collectors.toList()));
+        return imageListResponse(response);
     }
 
     @Override
@@ -120,7 +122,7 @@ public class OpenAiImageModel implements ImageModel {
         EditImagesRequest request = editRequestBuilder(images, null, prompt).build();
         GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesEdit(request), maxRetries)
                 .execute();
-        return Response.from(fromImageData(response.data().get(0)));
+        return singleImageResponse(response);
     }
 
     @Override
@@ -129,8 +131,7 @@ public class OpenAiImageModel implements ImageModel {
                 editRequestBuilder(images, null, prompt).n(n).build();
         GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesEdit(request), maxRetries)
                 .execute();
-        return Response.from(
-                response.data().stream().map(OpenAiImageModel::fromImageData).collect(Collectors.toList()));
+        return imageListResponse(response);
     }
 
     @Override
@@ -138,7 +139,7 @@ public class OpenAiImageModel implements ImageModel {
         EditImagesRequest request = editRequestBuilder(images, mask, prompt).build();
         GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesEdit(request), maxRetries)
                 .execute();
-        return Response.from(fromImageData(response.data().get(0)));
+        return singleImageResponse(response);
     }
 
     public static OpenAiImageModelBuilder builder() {
@@ -347,6 +348,43 @@ public class OpenAiImageModel implements ImageModel {
                 .base64Data(data.b64Json())
                 .revisedPrompt(data.revisedPrompt())
                 .build();
+    }
+
+    private static Response<Image> singleImageResponse(GenerateImagesResponse response) {
+        Image image = fromImageData(response.data().get(0));
+        TokenUsage tokenUsage = toTokenUsage(response.usage());
+        return tokenUsage == null ? Response.from(image) : Response.from(image, tokenUsage);
+    }
+
+    private static Response<List<Image>> imageListResponse(GenerateImagesResponse response) {
+        List<Image> images =
+                response.data().stream().map(OpenAiImageModel::fromImageData).collect(Collectors.toList());
+        TokenUsage tokenUsage = toTokenUsage(response.usage());
+        return tokenUsage == null ? Response.from(images) : Response.from(images, tokenUsage);
+    }
+
+    /**
+     * Maps the internal {@link Usage} payload to the public {@link OpenAiImageTokenUsage}.
+     * Returns {@code null} when the response carries no usage block (dall-e responses).
+     */
+    static OpenAiImageTokenUsage toTokenUsage(Usage usage) {
+        if (usage == null) {
+            return null;
+        }
+        return OpenAiImageTokenUsage.builder()
+                .inputTokenCount(usage.inputTokens())
+                .outputTokenCount(usage.outputTokens())
+                .totalTokenCount(usage.totalTokens())
+                .inputTokensDetails(toPublicDetails(usage.inputTokensDetails()))
+                .outputTokensDetails(toPublicDetails(usage.outputTokensDetails()))
+                .build();
+    }
+
+    private static OpenAiImageTokenUsage.TokenDetails toPublicDetails(TokenDetails details) {
+        if (details == null) {
+            return null;
+        }
+        return new OpenAiImageTokenUsage.TokenDetails(details.textTokens(), details.imageTokens());
     }
 
     private GenerateImagesRequest.Builder requestBuilder(String prompt) {
