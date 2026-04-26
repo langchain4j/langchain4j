@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai;
 
 import static dev.langchain4j.model.openai.OpenAiImageModelName.DALL_E_2;
+import static dev.langchain4j.model.openai.OpenAiImageModelName.GPT_IMAGE_1;
 import static dev.langchain4j.model.openai.OpenAiImageModelName.GPT_IMAGE_2;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -74,7 +75,7 @@ class OpenAiImageEditTest {
         CapturingHttpClient http = new CapturingHttpClient(GPT_IMAGE_RESPONSE_BODY);
         OpenAiImageModel model = newModel(http, GPT_IMAGE_2.toString())
                 .responseFormat("b64_json") // would be respected for dall-e-* but must be dropped here
-                .inputFidelity("high")
+                .inputFidelity("high") // must be dropped for gpt-image-2 (API rejects it)
                 .background("transparent")
                 .build();
 
@@ -84,12 +85,27 @@ class OpenAiImageEditTest {
         assertThat(http.captured.formDataFields())
                 .containsEntry("model", "gpt-image-2")
                 .containsEntry("prompt", "merge these")
-                .containsEntry("input_fidelity", "high")
                 .containsEntry("background", "transparent")
-                .doesNotContainKey("response_format");
+                .doesNotContainKey("response_format")
+                .doesNotContainKey("input_fidelity");
         // OpenAI requires the `image[]` array-form name when more than one image is sent.
         assertThat(http.captured.formDataFiles()).doesNotContainKey("image");
         assertThat(http.captured.formDataFiles().get("image[]")).hasSize(3);
+    }
+
+    @Test
+    void edit_with_gpt_image_1_passes_input_fidelity_through() {
+        // gpt-image-1 does support input_fidelity; only gpt-image-2 rejects it.
+        CapturingHttpClient http = new CapturingHttpClient(GPT_IMAGE_RESPONSE_BODY);
+        OpenAiImageModel model = newModel(http, GPT_IMAGE_1.toString())
+                .inputFidelity("high")
+                .build();
+
+        model.edit(pngImage("input"), "go");
+
+        assertThat(http.captured.formDataFields())
+                .containsEntry("model", "gpt-image-1")
+                .containsEntry("input_fidelity", "high");
     }
 
     @Test

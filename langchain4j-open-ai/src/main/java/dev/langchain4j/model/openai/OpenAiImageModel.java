@@ -276,9 +276,13 @@ public class OpenAiImageModel implements ImageModel {
         }
 
         /**
-         * Input fidelity for image-edit requests. Supported by gpt-image-* models.
-         * One of {@code low}, {@code high}. Only consulted by {@code edit(...)};
-         * ignored by {@code generate(...)}.
+         * Input fidelity for image-edit requests. One of {@code low}, {@code high}.
+         * Only consulted by {@code edit(...)}; ignored by {@code generate(...)}.
+         *
+         * <p>Supported by {@code gpt-image-1}. <b>Not configurable on {@code gpt-image-2}</b> —
+         * that model always processes input images at high fidelity automatically and the API
+         * rejects the parameter, so any value set here is silently dropped from the request when
+         * the model is {@code gpt-image-2}. Ignored by {@code dall-e-*}.
          */
         public OpenAiImageModelBuilder inputFidelity(String inputFidelity) {
             this.inputFidelity = inputFidelity;
@@ -433,12 +437,16 @@ public class OpenAiImageModel implements ImageModel {
                 .quality(quality)
                 .user(user)
                 .background(background)
-                .inputFidelity(inputFidelity)
                 .moderation(moderation)
                 .outputFormat(outputFormat)
                 .outputCompression(outputCompression);
         if (!isGptImageModel(modelName)) {
             builder.responseFormat(responseFormat);
+        }
+        // gpt-image-2 always processes inputs at high fidelity and the API rejects
+        // input_fidelity. Drop it silently for that model; pass it through otherwise.
+        if (!"gpt-image-2".equals(modelName)) {
+            builder.inputFidelity(inputFidelity);
         }
         return builder;
     }

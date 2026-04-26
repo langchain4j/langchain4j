@@ -111,7 +111,9 @@ class OpenAiImageModelIT {
 
     @Test
     void gpt_image_2_edit_single_image_works() {
-        OpenAiImageModel model = gptImage2Builder().build();
+        // Sets inputFidelity to verify the silent-drop for gpt-image-2 (the API rejects this
+        // parameter on gpt-image-2; the model must omit it from the request).
+        OpenAiImageModel model = gptImage2Builder().inputFidelity("high").build();
 
         Image source = solidColorPng(512, 512, new Color(255, 230, 180));
 
