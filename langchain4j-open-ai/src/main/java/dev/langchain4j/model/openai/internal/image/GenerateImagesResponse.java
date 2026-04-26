@@ -13,19 +13,27 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Represents the response from the OpenAI DALL·E API when generating images.
- * Find description of parameters <a href="https://platform.openai.com/docs/api-reference/images/object">here</a>.
+ * Represents the response from the OpenAI Image API when generating or editing images.
+ * Find description of fields <a href="https://platform.openai.com/docs/api-reference/images/object">here</a>.
  */
 @JsonDeserialize(builder = GenerateImagesResponse.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class GenerateImagesResponse {
 
     @JsonProperty
     private final List<ImageData> data;
 
+    /**
+     * Token usage. Returned by gpt-image-* models; absent on dall-e responses.
+     */
+    @JsonProperty
+    private final Usage usage;
+
     public GenerateImagesResponse(Builder builder) {
         this.data = builder.data;
+        this.usage = builder.usage;
     }
 
     public static Builder builder() {
@@ -36,10 +44,14 @@ public class GenerateImagesResponse {
         return data;
     }
 
+    public Usage usage() {
+        return usage;
+    }
+
     @Override
     @JacocoIgnoreCoverageGenerated
     public String toString() {
-        return "GenerateImagesResponse{" + "data=" + data + '}';
+        return "GenerateImagesResponse{data=" + data + ", usage=" + usage + '}';
     }
 
     @Override
@@ -47,14 +59,14 @@ public class GenerateImagesResponse {
     public boolean equals(Object another) {
         if (this == another) return true;
         if (another == null || getClass() != another.getClass()) return false;
-        GenerateImagesResponse anotherGenerateImagesResponse = (GenerateImagesResponse) another;
-        return Objects.equals(data, anotherGenerateImagesResponse.data);
+        GenerateImagesResponse that = (GenerateImagesResponse) another;
+        return Objects.equals(data, that.data) && Objects.equals(usage, that.usage);
     }
 
     @Override
     @JacocoIgnoreCoverageGenerated
     public int hashCode() {
-        return Objects.hash(data);
+        return Objects.hash(data, usage);
     }
 
     @JsonPOJOBuilder(withPrefix = "")
@@ -63,9 +75,15 @@ public class GenerateImagesResponse {
     public static class Builder {
 
         private List<ImageData> data;
+        private Usage usage;
 
         public Builder data(List<ImageData> data) {
             this.data = data;
+            return this;
+        }
+
+        public Builder usage(Usage usage) {
+            this.usage = usage;
             return this;
         }
 
