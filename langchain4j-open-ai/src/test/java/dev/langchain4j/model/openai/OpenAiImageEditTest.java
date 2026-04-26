@@ -169,6 +169,20 @@ class OpenAiImageEditTest {
     }
 
     @Test
+    void canonical_edit_sends_mask_and_n_together() {
+        CapturingHttpClient http = new CapturingHttpClient(GPT_IMAGE_RESPONSE_BODY);
+        OpenAiImageModel model = newModel(http, GPT_IMAGE_2.toString()).build();
+
+        // Canonical overload: List<Image> + mask + prompt + n
+        model.edit(List.of(pngImage("a"), pngImage("b")), pngImage("mask"), "go", 2);
+
+        assertThat(http.captured.formDataFields()).containsEntry("n", "2");
+        assertThat(http.captured.formDataFiles()).containsKeys("image[]", "mask");
+        assertThat(http.captured.formDataFiles().get("image[]")).hasSize(2);
+        assertThat(http.captured.formDataFiles().get("mask")).hasSize(1);
+    }
+
+    @Test
     void edit_with_gpt_image_2_returns_token_usage() {
         CapturingHttpClient http = new CapturingHttpClient(GPT_IMAGE_RESPONSE_WITH_USAGE);
         OpenAiImageModel model = newModel(http, GPT_IMAGE_2.toString()).build();

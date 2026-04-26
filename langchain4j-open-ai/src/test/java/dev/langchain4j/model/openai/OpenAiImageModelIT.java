@@ -153,6 +153,22 @@ class OpenAiImageModelIT {
         assertGptImageTokenUsage(response);
     }
 
+    @Test
+    void gpt_image_2_edit_with_mask_and_n_returns_multiple_images() {
+        OpenAiImageModel model = gptImage2Builder().build();
+
+        Image source = solidColorPng(1024, 1024, new Color(200, 255, 200));
+        Image mask = transparentMask(1024, 1024);
+
+        // Canonical edit overload: multi-image input + mask + n returning a Response<List<Image>>.
+        Response<List<Image>> response = model.edit(
+                List.of(source), mask, "Replace the masked area with a small red apple", 2);
+
+        assertThat(response.content()).hasSize(2);
+        response.content().forEach(image -> assertThat(image.base64Data()).isNotNull().isBase64());
+        assertThat(response.tokenUsage()).isInstanceOf(OpenAiImageTokenUsage.class);
+    }
+
     private static void assertGptImageTokenUsage(Response<Image> response) {
         assertThat(response.tokenUsage()).isInstanceOf(OpenAiImageTokenUsage.class);
         OpenAiImageTokenUsage usage = (OpenAiImageTokenUsage) response.tokenUsage();

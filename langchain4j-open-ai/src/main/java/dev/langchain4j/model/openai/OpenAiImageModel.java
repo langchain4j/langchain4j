@@ -107,39 +107,18 @@ public class OpenAiImageModel implements ImageModel {
         return imageListResponse(response);
     }
 
+    /**
+     * Canonical edit override. The five convenience edit overloads on {@link ImageModel}
+     * delegate here with appropriate defaults, so this is the only edit method
+     * {@code OpenAiImageModel} needs to override.
+     */
     @Override
-    public Response<Image> edit(Image image, String prompt) {
-        return edit(List.of(image), prompt);
-    }
-
-    @Override
-    public Response<Image> edit(Image image, Image mask, String prompt) {
-        return edit(List.of(image), mask, prompt);
-    }
-
-    @Override
-    public Response<Image> edit(List<Image> images, String prompt) {
-        EditImagesRequest request = editRequestBuilder(images, null, prompt).build();
-        GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesEdit(request), maxRetries)
-                .execute();
-        return singleImageResponse(response);
-    }
-
-    @Override
-    public Response<List<Image>> edit(List<Image> images, String prompt, int n) {
+    public Response<List<Image>> edit(List<Image> images, Image mask, String prompt, int n) {
         EditImagesRequest request =
-                editRequestBuilder(images, null, prompt).n(n).build();
+                editRequestBuilder(images, mask, prompt).n(n).build();
         GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesEdit(request), maxRetries)
                 .execute();
         return imageListResponse(response);
-    }
-
-    @Override
-    public Response<Image> edit(List<Image> images, Image mask, String prompt) {
-        EditImagesRequest request = editRequestBuilder(images, mask, prompt).build();
-        GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesEdit(request), maxRetries)
-                .execute();
-        return singleImageResponse(response);
     }
 
     public static OpenAiImageModelBuilder builder() {

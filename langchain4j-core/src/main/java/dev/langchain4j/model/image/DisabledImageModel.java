@@ -23,28 +23,13 @@ public class DisabledImageModel implements ImageModel {
         throw new ModelDisabledException("ImageModel is disabled");
     }
 
+    /**
+     * Overriding the canonical edit method is enough — the other edit overloads inherit
+     * delegating defaults from {@link ImageModel}, which call this one and so propagate the
+     * same {@link ModelDisabledException}.
+     */
     @Override
-    public Response<Image> edit(Image image, String prompt) {
-        throw new ModelDisabledException("ImageModel is disabled");
-    }
-
-    @Override
-    public Response<Image> edit(Image image, Image mask, String prompt) {
-        throw new ModelDisabledException("ImageModel is disabled");
-    }
-
-    @Override
-    public Response<Image> edit(List<Image> images, String prompt) {
-        throw new ModelDisabledException("ImageModel is disabled");
-    }
-
-    @Override
-    public Response<List<Image>> edit(List<Image> images, String prompt, int n) {
-        throw new ModelDisabledException("ImageModel is disabled");
-    }
-
-    @Override
-    public Response<Image> edit(List<Image> images, Image mask, String prompt) {
+    public Response<List<Image>> edit(List<Image> images, Image mask, String prompt, int n) {
         throw new ModelDisabledException("ImageModel is disabled");
     }
 }
