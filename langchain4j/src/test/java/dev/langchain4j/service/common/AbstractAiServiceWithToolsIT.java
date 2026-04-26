@@ -1154,7 +1154,8 @@ public abstract class AbstractAiServiceWithToolsIT {
 
         assertThatThrownBy(() -> assistant.chat(text))
                 .isInstanceOf(IllegalConfigurationException.class)
-                .hasMessageContaining("add");
+                .hasMessageContaining(ReturnBehavior.IMMEDIATE.name())
+                .hasMessageContaining(Result.class.getName());
     }
 
     @ParameterizedTest
