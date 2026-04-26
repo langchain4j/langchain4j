@@ -1,22 +1,13 @@
 package dev.langchain4j.model.openai.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.spy;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.openai.OpenAiStreamingResponseBuilder;
-import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
-import dev.langchain4j.model.openai.internal.chat.Delta;
-import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
-import org.mockito.Mockito;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.spy;
 
 /**
  * Regression test for issue #4796: VLLM deprecated the 'reasoning_content' field
@@ -184,9 +175,7 @@ class StreamingResponseBuilderReasoningFieldTest {
                     ]
                 }
                 """.formatted(
-                content != null ? "\"" + content + "\"" : "null",
-                reasoning != null ? "\"" + reasoning + "\"" : "null"
-        );
+                content != null ? "\"" + content + "\"" : "null", reasoning != null ? "\"" + reasoning + "\"" : "null");
         return Json.fromJson(json, ChatCompletionResponse.class);
     }
 
@@ -212,9 +201,8 @@ class StreamingResponseBuilderReasoningFieldTest {
                     ]
                 }
                 """.formatted(
-                content != null ? "\"" + content + "\"" : "null",
-                reasoningContent != null ? "\"" + reasoningContent + "\"" : "null"
-        );
+                        content != null ? "\"" + content + "\"" : "null",
+                        reasoningContent != null ? "\"" + reasoningContent + "\"" : "null");
         return Json.fromJson(json, ChatCompletionResponse.class);
     }
 }
