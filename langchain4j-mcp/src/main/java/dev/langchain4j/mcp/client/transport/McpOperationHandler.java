@@ -1,6 +1,7 @@
 package dev.langchain4j.mcp.client.transport;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import dev.langchain4j.mcp.client.McpClientListener;
 import dev.langchain4j.mcp.client.McpRoot;
 import dev.langchain4j.mcp.client.logging.McpLogMessage;
 import dev.langchain4j.mcp.client.progress.McpProgressHandler;
@@ -35,6 +36,12 @@ public class McpOperationHandler {
     private final Supplier<List<McpRoot>> roots;
     private final McpProgressHandler progressHandler;
 
+    /**
+     * Listener callbacks for server-initiated notifications.
+     * These are invoked in addition to the existing list-change and resource-update callbacks.
+     */
+    private final McpClientListener listener;
+
     public McpOperationHandler(
             Map<Long, CompletableFuture<JsonNode>> pendingOperations,
             Supplier<List<McpRoot>> roots,
@@ -45,6 +52,30 @@ public class McpOperationHandler {
             Runnable onPromptListUpdate,
             Consumer<String> onResourceUpdate,
             McpProgressHandler progressHandler) {
+        this(
+                pendingOperations,
+                roots,
+                transport,
+                logMessageConsumer,
+                onToolListUpdate,
+                onResourceListUpdate,
+                onPromptListUpdate,
+                onResourceUpdate,
+                progressHandler,
+                null);
+    }
+
+    public McpOperationHandler(
+            Map<Long, CompletableFuture<JsonNode>> pendingOperations,
+            Supplier<List<McpRoot>> roots,
+            McpTransport transport,
+            Consumer<McpLogMessage> logMessageConsumer,
+            Runnable onToolListUpdate,
+            Runnable onResourceListUpdate,
+            Runnable onPromptListUpdate,
+            Consumer<String> onResourceUpdate,
+            McpProgressHandler progressHandler,
+            McpClientListener listener) {
         this.pendingOperations = pendingOperations;
         this.transport = transport;
         this.logMessageConsumer = logMessageConsumer;
@@ -54,6 +85,7 @@ public class McpOperationHandler {
         this.onResourceUpdate = onResourceUpdate;
         this.roots = roots;
         this.progressHandler = progressHandler;
+        this.listener = listener;
     }
 
     public void handle(JsonNode message) {
@@ -76,20 +108,22 @@ public class McpOperationHandler {
             }
         } else if (message.has("method")) {
             // server-initiated request requiring a response
-            McpServerMethod method = McpServerMethod.from(message.get("method").asText());
+            McpServerMethod method = McpServerMethod.from(message.get("id").asText() + "");
             if (method == null) {
-                log.warn("Received response for unknown message id: {}", messageId);
+                log.warn("Received server request for unknown message id: {}", messageId);
                 return;
             }
             switch (method) {
                 case PING:
                     transport.executeOperationWithoutResponse(new McpPingResponse(messageId));
+                    notifyListener(l -> l.onPing());
                     break;
                 case ROOTS_LIST:
                     transport.executeOperationWithoutResponse(new McpRootsListResponse(messageId, roots.get()));
+                    notifyListener(McpClientListener::onRootsListRequested);
                     break;
                 default:
-                    log.warn("Received response for unknown message id: {}", messageId);
+                    log.warn("Received server request for unknown message id: {}", messageId);
             }
         } else {
             log.warn("Received response for unknown message id: {}", messageId);
@@ -107,17 +141,22 @@ public class McpOperationHandler {
                 handleLogMessage(message);
                 break;
             case NOTIFICATION_TOOLS_LIST_CHANGED:
-                onToolListUpdate.run();
+                if (onToolListUpdate != null) {
+                    onToolListUpdate.run();
+                }
+                notifyListener(McpClientListener::onToolsListChanged);
                 break;
             case NOTIFICATION_RESOURCES_LIST_CHANGED:
                 if (onResourceListUpdate != null) {
                     onResourceListUpdate.run();
                 }
+                notifyListener(McpClientListener::onResourcesListChanged);
                 break;
             case NOTIFICATION_PROMPTS_LIST_CHANGED:
                 if (onPromptListUpdate != null) {
                     onPromptListUpdate.run();
                 }
+                notifyListener(McpClientListener::onPromptsListChanged);
                 break;
             case NOTIFICATION_RESOURCES_UPDATED:
                 handleResourceUpdatedNotification(message);
@@ -132,28 +171,35 @@ public class McpOperationHandler {
 
     private void handleLogMessage(JsonNode message) {
         if (message.has("params")) {
+            McpLogMessage logMessage = McpLogMessage.fromJson(message.get("params"));
             if (logMessageConsumer != null) {
-                logMessageConsumer.accept(McpLogMessage.fromJson(message.get("params")));
+                logMessageConsumer.accept(logMessage);
             }
+            notifyListener(l -> l.onLogMessage(logMessage));
         } else {
             log.warn("Received log message without params: {}", message);
         }
     }
 
     private void handleResourceUpdatedNotification(JsonNode message) {
-        if (onResourceUpdate != null
-                && message.has("params")
-                && message.get("params").has("uri")) {
+        if (message.has("params") && message.get("params").has("uri")) {
             String uri = message.get("params").get("uri").asText();
-            onResourceUpdate.accept(uri);
+            if (onResourceUpdate != null) {
+                onResourceUpdate.accept(uri);
+            }
+            notifyListener(l -> l.onResourceUpdated(uri));
         } else if (message.has("params") && !message.get("params").has("uri")) {
             log.warn("Received resource updated notification without uri: {}", message);
         }
     }
 
     private void handleProgressNotification(JsonNode message) {
-        if (progressHandler != null && message.has("params")) {
-            progressHandler.onProgress(McpProgressNotification.fromJson(message.get("params")));
+        if (message.has("params")) {
+            McpProgressNotification notification = McpProgressNotification.fromJson(message.get("params"));
+            if (progressHandler != null) {
+                progressHandler.onProgress(notification);
+            }
+            notifyListener(l -> l.onProgress(notification));
         }
     }
 
@@ -167,5 +213,15 @@ public class McpOperationHandler {
                     new IllegalStateException("Operation cancelled due to transport failure: " + reason));
         }
         pendingOperations.clear();
+    }
+
+    private void notifyListener(Consumer<McpClientListener> action) {
+        if (listener != null) {
+            try {
+                action.accept(listener);
+            } catch (Exception e) {
+                log.warn("MCP client listener threw an exception", e);
+            }
+        }
     }
 }
