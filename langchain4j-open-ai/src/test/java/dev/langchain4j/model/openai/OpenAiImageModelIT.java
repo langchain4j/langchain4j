@@ -105,6 +105,8 @@ class OpenAiImageModelIT {
         Response<Image> response = model.edit(source, "Add a smiling cartoon sun in the upper-right corner");
 
         assertThat(response.content().base64Data()).isNotNull().isBase64();
+        // dall-e responses don't include a usage block.
+        assertThat(response.tokenUsage()).isNull();
     }
 
     @Test
@@ -118,6 +120,7 @@ class OpenAiImageModelIT {
         // gpt-image-* always returns b64_json regardless of any responseFormat the user set
         assertThat(response.content().base64Data()).isNotNull().isBase64();
         assertThat(response.content().url()).isNull();
+        assertGptImageTokenUsage(response);
     }
 
     @Test
@@ -131,6 +134,7 @@ class OpenAiImageModelIT {
                 model.edit(source, mask, "Replace the masked area with a small red apple");
 
         assertThat(response.content().base64Data()).isNotNull().isBase64();
+        assertGptImageTokenUsage(response);
     }
 
     @Test
@@ -144,6 +148,17 @@ class OpenAiImageModelIT {
         Response<Image> response = model.edit(sources, "Combine both images into a single watercolor scene");
 
         assertThat(response.content().base64Data()).isNotNull().isBase64();
+        assertGptImageTokenUsage(response);
+    }
+
+    private static void assertGptImageTokenUsage(Response<Image> response) {
+        assertThat(response.tokenUsage()).isInstanceOf(OpenAiImageTokenUsage.class);
+        OpenAiImageTokenUsage usage = (OpenAiImageTokenUsage) response.tokenUsage();
+        assertThat(usage.inputTokenCount()).isPositive();
+        assertThat(usage.outputTokenCount()).isPositive();
+        assertThat(usage.totalTokenCount()).isPositive();
+        assertThat(usage.inputTokensDetails()).isNotNull();
+        assertThat(usage.inputTokensDetails().imageTokens()).isPositive();
     }
 
     private OpenAiImageModel.OpenAiImageModelBuilder gptImage2Builder() {

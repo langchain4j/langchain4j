@@ -13,6 +13,7 @@ import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
+import dev.langchain4j.model.output.Response;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -27,6 +28,15 @@ class OpenAiImageEditTest {
             "{\"created\":1,\"data\":[{\"url\":\"https://example.com/edited.png\"}]}";
     private static final String GPT_IMAGE_RESPONSE_BODY =
             "{\"created\":1,\"data\":[{\"b64_json\":\"" + base64("edited") + "\"}]}";
+    private static final String GPT_IMAGE_RESPONSE_WITH_USAGE =
+            "{\"created\":1,"
+                    + "\"data\":[{\"b64_json\":\"" + base64("edited") + "\"}],"
+                    + "\"usage\":{"
+                    + "\"input_tokens\":1039,"
+                    + "\"input_tokens_details\":{\"image_tokens\":1024,\"text_tokens\":15},"
+                    + "\"output_tokens\":196,"
+                    + "\"output_tokens_details\":{\"image_tokens\":196,\"text_tokens\":0},"
+                    + "\"total_tokens\":1235}}";
 
     private static String base64(String text) {
         return Base64.getEncoder().encodeToString(text.getBytes(StandardCharsets.UTF_8));
@@ -140,6 +150,74 @@ class OpenAiImageEditTest {
         model.edit(List.of(pngImage("x")), "go", 3);
 
         assertThat(http.captured.formDataFields()).containsEntry("n", "3");
+    }
+
+    @Test
+    void edit_with_gpt_image_2_returns_token_usage() {
+        CapturingHttpClient http = new CapturingHttpClient(GPT_IMAGE_RESPONSE_WITH_USAGE);
+        OpenAiImageModel model = newModel(http, GPT_IMAGE_2.toString()).build();
+
+        Response<Image> response = model.edit(pngImage("input"), "go");
+
+        assertThat(response.tokenUsage()).isInstanceOf(OpenAiImageTokenUsage.class);
+        OpenAiImageTokenUsage usage = (OpenAiImageTokenUsage) response.tokenUsage();
+        assertThat(usage.inputTokenCount()).isEqualTo(1039);
+        assertThat(usage.outputTokenCount()).isEqualTo(196);
+        assertThat(usage.totalTokenCount()).isEqualTo(1235);
+        assertThat(usage.inputTokensDetails().textTokens()).isEqualTo(15);
+        assertThat(usage.inputTokensDetails().imageTokens()).isEqualTo(1024);
+        assertThat(usage.outputTokensDetails().textTokens()).isEqualTo(0);
+        assertThat(usage.outputTokensDetails().imageTokens()).isEqualTo(196);
+    }
+
+    @Test
+    void edit_with_dalle2_returns_null_token_usage() {
+        // dall-e responses don't include a usage block; tokenUsage() must be null (no NPE).
+        CapturingHttpClient http = new CapturingHttpClient(DALL_E_2_RESPONSE_BODY);
+        OpenAiImageModel model = newModel(http, DALL_E_2.toString()).build();
+
+        Response<Image> response = model.edit(pngImage("input"), "go");
+
+        assertThat(response.tokenUsage()).isNull();
+    }
+
+    @Test
+    void multi_image_edit_returns_token_usage_on_image_list_response() {
+        CapturingHttpClient http = new CapturingHttpClient(GPT_IMAGE_RESPONSE_WITH_USAGE);
+        OpenAiImageModel model = newModel(http, GPT_IMAGE_2.toString()).build();
+
+        Response<List<Image>> response = model.edit(List.of(pngImage("a"), pngImage("b")), "go", 1);
+
+        assertThat(response.tokenUsage()).isInstanceOf(OpenAiImageTokenUsage.class);
+        assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(1235);
+    }
+
+    @Test
+    void open_ai_image_token_usage_add_combines_details() {
+        OpenAiImageTokenUsage a = OpenAiImageTokenUsage.builder()
+                .inputTokenCount(10)
+                .outputTokenCount(20)
+                .totalTokenCount(30)
+                .inputTokensDetails(new OpenAiImageTokenUsage.TokenDetails(5, 5))
+                .outputTokensDetails(new OpenAiImageTokenUsage.TokenDetails(0, 20))
+                .build();
+        OpenAiImageTokenUsage b = OpenAiImageTokenUsage.builder()
+                .inputTokenCount(1)
+                .outputTokenCount(2)
+                .totalTokenCount(3)
+                .inputTokensDetails(new OpenAiImageTokenUsage.TokenDetails(1, 0))
+                .outputTokensDetails(new OpenAiImageTokenUsage.TokenDetails(0, 2))
+                .build();
+
+        OpenAiImageTokenUsage sum = a.add(b);
+
+        assertThat(sum.inputTokenCount()).isEqualTo(11);
+        assertThat(sum.outputTokenCount()).isEqualTo(22);
+        assertThat(sum.totalTokenCount()).isEqualTo(33);
+        assertThat(sum.inputTokensDetails().textTokens()).isEqualTo(6);
+        assertThat(sum.inputTokensDetails().imageTokens()).isEqualTo(5);
+        assertThat(sum.outputTokensDetails().textTokens()).isEqualTo(0);
+        assertThat(sum.outputTokensDetails().imageTokens()).isEqualTo(22);
     }
 
     @Test
