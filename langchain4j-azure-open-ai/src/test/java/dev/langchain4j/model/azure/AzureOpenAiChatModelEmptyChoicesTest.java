@@ -17,7 +17,6 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 
 class AzureOpenAiChatModelEmptyChoicesTest {
 

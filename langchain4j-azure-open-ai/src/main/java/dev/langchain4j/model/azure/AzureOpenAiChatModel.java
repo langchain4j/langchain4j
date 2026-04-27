@@ -16,26 +16,24 @@ import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolChoice
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolDefinitions;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.tokenUsageFrom;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.validate;
-
-import com.azure.ai.openai.models.ChatChoice;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Arrays.asList;
 
 import com.azure.ai.openai.OpenAIClient;
+import com.azure.ai.openai.implementation.accesshelpers.ChatCompletionsOptionsAccessHelper;
 import com.azure.ai.openai.models.AzureChatEnhancementConfiguration;
 import com.azure.ai.openai.models.AzureChatExtensionConfiguration;
 import com.azure.ai.openai.models.ChatChoice;
 import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
-import com.azure.ai.openai.models.ReasoningEffortValue;
-import com.azure.ai.openai.implementation.accesshelpers.ChatCompletionsOptionsAccessHelper;
 import com.azure.ai.openai.models.PredictionContent;
-import com.azure.core.util.BinaryData;
+import com.azure.ai.openai.models.ReasoningEffortValue;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
 import com.azure.core.http.policy.RetryOptions;
+import com.azure.core.util.BinaryData;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.azure.spi.AzureOpenAiChatModelBuilderFactory;
@@ -219,7 +217,8 @@ public class AzureOpenAiChatModel implements ChatModel {
         }
 
         if (promptCacheKey != null) {
-            options.setPrediction(new PredictionContent(BinaryData.fromString("{\"prompt_cache_key\":\"" + promptCacheKey + "\"}")));
+            options.setPrediction(
+                    new PredictionContent(BinaryData.fromString("{\"prompt_cache_key\":\"" + promptCacheKey + "\"}")));
         }
 
         if (!parameters.toolSpecifications().isEmpty()) {

@@ -33,14 +33,14 @@ import com.azure.ai.openai.models.ChatCompletionsFunctionToolCall;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.azure.ai.openai.models.ChatCompletionsToolCall;
 import com.azure.ai.openai.models.ChatResponseMessage;
-import com.azure.ai.openai.models.ReasoningEffortValue;
-import com.azure.core.util.BinaryData;
 import com.azure.ai.openai.models.PredictionContent;
+import com.azure.ai.openai.models.ReasoningEffortValue;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
 import com.azure.core.http.policy.RetryOptions;
+import com.azure.core.util.BinaryData;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.ModelProvider;
@@ -232,7 +232,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         }
 
         if (promptCacheKey != null) {
-            options.setPrediction(new PredictionContent(BinaryData.fromString("{\"prompt_cache_key\":\"" + promptCacheKey + "\"}")));
+            options.setPrediction(
+                    new PredictionContent(BinaryData.fromString("{\"prompt_cache_key\":\"" + promptCacheKey + "\"}")));
         }
 
         ChatCompletionStreamOptions streamOptions = new ChatCompletionStreamOptions().setIncludeUsage(true);

@@ -8,6 +8,7 @@ import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.azure.ai.openai.models.ReasoningEffortValue;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -32,7 +33,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import com.azure.ai.openai.models.ReasoningEffortValue;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
 class AzureOpenAiChatModelIT {
@@ -125,8 +125,7 @@ class AzureOpenAiChatModelIT {
         ResponseFormat responseFormat =
                 ResponseFormat.builder().type(JSON).jsonSchema(jsonSchema).build();
 
-        UserMessage userMessage = UserMessage.from(
-                """
+        UserMessage userMessage = UserMessage.from("""
                         Extract information from the following text:
                         1. A circle with a radius of 5
                         2. A rectangle with a width of 10 and a height of 20
