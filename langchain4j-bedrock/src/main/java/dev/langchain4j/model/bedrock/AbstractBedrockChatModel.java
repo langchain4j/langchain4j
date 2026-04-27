@@ -309,9 +309,8 @@ abstract class AbstractBedrockChatModel {
             if (msg instanceof ToolExecutionResultMessage toolResult) {
                 handleToolResult(toolResult, currentBlocks, bedrockMessages, i, messages);
             } else if ((msg instanceof UserMessage) || (msg instanceof AiMessage)) {
-                boolean shouldApplyGuardContent =
-                        shouldUseGuardContent
-                                && shouldApplyGuardContent(msg, guardContentPlacement, i, lastUserMessageIndex);
+                boolean shouldApplyGuardContent = shouldUseGuardContent
+                        && shouldApplyGuardContent(msg, guardContentPlacement, i, lastUserMessageIndex);
                 Message bedrockMessage = shouldApplyGuardContent
                         ? createGuardedUserMessage((UserMessage) msg)
                         : convertToBedRockMessage(msg);
@@ -349,42 +348,73 @@ abstract class AbstractBedrockChatModel {
     }
 
     private boolean shouldUseGuardContent(
-            List<ChatMessage> messages,
-            BedrockGuardContentPlacement guardContentPlacement,
-            int lastUserMessageIndex) {
+            List<ChatMessage> messages, BedrockGuardContentPlacement guardContentPlacement, int lastUserMessageIndex) {
         if (guardContentPlacement == null) {
             return false;
+        }
+
+        String fallbackReason = guardContentFallbackReason(messages, guardContentPlacement, lastUserMessageIndex);
+        if (fallbackReason != null) {
+            log.warn(fallbackReason);
+            return false;
+        }
+        return true;
+    }
+
+    private String guardContentFallbackReason(
+            List<ChatMessage> messages, BedrockGuardContentPlacement guardContentPlacement, int lastUserMessageIndex) {
+        if (guardContentPlacement == null || messages == null) {
+            return null;
         }
 
         for (int i = 0; i < messages.size(); i++) {
             ChatMessage message = messages.get(i);
             // Avoid partial selective guarding; regular content lets Bedrock apply guardrailConfig to all messages.
-            if (shouldApplyGuardContent(message, guardContentPlacement, i, lastUserMessageIndex)
-                    && !supportsGuardContent(((UserMessage) message).contents())) {
-                return false;
+            if (shouldApplyGuardContent(message, guardContentPlacement, i, lastUserMessageIndex)) {
+                String unsupportedContentReason = unsupportedGuardContentReason(((UserMessage) message).contents());
+                if (unsupportedContentReason != null) {
+                    return String.format(
+                            "BedrockGuardContentPlacement.%s is configured but ignored because selected user "
+                                    + "message at index %d contains %s that cannot be represented as guardContent.",
+                            guardContentPlacement, i, unsupportedContentReason);
+                }
             }
         }
 
-        return true;
+        return null;
     }
 
-    private boolean supportsGuardContent(List<Content> contents) {
+    private String unsupportedGuardContentReason(List<Content> contents) {
         if (isNullOrEmpty(contents)) {
-            return true;
+            return null;
         }
 
-        return contents.stream().allMatch(this::supportsGuardContent);
+        for (Content content : contents) {
+            String unsupportedContentReason = unsupportedGuardContentReason(content);
+            if (unsupportedContentReason != null) {
+                return unsupportedContentReason;
+            }
+        }
+
+        return null;
     }
 
-    private boolean supportsGuardContent(Content content) {
+    private String unsupportedGuardContentReason(Content content) {
+        if (content == null) {
+            return "null content";
+        }
         if (content instanceof TextContent) {
-            return true;
+            return null;
         }
         if (content instanceof ImageContent imageContent) {
-            return isGuardContentImageFormatSupported(extractAndValidateFormat(imageContent.image()));
+            String imgFormat = extractAndValidateFormat(imageContent.image());
+            if (isGuardContentImageFormatSupported(imgFormat)) {
+                return null;
+            }
+            return "unsupported image format '" + imgFormat + "'";
         }
 
-        return false;
+        return "content type '" + content.type() + "'";
     }
 
     private boolean shouldApplyGuardContent(
@@ -609,7 +639,9 @@ abstract class AbstractBedrockChatModel {
                 .guardContent(GuardrailConverseContentBlock.builder()
                         .image(GuardrailConverseImageBlock.builder()
                                 .format(guardContentImageFormat(imgFormat, imageContent))
-                                .source(GuardrailConverseImageSource.builder().bytes(bytes).build())
+                                .source(GuardrailConverseImageSource.builder()
+                                        .bytes(bytes)
+                                        .build())
                                 .build())
                         .build())
                 .build();
