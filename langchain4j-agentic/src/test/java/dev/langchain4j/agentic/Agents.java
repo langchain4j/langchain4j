@@ -30,7 +30,8 @@ public class Agents {
     public interface ExpertInvokerAgentWithMemory {
 
         @Agent
-        String routeToExpert(@MemoryId String memoryId, @V("category") RequestCategory category, @V("request") String request);
+        String routeToExpert(
+                @MemoryId String memoryId, @V("category") RequestCategory category, @V("request") String request);
     }
 
     public interface CategoryRouter {
@@ -46,7 +47,10 @@ public class Agents {
     }
 
     public enum RequestCategory {
-        LEGAL, MEDICAL, TECHNICAL, UNKNOWN
+        LEGAL,
+        MEDICAL,
+        TECHNICAL,
+        UNKNOWN
     }
 
     public interface RouterAgent {
@@ -199,7 +203,7 @@ public class Agents {
                 You are a critical reviewer.
                 Give a review score between 0.0 and 1.0 for the following story based on how well it aligns with the style '{{style}}'.
                 Return only the score and nothing else.
-                
+
                 The story is: "{{story}}"
                 """)
         @Agent(description = "Score a story based on how well it aligns with a given style", outputKey = "score")
@@ -251,7 +255,7 @@ public class Agents {
         List<String> findMovie(@V("mood") String mood);
     }
 
-    public record EveningPlan(String movie, String meal) { }
+    public record EveningPlan(String movie, String meal) {}
 
     public interface EveningPlannerAgent {
 
@@ -292,7 +296,7 @@ public class Agents {
         String colorMix(@V("colors") List<String> colors);
     }
 
-    public record LoanApplication(String applicantName, String applicantAge, int amount) { }
+    public record LoanApplication(String applicantName, String applicantAge, int amount) {}
 
     public interface LoanApplicationExtractor {
 
@@ -316,7 +320,7 @@ public class Agents {
     }
 
     // Custom POJO for testing SupervisorAgent POJO parameter support (#4897)
-    public record ExerciseRequirement(String topic, String difficulty, int count) { }
+    public record ExerciseRequirement(String topic, String difficulty, int count) {}
 
     public interface ExerciseGenerator {
 
