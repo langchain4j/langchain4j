@@ -2,11 +2,14 @@ package dev.langchain4j.store.embedding;
 
 import static dev.langchain4j.data.segment.TextSegment.textSegment;
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -232,5 +235,60 @@ class EmbeddingStoreIngestorTest {
         verify(embeddingModel).embed(captor.capture());
         assertThat(captor.getValue().inputType()).isEqualTo(EmbeddingInputType.DOCUMENT);
         verify(embeddingModel, never()).embedAll(any());
+    }
+
+    @Test
+    void should_ignore_errors_and_empty_segments_when_configured() {
+
+        Document emptyDocument = Document.from("empty");
+        Document brokenDocument = Document.from("broken");
+        Document validDocument = Document.from("valid");
+        Document anotherValidDocument = Document.from("also valid");
+        TextSegment validSegment = textSegment("valid");
+        TokenUsage tokenUsage = new TokenUsage(1, 2, 3);
+
+        DocumentSplitter splitter = document -> {
+            if (document == emptyDocument) {
+                return emptyList();
+            }
+            if (document == brokenDocument) {
+                throw new RuntimeException("cannot split");
+            }
+            return singletonList(validSegment);
+        };
+        EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
+        when(embeddingModel.embedAll(singletonList(validSegment)))
+                .thenReturn(Response.from(singletonList(Embedding.from(new float[] {1})), tokenUsage));
+        EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
+        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+                .documentSplitter(splitter)
+                .embeddingModel(embeddingModel)
+                .embeddingStore(embeddingStore)
+                .ignoreErrors(true)
+                .build();
+
+        IngestionResult result =
+                ingestor.ingest(asList(emptyDocument, brokenDocument, validDocument, anotherValidDocument));
+
+        assertThat(result.tokenUsage()).isEqualTo(new TokenUsage(2, 4, 6));
+        verify(embeddingStore, times(2))
+                .addAll(singletonList(Embedding.from(new float[] {1})), singletonList(validSegment));
+        verifyNoMoreInteractions(embeddingStore);
+    }
+
+    @Test
+    void should_fail_fast_by_default() {
+
+        RuntimeException failure = new RuntimeException("cannot split");
+        DocumentSplitter splitter = document -> {
+            throw failure;
+        };
+        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+                .documentSplitter(splitter)
+                .embeddingModel(mock(EmbeddingModel.class))
+                .embeddingStore(mock(EmbeddingStore.class))
+                .build();
+
+        assertThatThrownBy(() -> ingestor.ingest(Document.from("broken"))).isSameAs(failure);
     }
 }
