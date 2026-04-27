@@ -1,12 +1,10 @@
 package dev.langchain4j.mcp;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import static dev.langchain4j.internal.ValidationUtils.ensureNonNegative;
 
-import java.util.Objects;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import java.util.function.Consumer;
 import java.util.function.Function;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNonNegative;
 
 /**
  * Policy for controlling tool call execution lifecycle.

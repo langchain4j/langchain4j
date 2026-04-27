@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import java.io.OutputStream;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,18 +51,17 @@ class ProcessStderrHandlerTest {
         assertThat(events).isNotEmpty();
 
         // Check that we have the info log at start
-        boolean foundInfoLog = events.stream()
-                .anyMatch(e -> e.getMessage().contains("[MCP stderr] prefix"));
+        boolean foundInfoLog = events.stream().anyMatch(e -> e.getMessage().contains("[MCP stderr] prefix"));
         assertThat(foundInfoLog).isTrue();
 
         // Check that stderr output is logged with [MCP stderr] prefix
-        boolean foundMcpStderrPrefix = events.stream()
-                .anyMatch(e -> e.getFormattedMessage().contains("[MCP stderr] normal output"));
+        boolean foundMcpStderrPrefix =
+                events.stream().anyMatch(e -> e.getFormattedMessage().contains("[MCP stderr] normal output"));
         assertThat(foundMcpStderrPrefix).isTrue();
 
         // Check that we do NOT have [ERROR] prefix (regression check)
-        boolean foundErrorPrefix = events.stream()
-                .anyMatch(e -> e.getFormattedMessage().contains("[ERROR]"));
+        boolean foundErrorPrefix =
+                events.stream().anyMatch(e -> e.getFormattedMessage().contains("[ERROR]"));
         assertThat(foundErrorPrefix).isFalse();
     }
 
