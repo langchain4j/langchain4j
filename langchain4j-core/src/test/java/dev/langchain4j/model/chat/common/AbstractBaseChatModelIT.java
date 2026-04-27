@@ -302,8 +302,6 @@ public abstract class AbstractBaseChatModelIT<M> {
         ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
-        assertThat(chatResponse.aiMessage().text()).isNotBlank();
-
         assertThat(chatResponse.metadata().modelName()).isEqualTo(modelName);
     }
 

@@ -16,6 +16,7 @@ import java.util.List;
 
 import dev.langchain4j.model.googleai.GoogleAiGeminiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
 
@@ -27,7 +28,7 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     static final StreamingChatModel GOOGLE_AI_GEMINI_STREAMING_CHAT_MODEL = GoogleAiGeminiStreamingChatModel.builder()
             .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-            .modelName("gemini-2.0-flash-lite")
+            .modelName("gemini-2.5-flash-lite")
             .logRequests(false) // images are huge in logs
             .logResponses(false)
             .build();
@@ -42,7 +43,7 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected String customModelName() {
-        return "gemini-2.0-flash";
+        return "gemini-2.5-flash";
     }
 
     @Override
@@ -109,5 +110,13 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel model) {
         return GoogleAiGeminiTokenUsage.class;
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }

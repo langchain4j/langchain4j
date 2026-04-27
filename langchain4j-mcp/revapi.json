@@ -1,0 +1,20 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "ignore": true,
+          "code": "java.method.numberOfParametersChanged",
+          "justification": "API is only intended for internal consumption",
+          "package": "dev.langchain4j.mcp.client.transport",
+          "classQualifiedName": "dev.langchain4j.mcp.client.transport.McpOperationHandler",
+          "classSimpleName": "McpOperationHandler",
+          "methodName": "<init>",
+          "elementKind": "constructor"
+        }
+      ]
+    }
+  }
+]

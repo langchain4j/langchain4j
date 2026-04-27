@@ -39,6 +39,7 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
+import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.DefaultToolExecutor;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
@@ -536,6 +537,21 @@ public abstract class AiServices<T> {
 
     /**
      * Configures the tools that the LLM can use.
+     * <p>
+     * Each {@link AiServiceTool} carries its own {@link ToolSpecification}, {@link ToolExecutor},
+     * and {@link ReturnBehavior}.
+     *
+     * @param tools list of {@link AiServiceTool}s to expose to the LLM.
+     * @return builder
+     * @since 1.14.0
+     */
+    public AiServices<T> tools(List<AiServiceTool> tools) {
+        context.toolService.tools(tools);
+        return this;
+    }
+
+    /**
+     * Configures the tools that the LLM can use.
      *
      * @param tools A map of {@link ToolSpecification} to {@link ToolExecutor} entries.
      *              This method of configuring tools is useful when tools must be configured programmatically.
@@ -560,7 +576,9 @@ public abstract class AiServices<T> {
      *               perform a llm call with the tool results provided by a {@link ToolExecutor}.
      *               This is similar to using the {@link ReturnBehavior#IMMEDIATE} when using the {@link Tool}-annotated java methods
      * @return builder
+     * @deprecated use {@link #tools(List)} instead in order to specify {@link ReturnBehavior}
      */
+    @Deprecated(since = "1.14.0")
     public AiServices<T> tools(Map<ToolSpecification, ToolExecutor> tools, Set<String> immediateReturnToolNames) {
         context.toolService.tools(tools, immediateReturnToolNames);
         return this;
