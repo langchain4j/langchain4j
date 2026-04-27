@@ -54,7 +54,6 @@ import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -619,6 +618,19 @@ public class SupervisorAgentIT {
         typed_banker_test(false);
     }
 
+    public record ExchangeRequest(String originalCurrency, Double amount, String targetCurrency) { }
+
+    public interface TypedExchangeAgent {
+        @UserMessage(
+                """
+            You are an operator exchanging money in different currencies.
+            Use the tool to calculate the given {{exchangeRequest}}
+            returning only the final amount provided by the tool as it is and nothing else.
+            """)
+        @Agent(outputKey = "exchange")
+        Double exchange(@V("exchangeRequest") ExchangeRequest exchangeRequest);
+    }
+
     private void typed_banker_test(boolean useMaxAgentsInvocations) {
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("exchange")
@@ -653,7 +665,7 @@ public class SupervisorAgentIT {
                 .tools(bankTool)
                 .build();
 
-        ExchangeAgent exchangeAgent = AgenticServices.agentBuilder(ExchangeAgent.class)
+        TypedExchangeAgent exchangeAgent = AgenticServices.agentBuilder(TypedExchangeAgent.class)
                 .chatModel(baseModel())
                 .description(
                         "A money exchanger that converts a given amount of money from the original to the target currency")
