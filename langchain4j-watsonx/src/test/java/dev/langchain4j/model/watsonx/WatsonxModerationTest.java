@@ -27,6 +27,8 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.model.moderation.ModerationModel;
+import dev.langchain4j.model.moderation.ModerationRequest;
+import dev.langchain4j.model.moderation.ModerationResponse;
 import java.net.URI;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -71,20 +73,24 @@ public class WatsonxModerationTest {
     @MockitoSettings(strictness = Strictness.LENIENT)
     void should_throw_an_illegal_argument_exception() {
 
-        var ex = assertThrows(IllegalArgumentException.class, () -> WatsonxModerationModel.builder()
-                .baseUrl("https://test.com")
-                .apiKey("api-key-test")
-                .projectId("project-id")
-                .build());
+        var ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> WatsonxModerationModel.builder()
+                        .baseUrl("https://test.com")
+                        .apiKey("api-key-test")
+                        .projectId("project-id")
+                        .build());
 
         assertEquals("At least one detector must be provided", ex.getMessage());
 
-        ex = assertThrows(IllegalArgumentException.class, () -> WatsonxModerationModel.builder()
-                .baseUrl("https://test.com")
-                .apiKey("api-key-test")
-                .projectId("project-id")
-                .detectors(List.of())
-                .build());
+        ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> WatsonxModerationModel.builder()
+                        .baseUrl("https://test.com")
+                        .apiKey("api-key-test")
+                        .projectId("project-id")
+                        .detectors(List.of())
+                        .build());
 
         assertEquals("At least one detector must be provided", ex.getMessage());
     }
@@ -110,16 +116,58 @@ public class WatsonxModerationTest {
             var content = moderateResponse.content();
             assertEquals("input", content.flaggedText());
             assertTrue(content.flagged());
-
-            var metadata = moderateResponse.metadata();
-            assertEquals("xxx", metadata.get("detection"));
-            assertEquals("Pii", metadata.get("detection_type"));
-            assertEquals(5, metadata.get("end"));
-            assertEquals(0, metadata.get("start"));
-            assertEquals(0.3, metadata.get("score"));
+            assertEquals("xxx", moderateResponse.metadata().get("detection"));
+            assertEquals("Pii", moderateResponse.metadata().get("detection_type"));
+            assertEquals(5, moderateResponse.metadata().get("end"));
+            assertEquals(0, moderateResponse.metadata().get("start"));
+            assertEquals(0.3, moderateResponse.metadata().get("score"));
 
             assertEquals("input", detectionTextRequest.getValue().input());
             assertEquals(2, detectionTextRequest.getValue().detectors().size());
+        });
+    }
+
+    @Test
+    void should_include_typed_metadata_from_detection() {
+
+        var response = new DetectionTextResponse("input", "Pii", "xxx", 0.3, 0, 5);
+
+        when(mockDetectionService.detect(detectionTextRequest.capture()))
+                .thenReturn(new DetectionResponse<>(List.of(response)));
+
+        withDetectionServiceMock(() -> {
+            ModerationModel model = WatsonxModerationModel.builder()
+                    .baseUrl("https://test.com")
+                    .apiKey("api-key")
+                    .projectId("project-id")
+                    .detectors(Pii.ofDefaults(), GraniteGuardian.ofDefaults())
+                    .build();
+
+            ModerationResponse moderateResponse = model.moderate(
+                    ModerationRequest.builder().texts(List.of("input")).build());
+
+            assertTrue(moderateResponse.typedMetadata() instanceof WatsonxModerationResponseMetadata);
+            var metadata = (WatsonxModerationResponseMetadata) moderateResponse.typedMetadata();
+            assertEquals("xxx", metadata.detection());
+            assertEquals("Pii", metadata.detectionType());
+            assertEquals(5, metadata.end());
+            assertEquals(0, metadata.start());
+            assertEquals(0.3, metadata.score());
+
+            assertEquals("input", moderateResponse.moderation().flaggedText());
+            assertTrue(moderateResponse.moderation().flagged());
+            assertEquals("xxx", moderateResponse.metadata().get("detection"));
+            assertEquals("Pii", moderateResponse.metadata().get("detection_type"));
+            assertEquals(5, moderateResponse.metadata().get("end"));
+            assertEquals(0, moderateResponse.metadata().get("start"));
+            assertEquals(0.3, moderateResponse.metadata().get("score"));
+
+            var legacyResponse = model.moderate("input");
+            assertEquals("xxx", legacyResponse.metadata().get("detection"));
+            assertEquals("Pii", legacyResponse.metadata().get("detection_type"));
+            assertEquals(5, legacyResponse.metadata().get("end"));
+            assertEquals(0, legacyResponse.metadata().get("start"));
+            assertEquals(0.3, legacyResponse.metadata().get("score"));
         });
     }
 
@@ -158,13 +206,6 @@ public class WatsonxModerationTest {
             assertTrue(content.flaggedText().equals("input1")
                     || content.flaggedText().equals("input"));
             assertTrue(content.flagged());
-
-            var metadata = moderateResponse.metadata();
-            assertEquals("xxx", metadata.get("detection"));
-            assertEquals("Pii", metadata.get("detection_type"));
-            assertEquals(5, metadata.get("end"));
-            assertEquals(0, metadata.get("start"));
-            assertEquals(0.3, metadata.get("score"));
 
             calls = detectionTextRequest.getValue().detectors().size();
             assertTrue(calls == 1 || calls == 2);
