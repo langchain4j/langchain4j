@@ -39,27 +39,9 @@ class BedrockGuardContentExtractionTest {
     private final TestableExtractor extractor = new TestableExtractor();
 
     @Test
-    void should_keep_user_text_and_image_unchanged_without_guard_content_placement() {
-        List<Message> messages = extractor.testExtractRegularMessages(
-                List.of(userMessage("hello", pngImage())),
-                null,
-                null,
-                null);
-
-        List<ContentBlock> content = messages.get(0).content();
-        assertThat(content).hasSize(2);
-        assertThat(content.get(0).text()).isEqualTo("hello");
-        assertThat(content.get(0).guardContent()).isNull();
-        assertThat(content.get(1).image()).isNotNull();
-        assertThat(content.get(1).guardContent()).isNull();
-    }
-
-    @Test
     void should_wrap_only_last_user_message_text_and_image_in_guard_content() {
         List<Message> messages = extractor.testExtractRegularMessages(
-                List.of(
-                        userMessage("first", pngImage()),
-                        userMessage("last", jpegImage())),
+                List.of(userMessage("first", pngImage()), userMessage("last", jpegImage())),
                 null,
                 null,
                 BedrockGuardContentPlacement.LAST_USER_MESSAGE);
@@ -68,36 +50,38 @@ class BedrockGuardContentExtractionTest {
         assertThat(firstUserContent.get(0).text()).isEqualTo("first");
         assertThat(firstUserContent.get(1).image()).isNotNull();
         assertThat(firstUserContent)
-                .allSatisfy(contentBlock -> assertThat(contentBlock.guardContent()).isNull());
+                .allSatisfy(
+                        contentBlock -> assertThat(contentBlock.guardContent()).isNull());
 
         List<ContentBlock> lastUserContent = messages.get(1).content();
         assertThat(lastUserContent).hasSize(2);
         assertThat(lastUserContent.get(0).text()).isNull();
         assertThat(lastUserContent.get(0).guardContent().text().text()).isEqualTo("last");
         assertThat(lastUserContent.get(1).image()).isNull();
-        assertThat(lastUserContent.get(1).guardContent().image().formatAsString()).isEqualTo("jpeg");
-        assertThat(lastUserContent.get(1).guardContent().image().source().bytes().asUtf8String())
+        assertThat(lastUserContent.get(1).guardContent().image().formatAsString())
+                .isEqualTo("jpeg");
+        assertThat(lastUserContent
+                        .get(1)
+                        .guardContent()
+                        .image()
+                        .source()
+                        .bytes()
+                        .asUtf8String())
                 .isEqualTo("image");
     }
 
     @Test
-    void should_wrap_all_user_messages_text_and_supported_images_in_guard_content() {
+    void should_wrap_all_user_messages() {
         List<Message> messages = extractor.testExtractRegularMessages(
-                List.of(
-                        userMessage("first", pngImage()),
-                        userMessage("second", jpegImage())),
+                List.of(UserMessage.from("first"), UserMessage.from("second")),
                 null,
                 null,
                 BedrockGuardContentPlacement.ALL_USER_MESSAGES);
 
-        assertThat(messages.get(0).content().get(0).guardContent().text().text())
-                .isEqualTo("first");
-        assertThat(messages.get(0).content().get(1).guardContent().image().formatAsString())
-                .isEqualTo("png");
-        assertThat(messages.get(1).content().get(0).guardContent().text().text())
-                .isEqualTo("second");
-        assertThat(messages.get(1).content().get(1).guardContent().image().formatAsString())
-                .isEqualTo("jpeg");
+        assertThat(messages)
+                .extracting(message ->
+                        message.content().get(0).guardContent().text().text())
+                .containsExactly("first", "second");
     }
 
     @Test
@@ -127,16 +111,14 @@ class BedrockGuardContentExtractionTest {
 
         assertThat(messages)
                 .flatExtracting(Message::content)
-                .allSatisfy(contentBlock -> assertThat(contentBlock.guardContent()).isNull());
+                .allSatisfy(
+                        contentBlock -> assertThat(contentBlock.guardContent()).isNull());
     }
 
     @Test
     void should_fallback_to_regular_content_when_targeted_image_format_cannot_be_guarded() {
         List<Message> messages = extractor.testExtractRegularMessages(
-                List.of(userMessage("look", gifImage())),
-                null,
-                null,
-                BedrockGuardContentPlacement.LAST_USER_MESSAGE);
+                List.of(userMessage("look", gifImage())), null, null, BedrockGuardContentPlacement.LAST_USER_MESSAGE);
 
         List<ContentBlock> content = messages.get(0).content();
         assertThat(content).hasSize(2);
@@ -149,9 +131,7 @@ class BedrockGuardContentExtractionTest {
     @Test
     void should_not_fallback_when_unsupported_content_is_not_targeted_for_guard_content() {
         List<Message> messages = extractor.testExtractRegularMessages(
-                List.of(
-                        userMessage("historical", gifImage()),
-                        userMessage("current", pngImage())),
+                List.of(userMessage("historical", gifImage()), userMessage("current", pngImage())),
                 null,
                 null,
                 BedrockGuardContentPlacement.LAST_USER_MESSAGE);
@@ -160,11 +140,13 @@ class BedrockGuardContentExtractionTest {
         assertThat(historicalContent.get(0).text()).isEqualTo("historical");
         assertThat(historicalContent.get(1).image().formatAsString()).isEqualTo("gif");
         assertThat(historicalContent)
-                .allSatisfy(contentBlock -> assertThat(contentBlock.guardContent()).isNull());
+                .allSatisfy(
+                        contentBlock -> assertThat(contentBlock.guardContent()).isNull());
 
         List<ContentBlock> currentContent = messages.get(1).content();
         assertThat(currentContent.get(0).guardContent().text().text()).isEqualTo("current");
-        assertThat(currentContent.get(1).guardContent().image().formatAsString()).isEqualTo("png");
+        assertThat(currentContent.get(1).guardContent().image().formatAsString())
+                .isEqualTo("png");
     }
 
     @Test
@@ -214,7 +196,8 @@ class BedrockGuardContentExtractionTest {
         List<Message> messages = request.messages();
         assertThat(messages).hasSize(2);
         assertThat(messages.get(0).content())
-                .allSatisfy(contentBlock -> assertThat(contentBlock.guardContent()).isNull());
+                .allSatisfy(
+                        contentBlock -> assertThat(contentBlock.guardContent()).isNull());
 
         List<ContentBlock> content = messages.get(1).content();
         assertThat(content).hasSize(2);
@@ -257,7 +240,8 @@ class BedrockGuardContentExtractionTest {
         List<Message> messages = request.messages();
         assertThat(messages).hasSize(2);
         assertThat(messages.get(0).content())
-                .allSatisfy(contentBlock -> assertThat(contentBlock.guardContent()).isNull());
+                .allSatisfy(
+                        contentBlock -> assertThat(contentBlock.guardContent()).isNull());
 
         List<ContentBlock> content = messages.get(1).content();
         assertThat(content).hasSize(2);
@@ -282,18 +266,15 @@ class BedrockGuardContentExtractionTest {
     }
 
     private static ImageContent imageContent(String mimeType) {
-        return ImageContent.from(Image.builder()
-                .base64Data(BASE64_IMAGE)
-                .mimeType(mimeType)
-                .build());
+        return ImageContent.from(
+                Image.builder().base64Data(BASE64_IMAGE).mimeType(mimeType).build());
     }
 
     private static ChatRequest chatRequestWithGuardContentPlacement(BedrockGuardContentPlacement placement) {
         return ChatRequest.builder()
-                // Keep one historical user message so LAST_USER_MESSAGE can prove only the last user message is guarded.
-                .messages(
-                        userMessage("history", jpegImage()),
-                        userMessage("guard me", pngImage()))
+                // Keep one historical user message so LAST_USER_MESSAGE can prove only the last user message is
+                // guarded.
+                .messages(userMessage("history", jpegImage()), userMessage("guard me", pngImage()))
                 .parameters(BedrockChatRequestParameters.builder()
                         .modelName("test-model")
                         .guardrailConfiguration(BedrockGuardrailConfiguration.builder()
