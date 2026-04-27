@@ -2,9 +2,12 @@ package dev.langchain4j.store.embedding;
 
 import static dev.langchain4j.data.segment.TextSegment.textSegment;
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -191,5 +194,248 @@ class EmbeddingStoreIngestorTest {
         verifyNoMoreInteractions(embeddingStore);
 
         assertThat(ingestionResult.tokenUsage()).isEqualTo(tokenUsage);
+    }
+
+    @Test
+    void should_ignore_empty_segments_when_ignore_errors_is_enabled() {
+
+        // given
+        Document document = Document.from("Malformed document");
+
+        DocumentSplitter documentSplitter = mock(DocumentSplitter.class);
+        when(documentSplitter.splitAll(singletonList(document))).thenReturn(emptyList());
+
+        TextSegmentTransformer textSegmentTransformer = mock(TextSegmentTransformer.class);
+
+        EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
+
+        EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
+
+        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+                .documentSplitter(documentSplitter)
+                .textSegmentTransformer(textSegmentTransformer)
+                .embeddingModel(embeddingModel)
+                .embeddingStore(embeddingStore)
+                .ignoreErrors(true)
+                .build();
+
+        // when
+        IngestionResult ingestionResult = ingestor.ingest(document);
+
+        // then
+        assertThat(ingestionResult.tokenUsage()).isNull();
+
+        verify(documentSplitter).splitAll(singletonList(document));
+        verifyNoMoreInteractions(textSegmentTransformer);
+        verify(embeddingModel, never()).embedAll(emptyList());
+        verifyNoMoreInteractions(embeddingModel);
+        verifyNoMoreInteractions(embeddingStore);
+    }
+
+    @Test
+    void should_ignore_empty_transformed_segments_when_ignore_errors_is_enabled() {
+
+        // given
+        Document document = Document.from("Malformed document");
+        TextSegment segment = textSegment("Malformed document");
+
+        DocumentSplitter documentSplitter = mock(DocumentSplitter.class);
+        when(documentSplitter.splitAll(singletonList(document))).thenReturn(singletonList(segment));
+
+        TextSegmentTransformer textSegmentTransformer = mock(TextSegmentTransformer.class);
+        when(textSegmentTransformer.transformAll(singletonList(segment))).thenReturn(emptyList());
+
+        EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
+
+        EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
+
+        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+                .documentSplitter(documentSplitter)
+                .textSegmentTransformer(textSegmentTransformer)
+                .embeddingModel(embeddingModel)
+                .embeddingStore(embeddingStore)
+                .ignoreErrors(true)
+                .build();
+
+        // when
+        IngestionResult ingestionResult = ingestor.ingest(document);
+
+        // then
+        assertThat(ingestionResult.tokenUsage()).isNull();
+
+        verify(documentSplitter).splitAll(singletonList(document));
+        verify(textSegmentTransformer).transformAll(singletonList(segment));
+        verifyNoMoreInteractions(textSegmentTransformer);
+        verify(embeddingModel, never()).embedAll(emptyList());
+        verifyNoMoreInteractions(embeddingModel);
+        verifyNoMoreInteractions(embeddingStore);
+    }
+
+    @Test
+    void should_ingest_non_empty_segments_when_ignore_errors_is_enabled() {
+
+        // given
+        Document malformedDocument = Document.from("Malformed document");
+        Document firstValidDocument = Document.from("First valid document");
+        Document secondValidDocument = Document.from("Second valid document");
+        TextSegment firstValidSegment = textSegment("First valid document");
+        TextSegment secondValidSegment = textSegment("Second valid document");
+        TokenUsage firstTokenUsage = new TokenUsage(1, 2, 3);
+        TokenUsage secondTokenUsage = new TokenUsage(3, 5, 8);
+
+        DocumentSplitter documentSplitter = document -> {
+            if (document == malformedDocument) {
+                return emptyList();
+            }
+            if (document == firstValidDocument) {
+                return singletonList(firstValidSegment);
+            }
+            return singletonList(secondValidSegment);
+        };
+
+        EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
+        when(embeddingModel.embedAll(singletonList(firstValidSegment)))
+                .thenReturn(Response.from(singletonList(Embedding.from(new float[] {1})), firstTokenUsage));
+        when(embeddingModel.embedAll(singletonList(secondValidSegment)))
+                .thenReturn(Response.from(singletonList(Embedding.from(new float[] {2})), secondTokenUsage));
+
+        EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
+
+        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+                .documentSplitter(documentSplitter)
+                .embeddingModel(embeddingModel)
+                .embeddingStore(embeddingStore)
+                .ignoreErrors(true)
+                .build();
+
+        // when
+        IngestionResult ingestionResult =
+                ingestor.ingest(asList(malformedDocument, firstValidDocument, secondValidDocument));
+
+        // then
+        assertThat(ingestionResult.tokenUsage()).isEqualTo(new TokenUsage(4, 7, 11));
+
+        verify(embeddingModel).embedAll(singletonList(firstValidSegment));
+        verify(embeddingModel).embedAll(singletonList(secondValidSegment));
+        verifyNoMoreInteractions(embeddingModel);
+        verify(embeddingStore).addAll(singletonList(Embedding.from(new float[] {1})), singletonList(firstValidSegment));
+        verify(embeddingStore)
+                .addAll(singletonList(Embedding.from(new float[] {2})), singletonList(secondValidSegment));
+        verifyNoMoreInteractions(embeddingStore);
+    }
+
+    @Test
+    void should_continue_ingesting_when_ignore_errors_is_enabled() {
+
+        // given
+        Document malformedDocument = Document.from("Malformed document");
+        Document validDocument = Document.from("Valid document");
+        TextSegment validSegment = textSegment("Valid document");
+        TokenUsage tokenUsage = new TokenUsage(1, 2, 3);
+
+        DocumentSplitter documentSplitter = document -> {
+            if (document == malformedDocument) {
+                throw new RuntimeException("Cannot split document");
+            }
+            return singletonList(validSegment);
+        };
+
+        EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
+        when(embeddingModel.embedAll(singletonList(validSegment)))
+                .thenReturn(Response.from(singletonList(Embedding.from(new float[] {1})), tokenUsage));
+
+        EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
+
+        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+                .documentSplitter(documentSplitter)
+                .embeddingModel(embeddingModel)
+                .embeddingStore(embeddingStore)
+                .ignoreErrors(true)
+                .build();
+
+        // when
+        IngestionResult ingestionResult = ingestor.ingest(asList(malformedDocument, validDocument));
+
+        // then
+        assertThat(ingestionResult.tokenUsage()).isEqualTo(tokenUsage);
+
+        verify(embeddingModel).embedAll(singletonList(validSegment));
+        verifyNoMoreInteractions(embeddingModel);
+        verify(embeddingStore).addAll(singletonList(Embedding.from(new float[] {1})), singletonList(validSegment));
+        verifyNoMoreInteractions(embeddingStore);
+    }
+
+    @Test
+    void should_continue_ingesting_when_embedding_fails_and_ignore_errors_is_enabled() {
+
+        // given
+        Document malformedDocument = Document.from("Malformed document");
+        Document validDocument = Document.from("Valid document");
+        TextSegment malformedSegment = textSegment("Malformed document");
+        TextSegment validSegment = textSegment("Valid document");
+        TokenUsage tokenUsage = new TokenUsage(1, 2, 3);
+
+        DocumentSplitter documentSplitter = document -> {
+            if (document == malformedDocument) {
+                return singletonList(malformedSegment);
+            }
+            return singletonList(validSegment);
+        };
+
+        EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
+        when(embeddingModel.embedAll(singletonList(malformedSegment))).thenThrow(new RuntimeException("Cannot embed"));
+        when(embeddingModel.embedAll(singletonList(validSegment)))
+                .thenReturn(Response.from(singletonList(Embedding.from(new float[] {1})), tokenUsage));
+
+        EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
+
+        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+                .documentSplitter(documentSplitter)
+                .embeddingModel(embeddingModel)
+                .embeddingStore(embeddingStore)
+                .ignoreErrors(true)
+                .build();
+
+        // when
+        IngestionResult ingestionResult = ingestor.ingest(asList(malformedDocument, validDocument));
+
+        // then
+        assertThat(ingestionResult.tokenUsage()).isEqualTo(tokenUsage);
+
+        verify(embeddingModel).embedAll(singletonList(malformedSegment));
+        verify(embeddingModel).embedAll(singletonList(validSegment));
+        verifyNoMoreInteractions(embeddingModel);
+        verify(embeddingStore).addAll(singletonList(Embedding.from(new float[] {1})), singletonList(validSegment));
+        verifyNoMoreInteractions(embeddingStore);
+    }
+
+    @Test
+    void should_not_skip_empty_segments_by_default() {
+
+        // given
+        Document document = Document.from("Malformed document");
+
+        DocumentSplitter documentSplitter = mock(DocumentSplitter.class);
+        when(documentSplitter.splitAll(singletonList(document))).thenReturn(emptyList());
+
+        EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
+        RuntimeException exception = new RuntimeException("Empty input");
+        when(embeddingModel.embedAll(emptyList())).thenThrow(exception);
+
+        EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
+
+        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+                .documentSplitter(documentSplitter)
+                .embeddingModel(embeddingModel)
+                .embeddingStore(embeddingStore)
+                .build();
+
+        // when/then
+        assertThatThrownBy(() -> ingestor.ingest(document)).isSameAs(exception);
+
+        verify(documentSplitter).splitAll(singletonList(document));
+        verify(embeddingModel).embedAll(emptyList());
+        verifyNoMoreInteractions(embeddingModel);
+        verifyNoMoreInteractions(embeddingStore);
     }
 }
