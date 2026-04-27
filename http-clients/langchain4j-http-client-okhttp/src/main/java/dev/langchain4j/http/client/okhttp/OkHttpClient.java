@@ -1,5 +1,8 @@
 package dev.langchain4j.http.client.okhttp;
 
+import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.http.client.FormDataFile;
@@ -8,14 +11,6 @@ import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-import okhttp3.Call;
-import okhttp3.Callback;
-import okhttp3.MediaType;
-import okhttp3.MultipartBody;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.SocketTimeoutException;
@@ -23,9 +18,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
-import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 public class OkHttpClient implements HttpClient {
 
@@ -165,17 +164,16 @@ public class OkHttpClient implements HttpClient {
 
     private RequestBody buildRequestBody(HttpRequest request) {
         if (!request.formDataFields().isEmpty() || !request.formDataFiles().isEmpty()) {
-            MultipartBody.Builder multipartBuilder =
-                    new MultipartBody.Builder().setType(MultipartBody.FORM);
+            MultipartBody.Builder multipartBuilder = new MultipartBody.Builder().setType(MultipartBody.FORM);
 
             for (Map.Entry<String, String> entry : request.formDataFields().entrySet()) {
                 multipartBuilder.addFormDataPart(entry.getKey(), entry.getValue());
             }
 
-            for (Map.Entry<String, List<FormDataFile>> entry : request.formDataFiles().entrySet()) {
+            for (Map.Entry<String, List<FormDataFile>> entry :
+                    request.formDataFiles().entrySet()) {
                 for (FormDataFile file : entry.getValue()) {
-                    RequestBody fileBody = RequestBody.create(
-                            file.content(), MediaType.parse(file.contentType()));
+                    RequestBody fileBody = RequestBody.create(file.content(), MediaType.parse(file.contentType()));
                     multipartBuilder.addFormDataPart(entry.getKey(), file.fileName(), fileBody);
                 }
             }

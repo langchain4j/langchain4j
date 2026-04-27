@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
 import java.util.Objects;
 
 /**
@@ -22,26 +21,37 @@ public class GenerateImagesRequest {
 
     @JsonProperty
     private final String model;
+
     @JsonProperty
     private final String prompt;
+
     @JsonProperty
     private final int n;
+
     @JsonProperty
     private final String size;
+
     @JsonProperty
     private final String quality;
+
     @JsonProperty
     private final String style;
+
     @JsonProperty
     private final String user;
+
     @JsonProperty
     private final String responseFormat;
+
     @JsonProperty
     private final String background;
+
     @JsonProperty
     private final String moderation;
+
     @JsonProperty
     private final Integer outputCompression;
+
     @JsonProperty
     private final String outputFormat;
 
@@ -82,34 +92,31 @@ public class GenerateImagesRequest {
     @Override
     @JacocoIgnoreCoverageGenerated
     public String toString() {
-        return (
-                "GenerateImagesRequest{" +
-                        "model=" +
-                        model +
-                        ", prompt=" +
-                        prompt +
-                        ", n=" +
-                        n +
-                        ", size=" +
-                        size +
-                        ", quality=" +
-                        quality +
-                        ", style=" +
-                        style +
-                        ", user=" +
-                        user +
-                        ", responseFormat=" +
-                        responseFormat +
-                        ", background=" +
-                        background +
-                        ", moderation=" +
-                        moderation +
-                        ", outputCompression=" +
-                        outputCompression +
-                        ", outputFormat=" +
-                        outputFormat +
-                        '}'
-        );
+        return ("GenerateImagesRequest{" + "model="
+                + model
+                + ", prompt="
+                + prompt
+                + ", n="
+                + n
+                + ", size="
+                + size
+                + ", quality="
+                + quality
+                + ", style="
+                + style
+                + ", user="
+                + user
+                + ", responseFormat="
+                + responseFormat
+                + ", background="
+                + background
+                + ", moderation="
+                + moderation
+                + ", outputCompression="
+                + outputCompression
+                + ", outputFormat="
+                + outputFormat
+                + '}');
     }
 
     public static Builder builder() {

@@ -1,12 +1,12 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.model.openai.OpenAiImageModelName.DALL_E_2;
+import static dev.langchain4j.model.openai.OpenAiImageModelName.DALL_E_3;
+import static dev.langchain4j.model.openai.OpenAiImageModelName.GPT_IMAGE_2;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -16,11 +16,10 @@ import java.net.URI;
 import java.util.Base64;
 import java.util.List;
 import javax.imageio.ImageIO;
-
-import static dev.langchain4j.model.openai.OpenAiImageModelName.DALL_E_2;
-import static dev.langchain4j.model.openai.OpenAiImageModelName.DALL_E_3;
-import static dev.langchain4j.model.openai.OpenAiImageModelName.GPT_IMAGE_2;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Disabled("Run manually before release. Expensive to run very often.")
 class OpenAiImageModelIT {
@@ -74,9 +73,8 @@ class OpenAiImageModelIT {
                 .logResponses(true)
                 .build();
 
-        Response<Image> response = model.generate(
-                "Beautiful house on country side, cowboy plays guitar, dog sitting at the door"
-        );
+        Response<Image> response =
+                model.generate("Beautiful house on country side, cowboy plays guitar, dog sitting at the door");
 
         URI remoteImage = response.content().url();
         log.info("Your remote image is here: {}", remoteImage);
@@ -132,8 +130,7 @@ class OpenAiImageModelIT {
         Image source = solidColorPng(512, 512, new Color(200, 255, 200));
         Image mask = transparentMask(512, 512);
 
-        Response<Image> response =
-                model.edit(source, mask, "Replace the masked area with a small red apple");
+        Response<Image> response = model.edit(source, mask, "Replace the masked area with a small red apple");
 
         assertThat(response.content().base64Data()).isNotNull().isBase64();
         assertGptImageTokenUsage(response);
@@ -144,8 +141,7 @@ class OpenAiImageModelIT {
         OpenAiImageModel model = gptImage2Builder().build();
 
         List<Image> sources = List.of(
-                solidColorPng(512, 512, new Color(255, 200, 200)),
-                solidColorPng(512, 512, new Color(200, 200, 255)));
+                solidColorPng(512, 512, new Color(255, 200, 200)), solidColorPng(512, 512, new Color(200, 200, 255)));
 
         Response<Image> response = model.edit(sources, "Combine both images into a single watercolor scene");
 
@@ -161,11 +157,12 @@ class OpenAiImageModelIT {
         Image mask = transparentMask(1024, 1024);
 
         // Canonical edit overload: multi-image input + mask + n returning a Response<List<Image>>.
-        Response<List<Image>> response = model.edit(
-                List.of(source), mask, "Replace the masked area with a small red apple", 2);
+        Response<List<Image>> response =
+                model.edit(List.of(source), mask, "Replace the masked area with a small red apple", 2);
 
         assertThat(response.content()).hasSize(2);
-        response.content().forEach(image -> assertThat(image.base64Data()).isNotNull().isBase64());
+        response.content()
+                .forEach(image -> assertThat(image.base64Data()).isNotNull().isBase64());
         assertThat(response.tokenUsage()).isInstanceOf(OpenAiImageTokenUsage.class);
     }
 
@@ -199,7 +196,10 @@ class OpenAiImageModelIT {
         } finally {
             g.dispose();
         }
-        return Image.builder().base64Data(toPngBase64(img)).mimeType("image/png").build();
+        return Image.builder()
+                .base64Data(toPngBase64(img))
+                .mimeType("image/png")
+                .build();
     }
 
     private static Image transparentMask(int width, int height) {
@@ -214,7 +214,10 @@ class OpenAiImageModelIT {
         } finally {
             g.dispose();
         }
-        return Image.builder().base64Data(toPngBase64(img)).mimeType("image/png").build();
+        return Image.builder()
+                .base64Data(toPngBase64(img))
+                .mimeType("image/png")
+                .build();
     }
 
     private static String toPngBase64(BufferedImage img) {

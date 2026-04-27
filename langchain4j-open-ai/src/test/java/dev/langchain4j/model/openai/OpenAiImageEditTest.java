@@ -29,15 +29,14 @@ class OpenAiImageEditTest {
             "{\"created\":1,\"data\":[{\"url\":\"https://example.com/edited.png\"}]}";
     private static final String GPT_IMAGE_RESPONSE_BODY =
             "{\"created\":1,\"data\":[{\"b64_json\":\"" + base64("edited") + "\"}]}";
-    private static final String GPT_IMAGE_RESPONSE_WITH_USAGE =
-            "{\"created\":1,"
-                    + "\"data\":[{\"b64_json\":\"" + base64("edited") + "\"}],"
-                    + "\"usage\":{"
-                    + "\"input_tokens\":1039,"
-                    + "\"input_tokens_details\":{\"image_tokens\":1024,\"text_tokens\":15},"
-                    + "\"output_tokens\":196,"
-                    + "\"output_tokens_details\":{\"image_tokens\":196,\"text_tokens\":0},"
-                    + "\"total_tokens\":1235}}";
+    private static final String GPT_IMAGE_RESPONSE_WITH_USAGE = "{\"created\":1,"
+            + "\"data\":[{\"b64_json\":\"" + base64("edited") + "\"}],"
+            + "\"usage\":{"
+            + "\"input_tokens\":1039,"
+            + "\"input_tokens_details\":{\"image_tokens\":1024,\"text_tokens\":15},"
+            + "\"output_tokens\":196,"
+            + "\"output_tokens_details\":{\"image_tokens\":196,\"text_tokens\":0},"
+            + "\"total_tokens\":1235}}";
 
     private static String base64(String text) {
         return Base64.getEncoder().encodeToString(text.getBytes(StandardCharsets.UTF_8));
@@ -50,9 +49,8 @@ class OpenAiImageEditTest {
     @Test
     void edit_with_dalle2_sends_single_image_part_and_default_response_format() {
         CapturingHttpClient http = new CapturingHttpClient(DALL_E_2_RESPONSE_BODY);
-        OpenAiImageModel model = newModel(http, DALL_E_2.toString())
-                .responseFormat("url")
-                .build();
+        OpenAiImageModel model =
+                newModel(http, DALL_E_2.toString()).responseFormat("url").build();
 
         model.edit(pngImage("input"), "make it dreamier");
 
@@ -97,9 +95,8 @@ class OpenAiImageEditTest {
     void edit_with_gpt_image_1_passes_input_fidelity_through() {
         // gpt-image-1 does support input_fidelity; only gpt-image-2 rejects it.
         CapturingHttpClient http = new CapturingHttpClient(GPT_IMAGE_RESPONSE_BODY);
-        OpenAiImageModel model = newModel(http, GPT_IMAGE_1.toString())
-                .inputFidelity("high")
-                .build();
+        OpenAiImageModel model =
+                newModel(http, GPT_IMAGE_1.toString()).inputFidelity("high").build();
 
         model.edit(pngImage("input"), "go");
 
@@ -125,7 +122,8 @@ class OpenAiImageEditTest {
         CapturingHttpClient http = new CapturingHttpClient(DALL_E_2_RESPONSE_BODY);
         OpenAiImageModel model = newModel(http, DALL_E_2.toString()).build();
 
-        Image urlOnly = Image.builder().url(URI.create("https://example.com/foo.png")).build();
+        Image urlOnly =
+                Image.builder().url(URI.create("https://example.com/foo.png")).build();
 
         assertThatThrownBy(() -> model.edit(urlOnly, "anything"))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -150,7 +148,10 @@ class OpenAiImageEditTest {
         CapturingHttpClient http = new CapturingHttpClient(GPT_IMAGE_RESPONSE_BODY);
         OpenAiImageModel model = newModel(http, GPT_IMAGE_2.toString()).build();
 
-        Image image = Image.builder().base64Data(base64("jpeg")).mimeType("image/jpeg").build();
+        Image image = Image.builder()
+                .base64Data(base64("jpeg"))
+                .mimeType("image/jpeg")
+                .build();
         model.edit(image, "go");
 
         FormDataFile part = http.captured.formDataFiles().get("image").get(0);

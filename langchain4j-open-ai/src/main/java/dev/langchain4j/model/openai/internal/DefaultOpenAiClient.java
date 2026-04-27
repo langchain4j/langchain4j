@@ -249,8 +249,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
             httpRequestBuilder.addFormDataField("output_format", request.outputFormat());
         }
         if (request.outputCompression() != null) {
-            httpRequestBuilder.addFormDataField(
-                    "output_compression", Integer.toString(request.outputCompression()));
+            httpRequestBuilder.addFormDataField("output_compression", Integer.toString(request.outputCompression()));
         }
         if (request.moderation() != null) {
             httpRequestBuilder.addFormDataField("moderation", request.moderation());

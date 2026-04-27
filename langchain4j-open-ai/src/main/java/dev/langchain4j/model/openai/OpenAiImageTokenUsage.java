@@ -1,7 +1,6 @@
 package dev.langchain4j.model.openai;
 
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.util.Objects;
 
 /**
@@ -76,13 +75,12 @@ public class OpenAiImageTokenUsage extends TokenUsage {
 
     @Override
     public String toString() {
-        return "OpenAiImageTokenUsage {" +
-                " inputTokenCount = " + inputTokenCount() +
-                ", inputTokensDetails = " + inputTokensDetails +
-                ", outputTokenCount = " + outputTokenCount() +
-                ", outputTokensDetails = " + outputTokensDetails +
-                ", totalTokenCount = " + totalTokenCount() +
-                " }";
+        return "OpenAiImageTokenUsage {" + " inputTokenCount = "
+                + inputTokenCount() + ", inputTokensDetails = "
+                + inputTokensDetails + ", outputTokenCount = "
+                + outputTokenCount() + ", outputTokensDetails = "
+                + outputTokensDetails + ", totalTokenCount = "
+                + totalTokenCount() + " }";
     }
 
     public static Builder builder() {

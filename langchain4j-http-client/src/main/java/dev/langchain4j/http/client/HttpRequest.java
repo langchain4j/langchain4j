@@ -246,7 +246,8 @@ public class HttpRequest {
             if (this.formDataFiles == null) {
                 this.formDataFiles = new LinkedHashMap<>();
             }
-            this.formDataFiles.computeIfAbsent(name, k -> new ArrayList<>())
+            this.formDataFiles
+                    .computeIfAbsent(name, k -> new ArrayList<>())
                     .add(new FormDataFile(fileName, contentType, content));
             return this;
         }
