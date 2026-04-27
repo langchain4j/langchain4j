@@ -38,6 +38,32 @@ public class AnthropicRequestMapper {
             Double topP,
             Integer topK,
             List<String> stopSequences,
+            Boolean enablePromptCaching) {
+
+        return toRequest(
+                model,
+                messages,
+                toolSpecs,
+                toolChoice,
+                maxTokens,
+                temperature,
+                topP,
+                topK,
+                stopSequences,
+                enablePromptCaching,
+                null);
+    }
+
+    public static AnthropicRequest toRequest(
+            String model,
+            List<ChatMessage> messages,
+            List<ToolSpecification> toolSpecs,
+            ToolChoice toolChoice,
+            Integer maxTokens,
+            Double temperature,
+            Double topP,
+            Integer topK,
+            List<String> stopSequences,
             Boolean enablePromptCaching,
             Integer thinkingBudgetTokens) {
         if (model == null || model.trim().isEmpty()) {
