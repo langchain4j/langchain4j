@@ -108,11 +108,14 @@ public class MultiDomainContentRetriever implements ContentRetriever {
                     return Content.from(
                             embeddingMatch.embedded(),
                             Map.of(
-                                    ContentMetadata.SCORE, boostedScore,
-                                    ContentMetadata.ORIGINAL_SCORE, embeddingMatch.score(),
+                                    ContentMetadata.SCORE,
+                                    boostedScore,
+                                    ContentMetadata.ORIGINAL_SCORE,
+                                    embeddingMatch.score(),
                                     ContentMetadata.EMBEDDING_ID,
-                                            embeddingMatch.embeddingId() != null ? embeddingMatch.embeddingId() : "",
-                                    ContentMetadata.DOMAIN_NAME, domain.name()));
+                                    embeddingMatch.embeddingId() != null ? embeddingMatch.embeddingId() : "",
+                                    ContentMetadata.DOMAIN_NAME,
+                                    domain.name()));
                 })
                 .collect(Collectors.toList());
     }

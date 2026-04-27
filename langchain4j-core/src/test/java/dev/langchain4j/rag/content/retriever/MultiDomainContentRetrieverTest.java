@@ -24,7 +24,6 @@ import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -73,8 +72,8 @@ class MultiDomainContentRetrieverTest {
                         .maxResults(3)
                         .filter(NUTRITION_FILTER)
                         .build()))
-                .thenReturn(new EmbeddingSearchResult<>(List.of(
-                        new EmbeddingMatch<>(0.95, "id_nutrition_1", null, nutritionSegment1))));
+                .thenReturn(new EmbeddingSearchResult<>(
+                        List.of(new EmbeddingMatch<>(0.95, "id_nutrition_1", null, nutritionSegment1))));
 
         MultiDomainContentRetriever retriever = MultiDomainContentRetriever.builder()
                 .embeddingStore(embeddingStore)
@@ -108,15 +107,18 @@ class MultiDomainContentRetrieverTest {
 
         // Verify boosted scores are stored in metadata
         assertThat(results.get(0).metadata().get(ContentMetadata.SCORE)).isEqualTo(1.08);
-        assertThat(results.get(0).metadata().get(ContentMetadata.ORIGINAL_SCORE)).isEqualTo(0.9);
+        assertThat(results.get(0).metadata().get(ContentMetadata.ORIGINAL_SCORE))
+                .isEqualTo(0.9);
         assertThat(results.get(0).metadata().get(ContentMetadata.DOMAIN_NAME)).isEqualTo(ACTIVITY_DOMAIN);
 
         assertThat(results.get(1).metadata().get(ContentMetadata.SCORE)).isEqualTo(0.96);
-        assertThat(results.get(1).metadata().get(ContentMetadata.ORIGINAL_SCORE)).isEqualTo(0.8);
+        assertThat(results.get(1).metadata().get(ContentMetadata.ORIGINAL_SCORE))
+                .isEqualTo(0.8);
         assertThat(results.get(1).metadata().get(ContentMetadata.DOMAIN_NAME)).isEqualTo(ACTIVITY_DOMAIN);
 
         assertThat(results.get(2).metadata().get(ContentMetadata.SCORE)).isEqualTo(0.95);
-        assertThat(results.get(2).metadata().get(ContentMetadata.ORIGINAL_SCORE)).isEqualTo(0.95);
+        assertThat(results.get(2).metadata().get(ContentMetadata.ORIGINAL_SCORE))
+                .isEqualTo(0.95);
         assertThat(results.get(2).metadata().get(ContentMetadata.DOMAIN_NAME)).isEqualTo(NUTRITION_DOMAIN);
 
         // Verify both searches were called
@@ -128,11 +130,10 @@ class MultiDomainContentRetrieverTest {
     void should_search_all_domains_in_parallel() {
 
         // given - track order of calls
-        when(embeddingStore.search(any(EmbeddingSearchRequest.class)))
-                .thenAnswer(invocation -> {
-                    Thread.sleep(50); // simulate latency
-                    return new EmbeddingSearchResult<>(List.of());
-                });
+        when(embeddingStore.search(any(EmbeddingSearchRequest.class))).thenAnswer(invocation -> {
+            Thread.sleep(50); // simulate latency
+            return new EmbeddingSearchResult<>(List.of());
+        });
 
         MultiDomainContentRetriever retriever = MultiDomainContentRetriever.builder()
                 .embeddingStore(embeddingStore)
@@ -182,8 +183,8 @@ class MultiDomainContentRetrieverTest {
                         .maxResults(5)
                         .filter(metadataKey("domain").isEqualTo("domainA"))
                         .build()))
-                .thenReturn(new EmbeddingSearchResult<>(List.of(
-                        new EmbeddingMatch<>(0.5, "id_a", null, lowScoreHighBoost))));
+                .thenReturn(new EmbeddingSearchResult<>(
+                        List.of(new EmbeddingMatch<>(0.5, "id_a", null, lowScoreHighBoost))));
 
         // Domain B: score 0.9 with boost 1.0 → effective 0.9
         when(embeddingStore.search(EmbeddingSearchRequest.builder()
@@ -192,8 +193,8 @@ class MultiDomainContentRetrieverTest {
                         .maxResults(5)
                         .filter(metadataKey("domain").isEqualTo("domainB"))
                         .build()))
-                .thenReturn(new EmbeddingSearchResult<>(List.of(
-                        new EmbeddingMatch<>(0.9, "id_b", null, highScoreLowBoost))));
+                .thenReturn(new EmbeddingSearchResult<>(
+                        List.of(new EmbeddingMatch<>(0.9, "id_b", null, highScoreLowBoost))));
 
         MultiDomainContentRetriever retriever = MultiDomainContentRetriever.builder()
                 .embeddingStore(embeddingStore)
@@ -235,8 +236,7 @@ class MultiDomainContentRetrieverTest {
                         .maxResults(3) // default maxResults
                         .filter(metadataKey("domain").isEqualTo("testDomain"))
                         .build()))
-                .thenReturn(new EmbeddingSearchResult<>(List.of(
-                        new EmbeddingMatch<>(0.9, "id_1", null, segment))));
+                .thenReturn(new EmbeddingSearchResult<>(List.of(new EmbeddingMatch<>(0.9, "id_1", null, segment))));
 
         MultiDomainContentRetriever retriever = MultiDomainContentRetriever.builder()
                 .embeddingStore(embeddingStore)
@@ -418,11 +418,12 @@ class MultiDomainContentRetrieverTest {
         retriever.retrieve(customQuery);
 
         // then
-        verify(embeddingStore).search(EmbeddingSearchRequest.builder()
-                .query(customQueryText)
-                .queryEmbedding(EMBEDDING)
-                .maxResults(3)
-                .filter(metadataKey("domain").isEqualTo("test"))
-                .build());
+        verify(embeddingStore)
+                .search(EmbeddingSearchRequest.builder()
+                        .query(customQueryText)
+                        .queryEmbedding(EMBEDDING)
+                        .maxResults(3)
+                        .filter(metadataKey("domain").isEqualTo("test"))
+                        .build());
     }
 }

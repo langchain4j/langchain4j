@@ -61,11 +61,12 @@ class AiMessageAttributesPropagationTest implements WithAssertions {
         for (int t = 0; t < threadCount; t++) {
             final int threadNum = t;
             new Thread(() -> {
-                for (int i = 0; i < iterations; i++) {
-                    message.attributes().put("thread" + threadNum, "value" + i);
-                }
-                latch.countDown();
-            }).start();
+                        for (int i = 0; i < iterations; i++) {
+                            message.attributes().put("thread" + threadNum, "value" + i);
+                        }
+                        latch.countDown();
+                    })
+                    .start();
         }
 
         // then - should complete without exception
@@ -77,9 +78,7 @@ class AiMessageAttributesPropagationTest implements WithAssertions {
     void ai_message_builder_should_copy_mutable_attributes() {
 
         // given
-        AiMessage original = AiMessage.builder()
-                .text("original text")
-                .build();
+        AiMessage original = AiMessage.builder().text("original text").build();
         original.attributes().put("key1", "value1");
         original.attributes().put("key2", "value2");
 
@@ -118,12 +117,11 @@ class AiMessageAttributesPropagationTest implements WithAssertions {
     void ai_message_with_tool_requests_should_have_empty_mutable_attributes() {
 
         // when
-        AiMessage message = AiMessage.from(
-                ToolExecutionRequest.builder()
-                        .id("1")
-                        .name("testTool")
-                        .arguments("{}")
-                        .build());
+        AiMessage message = AiMessage.from(ToolExecutionRequest.builder()
+                .id("1")
+                .name("testTool")
+                .arguments("{}")
+                .build());
 
         // then
         assertThat(message.attributes()).isEmpty();
@@ -138,7 +136,8 @@ class AiMessageAttributesPropagationTest implements WithAssertions {
     void ai_message_with_text_and_tool_requests_should_have_empty_mutable_attributes() {
 
         // when
-        AiMessage message = AiMessage.from("text",
+        AiMessage message = AiMessage.from(
+                "text",
                 List.of(ToolExecutionRequest.builder()
                         .id("1")
                         .name("testTool")
@@ -161,10 +160,8 @@ class AiMessageAttributesPropagationTest implements WithAssertions {
         Map<String, Object> initialAttrs = Map.of("existingKey", "existingValue");
 
         // when
-        AiMessage message = AiMessage.builder()
-                .text("test")
-                .attributes(initialAttrs)
-                .build();
+        AiMessage message =
+                AiMessage.builder().text("test").attributes(initialAttrs).build();
 
         // then
         assertThat(message.attributes()).containsEntry("existingKey", "existingValue");
@@ -182,7 +179,9 @@ class AiMessageAttributesPropagationTest implements WithAssertions {
 
         // given
         ChatModelRequestContext ctx = new ChatModelRequestContext(
-                ChatRequest.builder().messages(List.of(UserMessage.from("test"))).build(),
+                ChatRequest.builder()
+                        .messages(List.of(UserMessage.from("test")))
+                        .build(),
                 null,
                 Map.of("initial", "value"));
 
@@ -214,12 +213,16 @@ class AiMessageAttributesPropagationTest implements WithAssertions {
 
         // given
         ChatModelRequestContext mainCtx = new ChatModelRequestContext(
-                ChatRequest.builder().messages(List.of(UserMessage.from("main"))).build(),
+                ChatRequest.builder()
+                        .messages(List.of(UserMessage.from("main")))
+                        .build(),
                 null,
                 Map.of("thread", "main"));
 
         ChatModelRequestContext otherCtx = new ChatModelRequestContext(
-                ChatRequest.builder().messages(List.of(UserMessage.from("other"))).build(),
+                ChatRequest.builder()
+                        .messages(List.of(UserMessage.from("other")))
+                        .build(),
                 null,
                 Map.of("thread", "other"));
 
@@ -233,20 +236,25 @@ class AiMessageAttributesPropagationTest implements WithAssertions {
 
         // Start other thread
         new Thread(() -> {
-            try {
-                startLatch.await();
-                ChatModelRequestContext.setCurrent(otherCtx);
-                otherThreadValue.set(ChatModelRequestContext.current().attributes().get("thread").toString());
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            } finally {
-                doneLatch.countDown();
-            }
-        }).start();
+                    try {
+                        startLatch.await();
+                        ChatModelRequestContext.setCurrent(otherCtx);
+                        otherThreadValue.set(ChatModelRequestContext.current()
+                                .attributes()
+                                .get("thread")
+                                .toString());
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    } finally {
+                        doneLatch.countDown();
+                    }
+                })
+                .start();
 
         // Main thread continues
         startLatch.countDown();
-        mainThreadValue.set(ChatModelRequestContext.current().attributes().get("thread").toString());
+        mainThreadValue.set(
+                ChatModelRequestContext.current().attributes().get("thread").toString());
         doneLatch.countDown();
 
         // then
