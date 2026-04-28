@@ -149,9 +149,9 @@ public class LoggingHttpClient implements HttpClient {
     }
 
     @Override
-    public Flow.Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request) {
+    public Flow.Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request, ServerSentEventParser parser) {
 
-        Flow.Publisher<StreamingHttpEvent> upstream = delegateHttpClient.executeWithPublisher(request);
+        Flow.Publisher<StreamingHttpEvent> upstream = delegateHttpClient.executeWithPublisher(request, parser);
 
         return new Flow.Publisher<StreamingHttpEvent>() {
 

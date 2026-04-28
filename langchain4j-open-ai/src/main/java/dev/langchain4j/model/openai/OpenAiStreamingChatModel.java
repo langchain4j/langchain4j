@@ -162,7 +162,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         client.chatCompletion(openAiRequest)
                 .onRawPartialResponse(parsedAndRawResponse -> {
                     openAiResponseBuilder.append(parsedAndRawResponse);
-                    handle(parsedAndRawResponse, toolCallBuilder, handler, returnThinking);
+                    handle(parsedAndRawResponse, toolCallBuilder, handler);
                 })
                 .onComplete(() -> {
                     if (toolCallBuilder.hasRequests()) {
@@ -179,11 +179,10 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .execute();
     }
 
-    static void handle(
+    private void handle(
             ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse,
             ToolCallBuilder toolCallBuilder,
-            StreamingChatResponseHandler handler,
-            boolean returnThinking) {
+            StreamingChatResponseHandler handler) {
         ChatCompletionResponse partialResponse = parsedAndRawResponse.parsedResponse();
         if (partialResponse == null) {
             return;

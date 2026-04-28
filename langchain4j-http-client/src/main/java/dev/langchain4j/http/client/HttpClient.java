@@ -72,10 +72,27 @@ public interface HttpClient {
      */
     void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener);
 
-    // TODO name
-    default Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request) {
-        throw new UnsupportedOperationException("Not implemented"); // TODO implement?
+    /**
+     * Executes a streaming HTTP request and exposes the parsed events as a cold
+     * {@link Publisher} of {@link StreamingHttpEvent}s. Each {@code subscribe()} initiates a new
+     * request; the implementation should be fully non-blocking — no thread should be pinned for
+     * the lifetime of the stream.
+     * <p>
+     * Uses {@link DefaultServerSentEventParser} for SSE parsing.
+     */
+    default Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request) { // TODO name
+        return executeWithPublisher(request, new DefaultServerSentEventParser());
     }
 
-    // TODO another one with parser?
+    /**
+     * Like {@link #executeWithPublisher(HttpRequest)}, but with a caller-supplied
+     * {@link ServerSentEventParser}. The parser must implement {@link ServerSentEventParser#incremental()}
+     * to be used here; the publisher path drives parsing in incremental mode so the I/O thread
+     * is never blocked.
+     *
+     * @since 1.15.0
+     */
+    default Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request, ServerSentEventParser parser) { // TODO name
+        throw new UnsupportedOperationException("Not implemented");
+    }
 }

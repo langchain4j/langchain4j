@@ -189,8 +189,8 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .build();
 
         TubeConfiguration config = new TubeConfiguration()
-                .withBackpressureStrategy(BackpressureStrategy.BUFFER)
-                .withBufferSize(256);
+                .withBackpressureStrategy(BackpressureStrategy.BUFFER) // TODO configurable
+                .withBufferSize(256); // TODO configurable
 
         return ZeroPublisher.create(config, tube -> {
             Publisher<StreamingHttpEvent> upstream = httpClient.executeWithPublisher(httpRequest);

@@ -4,9 +4,13 @@ import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignor
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import dev.langchain4j.Internal;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParsingHandle;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -41,6 +45,57 @@ class OllamaServerSentEventParser implements ServerSentEventParser {
             }
         } catch (IOException e) {
             ignoringExceptions(() -> listener.onError(e));
+        }
+    }
+
+    @Override
+    public Incremental incremental() {
+        return new OllamaIncremental();
+    }
+
+    /** Byte-driven NDJSON parser: every {@code \n}-terminated line becomes one event. */
+    private static final class OllamaIncremental implements Incremental {
+
+        private final ByteArrayOutputStream pending = new ByteArrayOutputStream();
+
+        @Override
+        public List<ServerSentEvent> feed(ByteBuffer bytes) {
+            int len = bytes.remaining();
+            byte[] arr = new byte[len];
+            bytes.get(arr);
+            pending.write(arr, 0, len);
+
+            byte[] all = pending.toByteArray();
+            List<ServerSentEvent> events = new ArrayList<>();
+            int start = 0;
+            for (int i = 0; i < all.length; i++) {
+                if (all[i] == '\n') {
+                    int end = i;
+                    if (end > start && all[end - 1] == '\r') {
+                        end--;
+                    }
+                    if (end > start) {
+                        String line = new String(all, start, end - start, UTF_8);
+                        events.add(new ServerSentEvent(null, line));
+                    }
+                    start = i + 1;
+                }
+            }
+            pending.reset();
+            if (start < all.length) {
+                pending.write(all, start, all.length - start);
+            }
+            return events;
+        }
+
+        @Override
+        public List<ServerSentEvent> flush() {
+            if (pending.size() == 0) {
+                return List.of();
+            }
+            String line = pending.toString(UTF_8);
+            pending.reset();
+            return line.isEmpty() ? List.of() : List.of(new ServerSentEvent(null, line));
         }
     }
 }

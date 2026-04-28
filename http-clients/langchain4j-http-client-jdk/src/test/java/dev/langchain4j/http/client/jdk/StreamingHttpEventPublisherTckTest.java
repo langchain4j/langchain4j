@@ -3,6 +3,7 @@ package dev.langchain4j.http.client.jdk;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.StreamingHttpEvent;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.tck.PublisherVerification;
@@ -93,7 +94,7 @@ public class StreamingHttpEventPublisherTckTest extends PublisherVerification<St
 
         java.net.http.HttpRequest jdkRequest = JdkHttpClient.builder().build().toJdkRequest(httpRequest);
         JdkHttpClient.StreamingHttpEventPublisher publisher =
-                new JdkHttpClient.StreamingHttpEventPublisher(jdkClient, jdkRequest);
+                new JdkHttpClient.StreamingHttpEventPublisher(jdkClient, jdkRequest, new DefaultServerSentEventParser());
         return toPublisher(publisher);
     }
 
