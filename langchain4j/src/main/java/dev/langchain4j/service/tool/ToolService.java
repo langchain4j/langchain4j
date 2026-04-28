@@ -50,7 +50,6 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -118,8 +117,12 @@ public class ToolService {
     }
 
     public void tools(Collection<Object> objectsWithTools) {
+        tools(objectsWithTools, false);
+    }
+
+    public void tools(Collection<Object> objectsWithTools, boolean includeInheritedFields) {
         for (Object objectWithTools : objectsWithTools) {
-            List<AiServiceTool> tools = findTools(objectWithTools);
+            List<AiServiceTool> tools = findTools(objectWithTools, includeInheritedFields);
             addTools(tools, this.toolExecutors, this.toolSpecifications, this.returnBehaviors);
         }
     }
@@ -151,6 +154,10 @@ public class ToolService {
      * @since 1.13.0
      */
     public static List<AiServiceTool> findTools(Object objectWithTools) {
+        return findTools(objectWithTools, false);
+    }
+
+    public static List<AiServiceTool> findTools(Object objectWithTools, boolean includeInheritedFields) {
         if (objectWithTools instanceof Class) {
             throw illegalConfiguration("Tool '%s' must be an object, not a class", objectWithTools);
         }
@@ -167,7 +174,7 @@ public class ToolService {
             if (annotatedMethod.isPresent()) {
                 Method toolMethod = annotatedMethod.get();
                 result.add(AiServiceTool.builder()
-                        .toolSpecification(toolSpecificationFrom(toolMethod))
+                        .toolSpecification(toolSpecificationFrom(toolMethod, includeInheritedFields))
                         .toolExecutor(createToolExecutor(objectWithTools, toolMethod))
                         .returnBehavior(toolMethod.getAnnotation(Tool.class).returnBehavior())
                         .build());
@@ -256,9 +263,8 @@ public class ToolService {
         this.toolSearchService = new ToolSearchService(toolSearchStrategy);
     }
 
-    public ToolServiceContext createContext(InvocationContext invocationContext,
-                                            UserMessage userMessage,
-                                            List<ChatMessage> messages) {
+    public ToolServiceContext createContext(
+            InvocationContext invocationContext, UserMessage userMessage, List<ChatMessage> messages) {
         ToolServiceContext context = createContextFromStaticToolsAndProviders(invocationContext, userMessage, messages);
         if (toolSearchService != null) {
             context = toolSearchService.adjust(context, messages, invocationContext);
@@ -267,9 +273,8 @@ public class ToolService {
         return context;
     }
 
-    private ToolServiceContext createContextFromStaticToolsAndProviders(InvocationContext invocationContext,
-                                                                        UserMessage userMessage,
-                                                                        List<ChatMessage> messages) {
+    private ToolServiceContext createContextFromStaticToolsAndProviders(
+            InvocationContext invocationContext, UserMessage userMessage, List<ChatMessage> messages) {
         if (this.toolProviders.isEmpty()) {
             if (this.toolSpecifications.isEmpty()) {
                 return ToolServiceContext.Empty.INSTANCE;
@@ -313,10 +318,11 @@ public class ToolService {
                 .build();
     }
 
-    private static void addTools(List<AiServiceTool> tools,
-                                 Map<String, ToolExecutor> toolExecutors,
-                                 List<ToolSpecification> toolSpecifications,
-                                 Map<String, ReturnBehavior> returnBehaviors) {
+    private static void addTools(
+            List<AiServiceTool> tools,
+            Map<String, ToolExecutor> toolExecutors,
+            List<ToolSpecification> toolSpecifications,
+            Map<String, ReturnBehavior> returnBehaviors) {
         for (AiServiceTool tool : tools) {
             if (toolExecutors.putIfAbsent(tool.name(), tool.toolExecutor()) != null) {
                 throw new IllegalConfigurationException("Duplicated definition for tool: " + tool.name());
@@ -466,9 +472,8 @@ public class ToolService {
      *
      * @since 1.13.0
      */
-    public static ToolServiceContext refreshDynamicProviders(ToolServiceContext toolServiceContext,
-                                                             List<ChatMessage> messages,
-                                                             InvocationContext invocationContext) {
+    public static ToolServiceContext refreshDynamicProviders(
+            ToolServiceContext toolServiceContext, List<ChatMessage> messages, InvocationContext invocationContext) {
         if (toolServiceContext == null) {
             return null;
         }
