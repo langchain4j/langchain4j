@@ -14,6 +14,8 @@ public enum ModelProvider {
     MISTRAL_AI,
     OLLAMA,
     OPEN_AI,
+    ASTRAFLOW,
+    ASTRAFLOW_CN,
     WATSONX,
     OTHER
 }
