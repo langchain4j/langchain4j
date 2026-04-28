@@ -2,15 +2,11 @@ package dev.langchain4j.model.openai;
 
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ModelProvider.OPEN_AI;
+import static dev.langchain4j.model.openai.internal.ChatCompletionEventDispatcher.handle;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.fromOpenAiResponseFormat;
@@ -34,16 +30,11 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
-import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.model.openai.internal.ChatCompletionOptions;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
-import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
-import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
-import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
-import dev.langchain4j.model.openai.internal.chat.Delta;
-import dev.langchain4j.model.openai.internal.chat.ToolCall;
 import dev.langchain4j.model.openai.internal.shared.StreamOptions;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
 import java.time.Duration;
@@ -52,6 +43,7 @@ import java.util.Map;
 import java.util.concurrent.Flow.Publisher;
 
 import java.util.function.Supplier;
+
 import org.slf4j.Logger;
 
 /**
@@ -147,13 +139,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) chatRequest.parameters();
         validate(parameters);
 
-        ChatCompletionRequest openAiRequest =
-                toOpenAiChatRequest(
-                                chatRequest, parameters, sendThinking, thinkingFieldName, strictTools, strictJsonSchema)
-                        .stream(true)
-                        .streamOptions(
-                                StreamOptions.builder().includeUsage(true).build())
-                        .build();
+        ChatCompletionRequest openAiRequest = createOpenAiRequest(chatRequest, parameters);
 
         OpenAiStreamingResponseBuilder openAiResponseBuilder =
                 new OpenAiStreamingResponseBuilder(returnThinking, accumulateToolCallId);
@@ -162,7 +148,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         client.chatCompletion(openAiRequest)
                 .onRawPartialResponse(parsedAndRawResponse -> {
                     openAiResponseBuilder.append(parsedAndRawResponse);
-                    handle(parsedAndRawResponse, toolCallBuilder, handler);
+                    handle(parsedAndRawResponse, toolCallBuilder, handler, returnThinking);
                 })
                 .onComplete(() -> {
                     if (toolCallBuilder.hasRequests()) {
@@ -179,78 +165,23 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .execute();
     }
 
-    private void handle(
-            ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse,
-            ToolCallBuilder toolCallBuilder,
-            StreamingChatResponseHandler handler) {
-        ChatCompletionResponse partialResponse = parsedAndRawResponse.parsedResponse();
-        if (partialResponse == null) {
-            return;
-        }
+    @Override
+    public Publisher<StreamingEvent> doChat(ChatRequest chatRequest) {
 
-        List<ChatCompletionChoice> choices = partialResponse.choices();
-        if (isNullOrEmpty(choices)) {
-            return;
-        }
+        OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) chatRequest.parameters();
+        validate(parameters);
 
-        ChatCompletionChoice chatCompletionChoice = choices.get(0);
-        if (chatCompletionChoice == null) {
-            return;
-        }
+        ChatCompletionRequest openAiRequest = createOpenAiRequest(chatRequest, parameters);
+        ChatCompletionOptions options = new ChatCompletionOptions(returnThinking, accumulateToolCallId);
+        return client.chatCompletionPublisher(openAiRequest, options);
+    }
 
-        Delta delta = chatCompletionChoice.delta();
-        if (delta == null) {
-            return;
-        }
-
-        String content = delta.content();
-        if (!isNullOrEmpty(content)) {
-            onPartialResponse(handler, content, parsedAndRawResponse.streamingHandle());
-        }
-
-        String reasoningContent = delta.reasoningContent();
-        if (returnThinking && !isNullOrEmpty(reasoningContent)) {
-            onPartialThinking(handler, reasoningContent, parsedAndRawResponse.streamingHandle());
-        }
-
-        List<ToolCall> toolCalls = delta.toolCalls();
-        if (toolCalls != null) {
-            for (ToolCall toolCall : toolCalls) {
-
-                int index;
-                if (toolCall.index() != null) {
-                    index = toolCall.index();
-                } else {
-                    index = toolCallBuilder.index();
-                    // When index is null and a different tool call id appears, increment the index
-                    if (toolCall.id() != null
-                            && toolCallBuilder.id() != null
-                            && !toolCallBuilder.id().equals(toolCall.id())) {
-                        index = toolCallBuilder.index() + 1;
-                    }
-                }
-                if (toolCallBuilder.index() != index) {
-                    onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
-                    toolCallBuilder.updateIndex(index);
-                }
-
-                String id = toolCallBuilder.updateId(toolCall.id());
-                String name = toolCallBuilder.updateName(toolCall.function().name());
-
-                String partialArguments = toolCall.function().arguments();
-                if (isNotNullOrEmpty(partialArguments)) {
-                    toolCallBuilder.appendArguments(partialArguments);
-
-                    PartialToolCall partialToolRequest = PartialToolCall.builder()
-                            .index(index)
-                            .id(id)
-                            .name(name)
-                            .partialArguments(partialArguments)
-                            .build();
-                    onPartialToolCall(handler, partialToolRequest, parsedAndRawResponse.streamingHandle());
-                }
-            }
-        }
+    private ChatCompletionRequest createOpenAiRequest(ChatRequest request,
+                                                      OpenAiChatRequestParameters parameters) {
+        return toOpenAiChatRequest(request, parameters, sendThinking, thinkingFieldName, strictTools, strictJsonSchema)
+                .stream(true)
+                .streamOptions(StreamOptions.builder().includeUsage(true).build())
+                .build();
     }
 
     @Override
@@ -261,21 +192,6 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
     @Override
     public ModelProvider provider() {
         return OPEN_AI;
-    }
-
-    @Override
-    public Publisher<StreamingEvent> doChat(ChatRequest chatRequest) {
-
-        OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) chatRequest.parameters();
-        validate(parameters);
-
-        ChatCompletionRequest openAiRequest = toOpenAiChatRequest(
-                        chatRequest, parameters, sendThinking, thinkingFieldName, strictTools, strictJsonSchema)
-                .stream(true)
-                .streamOptions(StreamOptions.builder().includeUsage(true).build())
-                .build();
-
-        return client.chatCompletionPublisher(openAiRequest, returnThinking, accumulateToolCallId);
     }
 
     public static OpenAiStreamingChatModelBuilder builder() {

@@ -31,7 +31,7 @@ public abstract class OpenAiClient {
     public abstract SyncOrAsyncOrStreaming<ChatCompletionResponse> chatCompletion(ChatCompletionRequest request);
 
     public Publisher<StreamingEvent> chatCompletionPublisher(
-            ChatCompletionRequest request, boolean returnThinking, boolean accumulateToolCallId) {
+            ChatCompletionRequest request, ChatCompletionOptions options) {
         throw new UnsupportedOperationException("Not implemented");
     }
 

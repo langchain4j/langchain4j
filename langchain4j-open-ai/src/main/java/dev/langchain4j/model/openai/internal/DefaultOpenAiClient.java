@@ -5,6 +5,7 @@ import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.time.Duration.ofSeconds;
 
 import dev.langchain4j.http.client.HttpClient;
@@ -16,20 +17,13 @@ import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.StreamingHttpEvent;
 import dev.langchain4j.internal.ToolCallBuilder;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.PartialResponse;
-import dev.langchain4j.model.chat.response.PartialThinking;
-import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingEvent;
 import dev.langchain4j.model.openai.OpenAiStreamingResponseBuilder;
 import dev.langchain4j.model.openai.internal.audio.transcription.AudioFile;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionRequest;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionResponse;
-import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
-import dev.langchain4j.model.openai.internal.chat.Delta;
-import dev.langchain4j.model.openai.internal.chat.ToolCall;
 import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
 import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest;
@@ -45,13 +39,11 @@ import mutiny.zero.TubeConfiguration;
 import mutiny.zero.ZeroPublisher;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
 
-import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import java.util.function.Supplier;
 
 public class DefaultOpenAiClient extends OpenAiClient {
@@ -177,7 +169,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
 
     @Override
     public Publisher<StreamingEvent> chatCompletionPublisher(
-            ChatCompletionRequest request, boolean returnThinking, boolean accumulateToolCallId) { // TODO wrap into options
+            ChatCompletionRequest request, ChatCompletionOptions options) {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
@@ -194,7 +186,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
 
         return ZeroPublisher.create(config, tube -> {
             Publisher<StreamingHttpEvent> upstream = httpClient.executeWithPublisher(httpRequest);
-            upstream.subscribe(new ChatCompletionEventSubscriber(tube, returnThinking, accumulateToolCallId));
+            upstream.subscribe(new ChatCompletionEventSubscriber(tube, options));
         });
     }
 
@@ -203,15 +195,17 @@ public class DefaultOpenAiClient extends OpenAiClient {
         private static final String DONE_MARKER = "[DONE]";
 
         private final Tube<StreamingEvent> tube;
-        private final boolean returnThinking;
+        private final TubeBackedStreamingChatResponseHandler handler;
+        private final ChatCompletionOptions options;
         private final ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
         private final OpenAiStreamingResponseBuilder responseBuilder;
         private SuccessfulHttpResponse rawHttpResponse;
 
-        ChatCompletionEventSubscriber(Tube<StreamingEvent> tube, boolean returnThinking, boolean accumulateToolCallId) {
-            this.tube = tube;
-            this.returnThinking = returnThinking;
-            this.responseBuilder = new OpenAiStreamingResponseBuilder(returnThinking, accumulateToolCallId);
+        ChatCompletionEventSubscriber(Tube<StreamingEvent> tube, ChatCompletionOptions options) {
+            this.tube = ensureNotNull(tube, "tube");
+            this.handler = new TubeBackedStreamingChatResponseHandler(tube);
+            this.options = ensureNotNull(options, "options");
+            this.responseBuilder = new OpenAiStreamingResponseBuilder(options.returnThinking(), options.accumulateToolCallId());
         }
 
         @Override
@@ -247,9 +241,10 @@ public class DefaultOpenAiClient extends OpenAiClient {
                                 .parsedResponse(parsed)
                                 .rawHttpResponse(rawHttpResponse)
                                 .rawServerSentEvent(sse)
+                                .streamingHandle(handler.streamingHandle())
                                 .build();
                 responseBuilder.append(parsedAndRaw);
-                emitEvents(parsed);
+                ChatCompletionEventDispatcher.handle(parsedAndRaw, toolCallBuilder, handler, options.returnThinking());
             } catch (Exception e) {
                 tube.fail(e);
             }
@@ -268,63 +263,9 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 return;
             }
             if (toolCallBuilder.hasRequests()) {
-                tube.send(toolCallBuilder.buildAndReset());
+                handler.onCompleteToolCall(toolCallBuilder.buildAndReset());
             }
-            ChatResponse completeResponse = responseBuilder.build();
-            tube.send(completeResponse);
-            tube.complete();
-        }
-
-        private void emitEvents(ChatCompletionResponse response) {
-            if (response == null) {
-                return;
-            }
-            List<ChatCompletionChoice> choices = response.choices();
-            if (isNullOrEmpty(choices)) {
-                return;
-            }
-            ChatCompletionChoice choice = choices.get(0);
-            if (choice == null) {
-                return;
-            }
-            Delta delta = choice.delta();
-            if (delta == null) {
-                return;
-            }
-
-            String content = delta.content();
-            if (isNotNullOrEmpty(content)) {
-                tube.send(new PartialResponse(content));
-            }
-
-            String reasoningContent = delta.reasoningContent();
-            if (returnThinking && isNotNullOrEmpty(reasoningContent)) {
-                tube.send(new PartialThinking(reasoningContent));
-            }
-
-            List<ToolCall> toolCalls = delta.toolCalls();
-            if (toolCalls == null) {
-                return;
-            }
-            for (ToolCall toolCall : toolCalls) {
-                int index = toolCall.index();
-                if (toolCallBuilder.index() != index) {
-                    tube.send(toolCallBuilder.buildAndReset());
-                    toolCallBuilder.updateIndex(index);
-                }
-                String id = toolCallBuilder.updateId(toolCall.id());
-                String name = toolCallBuilder.updateName(toolCall.function().name());
-                String partialArguments = toolCall.function().arguments();
-                if (isNotNullOrEmpty(partialArguments)) {
-                    toolCallBuilder.appendArguments(partialArguments);
-                    tube.send(PartialToolCall.builder()
-                            .index(index)
-                            .id(id)
-                            .name(name)
-                            .partialArguments(partialArguments)
-                            .build());
-                }
-            }
+            handler.onCompleteResponse(responseBuilder.build());
         }
     }
 
