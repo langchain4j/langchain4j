@@ -77,9 +77,5 @@ public interface HttpClient {
         throw new UnsupportedOperationException("Not implemented"); // TODO implement?
     }
 
-    default Publisher<List<ByteBuffer>> executeWithPublisherRaw(HttpRequest request) { // TODO remove
-        throw new UnsupportedOperationException("Not implemented"); // TODO implement?
-    }
-
     // TODO another one with parser?
 }

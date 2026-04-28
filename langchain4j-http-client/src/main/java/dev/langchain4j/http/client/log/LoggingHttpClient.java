@@ -1,8 +1,5 @@
 package dev.langchain4j.http.client.log;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.HttpClient;
@@ -16,9 +13,10 @@ import dev.langchain4j.http.client.sse.StreamingHttpEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.concurrent.Flow;
+
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 @Internal
 public class LoggingHttpClient implements HttpClient {
@@ -152,12 +150,51 @@ public class LoggingHttpClient implements HttpClient {
 
     @Override
     public Flow.Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request) {
-        // TODO log, etc
-        return delegateHttpClient.executeWithPublisher(request);
-    }
 
-    @Override
-    public Flow.Publisher<List<ByteBuffer>> executeWithPublisherRaw(HttpRequest request) { // TODO
-        return delegateHttpClient.executeWithPublisherRaw(request);
+        Flow.Publisher<StreamingHttpEvent> upstream = delegateHttpClient.executeWithPublisher(request);
+
+        return new Flow.Publisher<StreamingHttpEvent>() {
+
+            @Override
+            public void subscribe(Flow.Subscriber<? super StreamingHttpEvent> downstream) {
+
+                if (logRequests) {
+                    HttpRequestLogger.log(log, request);
+                }
+
+                if (!logResponses) {
+                    upstream.subscribe(downstream);
+                    return;
+                }
+
+                upstream.subscribe(new Flow.Subscriber<>() {
+
+                    @Override
+                    public void onSubscribe(Flow.Subscription subscription) {
+                        downstream.onSubscribe(subscription);
+                    }
+
+                    @Override
+                    public void onNext(StreamingHttpEvent event) {
+                        if (event instanceof SuccessfulHttpResponse response) {
+                            HttpResponseLogger.log(log, response);
+                        } else if (event instanceof ServerSentEvent sse) {
+                            log.debug("{}", sse);
+                        }
+                        downstream.onNext(event);
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable) {
+                        downstream.onError(throwable);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        downstream.onComplete();
+                    }
+                });
+            }
+        };
     }
 }

@@ -121,11 +121,6 @@ public class JdkHttpClient implements HttpClient {
         return new StreamingHttpEventPublisher(delegate, toJdkRequest(request));
     }
 
-    @Override
-    public Publisher<List<ByteBuffer>> executeWithPublisherRaw(HttpRequest request) {
-        return null; // TODO
-    }
-
     java.net.http.HttpRequest toJdkRequest(HttpRequest request) {
         java.net.http.HttpRequest.Builder builder =
                 java.net.http.HttpRequest.newBuilder().uri(URI.create(request.url()));
