@@ -46,13 +46,19 @@
 
 
         <!-- test dependencies -->
-
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
             <version>1.14.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-open-ai</artifactId>
+            <version>1.14.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
 

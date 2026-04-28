@@ -7,6 +7,10 @@ import dev.langchain4j.spi.ServiceHelper;
 import org.slf4j.Logger;
 import java.time.Duration;
 
+/**
+ * @deprecated Do not use anymore, use {@code langchain4j-open-ai} module instead
+ */
+@Deprecated(forRemoval = true, since = "1.14.0")
 public abstract class OvhAiClient {
 
     @SuppressWarnings("rawtypes")
