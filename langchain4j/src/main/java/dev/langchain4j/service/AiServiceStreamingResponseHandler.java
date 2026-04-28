@@ -6,6 +6,7 @@ import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
 import static dev.langchain4j.service.tool.ToolService.refreshDynamicProviders;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -41,6 +42,7 @@ import dev.langchain4j.service.tool.ToolExecutionLimitExceededException;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolLimitExceededBehavior;
+import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.search.ToolSearchService;
 import java.util.ArrayList;
@@ -385,8 +387,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 intermediateResponseHandler.accept(chatResponse);
             }
 
-            boolean immediateToolReturn = true;
             List<ToolExecutionResult> toolResults = new ArrayList<>();
+            boolean anyToolErrored = false;
+            List<ReturnBehavior> returnBehaviors = new ArrayList<>();
 
             if (toolExecutor != null) {
                 for (Future<ToolRequestResult> toolExecutionFuture : toolExecutionFutures) {
@@ -400,9 +403,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                         ToolExecutionResultMessage toolExecutionResultMessage =
                                 toResultMessage(toolRequest, toolResult);
                         addToMemory(toolExecutionResultMessage);
-                        immediateToolReturn = immediateToolReturn
-                                && !toolResult.isError()
-                                && context.toolService.isImmediateTool(toolExecutionResultMessage.toolName());
+                        anyToolErrored = anyToolErrored || toolResult.isError();
+                        returnBehaviors.add(context.toolService.returnBehavior(toolRequest.name()));
                     } catch (ExecutionException e) {
                         if (e.getCause() instanceof RuntimeException re) {
                             throw re;
@@ -473,13 +475,12 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     fireToolExecutedEvent(toolRequestResult);
                     ToolExecutionResultMessage toolExecutionResultMessage = toResultMessage(toolRequest, toolResult);
                     addToMemory(toolExecutionResultMessage);
-                    immediateToolReturn = immediateToolReturn
-                            && !toolResult.isError()
-                            && context.toolService.isImmediateTool(toolRequest.name());
+                    anyToolErrored = anyToolErrored || toolResult.isError();
+                    returnBehaviors.add(context.toolService.returnBehavior(toolRequest.name()));
                 }
             }
 
-            if (immediateToolReturn) {
+            if (ToolService.shouldReturnImmediately(anyToolErrored, returnBehaviors)) {
                 ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
                 fireInvocationComplete(finalChatResponse);
 

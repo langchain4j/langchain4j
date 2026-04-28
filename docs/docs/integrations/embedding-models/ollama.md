@@ -13,7 +13,7 @@ https://ollama.com/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-ollama</artifactId>
-    <version>1.13.0</version>
+    <version>1.13.1</version>
 </dependency>
 ```
 

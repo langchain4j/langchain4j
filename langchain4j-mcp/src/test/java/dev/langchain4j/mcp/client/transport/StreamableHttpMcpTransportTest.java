@@ -59,6 +59,26 @@ class StreamableHttpMcpTransportTest {
         assertThat(extractHttpClient(transport).version()).isEqualTo(HttpClient.Version.HTTP_1_1);
     }
 
+    @Test
+    void mcpSessionIdShouldBeNullByDefault() {
+        StreamableHttpMcpTransport transport =
+                StreamableHttpMcpTransport.builder().url("http://localhost/mcp").build();
+
+        assertThat(transport.getMcpSessionId()).isNull();
+    }
+
+    @Test
+    void shouldExposeAndAcceptMcpSessionId() {
+        StreamableHttpMcpTransport transport =
+                StreamableHttpMcpTransport.builder().url("http://localhost/mcp").build();
+
+        transport.setMcpSessionId("session-123");
+        assertThat(transport.getMcpSessionId()).isEqualTo("session-123");
+
+        transport.setMcpSessionId(null);
+        assertThat(transport.getMcpSessionId()).isNull();
+    }
+
     private static SSLContext extractSslContext(StreamableHttpMcpTransport transport) throws Exception {
         Field field = StreamableHttpMcpTransport.class.getDeclaredField("sslContext");
         field.setAccessible(true);

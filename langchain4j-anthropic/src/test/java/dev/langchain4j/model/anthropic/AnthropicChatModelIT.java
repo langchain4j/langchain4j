@@ -9,7 +9,6 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -97,6 +96,7 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(null) // caching test requires no other caching
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
@@ -131,6 +131,7 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(null) // caching test requires no other caching
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
@@ -225,7 +226,7 @@ class AnthropicChatModelIT {
                 .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
-                .maxTokens(1)
+                .maxTokens(5)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -240,11 +241,7 @@ class AnthropicChatModelIT {
     }
 
     @ParameterizedTest
-    @EnumSource(
-            value = AnthropicChatModelName.class,
-            mode = EXCLUDE,
-            names = {"CLAUDE_OPUS_4_20250514" // Run manually before release. Expensive to run very often.
-            })
+    @EnumSource(AnthropicChatModelName.class)
     void should_support_all_string_model_names(AnthropicChatModelName modelName) {
 
         // given
@@ -254,7 +251,7 @@ class AnthropicChatModelIT {
                 .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelNameString)
-                .maxTokens(1)
+                .maxTokens(5)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -425,6 +422,7 @@ class AnthropicChatModelIT {
 
         // given
         AnthropicChatModel model = AnthropicChatModel.builder()
+                .baseUrl(null) // caching test requires no other caching
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
@@ -476,6 +474,7 @@ class AnthropicChatModelIT {
 
         // given
         AnthropicChatModel model = AnthropicChatModel.builder()
+                .baseUrl(null) // caching test requires no other caching
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheTools(true)

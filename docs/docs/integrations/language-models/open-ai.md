@@ -31,7 +31,7 @@ LangChain4j provides 3 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.13.0</version>
+    <version>1.13.1</version>
 </dependency>
 ```
 
@@ -40,7 +40,7 @@ LangChain4j provides 3 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.13.0-beta23</version>
+    <version>1.13.1-beta23</version>
 </dependency>
 ```
 
@@ -473,8 +473,9 @@ StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
         .build();
 ```
 
-Unlike some other providers (e.g. DeepSeek), OpenAI reasoning tokens do not persist
-across conversation turns, so there is no need to send the reasoning summary back in follow-up requests.
+The reasoning summary in `AiMessage.thinking()` is informational and does not need to be sent back
+in follow-up requests — OpenAI discards it between turns. To actually preserve the model's reasoning
+state across turns (e.g. between tool calls), use encrypted reasoning instead, described below.
 
 #### Encrypted Reasoning (Keeping Reasoning in Context)
 

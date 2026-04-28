@@ -40,9 +40,7 @@ class AnthropicStreamingChatModelThinkingIT {
     private static final int THINKING_BUDGET_TOKENS = 1024;
 
     @ParameterizedTest
-    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
-            "CLAUDE_3_HAIKU_20240307",
-    })
+    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {"CLAUDE_OPUS_4_7"})
     void should_return_and_send_thinking(AnthropicChatModelName modelName) {
 
         // given
@@ -122,9 +120,7 @@ class AnthropicStreamingChatModelThinkingIT {
 
 
     @ParameterizedTest
-    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
-            "CLAUDE_3_HAIKU_20240307",
-    })
+    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {"CLAUDE_OPUS_4_7"})
     void should_return_and_NOT_send_thinking(AnthropicChatModelName modelName) {
 
         // given
@@ -201,9 +197,7 @@ class AnthropicStreamingChatModelThinkingIT {
     }
 
     @ParameterizedTest
-    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
-            "CLAUDE_3_HAIKU_20240307",
-    })
+    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {"CLAUDE_OPUS_4_7"})
     void should_return_and_send_thinking_with_tools(AnthropicChatModelName modelName) {
 
         // given

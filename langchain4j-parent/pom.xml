@@ -563,6 +563,10 @@
                                         <code>java.missing.newClass</code>
                                         <justification>Dependencies are not checked, so their classes are expectedly missing</justification>
                                     </item>
+                                    <item>
+                                        <code>java.field.enumConstantOrderChanged</code>
+                                        <justification>Enum constant order is not part of our API contract; callers must not rely on ordinal()</justification>
+                                    </item>
                                 </differences>
                             </revapi.differences>
                         </analysisConfiguration>
