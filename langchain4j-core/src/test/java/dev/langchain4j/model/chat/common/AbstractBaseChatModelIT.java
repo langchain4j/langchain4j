@@ -292,19 +292,23 @@ public abstract class AbstractBaseChatModelIT<M> {
         ChatRequestParameters parameters = ChatRequestParameters.builder()
                 .modelName(modelName)
                 .build();
-        M model = createModelWith(saveTokens(parameters));
+        List<M> models = createModelsWith(saveTokens(parameters));
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY))
                 .build();
 
-        // when
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+        for (M model : models) {
+            // when
+            ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
-        // then
-        assertThat(chatResponse.aiMessage().text()).isNotBlank();
+            // then
+            assertThat(chatResponse.metadata().modelName()).isEqualTo(modelName);
+        }
+    }
 
-        assertThat(chatResponse.metadata().modelName()).isEqualTo(modelName);
+    protected List<M> createModelsWith(ChatRequestParameters parameters) {
+        return List.of(createModelWith(parameters));
     }
 
     protected M createModelWith(ChatRequestParameters parameters) {
@@ -408,40 +412,42 @@ public abstract class AbstractBaseChatModelIT<M> {
         ChatRequestParameters parameters = ChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
                 .build();
-        M model = createModelWith(parameters);
+        List<M> models = createModelsWith(parameters);
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY_AND_MATH_QUESTION))
                 .build();
 
-        // when
-        ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata = chat(model, chatRequest);
-        ChatResponse chatResponse = chatResponseAndStreamingMetadata.chatResponse();
+        for (M model : models) {
+            // when
+            ChatResponseAndStreamingMetadata chatResponseAndStreamingMetadata = chat(model, chatRequest);
+            ChatResponse chatResponse = chatResponseAndStreamingMetadata.chatResponse();
 
-        // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).isNotBlank();
-        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
+            // then
+            AiMessage aiMessage = chatResponse.aiMessage();
+            assertThat(aiMessage.text()).isNotBlank();
+            assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
-        if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse.metadata(), maxOutputTokens, model);
-        }
+            if (assertTokenUsage()) {
+                assertTokenUsage(chatResponse.metadata(), maxOutputTokens, model);
+            }
 
-        if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason()).isIn(finishReasonForMaxOutputTokens());
-        }
+            if (assertFinishReason()) {
+                assertThat(chatResponse.metadata().finishReason()).isIn(finishReasonForMaxOutputTokens());
+            }
 
-        if (model instanceof StreamingChatModel) {
-            StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
-            assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
-            assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isLessThanOrEqualTo(maxOutputTokens);
-            assertThat(streamingMetadata.partialToolCalls()).isEmpty();
-            assertThat(streamingMetadata.completeToolCalls()).isEmpty();
-            assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
-            if (assertThreads()) {
-                Set<Thread> threads = streamingMetadata.threads();
-                assertThat(threads).hasSize(1);
-                assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+            if (model instanceof StreamingChatModel) {
+                StreamingMetadata streamingMetadata = chatResponseAndStreamingMetadata.streamingMetadata();
+                assertThat(streamingMetadata.concatenatedPartialResponses()).isEqualTo(aiMessage.text());
+                assertThat(streamingMetadata.timesOnPartialResponseWasCalled()).isLessThanOrEqualTo(maxOutputTokens);
+                assertThat(streamingMetadata.partialToolCalls()).isEmpty();
+                assertThat(streamingMetadata.completeToolCalls()).isEmpty();
+                assertThat(streamingMetadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
+                if (assertThreads()) {
+                    Set<Thread> threads = streamingMetadata.threads();
+                    assertThat(threads).hasSize(1);
+                    assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
+                }
             }
         }
     }
@@ -516,28 +522,30 @@ public abstract class AbstractBaseChatModelIT<M> {
         List<String> stopSequences = List.of("World", " World");
         ChatRequestParameters parameters =
                 ChatRequestParameters.builder().stopSequences(stopSequences).build();
-        M model = createModelWith(parameters);
+        List<M> models = createModelsWith(parameters);
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Say 'Hello World'"))
                 .parameters(parameters)
                 .build();
 
-        // when
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+        for (M model : models) {
+            // when
+            ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
-        // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringCase("Hello");
-        assertThat(aiMessage.text()).doesNotContainIgnoringCase("World");
-        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
+            // then
+            AiMessage aiMessage = chatResponse.aiMessage();
+            assertThat(aiMessage.text()).containsIgnoringCase("Hello");
+            assertThat(aiMessage.text()).doesNotContainIgnoringCase("World");
+            assertThat(aiMessage.toolExecutionRequests()).isEmpty();
 
-        if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse.metadata(), model);
-        }
+            if (assertTokenUsage()) {
+                assertTokenUsage(chatResponse.metadata(), model);
+            }
 
-        if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
+            if (assertFinishReason()) {
+                assertThat(chatResponse.metadata().finishReason()).isEqualTo(STOP);
+            }
         }
     }
 
@@ -614,23 +622,25 @@ public abstract class AbstractBaseChatModelIT<M> {
         ChatRequestParameters parameters = createIntegrationSpecificParameters(maxOutputTokens);
         // assertThat(parameters).doesNotHaveSameClassAs(DefaultChatRequestParameters.class); TODO
 
-        M model = createModelWith(parameters);
+        List<M> models = createModelsWith(parameters);
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .parameters(parameters)
                 .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY_AND_MATH_QUESTION))
                 .build();
 
-        // when
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
+        for (M model : models) {
+            // when
+            ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
-        // then
-        if (assertTokenUsage()) {
-            assertTokenUsage(chatResponse.metadata(), maxOutputTokens, model);
-        }
+            // then
+            if (assertTokenUsage()) {
+                assertTokenUsage(chatResponse.metadata(), maxOutputTokens, model);
+            }
 
-        if (assertFinishReason()) {
-            assertThat(chatResponse.metadata().finishReason()).isIn(finishReasonForMaxOutputTokens());
+            if (assertFinishReason()) {
+                assertThat(chatResponse.metadata().finishReason()).isIn(finishReasonForMaxOutputTokens());
+            }
         }
     }
 
@@ -714,12 +724,16 @@ public abstract class AbstractBaseChatModelIT<M> {
             assertThat(metadata.completeToolCalls().get(0).toolExecutionRequest())
                     .isEqualTo(toolExecutionRequest);
 
-            StreamingChatResponseHandler handler = metadata.handler();
-            InOrder inOrder = inOrder(handler);
-            verifyToolCallbacks(handler, inOrder, toolExecutionRequest.id(), (StreamingChatModel) model);
-            inOrder.verify(handler).onCompleteResponse(chatResponse);
-            inOrder.verifyNoMoreInteractions();
-            verifyNoMoreInteractions(handler);
+            if (metadata.mode() == StreamingMode.HANDLER) {
+                StreamingChatResponseHandler handler = metadata.handler();
+                InOrder inOrder = inOrder(handler);
+                verifyToolCallbacks(handler, inOrder, toolExecutionRequest.id(), (StreamingChatModel) model);
+                inOrder.verify(handler).onCompleteResponse(chatResponse);
+                inOrder.verifyNoMoreInteractions();
+                verifyNoMoreInteractions(handler);
+            } else if (metadata.mode() == StreamingMode.PUBLISHER) {
+                verifyToolEvents(metadata, toolExecutionRequest.id());
+            }
 
             assertThat(metadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
 
@@ -779,6 +793,17 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
         fail("please override this method");
+    }
+
+    /**
+     * Publisher-mode equivalent of {@link #verifyToolCallbacks(StreamingChatResponseHandler, InOrder, String)}.
+     * Asserts on tool-call content collected into {@link StreamingMetadata#partialToolCalls()} and
+     * {@link StreamingMetadata#completeToolCalls()}, since Mockito spy verification has no analogue
+     * for {@code Flow.Subscriber}. Strict cross-list ordering (partial-before-complete) is not asserted —
+     * that's a handler-mode-specific guarantee.
+     */
+    protected void verifyToolEvents(StreamingMetadata metadata, String id) {
+        fail("please override this method to verify tool call content from streaming metadata");
     }
 
     @ParameterizedTest
@@ -846,12 +871,16 @@ public abstract class AbstractBaseChatModelIT<M> {
             assertThat(metadata.completeToolCalls().get(0).toolExecutionRequest())
                     .isEqualTo(toolExecutionRequest);
 
-            StreamingChatResponseHandler handler = metadata.handler();
-            InOrder inOrder = inOrder(handler);
-            verifyToolCallbacks(handler, inOrder, (StreamingChatModel) model);
-            inOrder.verify(handler).onCompleteResponse(chatResponse);
-            inOrder.verifyNoMoreInteractions();
-            verifyNoMoreInteractions(handler);
+            if (metadata.mode() == StreamingMode.HANDLER) {
+                StreamingChatResponseHandler handler = metadata.handler();
+                InOrder inOrder = inOrder(handler);
+                verifyToolCallbacks(handler, inOrder, (StreamingChatModel) model);
+                inOrder.verify(handler).onCompleteResponse(chatResponse);
+                inOrder.verifyNoMoreInteractions();
+                verifyNoMoreInteractions(handler);
+            } else if (metadata.mode() == StreamingMode.PUBLISHER) {
+                verifyToolEvents(metadata);
+            }
 
             assertThat(metadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
 
@@ -902,6 +931,11 @@ public abstract class AbstractBaseChatModelIT<M> {
                 assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
             }
         }
+    }
+
+    /** Publisher-mode equivalent for the no-arg tool variant — asserts content from {@link StreamingMetadata}. */
+    protected void verifyToolEvents(StreamingMetadata metadata) {
+        fail("please override this method to verify tool call content from streaming metadata");
     }
 
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, StreamingChatModel model) {
@@ -1018,17 +1052,23 @@ public abstract class AbstractBaseChatModelIT<M> {
             assertThat(metadata.completeToolCalls().get(1).toolExecutionRequest())
                     .isEqualTo(toolExecutionRequests.get(1));
 
-            StreamingChatResponseHandler handler = metadata.handler();
-            InOrder inOrder = inOrder(handler);
-            verifyToolCallbacks(
-                    handler,
-                    inOrder,
-                    toolExecutionRequests.get(0).id(),
-                    toolExecutionRequests.get(1).id(),
-                    (StreamingChatModel) model);
-            inOrder.verify(handler).onCompleteResponse(chatResponse);
-            inOrder.verifyNoMoreInteractions();
-            verifyNoMoreInteractions(handler);
+            if (metadata.mode() == StreamingMode.HANDLER) {
+                StreamingChatResponseHandler handler = metadata.handler();
+                InOrder inOrder = inOrder(handler);
+                verifyToolCallbacks(
+                        handler,
+                        inOrder,
+                        toolExecutionRequests.get(0).id(),
+                        toolExecutionRequests.get(1).id(),
+                        (StreamingChatModel) model);
+                inOrder.verify(handler).onCompleteResponse(chatResponse);
+                inOrder.verifyNoMoreInteractions();
+                verifyNoMoreInteractions(handler);
+            } else if (metadata.mode() == StreamingMode.PUBLISHER) {
+                verifyToolEvents(metadata,
+                        toolExecutionRequests.get(0).id(),
+                        toolExecutionRequests.get(1).id());
+            }
 
             assertThat(metadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
 
@@ -1088,6 +1128,11 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void verifyToolCallbacks(
             StreamingChatResponseHandler handler, InOrder io, String id1, String id2, StreamingChatModel model) {
         verifyToolCallbacks(handler, io, id1, id2);
+    }
+
+    /** Publisher-mode equivalent for the two-id parallel-tool variant. */
+    protected void verifyToolEvents(StreamingMetadata metadata, String id1, String id2) {
+        fail("please override this method to verify tool call content from streaming metadata");
     }
 
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {

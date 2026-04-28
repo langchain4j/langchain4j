@@ -10,12 +10,9 @@ import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.StreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.concurrent.Flow.Subscriber;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
@@ -69,21 +66,6 @@ public class InternalStreamingChatResponseHandlerUtils {
     }
 
     /**
-     * @since 2.0.0
-     */
-    public static void onPartialResponse(Subscriber<? super StreamingEvent> subscriber, String partialResponse) {
-        if (isNullOrEmpty(partialResponse)) {
-            return;
-        }
-
-        try {
-            subscriber.onNext(new PartialResponse(partialResponse));
-        } catch (Exception e) {
-            withLoggingExceptions(() -> subscriber.onError(e)); // TODO?
-        }
-    }
-
-    /**
      * @deprecated Use {@link #onPartialThinking(StreamingChatResponseHandler, String, StreamingHandle)} instead.
      */
     @Deprecated(forRemoval = true, since = "1.8.0")
@@ -117,21 +99,6 @@ public class InternalStreamingChatResponseHandlerUtils {
     }
 
     /**
-     * @since 2.0.0
-     */
-    public static void onPartialThinking(Subscriber<? super StreamingEvent> subscriber, String partialThinking) {
-        if (isNullOrEmpty(partialThinking)) {
-            return;
-        }
-
-        try {
-            subscriber.onNext(new PartialThinking(partialThinking));
-        } catch (Exception e) {
-            withLoggingExceptions(() -> subscriber.onError(e)); // TODO?
-        }
-    }
-
-    /**
      * @deprecated Use {@link #onPartialToolCall(StreamingChatResponseHandler, PartialToolCall, StreamingHandle)} instead.
      */
     @Deprecated(forRemoval = true, since = "1.8.0")
@@ -156,30 +123,11 @@ public class InternalStreamingChatResponseHandlerUtils {
         }
     }
 
-    /**
-     * @since 1.8.0
-     */
-    public static void onPartialToolCall(Subscriber<? super StreamingEvent> subscriber, PartialToolCall partialToolCall) {
-        try {
-            subscriber.onNext(partialToolCall);
-        } catch (Exception e) {
-            withLoggingExceptions(() -> subscriber.onError(e)); // TODO?
-        }
-    }
-
     public static void onCompleteToolCall(StreamingChatResponseHandler handler, CompleteToolCall completeToolCall) {
         try {
             handler.onCompleteToolCall(completeToolCall);
         } catch (Exception e) {
             withLoggingExceptions(() -> handler.onError(e));
-        }
-    }
-
-    public static void onCompleteToolCall(Subscriber<? super StreamingEvent> subscriber, CompleteToolCall completeToolCall) {
-        try {
-            subscriber.onNext(completeToolCall);
-        } catch (Exception e) {
-            withLoggingExceptions(() -> subscriber.onError(e)); // TODO
         }
     }
 

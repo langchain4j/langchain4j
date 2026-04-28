@@ -3,6 +3,8 @@ package dev.langchain4j.model.openai.common;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.common.StreamingMetadata;
+import dev.langchain4j.model.chat.common.StreamingMode;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
@@ -19,6 +21,7 @@ import org.mockito.InOrder;
 import java.util.List;
 import java.util.Set;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_5_MINI;
 import static dev.langchain4j.model.openai.common.OpenAiChatModelIT.adjustForGpt5;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
@@ -42,7 +45,7 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected List<StreamingChatModel> models() {
+    protected List<StreamingChatModel> baseModels() {
         return List.of(
                 defaultStreamingModelBuilder()
                         .build(),
@@ -58,7 +61,12 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected List<StreamingChatModel> modelsSupportingTools() {
+    protected List<StreamingMode> streamingModes() {
+        return List.of(StreamingMode.HANDLER, StreamingMode.PUBLISHER);
+    }
+
+    @Override
+    protected List<StreamingChatModel> baseModelsSupportingTools() {
         return List.of(
                 defaultStreamingModelBuilder()
                         .modelName(GPT_5_MINI)
@@ -72,17 +80,14 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
-        OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder openAiStreamingChatModelBuilder = OpenAiStreamingChatModel.builder()
+        return OpenAiStreamingChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .defaultRequestParameters(adjustForGpt5(parameters))
+                .modelName(getOrDefault(parameters.modelName(), GPT_5_MINI.toString()))
                 .logRequests(true)
-                .logResponses(true);
-        if (parameters.modelName() == null) {
-            openAiStreamingChatModelBuilder.modelName(GPT_5_MINI);
-        }
-        return openAiStreamingChatModelBuilder
+                .logResponses(true)
                 .build();
     }
 
@@ -183,6 +188,77 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
+    protected void verifyToolEvents(StreamingMetadata metadata, String id) {
+        assertThat(metadata.partialToolCalls()).isNotEmpty();
+        assertThat(metadata.partialToolCalls()).allSatisfy(partialToolCall -> {
+            assertThat(partialToolCall.index()).isEqualTo(0);
+            assertThat(partialToolCall.id()).isEqualTo(id);
+            assertThat(partialToolCall.name()).isEqualTo("getWeather");
+            assertThat(partialToolCall.partialArguments()).isNotBlank();
+        });
+
+        assertThat(metadata.completeToolCalls()).hasSize(1);
+        var completeToolCall = metadata.completeToolCalls().get(0);
+        ToolExecutionRequest request = completeToolCall.toolExecutionRequest();
+        assertThat(completeToolCall.index()).isEqualTo(0);
+        assertThat(request.id()).isEqualTo(id);
+        assertThat(request.name()).isEqualTo("getWeather");
+        assertThat(request.arguments().replace(" ", "")).isEqualTo("{\"city\":\"Munich\"}");
+    }
+
+    @Override
+    protected void verifyToolEvents(StreamingMetadata metadata) {
+        assertThat(metadata.partialToolCalls()).isNotEmpty();
+        assertThat(metadata.partialToolCalls()).allSatisfy(partialToolCall -> {
+            assertThat(partialToolCall.index()).isEqualTo(0);
+            assertThat(partialToolCall.id()).isNotBlank();
+            assertThat(partialToolCall.name()).isEqualTo("get_current_time");
+            assertThat(partialToolCall.partialArguments()).isNotNull();
+        });
+
+        assertThat(metadata.completeToolCalls()).hasSize(1);
+        var completeToolCall = metadata.completeToolCalls().get(0);
+        ToolExecutionRequest request = completeToolCall.toolExecutionRequest();
+        assertThat(completeToolCall.index()).isEqualTo(0);
+        assertThat(request.id()).isNotBlank();
+        assertThat(request.name()).isEqualTo("get_current_time");
+        assertThat(request.arguments().replace(" ", "")).isEqualTo("{}");
+    }
+
+    @Override
+    protected void verifyToolEvents(StreamingMetadata metadata, String id1, String id2) {
+        assertThat(metadata.partialToolCalls()).hasSizeGreaterThanOrEqualTo(2);
+        assertThat(metadata.partialToolCalls()).anySatisfy(partialToolCall -> {
+            assertThat(partialToolCall.index()).isEqualTo(0);
+            assertThat(partialToolCall.id()).isEqualTo(id1);
+            assertThat(partialToolCall.name()).isEqualTo("getWeather");
+            assertThat(partialToolCall.partialArguments()).isNotBlank();
+        });
+        assertThat(metadata.partialToolCalls()).anySatisfy(partialToolCall -> {
+            assertThat(partialToolCall.index()).isEqualTo(1);
+            assertThat(partialToolCall.id()).isEqualTo(id2);
+            assertThat(partialToolCall.name()).isEqualTo("getTime");
+            assertThat(partialToolCall.partialArguments()).isNotBlank();
+        });
+
+        assertThat(metadata.completeToolCalls()).hasSize(2);
+
+        var first = metadata.completeToolCalls().get(0);
+        ToolExecutionRequest firstRequest = first.toolExecutionRequest();
+        assertThat(first.index()).isEqualTo(0);
+        assertThat(firstRequest.id()).isEqualTo(id1);
+        assertThat(firstRequest.name()).isEqualTo("getWeather");
+        assertThat(firstRequest.arguments().replace(" ", "")).isEqualTo("{\"city\":\"Munich\"}");
+
+        var second = metadata.completeToolCalls().get(1);
+        ToolExecutionRequest secondRequest = second.toolExecutionRequest();
+        assertThat(second.index()).isEqualTo(1);
+        assertThat(secondRequest.id()).isEqualTo(id2);
+        assertThat(secondRequest.name()).isEqualTo("getTime");
+        assertThat(secondRequest.arguments().replace(" ", "")).isEqualTo("{\"country\":\"France\"}");
+    }
+
+    @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
         io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
                 toolCall.index() == 0
@@ -216,6 +292,4 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 }
         ));
     }
-
-    // TODO OpenAI-specific tests
 }

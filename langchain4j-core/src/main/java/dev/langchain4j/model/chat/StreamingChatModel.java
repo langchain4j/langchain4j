@@ -23,7 +23,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Flow.Publisher;
+import java.util.concurrent.Flow.Subscriber;
+import java.util.concurrent.Flow.Subscription;
 
+import static dev.langchain4j.internal.InternalFlowUtils.EMPTY_SUBSCRIPTION;
 import static dev.langchain4j.model.ModelProvider.OTHER;
 import static dev.langchain4j.model.chat.ChatModelListenerUtils.onRequest;
 import static dev.langchain4j.model.chat.ChatModelListenerUtils.onResponse;
@@ -156,9 +159,97 @@ public interface StreamingChatModel {
         return Set.of();
     }
 
-    // TODO return publisher or completableFuture with publisher?
-    default Publisher<StreamingEvent> chat(ChatRequest chatRequest) {
-        throw new UnsupportedOperationException("Not implemented"); // TODO implement?
+    /**
+     * Reactive entry point: sends a chat request and returns a {@link Publisher} of {@link StreamingEvent}s. TODO
+     * <p>
+     * The publisher is cold: each {@code subscribe()} call initiates a new LLM request.
+     * It emits events in this order:
+     * <ul>
+     *     <li>0..N {@link dev.langchain4j.model.chat.response.PartialThinking} (thinking/reasoning chunks),</li>
+     *     <li>0..N {@link dev.langchain4j.model.chat.response.PartialResponse} (text chunks),</li>
+     *     <li>0..N {@link dev.langchain4j.model.chat.response.PartialToolCall} (tool-call argument chunks),</li>
+     *     <li>0..N {@link dev.langchain4j.model.chat.response.CompleteToolCall} (assembled tool calls),</li>
+     *     <li>exactly one terminal {@link ChatResponse} (the aggregated final response),</li>
+     * </ul>
+     * followed by {@code onComplete}. On failure, {@code onError} is signaled after {@code onSubscribe}.
+     * <p>
+     * Registered {@link ChatModelListener}s are invoked: {@code onRequest} on each new subscription
+     * (just before the underlying request goes out), {@code onResponse} after the terminal
+     * {@link ChatResponse} is emitted, {@code onError} on failure.
+     */
+    default Publisher<StreamingEvent> chat(ChatRequest request) {
+
+        ChatRequest finalChatRequest = ChatRequest.builder()
+                .messages(request.messages())
+                .parameters(defaultRequestParameters().overrideWith(request.parameters()))
+                .build();
+
+        List<ChatModelListener> listeners = listeners();
+
+        ModelProvider provider = provider();
+
+        // Note on cancellation: when downstream cancels mid-stream, no listener fires. Consistent
+        // with the handler path — listeners observe successful and failed requests; user-initiated
+        // cancellation is a third state that the listener API simply doesn't model. TODO
+
+        return new Publisher<StreamingEvent>() {
+
+            @Override
+            public void subscribe(Subscriber<? super StreamingEvent> downstream) {
+
+                Map<Object, Object> attributes = new ConcurrentHashMap<>();
+
+                onRequest(finalChatRequest, provider, attributes, listeners);
+
+                Publisher<StreamingEvent> innerPublisher;
+                try {
+                    innerPublisher = doChat(finalChatRequest);
+                } catch (Throwable error) {
+                    ChatModelListenerUtils.onError(error, finalChatRequest, provider, attributes, listeners);
+                    downstream.onSubscribe(EMPTY_SUBSCRIPTION);
+                    downstream.onError(error);
+                    return;
+                }
+
+                innerPublisher.subscribe(new Subscriber<>() {
+
+                    private ChatResponse completeResponse;
+
+                    @Override
+                    public void onSubscribe(Subscription subscription) {
+                        downstream.onSubscribe(subscription);
+                    }
+
+                    @Override
+                    public void onNext(StreamingEvent event) {
+                        if (event instanceof ChatResponse chatResponse) {
+                            completeResponse = chatResponse;
+                        }
+                        downstream.onNext(event);
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable) {
+                        ChatModelListenerUtils.onError(throwable, finalChatRequest, provider, attributes, listeners);
+                        downstream.onError(throwable);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        if (completeResponse != null) {
+                            onResponse(completeResponse, finalChatRequest, provider, attributes, listeners);
+                        }
+                        downstream.onComplete();
+                    }
+                });
+            }
+        };
+    }
+
+    // TODO accepting options
+
+    default Publisher<StreamingEvent> doChat(ChatRequest chatRequest) {
+        throw new RuntimeException("Not implemented");
     }
 
     // TODO more convenience methods accepting String, messages, etc

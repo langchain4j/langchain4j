@@ -265,24 +265,18 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
     }
 
     @Override
-    public Publisher<StreamingEvent> chat(ChatRequest chatRequest) {
+    public Publisher<StreamingEvent> doChat(ChatRequest chatRequest) {
 
-        // TODO implement doChat in parent interface (merge parameters, call listeners, etc)
-
-        ChatRequest finalChatRequest = ChatRequest.builder()
-                .messages(chatRequest.messages())
-                .parameters(defaultRequestParameters().overrideWith(chatRequest.parameters()))
-                .build();
-
-        OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) finalChatRequest.parameters();
+        OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) chatRequest.parameters();
         validate(parameters);
 
-        ChatCompletionRequest.Builder requestBuilder = toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema);
-        ChatCompletionRequest openAiRequest = requestBuilder.stream(true)
+        ChatCompletionRequest openAiRequest = toOpenAiChatRequest(
+                        chatRequest, parameters, sendThinking, thinkingFieldName, strictTools, strictJsonSchema)
+                .stream(true)
                 .streamOptions(StreamOptions.builder().includeUsage(true).build())
                 .build();
 
-        return client.chatCompletionPublisher(openAiRequest);
+        return client.chatCompletionPublisher(openAiRequest, returnThinking, accumulateToolCallId);
     }
 
     public static OpenAiStreamingChatModelBuilder builder() {
