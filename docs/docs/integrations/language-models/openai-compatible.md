@@ -166,6 +166,41 @@ ChatModel model = OpenAiChatModel.builder()
 *   Using the dedicated Ollama module: [langchain4j-examples/.../OllamaChatModelExamples.java](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/dev/langchain4j/model/ollama/OllamaChatModelExamples.java)
 
 
+## Astraflow (UCloud ModelVerse)
+
+**Deployment:** SaaS (Key Required)
+
+**Description:** [Astraflow](https://www.umodelverse.ai/) is UCloud's AI model aggregation platform (ModelVerse) that provides an OpenAI-compatible API with access to DeepSeek, Claude, GPT-4, and other major models.
+It offers two independent regional endpoints — a global node (US/CA) and a China node — each with its own API key.
+
+**Setup:**
+Sign up at [https://www.umodelverse.ai/](https://www.umodelverse.ai/) and create an API key for the region you want to use.
+
+### Global Node (US/CA)
+
+```java
+// Recommended default model: claude-3-5-haiku-20241022
+ChatModel model = OpenAiChatModel.builder()
+        .baseUrl("https://api-us-ca.umodelverse.ai/v1")
+        .apiKey(System.getenv("ASTRAFLOW_API_KEY"))
+        .modelName("claude-3-5-haiku-20241022") // or "gpt-4o", "deepseek-ai/DeepSeek-V3", etc.
+        .build();
+```
+
+### China Node
+
+```java
+// Recommended default model: deepseek-ai/DeepSeek-V3
+ChatModel model = OpenAiChatModel.builder()
+        .baseUrl("https://api.modelverse.cn/v1")
+        .apiKey(System.getenv("ASTRAFLOW_CN_API_KEY"))
+        .modelName("deepseek-ai/DeepSeek-V3") // or "claude-3-5-haiku-20241022", "gpt-4o", etc.
+        .build();
+```
+
+The full list of supported models is available in the [ModelVerse documentation](https://docs.umodelverse.ai/).
+
+
 ## LM Studio
 
 **Deployment:** Local
