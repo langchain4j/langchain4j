@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.openai.internal.ChatCompletionEventDispatcher.handle;
 import static java.time.Duration.ofSeconds;
 
 import dev.langchain4j.http.client.HttpClient;
@@ -235,16 +236,14 @@ public class DefaultOpenAiClient extends OpenAiClient {
             }
             try {
                 ChatCompletionResponse parsed = Json.fromJson(sse.data(), ChatCompletionResponse.class);
-                @SuppressWarnings({"unchecked", "rawtypes"})
-                ParsedAndRawResponse<ChatCompletionResponse> parsedAndRaw = (ParsedAndRawResponse<ChatCompletionResponse>)
-                        (ParsedAndRawResponse) ParsedAndRawResponse.builder()
+                ParsedAndRawResponse<ChatCompletionResponse> parsedAndRaw = ParsedAndRawResponse.builder()
                                 .parsedResponse(parsed)
                                 .rawHttpResponse(rawHttpResponse)
                                 .rawServerSentEvent(sse)
                                 .streamingHandle(handler.streamingHandle())
                                 .build();
                 responseBuilder.append(parsedAndRaw);
-                ChatCompletionEventDispatcher.handle(parsedAndRaw, toolCallBuilder, handler, options.returnThinking());
+                handle(parsedAndRaw, toolCallBuilder, handler, options.returnThinking());
             } catch (Exception e) {
                 tube.fail(e);
             }
