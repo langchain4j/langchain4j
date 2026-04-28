@@ -109,7 +109,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         List<StreamingChatModel> result = new ArrayList<>();
         for (StreamingChatModel base : bases) {
             for (StreamingMode mode : modes) {
-                result.add(new ModeAwareModel(base, mode));
+                result.add(new StreamingModeAwareModel(base, mode));
             }
         }
         return result;
@@ -129,9 +129,9 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
         // StreamingHandle.cancel() is part of the handler-based API only — there's no equivalent
         // visible in the publisher path (callers use Flow.Subscription.cancel() instead, which
-        // a separate test would exercise). Skip publisher-wrapped invocations.
+        // a separate test would exercise). Skip publisher-wrapped invocations. TODO
         Assumptions.assumeTrue(
-                !(model instanceof ModeAwareModel w) || w.mode() == StreamingMode.HANDLER,
+                !(model instanceof StreamingModeAwareModel w) || w.mode() == StreamingMode.HANDLER,
                 "StreamingHandle cancellation is handler-mode only");
 
 
@@ -345,15 +345,15 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         return chat(chatModel, chatRequest, ignored -> {}, 120, true);
     }
 
-    public ChatResponseAndStreamingMetadata chat(StreamingChatModel chatModel,
-                                                 ChatRequest chatRequest,
-                                                 Consumer<StreamingHandle> streamingHandleConsumer,
-                                                 int timeoutSeconds,
-                                                 boolean failOnTimeout) {
-        if (chatModel instanceof ModeAwareModel wrapped && wrapped.mode() == StreamingMode.PUBLISHER) {
+    public static ChatResponseAndStreamingMetadata chat(StreamingChatModel chatModel,
+                                                        ChatRequest chatRequest,
+                                                        Consumer<StreamingHandle> streamingHandleConsumer,
+                                                        int timeoutSeconds,
+                                                        boolean failOnTimeout) {
+        if (chatModel instanceof StreamingModeAwareModel wrapped && wrapped.mode() == StreamingMode.PUBLISHER) {
             return chatViaPublisher(wrapped.delegate(), chatRequest, timeoutSeconds, failOnTimeout);
         }
-        StreamingChatModel target = chatModel instanceof ModeAwareModel w ? w.delegate() : chatModel;
+        StreamingChatModel target = chatModel instanceof StreamingModeAwareModel w ? w.delegate() : chatModel;
         return chatViaHandler(target, chatRequest, streamingHandleConsumer, timeoutSeconds, failOnTimeout);
     }
 
@@ -537,19 +537,12 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         return new ChatResponseAndStreamingMetadata(chatResponse, metadata);
     }
 
-    /**
-     * Marker wrapper that pairs a {@link StreamingChatModel} with a {@link StreamingMode}.
-     * Used as an element of {@link #models()} so each test runs once per mode without changing
-     * test method signatures. Delegates all interface methods to the wrapped model;
-     * {@link #chat(StreamingChatModel, ChatRequest, Consumer, int, boolean)} unwraps and
-     * dispatches via the appropriate transport (handler vs. publisher).
-     */
-    public static final class ModeAwareModel implements StreamingChatModel {
+    public static final class StreamingModeAwareModel implements StreamingChatModel {
 
         private final StreamingChatModel delegate;
         private final StreamingMode mode;
 
-        public ModeAwareModel(StreamingChatModel delegate, StreamingMode mode) {
+        public StreamingModeAwareModel(StreamingChatModel delegate, StreamingMode mode) {
             this.delegate = delegate;
             this.mode = mode;
         }

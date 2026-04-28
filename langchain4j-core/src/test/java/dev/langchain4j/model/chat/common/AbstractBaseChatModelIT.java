@@ -793,13 +793,6 @@ public abstract class AbstractBaseChatModelIT<M> {
         fail("please override this method");
     }
 
-    /**
-     * Publisher-mode equivalent of {@link #verifyToolCallbacks(StreamingChatResponseHandler, InOrder, String)}.
-     * Asserts on tool-call content collected into {@link StreamingMetadata#partialToolCalls()} and
-     * {@link StreamingMetadata#completeToolCalls()}, since Mockito spy verification has no analogue
-     * for {@code Flow.Subscriber}. Strict cross-list ordering (partial-before-complete) is not asserted —
-     * that's a handler-mode-specific guarantee.
-     */
     protected void verifyToolEvents(StreamingMetadata metadata, String id) {
         fail("please override this method to verify tool call content from streaming metadata");
     }
@@ -931,7 +924,6 @@ public abstract class AbstractBaseChatModelIT<M> {
         }
     }
 
-    /** Publisher-mode equivalent for the no-arg tool variant — asserts content from {@link StreamingMetadata}. */
     protected void verifyToolEvents(StreamingMetadata metadata) {
         fail("please override this method to verify tool call content from streaming metadata");
     }
@@ -1128,7 +1120,6 @@ public abstract class AbstractBaseChatModelIT<M> {
         verifyToolCallbacks(handler, io, id1, id2);
     }
 
-    /** Publisher-mode equivalent for the two-id parallel-tool variant. */
     protected void verifyToolEvents(StreamingMetadata metadata, String id1, String id2) {
         fail("please override this method to verify tool call content from streaming metadata");
     }
