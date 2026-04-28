@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic;
 
 import static dev.langchain4j.agentic.Models.baseModel;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -22,10 +23,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 public class SingleAgentIT {
+
+    private static final AtomicBoolean BEFORE_AGENT_INVOKED = new AtomicBoolean(false);
+    private static final AtomicBoolean AFTER_AGENT_INVOKED = new AtomicBoolean(false);
 
     @Test
     public void invoke_standalone_agent_with_tools_and_listeners() {
@@ -43,6 +48,9 @@ public class SingleAgentIT {
 
         String story = writer.generateStoryText(topic);
         System.out.println("story:\n" + story);
+
+        assertTrue(BEFORE_AGENT_INVOKED.get());
+        assertTrue(AFTER_AGENT_INVOKED.get());
     }
 
     private static ToolProvider buildDemoTools() {
@@ -82,12 +90,14 @@ public class SingleAgentIT {
 
         @Override
         public void beforeAgentInvocation(AgentRequest request) {
+            BEFORE_AGENT_INVOKED.set(true);
             System.out.println(tag + " beforeAgentInvocation agent=" + request.agent().name()
                     + " inputs=" + request.inputs());
         }
 
         @Override
         public void afterAgentInvocation(AgentResponse response) {
+            AFTER_AGENT_INVOKED.set(true);
             System.out.println(tag + " afterAgentInvocation agent=" + response.agent().name()
                     + " output=" + response.output());
         }
