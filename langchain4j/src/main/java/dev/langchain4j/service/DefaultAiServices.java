@@ -94,6 +94,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     protected void validate() {
         performBasicValidation();
+        context.toolService.registerObjectsWithTools();
         AiServiceValidation.validate(context);
     }
 
