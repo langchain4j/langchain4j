@@ -1,5 +1,7 @@
 package dev.langchain4j.model.batch;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import java.util.List;
 import java.util.Objects;
 
@@ -17,7 +19,7 @@ public class BatchRequest<T> {
      * @param requests The list of requests. Must not be null.
      */
     public BatchRequest(List<T> requests) {
-        this.requests = Objects.requireNonNull(requests);
+        this.requests = ensureNotNull(requests, "requests");
     }
 
     /**

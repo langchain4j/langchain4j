@@ -602,7 +602,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @Test
     @EnabledIf("supportsMaxOutputTokensParameter")
     protected void
-    should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
+            should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
 
         // given
         // TODO test more/all common params?
@@ -977,8 +977,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
                 assertThat(metadata.partialToolCalls().get(0).index()).isEqualTo(0);
                 assertThat(metadata.partialToolCalls()
-                        .get(metadata.partialToolCalls().size() - 1)
-                        .index())
+                                .get(metadata.partialToolCalls().size() - 1)
+                                .index())
                         .isEqualTo(1);
 
                 List<List<PartialToolCall>> partialToolCallPartitions = partitionByIndex(metadata.partialToolCalls());
@@ -1530,8 +1530,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_accept_single_image_as_base64_encoded_string(M model) {
 
         // given
-        UserMessage userMessage =
-                UserMessage.from(TextContent.from("What do you see?"), catImageContentBase64());
+        UserMessage userMessage = UserMessage.from(TextContent.from("What do you see?"), catImageContentBase64());
         ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
         // when
@@ -1667,8 +1666,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected void should_fail_if_images_as_public_URLs_are_not_supported(M model) {
 
         // given
-        UserMessage userMessage =
-                UserMessage.from(TextContent.from("What do you see?"), catImageContentUrl());
+        UserMessage userMessage = UserMessage.from(TextContent.from("What do you see?"), catImageContentUrl());
         ChatRequest chatRequest = ChatRequest.builder().messages(userMessage).build();
 
         // when-then
