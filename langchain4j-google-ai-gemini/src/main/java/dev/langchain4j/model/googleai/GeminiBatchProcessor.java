@@ -5,8 +5,8 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.batch.BatchError;
-import dev.langchain4j.model.batch.BatchId;
 import dev.langchain4j.model.batch.BatchPage;
+import dev.langchain4j.model.batch.BatchPagination;
 import dev.langchain4j.model.batch.BatchResponse;
 import dev.langchain4j.model.batch.BatchState;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateFileRequest;
@@ -79,30 +79,32 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
      * Retrieves the current state and results of a batch operation.
      */
     @SuppressWarnings("unchecked")
-    BatchResponse<RESPONSE> retrieveBatchResults(BatchId name) {
-        var operation = geminiService.batchRetrieveBatch(name.value());
+    BatchResponse<RESPONSE> retrieveBatchResults(String batchId) {
+        var operation = geminiService.batchRetrieveBatch(batchId);
         return processResponse((Operation<API_RESPONSE>) operation);
     }
 
     /**
      * Cancels a batch operation that is currently pending or running.
      */
-    void cancelBatchJob(BatchId name) {
-        geminiService.batchCancelBatch(name.value());
+    void cancelBatchJob(String batchId) {
+        geminiService.batchCancelBatch(batchId);
     }
 
     /**
      * Deletes a batch job.
      */
-    void deleteBatchJob(BatchId name) {
-        geminiService.batchDeleteBatch(name.value());
+    void deleteBatchJob(String batchId) {
+        geminiService.batchDeleteBatch(batchId);
     }
 
     /**
      * Lists batch jobs.
      */
     @SuppressWarnings("unchecked")
-    BatchPage<RESPONSE> listBatchJobs(@Nullable Integer pageSize, @Nullable String pageToken) {
+    BatchPage<RESPONSE> listBatchJobs(final @Nullable BatchPagination batchPagination) {
+        var pageSize = batchPagination != null ? batchPagination.getPageSize() : null;
+        var pageToken = batchPagination != null ? batchPagination.getPageToken() : null;
         var response = geminiService.<List<API_RESPONSE>>batchListBatches(pageSize, pageToken);
 
         return new BatchPage<>(
@@ -117,7 +119,7 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
      */
     private BatchResponse<RESPONSE> processResponse(Operation<API_RESPONSE> operation) {
         var state = extractBatchState(operation.metadata());
-        var batchId = new BatchId(operation.name());
+        var batchId = operation.name();
 
         if (operation.done()) {
             var error = operation.error();

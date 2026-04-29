@@ -8,8 +8,8 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.batch.BatchError;
-import dev.langchain4j.model.batch.BatchId;
 import dev.langchain4j.model.batch.BatchPage;
+import dev.langchain4j.model.batch.BatchPagination;
 import dev.langchain4j.model.batch.BatchRequest;
 import dev.langchain4j.model.batch.BatchResponse;
 import dev.langchain4j.model.embedding.BatchEmbeddingModel;
@@ -150,12 +150,12 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
      * <p>Polls the Gemini API to get the latest state of a previously created batch.
      * Clients should poll this method at intervals to check the operation status until completion.</p>
      *
-     * @param name the batch name obtained from {@link BatchEmbeddingModel#submit(BatchRequest)} or {@link #submit(String, GeminiFile)}
+     * @param batchId the batch name obtained from {@link BatchEmbeddingModel#submit(BatchRequest)} or {@link #submit(String, GeminiFile)}
      * @return a {@link BatchResponse} representing the current state of the batch operation
      */
     @Override
-    public BatchResponse<Embedding> retrieve(BatchId name) {
-        return batchProcessor.retrieveBatchResults(name);
+    public BatchResponse<Embedding> retrieve(String batchId) {
+        return batchProcessor.retrieveBatchResults(batchId);
     }
 
     /**
@@ -164,37 +164,32 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
      * <p>Cancellation is only possible for batches that are in PENDING or RUNNING state.
      * Batches that have already completed, failed, or been cancelled cannot be cancelled.</p>
      *
-     * @param name the batch name to cancel
+     * @param batchId the batch name to cancel
      */
     @Override
-    public void cancel(BatchId name) {
-        batchProcessor.cancelBatchJob(name);
+    public void cancel(String batchId) {
+        batchProcessor.cancelBatchJob(batchId);
     }
 
     /**
      * Deletes a batch job from the system.
      *
      * <p>This removes the batch job record but does not cancel it if still running.
-     * Use {@link #cancel(BatchId)} to cancel a running batch before deletion.</p>
+     * Use {@link #cancel(String)} to cancel a running batch before deletion.</p>
      *
-     * @param name the batch name to delete
+     * @param batchId the batch name to delete
      * @throws RuntimeException if the batch job cannot be deleted or does not exist
      */
-    public void deleteBatchJob(BatchId name) {
-        batchProcessor.deleteBatchJob(name);
+    public void deleteBatchJob(String batchId) {
+        batchProcessor.deleteBatchJob(batchId);
     }
 
     /**
      * {@inheritDoc}
-     *
-     * @param pageSize  the maximum number of batch jobs to return; if {@code null}, uses server default
-     * @param pageToken token for retrieving a specific page from {@link BatchPage#nextPageToken()};
-     *                  if {@code null}, returns the first page
-     * @return a {@link BatchPage} containing batch responses and pagination information
      */
     @Override
-    public BatchPage<Embedding> list(@Nullable Integer pageSize, @Nullable String pageToken) {
-        return batchProcessor.listBatchJobs(pageSize, pageToken);
+    public BatchPage<Embedding> list(@Nullable BatchPagination batchPagination) {
+        return batchProcessor.listBatchJobs(batchPagination);
     }
 
     /**

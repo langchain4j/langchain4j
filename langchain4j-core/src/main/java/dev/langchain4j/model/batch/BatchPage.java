@@ -25,4 +25,5 @@ import org.jspecify.annotations.Nullable;
  * @see BatchResponse
  */
 @Experimental
-public record BatchPage<T>(List<BatchResponse<T>> batches, @Nullable String nextPageToken) {}
+public record BatchPage<T>(
+        List<BatchResponse<T>> batches, @Nullable String nextPageToken) {}

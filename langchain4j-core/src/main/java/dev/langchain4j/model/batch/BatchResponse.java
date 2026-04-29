@@ -1,6 +1,6 @@
 package dev.langchain4j.model.batch;
 
-import static dev.langchain4j.model.batch.BatchState.EXPIRED;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.batch.BatchState.FAILED;
 import static dev.langchain4j.model.batch.BatchState.SUCCEEDED;
 
@@ -19,17 +19,15 @@ import org.jspecify.annotations.Nullable;
  */
 @Experimental
 public class BatchResponse<T> {
-    private static final List<BatchState> TERMINAL_BATCH_STATES = List.of(EXPIRED, FAILED, SUCCEEDED);
-
-    private final BatchId batchId;
+    private final String batchId;
     private final BatchState state;
     private final List<T> responses;
     private final List<BatchError> errors;
 
     public BatchResponse(
-            BatchId batchId, BatchState state, @Nullable List<T> responses, @Nullable List<BatchError> errors) {
-        this.batchId = Objects.requireNonNull(batchId, "batchId cannot be null");
-        this.state = Objects.requireNonNull(state, "state cannot be null");
+            String batchId, BatchState state, @Nullable List<T> responses, @Nullable List<BatchError> errors) {
+        this.batchId = ensureNotNull(batchId, "batchId cannot be null");
+        this.state = ensureNotNull(state, "state cannot be null");
         this.responses = responses;
         this.errors = errors;
     }
@@ -37,7 +35,7 @@ public class BatchResponse<T> {
     /**
      * Returns the unique identifier for this batch operation.
      */
-    public BatchId batchId() {
+    public String batchId() {
         return batchId;
     }
 
@@ -68,7 +66,7 @@ public class BatchResponse<T> {
      * Returns {@code true} if the batch is still processing (not in a terminal state).
      */
     public boolean isInProgress() {
-        return !TERMINAL_BATCH_STATES.contains(state);
+        return !state.isTerminal();
     }
 
     /**

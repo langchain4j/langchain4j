@@ -113,48 +113,72 @@ class ToolSpecificationJsonTest {
                 .description("A tool exercising every schema element type")
                 .parameters(JsonObjectSchema.builder()
                         .description("root params")
-                        .addProperty("stringProp", JsonStringSchema.builder()
-                                .description("a string")
-                                .build())
-                        .addProperty("intProp", JsonIntegerSchema.builder()
-                                .description("an integer")
-                                .build())
-                        .addProperty("numProp", JsonNumberSchema.builder()
-                                .description("a number")
-                                .build())
-                        .addProperty("boolProp", JsonBooleanSchema.builder()
-                                .description("a boolean")
-                                .build())
+                        .addProperty(
+                                "stringProp",
+                                JsonStringSchema.builder()
+                                        .description("a string")
+                                        .build())
+                        .addProperty(
+                                "intProp",
+                                JsonIntegerSchema.builder()
+                                        .description("an integer")
+                                        .build())
+                        .addProperty(
+                                "numProp",
+                                JsonNumberSchema.builder()
+                                        .description("a number")
+                                        .build())
+                        .addProperty(
+                                "boolProp",
+                                JsonBooleanSchema.builder()
+                                        .description("a boolean")
+                                        .build())
                         .addProperty("nullProp", new JsonNullSchema())
-                        .addProperty("enumProp", JsonEnumSchema.builder()
-                                .description("a color")
-                                .enumValues("RED", "GREEN", "BLUE")
-                                .build())
-                        .addProperty("arrayProp", JsonArraySchema.builder()
-                                .description("a list of integers")
-                                .items(new JsonIntegerSchema())
-                                .build())
-                        .addProperty("objectProp", JsonObjectSchema.builder()
-                                .description("nested object")
-                                .addProperty("inner", JsonStringSchema.builder()
-                                        .description("inner field")
+                        .addProperty(
+                                "enumProp",
+                                JsonEnumSchema.builder()
+                                        .description("a color")
+                                        .enumValues("RED", "GREEN", "BLUE")
                                         .build())
-                                .required("inner")
-                                .additionalProperties(false)
-                                .build())
-                        .addProperty("anyOfProp", JsonAnyOfSchema.builder()
-                                .description("string or number")
-                                .anyOf(new JsonStringSchema(), new JsonNumberSchema())
-                                .build())
-                        .addProperty("refProp", JsonReferenceSchema.builder()
-                                .reference("SharedDef")
-                                .build())
-                        .definitions(Map.of("SharedDef", JsonObjectSchema.builder()
-                                .addProperty("id", JsonIntegerSchema.builder()
-                                        .description("identifier")
+                        .addProperty(
+                                "arrayProp",
+                                JsonArraySchema.builder()
+                                        .description("a list of integers")
+                                        .items(new JsonIntegerSchema())
                                         .build())
-                                .required("id")
-                                .build()))
+                        .addProperty(
+                                "objectProp",
+                                JsonObjectSchema.builder()
+                                        .description("nested object")
+                                        .addProperty(
+                                                "inner",
+                                                JsonStringSchema.builder()
+                                                        .description("inner field")
+                                                        .build())
+                                        .required("inner")
+                                        .additionalProperties(false)
+                                        .build())
+                        .addProperty(
+                                "anyOfProp",
+                                JsonAnyOfSchema.builder()
+                                        .description("string or number")
+                                        .anyOf(new JsonStringSchema(), new JsonNumberSchema())
+                                        .build())
+                        .addProperty(
+                                "refProp",
+                                JsonReferenceSchema.builder()
+                                        .reference("SharedDef")
+                                        .build())
+                        .definitions(Map.of(
+                                "SharedDef",
+                                JsonObjectSchema.builder()
+                                        .addProperty(
+                                                "id",
+                                                JsonIntegerSchema.builder()
+                                                        .description("identifier")
+                                                        .build())
+                                        .required("id")
+                                        .build()))
                         .required("stringProp", "enumProp")
                         .build())
                 .addMetadata("cache", true)

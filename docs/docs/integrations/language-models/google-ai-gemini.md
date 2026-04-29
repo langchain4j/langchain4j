@@ -889,7 +889,7 @@ BatchResponse initialResponse = batchModel.createBatchInline(
 );
 
 // Extract the batch name for polling
-BatchName batchId = switch (initialResponse) {
+String batchId = switch (initialResponse) {
     case BatchIncomplete incomplete -> incomplete.batchId();
     case BatchSuccess success -> success.batchId();
     case BatchError error -> throw new RuntimeException("Batch creation failed");
@@ -926,7 +926,7 @@ if (result instanceof BatchSuccess success) {
 **Cancel a batch job:**
 
 ```java
-BatchName batchId = // ... obtained from createBatchInline
+String batchId = // ... obtained from createBatchInline
 
 try {
     batchModel.cancelBatchJob(batchId);
@@ -1077,7 +1077,7 @@ BatchResponse response = batchModel.createBatchInline(
 );
 
 // Get batch name
-BatchName batchId = switch (response) {
+String batchId = switch (response) {
     case BatchIncomplete incomplete -> incomplete.batchId();
     case BatchSuccess success -> success.batchId();
     case BatchError error -> throw new RuntimeException("Failed: " + error.message());

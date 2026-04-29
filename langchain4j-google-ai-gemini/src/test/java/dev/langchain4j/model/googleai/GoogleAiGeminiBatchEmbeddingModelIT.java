@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.HttpException;
-import dev.langchain4j.model.batch.BatchId;
+import dev.langchain4j.model.batch.BatchPagination;
 import dev.langchain4j.model.batch.BatchResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
 import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel.TaskType;
@@ -54,7 +54,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
 
             // then
             assertThat(response.isInProgress()).isTrue();
-            assertThat(response.batchId().value()).startsWith("batches/");
+            assertThat(response.batchId()).startsWith("batches/");
             assertThat(response.state()).isEqualTo(PENDING);
         }
 
@@ -77,7 +77,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
 
             // then
             assertThat(response.isInProgress()).isTrue();
-            assertThat(response.batchId().value()).startsWith("batches/");
+            assertThat(response.batchId()).startsWith("batches/");
         }
 
         @Test
@@ -103,7 +103,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
 
             // then
             assertThat(response.isInProgress()).isTrue();
-            assertThat(response.batchId().value()).startsWith("batches/");
+            assertThat(response.batchId()).startsWith("batches/");
         }
 
         @Test
@@ -126,7 +126,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
 
             // then
             assertThat(response.isInProgress()).isTrue();
-            assertThat(response.batchId().value()).startsWith("batches/");
+            assertThat(response.batchId()).startsWith("batches/");
         }
     }
 
@@ -148,7 +148,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
 
             var tempFile = createTempFile("gemini-it-test", ".jsonl");
             GeminiFiles.GeminiFile uploadedFile;
-            BatchId batchId;
+            String batchId;
 
             // 1. Write batch requests to local temp file (Integration of writeBatchToFile)
             var requests = List.of(
@@ -171,7 +171,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             assertThat(response.isInProgress()).isTrue();
             assertThat(response.state()).isEqualTo(PENDING);
             batchId = response.batchId();
-            assertThat(batchId.value()).startsWith("batches/");
+            assertThat(batchId).startsWith("batches/");
         }
 
         @Test
@@ -239,8 +239,8 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
                     .build();
 
             // when & then
-            var batchName = new BatchId("batches/test-batch");
-            assertThatThrownBy(() -> subject.cancel(batchName))
+            var batchId = "batches/test-batch";
+            assertThatThrownBy(() -> subject.cancel(batchId))
                     .isInstanceOf(HttpException.class)
                     .hasMessageContaining("\"message\": \"Could not parse the batch name\"");
         }
@@ -268,9 +268,9 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             subject.deleteBatchJob(response.batchId());
 
             // then - no longer exists
-            var list = subject.list(null, null);
-            var batchNames = list.batches().stream().map(BatchResponse::batchId).toList();
-            assertThat(batchNames).doesNotContain(response.batchId());
+            var list = subject.list(null);
+            var batchIds = list.batches().stream().map(BatchResponse::batchId).toList();
+            assertThat(batchIds).doesNotContain(response.batchId());
         }
 
         @Test
@@ -284,8 +284,8 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
                     .build();
 
             // when & then
-            var batchName = new BatchId("batches/test-batch");
-            assertThatThrownBy(() -> subject.deleteBatchJob(batchName))
+            var batchId = "batches/test-batch";
+            assertThatThrownBy(() -> subject.deleteBatchJob(batchId))
                     .isInstanceOf(HttpException.class)
                     .hasMessageContaining("\"message\": \"Could not parse the batch name\"");
         }
@@ -310,7 +310,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var response = subject.submit(GeminiBatchRequest.from(textSegments, displayName, priority));
 
             // when
-            var list = subject.list(null, null);
+            var list = subject.list(null);
             var batches = list.batches();
 
             // then
@@ -335,10 +335,10 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             subject.submit(GeminiBatchRequest.from(textSegments, displayName + "2", priority));
 
             // when
-            var list = subject.list(1, null);
+            var list = subject.list(new BatchPagination(1, null));
             assertThat(list.batches()).hasSize(1);
 
-            var secondList = subject.list(1, list.nextPageToken());
+            var secondList = subject.list(new BatchPagination(1, list.nextPageToken()));
             assertThat(secondList.batches()).hasSize(1);
         }
 
@@ -353,7 +353,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
                     .build();
 
             // when
-            var list = subject.list(5, null);
+            var list = subject.list(new BatchPagination(5, null));
 
             // then
             assertThat(list.batches()).hasSizeLessThanOrEqualTo(5);

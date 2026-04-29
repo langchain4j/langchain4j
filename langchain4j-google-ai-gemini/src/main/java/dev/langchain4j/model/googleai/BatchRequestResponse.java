@@ -9,22 +9,19 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 public final class BatchRequestResponse {
-    private BatchRequestResponse() {
-    }
+    private BatchRequestResponse() {}
 
     /**
      * Represents the response of a batch operation.
      */
-    public sealed interface BatchResponse<T> permits BatchIncomplete, BatchSuccess, BatchError {
-    }
+    public sealed interface BatchResponse<T> permits BatchIncomplete, BatchSuccess, BatchError {}
 
     /**
      * Represents a batch operation that is currently pending or in progress.
      */
     public record BatchIncomplete<T>(
             @JsonProperty("batchName") BatchName batchName,
-            @JsonProperty("state") BatchJobState state) implements BatchResponse<T> {
-    }
+            @JsonProperty("state") BatchJobState state) implements BatchResponse<T> {}
 
     /**
      * Represents a successful batch operation.
@@ -33,8 +30,7 @@ public final class BatchRequestResponse {
             @JsonProperty("batchName") BatchName batchName,
             @JsonProperty("responses") List<T> responses,
             @JsonProperty("errors") @Nullable List<Operation.Status> errors)
-            implements BatchResponse<T> {
-    }
+            implements BatchResponse<T> {}
 
     /**
      * Represents an error that occurred during a batch operation.
@@ -45,8 +41,7 @@ public final class BatchRequestResponse {
             @JsonProperty("message") String message,
             @JsonProperty("state") BatchJobState state,
             @JsonProperty("details") List<Map<String, Object>> details)
-            implements BatchResponse<T> {
-    }
+            implements BatchResponse<T> {}
 
     /**
      * Represents a List of Batches.
@@ -56,8 +51,7 @@ public final class BatchRequestResponse {
      */
     public record BatchList<T>(
             @JsonProperty("pageToken") String pageToken,
-            @JsonProperty("responses") List<BatchResponse<T>> responses) {
-    }
+            @JsonProperty("responses") List<BatchResponse<T>> responses) {}
 
     /**
      * Represents the name of a batch operation.
@@ -108,24 +102,21 @@ public final class BatchRequestResponse {
         record Batch<REQ>(
                 @JsonProperty("display_name") String displayName,
                 @JsonProperty("input_config") InputConfig<REQ> inputConfig,
-                @JsonProperty("priority") long priority) {
-        }
+                @JsonProperty("priority") long priority) {}
 
         /**
          * Configures the input to the batch request.
          *
          * @param requests The list of inlined requests to be processed in the batch.
          */
-        record InputConfig<REQ>(@JsonProperty("requests") Requests<REQ> requests) {
-        }
+        record InputConfig<REQ>(@JsonProperty("requests") Requests<REQ> requests) {}
 
         /**
          * Wrapper for the list of inlined requests.
          *
          * @param requests The list of inlined requests to be processed in the batch.
          */
-        record Requests<REQ>(@JsonProperty("requests") List<InlinedRequest<REQ>> requests) {
-        }
+        record Requests<REQ>(@JsonProperty("requests") List<InlinedRequest<REQ>> requests) {}
 
         /**
          * Individual request to be processed in the batch.
@@ -135,19 +126,16 @@ public final class BatchRequestResponse {
          */
         record InlinedRequest<REQ>(
                 @JsonProperty("request") REQ request,
-                @JsonProperty("metadata") Map<String, String> metadata) {
-        }
+                @JsonProperty("metadata") Map<String, String> metadata) {}
     }
 
     record BatchCreateFileRequest(@JsonProperty("batch") FileBatch batch) {
 
         record FileBatch(
                 @JsonProperty("display_name") String displayName,
-                @JsonProperty("input_config") FileInputConfig inputConfig) {
-        }
+                @JsonProperty("input_config") FileInputConfig inputConfig) {}
 
-        record FileInputConfig(@JsonProperty("file_name") String fileName) {
-        }
+        record FileInputConfig(@JsonProperty("file_name") String fileName) {}
     }
 
     /**
@@ -167,8 +155,7 @@ public final class BatchRequestResponse {
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
         record InlinedResponses<RESP>(
-                @JsonProperty("inlinedResponses") List<InlinedResponseWrapper<RESP>> inlinedResponses) {
-        }
+                @JsonProperty("inlinedResponses") List<InlinedResponseWrapper<RESP>> inlinedResponses) {}
 
         /**
          * Wrapper for an individual (successful) response OR error.
@@ -179,8 +166,7 @@ public final class BatchRequestResponse {
         @JsonIgnoreProperties(ignoreUnknown = true)
         record InlinedResponseWrapper<RESP>(
                 @JsonProperty("response") @Nullable RESP response,
-                @JsonProperty("error") @Nullable Status error) {
-        }
+                @JsonProperty("error") @Nullable Status error) {}
     }
 
     /**
@@ -223,8 +209,7 @@ public final class BatchRequestResponse {
      */
     record ListOperationsResponse<RESP>(
             @JsonProperty("operations") @Nullable List<Operation<RESP>> operations,
-            @JsonProperty("nextPageToken") @Nullable String nextPageToken) {
-    }
+            @JsonProperty("nextPageToken") @Nullable String nextPageToken) {}
 
     /**
      * Represents a batch request for a file operation.
@@ -235,6 +220,5 @@ public final class BatchRequestResponse {
      */
     public record BatchFileRequest<REQ>(
             @JsonProperty("key") String key,
-            @JsonProperty("request") REQ request) {
-    }
+            @JsonProperty("request") REQ request) {}
 }

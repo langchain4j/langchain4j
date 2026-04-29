@@ -1,5 +1,8 @@
 package dev.langchain4j;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static java.util.stream.Collectors.joining;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,17 +23,13 @@ import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Comparator;
 import java.util.List;
 import java.util.Spliterators;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static java.util.stream.Collectors.joining;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LoggingChatModelListener implements ChatModelListener {
 
@@ -38,8 +37,7 @@ public class LoggingChatModelListener implements ChatModelListener {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     @Override
-    public void onRequest(ChatModelRequestContext requestContext) {
-    }
+    public void onRequest(ChatModelRequestContext requestContext) {}
 
     @Override
     public void onResponse(ChatModelResponseContext responseContext) {
@@ -53,19 +51,21 @@ public class LoggingChatModelListener implements ChatModelListener {
             sb.append("\n");
         });
 
-        log.info("""
+        log.info(
+                """
                         >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
                         {}TOOLS: {}
                         ------------------------------------------------------------------------------------------
                         {}
                         <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                        
-                        
+
+
                         """,
                 sb,
-                chatRequest.toolSpecifications().stream().map(ToolSpecification::name).collect(joining(", ")),
-                "AI: " + format(chatResponse.aiMessage())
-        );
+                chatRequest.toolSpecifications().stream()
+                        .map(ToolSpecification::name)
+                        .collect(joining(", ")),
+                "AI: " + format(chatResponse.aiMessage()));
     }
 
     private static String format(ChatMessage message) {
@@ -102,7 +102,8 @@ public class LoggingChatModelListener implements ChatModelListener {
                     } else {
                         throw new IllegalArgumentException("Unknown content type: " + content.getClass());
                     }
-                }).collect(joining(" "));
+                })
+                .collect(joining(" "));
     }
 
     private static String format(AiMessage aiMessage) {
@@ -114,8 +115,7 @@ public class LoggingChatModelListener implements ChatModelListener {
         }
 
         for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
-            sb
-                    .append("[")
+            sb.append("[")
                     .append(toolExecutionRequest.name())
                     .append("(")
                     .append(formatArguments(toolExecutionRequest.arguments()))
@@ -132,10 +132,9 @@ public class LoggingChatModelListener implements ChatModelListener {
             throw new RuntimeException(e);
         }
         try {
-            return StreamSupport.stream(
-                            Spliterators.spliteratorUnknownSize(root.fields(), 0), false)
-                    .sorted(Comparator.comparingInt(e ->
-                            Integer.parseInt(e.getKey().substring(3)))) // arg0, arg1, ...
+            return StreamSupport.stream(Spliterators.spliteratorUnknownSize(root.fields(), 0), false)
+                    .sorted(Comparator.comparingInt(
+                            e -> Integer.parseInt(e.getKey().substring(3)))) // arg0, arg1, ...
                     .map(e -> e.getValue().isTextual()
                             ? "\"" + e.getValue().asText() + "\""
                             : e.getValue().toString())
@@ -149,9 +148,6 @@ public class LoggingChatModelListener implements ChatModelListener {
         if (input == null) {
             return null;
         }
-        return input
-                .replace("\r\n", "\\n")
-                .replace("\r", "\\n")
-                .replace("\n", "\\n");
+        return input.replace("\r\n", "\\n").replace("\r", "\\n").replace("\n", "\\n");
     }
 }

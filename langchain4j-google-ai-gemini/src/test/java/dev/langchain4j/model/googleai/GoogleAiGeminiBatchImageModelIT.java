@@ -36,7 +36,7 @@ class GoogleAiGeminiBatchImageModelIT {
 
         // then
         assertThat(response.isInProgress()).isTrue();
-        assertThat(response.batchId().value()).startsWith("batches/");
+        assertThat(response.batchId()).startsWith("batches/");
         assertThat(response.state()).isEqualTo(PENDING);
 
         // cleanup

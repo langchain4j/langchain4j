@@ -7,7 +7,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class BatchResponseTest {
-    private static final BatchId BATCH_NAME = new BatchId("batches/test-batch");
+    private static final String BATCH_NAME = "batches/test-batch";
 
     @Test
     void isIncomplete_shouldReturnTrue_whenStateIsPending() {

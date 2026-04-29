@@ -9,6 +9,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.batch.*;
+import dev.langchain4j.model.batch.BatchPagination;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart;
@@ -67,11 +68,11 @@ import org.slf4j.Logger;
  * BatchResponse<List<Response<Image>>> responses = model.createBatch(prompts);
  *
  * // Poll for completion
- * BatchName batchName = responses.batchName();
+ * String batchId = responses.batchId();
  * BatchResponse<List<Response<Image>>> result;
  * do {
  *     Thread.sleep(5000);
- *     result = model.retrieveBatchResults(batchName);
+ *     result = model.retrieveBatchResults(batchId);
  * } while (result.isIncomplete());
  *
  * // Process results
@@ -219,12 +220,12 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
      * <p>Polls the Gemini API to get the latest state of a previously created batch.
      * Clients should poll this method at intervals to check the operation status until completion.</p>
      *
-     * @param name the batch name obtained from {@link BatchImageModel#submit(BatchRequest)} or {@link #submit}
+     * @param batchId the batch id/name obtained from {@link BatchImageModel#submit(BatchRequest)} or {@link #submit}
      * @return a {@link BatchResponse} representing the current state of the batch operation
      */
     @Override
-    public BatchResponse<Response<@NonNull Image>> retrieve(BatchId name) {
-        return batchProcessor.retrieveBatchResults(name);
+    public BatchResponse<Response<@NonNull Image>> retrieve(String batchId) {
+        return batchProcessor.retrieveBatchResults(batchId);
     }
 
     /**
@@ -233,13 +234,13 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
      * <p>Cancellation is only possible for batches that are in PENDING or RUNNING state.
      * Batches that have already completed, failed, or been cancelled cannot be cancelled.</p>
      *
-     * @param name the batch name to cancel
+     * @param batchId the batch id/name to cancel
      * @throws dev.langchain4j.exception.HttpException if the batch cannot be cancelled
      *                                                 (e.g., already completed, already cancelled, or does not exist)
      */
     @Override
-    public void cancel(BatchId name) {
-        batchProcessor.cancelBatchJob(name);
+    public void cancel(String batchId) {
+        batchProcessor.cancelBatchJob(batchId);
     }
 
     /**
@@ -248,24 +249,19 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
      * <p>This removes the batch job record but does not cancel it if still running.
      * Use {@link #cancel} to cancel a running batch before deletion.</p>
      *
-     * @param name the batch name to delete
+     * @param batchId the batch id/name to delete
      * @throws RuntimeException if the batch job cannot be deleted or does not exist
      */
-    public void deleteBatchJob(BatchId name) {
-        batchProcessor.deleteBatchJob(name);
+    public void deleteBatchJob(String batchId) {
+        batchProcessor.deleteBatchJob(batchId);
     }
 
     /**
      * {@inheritDoc}
-     *
-     * @param pageSize  the maximum number of batch jobs to return; if {@code null}, uses server default
-     * @param pageToken token for retrieving a specific page from {@link BatchPage#nextPageToken()};
-     *                  if {@code null}, returns the first page
-     * @return a {@link BatchPage} containing batch responses and pagination information
      */
     @Override
-    public BatchPage<Response<@NonNull Image>> list(@Nullable Integer pageSize, @Nullable String pageToken) {
-        return batchProcessor.listBatchJobs(pageSize, pageToken);
+    public BatchPage<Response<@NonNull Image>> list(@Nullable BatchPagination batchPagination) {
+        return batchProcessor.listBatchJobs(batchPagination);
     }
 
     /**
