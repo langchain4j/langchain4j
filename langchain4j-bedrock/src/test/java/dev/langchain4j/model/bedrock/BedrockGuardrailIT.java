@@ -235,12 +235,12 @@ public class BedrockGuardrailIT {
         BedrockChatResponseMetadata metadata = (BedrockChatResponseMetadata) response.metadata();
         assertThat(metadata.guardrailAssessmentSummary()).isNotNull();
 
-        assertThat(metadata.guardrailAssessmentSummary().ouputAssessments()).isNotNull();
-        assertThat(metadata.guardrailAssessmentSummary().ouputAssessments()).isNotEmpty();
-        assertThat(metadata.guardrailAssessmentSummary().ouputAssessments().size())
+        assertThat(metadata.guardrailAssessmentSummary().outputAssessments()).isNotNull();
+        assertThat(metadata.guardrailAssessmentSummary().outputAssessments()).isNotEmpty();
+        assertThat(metadata.guardrailAssessmentSummary().outputAssessments().size())
                 .isEqualTo(1);
 
-        metadata.guardrailAssessmentSummary().ouputAssessments().stream()
+        metadata.guardrailAssessmentSummary().outputAssessments().stream()
                 .filter(i -> i.action() == GuardrailAssessment.Action.ANONYMIZED
                         && i.policy() == GuardrailAssessment.Policy.SENSITIVE
                         && i.name().equals("EMAIL"))
