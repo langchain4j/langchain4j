@@ -19,9 +19,9 @@ import org.jspecify.annotations.Nullable;
  *                      if present, it signifies more results are available. May be {@code null}
  *                      if no more pages exist.
  *
- * @see BatchChatModel#list(Integer, String)
- * @see BatchEmbeddingModel#list(Integer, String)
- * @see BatchImageModel#list(Integer, String)
+ * @see BatchChatModel#list(BatchPagination)
+ * @see BatchEmbeddingModel#list(BatchPagination)
+ * @see BatchImageModel#list(BatchPagination)
  * @see BatchResponse
  */
 @Experimental
