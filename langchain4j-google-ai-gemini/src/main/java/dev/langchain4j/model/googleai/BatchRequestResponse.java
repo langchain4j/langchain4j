@@ -161,7 +161,7 @@ public final class BatchRequestResponse {
          * Wrapper for an individual (successful) response OR error.
          *
          * @param response A successful Gemini response.
-         * @param error An error including message and code
+         * @param error    An error including message and code
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
         record InlinedResponseWrapper<RESP>(
@@ -193,12 +193,7 @@ public final class BatchRequestResponse {
         public record Status(
                 @JsonProperty("code") int code,
                 @JsonProperty("message") String message,
-                @JsonProperty("details") @Nullable List<Map<String, Object>> details) {
-
-            BatchError toGenericStatus() {
-                return new BatchError(code, message, details);
-            }
-        }
+                @JsonProperty("details") @Nullable List<Map<String, Object>> details) {}
     }
 
     /**

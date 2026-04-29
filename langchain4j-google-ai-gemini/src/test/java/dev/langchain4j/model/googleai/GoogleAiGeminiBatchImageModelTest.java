@@ -565,8 +565,7 @@ class GoogleAiGeminiBatchImageModelTest {
     @Nested
     class BatchImageSerialization {
 
-        private static final String IMAGE_PENDING_RESPONSE =
-                """
+        private static final String IMAGE_PENDING_RESPONSE = """
                 {
                   "name": "batches/image-test-123",
                   "metadata": {
@@ -579,8 +578,7 @@ class GoogleAiGeminiBatchImageModelTest {
                 }
                 """;
 
-        private static final String IMAGE_SUCCEEDED_RESPONSE =
-                """
+        private static final String IMAGE_SUCCEEDED_RESPONSE = """
                 {
                   "name": "batches/image-test-123",
                   "metadata": {
@@ -714,8 +712,7 @@ class GoogleAiGeminiBatchImageModelTest {
         @Test
         void should_deserialize_image_batch_response_with_error() {
             // given
-            String IMAGE_ERROR_RESPONSE =
-                    """
+            String IMAGE_ERROR_RESPONSE = """
             {
               "name": "batches/image-test-123",
               "metadata": {

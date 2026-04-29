@@ -1130,8 +1130,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
     @Nested
     class BatchEmbeddingSerialization {
 
-        private static final String EMBEDDING_PENDING_RESPONSE =
-                """
+        private static final String EMBEDDING_PENDING_RESPONSE = """
                         {
                           "name": "batches/embed-test-123",
                           "metadata": {
@@ -1144,8 +1143,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
                         }
                         """;
 
-        private static final String EMBEDDING_SUCCEEDED_RESPONSE =
-                """
+        private static final String EMBEDDING_SUCCEEDED_RESPONSE = """
                         {
                           "name": "batches/embed-test-123",
                           "metadata": {
@@ -1183,8 +1181,7 @@ class GoogleAiGeminiBatchEmbeddingModelTest {
         @Test
         void should_deserialize_embedding_batch_response_with_error() {
             // given
-            String EMBEDDING_ERROR_RESPONSE =
-                    """
+            String EMBEDDING_ERROR_RESPONSE = """
                             {
                               "name": "batches/embed-test-123",
                               "metadata": {

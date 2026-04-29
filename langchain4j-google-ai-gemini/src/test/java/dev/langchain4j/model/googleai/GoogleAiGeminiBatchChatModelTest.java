@@ -1013,8 +1013,7 @@ class GoogleAiGeminiBatchChatModelTest {
 
     @Nested
     class BatchChatSerialization {
-        private static final String PENDING_RESPONSE =
-                """
+        private static final String PENDING_RESPONSE = """
                         {
                           "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac",
                           "metadata": {
@@ -1133,8 +1132,7 @@ class GoogleAiGeminiBatchChatModelTest {
                         }
                         """;
 
-        private String ERROR_RESPONSE =
-                """
+        private String ERROR_RESPONSE = """
                         {
                           "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac",
                           "metadata": {
