@@ -348,34 +348,49 @@ public class OpenAiUtils {
     }
 
     public static AiMessage aiMessageFrom(ChatCompletionResponse response, boolean returnThinking) {
-        AssistantMessage assistantMessage = response.choices().get(0).message();
+        List<ChatChoice> choices = response.choices();
 
-        String refusal = assistantMessage.refusal();
-        if (isNotNullOrBlank(refusal)) {
-            throw new ContentFilteredException(refusal);
+        if (isNullOrEmpty(choices)) {
+            throw new IllegalArgumentException("Chat completion returned no choices");
         }
 
-        String content = assistantMessage.content();
-
+        String content = null;
         String reasoningContent = null;
-        if (returnThinking) {
-            reasoningContent = assistantMessage.reasoningContent();
-        }
+        List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
 
-        List<ToolExecutionRequest> toolExecutionRequests =
-                getOrDefault(assistantMessage.toolCalls(), List.of()).stream()
-                        .filter(toolCall -> toolCall.type() == FUNCTION)
-                        .map(OpenAiUtils::toToolExecutionRequest)
-                        .collect(toList());
+        for (ChatChoice choice : choices) {
+            AssistantMessage assistantMessage = choice.message();
 
-        // legacy
-        FunctionCall functionCall = assistantMessage.functionCall();
-        if (functionCall != null) {
-            ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                    .name(functionCall.name())
-                    .arguments(functionCall.arguments())
-                    .build();
-            toolExecutionRequests.add(toolExecutionRequest);
+            String refusal = assistantMessage.refusal();
+            if (isNotNullOrBlank(refusal)) {
+                throw new ContentFilteredException(refusal);
+            }
+
+            // take the first non-null text content
+            if (content == null && isNotNullOrBlank(assistantMessage.content())) {
+                content = assistantMessage.content();
+            }
+
+            if (returnThinking && reasoningContent == null) {
+                reasoningContent = assistantMessage.reasoningContent();
+            }
+
+            // collect tool calls from all choices
+            List<ToolExecutionRequest> toolCalls =
+                    getOrDefault(assistantMessage.toolCalls(), List.of()).stream()
+                            .filter(toolCall -> toolCall.type() == FUNCTION)
+                            .map(OpenAiUtils::toToolExecutionRequest)
+                            .collect(toList());
+            toolExecutionRequests.addAll(toolCalls);
+
+            // legacy function call
+            FunctionCall functionCall = assistantMessage.functionCall();
+            if (functionCall != null) {
+                toolExecutionRequests.add(ToolExecutionRequest.builder()
+                        .name(functionCall.name())
+                        .arguments(functionCall.arguments())
+                        .build());
+            }
         }
 
         return AiMessage.builder()
