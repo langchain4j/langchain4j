@@ -20,6 +20,11 @@ public class GuardrailAssessmentSummary {
         return outputAssessments;
     }
 
+    @Deprecated
+    public List<GuardrailAssessment> ouputAssessments() {
+        return outputAssessments();
+    }
+
     public boolean hasAssessments() {
         return (inputAssessments != null && !inputAssessments.isEmpty())
                 || (outputAssessments != null && !outputAssessments.isEmpty());
@@ -62,6 +67,11 @@ public class GuardrailAssessmentSummary {
         public Builder outputAssessments(List<GuardrailAssessment> outputAssessments) {
             this.outputAssessments = outputAssessments;
             return this;
+        }
+
+        @Deprecated
+        public Builder ouputAssessments(List<GuardrailAssessment> ouputAssessments) {
+            return outputAssessments(ouputAssessments);
         }
 
         public GuardrailAssessmentSummary build() {
