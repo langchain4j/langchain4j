@@ -3,9 +3,12 @@ package dev.langchain4j.store.embedding.chroma;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.Utils;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Map;
+import java.util.function.Supplier;
 
 @Internal
 class ChromaClientV2 implements ChromaClient {
@@ -22,7 +25,9 @@ class ChromaClientV2 implements ChromaClient {
                 Utils.ensureTrailingForwardSlash(builder.baseUrl),
                 builder.timeout,
                 builder.logRequests,
-                builder.logResponses);
+                builder.logResponses,
+                builder.httpClientBuilder,
+                builder.customHeadersSupplier);
 
         this.chromaApi = new ChromaApiV2Impl(httpClient);
     }
@@ -31,6 +36,8 @@ class ChromaClientV2 implements ChromaClient {
 
         private String baseUrl;
         private Duration timeout;
+        private HttpClientBuilder httpClientBuilder;
+        private Supplier<Map<String, String>> customHeadersSupplier;
         private boolean logRequests;
         private boolean logResponses;
         private String tenantName;
@@ -43,6 +50,16 @@ class ChromaClientV2 implements ChromaClient {
 
         public Builder timeout(Duration timeout) {
             this.timeout = timeout;
+            return this;
+        }
+
+        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        public Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 
