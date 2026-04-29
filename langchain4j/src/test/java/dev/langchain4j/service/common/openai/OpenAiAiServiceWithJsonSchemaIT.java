@@ -393,4 +393,46 @@ class OpenAiAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT 
                         .build());
         verify(model).supportedCapabilities();
     }
+
+    sealed interface ArithmeticExpression permits Constant, Addition {}
+
+    record Constant(int value) implements ArithmeticExpression {}
+
+    record Addition(ArithmeticExpression left, ArithmeticExpression right) implements ArithmeticExpression {}
+
+    interface ExpressionExtractor {
+        ArithmeticExpression extractFrom(String text);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_extract_recursive_polymorphic_type(ChatModel model) {
+
+        // given
+        ExpressionExtractor extractor = AiServices.create(ExpressionExtractor.class, model);
+
+        // when — the schema for ArithmeticExpression contains `$ref` back to itself; this verifies
+        // that the recursive schema is accepted by OpenAI and that the parser can handle a tree
+        // returned by the model.
+        ArithmeticExpression expression = extractor.extractFrom(
+                "Represent the literal expression 1+2+3 as a syntax tree. Do NOT simplify or evaluate. "
+                        + "Use a left-associative tree: Addition(Addition(Constant(1), Constant(2)), Constant(3)).");
+
+        // then — at minimum, dispatch worked and the result is a valid expression with leaves
+        // drawn from {1, 2, 3}. (Whether the LLM produces a deep or shallow tree depends on the
+        // model's strict-mode behavior.)
+        assertThat(expression).isInstanceOf(Addition.class);
+        List<Integer> leaves = new java.util.ArrayList<>();
+        collectLeaves(expression, leaves);
+        assertThat(leaves).isNotEmpty().allSatisfy(v -> assertThat(v).isIn(1, 2, 3));
+    }
+
+    private static void collectLeaves(ArithmeticExpression expr, List<Integer> leaves) {
+        if (expr instanceof Constant c) {
+            leaves.add(c.value());
+        } else if (expr instanceof Addition a) {
+            collectLeaves(a.left(), leaves);
+            collectLeaves(a.right(), leaves);
+        }
+    }
 }

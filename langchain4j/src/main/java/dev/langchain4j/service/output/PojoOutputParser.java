@@ -10,10 +10,13 @@ import static java.lang.String.format;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import dev.langchain4j.Internal;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.JsonSchemaElementUtils.VisitedClassMetadata;
 import dev.langchain4j.internal.PolymorphicTypes;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.output.structured.Description;
@@ -95,19 +98,56 @@ class PojoOutputParser<T> implements OutputParser<T> {
     public Optional<JsonSchema> jsonSchema() {
         JsonSchemaElement rootElement;
         if (PolymorphicTypes.isPolymorphic(type)) {
-            JsonAnyOfSchema anyOf = polymorphicSchemaFrom(type, null, false, new LinkedHashMap<>());
-            rootElement = JsonObjectSchema.builder()
-                    .addProperty("value", anyOf)
-                    .required("value")
-                    .build();
+            Map<Class<?>, VisitedClassMetadata> visited = new LinkedHashMap<>();
+            JsonSchemaElement anyOf = polymorphicSchemaFrom(type, null, false, visited);
+            rootElement = wrapPolymorphic("value", referenceIfRecursive(anyOf, type, visited), visited);
         } else {
             rootElement = jsonObjectOrReferenceSchemaFrom(type, null, false, new LinkedHashMap<>(), true);
+            // Detect a useless empty-object schema: this happens when the user used an interface
+            // or abstract class as a return type without making it sealed or annotating it with
+            // @JsonSubTypes. Fail fast with a clear remediation message.
+            if (rootElement instanceof JsonObjectSchema obj
+                    && (obj.properties() == null || obj.properties().isEmpty())
+                    && java.lang.reflect.Modifier.isAbstract(type.getModifiers())) {
+                throw new UnsupportedFeatureException(String.format(
+                        "Type %s is an interface or abstract class with no permitted subtypes discoverable "
+                                + "by langchain4j, which produced an empty JSON schema. To use it as a "
+                                + "polymorphic return type, either make it sealed or annotate it with "
+                                + "@JsonSubTypes.",
+                        type.getName()));
+            }
         }
         JsonSchema jsonSchema = JsonSchema.builder()
                 .name(type.getSimpleName())
                 .rootElement(rootElement)
                 .build();
         return Optional.of(jsonSchema);
+    }
+
+    static JsonSchemaElement referenceIfRecursive(
+            JsonSchemaElement element, Class<?> baseType, Map<Class<?>, VisitedClassMetadata> visited) {
+        VisitedClassMetadata metadata = visited.get(baseType);
+        if (metadata != null && metadata.recursionDetected && element instanceof JsonAnyOfSchema) {
+            return JsonReferenceSchema.builder().reference(metadata.reference).build();
+        }
+        return element;
+    }
+
+    static JsonObjectSchema wrapPolymorphic(
+            String propertyName, JsonSchemaElement element, Map<Class<?>, VisitedClassMetadata> visited) {
+        JsonObjectSchema.Builder builder = JsonObjectSchema.builder()
+                .addProperty(propertyName, element)
+                .required(propertyName);
+        Map<String, JsonSchemaElement> definitions = new LinkedHashMap<>();
+        visited.forEach((clazz, meta) -> {
+            if (meta.recursionDetected) {
+                definitions.put(meta.reference, meta.jsonSchemaElement);
+            }
+        });
+        if (!definitions.isEmpty()) {
+            builder.definitions(definitions);
+        }
+        return builder.build();
     }
 
     @Override

@@ -683,7 +683,7 @@ class names.
 | Attribute | Supported values |
 |---|---|
 | `use` | `Id.NAME`, `Id.SIMPLE_NAME` |
-| `include` | `As.PROPERTY` (default) |
+| `include` | `As.PROPERTY` (default), `As.EXISTING_PROPERTY` |
 | `property` | Any explicit value; defaults to `"@type"` when blank |
 | `defaultImpl` | Any concrete subclass — used when the LLM's discriminator is missing or unknown |
 | `visible` | `true` keeps the discriminator field on the deserialized bean (and bypasses the field-collision check) |
@@ -729,10 +729,13 @@ When `@Description` is omitted, descriptions fall back to the simple class name
 **Discriminator field collisions:**
 
 If a subtype declares a field with the same name as the discriminator (e.g., a `type` field
-on a sealed-only base), schema generation fails with a clear message. The fix options are
-to rename the field, choose a different discriminator name with
-`@JsonTypeInfo(property = "...")`, or set `@JsonTypeInfo(visible = true)` if the field is
-intentionally part of the subtype.
+on a sealed-only base), schema generation fails with a clear message. Fix options:
+
+- Rename the field, or
+- Choose a different discriminator name with `@JsonTypeInfo(property = "...")`, or
+- Set `@JsonTypeInfo(visible = true)` if the field is intentionally part of the subtype, or
+- Use `@JsonTypeInfo(include = As.EXISTING_PROPERTY)` when the field on the subtype is the
+  source of truth for the discriminator.
 
 #### Limitations
 

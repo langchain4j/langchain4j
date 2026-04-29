@@ -93,23 +93,49 @@ public class JsonSchemaElementUtils {
         return jsonObjectOrReferenceSchemaFrom(clazz, fieldDescription, areSubFieldsRequiredByDefault, visited, false);
     }
 
-    public static JsonAnyOfSchema polymorphicSchemaFrom(
+    public static JsonSchemaElement polymorphicSchemaFrom(
             Class<?> baseType,
             String description,
             boolean areSubFieldsRequiredByDefault,
             Map<Class<?>, VisitedClassMetadata> visited) {
         PolymorphicTypes.verifyJsonTypeInfoIsSupported(baseType);
+
+        // If we've already generated the anyOf for this base type during this traversal, emit a
+        // $ref instead of re-inlining the same anyOf and all its subtypes. This keeps recursive
+        // schemas compact (the body lives once in $defs).
+        if (visited.containsKey(baseType)) {
+            VisitedClassMetadata metadata = visited.get(baseType);
+            metadata.recursionDetected = true;
+            return JsonReferenceSchema.builder().reference(metadata.reference).build();
+        }
+
+        String reference = generateUUIDFrom(baseType.getName());
+        VisitedClassMetadata metadata =
+                new VisitedClassMetadata(JsonReferenceSchema.builder().reference(reference).build(), reference, false);
+        visited.put(baseType, metadata);
+
         String discriminatorProperty = PolymorphicTypes.discriminatorPropertyName(baseType);
         List<JsonSchemaElement> options = new ArrayList<>();
         for (Class<?> subtype : PolymorphicTypes.findConcreteSubtypes(baseType)) {
             JsonSchemaElement subtypeSchema = jsonObjectOrReferenceSchemaFrom(
                     subtype, null, areSubFieldsRequiredByDefault, visited, false);
-            options.add(addDiscriminator(subtypeSchema, baseType, subtype, discriminatorProperty));
+            JsonSchemaElement withDiscriminator =
+                    addDiscriminator(subtypeSchema, baseType, subtype, discriminatorProperty);
+            options.add(withDiscriminator);
+            // Replace the version cached in `visited` (built without the discriminator) with the
+            // augmented one, so any recursive `$ref` to this subtype resolves to a schema that
+            // still constrains the discriminator property.
+            VisitedClassMetadata subtypeMetadata = visited.get(subtype);
+            if (subtypeMetadata != null) {
+                subtypeMetadata.jsonSchemaElement = withDiscriminator;
+            }
         }
-        return JsonAnyOfSchema.builder()
+        JsonAnyOfSchema anyOf = JsonAnyOfSchema.builder()
                 .description(firstNonNull(description, descriptionFrom(baseType), baseType.getSimpleName()))
                 .anyOf(options)
                 .build();
+        metadata.jsonSchemaElement = anyOf;
+        return anyOf;
     }
 
     private static String firstNonNull(String... values) {
@@ -125,16 +151,33 @@ public class JsonSchemaElementUtils {
             return subtypeSchema;
         }
 
+        // Idempotency: when polymorphic recursion happens, the subtype schema may already carry
+        // our injected discriminator from a prior call. Detect that and skip re-augmentation.
+        JsonSchemaElement existing = obj.properties() == null ? null : obj.properties().get(discriminatorProperty);
+        String expectedDiscriminatorValue = PolymorphicTypes.discriminatorValue(baseType, subtype);
+        if (existing instanceof JsonEnumSchema enumSchema
+                && enumSchema.enumValues() != null
+                && enumSchema.enumValues().size() == 1
+                && expectedDiscriminatorValue.equals(enumSchema.enumValues().get(0))) {
+            return obj;
+        }
+
         if (obj.properties() != null && obj.properties().containsKey(discriminatorProperty)) {
             JsonTypeInfo info = baseType.getAnnotation(JsonTypeInfo.class);
-            // With @JsonTypeInfo(visible = true) the user expects the discriminator to be a real
-            // field on the subtype, so let it through; otherwise this is a silent shadowing risk.
-            if (info == null || !info.visible()) {
+            // The user expects the discriminator to be a real field on the subtype when:
+            //   - @JsonTypeInfo(visible = true), or
+            //   - @JsonTypeInfo(include = As.EXISTING_PROPERTY).
+            // Otherwise this is a silent shadowing risk.
+            boolean expectedAsRealField = info != null
+                    && (info.visible() || info.include() == JsonTypeInfo.As.EXISTING_PROPERTY);
+            if (!expectedAsRealField) {
                 throw new IllegalArgumentException(String.format(
                         "Polymorphic subtype %s declares a field named '%s', which collides with the discriminator "
                                 + "property used for %s. Either rename the field, specify a different discriminator "
-                                + "name with @JsonTypeInfo(property = \"...\") on %s, or set "
-                                + "@JsonTypeInfo(visible = true) if the field is intentionally part of the subtype.",
+                                + "name with @JsonTypeInfo(property = \"...\") on %s, set "
+                                + "@JsonTypeInfo(visible = true), or use "
+                                + "@JsonTypeInfo(include = As.EXISTING_PROPERTY) if the field is intentionally "
+                                + "part of the subtype.",
                         subtype.getName(),
                         discriminatorProperty,
                         baseType.getName(),

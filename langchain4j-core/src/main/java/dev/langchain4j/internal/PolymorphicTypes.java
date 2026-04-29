@@ -37,7 +37,7 @@ public class PolymorphicTypes {
      * generated schema and Jackson's deserialization.
      *
      * <p>Supported {@code use} values: {@code Id.NAME}, {@code Id.SIMPLE_NAME}.<br>
-     * Supported {@code include} value: {@code As.PROPERTY}.</p>
+     * Supported {@code include} values: {@code As.PROPERTY}, {@code As.EXISTING_PROPERTY}.</p>
      */
     public static void verifyJsonTypeInfoIsSupported(Class<?> baseType) {
         JsonTypeInfo ann = baseType.getAnnotation(JsonTypeInfo.class);
@@ -51,11 +51,12 @@ public class PolymorphicTypes {
                             + "Supported values: Id.NAME, Id.SIMPLE_NAME.",
                     use.name(), baseType.getName()));
         }
-        if (ann.include() != JsonTypeInfo.As.PROPERTY) {
+        JsonTypeInfo.As include = ann.include();
+        if (include != JsonTypeInfo.As.PROPERTY && include != JsonTypeInfo.As.EXISTING_PROPERTY) {
             throw new UnsupportedFeatureException(String.format(
                     "@JsonTypeInfo(include = As.%s) on %s is not supported for AI Service return types. "
-                            + "Supported value: As.PROPERTY.",
-                    ann.include().name(), baseType.getName()));
+                            + "Supported values: As.PROPERTY, As.EXISTING_PROPERTY.",
+                    include.name(), baseType.getName()));
         }
     }
 
