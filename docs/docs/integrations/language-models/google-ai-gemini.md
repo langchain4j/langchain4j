@@ -888,7 +888,7 @@ BatchResponse initialResponse = batchModel.createBatchInline(
     requests
 );
 
-// Extract the batch name for polling
+// Extract the batch Id for polling
 String batchId = switch (initialResponse) {
     case BatchIncomplete incomplete -> incomplete.batchId();
     case BatchSuccess success -> success.batchId();
@@ -1076,7 +1076,7 @@ BatchResponse response = batchModel.createBatchInline(
     requests
 );
 
-// Get batch name
+// Get batch id
 String batchId = switch (response) {
     case BatchIncomplete incomplete -> incomplete.batchId();
     case BatchSuccess success -> success.batchId();

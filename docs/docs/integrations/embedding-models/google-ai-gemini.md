@@ -208,7 +208,7 @@ BatchResponse<Embedding> response = batchModel.createBatchInline("My Batch", nul
 switch (response) {
     case BatchIncomplete incomplete -> {
         System.out.println("Batch is " + incomplete.state());
-        System.out.println("Batch name: " + incomplete.batchId().value());
+        System.out.println("Batch ID: " + incomplete.batchId());
     }
     case BatchSuccess success -> {
         System.out.println("Batch completed successfully!");
@@ -235,8 +235,8 @@ BatchResponse<Embedding> initialResponse = batchModel.createBatchInline(
     segments
 );
 
-// Extract the batch name for polling
-BatchName batchId = switch (initialResponse) {
+// Extract the batch Id for polling
+String batchId = switch (initialResponse) {
     case BatchIncomplete incomplete -> incomplete.batchId();
     case BatchSuccess success -> success.batchId();
     case BatchError error -> throw new RuntimeException("Batch creation failed");
@@ -409,8 +409,8 @@ BatchResponse<Embedding> response = batchModel.createBatchInline(
     segments
 );
 
-// Get batch name
-BatchName batchId = switch (response) {
+// Get batch id 
+String batchId = switch (response) {
     case BatchIncomplete incomplete -> incomplete.batchId();
     case BatchSuccess success -> success.batchId();
     case BatchError error -> throw new RuntimeException("Failed: " + error.message());
