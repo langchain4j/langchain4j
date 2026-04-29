@@ -94,6 +94,13 @@ class VertexAiGeminiAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonS
     protected void should_extract_pojo_with_set_of_enums(ChatModel model) {
     }
 
+    @Disabled("Gemini cannot do it properly")
+    @Override
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_extract_pojo_with_uuid(ChatModel model) {
+    }
+
     @AfterEach
     void afterEach() throws InterruptedException {
         String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_VERTEX_AI_GEMINI");

@@ -10,7 +10,6 @@ import dev.langchain4j.service.tool.ToolService;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -51,17 +50,8 @@ public abstract class AbstractSkill implements Skill {
         List<ToolProvider> result = new ArrayList<>();
 
         if (!allTools.isEmpty()) {
-            Map<ToolSpecification, ToolExecutor> tools = new HashMap<>();
-            Set<String> immediateReturnToolNames = new HashSet<>();
-            for (AiServiceTool tool : allTools) {
-                tools.put(tool.toolSpecification(), tool.toolExecutor());
-                if (tool.immediateReturn()) {
-                    immediateReturnToolNames.add(tool.toolSpecification().name());
-                }
-            }
             ToolProviderResult staticResult = ToolProviderResult.builder()
-                    .addAll(tools)
-                    .immediateReturnToolNames(immediateReturnToolNames)
+                    .addAll(allTools)
                     .build();
             result.add(request -> staticResult);
         }

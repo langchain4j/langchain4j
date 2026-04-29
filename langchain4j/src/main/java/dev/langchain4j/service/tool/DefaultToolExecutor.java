@@ -2,11 +2,16 @@ package dev.langchain4j.service.tool;
 
 import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.Json;
@@ -21,6 +26,7 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -149,10 +155,33 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     private ToolExecutionResult execute(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
         Object result = methodToInvoke.invoke(object, arguments);
+
+        List<Content> resultContents = toContents(result);
+        if (resultContents != null) {
+            return ToolExecutionResult.builder()
+                    .result(result)
+                    .resultContents(resultContents)
+                    .build();
+        }
+
         return ToolExecutionResult.builder()
                 .result(result)
                 .resultTextSupplier(() -> toText(result))
                 .build();
+    }
+
+    private List<Content> toContents(Object result) {
+        if (result instanceof Image image) {
+            return List.of(ImageContent.from(image));
+        } else if (result instanceof Content content) {
+            return List.of(content);
+        } else if (result instanceof Collection<?> collection && !collection.isEmpty()
+                && collection.iterator().next() instanceof Content) {
+            return collection.stream().map(Content.class::cast).toList();
+        } else if (result instanceof Content[] array) {
+            return List.of(array);
+        }
+        return null;
     }
 
     private String toText(Object result) {
@@ -194,7 +223,7 @@ public class DefaultToolExecutor implements ToolExecutor {
                 continue;
             }
 
-            String parameterName = parameter.getName();
+            String parameterName = getName(parameter);
             Object argument = argumentsMap.get(parameterName);
             Class<?> parameterClass = parameter.getType();
             Type parameterType = parameter.getParameterizedType();
@@ -207,6 +236,14 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
 
         return arguments;
+    }
+
+    private static String getName(Parameter parameter) {
+        P pAnnotation = parameter.getAnnotation(P.class);
+        if (pAnnotation != null && isNotNullOrBlank(pAnnotation.name())) {
+            return pAnnotation.name();
+        }
+        return parameter.getName();
     }
 
     private static Type extractActualType(Type parameterType) {

@@ -52,17 +52,20 @@ public class InternalOpenAiOfficialTestHelper {
         // Set up OpenAI models if the environment variables are set
         if (System.getenv("OPENAI_API_KEY") != null) {
             OPEN_AI_CHAT_MODEL = OpenAiOfficialChatModel.builder()
+                    .baseUrl(System.getenv("OPENAI_BASE_URL"))
                     .apiKey(System.getenv("OPENAI_API_KEY"))
                     .modelName(CHAT_MODEL_NAME)
                     .build();
 
             OPEN_AI_CHAT_MODEL_WITH_STRICT_TOOLS = OpenAiOfficialChatModel.builder()
+                    .baseUrl(System.getenv("OPENAI_BASE_URL"))
                     .apiKey(System.getenv("OPENAI_API_KEY"))
                     .modelName(CHAT_MODEL_NAME)
                     .strictTools(true)
                     .build();
 
             OPEN_AI_CHAT_MODEL_JSON_WITHOUT_STRICT_SCHEMA = OpenAiOfficialChatModel.builder()
+                    .baseUrl(System.getenv("OPENAI_BASE_URL"))
                     .apiKey(System.getenv("OPENAI_API_KEY"))
                     .modelName(CHAT_MODEL_NAME)
                     .supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))
@@ -70,6 +73,7 @@ public class InternalOpenAiOfficialTestHelper {
                     .build();
 
             OPEN_AI_CHAT_MODEL_JSON_WITH_STRICT_SCHEMA = OpenAiOfficialChatModel.builder()
+                    .baseUrl(System.getenv("OPENAI_BASE_URL"))
                     .apiKey(System.getenv("OPENAI_API_KEY"))
                     .modelName(CHAT_MODEL_NAME)
                     .supportedCapabilities(Set.of(RESPONSE_FORMAT_JSON_SCHEMA))
@@ -77,16 +81,19 @@ public class InternalOpenAiOfficialTestHelper {
                     .build();
 
             OPEN_AI_STREAMING_CHAT_MODEL = OpenAiOfficialStreamingChatModel.builder()
+                    .baseUrl(System.getenv("OPENAI_BASE_URL"))
                     .apiKey(System.getenv("OPENAI_API_KEY"))
                     .modelName(CHAT_MODEL_NAME)
                     .build();
 
             OPEN_AI_EMBEDDING_MODEL = OpenAiOfficialEmbeddingModel.builder()
+                    .baseUrl(System.getenv("OPENAI_BASE_URL"))
                     .apiKey(System.getenv("OPENAI_API_KEY"))
                     .modelName(EMBEDDING_MODEL_NAME)
                     .build();
 
             OPEN_AI_IMAGE_MODEL = OpenAiOfficialImageModel.builder()
+                    .baseUrl(System.getenv("OPENAI_BASE_URL"))
                     .apiKey(System.getenv("OPENAI_API_KEY"))
                     .modelName(IMAGE_MODEL_NAME)
                     .build();

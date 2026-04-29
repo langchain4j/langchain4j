@@ -25,12 +25,16 @@ import static dev.langchain4j.internal.Utils.randomUUID;
 @EnabledIfEnvironmentVariable(named = "PINECONE_API_KEY", matches = ".+")
 class PineconeEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
-    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+    private static final String API_KEY = System.getenv("PINECONE_API_KEY");
+    private static final String INDEX = "test";
+    private final String namespace = randomUUID();
+
+    static EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
     EmbeddingStore<TextSegment> embeddingStore = PineconeEmbeddingStore.builder()
-            .apiKey(System.getenv("PINECONE_API_KEY"))
-            .index("test")
-            .nameSpace(randomUUID())
+            .apiKey(API_KEY)
+            .index(INDEX)
+            .nameSpace(namespace)
             .createIndex(PineconeServerlessIndexConfig.builder()
                     .cloud("AWS")
                     .region("us-east-1")
@@ -45,6 +49,7 @@ class PineconeEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         } catch (Exception e) {
             // ignore
         }
+        PineconeNamespaceHelper.deleteNamespace(API_KEY, INDEX, namespace);
     }
 
     @Override

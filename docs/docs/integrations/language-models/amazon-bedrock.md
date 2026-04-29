@@ -10,7 +10,7 @@ sidebar_position: 1
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-bedrock</artifactId>
-    <version>1.12.2</version>
+    <version>1.13.1</version>
 </dependency>
 ```
 
@@ -197,7 +197,7 @@ BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
         .build();
 
 ChatModel model = BedrockChatModel.builder()
-        .modelId("us.anthropic.claude-3-7-sonnet-20250219-v1:0")
+        .modelId("us.anthropic.claude-sonnet-4-6")
         .defaultRequestParameters(params)
         .build();
 
@@ -235,7 +235,7 @@ BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
         .build();
 
 ChatModel model = BedrockChatModel.builder()
-        .modelId("us.anthropic.claude-3-7-sonnet-20250219-v1:0")
+        .modelId("us.anthropic.claude-sonnet-4-6")
         .defaultRequestParameters(params)
         .build();
 ```

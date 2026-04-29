@@ -36,11 +36,13 @@ import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiFunctionRes
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 final class PartsAndContentsMapper {
 
@@ -348,10 +350,34 @@ final class PartsAndContentsMapper {
                             return new GeminiContent(
                                     userMessage.contents().stream()
                                             .map(content -> fromContentToGPart(content, mediaResolutionPerPartEnabled))
-                                            .toList(),
+                                            .collect(Collectors.toList()),
                                     GeminiRole.USER.toString());
                         case TOOL_EXECUTION_RESULT:
                             ToolExecutionResultMessage toolResultMessage = (ToolExecutionResultMessage) msg;
+
+                            if (!toolResultMessage.hasSingleText()) {
+                                List<GeminiContent.GeminiPart> toolParts = new ArrayList<>();
+                                Map<String, String> responseMap = new HashMap<>();
+                                for (dev.langchain4j.data.message.Content content : toolResultMessage.contents()) {
+                                    if (content instanceof TextContent textContent) {
+                                        responseMap.put("response", textContent.text());
+                                    } else if (content instanceof ImageContent imageContent) {
+                                        toolParts.add(fromContentToGPart(imageContent, mediaResolutionPerPartEnabled));
+                                    } else {
+                                        throw new UnsupportedFeatureException(
+                                                "Google AI Gemini does not support content type '"
+                                                        + content.type() + "' in tool results.");
+                                    }
+                                }
+                                if (responseMap.isEmpty()) {
+                                    responseMap.put("response", "");
+                                }
+                                toolParts.add(0, GeminiContent.GeminiPart.builder()
+                                        .functionResponse(new GeminiFunctionResponse(
+                                                toolResultMessage.toolName(), responseMap))
+                                        .build());
+                                return new GeminiContent(toolParts, GeminiRole.USER.toString());
+                            }
 
                             return new GeminiContent(
                                     List.of(GeminiContent.GeminiPart.builder()
@@ -365,7 +391,7 @@ final class PartsAndContentsMapper {
                     }
                 })
                 .filter(Objects::nonNull)
-                .toList();
+                .collect(Collectors.toList());
     }
 
     /**

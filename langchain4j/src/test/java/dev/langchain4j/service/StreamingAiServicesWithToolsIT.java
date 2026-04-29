@@ -29,6 +29,7 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -36,11 +37,13 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
@@ -1656,10 +1659,71 @@ class StreamingAiServicesWithToolsIT {
         verifyNoMoreInteractionsFor(spyModel);
     }
 
+    @Test
+    void should_send_ImageContent_to_LLM_when_tool_returns_Image() throws Exception {
+
+        // given
+        class ToolReturningImage {
+
+            @Tool("Takes a photo")
+            Image takePhoto() {
+                return Image.builder()
+                        .base64Data("iVBOR")
+                        .mimeType("image/png")
+                        .build();
+            }
+        }
+
+        ToolReturningImage tools = spy(new ToolReturningImage());
+
+        StreamingChatModel streamingModel = spy(StreamingChatModelMock.thatAlwaysStreams(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("takePhoto")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("I see a cat")
+        ));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatModel(streamingModel)
+                .tools(tools)
+                .build();
+
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+        // when
+        assistant.chat("Take a photo")
+                .onCompleteResponse(futureResponse::complete)
+                .onError(futureResponse::completeExceptionally)
+                .start();
+        ChatResponse response = futureResponse.get(30, SECONDS);
+
+        // then
+        assertThat(response.aiMessage().text()).contains("cat");
+        verify(tools).takePhoto();
+
+        verify(streamingModel, times(2)).chat(argThat((ChatRequest request) -> {
+            if (request.messages().size() < 3) {
+                return true; // first call
+            }
+            // second call should have ToolExecutionResultMessage with ImageContent
+            ToolExecutionResultMessage toolResult = request.messages().stream()
+                    .filter(ToolExecutionResultMessage.class::isInstance)
+                    .map(ToolExecutionResultMessage.class::cast)
+                    .findFirst()
+                    .orElse(null);
+            return toolResult != null
+                    && toolResult.contents().size() == 1
+                    && toolResult.contents().get(0) instanceof dev.langchain4j.data.message.ImageContent;
+        }), any());
+    }
+
     // TODO all other tests from sync version
 
     // TODO rename verifyNoMoreImportantInteractions
     private static void verifyNoMoreInteractionsFor(StreamingChatModel model) {
+        ignoreInteractions(model).chat(any(ChatRequest.class), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
         ignoreInteractions(model).doChat(any(), any());
         ignoreInteractions(model).defaultRequestParameters();
         ignoreInteractions(model).supportedCapabilities();

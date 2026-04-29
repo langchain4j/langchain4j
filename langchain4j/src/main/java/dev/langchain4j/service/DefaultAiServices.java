@@ -251,6 +251,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                             messages.add(userMessage);
                         }
 
+                        invocationContext = invocationContext.toBuilder()
+                                .userMessage(userMessage)
+                                .build();
+
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
                         ToolServiceContext toolServiceContext =

@@ -161,6 +161,19 @@ public class P2PPlanner implements Planner {
     }
 
     @Override
+    public Map<String, Object> executionState() {
+        return Map.of("invocationCounter", invocationCounter);
+    }
+
+    @Override
+    public void restoreExecutionState(Map<String, Object> state) {
+        Object savedCounter = state.get("invocationCounter");
+        if (savedCounter instanceof Number n) {
+            this.invocationCounter = n.intValue();
+        }
+    }
+
+    @Override
     public AgenticSystemTopology topology() {
         return AgenticSystemTopology.STAR;
     }

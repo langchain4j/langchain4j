@@ -6,12 +6,15 @@ import static java.util.stream.Collectors.joining;
 import static java.util.stream.StreamSupport.stream;
 
 import dev.langchain4j.Experimental;
+import java.nio.charset.MalformedInputException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Loads skills from the file system.
@@ -37,6 +40,8 @@ import java.util.stream.Stream;
  */
 @Experimental
 public class FileSystemSkillLoader {
+
+    private static final Logger log = LoggerFactory.getLogger(FileSystemSkillLoader.class);
 
     /**
      * Loads all skills found in immediate subdirectories of the given directory.
@@ -101,7 +106,7 @@ public class FileSystemSkillLoader {
                     .filter(path -> !skillDirectory.relativize(path).startsWith("scripts"))
                     .map(path -> {
                         try {
-                            String content = unchecked(() -> Files.readString(path));
+                            String content = Files.readString(path);
                             if (isNullOrBlank(content)) {
                                 return null;
                             }
@@ -113,6 +118,9 @@ public class FileSystemSkillLoader {
                                     .relativePath(relativePath)
                                     .content(content)
                                     .build();
+                        } catch (MalformedInputException e) {
+                            log.warn("Skipping binary file that cannot be read as UTF-8 text: {}", path);
+                            return null;
                         } catch (Exception e) {
                             throw new RuntimeException("Failed to load skill resource from " + path, e);
                         }

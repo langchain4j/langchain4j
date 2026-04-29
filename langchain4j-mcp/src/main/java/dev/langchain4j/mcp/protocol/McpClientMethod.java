@@ -26,5 +26,9 @@ public enum McpClientMethod {
     @JsonProperty("prompts/get")
     PROMPTS_GET,
     @JsonProperty("notifications/roots/list_changed")
-    NOTIFICATION_ROOTS_LIST_CHANGED
+    NOTIFICATION_ROOTS_LIST_CHANGED,
+    @JsonProperty("resources/subscribe")
+    RESOURCES_SUBSCRIBE,
+    @JsonProperty("resources/unsubscribe")
+    RESOURCES_UNSUBSCRIBE
 }

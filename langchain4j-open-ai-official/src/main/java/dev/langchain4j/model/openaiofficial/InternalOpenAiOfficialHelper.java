@@ -39,6 +39,7 @@ import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -117,6 +118,11 @@ class InternalOpenAiOfficialHelper {
         }
 
         if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+            if (!toolExecutionResultMessage.hasSingleText()) {
+                throw new UnsupportedFeatureException(
+                        "OpenAI Chat Completions API does not support non-text content in tool results. "
+                                + "Only text content is supported.");
+            }
             return ChatCompletionMessageParam.ofTool(ChatCompletionToolMessageParam.builder()
                     .toolCallId(toolExecutionResultMessage.id())
                     .content(toolExecutionResultMessage.text())
@@ -161,6 +167,24 @@ class InternalOpenAiOfficialHelper {
                                         .build())
                                 .build()
                                 .inputAudio())
+                        .build()));
+            } else if (content instanceof PdfFileContent pdfFileContent) {
+                if (pdfFileContent.pdfFile().url() != null) {
+                    throw new UnsupportedFeatureException(
+                            "OpenAI Official Chat Completions API does not support URL-based PDF inputs. "
+                                    + "Provide PDF content as base64 data instead.");
+                }
+
+                String fileData = String.format(
+                        "data:%s;base64,%s",
+                        pdfFileContent.pdfFile().mimeType(),
+                        pdfFileContent.pdfFile().base64Data());
+
+                parts.add(ChatCompletionContentPart.ofFile(ChatCompletionContentPart.File.builder()
+                        .file(ChatCompletionContentPart.File.FileObject.builder()
+                                .fileData(fileData)
+                                .filename("pdf_file")
+                                .build())
                         .build()));
             } else {
                 throw illegalArgument("Unknown content type: " + content);

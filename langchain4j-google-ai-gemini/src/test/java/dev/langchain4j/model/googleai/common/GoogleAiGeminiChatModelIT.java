@@ -1,17 +1,20 @@
 package dev.langchain4j.model.googleai.common;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static org.assertj.core.api.Assertions.assertThat;
-
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatResponseMetadata;
+import dev.langchain4j.model.googleai.GoogleAiGeminiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
-import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
+import java.util.List;
+
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
@@ -31,7 +34,7 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
         return List.of(
                 GOOGLE_AI_GEMINI_CHAT_MODEL
                 // TODO add more model configs, see OpenAiChatModelIT
-                );
+        );
     }
 
     @Override
@@ -74,5 +77,27 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
     @Override
     protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(ChatModel model) {
         return GoogleAiGeminiChatResponseMetadata.class;
+    }
+
+    @Override
+    protected Class<? extends TokenUsage> tokenUsageType(ChatModel model) {
+        return GoogleAiGeminiTokenUsage.class;
+    }
+
+    @Override
+    protected void sleepIfNeeded() {
+        try {
+            sleep();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @AfterEach
+    void sleep() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }

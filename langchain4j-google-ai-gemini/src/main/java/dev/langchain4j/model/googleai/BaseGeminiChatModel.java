@@ -4,7 +4,7 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
-import static dev.langchain4j.model.googleai.FunctionMapper.fromToolSepcsToGTool;
+import static dev.langchain4j.model.googleai.FunctionMapper.fromToolSpecsToGTools;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
 import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
@@ -54,6 +54,7 @@ class BaseGeminiChatModel {
     protected final Boolean enableEnhancedCivicAnswers;
     protected final GeminiMediaResolutionLevel mediaResolution;
     protected final boolean mediaResolutionPerPartEnabled;
+    protected final GeminiGenerationConfig.GeminiImageConfig imageConfig;
 
     protected final ChatRequestParameters defaultRequestParameters;
 
@@ -78,6 +79,7 @@ class BaseGeminiChatModel {
         this.logprobs = builder.logprobs;
         this.mediaResolution = builder.mediaResolution;
         this.mediaResolutionPerPartEnabled = getOrDefault(builder.mediaResolutionPerPartEnabled, false);
+        this.imageConfig = buildImageConfig(builder.aspectRatio, builder.imageSize);
 
         ChatRequestParameters parameters;
         if (builder.defaultRequestParameters != null) {
@@ -154,9 +156,10 @@ class BaseGeminiChatModel {
                         .logprobs(logprobs)
                         .thinkingConfig(this.thinkingConfig)
                         .mediaResolution(this.mediaResolution)
+                        .imageConfig(this.imageConfig)
                         .build())
                 .safetySettings(this.safetySettings)
-                .tools(fromToolSepcsToGTool(
+                .tools(fromToolSpecsToGTools(
                         chatRequest.toolSpecifications(),
                         this.allowCodeExecution,
                         this.allowGoogleSearch,
@@ -217,8 +220,18 @@ class BaseGeminiChatModel {
         return switch (config.getMode()) {
             case AUTO -> ToolChoice.AUTO;
             case ANY -> ToolChoice.REQUIRED;
-            case NONE -> null;
+            case NONE, VALIDATED -> null;
         };
+    }
+
+    private static GeminiGenerationConfig.GeminiImageConfig buildImageConfig(String aspectRatio, String imageSize) {
+        if (aspectRatio == null && imageSize == null) {
+            return null;
+        }
+        return GeminiGenerationConfig.GeminiImageConfig.builder()
+                .aspectRatio(aspectRatio)
+                .imageSize(imageSize)
+                .build();
     }
 
     protected ChatResponse processResponse(GeminiGenerateContentResponse geminiResponse) {
@@ -258,8 +271,13 @@ class BaseGeminiChatModel {
     }
 
     protected TokenUsage createTokenUsage(GeminiUsageMetadata tokenCounts) {
-        return new TokenUsage(
-                tokenCounts.promptTokenCount(), tokenCounts.candidatesTokenCount(), tokenCounts.totalTokenCount());
+        return GoogleAiGeminiTokenUsage.builder()
+                .inputTokenCount(tokenCounts.promptTokenCount())
+                .outputTokenCount(tokenCounts.candidatesTokenCount())
+                .totalTokenCount(tokenCounts.totalTokenCount())
+                .cachedContentTokenCount(tokenCounts.cachedContentTokenCount())
+                .thoughtsTokenCount(tokenCounts.thoughtsTokenCount())
+                .build();
     }
 
     private UrlContextMetadata toUrlContextMetadata(
@@ -325,6 +343,8 @@ class BaseGeminiChatModel {
         protected List<ChatModelListener> listeners;
         protected GeminiMediaResolutionLevel mediaResolution;
         protected Boolean mediaResolutionPerPartEnabled;
+        protected String aspectRatio;
+        protected String imageSize;
 
         @SuppressWarnings("unchecked")
         protected B builder() {
@@ -696,6 +716,31 @@ class BaseGeminiChatModel {
          */
         public B mediaResolutionPerPartEnabled(Boolean mediaResolutionPerPartEnabled) {
             this.mediaResolutionPerPartEnabled = mediaResolutionPerPartEnabled;
+            return builder();
+        }
+
+        /**
+         * Sets the target aspect ratio for generated images.
+         * This is serialized to {@code generationConfig.imageConfig.aspectRatio}.
+         */
+        public B aspectRatio(String aspectRatio) {
+            this.aspectRatio = aspectRatio;
+            return builder();
+        }
+
+        /**
+         * Alias for {@link #aspectRatio(String)}.
+         */
+        public B imageAspectRatio(String imageAspectRatio) {
+            return aspectRatio(imageAspectRatio);
+        }
+
+        /**
+         * Sets the target image size for generated images.
+         * This is serialized to {@code generationConfig.imageConfig.imageSize}.
+         */
+        public B imageSize(String imageSize) {
+            this.imageSize = imageSize;
             return builder();
         }
     }

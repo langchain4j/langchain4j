@@ -1,7 +1,7 @@
 package dev.langchain4j.model.watsonx.it;
 
 import com.ibm.watsonx.ai.detection.detector.Hap;
-import dev.langchain4j.exception.AuthenticationException;
+import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.moderation.common.AbstractModerationModelListenerIT;
 import dev.langchain4j.model.moderation.listener.ModerationModelListener;
@@ -42,6 +42,6 @@ public class WatsonxModerationModelListenerIT extends AbstractModerationModelLis
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return AuthenticationException.class;
+        return LangChain4jException.class;
     }
 }
