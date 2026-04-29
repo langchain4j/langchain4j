@@ -1,17 +1,20 @@
 package dev.langchain4j.service.output;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.internal.PolymorphicTypes;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonObjectOrReferenceSchemaFrom;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.polymorphicSchemaFrom;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
 
 @Internal
@@ -40,11 +43,14 @@ abstract class PojoCollectionOutputParser<T, CT extends Collection<T>> implement
 
     @Override
     public Optional<JsonSchema> jsonSchema() {
+        JsonSchemaElement itemSchema = PolymorphicTypes.isPolymorphic(type)
+                ? polymorphicSchemaFrom(type, null, false, new LinkedHashMap<>())
+                : jsonObjectOrReferenceSchemaFrom(type, null, false, new LinkedHashMap<>(), true);
         JsonSchema jsonSchema = JsonSchema.builder()
                 .name(collectionType().getSimpleName() + "_of_" + type.getSimpleName())
                 .rootElement(JsonObjectSchema.builder()
                         .addProperty("values", JsonArraySchema.builder()
-                                .items(jsonObjectOrReferenceSchemaFrom(type, null, false, new LinkedHashMap<>(), true))
+                                .items(itemSchema)
                                 .build())
                         .required("values")
                         .build())

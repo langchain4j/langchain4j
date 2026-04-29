@@ -2,13 +2,20 @@ package dev.langchain4j.service.output;
 
 import static dev.langchain4j.internal.JsonParsingUtils.extractAndParseJson;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonObjectOrReferenceSchemaFrom;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.polymorphicSchemaFrom;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.output.ParsingUtils.outputParsingException;
 import static java.lang.String.format;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import dev.langchain4j.Internal;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.PolymorphicTypes;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.output.structured.Description;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
@@ -17,6 +24,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -36,17 +44,68 @@ class PojoOutputParser<T> implements OutputParser<T> {
         }
 
         try {
+            if (PolymorphicTypes.isPolymorphic(type)) {
+                return parsePolymorphic(text);
+            }
             return extractAndParseJson(text, type).value();
         } catch (Exception e) {
             throw outputParsingException(text, type.getTypeName(), e);
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private T parsePolymorphic(String text) throws Exception {
+        Map<String, Object> map = (Map<String, Object>) extractAndParseJson(text, Map.class).value();
+        Object payload = unwrapValueEnvelope(map);
+        if (!(payload instanceof Map)) {
+            throw outputParsingException(text, type);
+        }
+        return type.cast(deserializePolymorphic(type, (Map<String, Object>) payload));
+    }
+
+    static Object unwrapValueEnvelope(Map<String, Object> map) {
+        if (map != null && map.size() == 1 && map.containsKey("value")) {
+            return map.get("value");
+        }
+        return map;
+    }
+
+    static <T> T deserializePolymorphic(Class<T> baseType, Map<String, Object> payload) {
+        PolymorphicTypes.verifyJsonTypeInfoIsSupported(baseType);
+
+        // For @JsonTypeInfo with defaultImpl, pre-strip a missing or unknown discriminator so
+        // Jackson falls back to defaultImpl without tripping FAIL_ON_UNKNOWN_PROPERTIES on the
+        // unrecognized type id field. Sealed dispatch is handled by Jackson's BeanDeserializerModifier;
+        // Jackson-annotated dispatch is handled natively.
+        JsonTypeInfo info = baseType.getAnnotation(JsonTypeInfo.class);
+        if (info != null && info.defaultImpl() != JsonTypeInfo.None.class && info.defaultImpl() != Void.class) {
+            String discriminatorProperty = PolymorphicTypes.discriminatorPropertyName(baseType);
+            Object discriminatorValue = payload.get(discriminatorProperty);
+            if (discriminatorValue == null
+                    || PolymorphicTypes.findSubtypeByDiscriminator(baseType, discriminatorValue.toString()) == null) {
+                Map<String, Object> stripped = new LinkedHashMap<>(payload);
+                stripped.remove(discriminatorProperty);
+                payload = stripped;
+            }
+        }
+        return Json.fromJson(Json.toJson(payload), baseType);
+    }
+
     @Override
     public Optional<JsonSchema> jsonSchema() {
+        JsonSchemaElement rootElement;
+        if (PolymorphicTypes.isPolymorphic(type)) {
+            JsonAnyOfSchema anyOf = polymorphicSchemaFrom(type, null, false, new LinkedHashMap<>());
+            rootElement = JsonObjectSchema.builder()
+                    .addProperty("value", anyOf)
+                    .required("value")
+                    .build();
+        } else {
+            rootElement = jsonObjectOrReferenceSchemaFrom(type, null, false, new LinkedHashMap<>(), true);
+        }
         JsonSchema jsonSchema = JsonSchema.builder()
                 .name(type.getSimpleName())
-                .rootElement(jsonObjectOrReferenceSchemaFrom(type, null, false, new LinkedHashMap<>(), true))
+                .rootElement(rootElement)
                 .build();
         return Optional.of(jsonSchema);
     }

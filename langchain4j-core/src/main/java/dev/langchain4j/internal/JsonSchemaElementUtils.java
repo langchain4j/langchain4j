@@ -5,6 +5,7 @@ import static java.lang.reflect.Modifier.isStatic;
 import static java.util.Arrays.stream;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -85,7 +86,86 @@ public class JsonSchemaElementUtils {
                     .build();
         }
 
+        if (PolymorphicTypes.isPolymorphic(clazz)) {
+            return polymorphicSchemaFrom(clazz, fieldDescription, areSubFieldsRequiredByDefault, visited);
+        }
+
         return jsonObjectOrReferenceSchemaFrom(clazz, fieldDescription, areSubFieldsRequiredByDefault, visited, false);
+    }
+
+    public static JsonAnyOfSchema polymorphicSchemaFrom(
+            Class<?> baseType,
+            String description,
+            boolean areSubFieldsRequiredByDefault,
+            Map<Class<?>, VisitedClassMetadata> visited) {
+        PolymorphicTypes.verifyJsonTypeInfoIsSupported(baseType);
+        String discriminatorProperty = PolymorphicTypes.discriminatorPropertyName(baseType);
+        List<JsonSchemaElement> options = new ArrayList<>();
+        for (Class<?> subtype : PolymorphicTypes.findConcreteSubtypes(baseType)) {
+            JsonSchemaElement subtypeSchema = jsonObjectOrReferenceSchemaFrom(
+                    subtype, null, areSubFieldsRequiredByDefault, visited, false);
+            options.add(addDiscriminator(subtypeSchema, baseType, subtype, discriminatorProperty));
+        }
+        return JsonAnyOfSchema.builder()
+                .description(firstNonNull(description, descriptionFrom(baseType), baseType.getSimpleName()))
+                .anyOf(options)
+                .build();
+    }
+
+    private static String firstNonNull(String... values) {
+        for (String v : values) {
+            if (v != null) return v;
+        }
+        return null;
+    }
+
+    private static JsonSchemaElement addDiscriminator(
+            JsonSchemaElement subtypeSchema, Class<?> baseType, Class<?> subtype, String discriminatorProperty) {
+        if (!(subtypeSchema instanceof JsonObjectSchema obj)) {
+            return subtypeSchema;
+        }
+
+        if (obj.properties() != null && obj.properties().containsKey(discriminatorProperty)) {
+            JsonTypeInfo info = baseType.getAnnotation(JsonTypeInfo.class);
+            // With @JsonTypeInfo(visible = true) the user expects the discriminator to be a real
+            // field on the subtype, so let it through; otherwise this is a silent shadowing risk.
+            if (info == null || !info.visible()) {
+                throw new IllegalArgumentException(String.format(
+                        "Polymorphic subtype %s declares a field named '%s', which collides with the discriminator "
+                                + "property used for %s. Either rename the field, specify a different discriminator "
+                                + "name with @JsonTypeInfo(property = \"...\") on %s, or set "
+                                + "@JsonTypeInfo(visible = true) if the field is intentionally part of the subtype.",
+                        subtype.getName(),
+                        discriminatorProperty,
+                        baseType.getName(),
+                        baseType.getName()));
+            }
+        }
+
+        JsonEnumSchema discriminator = JsonEnumSchema.builder()
+                .enumValues(PolymorphicTypes.discriminatorValue(baseType, subtype))
+                .build();
+
+        Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
+        properties.put(discriminatorProperty, discriminator);
+        if (obj.properties() != null) {
+            obj.properties().forEach(properties::putIfAbsent);
+        }
+
+        List<String> required = new ArrayList<>();
+        required.add(discriminatorProperty);
+        if (obj.required() != null) {
+            obj.required().forEach(r -> {
+                if (!required.contains(r)) required.add(r);
+            });
+        }
+
+        return JsonObjectSchema.builder()
+                .description(Optional.ofNullable(obj.description()).orElse(subtype.getSimpleName()))
+                .addProperties(properties)
+                .required(required)
+                .additionalProperties(obj.additionalProperties())
+                .build();
     }
 
     public static JsonSchemaElement jsonObjectOrReferenceSchemaFrom(

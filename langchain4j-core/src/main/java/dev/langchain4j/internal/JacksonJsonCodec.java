@@ -9,16 +9,21 @@ import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.BeanDescription;
+import com.fasterxml.jackson.databind.DeserializationConfig;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.deser.BeanDeserializerModifier;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import dev.langchain4j.Internal;
 import java.io.IOException;
@@ -125,6 +130,23 @@ class JacksonJsonCodec implements Json.JsonCodec {
             }
         });
 
+        // Dispatcher for sealed interfaces/classes that carry no @JsonTypeInfo. This lets such
+        // types appear as fields nested in other beans (Jackson can't otherwise instantiate them).
+        // Top-level dispatch is still done by ServiceOutputParser; this only kicks in when Jackson
+        // encounters a sealed type during normal bean traversal.
+        module.setDeserializerModifier(new BeanDeserializerModifier() {
+            @Override
+            public JsonDeserializer<?> modifyDeserializer(
+                    DeserializationConfig config, BeanDescription beanDesc, JsonDeserializer<?> deserializer) {
+                Class<?> beanClass = beanDesc.getBeanClass();
+                if (beanClass.getAnnotation(JsonTypeInfo.class) == null
+                        && PolymorphicTypes.isPolymorphic(beanClass)) {
+                    return new SealedPolymorphicDeserializer(beanClass);
+                }
+                return deserializer;
+            }
+        });
+
         return JsonMapper.builder()
                 .visibility(FIELD, ANY)
                 .disable(INDENT_OUTPUT) // disabled on purpose to save tokens when sending tool results to LLM
@@ -133,6 +155,43 @@ class JacksonJsonCodec implements Json.JsonCodec {
                 .build()
                 .findAndRegisterModules()
                 .registerModule(module);
+    }
+
+    private static final class SealedPolymorphicDeserializer extends JsonDeserializer<Object> {
+
+        private final Class<?> baseType;
+        private final String discriminatorProperty;
+
+        SealedPolymorphicDeserializer(Class<?> baseType) {
+            this.baseType = baseType;
+            this.discriminatorProperty = PolymorphicTypes.discriminatorPropertyName(baseType);
+        }
+
+        @Override
+        public Object deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+            JsonNode node = p.readValueAsTree();
+            if (!(node instanceof ObjectNode)) {
+                throw ctxt.weirdStringException(
+                        node.toString(), baseType, "expected an object for polymorphic type " + baseType.getName());
+            }
+            ObjectNode object = (ObjectNode) node;
+            JsonNode discriminator = object.get(discriminatorProperty);
+            if (discriminator == null || discriminator.isNull()) {
+                throw ctxt.instantiationException(
+                        baseType,
+                        "missing discriminator property '" + discriminatorProperty + "' for polymorphic type "
+                                + baseType.getName());
+            }
+            Class<?> subtype = PolymorphicTypes.findSubtypeByDiscriminator(baseType, discriminator.asText());
+            if (subtype == null) {
+                throw ctxt.instantiationException(
+                        baseType,
+                        "unknown discriminator value '" + discriminator.asText() + "' for polymorphic type "
+                                + baseType.getName());
+            }
+            object.remove(discriminatorProperty);
+            return p.getCodec().treeToValue(object, subtype);
+        }
     }
 
     /**

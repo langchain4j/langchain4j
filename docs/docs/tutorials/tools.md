@@ -369,6 +369,8 @@ Methods annotated with `@Tool` can accept any number of parameters of various ty
 - Object types: `String`, `Integer`, `Double`, etc
 - Custom POJOs (can contain nested POJOs)
 - `enum`s
+- Polymorphic types (sealed interfaces/classes or types annotated with Jackson
+  `@JsonSubTypes` / `@JsonTypeInfo`) — see [Polymorphic Tool Parameters](#polymorphic-tool-parameters)
 - `List<T>`/`Set<T>` where `T` is one of the above-mentioned types
 - `Map<K,V>` (you need to manually specify the types of `K` and `V` in the parameter description with `@P`)
 
@@ -445,6 +447,65 @@ all fields and sub-fields are considered **_optional_** by default.
 
 Recursive parameters (e.g., a `Person` class having a `Set<Person> children` field)
 are currently supported only by OpenAI.
+
+#### Polymorphic Tool Parameters
+
+A tool parameter can be a polymorphic type — a base type (sealed interface, sealed class,
+abstract class, or interface) whose concrete subtype is decided by the LLM at call time.
+The schema sent to the LLM contains an `anyOf` over the permitted subtypes, each with a
+discriminator property (defaulting to `"type"`) so the LLM can communicate which concrete
+type it produced; the framework deserializes the LLM's argument into the right subtype
+before invoking your tool method.
+
+This works for the polymorphic type as a parameter, for `List<T>` / `Set<T>` of polymorphic
+types, and for polymorphic types nested inside another POJO parameter.
+
+**Sealed interfaces and classes — no annotations needed:**
+
+```java
+sealed interface Animal permits Dog, Cat {}
+
+record Dog(String name, String breed) implements Animal {}
+
+record Cat(String name, boolean indoor) implements Animal {}
+
+class AnimalRegistry {
+
+    @Tool("Registers a single animal")
+    void registerAnimal(Animal animal) { /* dispatched to Dog or Cat */ }
+
+    @Tool("Registers a batch of animals")
+    void registerAnimals(List<Animal> animals) { /* mixed Dog / Cat */ }
+
+    @Tool("Registers an owner with their pet")
+    void registerOwner(Owner owner) { /* Owner.pet is dispatched */ }
+}
+
+record Owner(String name, Animal pet) {}
+```
+
+**Jackson `@JsonSubTypes` / `@JsonTypeInfo`** are also supported and let you decouple wire
+names from Java class names:
+
+```java
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "kind")
+@JsonSubTypes({
+    @JsonSubTypes.Type(value = Square.class, name = "square"),
+    @JsonSubTypes.Type(value = Circle.class, name = "circle")
+})
+interface Shape {}
+
+class ShapeRegistry {
+
+    @Tool("Registers a shape")
+    void registerShape(Shape shape) { /* dispatched to Square or Circle */ }
+}
+```
+
+The set of supported `@JsonTypeInfo` options, the discriminator-name resolution order,
+`defaultImpl` behavior, the `visible` flag, and field-collision detection are described in
+detail in [Polymorphic Types](/tutorials/structured-outputs#polymorphic-types) under
+Structured Outputs — they apply identically to tool parameters.
 
 ### Tool Method Return Types
 Methods annotated with `@Tool` can return any type, including `void`.
