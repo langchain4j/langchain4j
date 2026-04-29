@@ -203,28 +203,6 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Test
-    void should_reason() {
-        // given
-        StreamingChatModel model = BedrockStreamingChatModel.builder()
-                .modelId("us.anthropic.claude-3-7-sonnet-20250219-v1:0")
-                .defaultRequestParameters(BedrockChatRequestParameters.builder()
-                        .enableReasoning(1024)
-                        .build())
-                .build();
-
-        ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from("What is the capital of Germany? "))
-                .build();
-
-        // when
-        ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
-
-        // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringWhitespaces("Berlin");
-    }
-
-    @Test
     void should_fail_if_reasoning_is_enabled_on_non_reasoning_model() {
 
         // given

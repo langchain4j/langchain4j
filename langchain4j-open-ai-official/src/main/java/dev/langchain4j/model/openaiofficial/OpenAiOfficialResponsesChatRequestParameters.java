@@ -1,5 +1,8 @@
 package dev.langchain4j.model.openaiofficial;
 
+import com.openai.models.Reasoning;
+import com.openai.models.ReasoningEffort;
+import com.openai.models.responses.Tool;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
@@ -26,12 +29,14 @@ public class OpenAiOfficialResponsesChatRequestParameters extends DefaultChatReq
     private final String safetyIdentifier;
     private final String promptCacheKey;
     private final String promptCacheRetention;
-    private final String reasoningEffort;
+    private final ReasoningEffort reasoningEffort;
+    private final Reasoning.Summary reasoningSummary;
     private final String textVerbosity;
     private final Boolean streamIncludeObfuscation;
     private final Boolean store;
     private final Boolean strictTools;
     private final Boolean strictJsonSchema;
+    private final List<Tool> serverTools;
 
     private OpenAiOfficialResponsesChatRequestParameters(Builder builder) {
         super(builder);
@@ -46,11 +51,13 @@ public class OpenAiOfficialResponsesChatRequestParameters extends DefaultChatReq
         this.promptCacheKey = builder.promptCacheKey;
         this.promptCacheRetention = builder.promptCacheRetention;
         this.reasoningEffort = builder.reasoningEffort;
+        this.reasoningSummary = builder.reasoningSummary;
         this.textVerbosity = builder.textVerbosity;
         this.streamIncludeObfuscation = builder.streamIncludeObfuscation;
         this.store = builder.store;
         this.strictTools = builder.strictTools;
         this.strictJsonSchema = builder.strictJsonSchema;
+        this.serverTools = copy(builder.serverTools);
     }
 
     public String previousResponseId() {
@@ -93,8 +100,12 @@ public class OpenAiOfficialResponsesChatRequestParameters extends DefaultChatReq
         return promptCacheRetention;
     }
 
-    public String reasoningEffort() {
+    public ReasoningEffort reasoningEffort() {
         return reasoningEffort;
+    }
+
+    public Reasoning.Summary reasoningSummary() {
+        return reasoningSummary;
     }
 
     public String textVerbosity() {
@@ -115,6 +126,10 @@ public class OpenAiOfficialResponsesChatRequestParameters extends DefaultChatReq
 
     public Boolean strictJsonSchema() {
         return strictJsonSchema;
+    }
+
+    public List<Tool> serverTools() {
+        return serverTools;
     }
 
     @Override
@@ -150,11 +165,13 @@ public class OpenAiOfficialResponsesChatRequestParameters extends DefaultChatReq
                 && Objects.equals(promptCacheKey, that.promptCacheKey)
                 && Objects.equals(promptCacheRetention, that.promptCacheRetention)
                 && Objects.equals(reasoningEffort, that.reasoningEffort)
+                && Objects.equals(reasoningSummary, that.reasoningSummary)
                 && Objects.equals(textVerbosity, that.textVerbosity)
                 && Objects.equals(streamIncludeObfuscation, that.streamIncludeObfuscation)
                 && Objects.equals(store, that.store)
                 && Objects.equals(strictTools, that.strictTools)
-                && Objects.equals(strictJsonSchema, that.strictJsonSchema);
+                && Objects.equals(strictJsonSchema, that.strictJsonSchema)
+                && Objects.equals(serverTools, that.serverTools);
     }
 
     @Override
@@ -172,11 +189,13 @@ public class OpenAiOfficialResponsesChatRequestParameters extends DefaultChatReq
                 promptCacheKey,
                 promptCacheRetention,
                 reasoningEffort,
+                reasoningSummary,
                 textVerbosity,
                 streamIncludeObfuscation,
                 store,
                 strictTools,
-                strictJsonSchema);
+                strictJsonSchema,
+                serverTools);
     }
 
     public static Builder builder() {
@@ -195,12 +214,14 @@ public class OpenAiOfficialResponsesChatRequestParameters extends DefaultChatReq
         private String safetyIdentifier;
         private String promptCacheKey;
         private String promptCacheRetention;
-        private String reasoningEffort;
+        private ReasoningEffort reasoningEffort;
+        private Reasoning.Summary reasoningSummary;
         private String textVerbosity;
         private Boolean streamIncludeObfuscation;
         private Boolean store;
         private Boolean strictTools;
         private Boolean strictJsonSchema;
+        private List<Tool> serverTools;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
@@ -217,11 +238,13 @@ public class OpenAiOfficialResponsesChatRequestParameters extends DefaultChatReq
                 promptCacheKey(getOrDefault(p.promptCacheKey(), promptCacheKey));
                 promptCacheRetention(getOrDefault(p.promptCacheRetention(), promptCacheRetention));
                 reasoningEffort(getOrDefault(p.reasoningEffort(), reasoningEffort));
+                reasoningSummary(getOrDefault(p.reasoningSummary(), reasoningSummary));
                 textVerbosity(getOrDefault(p.textVerbosity(), textVerbosity));
                 streamIncludeObfuscation(getOrDefault(p.streamIncludeObfuscation(), streamIncludeObfuscation));
                 store(getOrDefault(p.store(), store));
                 strictTools(getOrDefault(p.strictTools(), strictTools));
                 strictJsonSchema(getOrDefault(p.strictJsonSchema(), strictJsonSchema));
+                serverTools(getOrDefault(p.serverTools(), serverTools));
             }
             return this;
         }
@@ -276,8 +299,13 @@ public class OpenAiOfficialResponsesChatRequestParameters extends DefaultChatReq
             return this;
         }
 
-        public Builder reasoningEffort(String reasoningEffort) {
+        public Builder reasoningEffort(ReasoningEffort reasoningEffort) {
             this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
+        public Builder reasoningSummary(Reasoning.Summary reasoningSummary) {
+            this.reasoningSummary = reasoningSummary;
             return this;
         }
 
@@ -303,6 +331,11 @@ public class OpenAiOfficialResponsesChatRequestParameters extends DefaultChatReq
 
         public Builder strictJsonSchema(Boolean strictJsonSchema) {
             this.strictJsonSchema = strictJsonSchema;
+            return this;
+        }
+
+        public Builder serverTools(List<Tool> serverTools) {
+            this.serverTools = serverTools;
             return this;
         }
 

@@ -168,6 +168,26 @@ public class StreamableHttpMcpTransport implements McpTransport {
         this.onFailureCallback = actionOnFailure;
     }
 
+    /**
+     * Returns the MCP session ID assigned by the server, or {@code null} if no session
+     * has been established yet (or the server does not use sessions). The session ID is
+     * captured from the {@code Mcp-Session-Id} response header during initialization
+     * and reused on subsequent requests via the same header.
+     */
+    public String getMcpSessionId() {
+        return mcpSessionId.get();
+    }
+
+    /**
+     * Sets the MCP session ID to be sent on subsequent requests via the
+     * {@code Mcp-Session-Id} header. This is intended for scenarios where a session
+     * obtained elsewhere (for example, in another process or pod) needs to be resumed
+     * by this transport, allowing stateless deployments without sticky sessions.
+     */
+    public void setMcpSessionId(String mcpSessionId) {
+        this.mcpSessionId.set(mcpSessionId);
+    }
+
     private CompletableFuture<JsonNode> execute(McpCallContext context, boolean isRetry) {
         Long id = context.message().getId();
         if (!(context.message() instanceof McpInitializeRequest)) {
