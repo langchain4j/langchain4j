@@ -10,7 +10,7 @@ class BatchRequestTest {
 
     @Test
     void constructor_shouldThrowNullPointerException_whenRequestsIsNull() {
-        assertThatThrownBy(() -> new BatchRequest<>(null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> new BatchRequest<>(null)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
