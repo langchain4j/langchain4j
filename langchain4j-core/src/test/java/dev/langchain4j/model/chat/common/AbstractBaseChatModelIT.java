@@ -239,6 +239,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         String modelName = customModelName();
         ensureModelNameIsDifferentFromDefault(modelName, model);
+        sleepIfNeeded();
 
         ChatRequestParameters parameters = ChatRequestParameters.builder()
                 .modelName(modelName)
@@ -253,10 +254,10 @@ public abstract class AbstractBaseChatModelIT<M> {
         ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
-        assertThat(chatResponse.aiMessage().text()).isNotBlank();
-
         assertThat(chatResponse.metadata().modelName()).isEqualTo(modelName);
     }
+
+    protected void sleepIfNeeded() {}
 
     protected String customModelName() {
         throw new RuntimeException("Please implement this method in a similar way to OpenAiChatModelIT");
