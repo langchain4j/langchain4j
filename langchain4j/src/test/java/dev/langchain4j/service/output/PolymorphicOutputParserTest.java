@@ -138,6 +138,95 @@ class PolymorphicOutputParserTest {
     @JsonTypeName("losing-name")
     record ElectricCar(int range) implements Car {}
 
+    sealed static class Plant permits Rose, Cactus {
+    }
+
+    static final class Rose extends Plant {
+        String color;
+    }
+
+    static final class Cactus extends Plant {
+        int height;
+    }
+
+    @JsonSubTypes({
+        @JsonSubTypes.Type(value = Email.class, name = "email"),
+        @JsonSubTypes.Type(value = SmsMessage.class, name = "sms")
+    })
+    abstract static class Notification {
+    }
+
+    static class Email extends Notification {
+        String subject;
+    }
+
+    static class SmsMessage extends Notification {
+        String phoneNumber;
+    }
+
+    @JsonSubTypes({
+        @JsonSubTypes.Type(value = Pdf.class, name = "pdf"),
+        @JsonSubTypes.Type(value = Html.class, name = "html")
+    })
+    interface Document {
+    }
+
+    static class Pdf implements Document {
+        int pages;
+    }
+
+    static class Html implements Document {
+        String url;
+    }
+
+    @Test
+    void sealed_class_is_supported_without_annotations() {
+
+        Optional<JsonSchema> schemaOpt = new PojoOutputParser<>(Plant.class).jsonSchema();
+        assertThat(schemaOpt).isPresent();
+
+        JsonObjectSchema root = (JsonObjectSchema) schemaOpt.get().rootElement();
+        JsonAnyOfSchema anyOf = (JsonAnyOfSchema) root.properties().get("value");
+        assertThat(anyOf.anyOf()).hasSize(2);
+
+        Plant plant = new PojoOutputParser<>(Plant.class)
+                .parse("{\"value\":{\"type\":\"Rose\",\"color\":\"red\"}}");
+        assertThat(plant).isInstanceOf(Rose.class);
+        assertThat(((Rose) plant).color).isEqualTo("red");
+    }
+
+    @Test
+    void abstract_class_with_JsonSubTypes_is_supported() {
+
+        Optional<JsonSchema> schemaOpt = new PojoOutputParser<>(Notification.class).jsonSchema();
+        assertThat(schemaOpt).isPresent();
+
+        JsonObjectSchema root = (JsonObjectSchema) schemaOpt.get().rootElement();
+        JsonAnyOfSchema anyOf = (JsonAnyOfSchema) root.properties().get("value");
+        assertThat(anyOf.anyOf()).hasSize(2);
+
+        Notification notification = new PojoOutputParser<>(Notification.class)
+                .parse("{\"value\":{\"type\":\"email\",\"subject\":\"hello\"}}");
+        assertThat(notification).isInstanceOf(Email.class);
+        assertThat(((Email) notification).subject).isEqualTo("hello");
+    }
+
+    @Test
+    void plain_interface_with_JsonSubTypes_is_supported() {
+
+        Optional<JsonSchema> schemaOpt = new PojoOutputParser<>(Document.class).jsonSchema();
+        assertThat(schemaOpt).isPresent();
+
+        JsonObjectSchema root = (JsonObjectSchema) schemaOpt.get().rootElement();
+        JsonAnyOfSchema anyOf = (JsonAnyOfSchema) root.properties().get("value");
+        assertThat(anyOf.anyOf()).hasSize(2);
+
+        Document document = new PojoOutputParser<>(Document.class)
+                .parse("{\"value\":{\"type\":\"pdf\",\"pages\":42}}");
+        assertThat(document).isInstanceOf(Pdf.class);
+        assertThat(((Pdf) document).pages).isEqualTo(42);
+    }
+
     @Test
     void JsonTypeName_on_subtype_is_used_as_discriminator_value() {
 

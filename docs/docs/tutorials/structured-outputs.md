@@ -575,8 +575,14 @@ enum Priority {
 
 #### Polymorphic Types
 
-AI Service methods can return polymorphic types: a base type (sealed interface, sealed class,
-abstract class, or interface) whose concrete subtype is decided by the LLM at runtime.
+AI Service methods can return polymorphic types — a base type whose concrete subtype is
+decided by the LLM at runtime. Two flavors are supported:
+
+- **Sealed interfaces and sealed classes** — no annotations needed; subtypes are
+  discovered via `Class.getPermittedSubclasses()`.
+- **Plain abstract classes and interfaces** — must declare their subtypes explicitly
+  with Jackson's `@JsonSubTypes`.
+
 Polymorphic return types work for the type itself, for collections (`List<T>`, `Set<T>`),
 and for fields nested inside other POJOs.
 

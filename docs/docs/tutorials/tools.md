@@ -450,8 +450,10 @@ are currently supported only by OpenAI.
 
 #### Polymorphic Tool Parameters
 
-A tool parameter can be a polymorphic type — a base type (sealed interface, sealed class,
-abstract class, or interface) whose concrete subtype is decided by the LLM at call time.
+A tool parameter can be a polymorphic type — a base type whose concrete subtype is decided
+by the LLM at call time. Sealed interfaces and sealed classes work without annotations;
+plain abstract classes and interfaces must declare their subtypes with Jackson's
+`@JsonSubTypes`.
 The schema sent to the LLM contains an `anyOf` over the permitted subtypes, each with a
 discriminator property (defaulting to `"type"`) so the LLM can communicate which concrete
 type it produced; the framework deserializes the LLM's argument into the right subtype
