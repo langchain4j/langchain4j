@@ -1,9 +1,13 @@
 package dev.langchain4j.model.googleai;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-record GeminiFunctionDeclaration(String name, String description, GeminiSchema parameters) {
+record GeminiFunctionDeclaration(
+        @JsonProperty("name") String name,
+        @JsonProperty("description") String description,
+        @JsonProperty("parameters") GeminiSchema parameters) {
 
     static Builder builder() {
         return new Builder();
