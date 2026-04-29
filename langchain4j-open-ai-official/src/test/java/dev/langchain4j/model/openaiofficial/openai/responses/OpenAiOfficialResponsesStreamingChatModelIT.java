@@ -1,13 +1,5 @@
 package dev.langchain4j.model.openaiofficial.openai.responses;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.atLeast;
-
-import java.util.List;
 import com.openai.models.ChatModel;
 import com.openai.core.ObjectMappers;
 import com.openai.core.JsonValue;
@@ -18,7 +10,6 @@ import com.openai.models.responses.Tool;
 import com.openai.models.responses.ToolSearchTool;
 import com.openai.models.responses.WebSearchTool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
@@ -27,6 +18,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
@@ -43,6 +35,14 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
+
+import java.util.List;
+
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.atLeast;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
@@ -307,33 +307,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
     @Disabled("gpt-5.4-mini cannot do it properly")
     @Override
-    protected boolean supportsMultipleImageInputsAsPublicURLs() {
-        return false;
-    }
-
-    @Override
-    protected void should_fail_if_images_as_public_URLs_are_not_supported(StreamingChatModel model) {
-
-        // given
-        UserMessage userMessage =
-                UserMessage.from(TextContent.from("What do you see?"), ImageContent.from(catImageUrl()));
-        dev.langchain4j.model.chat.request.ChatRequest chatRequest =
-                dev.langchain4j.model.chat.request.ChatRequest.builder()
-                        .messages(userMessage)
-                        .build();
-
-        // when-then
-        assertThatThrownBy(() -> chat(model, chatRequest));
-    }
-
-    @Override
-    protected boolean supportsPartialToolStreaming(dev.langchain4j.model.chat.StreamingChatModel model) {
-        return false;
-    }
-
-    @Override
-    @Disabled("Can't do it reliably")
-    protected void should_execute_multiple_tools_in_parallel_then_answer(StreamingChatModel model) {
+    protected void should_respect_JSON_response_format_with_schema(StreamingChatModel model) {
     }
 
     @Disabled("gpt-5.4-mini cannot do it properly")

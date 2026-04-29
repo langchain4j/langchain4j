@@ -8,8 +8,6 @@ import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
 
-import dev.langchain4j.Experimental;
-import dev.langchain4j.memory.ChatMemory;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -17,6 +15,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+
+import dev.langchain4j.Experimental;
+import dev.langchain4j.memory.ChatMemory;
 
 /**
  * Represents a message from a user, typically an end user of the application.
@@ -189,7 +190,10 @@ public class UserMessage implements ChatMessage {
     }
 
     public Builder toBuilder() {
-        return builder().name(name).contents(mutableCopy(contents)).attributes(attributes);
+        return builder()
+                .name(name)
+                .contents(mutableCopy(contents))
+                .attributes(attributes);
     }
 
     @Override
@@ -209,10 +213,11 @@ public class UserMessage implements ChatMessage {
 
     @Override
     public String toString() {
-        return "UserMessage {" + " name = "
-                + quoted(name) + ", contents = "
-                + contents + ", attributes = "
-                + attributes + " }";
+        return "UserMessage {" +
+                " name = " + quoted(name) +
+                ", contents = " + contents +
+                ", attributes = " + attributes +
+                " }";
     }
 
     public static Builder builder() {

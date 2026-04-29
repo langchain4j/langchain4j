@@ -8,6 +8,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
+
 import java.util.List;
 
 /**
@@ -23,8 +24,7 @@ public class DefaultToolExecutedEvent extends AbstractAiServiceEvent implements 
         this.request = ensureNotNull(builder.request(), "request");
 
         boolean hasResultText = builder.resultText() != null;
-        boolean hasResultContents =
-                builder.resultContents() != null && !builder.resultContents().isEmpty();
+        boolean hasResultContents = builder.resultContents() != null && !builder.resultContents().isEmpty();
 
         if (hasResultText && hasResultContents) {
             throw new IllegalArgumentException("resultText and resultContents are mutually exclusive");

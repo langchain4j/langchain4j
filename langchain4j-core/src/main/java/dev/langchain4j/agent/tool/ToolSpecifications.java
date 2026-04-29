@@ -1,7 +1,5 @@
 package dev.langchain4j.agent.tool;
 
-import static dev.langchain4j.agent.tool.SearchBehavior.SEARCHABLE;
-import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Arrays.stream;
@@ -26,6 +24,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+
+import static dev.langchain4j.agent.tool.SearchBehavior.SEARCHABLE;
+import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
 
 /**
  * Utility methods for {@link ToolSpecification}s.
@@ -148,7 +149,9 @@ public class ToolSpecifications {
             boolean isOptional = Optional.class.equals(parameter.getType());
             P pAnnotation = parameter.getAnnotation(P.class);
             boolean isRequired = !isOptional
-                    && Optional.ofNullable(pAnnotation).map(P::required).orElse(true);
+                    && Optional.ofNullable(pAnnotation)
+                            .map(P::required)
+                            .orElse(true);
 
             String parameterName = Optional.ofNullable(pAnnotation)
                     .map(P::name)

@@ -112,15 +112,16 @@ public class DefaultInvocationContext implements InvocationContext {
 
     @Override
     public String toString() {
-        return "DefaultInvocationContext{" + "invocationId="
-                + invocationId + ", interfaceName='"
-                + interfaceName + '\'' + ", methodName='"
-                + methodName + '\'' + ", methodArguments="
-                + methodArguments + ", userMessage="
-                + userMessage + ", chatMemoryId="
-                + chatMemoryId + ", invocationParameters="
-                + invocationParameters + ", managedParameters="
-                + managedParameters + ", timestamp="
-                + timestamp + '}';
+        return "DefaultInvocationContext{" +
+                "invocationId=" + invocationId +
+                ", interfaceName='" + interfaceName + '\'' +
+                ", methodName='" + methodName + '\'' +
+                ", methodArguments=" + methodArguments +
+                ", userMessage=" + userMessage +
+                ", chatMemoryId=" + chatMemoryId +
+                ", invocationParameters=" + invocationParameters +
+                ", managedParameters=" + managedParameters +
+                ", timestamp=" + timestamp +
+                '}';
     }
 }

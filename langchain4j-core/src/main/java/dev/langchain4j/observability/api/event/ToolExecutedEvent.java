@@ -8,6 +8,8 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.observability.event.DefaultToolExecutedEvent;
 import java.util.List;
 
+import java.util.List;
+
 /**
  * Invoked after the tool is executed.
  * It is important to note that this can be invoked multiple times within a single AI Service invocation.

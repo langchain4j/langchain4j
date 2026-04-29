@@ -1,10 +1,10 @@
 package dev.langchain4j.data.message;
 
+import java.util.Objects;
+
 import static dev.langchain4j.data.message.ContentType.TEXT;
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
-import java.util.Objects;
 
 /**
  * Represents a text content.
@@ -49,7 +49,9 @@ public class TextContent implements Content {
 
     @Override
     public String toString() {
-        return "TextContent {" + " text = " + quoted(text) + " }";
+        return "TextContent {" +
+                " text = " + quoted(text) +
+                " }";
     }
 
     /**

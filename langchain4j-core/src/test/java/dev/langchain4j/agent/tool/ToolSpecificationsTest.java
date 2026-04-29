@@ -456,10 +456,7 @@ class ToolSpecificationsTest implements WithAssertions {
         ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
 
         JsonSchemaElement element = ts.parameters().properties().get("arg0");
-        assertThat(element)
-                .isEqualTo(JsonStringSchema.builder()
-                        .description("desc via description")
-                        .build());
+        assertThat(element).isEqualTo(JsonStringSchema.builder().description("desc via description").build());
     }
 
     @Test
@@ -472,9 +469,7 @@ class ToolSpecificationsTest implements WithAssertions {
         ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
 
         JsonSchemaElement element = ts.parameters().properties().get("arg0");
-        assertThat(element)
-                .isEqualTo(
-                        JsonStringSchema.builder().description("desc via value").build());
+        assertThat(element).isEqualTo(JsonStringSchema.builder().description("desc via value").build());
     }
 
     @Test
@@ -487,8 +482,7 @@ class ToolSpecificationsTest implements WithAssertions {
         ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
 
         assertThat(ts.parameters().properties()).containsKey("myParam");
-        JsonStringSchema element =
-                (JsonStringSchema) ts.parameters().properties().get("myParam");
+        JsonStringSchema element = (JsonStringSchema) ts.parameters().properties().get("myParam");
         assertThat(element.description()).isNull();
     }
 }

@@ -3,6 +3,8 @@ package dev.langchain4j.internal;
 import dev.langchain4j.Internal;
 import java.util.concurrent.Callable;
 
+import java.util.concurrent.Callable;
+
 /**
  * Utility methods for creating common exceptions.
  */
