@@ -104,9 +104,7 @@ class DefaultRetrievalAugmentorTest {
 
         // then
         UserMessage augmented = (UserMessage) result.chatMessage();
-        assertThat(augmented.singleText())
-                .isEqualTo(
-                        """
+        assertThat(augmented.singleText()).isEqualTo("""
                 query
                 content 1
                 content 2
@@ -191,9 +189,7 @@ class DefaultRetrievalAugmentorTest {
 
         // then
         UserMessage augmented = (UserMessage) result.chatMessage();
-        assertThat(augmented.singleText())
-                .isEqualTo(
-                        """
+        assertThat(augmented.singleText()).isEqualTo("""
                 query
                 content 1
                 content 2
@@ -270,8 +266,7 @@ class DefaultRetrievalAugmentorTest {
 
         // then
         UserMessage augmented = (UserMessage) result.chatMessage();
-        assertThat(augmented.singleText())
-                .isEqualTo("""
+        assertThat(augmented.singleText()).isEqualTo("""
                 query
                 content 1
                 content 2""");
@@ -384,9 +379,12 @@ class DefaultRetrievalAugmentorTest {
     @Test
     void should_deduplicate_retrieve_contents() {
         // given
-        dev.langchain4j.data.document.Metadata metadata1 = new dev.langchain4j.data.document.Metadata().put("source", "doc1");
-        dev.langchain4j.data.document.Metadata metadata2 = new dev.langchain4j.data.document.Metadata().put("source", "doc2");
-        dev.langchain4j.data.document.Metadata metadata1Duplicate = new dev.langchain4j.data.document.Metadata().put("source", "doc1");
+        dev.langchain4j.data.document.Metadata metadata1 =
+                new dev.langchain4j.data.document.Metadata().put("source", "doc1");
+        dev.langchain4j.data.document.Metadata metadata2 =
+                new dev.langchain4j.data.document.Metadata().put("source", "doc2");
+        dev.langchain4j.data.document.Metadata metadata1Duplicate =
+                new dev.langchain4j.data.document.Metadata().put("source", "doc1");
 
         TextSegment segment1 = TextSegment.from("content 1", metadata1);
         TextSegment segment2 = TextSegment.from("content 2", metadata2);
@@ -412,9 +410,12 @@ class DefaultRetrievalAugmentorTest {
     @Test
     void should_deduplicate_retrieve_all_duplicates() {
         // given
-        dev.langchain4j.data.document.Metadata metadata = new dev.langchain4j.data.document.Metadata().put("source", "doc1");
-        dev.langchain4j.data.document.Metadata metadataDup1 = new dev.langchain4j.data.document.Metadata().put("source", "doc1");
-        dev.langchain4j.data.document.Metadata metadataDup2 = new dev.langchain4j.data.document.Metadata().put("source", "doc1");
+        dev.langchain4j.data.document.Metadata metadata =
+                new dev.langchain4j.data.document.Metadata().put("source", "doc1");
+        dev.langchain4j.data.document.Metadata metadataDup1 =
+                new dev.langchain4j.data.document.Metadata().put("source", "doc1");
+        dev.langchain4j.data.document.Metadata metadataDup2 =
+                new dev.langchain4j.data.document.Metadata().put("source", "doc1");
 
         TextSegment segment1 = TextSegment.from("same content", metadata);
         TextSegment segment1Dup1 = TextSegment.from("same content", metadataDup1);
@@ -439,9 +440,12 @@ class DefaultRetrievalAugmentorTest {
     @Test
     void should_deduplicate_retrieve_no_duplicates() {
         // given
-        dev.langchain4j.data.document.Metadata metadata1 = new dev.langchain4j.data.document.Metadata().put("source", "doc1");
-        dev.langchain4j.data.document.Metadata metadata2 = new dev.langchain4j.data.document.Metadata().put("source", "doc2");
-        dev.langchain4j.data.document.Metadata metadata3 = new dev.langchain4j.data.document.Metadata().put("source", "doc3");
+        dev.langchain4j.data.document.Metadata metadata1 =
+                new dev.langchain4j.data.document.Metadata().put("source", "doc1");
+        dev.langchain4j.data.document.Metadata metadata2 =
+                new dev.langchain4j.data.document.Metadata().put("source", "doc2");
+        dev.langchain4j.data.document.Metadata metadata3 =
+                new dev.langchain4j.data.document.Metadata().put("source", "doc3");
 
         TextSegment segment1 = TextSegment.from("content 1", metadata1);
         TextSegment segment2 = TextSegment.from("content 2", metadata2);
@@ -468,8 +472,10 @@ class DefaultRetrievalAugmentorTest {
     @Test
     void should_deduplicate_retrieve_same_text_different_metadata_treated_as_different() {
         // given
-        dev.langchain4j.data.document.Metadata metadata1 = new dev.langchain4j.data.document.Metadata().put("source", "doc1");
-        dev.langchain4j.data.document.Metadata metadata2 = new dev.langchain4j.data.document.Metadata().put("source", "doc2");
+        dev.langchain4j.data.document.Metadata metadata1 =
+                new dev.langchain4j.data.document.Metadata().put("source", "doc1");
+        dev.langchain4j.data.document.Metadata metadata2 =
+                new dev.langchain4j.data.document.Metadata().put("source", "doc2");
 
         TextSegment segment1 = TextSegment.from("same text", metadata1);
         TextSegment segment2 = TextSegment.from("same text", metadata2);
@@ -487,9 +493,11 @@ class DefaultRetrievalAugmentorTest {
         // then
         assertThat(deduplicatedContents).hasSize(2);
         assertThat(deduplicatedContents.get(0).textSegment().text()).isEqualTo("same text");
-        assertThat(deduplicatedContents.get(0).textSegment().metadata().getString("source")).isEqualTo("doc1");
+        assertThat(deduplicatedContents.get(0).textSegment().metadata().getString("source"))
+                .isEqualTo("doc1");
         assertThat(deduplicatedContents.get(1).textSegment().text()).isEqualTo("same text");
-        assertThat(deduplicatedContents.get(1).textSegment().metadata().getString("source")).isEqualTo("doc2");
+        assertThat(deduplicatedContents.get(1).textSegment().metadata().getString("source"))
+                .isEqualTo("doc2");
     }
 
     static class TestContentAggregator implements ContentAggregator {

@@ -7,7 +7,6 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverListener;
 import dev.langchain4j.rag.query.Query;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
