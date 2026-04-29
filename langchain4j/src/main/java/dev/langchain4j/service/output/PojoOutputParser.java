@@ -10,7 +10,6 @@ import static dev.langchain4j.service.IllegalConfigurationException.illegalConfi
 import static dev.langchain4j.service.output.ParsingUtils.outputParsingException;
 import static java.lang.String.format;
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.Json;
@@ -48,50 +47,15 @@ class PojoOutputParser<T> implements OutputParser<T> {
 
         try {
             if (PolymorphicTypes.isPolymorphic(type)) {
-                return parsePolymorphic(text);
+                @SuppressWarnings("unchecked")
+                Map<String, Object> map = (Map<String, Object>) extractAndParseJson(text, Map.class).value();
+                Object payload = (map != null && map.size() == 1 && map.containsKey("value")) ? map.get("value") : map;
+                return type.cast(Json.fromJson(Json.toJson(payload), type));
             }
             return extractAndParseJson(text, type).value();
         } catch (Exception e) {
             throw outputParsingException(text, type.getTypeName(), e);
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private T parsePolymorphic(String text) throws Exception {
-        Map<String, Object> map = (Map<String, Object>) extractAndParseJson(text, Map.class).value();
-        Object payload = unwrapValueEnvelope(map);
-        if (!(payload instanceof Map)) {
-            throw outputParsingException(text, type);
-        }
-        return type.cast(deserializePolymorphic(type, (Map<String, Object>) payload));
-    }
-
-    static Object unwrapValueEnvelope(Map<String, Object> map) {
-        if (map != null && map.size() == 1 && map.containsKey("value")) {
-            return map.get("value");
-        }
-        return map;
-    }
-
-    static <T> T deserializePolymorphic(Class<T> baseType, Map<String, Object> payload) {
-        PolymorphicTypes.verifyJsonTypeInfoIsSupported(baseType);
-
-        // For @JsonTypeInfo with defaultImpl, pre-strip a missing or unknown discriminator so
-        // Jackson falls back to defaultImpl without tripping FAIL_ON_UNKNOWN_PROPERTIES on the
-        // unrecognized type id field. Sealed dispatch is handled by Jackson's BeanDeserializerModifier;
-        // Jackson-annotated dispatch is handled natively.
-        JsonTypeInfo info = baseType.getAnnotation(JsonTypeInfo.class);
-        if (info != null && info.defaultImpl() != JsonTypeInfo.None.class && info.defaultImpl() != Void.class) {
-            String discriminatorProperty = PolymorphicTypes.discriminatorPropertyName(baseType);
-            Object discriminatorValue = payload.get(discriminatorProperty);
-            if (discriminatorValue == null
-                    || PolymorphicTypes.findSubtypeByDiscriminator(baseType, discriminatorValue.toString()) == null) {
-                Map<String, Object> stripped = new LinkedHashMap<>(payload);
-                stripped.remove(discriminatorProperty);
-                payload = stripped;
-            }
-        }
-        return Json.fromJson(Json.toJson(payload), baseType);
     }
 
     @Override
@@ -103,25 +67,23 @@ class PojoOutputParser<T> implements OutputParser<T> {
             rootElement = wrapPolymorphic("value", referenceIfRecursive(anyOf, type, visited), visited);
         } else {
             rootElement = jsonObjectOrReferenceSchemaFrom(type, null, false, new LinkedHashMap<>(), true);
-            // Detect a useless empty-object schema: this happens when the user used an interface
-            // or abstract class as a return type without making it sealed or annotating it with
-            // @JsonSubTypes. Fail fast with a clear remediation message.
+            // A plain interface or abstract class without sealed-permits or @JsonSubTypes produces
+            // an empty schema that the LLM cannot meaningfully fill in. Fail fast with a clear
+            // remediation message.
             if (rootElement instanceof JsonObjectSchema obj
-                    && (obj.properties() == null || obj.properties().isEmpty())
+                    && obj.properties().isEmpty()
                     && java.lang.reflect.Modifier.isAbstract(type.getModifiers())) {
                 throw new UnsupportedFeatureException(String.format(
                         "Type %s is an interface or abstract class with no permitted subtypes discoverable "
                                 + "by langchain4j, which produced an empty JSON schema. To use it as a "
-                                + "polymorphic return type, either make it sealed or annotate it with "
-                                + "@JsonSubTypes.",
+                                + "polymorphic return type, either make it sealed or annotate it with @JsonSubTypes.",
                         type.getName()));
             }
         }
-        JsonSchema jsonSchema = JsonSchema.builder()
+        return Optional.of(JsonSchema.builder()
                 .name(type.getSimpleName())
                 .rootElement(rootElement)
-                .build();
-        return Optional.of(jsonSchema);
+                .build());
     }
 
     @Override

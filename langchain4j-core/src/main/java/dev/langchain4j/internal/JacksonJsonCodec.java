@@ -13,17 +13,21 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.BeanDescription;
-import com.fasterxml.jackson.databind.DeserializationConfig;
+import com.fasterxml.jackson.databind.AnnotationIntrospector;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.deser.BeanDeserializerModifier;
+import com.fasterxml.jackson.databind.cfg.MapperConfig;
+import com.fasterxml.jackson.databind.introspect.AnnotatedClass;
+import com.fasterxml.jackson.databind.introspect.AnnotationIntrospectorPair;
+import com.fasterxml.jackson.databind.introspect.NopAnnotationIntrospector;
+import com.fasterxml.jackson.databind.jsontype.NamedType;
+import com.fasterxml.jackson.databind.jsontype.TypeResolverBuilder;
+import com.fasterxml.jackson.databind.jsontype.impl.StdTypeResolverBuilder;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import dev.langchain4j.Internal;
 import java.io.IOException;
@@ -31,6 +35,7 @@ import java.lang.reflect.Type;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -130,24 +135,7 @@ class JacksonJsonCodec implements Json.JsonCodec {
             }
         });
 
-        // Dispatcher for sealed interfaces/classes that carry no @JsonTypeInfo. This lets such
-        // types appear as fields nested in other beans (Jackson can't otherwise instantiate them).
-        // Top-level dispatch is still done by ServiceOutputParser; this only kicks in when Jackson
-        // encounters a sealed type during normal bean traversal.
-        module.setDeserializerModifier(new BeanDeserializerModifier() {
-            @Override
-            public JsonDeserializer<?> modifyDeserializer(
-                    DeserializationConfig config, BeanDescription beanDesc, JsonDeserializer<?> deserializer) {
-                Class<?> beanClass = beanDesc.getBeanClass();
-                if (beanClass.getAnnotation(JsonTypeInfo.class) == null
-                        && PolymorphicTypes.isPolymorphic(beanClass)) {
-                    return new SealedPolymorphicDeserializer(beanClass);
-                }
-                return deserializer;
-            }
-        });
-
-        return JsonMapper.builder()
+        ObjectMapper mapper = JsonMapper.builder()
                 .visibility(FIELD, ANY)
                 .disable(INDENT_OUTPUT) // disabled on purpose to save tokens when sending tool results to LLM
                 .enable(FAIL_ON_UNKNOWN_PROPERTIES) // enabled on purpose to prevent issues caused by LLM hallucinations
@@ -155,43 +143,13 @@ class JacksonJsonCodec implements Json.JsonCodec {
                 .build()
                 .findAndRegisterModules()
                 .registerModule(module);
-    }
 
-    private static final class SealedPolymorphicDeserializer extends JsonDeserializer<Object> {
-
-        private final Class<?> baseType;
-        private final String discriminatorProperty;
-
-        SealedPolymorphicDeserializer(Class<?> baseType) {
-            this.baseType = baseType;
-            this.discriminatorProperty = PolymorphicTypes.discriminatorPropertyName(baseType);
-        }
-
-        @Override
-        public Object deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-            JsonNode node = p.readValueAsTree();
-            if (!(node instanceof ObjectNode)) {
-                throw ctxt.weirdStringException(
-                        node.toString(), baseType, "expected an object for polymorphic type " + baseType.getName());
-            }
-            ObjectNode object = (ObjectNode) node;
-            JsonNode discriminator = object.get(discriminatorProperty);
-            if (discriminator == null || discriminator.isNull()) {
-                throw ctxt.instantiationException(
-                        baseType,
-                        "missing discriminator property '" + discriminatorProperty + "' for polymorphic type "
-                                + baseType.getName());
-            }
-            Class<?> subtype = PolymorphicTypes.findSubtypeByDiscriminator(baseType, discriminator.asText());
-            if (subtype == null) {
-                throw ctxt.instantiationException(
-                        baseType,
-                        "unknown discriminator value '" + discriminator.asText() + "' for polymorphic type "
-                                + baseType.getName());
-            }
-            object.remove(discriminatorProperty);
-            return p.getCodec().treeToValue(object, subtype);
-        }
+        // Make sealed interfaces/classes deserializable as polymorphic types without the user
+        // having to add @JsonTypeInfo+@JsonSubTypes. We synthesize equivalent metadata via a
+        // custom AnnotationIntrospector consulted ahead of Jackson's default one.
+        mapper.setAnnotationIntrospector(AnnotationIntrospectorPair.pair(
+                new SealedTypePolymorphicIntrospector(), mapper.getDeserializationConfig().getAnnotationIntrospector()));
+        return mapper;
     }
 
     /**
@@ -248,5 +206,47 @@ class JacksonJsonCodec implements Json.JsonCodec {
      */
     public ObjectMapper getObjectMapper() {
         return objectMapper;
+    }
+
+    /**
+     * Synthesizes {@code @JsonTypeInfo} + {@code @JsonSubTypes} metadata for sealed types that
+     * carry no Jackson polymorphism annotations of their own. With this introspector consulted
+     * ahead of Jackson's default one, sealed bases dispatch natively via the same discriminator
+     * langchain4j puts in the schema — no custom deserializer needed.
+     */
+    private static final class SealedTypePolymorphicIntrospector extends NopAnnotationIntrospector {
+
+        @Override
+        public TypeResolverBuilder<?> findTypeResolver(
+                MapperConfig<?> config, AnnotatedClass ac, com.fasterxml.jackson.databind.JavaType baseType) {
+            Class<?> raw = ac.getRawType();
+            if (!shouldHandle(raw)) {
+                return null;
+            }
+            StdTypeResolverBuilder builder = new StdTypeResolverBuilder()
+                    .init(JsonTypeInfo.Id.NAME, null)
+                    .inclusion(JsonTypeInfo.As.PROPERTY)
+                    .typeProperty(PolymorphicTypes.discriminatorPropertyName(raw))
+                    .typeIdVisibility(false);
+            return builder;
+        }
+
+        @Override
+        public List<NamedType> findSubtypes(com.fasterxml.jackson.databind.introspect.Annotated a) {
+            Class<?> raw = a.getRawType();
+            if (!shouldHandle(raw)) {
+                return null;
+            }
+            return PolymorphicTypes.findConcreteSubtypes(raw).stream()
+                    .map(sub -> new NamedType(sub, PolymorphicTypes.discriminatorValue(raw, sub)))
+                    .toList();
+        }
+
+        private static boolean shouldHandle(Class<?> raw) {
+            // Step in for any polymorphic base that doesn't already declare its own type-info
+            // strategy via @JsonTypeInfo. This covers both sealed types (no annotations) and
+            // types that only use @JsonSubTypes for subtype enumeration.
+            return raw.getAnnotation(JsonTypeInfo.class) == null && PolymorphicTypes.isPolymorphic(raw);
+        }
     }
 }
