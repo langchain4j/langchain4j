@@ -7,6 +7,7 @@ import com.openai.models.Reasoning;
 import com.openai.models.ReasoningEffort;
 import com.openai.models.responses.Response;
 import com.openai.models.responses.ResponseCreateParams;
+import com.openai.models.responses.Tool;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -113,6 +114,7 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
                 .store(getOrDefault(builder.store, getOrDefault(responsesParameters.store(), false)))
                 .strictTools(getOrDefault(builder.strictTools, responsesParameters.strictTools()))
                 .strictJsonSchema(getOrDefault(builder.strictJsonSchema, responsesParameters.strictJsonSchema()))
+                .serverTools(getOrDefault(builder.serverTools, responsesParameters.serverTools()))
                 .build();
 
         this.listeners = copy(builder.listeners);
@@ -144,7 +146,11 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
                     .orElse(null);
 
             OpenAiOfficialResponsesChatResponseMetadata metadata = buildResponseMetadata(
-                    response.id(), parameters.modelName(), response, finishReason, extractTokenUsage(response));
+                    response.id(),
+                    parameters.modelName(),
+                    response,
+                    finishReason,
+                    extractTokenUsage(response));
 
             return ChatResponse.builder()
                     .aiMessage(aiMessage)
@@ -216,6 +222,7 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
         private ToolChoice toolChoice;
         private ResponseFormat responseFormat;
         private ChatRequestParameters defaultRequestParameters;
+        private List<Tool> serverTools;
 
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -417,6 +424,15 @@ public class OpenAiOfficialResponsesChatModel implements ChatModel {
         public Builder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
             this.defaultRequestParameters = defaultRequestParameters;
             return this;
+        }
+
+        public Builder serverTools(List<Tool> serverTools) {
+            this.serverTools = serverTools;
+            return this;
+        }
+
+        public Builder serverTools(Tool... serverTools) {
+            return serverTools(asList(serverTools));
         }
 
         public OpenAiOfficialResponsesChatModel build() {
