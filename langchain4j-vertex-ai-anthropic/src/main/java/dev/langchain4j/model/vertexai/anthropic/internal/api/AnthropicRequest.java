@@ -26,6 +26,7 @@ public class AnthropicRequest {
     public Integer topK;
     public List<AnthropicTool> tools;
     public AnthropicToolChoice toolChoice;
+    public AnthropicThinking thinking;
 
     public AnthropicRequest() {}
 
@@ -89,6 +90,30 @@ public class AnthropicRequest {
         return toolChoice;
     }
 
+    public AnthropicThinking getThinking() {
+        return thinking;
+    }
+
+    public static class AnthropicThinking {
+
+        public String type;
+
+        @com.fasterxml.jackson.annotation.JsonProperty("budget_tokens")
+        public Integer budgetTokens;
+
+        public AnthropicThinking() {}
+
+        public AnthropicThinking(Integer budgetTokens) {
+            this.type = "enabled";
+            this.budgetTokens = budgetTokens;
+        }
+
+        @Override
+        public String toString() {
+            return "{type='" + type + "', budgetTokens=" + budgetTokens + "}";
+        }
+    }
+
     @Override
     public String toString() {
         return new StringJoiner(", ", "AnthropicRequest [", "]")
@@ -102,6 +127,7 @@ public class AnthropicRequest {
                 .add("topK=" + this.getTopK())
                 .add("tools=" + this.getTools())
                 .add("toolsChoice=" + this.getToolChoice())
+                .add("thinking=" + this.getThinking()) // <-- ADDED TO MAINTAIN CONTINUITY
                 .toString();
     }
 }
