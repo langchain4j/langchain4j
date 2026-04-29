@@ -3,6 +3,8 @@ package dev.langchain4j.service.output;
 import static dev.langchain4j.internal.JsonParsingUtils.extractAndParseJson;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonObjectOrReferenceSchemaFrom;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.polymorphicSchemaFrom;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.referenceIfRecursive;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.wrapPolymorphic;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.output.ParsingUtils.outputParsingException;
@@ -14,9 +16,7 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.JsonSchemaElementUtils.VisitedClassMetadata;
 import dev.langchain4j.internal.PolymorphicTypes;
-import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.output.structured.Description;
@@ -122,32 +122,6 @@ class PojoOutputParser<T> implements OutputParser<T> {
                 .rootElement(rootElement)
                 .build();
         return Optional.of(jsonSchema);
-    }
-
-    static JsonSchemaElement referenceIfRecursive(
-            JsonSchemaElement element, Class<?> baseType, Map<Class<?>, VisitedClassMetadata> visited) {
-        VisitedClassMetadata metadata = visited.get(baseType);
-        if (metadata != null && metadata.recursionDetected && element instanceof JsonAnyOfSchema) {
-            return JsonReferenceSchema.builder().reference(metadata.reference).build();
-        }
-        return element;
-    }
-
-    static JsonObjectSchema wrapPolymorphic(
-            String propertyName, JsonSchemaElement element, Map<Class<?>, VisitedClassMetadata> visited) {
-        JsonObjectSchema.Builder builder = JsonObjectSchema.builder()
-                .addProperty(propertyName, element)
-                .required(propertyName);
-        Map<String, JsonSchemaElement> definitions = new LinkedHashMap<>();
-        visited.forEach((clazz, meta) -> {
-            if (meta.recursionDetected) {
-                definitions.put(meta.reference, meta.jsonSchemaElement);
-            }
-        });
-        if (!definitions.isEmpty()) {
-            builder.definitions(definitions);
-        }
-        return builder.build();
     }
 
     @Override

@@ -145,24 +145,59 @@ public class JsonSchemaElementUtils {
         return null;
     }
 
+    /**
+     * If recursion was detected for {@code baseType} during schema generation, the polymorphic
+     * body will be emitted in {@code $defs} — return a {@link JsonReferenceSchema} so the body is
+     * not duplicated at the top of the schema. Otherwise return {@code element} unchanged.
+     */
+    public static JsonSchemaElement referenceIfRecursive(
+            JsonSchemaElement element, Class<?> baseType, Map<Class<?>, VisitedClassMetadata> visited) {
+        VisitedClassMetadata metadata = visited.get(baseType);
+        if (metadata != null && metadata.recursionDetected && element instanceof JsonAnyOfSchema) {
+            return JsonReferenceSchema.builder().reference(metadata.reference).build();
+        }
+        return element;
+    }
+
+    /**
+     * Wraps {@code element} as the only required property of a {@link JsonObjectSchema} (the
+     * {@code value}/{@code values} envelope used for polymorphic AI Service return types) and
+     * attaches any recursion-induced definitions collected in {@code visited}.
+     */
+    public static JsonObjectSchema wrapPolymorphic(
+            String propertyName, JsonSchemaElement element, Map<Class<?>, VisitedClassMetadata> visited) {
+        JsonObjectSchema.Builder builder =
+                JsonObjectSchema.builder().addProperty(propertyName, element).required(propertyName);
+        Map<String, JsonSchemaElement> definitions = new LinkedHashMap<>();
+        visited.forEach((clazz, meta) -> {
+            if (meta.recursionDetected) {
+                definitions.put(meta.reference, meta.jsonSchemaElement);
+            }
+        });
+        if (!definitions.isEmpty()) {
+            builder.definitions(definitions);
+        }
+        return builder.build();
+    }
+
     private static JsonSchemaElement addDiscriminator(
             JsonSchemaElement subtypeSchema, Class<?> baseType, Class<?> subtype, String discriminatorProperty) {
         if (!(subtypeSchema instanceof JsonObjectSchema obj)) {
             return subtypeSchema;
         }
 
+        String expectedDiscriminatorValue = PolymorphicTypes.discriminatorValue(baseType, subtype);
+
         // Idempotency: when polymorphic recursion happens, the subtype schema may already carry
         // our injected discriminator from a prior call. Detect that and skip re-augmentation.
-        JsonSchemaElement existing = obj.properties() == null ? null : obj.properties().get(discriminatorProperty);
-        String expectedDiscriminatorValue = PolymorphicTypes.discriminatorValue(baseType, subtype);
-        if (existing instanceof JsonEnumSchema enumSchema
+        if (obj.properties().get(discriminatorProperty) instanceof JsonEnumSchema enumSchema
                 && enumSchema.enumValues() != null
                 && enumSchema.enumValues().size() == 1
                 && expectedDiscriminatorValue.equals(enumSchema.enumValues().get(0))) {
             return obj;
         }
 
-        if (obj.properties() != null && obj.properties().containsKey(discriminatorProperty)) {
+        if (obj.properties().containsKey(discriminatorProperty)) {
             JsonTypeInfo info = baseType.getAnnotation(JsonTypeInfo.class);
             // The user expects the discriminator to be a real field on the subtype when:
             //   - @JsonTypeInfo(visible = true), or
@@ -185,23 +220,18 @@ public class JsonSchemaElementUtils {
             }
         }
 
-        JsonEnumSchema discriminator = JsonEnumSchema.builder()
-                .enumValues(PolymorphicTypes.discriminatorValue(baseType, subtype))
-                .build();
+        JsonEnumSchema discriminator =
+                JsonEnumSchema.builder().enumValues(expectedDiscriminatorValue).build();
 
         Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
         properties.put(discriminatorProperty, discriminator);
-        if (obj.properties() != null) {
-            obj.properties().forEach(properties::putIfAbsent);
-        }
+        obj.properties().forEach(properties::putIfAbsent);
 
         List<String> required = new ArrayList<>();
         required.add(discriminatorProperty);
-        if (obj.required() != null) {
-            obj.required().forEach(r -> {
-                if (!required.contains(r)) required.add(r);
-            });
-        }
+        obj.required().forEach(r -> {
+            if (!required.contains(r)) required.add(r);
+        });
 
         return JsonObjectSchema.builder()
                 .description(Optional.ofNullable(obj.description()).orElse(subtype.getSimpleName()))

@@ -16,6 +16,8 @@ import java.util.function.Supplier;
 
 import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonObjectOrReferenceSchemaFrom;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.polymorphicSchemaFrom;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.referenceIfRecursive;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.wrapPolymorphic;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
 
@@ -45,26 +47,22 @@ abstract class PojoCollectionOutputParser<T, CT extends Collection<T>> implement
 
     @Override
     public Optional<JsonSchema> jsonSchema() {
+        boolean polymorphic = PolymorphicTypes.isPolymorphic(type);
         Map<Class<?>, VisitedClassMetadata> visited = new LinkedHashMap<>();
-        JsonSchemaElement itemSchema;
-        if (PolymorphicTypes.isPolymorphic(type)) {
-            itemSchema = PojoOutputParser.referenceIfRecursive(
-                    polymorphicSchemaFrom(type, null, false, visited), type, visited);
-        } else {
-            itemSchema = jsonObjectOrReferenceSchemaFrom(type, null, false, visited, true);
-        }
+        JsonSchemaElement itemSchema = polymorphic
+                ? referenceIfRecursive(polymorphicSchemaFrom(type, null, false, visited), type, visited)
+                : jsonObjectOrReferenceSchemaFrom(type, null, false, visited, true);
         JsonArraySchema valuesArray = JsonArraySchema.builder().items(itemSchema).build();
-        JsonObjectSchema rootElement = PolymorphicTypes.isPolymorphic(type)
-                ? PojoOutputParser.wrapPolymorphic("values", valuesArray, visited)
+        JsonObjectSchema rootElement = polymorphic
+                ? wrapPolymorphic("values", valuesArray, visited)
                 : JsonObjectSchema.builder()
                         .addProperty("values", valuesArray)
                         .required("values")
                         .build();
-        JsonSchema jsonSchema = JsonSchema.builder()
+        return Optional.of(JsonSchema.builder()
                 .name(collectionType().getSimpleName() + "_of_" + type.getSimpleName())
                 .rootElement(rootElement)
-                .build();
-        return Optional.of(jsonSchema);
+                .build());
     }
 
     @Override

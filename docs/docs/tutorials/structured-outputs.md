@@ -584,7 +584,9 @@ decided by the LLM at runtime. Two flavors are supported:
   with Jackson's `@JsonSubTypes`.
 
 Polymorphic return types work for the type itself, for collections (`List<T>`, `Set<T>`),
-and for fields nested inside other POJOs.
+for fields nested inside other POJOs, and for recursive hierarchies where a subtype
+contains the base type as a field (e.g., `BinaryOp(left: ExpressionNode, right: ExpressionNode)`
+where `ExpressionNode` is the sealed base).
 
 A discriminator property (defaulting to `"type"`) is added to each subtype so the LLM
 can communicate which concrete type it produced; the parser then dispatches to the
@@ -725,6 +727,21 @@ record Parrot(String name, int vocabulary) implements Pet {}
 
 When `@Description` is omitted, descriptions fall back to the simple class name
 (e.g., `"Hamster"`) so the LLM still has a label per option.
+
+**Recursive polymorphic types:**
+
+A polymorphic base whose subtypes contain it as a field works out of the box:
+
+```java
+sealed interface ExpressionNode permits Literal, BinaryOp {}
+
+record Literal(int value) implements ExpressionNode {}
+
+record BinaryOp(String operator, ExpressionNode left, ExpressionNode right) implements ExpressionNode {}
+```
+
+Recursive polymorphic schemas require a model that supports `$ref` / `$defs`
+(currently OpenAI, Azure OpenAI, and Google AI Gemini in strict mode).
 
 **Discriminator field collisions:**
 
