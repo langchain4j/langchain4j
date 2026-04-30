@@ -10,6 +10,9 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.MalformedInputException;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystemAlreadyExistsException;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -20,7 +23,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Loads skills from the classpath.
+ * Loads skills from the classpath (including cases when they are packaged inside
+ * a JAR file that is on the classpath).
  * <p>
  * Each skill must reside in its own directory containing a {@code SKILL.md} file.
  * The file must have a YAML front matter block that declares the skill's {@code name}
@@ -170,10 +174,30 @@ public class ClassPathSkillLoader {
 
         try {
             URI uri = url.toURI();
+            if ("jar".equals(uri.getScheme())) {
+                return resolveJarPath(uri);
+            }
             return Path.of(uri);
-        } catch (URISyntaxException e) {
+        } catch (URISyntaxException | IOException e) {
             throw new RuntimeException("Failed to resolve classpath resource: " + pathOnClasspath, e);
         }
+    }
+
+    private static Path resolveJarPath(URI jarUri) throws IOException {
+        String schemeSpecific = jarUri.getSchemeSpecificPart();
+        int separator = schemeSpecific.indexOf("!/");
+        if (separator == -1) {
+            throw new IllegalArgumentException("Invalid JAR URI: " + jarUri);
+        }
+        String pathInJar = schemeSpecific.substring(separator + 1);
+
+        FileSystem fs;
+        try {
+            fs = FileSystems.newFileSystem(jarUri, Map.of());
+        } catch (FileSystemAlreadyExistsException e) {
+            fs = FileSystems.getFileSystem(jarUri);
+        }
+        return fs.getPath(pathInJar);
     }
 
     private static ClassLoader getDefaultClassLoader() {
