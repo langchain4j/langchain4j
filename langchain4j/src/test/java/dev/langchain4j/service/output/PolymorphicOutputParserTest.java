@@ -269,13 +269,6 @@ class PolymorphicOutputParserTest {
     }
 
     @Test
-    void recursive_polymorphic_schema_generation_does_not_loop() {
-
-        Optional<JsonSchema> schema = new PojoOutputParser<>(ExpressionNode.class).jsonSchema();
-        assertThat(schema).isPresent();
-    }
-
-    @Test
     void recursive_polymorphic_schema_is_compact_and_uses_refs() {
 
         JsonSchema actual = new PojoOutputParser<>(ExpressionNode.class).jsonSchema().get();
