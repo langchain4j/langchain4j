@@ -865,7 +865,7 @@ AgentInvocation{agent=Sequential, startTime=2026-03-18T17:27:28.099439515, finis
     |=> AgentInvocation{agent=scoreStyle, iteration=1, startTime=2026-03-18T17:27:38.183021641, finishTime=2026-03-18T17:27:38.683085876, duration=500 ms, tokens=439, inputs={style=comedy, story=In a realm wher...}, output=0.8}
 ```
 
-Finally, using the static `generateReport` method esposed by `HtmlReportGenerator` class, it is also possible to generate a visual HTML report of the data collected by the `AgentMonitor` for both the topology of the agentic system and the recorded executions. For instance, generating this report for the former execution: 
+Finally, using the static `generateReport` method exposed by `HtmlReportGenerator` class, it is also possible to generate a visual HTML report of the data collected by the `AgentMonitor` for both the topology of the agentic system and the recorded executions. For instance, generating this report for the former execution: 
 
 ```java
 HtmlReportGenerator.generateReport(monitor, Path.of("review-loop.html"));
@@ -874,6 +874,20 @@ HtmlReportGenerator.generateReport(monitor, Path.of("review-loop.html"));
 will produce a report file `review-loop.html` in the current working directory similar to this:
 
 ![](/img/agent-monitor.png)
+
+It is also possible to generate the topology and execution sections independently. To generate only the topology of the agentic system, without any execution data:
+
+```java
+HtmlReportGenerator.generateTopology(styledWriter, Path.of("topology.html"));
+```
+
+Conversely, to generate only the execution history recorded by the monitor, without the topology section:
+
+```java
+HtmlReportGenerator.generateExecution(monitor, Path.of("execution.html"));
+```
+
+This last method also supports filtering by memory id, for instance `HtmlReportGenerator.generateExecution(monitor, memoryId, path)`, while all methods have overloads that return the HTML as a `String` instead of writing to a file.
 
 Another alternative to manually creating an `AgentMonitor` and registering it as a listener, is making your agent service interface to extend the `MonitoredAgent` one. When doing so, the builder automatically creates and registers an `AgentMonitor` as a listener, and this monitor becomes accessible directly from the agent instance via the `agentMonitor()` method.
 
