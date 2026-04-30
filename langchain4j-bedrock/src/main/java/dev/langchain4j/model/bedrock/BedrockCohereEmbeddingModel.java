@@ -13,11 +13,13 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.SdkBytes;
@@ -36,6 +38,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 public class BedrockCohereEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private static final int DEFAULT_MAX_SEGMENTS_PER_BATCH = 96;
+    private static final String INPUT_TOKEN_COUNT_HEADER = "x-amzn-bedrock-input-token-count";
 
     private final BedrockRuntimeClient client;
     private final String model;
@@ -56,15 +59,16 @@ public class BedrockCohereEmbeddingModel extends DimensionAwareEmbeddingModel {
     private BedrockRuntimeClient initClient(Builder builder) {
         return BedrockRuntimeClient.builder()
                 .region(getOrDefault(builder.region, US_EAST_1))
-                .credentialsProvider(
-                        getOrDefault(builder.credentialsProvider, () -> DefaultCredentialsProvider.builder()
-                                .build()))
+                .credentialsProvider(getOrDefault(
+                        builder.credentialsProvider,
+                        () -> DefaultCredentialsProvider.builder().build()))
                 .build();
     }
 
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
         List<Embedding> embeddings = new ArrayList<>();
+        Integer inputTokenCount = null;
 
         for (int i = 0; i < textSegments.size(); i += maxSegmentsPerBatch) {
             List<TextSegment> batch = textSegments.subList(i, Math.min(textSegments.size(), i + maxSegmentsPerBatch));
@@ -81,9 +85,32 @@ public class BedrockCohereEmbeddingModel extends DimensionAwareEmbeddingModel {
             embeddings.addAll(stream(embeddingResponse.getEmbeddings().getFloatEmbeddings())
                     .map(Embedding::from)
                     .toList());
+            inputTokenCount = sum(
+                    inputTokenCount,
+                    inputTokenCountFrom(invokeModelResponse).orElse(embeddingResponse.getInputTextTokenCount()));
         }
 
-        return Response.from(embeddings);
+        return Response.from(embeddings, tokenUsageFrom(inputTokenCount));
+    }
+
+    private Optional<Integer> inputTokenCountFrom(InvokeModelResponse response) {
+        return response.sdkHttpResponse()
+                .firstMatchingHeader(INPUT_TOKEN_COUNT_HEADER)
+                .map(Integer::parseInt);
+    }
+
+    private TokenUsage tokenUsageFrom(Integer inputTokenCount) {
+        return inputTokenCount == null ? null : new TokenUsage(inputTokenCount);
+    }
+
+    private Integer sum(Integer first, Integer second) {
+        if (first == null) {
+            return second;
+        }
+        if (second == null) {
+            return first;
+        }
+        return first + second;
     }
 
     private Map<String, Object> toRequestParameters(List<TextSegment> textSegments) {
