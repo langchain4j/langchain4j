@@ -618,9 +618,9 @@ the LLM emits `{"value":{"type":"Dog","name":"Rex","breed":"Labrador"}}`, which 
 back into a `Dog` instance.
 
 :::note
-Because JSON schemas cannot have `anyOf` at the root, the schema wraps the polymorphic
-choice under a `value` property (or `values` for collections). The wrapper is an
-implementation detail — your AI Service method still returns the unwrapped subtype.
+Because many LLM providers do not support JSON schemas with `anyOf` at the root,
+the schema wraps the polymorphic choice under a `value` property (or `values` for collections).
+The wrapper is an implementation detail — your AI Service method still returns the unwrapped subtype.
 :::
 
 **Collections of polymorphic types:**
@@ -670,15 +670,15 @@ it on the base:
 ```java
 sealed interface Bird permits Eagle, Sparrow {}
 
-@JsonTypeName("eagle")
+@JsonTypeName("bird_eagle")
 record Eagle(double wingspanMeters) implements Bird {}
 
-@JsonTypeName("sparrow")
+@JsonTypeName("bird_sparrow")
 record Sparrow(boolean migratory) implements Bird {}
 ```
 
-The LLM will see `"eagle"` / `"sparrow"` as the discriminator values rather than the simple
-class names.
+The LLM will see `"bird_eagle"` / `"bird_sparrow"` as the discriminator values rather than the simple
+class names (`"Eagle"`/`"Sparrow"`).
 
 **Supported `@JsonTypeInfo` configuration:**
 
@@ -730,7 +730,7 @@ When `@Description` is omitted, descriptions fall back to the simple class name
 
 **Recursive polymorphic types:**
 
-A polymorphic base whose subtypes contain it as a field works out of the box:
+A polymorphic base whose subtypes contain it as a field works as well:
 
 ```java
 sealed interface ExpressionNode permits Literal, BinaryOp {}
@@ -741,7 +741,7 @@ record BinaryOp(String operator, ExpressionNode left, ExpressionNode right) impl
 ```
 
 Recursive polymorphic schemas require a model that supports `$ref` / `$defs`
-(currently OpenAI, Azure OpenAI, and Google AI Gemini in strict mode).
+(currently Azure OpenAI, Mistral and OpenAI).
 
 **Discriminator field collisions:**
 

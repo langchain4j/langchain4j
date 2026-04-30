@@ -12,12 +12,20 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.AiServices;
+import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpMethod;
+import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
+import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.service.common.AbstractAiServiceWithJsonSchemaIT;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
+import java.util.Optional;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
@@ -25,6 +33,7 @@ import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
@@ -434,5 +443,75 @@ class OpenAiAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT 
             collectLeaves(a.left(), leaves);
             collectLeaves(a.right(), leaves);
         }
+    }
+
+    /**
+     * Tripwire test: documents — and proves — why the polymorphic schema generator wraps the
+     * LLM-facing {@code anyOf} under a {@code value} property. OpenAI's structured-outputs API
+     * currently rejects schemas whose root is not {@code type: "object"}, even though such a
+     * schema is itself a perfectly valid JSON Schema. We add the {@code value} envelope to
+     * satisfy that constraint.
+     *
+     * <p><strong>If this test starts failing</strong> (i.e., OpenAI returns 200 instead of 400
+     * for a schema with {@code anyOf} at the root), it means OpenAI has relaxed the restriction
+     * and the {@code value}/{@code values} envelope can be dropped from the polymorphic schema
+     * shape. At that point, simplify the schema and update {@code PojoOutputParser} /
+     * {@code PojoCollectionOutputParser} accordingly.</p>
+     *
+     * <p>Hits the raw HTTP endpoint via langchain4j's {@link HttpClient} to
+     * bypass {@code OpenAiChatModel}'s client-side validation.</p>
+     */
+    @Test
+    void openai_rejects_anyOf_at_schema_root() {
+
+        // given
+        String body =
+                """
+                {
+                  "model": "gpt-4o-mini",
+                  "messages": [{"role": "user", "content": "say hi"}],
+                  "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                      "name": "Animal",
+                      "strict": true,
+                      "schema": {
+                        "anyOf": [
+                          {"type": "object",
+                           "properties": {"kind": {"type": "string", "enum": ["Dog"]}},
+                           "required": ["kind"],
+                           "additionalProperties": false},
+                          {"type": "object",
+                           "properties": {"kind": {"type": "string", "enum": ["Cat"]}},
+                           "required": ["kind"],
+                           "additionalProperties": false}
+                        ]
+                      }
+                    }
+                  }
+                }
+                """;
+
+        String baseUrl = Optional.ofNullable(System.getenv("OPENAI_BASE_URL")).orElse("https://api.openai.com/v1");
+        HttpRequest request = HttpRequest.builder()
+                .method(HttpMethod.POST)
+                .url(baseUrl + "/chat/completions")
+                .addHeader("Authorization", "Bearer " + System.getenv("OPENAI_API_KEY"))
+                .addHeader("Content-Type", "application/json")
+                .body(body)
+                .build();
+
+        HttpClient httpClient = new LoggingHttpClient(new JdkHttpClientBuilder().build(), true, true);
+
+        // when
+        HttpException error = catchThrowableOfType(HttpException.class, () -> httpClient.execute(request));
+
+        // then
+        assertThat(error).isNotNull();
+        assertThat(error.statusCode()).isEqualTo(400);
+        assertThat(error.getMessage())
+                .containsIgnoringCase("invalid schema")
+                .containsIgnoringCase("type")
+                .containsIgnoringCase("object");
     }
 }
