@@ -18,7 +18,12 @@ import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.structured.Description;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Deque;
@@ -139,6 +144,110 @@ class JsonSchemaElementUtilsTest {
                 .isEqualTo(JsonObjectSchema.builder()
                         .addStringProperty("uuid", "My UUID")
                         .required("uuid")
+                        .build());
+    }
+
+    @Test
+    void should_set_default_description_for_offset_date_time() {
+
+        // when
+        JsonSchemaElement jsonSchemaElement =
+                jsonSchemaElementFrom(OffsetDateTime.class, null, null, true, new LinkedHashMap<>());
+
+        // then
+        assertThat(jsonSchemaElement)
+                .isEqualTo(JsonStringSchema.builder()
+                        .description("String in ISO-8601 offset date-time format, e.g. '2007-12-03T10:15:30+01:00'")
+                        .build());
+    }
+
+    @Test
+    void should_set_default_description_for_zone_offset() {
+
+        // when - regression test: this used to throw StackOverflowError because
+        // ZoneOffset -> ZoneRules -> ZoneOffset[] is a real cycle in the JDK and
+        // java.* types bypassed the cycle guard
+        JsonSchemaElement jsonSchemaElement =
+                jsonSchemaElementFrom(ZoneOffset.class, null, null, true, new LinkedHashMap<>());
+
+        // then
+        assertThat(jsonSchemaElement)
+                .isEqualTo(JsonStringSchema.builder()
+                        .description("String representing a zone offset, e.g. '+01:00'")
+                        .build());
+    }
+
+    @Test
+    void should_set_default_description_for_zoned_date_time() {
+
+        // when
+        JsonSchemaElement jsonSchemaElement =
+                jsonSchemaElementFrom(ZonedDateTime.class, null, null, true, new LinkedHashMap<>());
+
+        // then
+        assertThat(jsonSchemaElement)
+                .isEqualTo(JsonStringSchema.builder()
+                        .description(
+                                "String in ISO-8601 zoned date-time format, e.g. '2007-12-03T10:15:30+01:00[Europe/Paris]'")
+                        .build());
+    }
+
+    static class MyClassWithJavaTimeFields {
+
+        Instant createdAt;
+        LocalDate birthDate;
+        LocalDateTime localTimestamp;
+        OffsetDateTime updatedAt;
+        ZonedDateTime scheduledAt;
+        ZoneOffset offset;
+    }
+
+    @Test
+    void should_set_default_descriptions_for_java_time_fields_in_class() {
+
+        // when - regression test: an OffsetDateTime / ZonedDateTime / ZoneOffset
+        // field used to trigger StackOverflowError when building the schema
+        JsonSchemaElement jsonSchemaElement = jsonSchemaElementFrom(
+                MyClassWithJavaTimeFields.class, null, null, true, new LinkedHashMap<>());
+
+        // then
+        assertThat(jsonSchemaElement)
+                .isEqualTo(JsonObjectSchema.builder()
+                        .addStringProperty(
+                                "createdAt", "String in ISO-8601 instant format, e.g. '2007-12-03T10:15:30.00Z'")
+                        .addStringProperty("birthDate", "String in ISO-8601 date format, e.g. '2007-12-03'")
+                        .addStringProperty(
+                                "localTimestamp",
+                                "String in ISO-8601 local date-time format, e.g. '2007-12-03T10:15:30'")
+                        .addStringProperty(
+                                "updatedAt",
+                                "String in ISO-8601 offset date-time format, e.g. '2007-12-03T10:15:30+01:00'")
+                        .addStringProperty(
+                                "scheduledAt",
+                                "String in ISO-8601 zoned date-time format, e.g. '2007-12-03T10:15:30+01:00[Europe/Paris]'")
+                        .addStringProperty("offset", "String representing a zone offset, e.g. '+01:00'")
+                        .required("createdAt", "birthDate", "localTimestamp", "updatedAt", "scheduledAt", "offset")
+                        .build());
+    }
+
+    static class MyClassWithDescribedOffsetDateTime {
+
+        @Description("When the record was last updated")
+        OffsetDateTime updatedAt;
+    }
+
+    @Test
+    void should_use_non_null_description_for_java_time() {
+
+        // when
+        JsonSchemaElement jsonSchemaElement =
+                jsonSchemaElementFrom(MyClassWithDescribedOffsetDateTime.class, null, null, true, new LinkedHashMap<>());
+
+        // then
+        assertThat(jsonSchemaElement)
+                .isEqualTo(JsonObjectSchema.builder()
+                        .addStringProperty("updatedAt", "When the record was last updated")
+                        .required("updatedAt")
                         .build());
     }
 
@@ -277,6 +386,13 @@ class JsonSchemaElementUtilsTest {
         assertThat(isJsonString(StringBuilder.class)).isTrue();
         assertThat(isJsonString(CharSequence.class)).isTrue();
         assertThat(isJsonString(UUID.class)).isTrue();
+
+        assertThat(isJsonString(Instant.class)).isTrue();
+        assertThat(isJsonString(LocalDate.class)).isTrue();
+        assertThat(isJsonString(LocalDateTime.class)).isTrue();
+        assertThat(isJsonString(OffsetDateTime.class)).isTrue();
+        assertThat(isJsonString(ZonedDateTime.class)).isTrue();
+        assertThat(isJsonString(ZoneOffset.class)).isTrue();
     }
 
     @Test
