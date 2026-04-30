@@ -13,6 +13,20 @@ import dev.langchain4j.invocation.InvocationContext;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.MonthDay;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.Period;
+import java.time.Year;
+import java.time.YearMonth;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -281,6 +295,50 @@ class DefaultToolExecutorTest implements WithAssertions {
                         List.class,
                         new TypeReference<Map<String, Integer>>() {}.getType()))
                 .isEqualTo(singletonMap("A", 1));
+    }
+
+    @Test
+    void coerce_argument_java_time() {
+
+        // ISO-8601 strings produced by an LLM coerced to the matching java.time type.
+        assertThat(coerceArgument("2007-12-03T10:15:30.00Z", "arg", Instant.class, null))
+                .isEqualTo(Instant.parse("2007-12-03T10:15:30.00Z"));
+
+        assertThat(coerceArgument("2007-12-03", "arg", LocalDate.class, null))
+                .isEqualTo(LocalDate.of(2007, 12, 3));
+
+        assertThat(coerceArgument("10:15:30", "arg", LocalTime.class, null))
+                .isEqualTo(LocalTime.of(10, 15, 30));
+
+        assertThat(coerceArgument("2007-12-03T10:15:30", "arg", LocalDateTime.class, null))
+                .isEqualTo(LocalDateTime.of(2007, 12, 3, 10, 15, 30));
+
+        assertThat(coerceArgument("10:15:30+01:00", "arg", OffsetTime.class, null))
+                .isEqualTo(OffsetTime.parse("10:15:30+01:00"));
+
+        assertThat(coerceArgument("2007-12-03T10:15:30+01:00", "arg", OffsetDateTime.class, null))
+                .isEqualTo(OffsetDateTime.parse("2007-12-03T10:15:30+01:00"));
+
+        assertThat(coerceArgument("2007-12-03T10:15:30+01:00[Europe/Paris]", "arg", ZonedDateTime.class, null))
+                .isEqualTo(ZonedDateTime.parse("2007-12-03T10:15:30+01:00[Europe/Paris]"));
+
+        assertThat(coerceArgument("PT15M", "arg", Duration.class, null)).isEqualTo(Duration.ofMinutes(15));
+
+        assertThat(coerceArgument("P1Y2M3D", "arg", Period.class, null)).isEqualTo(Period.of(1, 2, 3));
+
+        assertThat(coerceArgument("2007", "arg", Year.class, null)).isEqualTo(Year.of(2007));
+
+        assertThat(coerceArgument("2007-12", "arg", YearMonth.class, null))
+                .isEqualTo(YearMonth.of(2007, 12));
+
+        assertThat(coerceArgument("--12-03", "arg", MonthDay.class, null))
+                .isEqualTo(MonthDay.of(12, 3));
+
+        assertThat(coerceArgument("Europe/Paris", "arg", ZoneId.class, null))
+                .isEqualTo(ZoneId.of("Europe/Paris"));
+
+        assertThat(coerceArgument("+01:00", "arg", ZoneOffset.class, null))
+                .isEqualTo(ZoneOffset.of("+01:00"));
     }
 
     private static class TestTool {
