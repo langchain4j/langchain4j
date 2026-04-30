@@ -10,7 +10,6 @@ import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -88,8 +87,7 @@ class GoogleAiGeminiImageModelIT {
                 .build();
 
         // when
-        var imageResponse = subject.generate(
-                """
+        var imageResponse = subject.generate("""
                 A kawaii illustration of the current weather forecast for Paris (France)
                 showing the current temperature (in Celsius)
                 """);

@@ -37,7 +37,8 @@ class GoogleAiGeminiChatModelThinkingIT {
         boolean includeThoughts = true;
         boolean returnThinking = true;
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
 
         GeminiThinkingConfig thinkingConfig = GeminiThinkingConfig.builder()
                 .includeThoughts(includeThoughts)
@@ -151,7 +152,8 @@ class GoogleAiGeminiChatModelThinkingIT {
                         .build())
                 .build();
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
 
         ChatModel model = GoogleAiGeminiChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))

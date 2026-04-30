@@ -564,8 +564,7 @@ class GoogleAiGeminiChatModelIT {
         ResponseFormat responseFormat =
                 ResponseFormat.builder().type(JSON).jsonSchema(jsonSchema).build();
 
-        UserMessage userMessage = UserMessage.from(
-                """
+        UserMessage userMessage = UserMessage.from("""
                         Extract information from the following text:
                         1. A circle with a radius of 5
                         2. A rectangle with a width of 10 and a height of 20
@@ -596,8 +595,7 @@ class GoogleAiGeminiChatModelIT {
     @Test
     void should_support_raw_json_schema() throws JsonProcessingException {
         // given
-        String rawSchema =
-                """
+        String rawSchema = """
         {
           "type": "object",
           "properties": {
@@ -663,8 +661,7 @@ class GoogleAiGeminiChatModelIT {
                 .build();
 
         // when
-        UserMessage userMessage = UserMessage.from(
-                """
+        UserMessage userMessage = UserMessage.from("""
                    Tell me about a software engineer named Sherlock Holmes,
                    who was born on November 28 1990 and sees the world over six feet from the ground.
                    He is an open-source contributor, an active volunteer and lives in London at 221B Baker Street.
