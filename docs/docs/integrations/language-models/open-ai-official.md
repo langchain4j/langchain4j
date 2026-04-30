@@ -235,6 +235,32 @@ OpenAiChatModel.builder()
 
 In this case AI Service will automatically generate a JSON schema from the given POJO and pass it to the LLM.
 
+## Thinking / Reasoning
+
+The chat-completions integration can also return reasoning text for OpenAI-compatible providers that expose it in
+the SDK additional properties.
+
+When `returnThinking(true)` is enabled while building `OpenAiOfficialChatModel` or `OpenAiOfficialStreamingChatModel`,
+LangChain4j will extract reasoning from compatible fields such as `reasoning_content`, `reasoningContent`, or
+`thinking` and store it in `AiMessage.thinking()`.
+
+When `returnThinking(true)` is enabled for `OpenAiOfficialStreamingChatModel`, the
+`StreamingChatResponseHandler.onPartialThinking()` and `TokenStream.onPartialThinking()` callbacks will also be
+invoked when reasoning chunks are present.
+
+Here is an example with an OpenAI reasoning-capable model:
+
+```java
+ChatModel model = OpenAiOfficialChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("o4-mini")
+        .defaultRequestParameters(OpenAiOfficialChatRequestParameters.builder()
+                .reasoningEffort("medium")
+                .build())
+        .returnThinking(true)
+        .build();
+```
+
 ## Configuring the models for streaming
 
 :::note

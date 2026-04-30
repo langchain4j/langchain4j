@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.aiMessageFrom;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.finishReasonFrom;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.toOpenAiChatCompletionCreateParams;
@@ -10,6 +11,7 @@ import com.openai.client.OpenAIClient;
 import com.openai.credential.Credential;
 import com.openai.models.chat.completions.ChatCompletion;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.TokenCountEstimator;
@@ -27,6 +29,8 @@ import java.util.Map;
 import java.util.Set;
 
 public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel implements ChatModel {
+
+    private final boolean returnThinking;
 
     public OpenAiOfficialChatModel(Builder builder) {
 
@@ -70,6 +74,7 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
                     false);
         }
         this.modelName = builder.modelName;
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
     }
 
     @Override
@@ -124,7 +129,7 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
         }
 
         return ChatResponse.builder()
-                .aiMessage(aiMessageFrom(chatCompletion))
+                .aiMessage(aiMessageFrom(chatCompletion, returnThinking))
                 .metadata(responseMetadataBuilder.build())
                 .build();
     }
@@ -171,6 +176,7 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
         private Map<String, String> customHeaders;
         private List<ChatModelListener> listeners;
         private Set<Capability> capabilities;
+        private Boolean returnThinking;
 
         public Builder() {
             // This is public so it can be extended
@@ -302,6 +308,16 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
 
         public Builder strictJsonSchema(Boolean strictJsonSchema) {
             this.strictJsonSchema = strictJsonSchema;
+            return this;
+        }
+
+        /**
+         * Controls whether to return thinking/reasoning text (if available) inside {@link AiMessage#thinking()}.
+         * <p>
+         * If enabled, the thinking text will be stored within the {@link AiMessage} and may be persisted.
+         */
+        public Builder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
             return this;
         }
 
