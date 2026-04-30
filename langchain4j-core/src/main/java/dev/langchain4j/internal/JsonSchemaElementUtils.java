@@ -1,5 +1,10 @@
 package dev.langchain4j.internal;
 
+import static dev.langchain4j.internal.PolymorphicTypes.discriminatorPropertyName;
+import static dev.langchain4j.internal.PolymorphicTypes.discriminatorValue;
+import static dev.langchain4j.internal.PolymorphicTypes.findConcreteSubtypes;
+import static dev.langchain4j.internal.PolymorphicTypes.isPolymorphic;
+import static dev.langchain4j.internal.PolymorphicTypes.verifyJsonTypeInfoIsSupported;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static java.lang.reflect.Modifier.isStatic;
 import static java.util.Arrays.stream;
@@ -86,7 +91,7 @@ public class JsonSchemaElementUtils {
                     .build();
         }
 
-        if (PolymorphicTypes.isPolymorphic(clazz)) {
+        if (isPolymorphic(clazz)) {
             return polymorphicSchemaFrom(clazz, fieldDescription, areSubFieldsRequiredByDefault, visited);
         }
 
@@ -98,7 +103,7 @@ public class JsonSchemaElementUtils {
             String description,
             boolean areSubFieldsRequiredByDefault,
             Map<Class<?>, VisitedClassMetadata> visited) {
-        PolymorphicTypes.verifyJsonTypeInfoIsSupported(baseType);
+        verifyJsonTypeInfoIsSupported(baseType);
 
         if (visited.containsKey(baseType)) {
             VisitedClassMetadata metadata = visited.get(baseType);
@@ -111,9 +116,9 @@ public class JsonSchemaElementUtils {
                 new VisitedClassMetadata(JsonReferenceSchema.builder().reference(reference).build(), reference, false);
         visited.put(baseType, metadata);
 
-        String discriminatorProperty = PolymorphicTypes.discriminatorPropertyName(baseType);
+        String discriminatorProperty = discriminatorPropertyName(baseType);
         List<JsonSchemaElement> options = new ArrayList<>();
-        for (Class<?> subtype : PolymorphicTypes.findConcreteSubtypes(baseType)) {
+        for (Class<?> subtype : findConcreteSubtypes(baseType)) {
             JsonSchemaElement subtypeSchema = jsonObjectOrReferenceSchemaFrom(
                     subtype, null, areSubFieldsRequiredByDefault, visited, false);
             JsonSchemaElement withDiscriminator =
@@ -138,7 +143,7 @@ public class JsonSchemaElementUtils {
             return subtypeSchema;
         }
 
-        String discriminatorValue = PolymorphicTypes.discriminatorValue(baseType, subtype);
+        String discriminatorValue = discriminatorValue(baseType, subtype);
 
         // Idempotency: a recursive call may have already augmented this subtype.
         if (obj.properties().get(discriminatorProperty) instanceof JsonEnumSchema existing

@@ -24,6 +24,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -420,20 +421,16 @@ class OpenAiAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT 
         // given
         ExpressionExtractor extractor = AiServices.create(ExpressionExtractor.class, model);
 
-        // when — the schema for ArithmeticExpression contains `$ref` back to itself; this verifies
-        // that the recursive schema is accepted by OpenAI and that the parser can handle a tree
-        // returned by the model.
+        // when
         ArithmeticExpression expression = extractor.extractFrom(
                 "Represent the literal expression 1+2+3 as a syntax tree. Do NOT simplify or evaluate. "
                         + "Use a left-associative tree: Addition(Addition(Constant(1), Constant(2)), Constant(3)).");
 
-        // then — at minimum, dispatch worked and the result is a valid expression with leaves
-        // drawn from {1, 2, 3}. (Whether the LLM produces a deep or shallow tree depends on the
-        // model's strict-mode behavior.)
+        // then
         assertThat(expression).isInstanceOf(Addition.class);
-        List<Integer> leaves = new java.util.ArrayList<>();
+        List<Integer> leaves = new ArrayList<>();
         collectLeaves(expression, leaves);
-        assertThat(leaves).isNotEmpty().allSatisfy(v -> assertThat(v).isIn(1, 2, 3));
+        assertThat(leaves).containsExactlyInAnyOrder(1, 2, 3);
     }
 
     private static void collectLeaves(ArithmeticExpression expr, List<Integer> leaves) {
