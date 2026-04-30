@@ -34,8 +34,7 @@ class JsonCodecTest {
 
     record Person(String name, int age) {}
 
-    private static final String PERSON_JSON =
-            """
+    private static final String PERSON_JSON = """
             {
                 "name": "Klaus",
                 "age": 42
@@ -78,8 +77,7 @@ class JsonCodecTest {
     void record_different_field_order(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
+        String json = """
                 {
                     "age": 42,
                     "name": "Klaus"
@@ -105,8 +103,7 @@ class JsonCodecTest {
     void should_fail_on_unknown_fields_by_default(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
+        String json = """
                 {
                     "name": "Klaus",
                     "age": 42,
@@ -133,8 +130,7 @@ class JsonCodecTest {
     void record_null_value(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
+        String json = """
                 {
                     "name": "Klaus",
                     "age": null
@@ -154,8 +150,7 @@ class JsonCodecTest {
     void record_wrong_type(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
+        String json = """
                 {
                     "name": "Klaus",
                     "age": "42"
@@ -175,8 +170,7 @@ class JsonCodecTest {
     void record_wrong_type_2(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
+        String json = """
                 {
                     "name": "Klaus",
                     "age": 42.0
@@ -200,8 +194,7 @@ class JsonCodecTest {
     void record_with_nested_record(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
+        String json = """
                 {
                     "name": "Klaus",
                     "address": {
@@ -254,8 +247,7 @@ class JsonCodecTest {
     void record_with_empty_collections(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
+        String json = """
                 {
                     "name": "Klaus",
                     "collection": [],
@@ -319,8 +311,7 @@ class JsonCodecTest {
     void record_with_optional_null(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
+        String json = """
                 {
                     "name": "Klaus",
                     "age": null
@@ -364,8 +355,7 @@ class JsonCodecTest {
     void record_with_validation(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
+        String json = """
                 {
                     "name": "Klaus",
                     "age": -1
@@ -392,13 +382,11 @@ class JsonCodecTest {
     void record_with_custom_ctor(Json.JsonCodec codec) {
 
         // when
-        PersonRecordCustomCtor pojo = codec.fromJson(
-                """
+        PersonRecordCustomCtor pojo = codec.fromJson("""
                 {
                     "name": "Klaus"
                 }
-                """,
-                PersonRecordCustomCtor.class);
+                """, PersonRecordCustomCtor.class);
 
         // then
         assertThat(pojo.name()).isEqualTo("Klaus");
@@ -425,7 +413,6 @@ class JsonCodecTest {
         assertThat(pojo.age).isEqualTo(42);
     }
 
-
     @Nested
     class JavaTime {
 
@@ -446,8 +433,7 @@ class JsonCodecTest {
                 YearMonth yearMonth,
                 MonthDay monthDay,
                 ZoneId zoneId,
-                ZoneOffset zoneOffset) {
-        }
+                ZoneOffset zoneOffset) {}
 
         @ParameterizedTest
         @MethodSource("dev.langchain4j.internal.JsonCodecTest#codecs")

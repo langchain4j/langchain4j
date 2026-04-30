@@ -65,9 +65,11 @@ public class JsonSchemaElementUtils {
             Map.entry(LocalTime.class, "String in ISO-8601 time format, e.g. '10:15:30'"),
             Map.entry(LocalDateTime.class, "String in ISO-8601 local date-time format, e.g. '2007-12-03T10:15:30'"),
             Map.entry(OffsetTime.class, "String in ISO-8601 offset time format, e.g. '10:15:30+01:00'"),
-            Map.entry(OffsetDateTime.class,
+            Map.entry(
+                    OffsetDateTime.class,
                     "String in ISO-8601 offset date-time format, e.g. '2007-12-03T10:15:30+01:00'"),
-            Map.entry(ZonedDateTime.class,
+            Map.entry(
+                    ZonedDateTime.class,
                     "String in ISO-8601 zoned date-time format, e.g. '2007-12-03T10:15:30+01:00[Europe/Paris]'"),
             Map.entry(Duration.class, "String in ISO-8601 duration format, e.g. 'PT15M'"),
             Map.entry(Period.class, "String in ISO-8601 period format, e.g. 'P1Y2M3D'"),
@@ -151,15 +153,15 @@ public class JsonSchemaElementUtils {
         }
 
         String reference = generateUUIDFrom(baseType.getName());
-        VisitedClassMetadata metadata =
-                new VisitedClassMetadata(JsonReferenceSchema.builder().reference(reference).build(), reference, false);
+        VisitedClassMetadata metadata = new VisitedClassMetadata(
+                JsonReferenceSchema.builder().reference(reference).build(), reference, false);
         visited.put(baseType, metadata);
 
         String discriminatorProperty = discriminatorPropertyName(baseType);
         List<JsonSchemaElement> options = new ArrayList<>();
         for (Class<?> subtype : findConcreteSubtypes(baseType)) {
-            JsonSchemaElement subtypeSchema = jsonObjectOrReferenceSchemaFrom(
-                    subtype, null, areSubFieldsRequiredByDefault, visited, false);
+            JsonSchemaElement subtypeSchema =
+                    jsonObjectOrReferenceSchemaFrom(subtype, null, areSubFieldsRequiredByDefault, visited, false);
             JsonSchemaElement withDiscriminator =
                     addDiscriminator(subtypeSchema, baseType, subtype, discriminatorProperty);
             options.add(withDiscriminator);
@@ -169,9 +171,11 @@ public class JsonSchemaElementUtils {
                 subtypeMetadata.jsonSchemaElement = withDiscriminator;
             }
         }
-        String desc = description != null ? description : Optional.ofNullable(descriptionFrom(baseType))
-                .orElse(baseType.getSimpleName());
-        JsonAnyOfSchema anyOf = JsonAnyOfSchema.builder().description(desc).anyOf(options).build();
+        String desc = description != null
+                ? description
+                : Optional.ofNullable(descriptionFrom(baseType)).orElse(baseType.getSimpleName());
+        JsonAnyOfSchema anyOf =
+                JsonAnyOfSchema.builder().description(desc).anyOf(options).build();
         metadata.jsonSchemaElement = anyOf;
         return anyOf;
     }
@@ -196,8 +200,7 @@ public class JsonSchemaElementUtils {
             JsonTypeInfo info = baseType.getAnnotation(JsonTypeInfo.class);
             // The discriminator field is allowed to coexist with a same-named bean field only when
             // @JsonTypeInfo(visible=true) or @JsonTypeInfo(include=As.EXISTING_PROPERTY).
-            boolean allowed = info != null
-                    && (info.visible() || info.include() == JsonTypeInfo.As.EXISTING_PROPERTY);
+            boolean allowed = info != null && (info.visible() || info.include() == JsonTypeInfo.As.EXISTING_PROPERTY);
             if (!allowed) {
                 throw new IllegalArgumentException(String.format(
                         "Polymorphic subtype %s declares a field named '%s', which collides with the discriminator "
@@ -205,16 +208,14 @@ public class JsonSchemaElementUtils {
                                 + "name with @JsonTypeInfo(property = \"...\") on %s, set @JsonTypeInfo(visible = true), "
                                 + "or use @JsonTypeInfo(include = As.EXISTING_PROPERTY) if the field is intentionally "
                                 + "part of the subtype.",
-                        subtype.getName(),
-                        discriminatorProperty,
-                        baseType.getName(),
-                        baseType.getName()));
+                        subtype.getName(), discriminatorProperty, baseType.getName(), baseType.getName()));
             }
         }
 
         Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
         properties.put(
-                discriminatorProperty, JsonEnumSchema.builder().enumValues(discriminatorValue).build());
+                discriminatorProperty,
+                JsonEnumSchema.builder().enumValues(discriminatorValue).build());
         obj.properties().forEach(properties::putIfAbsent);
 
         List<String> required = new ArrayList<>();
@@ -535,7 +536,7 @@ public class JsonSchemaElementUtils {
             // Emulating an optional parameter by using a union type with null.
             // See
             // https://platform.openai.com/docs/guides/structured-outputs/supported-schemas?api-mode=chat#all-fields-must-be-required
-            return new String[]{type, "null"};
+            return new String[] {type, "null"};
         } else {
             return type;
         }

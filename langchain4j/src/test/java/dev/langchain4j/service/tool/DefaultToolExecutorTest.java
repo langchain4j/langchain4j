@@ -304,11 +304,9 @@ class DefaultToolExecutorTest implements WithAssertions {
         assertThat(coerceArgument("2007-12-03T10:15:30.00Z", "arg", Instant.class, null))
                 .isEqualTo(Instant.parse("2007-12-03T10:15:30.00Z"));
 
-        assertThat(coerceArgument("2007-12-03", "arg", LocalDate.class, null))
-                .isEqualTo(LocalDate.of(2007, 12, 3));
+        assertThat(coerceArgument("2007-12-03", "arg", LocalDate.class, null)).isEqualTo(LocalDate.of(2007, 12, 3));
 
-        assertThat(coerceArgument("10:15:30", "arg", LocalTime.class, null))
-                .isEqualTo(LocalTime.of(10, 15, 30));
+        assertThat(coerceArgument("10:15:30", "arg", LocalTime.class, null)).isEqualTo(LocalTime.of(10, 15, 30));
 
         assertThat(coerceArgument("2007-12-03T10:15:30", "arg", LocalDateTime.class, null))
                 .isEqualTo(LocalDateTime.of(2007, 12, 3, 10, 15, 30));
@@ -328,17 +326,13 @@ class DefaultToolExecutorTest implements WithAssertions {
 
         assertThat(coerceArgument("2007", "arg", Year.class, null)).isEqualTo(Year.of(2007));
 
-        assertThat(coerceArgument("2007-12", "arg", YearMonth.class, null))
-                .isEqualTo(YearMonth.of(2007, 12));
+        assertThat(coerceArgument("2007-12", "arg", YearMonth.class, null)).isEqualTo(YearMonth.of(2007, 12));
 
-        assertThat(coerceArgument("--12-03", "arg", MonthDay.class, null))
-                .isEqualTo(MonthDay.of(12, 3));
+        assertThat(coerceArgument("--12-03", "arg", MonthDay.class, null)).isEqualTo(MonthDay.of(12, 3));
 
-        assertThat(coerceArgument("Europe/Paris", "arg", ZoneId.class, null))
-                .isEqualTo(ZoneId.of("Europe/Paris"));
+        assertThat(coerceArgument("Europe/Paris", "arg", ZoneId.class, null)).isEqualTo(ZoneId.of("Europe/Paris"));
 
-        assertThat(coerceArgument("+01:00", "arg", ZoneOffset.class, null))
-                .isEqualTo(ZoneOffset.of("+01:00"));
+        assertThat(coerceArgument("+01:00", "arg", ZoneOffset.class, null)).isEqualTo(ZoneOffset.of("+01:00"));
     }
 
     private static class TestTool {
@@ -506,9 +500,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor2 = new DefaultToolExecutor(new PersonTool(), request2);
         String result2 = toolExecutor2.execute(request2, "DEFAULT");
-        assertThat(result2)
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(result2).isEqualToIgnoringWhitespace("""
                 [
                   {
                     "name": "Klaus",
@@ -527,9 +519,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor3 = new DefaultToolExecutor(new PersonTool(), request3);
         String result3 = toolExecutor3.execute(request3, "DEFAULT");
-        assertThat(result3)
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(result3).isEqualToIgnoringWhitespace("""
                 [
                   {
                     "name": "Peter",
@@ -549,9 +539,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor4 = new DefaultToolExecutor(new PersonTool(), request4);
         String result4 = toolExecutor4.execute(request4, "DEFAULT");
-        assertThat(result4)
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(result4).isEqualToIgnoringWhitespace("""
                 {
                   "p1": {
                     "name": "Klaus",
@@ -570,9 +558,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor5 = new DefaultToolExecutor(new PersonTool(), request5);
         String result5 = toolExecutor5.execute(request5, "DEFAULT");
-        assertThat(result5)
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(result5).isEqualToIgnoringWhitespace("""
                 [
                   {
                     "name": "Klaus",
