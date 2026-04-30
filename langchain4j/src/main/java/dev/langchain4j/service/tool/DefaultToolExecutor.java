@@ -25,14 +25,50 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.MonthDay;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.Period;
+import java.time.Year;
+import java.time.YearMonth;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 
 public class DefaultToolExecutor implements ToolExecutor {
+
+    /**
+     * Top-level scalar parsers for java.time parameters. The LLM passes these as raw ISO-8601
+     * strings (not JSON-quoted), so {@code Json.fromJson} would fail; we parse them directly.
+     * Mirrors the explicit {@link UUID} branch below.
+     */
+    private static final Map<Class<?>, Function<String, ?>> JAVA_TIME_PARSERS = Map.ofEntries(
+            Map.entry(Instant.class, Instant::parse),
+            Map.entry(LocalDate.class, LocalDate::parse),
+            Map.entry(LocalTime.class, LocalTime::parse),
+            Map.entry(LocalDateTime.class, LocalDateTime::parse),
+            Map.entry(OffsetTime.class, OffsetTime::parse),
+            Map.entry(OffsetDateTime.class, OffsetDateTime::parse),
+            Map.entry(ZonedDateTime.class, ZonedDateTime::parse),
+            Map.entry(Duration.class, Duration::parse),
+            Map.entry(Period.class, Period::parse),
+            Map.entry(Year.class, Year::parse),
+            Map.entry(YearMonth.class, YearMonth::parse),
+            Map.entry(MonthDay.class, MonthDay::parse),
+            Map.entry(ZoneId.class, ZoneId::of),
+            Map.entry(ZoneOffset.class, (Function<String, ?>) ZoneOffset::of));
 
     private final Object object;
     private final Method originalMethod;
@@ -175,7 +211,8 @@ public class DefaultToolExecutor implements ToolExecutor {
             return List.of(ImageContent.from(image));
         } else if (result instanceof Content content) {
             return List.of(content);
-        } else if (result instanceof Collection<?> collection && !collection.isEmpty()
+        } else if (result instanceof Collection<?> collection
+                && !collection.isEmpty()
                 && collection.iterator().next() instanceof Content) {
             return collection.stream().map(Content.class::cast).toList();
         } else if (result instanceof Content[] array) {
@@ -347,6 +384,11 @@ public class DefaultToolExecutor implements ToolExecutor {
 
         if (parameterClass == UUID.class) {
             return UUID.fromString(argument.toString());
+        }
+
+        Function<String, ?> javaTimeParser = JAVA_TIME_PARSERS.get(parameterClass);
+        if (javaTimeParser != null) {
+            return javaTimeParser.apply(argument.toString());
         }
 
         if (argument instanceof String) {

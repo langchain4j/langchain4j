@@ -30,6 +30,20 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.MonthDay;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.Period;
+import java.time.Year;
+import java.time.YearMonth;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -37,6 +51,33 @@ import java.util.stream.Collectors;
 public class JsonSchemaElementUtils {
 
     private static final String DEFAULT_UUID_DESCRIPTION = "String in a UUID format";
+
+    /**
+     * Default descriptions for {@link java.time} types that are mapped to {@link JsonStringSchema}.
+     * <p>
+     * Reflecting these types is unsafe: the JDK contains real reference cycles between these types (e.g.
+     * {@code ZoneOffset -> ZoneRules -> ZoneOffset[]}) that would otherwise blow the stack when a
+     * tool/structured-output schema transitively reaches them.
+     */
+    private static final Map<Class<?>, String> DEFAULT_TIME_DESCRIPTIONS = Map.ofEntries(
+            Map.entry(Instant.class, "String in ISO-8601 instant format, e.g. '2007-12-03T10:15:30.00Z'"),
+            Map.entry(LocalDate.class, "String in ISO-8601 date format, e.g. '2007-12-03'"),
+            Map.entry(LocalTime.class, "String in ISO-8601 time format, e.g. '10:15:30'"),
+            Map.entry(LocalDateTime.class, "String in ISO-8601 local date-time format, e.g. '2007-12-03T10:15:30'"),
+            Map.entry(OffsetTime.class, "String in ISO-8601 offset time format, e.g. '10:15:30+01:00'"),
+            Map.entry(
+                    OffsetDateTime.class,
+                    "String in ISO-8601 offset date-time format, e.g. '2007-12-03T10:15:30+01:00'"),
+            Map.entry(
+                    ZonedDateTime.class,
+                    "String in ISO-8601 zoned date-time format, e.g. '2007-12-03T10:15:30+01:00[Europe/Paris]'"),
+            Map.entry(Duration.class, "String in ISO-8601 duration format, e.g. 'PT15M'"),
+            Map.entry(Period.class, "String in ISO-8601 period format, e.g. 'P1Y2M3D'"),
+            Map.entry(Year.class, "String representing a year, e.g. '2007'"),
+            Map.entry(YearMonth.class, "String in ISO-8601 year-month format, e.g. '2007-12'"),
+            Map.entry(MonthDay.class, "String in ISO-8601 month-day format, e.g. '--12-03'"),
+            Map.entry(ZoneId.class, "String representing a time-zone ID, e.g. 'Europe/Paris'"),
+            Map.entry(ZoneOffset.class, "String representing a zone offset, e.g. '+01:00'"));
 
     public static JsonSchemaElement jsonSchemaElementFrom(Class<?> clazz) {
         return jsonSchemaElementFrom(clazz, clazz, null, false, new LinkedHashMap<>());
@@ -112,15 +153,15 @@ public class JsonSchemaElementUtils {
         }
 
         String reference = generateUUIDFrom(baseType.getName());
-        VisitedClassMetadata metadata =
-                new VisitedClassMetadata(JsonReferenceSchema.builder().reference(reference).build(), reference, false);
+        VisitedClassMetadata metadata = new VisitedClassMetadata(
+                JsonReferenceSchema.builder().reference(reference).build(), reference, false);
         visited.put(baseType, metadata);
 
         String discriminatorProperty = discriminatorPropertyName(baseType);
         List<JsonSchemaElement> options = new ArrayList<>();
         for (Class<?> subtype : findConcreteSubtypes(baseType)) {
-            JsonSchemaElement subtypeSchema = jsonObjectOrReferenceSchemaFrom(
-                    subtype, null, areSubFieldsRequiredByDefault, visited, false);
+            JsonSchemaElement subtypeSchema =
+                    jsonObjectOrReferenceSchemaFrom(subtype, null, areSubFieldsRequiredByDefault, visited, false);
             JsonSchemaElement withDiscriminator =
                     addDiscriminator(subtypeSchema, baseType, subtype, discriminatorProperty);
             options.add(withDiscriminator);
@@ -130,9 +171,11 @@ public class JsonSchemaElementUtils {
                 subtypeMetadata.jsonSchemaElement = withDiscriminator;
             }
         }
-        String desc = description != null ? description : Optional.ofNullable(descriptionFrom(baseType))
-                .orElse(baseType.getSimpleName());
-        JsonAnyOfSchema anyOf = JsonAnyOfSchema.builder().description(desc).anyOf(options).build();
+        String desc = description != null
+                ? description
+                : Optional.ofNullable(descriptionFrom(baseType)).orElse(baseType.getSimpleName());
+        JsonAnyOfSchema anyOf =
+                JsonAnyOfSchema.builder().description(desc).anyOf(options).build();
         metadata.jsonSchemaElement = anyOf;
         return anyOf;
     }
@@ -157,8 +200,7 @@ public class JsonSchemaElementUtils {
             JsonTypeInfo info = baseType.getAnnotation(JsonTypeInfo.class);
             // The discriminator field is allowed to coexist with a same-named bean field only when
             // @JsonTypeInfo(visible=true) or @JsonTypeInfo(include=As.EXISTING_PROPERTY).
-            boolean allowed = info != null
-                    && (info.visible() || info.include() == JsonTypeInfo.As.EXISTING_PROPERTY);
+            boolean allowed = info != null && (info.visible() || info.include() == JsonTypeInfo.As.EXISTING_PROPERTY);
             if (!allowed) {
                 throw new IllegalArgumentException(String.format(
                         "Polymorphic subtype %s declares a field named '%s', which collides with the discriminator "
@@ -166,16 +208,14 @@ public class JsonSchemaElementUtils {
                                 + "name with @JsonTypeInfo(property = \"...\") on %s, set @JsonTypeInfo(visible = true), "
                                 + "or use @JsonTypeInfo(include = As.EXISTING_PROPERTY) if the field is intentionally "
                                 + "part of the subtype.",
-                        subtype.getName(),
-                        discriminatorProperty,
-                        baseType.getName(),
-                        baseType.getName()));
+                        subtype.getName(), discriminatorProperty, baseType.getName(), baseType.getName()));
             }
         }
 
         Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
         properties.put(
-                discriminatorProperty, JsonEnumSchema.builder().enumValues(discriminatorValue).build());
+                discriminatorProperty,
+                JsonEnumSchema.builder().enumValues(discriminatorValue).build());
         obj.properties().forEach(properties::putIfAbsent);
 
         List<String> required = new ArrayList<>();
@@ -234,7 +274,7 @@ public class JsonSchemaElementUtils {
             boolean areSubFieldsRequiredByDefault,
             Map<Class<?>, VisitedClassMetadata> visited,
             boolean setDefinitions) {
-        if (visited.containsKey(type) && isCustomClass(type)) {
+        if (visited.containsKey(type)) {
             VisitedClassMetadata visitedClassMetadata = visited.get(type);
             JsonSchemaElement jsonSchemaElement = visitedClassMetadata.jsonSchemaElement;
             if (jsonSchemaElement instanceof JsonReferenceSchema) {
@@ -309,6 +349,10 @@ public class JsonSchemaElementUtils {
     private static String descriptionFrom(Class<?> type) {
         if (type == UUID.class) {
             return DEFAULT_UUID_DESCRIPTION;
+        }
+        String timeDescription = DEFAULT_TIME_DESCRIPTIONS.get(type);
+        if (timeDescription != null) {
+            return timeDescription;
         }
         return descriptionFrom(type.getAnnotation(Description.class));
     }
@@ -527,7 +571,8 @@ public class JsonSchemaElementUtils {
                 || type == char.class
                 || type == Character.class
                 || CharSequence.class.isAssignableFrom(type)
-                || type == UUID.class;
+                || type == UUID.class
+                || DEFAULT_TIME_DESCRIPTIONS.containsKey(type);
     }
 
     static boolean isJsonArray(Class<?> type) {
