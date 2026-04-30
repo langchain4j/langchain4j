@@ -47,6 +47,8 @@ class PojoOutputParser<T> implements OutputParser<T> {
 
         try {
             if (PolymorphicTypes.isPolymorphic(type)) {
+                // Schema wraps the polymorphic value under "value" because anyOf can't be a JSON
+                // schema root. Unwrap, then let Jackson dispatch via the discriminator.
                 @SuppressWarnings("unchecked")
                 Map<String, Object> map = (Map<String, Object>) extractAndParseJson(text, Map.class).value();
                 Object payload = (map != null && map.size() == 1 && map.containsKey("value")) ? map.get("value") : map;

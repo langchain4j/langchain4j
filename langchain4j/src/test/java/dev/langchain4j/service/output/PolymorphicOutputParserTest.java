@@ -228,6 +228,46 @@ class PolymorphicOutputParserTest {
     record BinaryOp(String operator, ExpressionNode left, ExpressionNode right) implements ExpressionNode {
     }
 
+    // Multi-level sealed hierarchy: Transport permits LandTransport, Plane;
+    // LandTransport itself is sealed and permits Bus, Train.
+    sealed interface Transport permits LandTransport, Plane {
+    }
+
+    sealed interface LandTransport extends Transport permits Bus, Train {
+    }
+
+    record Bus(int seats) implements LandTransport {}
+
+    record Train(int cars) implements LandTransport {}
+
+    record Plane(int wingspan) implements Transport {}
+
+    @Test
+    void multi_level_sealed_hierarchy_is_flattened_to_concrete_subtypes() {
+
+        // findConcreteSubtypes walks through the intermediate sealed `LandTransport` and returns
+        // only the leaf concrete classes.
+        List<Class<?>> concrete = dev.langchain4j.internal.PolymorphicTypes.findConcreteSubtypes(Transport.class);
+        assertThat(concrete).containsExactly(Bus.class, Train.class, Plane.class);
+
+        // The resulting anyOf is flat — one option per leaf, no nested anyOf.
+        JsonObjectSchema root = (JsonObjectSchema)
+                new PojoOutputParser<>(Transport.class).jsonSchema().get().rootElement();
+        JsonAnyOfSchema anyOf = (JsonAnyOfSchema) root.properties().get("value");
+        assertThat(anyOf.anyOf()).hasSize(3);
+        assertThat(anyOf.anyOf()).allMatch(JsonObjectSchema.class::isInstance);
+    }
+
+    @Test
+    void multi_level_sealed_hierarchy_parses_a_leaf_subtype() {
+
+        Transport transport = new PojoOutputParser<>(Transport.class)
+                .parse("{\"value\":{\"type\":\"Train\",\"cars\":12}}");
+
+        assertThat(transport).isInstanceOf(Train.class);
+        assertThat(((Train) transport).cars()).isEqualTo(12);
+    }
+
     @Test
     void recursive_polymorphic_schema_generation_does_not_loop() {
 
