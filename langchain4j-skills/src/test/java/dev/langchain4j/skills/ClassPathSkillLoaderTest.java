@@ -20,7 +20,7 @@ class ClassPathSkillLoaderTest {
 
     @Test
     void should_load_all_skills_from_directory() {
-        List<FileSystemSkill> skills = ClassPathSkillLoader.loadSkills("skills");
+        List<Skill> skills = ClassPathSkillLoader.loadSkills("skills");
 
         assertThat(skills)
                 .extracting(Skill::name)
@@ -29,7 +29,7 @@ class ClassPathSkillLoaderTest {
 
     @Test
     void should_skip_directories_without_skill_md() {
-        List<FileSystemSkill> skills = ClassPathSkillLoader.loadSkills("skills/using-process-tool");
+        List<Skill> skills = ClassPathSkillLoader.loadSkills("skills/using-process-tool");
 
         assertThat(skills).isEmpty();
     }
@@ -122,7 +122,7 @@ class ClassPathSkillLoaderTest {
         try (URLClassLoader classLoader =
                 new URLClassLoader(new URL[] {jarFile.toUri().toURL()}, null)) {
 
-            List<FileSystemSkill> skills = ClassPathSkillLoader.loadSkills("skills", classLoader);
+            List<Skill> skills = ClassPathSkillLoader.loadSkills("skills", classLoader);
 
             assertThat(skills)
                     .extracting(Skill::name)
