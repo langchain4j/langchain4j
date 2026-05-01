@@ -8,7 +8,6 @@ import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
-import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -21,6 +20,7 @@ import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
@@ -45,7 +45,9 @@ import dev.langchain4j.service.tool.DefaultToolExecutor;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
+import dev.langchain4j.service.tool.ToolExecutionLimits;
 import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolLimitExceededBehavior;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import dev.langchain4j.spi.services.AiServicesFactory;
@@ -652,6 +654,39 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
         context.toolService.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
+        return this;
+    }
+
+    /**
+     * Configures per-tool execution limits for this AI service call.
+     * <p>
+     * When a tool reaches its configured limit, it is removed from the tool set for
+     * subsequent LLM calls, and any over-budget calls within the same LLM response are
+     * handled according to the configured {@link ToolLimitExceededBehavior}
+     * (default: {@link ToolLimitExceededBehavior#CONTINUE}).
+     * <p>
+     * These limits are independent of {@link #maxSequentialToolsInvocations(int)},
+     * which caps the number of LLM response rounds, not individual tool calls.
+     * <p>
+     * Example:
+     * <pre>{@code
+     * AiServices.builder(Assistant.class)
+     *     .chatModel(model)
+     *     .tools(new SearchTool(), new CalculatorTool())
+     *     .toolExecutionLimits(ToolExecutionLimits.builder()
+     *         .defaultLimit(5)
+     *         .maxExecutions("search", 10)
+     *         .maxExecutions("calculate", 1, ToolLimitExceededBehavior.ERROR)
+     *         .build())
+     *     .build();
+     * }</pre>
+     *
+     * @param limits the tool execution limits configuration
+     * @return builder
+     * @since 1.14.0
+     */
+    public AiServices<T> toolExecutionLimits(ToolExecutionLimits limits) {
+        context.toolService.toolExecutionLimits(limits);
         return this;
     }
 
