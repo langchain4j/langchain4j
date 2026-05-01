@@ -28,12 +28,6 @@
             <version>${project.version}</version>
         </dependency>
 
-        <dependency>
-            <groupId>ai.docling</groupId>
-            <artifactId>docling-serve-api</artifactId>
-            <version>${docling.version}</version>
-        </dependency>
-
         <!-- Testing -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -53,12 +47,11 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Docling reference client - runtime optional; frameworks like Spring/Quarkus provide their own impl -->
+        <!-- Docling reference client - optional; frameworks like Spring/Quarkus provide their own impl -->
         <dependency>
             <groupId>ai.docling</groupId>
             <artifactId>docling-serve-client</artifactId>
             <version>${docling.version}</version>
-            <scope>runtime</scope>
             <optional>true</optional>
         </dependency>
 

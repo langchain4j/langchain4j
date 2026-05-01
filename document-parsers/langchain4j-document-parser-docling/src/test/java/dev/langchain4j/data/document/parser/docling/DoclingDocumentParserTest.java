@@ -80,18 +80,17 @@ class DoclingDocumentParserTest {
     }
 
     @Test
-    void shouldThrowWhenApiReturnsNullResponse() {
+    void shouldReturnEmptyDocumentWhenApiReturnsNullResponse() {
         when(mockApi.convertSource(any())).thenReturn(null);
 
         DoclingDocumentParser parser = new DoclingDocumentParser(mockApi);
+        Document document = parser.parse(new ByteArrayInputStream("data".getBytes()));
 
-        assertThatThrownBy(() -> parser.parse(new ByteArrayInputStream("data".getBytes())))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("empty response");
+        assertThat(document.text()).isEmpty();
     }
 
     @Test
-    void shouldThrowWhenApiReturnsEmptyContent() {
+    void shouldReturnEmptyDocumentWhenApiReturnsEmptyContent() {
         when(mockApi.convertSource(any())).thenReturn(
                 ConvertDocumentResponse.builder()
                         .document(DocumentResponse.builder()
@@ -100,10 +99,9 @@ class DoclingDocumentParserTest {
                         .build());
 
         DoclingDocumentParser parser = new DoclingDocumentParser(mockApi);
+        Document document = parser.parse(new ByteArrayInputStream("data".getBytes()));
 
-        assertThatThrownBy(() -> parser.parse(new ByteArrayInputStream("data".getBytes())))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("no text content");
+        assertThat(document.text()).isEmpty();
     }
 
     @Test

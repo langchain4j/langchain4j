@@ -4,9 +4,9 @@ sidebar_position: 7
 
 # Docling
 
-[Docling](https://github.com/DS4SD/docling) is an IBM Research document processing engine that extracts text and structure from various document formats including PDF, DOCX, PPTX, and more. It provides advanced capabilities such as OCR, table extraction, and layout analysis.
+[Docling](https://docling.ai) is an IBM Research document processing engine that extracts text and structure from various document formats including PDF, DOCX, PPTX, and more. It provides advanced capabilities such as OCR, table extraction, and layout analysis.
 
-This integration communicates with a running [docling-serve](https://github.com/DS4SD/docling-serve) instance via REST API.
+This integration communicates with a running [docling-serve](https://github.com/DS4SD/docling-serve) instance via REST API and is built using the [official Docling Java library](https://docling-project.github.io/docling-java/current/).
 
 
 ## Maven Dependency
@@ -31,6 +31,8 @@ This module depends on `docling-serve-api` (the interface) and includes `docling
 </dependency>
 ```
 
+Frameworks such as [Quarkus](https://quarkus.io) or [Spring Boot](https://spring.io/projects/spring-boot) provide their own integrations with Docling. See the [Docling Java Documentation](https://docling-project.github.io/docling-java/dev/docling-serve/serve-client/#when-to-use-this-module) for how to wire in those specific implementations.
+
 
 ## Usage
 
@@ -45,6 +47,16 @@ DoclingDocumentParser parser = new DoclingDocumentParser(api);
 
 Document document = parser.parse(inputStream);
 String text = document.text();
+```
+
+To customize Docling processing, use the constructor that also accepts a [`ConvertDocumentOptions`](https://docling-project.github.io/docling-java/dev/docling-serve/serve-api/#requests-convertdocumentrequest):
+
+```java
+ConvertDocumentOptions options = ConvertDocumentOptions.builder()
+        // configure options here
+        .build();
+
+DoclingDocumentParser parser = new DoclingDocumentParser(api, options);
 ```
 
 
