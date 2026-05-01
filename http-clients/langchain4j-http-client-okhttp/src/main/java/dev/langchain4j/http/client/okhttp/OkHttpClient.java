@@ -19,6 +19,7 @@ import okhttp3.Response;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.SocketTimeoutException;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,7 +53,8 @@ public class OkHttpClient implements HttpClient {
     @Override
     public SuccessfulHttpResponse execute(HttpRequest request) throws HttpException {
         Request okRequest = toOkHttpRequest(request);
-        try (Response response = client.newCall(okRequest).execute()) {
+        Call call = newCall(okRequest, request.readTimeout());
+        try (Response response = call.execute()) {
             if (!response.isSuccessful()) {
                 throw new HttpException(response.code(), readBody(response));
             }
@@ -67,7 +69,7 @@ public class OkHttpClient implements HttpClient {
     @Override
     public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
         Request okRequest = toOkHttpRequest(request);
-        client.newCall(okRequest).enqueue(new Callback() {
+        newCall(okRequest, request.readTimeout()).enqueue(new Callback() {
             @Override
             public void onResponse(Call call, Response response) {
                 try (response) {
@@ -100,6 +102,18 @@ public class OkHttpClient implements HttpClient {
                 }
             }
         });
+    }
+
+    private Call newCall(Request okRequest, Duration perRequestReadTimeout) {
+        if (perRequestReadTimeout == null) {
+            return client.newCall(okRequest);
+        }
+        // OkHttp's read timeout is set on the client, not the call. Cloning the client
+        // via newBuilder() shares the connection pool/dispatcher, so this is cheap.
+        okhttp3.OkHttpClient perCallClient = client.newBuilder()
+                .readTimeout(perRequestReadTimeout.toMillis(), TimeUnit.MILLISECONDS)
+                .build();
+        return perCallClient.newCall(okRequest);
     }
 
     private InputStream getInputStream(Response response) {

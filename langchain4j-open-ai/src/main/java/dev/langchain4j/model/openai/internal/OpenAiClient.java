@@ -27,6 +27,16 @@ public abstract class OpenAiClient {
 
     public abstract SyncOrAsyncOrStreaming<ChatCompletionResponse> chatCompletion(ChatCompletionRequest request);
 
+    /**
+     * Same as {@link #chatCompletion(ChatCompletionRequest)} but applies a per-request HTTP read
+     * timeout that overrides the client's default. Falls back to the no-timeout overload when
+     * {@code readTimeout} is {@code null}.
+     */
+    public SyncOrAsyncOrStreaming<ChatCompletionResponse> chatCompletion(
+            ChatCompletionRequest request, Duration readTimeout) {
+        return chatCompletion(request);
+    }
+
     public abstract SyncOrAsync<EmbeddingResponse> embedding(EmbeddingRequest request);
 
     public abstract SyncOrAsync<ModerationResponse> moderation(ModerationRequest request);

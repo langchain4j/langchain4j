@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.SocketTimeoutException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,6 +26,8 @@ import java.util.Objects;
 import org.apache.hc.client5.http.async.methods.SimpleHttpRequest;
 import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
 import org.apache.hc.client5.http.async.methods.SimpleRequestBuilder;
+import org.apache.hc.client5.http.async.methods.SimpleRequestProducer;
+import org.apache.hc.client5.http.async.methods.SimpleResponseConsumer;
 import org.apache.hc.client5.http.classic.methods.HttpDelete;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
@@ -33,6 +36,7 @@ import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
 import org.apache.hc.client5.http.impl.async.HttpAsyncClients;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.protocol.HttpClientContext;
 import org.apache.hc.core5.concurrent.FutureCallback;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.ClassicHttpResponse;
@@ -82,12 +86,16 @@ public class ApacheHttpClient implements HttpClient {
     public SuccessfulHttpResponse execute(HttpRequest request) throws HttpException {
         try {
             ClassicHttpRequest apacheRequest = toApacheRequest(request);
-            return syncClient.execute(apacheRequest, classicHttpResponse -> {
+            HttpClientContext context = perRequestContext(request.readTimeout());
+            org.apache.hc.core5.http.io.HttpClientResponseHandler<SuccessfulHttpResponse> handler = classicHttpResponse -> {
                 if (!isSuccessful(classicHttpResponse)) {
                     throw new HttpException(classicHttpResponse.getCode(), readBody(classicHttpResponse));
                 }
                 return fromApacheResponse(classicHttpResponse);
-            });
+            };
+            return context != null
+                    ? syncClient.execute(apacheRequest, context, handler)
+                    : syncClient.execute(apacheRequest, handler);
         } catch (SocketTimeoutException e) {
             throw new TimeoutException(e);
         } catch (IOException e) {
@@ -98,7 +106,8 @@ public class ApacheHttpClient implements HttpClient {
     @Override
     public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
         SimpleHttpRequest apacheRequest = toSimpleApacheRequest(request);
-        asyncClient.execute(apacheRequest, new FutureCallback<>() {
+        HttpClientContext context = perRequestContext(request.readTimeout());
+        FutureCallback<SimpleHttpResponse> callback = new FutureCallback<>() {
             @Override
             public void completed(SimpleHttpResponse apacheResponse) {
                 if (!isSuccessful(apacheResponse)) {
@@ -129,7 +138,13 @@ public class ApacheHttpClient implements HttpClient {
 
             @Override
             public void cancelled() {}
-        });
+        };
+        if (context != null) {
+            asyncClient.execute(SimpleRequestProducer.create(apacheRequest), SimpleResponseConsumer.create(),
+                    null, context, callback);
+        } else {
+            asyncClient.execute(apacheRequest, callback);
+        }
     }
 
     private InputStream getInputStream(SimpleHttpResponse apacheResponse) {
@@ -197,6 +212,17 @@ public class ApacheHttpClient implements HttpClient {
         });
 
         return apacheRequest;
+    }
+
+    private static HttpClientContext perRequestContext(Duration perRequestReadTimeout) {
+        if (perRequestReadTimeout == null) {
+            return null;
+        }
+        HttpClientContext context = HttpClientContext.create();
+        context.setRequestConfig(RequestConfig.custom()
+                .setResponseTimeout(Timeout.ofMilliseconds(perRequestReadTimeout.toMillis()))
+                .build());
+        return context;
     }
 
     private SimpleHttpRequest toSimpleApacheRequest(HttpRequest request) {

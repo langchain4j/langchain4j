@@ -156,7 +156,7 @@ public class OpenAiChatModel implements ChatModel {
                 .build();
 
         ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse = withRetryMappingExceptions(
-                () -> client.chatCompletion(openAiRequest).executeRaw(), maxRetries);
+                () -> client.chatCompletion(openAiRequest, parameters.timeout()).executeRaw(), maxRetries);
 
         ChatCompletionResponse openAiResponse = parsedAndRawResponse.parsedResponse();
 

@@ -8,6 +8,7 @@ import static java.util.Arrays.asList;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 
@@ -27,6 +28,7 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
     private final List<ToolSpecification> toolSpecifications;
     private final ToolChoice toolChoice;
     private final ResponseFormat responseFormat;
+    private final Duration timeout;
 
     protected DefaultChatRequestParameters(Builder<?> builder) {
         this.modelName = builder.modelName;
@@ -40,6 +42,7 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
         this.toolSpecifications = copy(builder.toolSpecifications);
         this.toolChoice = builder.toolChoice;
         this.responseFormat = builder.responseFormat;
+        this.timeout = builder.timeout;
     }
 
     @Override
@@ -98,6 +101,11 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
     }
 
     @Override
+    public Duration timeout() {
+        return timeout;
+    }
+
+    @Override
     public ChatRequestParameters overrideWith(ChatRequestParameters that) {
         return DefaultChatRequestParameters.builder()
                 .overrideWith(this)
@@ -129,7 +137,8 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
                 && Objects.equals(stopSequences, that.stopSequences)
                 && Objects.equals(toolSpecifications, that.toolSpecifications)
                 && Objects.equals(toolChoice, that.toolChoice)
-                && Objects.equals(responseFormat, that.responseFormat);
+                && Objects.equals(responseFormat, that.responseFormat)
+                && Objects.equals(timeout, that.timeout);
     }
 
     @Override
@@ -146,7 +155,8 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
                 stopSequences,
                 toolSpecifications,
                 toolChoice,
-                responseFormat);
+                responseFormat,
+                timeout);
     }
 
     @Override
@@ -163,7 +173,8 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
                 + stopSequences + ", toolSpecifications="
                 + toolSpecifications + ", toolChoice="
                 + toolChoice + ", responseFormat="
-                + responseFormat + '}';
+                + responseFormat + ", timeout="
+                + timeout + '}';
     }
 
     public static Builder<?> builder() {
@@ -183,6 +194,7 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
         private List<ToolSpecification> toolSpecifications;
         private ToolChoice toolChoice;
         private ResponseFormat responseFormat;
+        private Duration timeout;
 
         public T overrideWith(ChatRequestParameters parameters) {
             modelName(getOrDefault(parameters.modelName(), modelName));
@@ -196,6 +208,7 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
             toolSpecifications(getOrDefault(parameters.toolSpecifications(), toolSpecifications));
             toolChoice(getOrDefault(parameters.toolChoice(), toolChoice));
             responseFormat(getOrDefault(parameters.responseFormat(), responseFormat));
+            timeout(getOrDefault(parameters.timeout(), timeout));
             return (T) this;
         }
 
@@ -288,6 +301,14 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
                         .build();
                 return responseFormat(responseFormat);
             }
+            return (T) this;
+        }
+
+        /**
+         * @see ChatRequestParameters#timeout()
+         */
+        public T timeout(Duration timeout) {
+            this.timeout = timeout;
             return (T) this;
         }
 

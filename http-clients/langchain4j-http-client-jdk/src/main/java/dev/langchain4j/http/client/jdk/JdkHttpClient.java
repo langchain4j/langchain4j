@@ -119,8 +119,9 @@ public class JdkHttpClient implements HttpClient {
         }
         builder.method(request.method().name(), bodyPublisher);
 
-        if (readTimeout != null) {
-            builder.timeout(readTimeout);
+        Duration effectiveReadTimeout = getOrDefault(request.readTimeout(), readTimeout);
+        if (effectiveReadTimeout != null) {
+            builder.timeout(effectiveReadTimeout);
         }
 
         return builder.build();
