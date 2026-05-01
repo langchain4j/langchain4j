@@ -4,6 +4,7 @@ import static dev.langchain4j.model.chat.request.ToolChoice.AUTO;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
+import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -26,11 +27,13 @@ class DefaultChatRequestParametersTest {
                         ToolSpecification.builder().name("tool1").build(),
                         ToolSpecification.builder().name("tool2").build()))
                 .toolChoice(AUTO)
+                .timeout(Duration.ofSeconds(30))
                 .build();
 
         ChatRequestParameters override = DefaultChatRequestParameters.builder()
                 .modelName("model-2")
                 .temperature(0.9)
+                .timeout(Duration.ofSeconds(5))
                 .build();
 
         // when
@@ -47,6 +50,7 @@ class DefaultChatRequestParametersTest {
         assertThat(result.stopSequences()).containsExactly("stop1", "stop2");
         assertThat(result.toolSpecifications()).hasSize(2);
         assertThat(result.toolChoice()).isEqualTo(AUTO);
+        assertThat(result.timeout()).isEqualTo(Duration.ofSeconds(5));
     }
 
     @Test
@@ -64,6 +68,7 @@ class DefaultChatRequestParametersTest {
                         ToolSpecification.builder().name("tool1").build(),
                         ToolSpecification.builder().name("tool2").build()))
                 .toolChoice(AUTO)
+                .timeout(Duration.ofSeconds(5))
                 .build();
 
         ChatRequestParameters defaultParams = DefaultChatRequestParameters.builder()
@@ -71,6 +76,7 @@ class DefaultChatRequestParametersTest {
                 .temperature(0.9)
                 .topP(0.8)
                 .topK(12)
+                .timeout(Duration.ofSeconds(30))
                 .build();
 
         // when
@@ -87,5 +93,18 @@ class DefaultChatRequestParametersTest {
         assertThat(result.stopSequences()).containsExactly("stop1", "stop2");
         assertThat(result.toolSpecifications()).hasSize(2);
         assertThat(result.toolChoice()).isEqualTo(AUTO);
+        assertThat(result.timeout()).isEqualTo(Duration.ofSeconds(5));
+    }
+
+    @Test
+    void timeout_defaults_to_null_and_round_trips_through_builder() {
+
+        ChatRequestParameters defaulted = DefaultChatRequestParameters.builder().build();
+        assertThat(defaulted.timeout()).isNull();
+
+        Duration explicit = Duration.ofMillis(750);
+        ChatRequestParameters configured =
+                DefaultChatRequestParameters.builder().timeout(explicit).build();
+        assertThat(configured.timeout()).isEqualTo(explicit);
     }
 }

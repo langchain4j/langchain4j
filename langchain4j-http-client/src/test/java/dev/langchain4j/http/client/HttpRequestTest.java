@@ -493,4 +493,25 @@ class HttpRequestTest {
         assertThat(builder.build().url()).isEqualTo("http://example.com/api");
         assertThat(builder.build().formDataFields()).isEmpty();
     }
+
+    @Test
+    void should_default_read_timeout_to_null() {
+        HttpRequest request =
+                HttpRequest.builder().method(GET).url("http://example.com").build();
+
+        assertThat(request.readTimeout()).isNull();
+    }
+
+    @Test
+    void should_carry_per_request_read_timeout() {
+        java.time.Duration timeout = java.time.Duration.ofSeconds(7);
+
+        HttpRequest request = HttpRequest.builder()
+                .method(GET)
+                .url("http://example.com")
+                .readTimeout(timeout)
+                .build();
+
+        assertThat(request.readTimeout()).isEqualTo(timeout);
+    }
 }

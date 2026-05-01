@@ -1,5 +1,8 @@
 package dev.langchain4j.http.client.okhttp;
 
+import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.http.client.FormDataFile;
@@ -8,6 +11,14 @@ import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.SocketTimeoutException;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.MediaType;
@@ -15,17 +26,6 @@ import okhttp3.MultipartBody;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.SocketTimeoutException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-
-import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
 
 public class OkHttpClient implements HttpClient {
 
@@ -52,7 +52,8 @@ public class OkHttpClient implements HttpClient {
     @Override
     public SuccessfulHttpResponse execute(HttpRequest request) throws HttpException {
         Request okRequest = toOkHttpRequest(request);
-        try (Response response = client.newCall(okRequest).execute()) {
+        Call call = newCall(okRequest, request.readTimeout());
+        try (Response response = call.execute()) {
             if (!response.isSuccessful()) {
                 throw new HttpException(response.code(), readBody(response));
             }
@@ -67,7 +68,7 @@ public class OkHttpClient implements HttpClient {
     @Override
     public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
         Request okRequest = toOkHttpRequest(request);
-        client.newCall(okRequest).enqueue(new Callback() {
+        newCall(okRequest, request.readTimeout()).enqueue(new Callback() {
             @Override
             public void onResponse(Call call, Response response) {
                 try (response) {
@@ -100,6 +101,18 @@ public class OkHttpClient implements HttpClient {
                 }
             }
         });
+    }
+
+    private Call newCall(Request okRequest, Duration perRequestReadTimeout) {
+        if (perRequestReadTimeout == null) {
+            return client.newCall(okRequest);
+        }
+        // OkHttp's read timeout is set on the client, not the call. Cloning the client
+        // via newBuilder() shares the connection pool/dispatcher, so this is cheap.
+        okhttp3.OkHttpClient perCallClient = client.newBuilder()
+                .readTimeout(perRequestReadTimeout.toMillis(), TimeUnit.MILLISECONDS)
+                .build();
+        return perCallClient.newCall(okRequest);
     }
 
     private InputStream getInputStream(Response response) {
@@ -165,8 +178,7 @@ public class OkHttpClient implements HttpClient {
 
     private RequestBody buildRequestBody(HttpRequest request) {
         if (!request.formDataFields().isEmpty() || !request.formDataFiles().isEmpty()) {
-            MultipartBody.Builder multipartBuilder =
-                    new MultipartBody.Builder().setType(MultipartBody.FORM);
+            MultipartBody.Builder multipartBuilder = new MultipartBody.Builder().setType(MultipartBody.FORM);
 
             for (Map.Entry<String, String> entry : request.formDataFields().entrySet()) {
                 multipartBuilder.addFormDataPart(entry.getKey(), entry.getValue());
@@ -174,8 +186,7 @@ public class OkHttpClient implements HttpClient {
 
             for (Map.Entry<String, FormDataFile> entry : request.formDataFiles().entrySet()) {
                 FormDataFile file = entry.getValue();
-                RequestBody fileBody = RequestBody.create(
-                        file.content(), MediaType.parse(file.contentType()));
+                RequestBody fileBody = RequestBody.create(file.content(), MediaType.parse(file.contentType()));
                 multipartBuilder.addFormDataPart(entry.getKey(), file.fileName(), fileBody);
             }
 
