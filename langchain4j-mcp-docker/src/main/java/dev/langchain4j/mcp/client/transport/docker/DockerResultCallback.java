@@ -1,18 +1,18 @@
 package dev.langchain4j.mcp.client.transport.docker;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.model.Frame;
 import com.github.dockerjava.api.model.StreamType;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class DockerResultCallback extends ResultCallback.Adapter<Frame> {
     private static final Logger LOG = LoggerFactory.getLogger(DockerResultCallback.class);
@@ -41,7 +41,7 @@ class DockerResultCallback extends ResultCallback.Adapter<Frame> {
     public void onNext(Frame frame) {
         String frameStr = new String(frame.getPayload());
         if (frame.getStreamType() == StreamType.STDERR) {
-            LOG.debug("[ERROR] {}", frameStr);
+            LOG.debug("[STDERR] {}", frameStr);
         } else if (frame.getStreamType() == StreamType.STDOUT) {
             this.send(frameStr);
         }
@@ -59,7 +59,7 @@ class DockerResultCallback extends ResultCallback.Adapter<Frame> {
     }
 
     private void send(String line) {
-        if (line !=null && !line.isBlank()) {
+        if (line != null && !line.isBlank()) {
             logAggregator.append(line);
 
             // we aggregate until we have a newline char at then end of the line

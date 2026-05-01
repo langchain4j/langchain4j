@@ -36,6 +36,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.video.Video;
 import dev.langchain4j.exception.ContentFilteredException;
+import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -348,6 +349,9 @@ public class OpenAiUtils {
     }
 
     public static AiMessage aiMessageFrom(ChatCompletionResponse response, boolean returnThinking) {
+        if (isNullOrEmpty(response.choices())) {
+            throw new InternalServerException("Chat completion failed: no choices returned in response");
+        }
         AssistantMessage assistantMessage = response.choices().get(0).message();
 
         String refusal = assistantMessage.refusal();

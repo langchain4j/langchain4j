@@ -3,15 +3,25 @@ package dev.langchain4j.model.openaiofficial.openai;
 import static dev.langchain4j.model.openaiofficial.openai.InternalOpenAiOfficialTestHelper.CHAT_MODEL_NAME_ALTERNATE;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.data.message.PdfFileContent;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatRequestParameters;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Base64;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -84,5 +94,38 @@ class OpenAiOfficialChatModelIT extends AbstractChatModelIT {
 
         // then
         assertThat(answer).contains("Berlin");
+    }
+
+    @Test
+    void should_accept_pdf_file_content() throws Exception {
+
+        // given
+        OpenAiOfficialChatModel model = OpenAiOfficialChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .modelName("gpt-5-nano")
+                .build();
+
+        Path file =
+                Paths.get(getClass().getClassLoader().getResource("sample.pdf").toURI());
+        String pdfBase64 = Base64.getEncoder().encodeToString(Files.readAllBytes(file));
+        PdfFile pdfFile = PdfFile.builder()
+                .base64Data(pdfBase64)
+                .mimeType("application/pdf")
+                .build();
+
+        UserMessage userMessage = UserMessage.builder()
+                .addContent(TextContent.from("What information is in the attached PDF? Return only the exacted text."))
+                .addContent(PdfFileContent.from(pdfFile))
+                .build();
+
+        // when
+        ChatResponse response = model.chat(userMessage);
+
+        // then
+        assertThat(response.aiMessage().text())
+                .containsIgnoringCase("Berlin")
+                .containsIgnoringCase("capital")
+                .containsIgnoringCase("Germany");
     }
 }

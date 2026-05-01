@@ -314,13 +314,37 @@ public class WorkflowAgentsIT {
     }
 
     @Test
-    void sequential_agents_with_error_recovery_tests() {
+    void sequential_declarative_agents_with_error_recovery_tests() {
+        sequential_agents_with_error_recovery_tests(false);
+    }
+
+    @Test
+    void sequential_programmatic_agents_with_error_recovery_tests() {
+        sequential_agents_with_error_recovery_tests(true);
+    }
+
+    void sequential_agents_with_error_recovery_tests(boolean useProgrammaticAgent) {
         AtomicBoolean errorRecoveryCalled = new AtomicBoolean(false);
 
-        CreativeWriter creativeWriter = spy(AgenticServices.agentBuilder(CreativeWriter.class)
+        Object creativeWriter = useProgrammaticAgent ?
+            AgenticServices.agentBuilder()
+                .chatModel(baseModel())
+                .name("generateStory")
+                .description("Generate a story based on the given topic")
+                .userMessage("""
+                    You are a creative writer.
+                    Generate a draft of a story long no more than 3 sentence around the given topic.
+                    Return only the story and nothing else.
+                    The topic is {{topic}}.
+                    """)
+                .inputKey(String.class, "topic")
+                .returnType(String.class) // String is the default return type for untyped agents
+                .outputKey("story")
+                .build() :
+            AgenticServices.agentBuilder(CreativeWriter.class)
                 .chatModel(baseModel())
                 .outputKey("story")
-                .build());
+                .build();
 
         AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
                 .chatModel(baseModel())
@@ -358,7 +382,6 @@ public class WorkflowAgentsIT {
 
         assertThat(errorRecoveryCalled.get()).isTrue();
 
-        verify(creativeWriter).generateStory("dragons and wizards");
         verify(audienceEditor).editStory(any(), eq("young adults"));
         verify(styleEditor).editStory(any(), eq("fantasy"));
     }
