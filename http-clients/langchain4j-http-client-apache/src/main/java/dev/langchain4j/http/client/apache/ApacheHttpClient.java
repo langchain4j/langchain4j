@@ -87,12 +87,13 @@ public class ApacheHttpClient implements HttpClient {
         try {
             ClassicHttpRequest apacheRequest = toApacheRequest(request);
             HttpClientContext context = perRequestContext(request.readTimeout());
-            org.apache.hc.core5.http.io.HttpClientResponseHandler<SuccessfulHttpResponse> handler = classicHttpResponse -> {
-                if (!isSuccessful(classicHttpResponse)) {
-                    throw new HttpException(classicHttpResponse.getCode(), readBody(classicHttpResponse));
-                }
-                return fromApacheResponse(classicHttpResponse);
-            };
+            org.apache.hc.core5.http.io.HttpClientResponseHandler<SuccessfulHttpResponse> handler =
+                    classicHttpResponse -> {
+                        if (!isSuccessful(classicHttpResponse)) {
+                            throw new HttpException(classicHttpResponse.getCode(), readBody(classicHttpResponse));
+                        }
+                        return fromApacheResponse(classicHttpResponse);
+                    };
             return context != null
                     ? syncClient.execute(apacheRequest, context, handler)
                     : syncClient.execute(apacheRequest, handler);
@@ -140,8 +141,12 @@ public class ApacheHttpClient implements HttpClient {
             public void cancelled() {}
         };
         if (context != null) {
-            asyncClient.execute(SimpleRequestProducer.create(apacheRequest), SimpleResponseConsumer.create(),
-                    null, context, callback);
+            asyncClient.execute(
+                    SimpleRequestProducer.create(apacheRequest),
+                    SimpleResponseConsumer.create(),
+                    null,
+                    context,
+                    callback);
         } else {
             asyncClient.execute(apacheRequest, callback);
         }

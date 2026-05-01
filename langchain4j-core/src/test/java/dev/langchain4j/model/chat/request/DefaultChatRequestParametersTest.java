@@ -99,14 +99,12 @@ class DefaultChatRequestParametersTest {
     @Test
     void timeout_defaults_to_null_and_round_trips_through_builder() {
 
-        ChatRequestParameters defaulted =
-                DefaultChatRequestParameters.builder().build();
+        ChatRequestParameters defaulted = DefaultChatRequestParameters.builder().build();
         assertThat(defaulted.timeout()).isNull();
 
         Duration explicit = Duration.ofMillis(750);
-        ChatRequestParameters configured = DefaultChatRequestParameters.builder()
-                .timeout(explicit)
-                .build();
+        ChatRequestParameters configured =
+                DefaultChatRequestParameters.builder().timeout(explicit).build();
         assertThat(configured.timeout()).isEqualTo(explicit);
     }
 }

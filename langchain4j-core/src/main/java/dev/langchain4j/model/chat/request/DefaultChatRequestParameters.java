@@ -208,7 +208,12 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
             toolSpecifications(getOrDefault(parameters.toolSpecifications(), toolSpecifications));
             toolChoice(getOrDefault(parameters.toolChoice(), toolChoice));
             responseFormat(getOrDefault(parameters.responseFormat(), responseFormat));
-            timeout(getOrDefault(parameters.timeout(), timeout));
+            // Subclasses (e.g. Watsonx) declare their own `timeout` field that shadows this one.
+            // Reading `this.timeout` here would always see null in that case, so a null-coalesce
+            // would clobber a value the subclass set via virtual dispatch. Skip when null instead.
+            if (parameters.timeout() != null) {
+                timeout(parameters.timeout());
+            }
             return (T) this;
         }
 
