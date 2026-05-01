@@ -209,7 +209,7 @@ class GoogleAiGeminiImageModelTest {
                     .build();
 
             // When & Then
-            assertThatThrownBy(() -> subject.edit(null, "Add something"))
+            assertThatThrownBy(() -> subject.edit((Image) null, "Add something"))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("image");
         }

@@ -1,0 +1,16 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.annotation.added",
+          "new": "class dev.langchain4j.model.openai.internal.image.GenerateImagesResponse",
+          "annotation": "@com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)",
+          "justification": "Adds Jackson tolerance for unknown response fields (e.g. background, output_format, quality, size that the API now returns alongside data and usage). This is an internal serialisation annotation only; the public Java API is unchanged."
+        }
+      ]
+    }
+  }
+]

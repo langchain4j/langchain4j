@@ -9,6 +9,7 @@ import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
 import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingResponse;
+import dev.langchain4j.model.openai.internal.image.EditImagesRequest;
 import dev.langchain4j.model.openai.internal.image.GenerateImagesRequest;
 import dev.langchain4j.model.openai.internal.image.GenerateImagesResponse;
 import dev.langchain4j.model.openai.internal.models.ModelsListResponse;
@@ -32,6 +33,10 @@ public abstract class OpenAiClient {
     public abstract SyncOrAsync<ModerationResponse> moderation(ModerationRequest request);
 
     public abstract SyncOrAsync<GenerateImagesResponse> imagesGeneration(GenerateImagesRequest request);
+
+    public SyncOrAsync<GenerateImagesResponse> imagesEdit(EditImagesRequest request) {
+        throw new UnsupportedOperationException("Image editing is not supported by this client implementation");
+    }
 
     public SyncOrAsync<OpenAiAudioTranscriptionResponse> audioTranscription(OpenAiAudioTranscriptionRequest request) {
         throw new UnsupportedOperationException("Audio transcription is not supported by this client implementation");

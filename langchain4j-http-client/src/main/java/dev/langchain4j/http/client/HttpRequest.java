@@ -12,6 +12,7 @@ import static java.util.stream.Collectors.joining;
 import dev.langchain4j.Experimental;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -23,7 +24,7 @@ public class HttpRequest {
     private final String url;
     private final Map<String, List<String>> headers;
     private final Map<String, String> formDataFields;
-    private final Map<String, FormDataFile> formDataFiles;
+    private final Map<String, List<FormDataFile>> formDataFiles;
     private final String body;
 
     public HttpRequest(Builder builder) {
@@ -90,10 +91,14 @@ public class HttpRequest {
     }
 
     /**
+     * Form-data file parts grouped by field name. The value is a list because the same field name
+     * may appear more than once (e.g. OpenAI's image-edit endpoint accepts multiple {@code image}
+     * parts with the same name).
+     *
      * @since 1.10.0
      */
     @Experimental
-    public Map<String, FormDataFile> formDataFiles() {
+    public Map<String, List<FormDataFile>> formDataFiles() {
         return formDataFiles;
     }
 
@@ -112,7 +117,7 @@ public class HttpRequest {
         private Map<String, List<String>> headers;
         private Map<String, String> queryParams;
         private Map<String, String> formDataFields;
-        private Map<String, FormDataFile> formDataFiles;
+        private Map<String, List<FormDataFile>> formDataFiles;
         private String body;
 
         private Builder() {}
@@ -228,6 +233,9 @@ public class HttpRequest {
         }
 
         /**
+         * Adds a form-data file part. May be called more than once with the same {@code name}
+         * to send repeated parts (e.g. multiple {@code image} parts for OpenAI image edit).
+         *
          * @since 1.10.0
          */
         @Experimental
@@ -238,7 +246,9 @@ public class HttpRequest {
             if (this.formDataFiles == null) {
                 this.formDataFiles = new LinkedHashMap<>();
             }
-            this.formDataFiles.put(name, new FormDataFile(fileName, contentType, content));
+            this.formDataFiles
+                    .computeIfAbsent(name, k -> new ArrayList<>())
+                    .add(new FormDataFile(fileName, contentType, content));
             return this;
         }
 
@@ -246,11 +256,13 @@ public class HttpRequest {
          * @since 1.10.0
          */
         @Experimental
-        public Builder formDataFiles(Map<String, FormDataFile> formDataFiles) {
+        public Builder formDataFiles(Map<String, List<FormDataFile>> formDataFiles) {
             if (formDataFiles == null) {
                 this.formDataFiles = null;
             } else {
-                this.formDataFiles = new LinkedHashMap<>(formDataFiles);
+                Map<String, List<FormDataFile>> copy = new LinkedHashMap<>();
+                formDataFiles.forEach((name, files) -> copy.put(name, new ArrayList<>(files)));
+                this.formDataFiles = copy;
             }
             return this;
         }

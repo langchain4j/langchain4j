@@ -21,6 +21,8 @@ import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
 import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingResponse;
+import dev.langchain4j.model.openai.internal.image.EditImageFile;
+import dev.langchain4j.model.openai.internal.image.EditImagesRequest;
 import dev.langchain4j.model.openai.internal.image.GenerateImagesRequest;
 import dev.langchain4j.model.openai.internal.image.GenerateImagesResponse;
 import dev.langchain4j.model.openai.internal.models.ModelsListResponse;
@@ -193,6 +195,67 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .build();
 
         return new RequestExecutor<>(httpClient, httpRequest, GenerateImagesResponse.class);
+    }
+
+    @Override
+    public SyncOrAsync<GenerateImagesResponse> imagesEdit(EditImagesRequest request) {
+        HttpRequest.Builder httpRequestBuilder = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "images/edits")
+                .addQueryParams(customQueryParams)
+                .addHeader("Content-Type", "multipart/form-data; boundary=----LangChain4j")
+                .addHeaders(buildRequestHeaders());
+
+        // OpenAI requires array syntax (`image[]`) when sending multiple input images;
+        // dall-e-2 (single only) and the gpt-image-* single-image case use `image`.
+        String imageFieldName = request.images().size() > 1 ? "image[]" : "image";
+        for (EditImageFile image : request.images()) {
+            httpRequestBuilder.addFormDataFile(imageFieldName, image.fileName(), image.mimeType(), image.content());
+        }
+
+        if (request.mask() != null) {
+            EditImageFile mask = request.mask();
+            httpRequestBuilder.addFormDataFile("mask", mask.fileName(), mask.mimeType(), mask.content());
+        }
+
+        if (request.prompt() != null) {
+            httpRequestBuilder.addFormDataField("prompt", request.prompt());
+        }
+        if (request.model() != null) {
+            httpRequestBuilder.addFormDataField("model", request.model());
+        }
+        if (request.n() != null) {
+            httpRequestBuilder.addFormDataField("n", Integer.toString(request.n()));
+        }
+        if (request.size() != null) {
+            httpRequestBuilder.addFormDataField("size", request.size());
+        }
+        if (request.quality() != null) {
+            httpRequestBuilder.addFormDataField("quality", request.quality());
+        }
+        if (request.user() != null) {
+            httpRequestBuilder.addFormDataField("user", request.user());
+        }
+        if (request.responseFormat() != null) {
+            httpRequestBuilder.addFormDataField("response_format", request.responseFormat());
+        }
+        if (request.background() != null) {
+            httpRequestBuilder.addFormDataField("background", request.background());
+        }
+        if (request.inputFidelity() != null) {
+            httpRequestBuilder.addFormDataField("input_fidelity", request.inputFidelity());
+        }
+        if (request.outputFormat() != null) {
+            httpRequestBuilder.addFormDataField("output_format", request.outputFormat());
+        }
+        if (request.outputCompression() != null) {
+            httpRequestBuilder.addFormDataField("output_compression", Integer.toString(request.outputCompression()));
+        }
+        if (request.moderation() != null) {
+            httpRequestBuilder.addFormDataField("moderation", request.moderation());
+        }
+
+        return new RequestExecutor<>(httpClient, httpRequestBuilder.build(), GenerateImagesResponse.class);
     }
 
     @Override

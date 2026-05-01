@@ -11,12 +11,18 @@ import dev.langchain4j.data.image.Image;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.image.EditImageFile;
+import dev.langchain4j.model.openai.internal.image.EditImagesRequest;
 import dev.langchain4j.model.openai.internal.image.GenerateImagesRequest;
 import dev.langchain4j.model.openai.internal.image.GenerateImagesResponse;
 import dev.langchain4j.model.openai.internal.image.ImageData;
+import dev.langchain4j.model.openai.internal.image.TokenDetails;
+import dev.langchain4j.model.openai.internal.image.Usage;
 import dev.langchain4j.model.openai.spi.OpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -35,6 +41,11 @@ public class OpenAiImageModel implements ImageModel {
     private final String style;
     private final String user;
     private final String responseFormat;
+    private final String background;
+    private final String moderation;
+    private final Integer outputCompression;
+    private final String outputFormat;
+    private final String inputFidelity;
 
     private final OpenAiClient client;
 
@@ -65,6 +76,11 @@ public class OpenAiImageModel implements ImageModel {
         this.style = builder.style;
         this.user = builder.user;
         this.responseFormat = builder.responseFormat;
+        this.background = builder.background;
+        this.moderation = builder.moderation;
+        this.outputCompression = builder.outputCompression;
+        this.outputFormat = builder.outputFormat;
+        this.inputFidelity = builder.inputFidelity;
     }
 
     public String modelName() {
@@ -78,7 +94,7 @@ public class OpenAiImageModel implements ImageModel {
         GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesGeneration(request), maxRetries)
                 .execute();
 
-        return Response.from(fromImageData(response.data().get(0)));
+        return singleImageResponse(response);
     }
 
     @Override
@@ -88,8 +104,21 @@ public class OpenAiImageModel implements ImageModel {
         GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesGeneration(request), maxRetries)
                 .execute();
 
-        return Response.from(
-                response.data().stream().map(OpenAiImageModel::fromImageData).collect(Collectors.toList()));
+        return imageListResponse(response);
+    }
+
+    /**
+     * Canonical edit override. The five convenience edit overloads on {@link ImageModel}
+     * delegate here with appropriate defaults, so this is the only edit method
+     * {@code OpenAiImageModel} needs to override.
+     */
+    @Override
+    public Response<List<Image>> edit(List<Image> images, Image mask, String prompt, int n) {
+        EditImagesRequest request =
+                editRequestBuilder(images, mask, prompt).n(n).build();
+        GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesEdit(request), maxRetries)
+                .execute();
+        return imageListResponse(response);
     }
 
     public static OpenAiImageModelBuilder builder() {
@@ -113,6 +142,11 @@ public class OpenAiImageModel implements ImageModel {
         private String style;
         private String user;
         private String responseFormat;
+        private String background;
+        private String moderation;
+        private Integer outputCompression;
+        private String outputFormat;
+        private String inputFidelity;
         private Duration timeout;
         private Integer maxRetries;
         private Boolean logRequests;
@@ -185,6 +219,55 @@ public class OpenAiImageModel implements ImageModel {
             return this;
         }
 
+        /**
+         * Background of the generated image. Supported by gpt-image-* models.
+         * One of {@code transparent}, {@code opaque}, {@code auto}.
+         */
+        public OpenAiImageModelBuilder background(String background) {
+            this.background = background;
+            return this;
+        }
+
+        /**
+         * Moderation level. Supported by gpt-image-* models. One of {@code low}, {@code auto}.
+         */
+        public OpenAiImageModelBuilder moderation(String moderation) {
+            this.moderation = moderation;
+            return this;
+        }
+
+        /**
+         * Output image compression (0-100). Supported by gpt-image-* models when
+         * {@link #outputFormat(String)} is {@code webp} or {@code jpeg}.
+         */
+        public OpenAiImageModelBuilder outputCompression(Integer outputCompression) {
+            this.outputCompression = outputCompression;
+            return this;
+        }
+
+        /**
+         * Output image format. Supported by gpt-image-* models. One of {@code png},
+         * {@code jpeg}, {@code webp}.
+         */
+        public OpenAiImageModelBuilder outputFormat(String outputFormat) {
+            this.outputFormat = outputFormat;
+            return this;
+        }
+
+        /**
+         * Input fidelity for image-edit requests. One of {@code low}, {@code high}.
+         * Only consulted by {@code edit(...)}; ignored by {@code generate(...)}.
+         *
+         * <p>Supported by {@code gpt-image-1}. <b>Not configurable on {@code gpt-image-2}</b> —
+         * that model always processes input images at high fidelity automatically and the API
+         * rejects the parameter, so any value set here is silently dropped from the request when
+         * the model is {@code gpt-image-2}. Ignored by {@code dall-e-*}.
+         */
+        public OpenAiImageModelBuilder inputFidelity(String inputFidelity) {
+            this.inputFidelity = inputFidelity;
+            return this;
+        }
+
         public OpenAiImageModelBuilder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
@@ -250,14 +333,114 @@ public class OpenAiImageModel implements ImageModel {
                 .build();
     }
 
+    private static Response<Image> singleImageResponse(GenerateImagesResponse response) {
+        Image image = fromImageData(response.data().get(0));
+        TokenUsage tokenUsage = toTokenUsage(response.usage());
+        return tokenUsage == null ? Response.from(image) : Response.from(image, tokenUsage);
+    }
+
+    private static Response<List<Image>> imageListResponse(GenerateImagesResponse response) {
+        List<Image> images =
+                response.data().stream().map(OpenAiImageModel::fromImageData).collect(Collectors.toList());
+        TokenUsage tokenUsage = toTokenUsage(response.usage());
+        return tokenUsage == null ? Response.from(images) : Response.from(images, tokenUsage);
+    }
+
+    /**
+     * Maps the internal {@link Usage} payload to the public {@link OpenAiImageTokenUsage}.
+     * Returns {@code null} when the response carries no usage block (dall-e responses).
+     */
+    static OpenAiImageTokenUsage toTokenUsage(Usage usage) {
+        if (usage == null) {
+            return null;
+        }
+        return OpenAiImageTokenUsage.builder()
+                .inputTokenCount(usage.inputTokens())
+                .outputTokenCount(usage.outputTokens())
+                .totalTokenCount(usage.totalTokens())
+                .inputTokensDetails(toPublicDetails(usage.inputTokensDetails()))
+                .outputTokensDetails(toPublicDetails(usage.outputTokensDetails()))
+                .build();
+    }
+
+    private static OpenAiImageTokenUsage.TokenDetails toPublicDetails(TokenDetails details) {
+        if (details == null) {
+            return null;
+        }
+        return new OpenAiImageTokenUsage.TokenDetails(details.textTokens(), details.imageTokens());
+    }
+
     private GenerateImagesRequest.Builder requestBuilder(String prompt) {
-        return GenerateImagesRequest.builder()
+        GenerateImagesRequest.Builder builder = GenerateImagesRequest.builder()
                 .model(modelName)
                 .prompt(prompt)
                 .size(size)
                 .quality(quality)
                 .style(style)
                 .user(user)
-                .responseFormat(responseFormat);
+                .background(background)
+                .moderation(moderation)
+                .outputCompression(outputCompression)
+                .outputFormat(outputFormat);
+        if (!isGptImageModel(modelName)) {
+            builder.responseFormat(responseFormat);
+        }
+        return builder;
+    }
+
+    /**
+     * gpt-image-* models always return base64 image data and reject the {@code response_format}
+     * parameter. Detection is centralized here so both the generation and edit paths apply the
+     * same rule.
+     */
+    static boolean isGptImageModel(String modelName) {
+        return modelName != null && modelName.startsWith("gpt-image-");
+    }
+
+    EditImagesRequest.Builder editRequestBuilder(List<Image> images, Image mask, String prompt) {
+        if (images == null || images.isEmpty()) {
+            throw new IllegalArgumentException("images must not be null or empty");
+        }
+        List<EditImageFile> imageFiles = new ArrayList<>(images.size());
+        for (int i = 0; i < images.size(); i++) {
+            imageFiles.add(EditImageFile.from(images.get(i), defaultImageFileName(images.get(i), i)));
+        }
+        EditImageFile maskFile = mask == null ? null : EditImageFile.from(mask, "mask.png");
+
+        EditImagesRequest.Builder builder = EditImagesRequest.builder()
+                .model(modelName)
+                .prompt(prompt)
+                .images(imageFiles)
+                .mask(maskFile)
+                .size(size)
+                .quality(quality)
+                .user(user)
+                .background(background)
+                .moderation(moderation)
+                .outputFormat(outputFormat)
+                .outputCompression(outputCompression);
+        if (!isGptImageModel(modelName)) {
+            builder.responseFormat(responseFormat);
+        }
+        // gpt-image-2 always processes inputs at high fidelity and the API rejects
+        // input_fidelity. Drop it silently for that model; pass it through otherwise.
+        if (!"gpt-image-2".equals(modelName)) {
+            builder.inputFidelity(inputFidelity);
+        }
+        return builder;
+    }
+
+    private static String defaultImageFileName(Image image, int index) {
+        String mimeType = image.mimeType();
+        String extension = "png";
+        if (mimeType != null) {
+            extension = switch (mimeType) {
+                case "image/png" -> "png";
+                case "image/jpeg", "image/jpg" -> "jpg";
+                case "image/webp" -> "webp";
+                default -> "png";
+            };
+        }
+        return "image-" + index + "." + extension;
     }
 }

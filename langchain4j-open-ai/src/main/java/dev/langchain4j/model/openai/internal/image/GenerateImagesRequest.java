@@ -8,11 +8,10 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
 import java.util.Objects;
 
 /**
- * Represents the request from the OpenAI DALL·E API when generating images.
+ * Represents the request to the OpenAI Image API when generating images.
  * Find description of parameters <a href="https://platform.openai.com/docs/api-reference/images/create">here</a>.
  */
 @JsonDeserialize(builder = GenerateImagesRequest.Builder.class)
@@ -22,20 +21,39 @@ public class GenerateImagesRequest {
 
     @JsonProperty
     private final String model;
+
     @JsonProperty
     private final String prompt;
+
     @JsonProperty
     private final int n;
+
     @JsonProperty
     private final String size;
+
     @JsonProperty
     private final String quality;
+
     @JsonProperty
     private final String style;
+
     @JsonProperty
     private final String user;
+
     @JsonProperty
     private final String responseFormat;
+
+    @JsonProperty
+    private final String background;
+
+    @JsonProperty
+    private final String moderation;
+
+    @JsonProperty
+    private final Integer outputCompression;
+
+    @JsonProperty
+    private final String outputFormat;
 
     public GenerateImagesRequest(Builder builder) {
         this.model = builder.model;
@@ -46,6 +64,10 @@ public class GenerateImagesRequest {
         this.style = builder.style;
         this.user = builder.user;
         this.responseFormat = builder.responseFormat;
+        this.background = builder.background;
+        this.moderation = builder.moderation;
+        this.outputCompression = builder.outputCompression;
+        this.outputFormat = builder.outputFormat;
     }
 
     @Override
@@ -60,32 +82,41 @@ public class GenerateImagesRequest {
         h += (h << 5) + Objects.hashCode(style);
         h += (h << 5) + Objects.hashCode(user);
         h += (h << 5) + Objects.hashCode(responseFormat);
+        h += (h << 5) + Objects.hashCode(background);
+        h += (h << 5) + Objects.hashCode(moderation);
+        h += (h << 5) + Objects.hashCode(outputCompression);
+        h += (h << 5) + Objects.hashCode(outputFormat);
         return h;
     }
 
     @Override
     @JacocoIgnoreCoverageGenerated
     public String toString() {
-        return (
-                "GenerateImagesRequest{" +
-                        "model=" +
-                        model +
-                        ", prompt=" +
-                        prompt +
-                        ", n=" +
-                        n +
-                        ", size=" +
-                        size +
-                        ", quality=" +
-                        quality +
-                        ", style=" +
-                        style +
-                        ", user=" +
-                        user +
-                        ", responseFormat=" +
-                        responseFormat +
-                        '}'
-        );
+        return ("GenerateImagesRequest{" + "model="
+                + model
+                + ", prompt="
+                + prompt
+                + ", n="
+                + n
+                + ", size="
+                + size
+                + ", quality="
+                + quality
+                + ", style="
+                + style
+                + ", user="
+                + user
+                + ", responseFormat="
+                + responseFormat
+                + ", background="
+                + background
+                + ", moderation="
+                + moderation
+                + ", outputCompression="
+                + outputCompression
+                + ", outputFormat="
+                + outputFormat
+                + '}');
     }
 
     public static Builder builder() {
@@ -105,6 +136,10 @@ public class GenerateImagesRequest {
         private String style;
         private String user;
         private String responseFormat;
+        private String background;
+        private String moderation;
+        private Integer outputCompression;
+        private String outputFormat;
 
         public Builder model(String model) {
             this.model = model;
@@ -143,6 +178,26 @@ public class GenerateImagesRequest {
 
         public Builder responseFormat(String responseFormat) {
             this.responseFormat = responseFormat;
+            return this;
+        }
+
+        public Builder background(String background) {
+            this.background = background;
+            return this;
+        }
+
+        public Builder moderation(String moderation) {
+            this.moderation = moderation;
+            return this;
+        }
+
+        public Builder outputCompression(Integer outputCompression) {
+            this.outputCompression = outputCompression;
+            return this;
+        }
+
+        public Builder outputFormat(String outputFormat) {
+            this.outputFormat = outputFormat;
             return this;
         }
 
