@@ -1,10 +1,16 @@
 package dev.langchain4j.internal;
 
+import static dev.langchain4j.internal.PolymorphicTypes.discriminatorPropertyName;
+import static dev.langchain4j.internal.PolymorphicTypes.discriminatorValue;
+import static dev.langchain4j.internal.PolymorphicTypes.findConcreteSubtypes;
+import static dev.langchain4j.internal.PolymorphicTypes.isPolymorphic;
+import static dev.langchain4j.internal.PolymorphicTypes.verifyJsonTypeInfoIsSupported;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static java.lang.reflect.Modifier.isStatic;
 import static java.util.Arrays.stream;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -85,7 +91,141 @@ public class JsonSchemaElementUtils {
                     .build();
         }
 
+        if (isPolymorphic(clazz)) {
+            return polymorphicSchemaFrom(clazz, fieldDescription, areSubFieldsRequiredByDefault, visited);
+        }
+
         return jsonObjectOrReferenceSchemaFrom(clazz, fieldDescription, areSubFieldsRequiredByDefault, visited, false);
+    }
+
+    public static JsonSchemaElement polymorphicSchemaFrom(
+            Class<?> baseType,
+            String description,
+            boolean areSubFieldsRequiredByDefault,
+            Map<Class<?>, VisitedClassMetadata> visited) {
+        verifyJsonTypeInfoIsSupported(baseType);
+
+        if (visited.containsKey(baseType)) {
+            VisitedClassMetadata metadata = visited.get(baseType);
+            metadata.recursionDetected = true;
+            return JsonReferenceSchema.builder().reference(metadata.reference).build();
+        }
+
+        String reference = generateUUIDFrom(baseType.getName());
+        VisitedClassMetadata metadata =
+                new VisitedClassMetadata(JsonReferenceSchema.builder().reference(reference).build(), reference, false);
+        visited.put(baseType, metadata);
+
+        String discriminatorProperty = discriminatorPropertyName(baseType);
+        List<JsonSchemaElement> options = new ArrayList<>();
+        for (Class<?> subtype : findConcreteSubtypes(baseType)) {
+            JsonSchemaElement subtypeSchema = jsonObjectOrReferenceSchemaFrom(
+                    subtype, null, areSubFieldsRequiredByDefault, visited, false);
+            JsonSchemaElement withDiscriminator =
+                    addDiscriminator(subtypeSchema, baseType, subtype, discriminatorProperty);
+            options.add(withDiscriminator);
+            // Refresh the cached entry so any recursive $ref to this subtype keeps the discriminator.
+            VisitedClassMetadata subtypeMetadata = visited.get(subtype);
+            if (subtypeMetadata != null) {
+                subtypeMetadata.jsonSchemaElement = withDiscriminator;
+            }
+        }
+        String desc = description != null ? description : Optional.ofNullable(descriptionFrom(baseType))
+                .orElse(baseType.getSimpleName());
+        JsonAnyOfSchema anyOf = JsonAnyOfSchema.builder().description(desc).anyOf(options).build();
+        metadata.jsonSchemaElement = anyOf;
+        return anyOf;
+    }
+
+    private static JsonSchemaElement addDiscriminator(
+            JsonSchemaElement subtypeSchema, Class<?> baseType, Class<?> subtype, String discriminatorProperty) {
+        if (!(subtypeSchema instanceof JsonObjectSchema obj)) {
+            return subtypeSchema;
+        }
+
+        String discriminatorValue = discriminatorValue(baseType, subtype);
+
+        // Idempotency: a recursive call may have already augmented this subtype.
+        if (obj.properties().get(discriminatorProperty) instanceof JsonEnumSchema existing
+                && existing.enumValues() != null
+                && existing.enumValues().size() == 1
+                && discriminatorValue.equals(existing.enumValues().get(0))) {
+            return obj;
+        }
+
+        if (obj.properties().containsKey(discriminatorProperty)) {
+            JsonTypeInfo info = baseType.getAnnotation(JsonTypeInfo.class);
+            // The discriminator field is allowed to coexist with a same-named bean field only when
+            // @JsonTypeInfo(visible=true) or @JsonTypeInfo(include=As.EXISTING_PROPERTY).
+            boolean allowed = info != null
+                    && (info.visible() || info.include() == JsonTypeInfo.As.EXISTING_PROPERTY);
+            if (!allowed) {
+                throw new IllegalArgumentException(String.format(
+                        "Polymorphic subtype %s declares a field named '%s', which collides with the discriminator "
+                                + "property used for %s. Either rename the field, specify a different discriminator "
+                                + "name with @JsonTypeInfo(property = \"...\") on %s, set @JsonTypeInfo(visible = true), "
+                                + "or use @JsonTypeInfo(include = As.EXISTING_PROPERTY) if the field is intentionally "
+                                + "part of the subtype.",
+                        subtype.getName(),
+                        discriminatorProperty,
+                        baseType.getName(),
+                        baseType.getName()));
+            }
+        }
+
+        Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
+        properties.put(
+                discriminatorProperty, JsonEnumSchema.builder().enumValues(discriminatorValue).build());
+        obj.properties().forEach(properties::putIfAbsent);
+
+        List<String> required = new ArrayList<>();
+        required.add(discriminatorProperty);
+        obj.required().forEach(r -> {
+            if (!required.contains(r)) required.add(r);
+        });
+
+        return JsonObjectSchema.builder()
+                .description(Optional.ofNullable(obj.description()).orElse(subtype.getSimpleName()))
+                .addProperties(properties)
+                .required(required)
+                .additionalProperties(obj.additionalProperties())
+                .build();
+    }
+
+    /**
+     * If recursion was detected for {@code baseType}, returns a {@link JsonReferenceSchema} to the
+     * polymorphic body (which will be emitted under {@code $defs}); otherwise returns
+     * {@code element} unchanged. Avoids duplicating the body inline next to the {@code $defs} entry.
+     */
+    public static JsonSchemaElement referenceIfRecursive(
+            JsonSchemaElement element, Class<?> baseType, Map<Class<?>, VisitedClassMetadata> visited) {
+        VisitedClassMetadata metadata = visited.get(baseType);
+        if (metadata != null && metadata.recursionDetected && element instanceof JsonAnyOfSchema) {
+            return JsonReferenceSchema.builder().reference(metadata.reference).build();
+        }
+        return element;
+    }
+
+    /**
+     * Wraps {@code element} as the only required property of an object schema (the
+     * {@code value}/{@code values} envelope used at the root of polymorphic AI Service return types,
+     * since {@code anyOf} is not allowed at the JSON-schema root) and attaches any
+     * recursion-induced definitions collected in {@code visited}.
+     */
+    public static JsonObjectSchema wrapPolymorphic(
+            String propertyName, JsonSchemaElement element, Map<Class<?>, VisitedClassMetadata> visited) {
+        JsonObjectSchema.Builder builder =
+                JsonObjectSchema.builder().addProperty(propertyName, element).required(propertyName);
+        Map<String, JsonSchemaElement> definitions = new LinkedHashMap<>();
+        visited.forEach((clazz, meta) -> {
+            if (meta.recursionDetected) {
+                definitions.put(meta.reference, meta.jsonSchemaElement);
+            }
+        });
+        if (!definitions.isEmpty()) {
+            builder.definitions(definitions);
+        }
+        return builder.build();
     }
 
     public static JsonSchemaElement jsonObjectOrReferenceSchemaFrom(

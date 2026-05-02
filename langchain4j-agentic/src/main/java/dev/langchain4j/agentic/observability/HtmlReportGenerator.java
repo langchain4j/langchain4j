@@ -64,6 +64,30 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         return new HtmlReportGenerator(monitor, monitor.rootAgent(), memoryId).generateReport();
     }
 
+    public static void generateExecution(AgentMonitor monitor, Path path) {
+        try {
+            Files.writeString(path, generateExecution(monitor));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static String generateExecution(AgentMonitor monitor) {
+        return new HtmlReportGenerator(monitor, monitor.rootAgent(), null).generateExecutionHtml();
+    }
+
+    public static void generateExecution(AgentMonitor monitor, Object memoryId, Path path) {
+        try {
+            Files.writeString(path, generateExecution(monitor, memoryId));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static String generateExecution(AgentMonitor monitor, Object memoryId) {
+        return new HtmlReportGenerator(monitor, monitor.rootAgent(), memoryId).generateExecutionHtml();
+    }
+
     private String generateReport() {
         StringBuilder html = new StringBuilder(16384);
         html.append("<!DOCTYPE html>\n<html lang=\"en\">\n");
@@ -75,6 +99,22 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         if (monitor != null) {
             appendExecutionsSection(html);
         }
+        appendFooter(html);
+        html.append("</main>\n");
+        appendScript(html);
+        html.append("</body>\n</html>");
+        return html.toString();
+    }
+
+    private String generateExecutionHtml() {
+        String title = "LangChain4j Agentic System Execution";
+        StringBuilder html = new StringBuilder(16384);
+        html.append("<!DOCTYPE html>\n<html lang=\"en\">\n");
+        appendHead(html, title);
+        html.append("<body>\n");
+        appendNavbar(html, title);
+        html.append("<main class=\"container\">\n");
+        appendExecutionsSection(html);
         appendFooter(html);
         html.append("</main>\n");
         appendScript(html);
@@ -99,6 +139,15 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         html.append("</head>\n");
     }
 
+    private void appendHead(StringBuilder html, String title) {
+        html.append("<head>\n");
+        html.append("<meta charset=\"UTF-8\">\n");
+        html.append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n");
+        html.append("<title>").append(esc(title)).append("</title>\n");
+        appendStyles(html);
+        html.append("</head>\n");
+    }
+
     private void appendStyles(StringBuilder html) {
         html.append("<style>\n");
         html.append(CSS);
@@ -113,6 +162,14 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         html.append("<nav class=\"navbar\">\n");
         html.append("  <div class=\"navbar-logo\">").append(LOGO_SVG).append("</div>\n");
         html.append("  <div class=\"navbar-title\">").append(esc(name())).append("</div>\n");
+        html.append("  <div class=\"navbar-subtitle\">LangChain4j Agentic System</div>\n");
+        html.append("</nav>\n");
+    }
+
+    private void appendNavbar(StringBuilder html, String title) {
+        html.append("<nav class=\"navbar\">\n");
+        html.append("  <div class=\"navbar-logo\">").append(LOGO_SVG).append("</div>\n");
+        html.append("  <div class=\"navbar-title\">").append(esc(title)).append("</div>\n");
         html.append("  <div class=\"navbar-subtitle\">LangChain4j Agentic System</div>\n");
         html.append("</nav>\n");
     }

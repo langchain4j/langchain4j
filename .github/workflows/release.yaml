@@ -13,11 +13,22 @@ on:
         description: "Branch to release from (e.g., 'main' for minor releases, 'release/x.y.z' for patch releases)"
         required: false
         default: "main"
+      startFrom:
+        description: "Phase to start from (use to resume after a failed release)"
+        required: false
+        default: "core-and-parent"
+        type: choice
+        options:
+          - core-and-parent
+          - in-process-embeddings
+          - rest-of-modules
+          - commit-and-tag
 
 env:
   STABLE_VERSION: ${{ github.event.inputs.stableVersion || github.event.client_payload.stableVersion }}
   BETA_VERSION: ${{ github.event.inputs.betaVersion || github.event.client_payload.betaVersion }}
   BRANCH: ${{ github.event.inputs.branch || github.event.client_payload.branch || 'main' }}
+  START_FROM: ${{ github.event.inputs.startFrom || github.event.client_payload.startFrom || 'core-and-parent' }}
 
 permissions:
   contents: write
@@ -55,6 +66,18 @@ jobs:
           echo "Stable version: $STABLE_VERSION"
           echo "Beta version: $BETA_VERSION"
           echo "Branch to release from: $BRANCH"
+          echo "Start from phase: $START_FROM"
+
+      - name: Compute start phase number
+        id: phase
+        run: |
+          case "$START_FROM" in
+            core-and-parent)       echo "num=1" >> "$GITHUB_OUTPUT" ;;
+            in-process-embeddings) echo "num=2" >> "$GITHUB_OUTPUT" ;;
+            rest-of-modules)       echo "num=3" >> "$GITHUB_OUTPUT" ;;
+            commit-and-tag)        echo "num=4" >> "$GITHUB_OUTPUT" ;;
+            *) echo "Unknown startFrom: $START_FROM" >&2; exit 1 ;;
+          esac
 
       - name: Extract current stable SNAPSHOT version from POM property
         id: extract-stable-snapshot-version
@@ -81,6 +104,7 @@ jobs:
         run: mvn versions:set-property -Dproperty=langchain4j.beta.version -DnewVersion="$BETA_VERSION" -DgenerateBackupPoms=false
 
       - name: Release core and parent modules
+        if: ${{ fromJSON(steps.phase.outputs.num) <= 1 }}
         run: mvn -B -U -pl internal/langchain4j-internal-test-retry,langchain4j-core,langchain4j-parent -Psign clean deploy
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
@@ -88,6 +112,7 @@ jobs:
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
 
       - name: Release in-process embeddings modules
+        if: ${{ fromJSON(steps.phase.outputs.num) <= 2 }}
         run: |
           EMBEDDING_MODULES=$(find embeddings -mindepth 1 -maxdepth 1 -type d -exec test -f "{}/pom.xml" \; -print | paste -sd , -)
           
@@ -101,6 +126,7 @@ jobs:
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
 
       - name: Release the rest of the modules
+        if: ${{ fromJSON(steps.phase.outputs.num) <= 3 }}
         run: |
           EMBEDDING_MODULES=$(find embeddings -mindepth 1 -maxdepth 1 -type d -exec test -f "{}/pom.xml" \; -print | paste -sd , -)
           
@@ -135,6 +161,7 @@ jobs:
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
 
       - name: Commit version changes
+        if: ${{ fromJSON(steps.phase.outputs.num) <= 4 }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -142,10 +169,12 @@ jobs:
           git commit -m "Release versions $STABLE_VERSION and $BETA_VERSION"
 
       - name: Push
+        if: ${{ fromJSON(steps.phase.outputs.num) <= 4 }}
         run: |
           git push origin "$BRANCH"
 
       - name: Tag release
+        if: ${{ fromJSON(steps.phase.outputs.num) <= 4 }}
         run: |
           git tag "$STABLE_VERSION"
           git push origin "$STABLE_VERSION"
