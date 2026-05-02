@@ -15,6 +15,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.segment.TextSegmentTransformer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.spi.data.document.splitter.DocumentSplitterFactory;
 import dev.langchain4j.spi.model.embedding.EmbeddingModelFactory;
 import java.util.Collection;
@@ -57,6 +58,7 @@ public class EmbeddingStoreIngestor {
     private final TextSegmentTransformer textSegmentTransformer;
     private final EmbeddingModel embeddingModel;
     private final EmbeddingStore<TextSegment> embeddingStore;
+    private final boolean ignoreErrors;
 
     /**
      * Creates an instance of an {@code EmbeddingStoreIngestor}.
@@ -75,12 +77,23 @@ public class EmbeddingStoreIngestor {
             TextSegmentTransformer textSegmentTransformer,
             EmbeddingModel embeddingModel,
             EmbeddingStore<TextSegment> embeddingStore) {
+        this(documentTransformer, documentSplitter, textSegmentTransformer, embeddingModel, embeddingStore, false);
+    }
+
+    private EmbeddingStoreIngestor(
+            DocumentTransformer documentTransformer,
+            DocumentSplitter documentSplitter,
+            TextSegmentTransformer textSegmentTransformer,
+            EmbeddingModel embeddingModel,
+            EmbeddingStore<TextSegment> embeddingStore,
+            boolean ignoreErrors) {
         this.documentTransformer = documentTransformer;
         this.documentSplitter = getOrDefault(documentSplitter, EmbeddingStoreIngestor::loadDocumentSplitter);
         this.textSegmentTransformer = textSegmentTransformer;
         this.embeddingModel = ensureNotNull(
                 getOrDefault(embeddingModel, EmbeddingStoreIngestor::loadEmbeddingModel), "embeddingModel");
         this.embeddingStore = ensureNotNull(embeddingStore, "embeddingStore");
+        this.ignoreErrors = ignoreErrors;
     }
 
     private static DocumentSplitter loadDocumentSplitter() {
@@ -178,6 +191,10 @@ public class EmbeddingStoreIngestor {
 
         log.debug("Starting to ingest {} documents", documents.size());
 
+        if (ignoreErrors) {
+            return ingestIgnoringErrors(documents);
+        }
+
         if (documentTransformer != null) {
             documents = documentTransformer.transformAll(documents);
             log.debug("Documents were transformed into {} documents", documents.size());
@@ -189,6 +206,7 @@ public class EmbeddingStoreIngestor {
         } else {
             segments = documents.stream().map(Document::toTextSegment).collect(toList());
         }
+
         if (textSegmentTransformer != null) {
             segments = textSegmentTransformer.transformAll(segments);
             log.debug("{} documents were transformed into {} text segments", documents.size(), segments.size());
@@ -203,6 +221,66 @@ public class EmbeddingStoreIngestor {
         log.debug("Finished storing {} text segments into the embedding store", segments.size());
 
         return new IngestionResult(embeddingsResponse.tokenUsage());
+    }
+
+    private IngestionResult ingestIgnoringErrors(List<Document> documents) {
+        TokenUsage tokenUsage = null;
+
+        for (Document document : documents) {
+            try {
+                List<Document> documentsToIngest = singletonList(document);
+                if (documentTransformer != null) {
+                    documentsToIngest = documentTransformer.transformAll(documentsToIngest);
+                    log.debug("Document was transformed into {} documents", documentsToIngest.size());
+                }
+
+                List<TextSegment> segments;
+                if (documentSplitter != null) {
+                    segments = documentSplitter.splitAll(documentsToIngest);
+                    log.debug(
+                            "{} documents were split into {} text segments", documentsToIngest.size(), segments.size());
+                } else {
+                    segments = documentsToIngest.stream()
+                            .map(Document::toTextSegment)
+                            .collect(toList());
+                }
+
+                if (segments.isEmpty()) {
+                    log.debug("Skipping embedding because no text segments were produced");
+                    continue;
+                }
+
+                if (textSegmentTransformer != null) {
+                    segments = textSegmentTransformer.transformAll(segments);
+                    log.debug(
+                            "{} documents were transformed into {} text segments",
+                            documentsToIngest.size(),
+                            segments.size());
+                }
+
+                if (segments.isEmpty()) {
+                    log.debug("Skipping embedding because no text segments were produced");
+                    continue;
+                }
+
+                log.debug("Starting to embed {} text segments", segments.size());
+                Response<List<Embedding>> embeddingsResponse = embeddingModel.embedAll(segments);
+                log.debug("Finished embedding {} text segments", segments.size());
+
+                log.debug("Starting to store {} text segments into the embedding store", segments.size());
+                embeddingStore.addAll(embeddingsResponse.content(), segments);
+                log.debug("Finished storing {} text segments into the embedding store", segments.size());
+
+                tokenUsage = TokenUsage.sum(tokenUsage, embeddingsResponse.tokenUsage());
+            } catch (RuntimeException e) {
+                log.debug(
+                        "Skipping document because ingestion failed: {}: {}",
+                        e.getClass().getSimpleName(),
+                        e.getMessage());
+            }
+        }
+
+        return new IngestionResult(tokenUsage);
     }
 
     /**
@@ -224,6 +302,7 @@ public class EmbeddingStoreIngestor {
         private TextSegmentTransformer textSegmentTransformer;
         private EmbeddingModel embeddingModel;
         private EmbeddingStore<TextSegment> embeddingStore;
+        private boolean ignoreErrors;
 
         /**
          * Creates a new EmbeddingStoreIngestor builder.
@@ -290,13 +369,30 @@ public class EmbeddingStoreIngestor {
         }
 
         /**
+         * Configures whether ingestion should ignore {@link RuntimeException}s and continue with the rest of the
+         * documents. When enabled, documents that produce no text segments are also skipped.
+         *
+         * @param ignoreErrors whether to ignore errors.
+         * @return {@code this}
+         */
+        public Builder ignoreErrors(boolean ignoreErrors) {
+            this.ignoreErrors = ignoreErrors;
+            return this;
+        }
+
+        /**
          * Builds the EmbeddingStoreIngestor.
          *
          * @return the EmbeddingStoreIngestor.
          */
         public EmbeddingStoreIngestor build() {
             return new EmbeddingStoreIngestor(
-                    documentTransformer, documentSplitter, textSegmentTransformer, embeddingModel, embeddingStore);
+                    documentTransformer,
+                    documentSplitter,
+                    textSegmentTransformer,
+                    embeddingModel,
+                    embeddingStore,
+                    ignoreErrors);
         }
     }
 }
