@@ -21,20 +21,28 @@ public class MistralAiCategoryScores {
     private Double hateAndDiscrimination;
     private Double violenceAndThreats;
     private Double dangerousAndCriminalContent;
+    private Double dangerous;
+    private Double criminal;
     private Double selfHarm;
     private Double health;
+    private Double financial;
     private Double law;
     private Double pii;
+    private Double jailbreaking;
 
     private MistralAiCategoryScores(MistralCategoryScoresBuilder builder) {
         this.sexual = builder.sexual;
         this.hateAndDiscrimination = builder.hateAndDiscrimination;
         this.violenceAndThreats = builder.violenceAndThreats;
         this.dangerousAndCriminalContent = builder.dangerousAndCriminalContent;
+        this.dangerous = builder.dangerous;
+        this.criminal = builder.criminal;
         this.selfHarm = builder.selfHarm;
         this.health = builder.health;
+        this.financial = builder.financial;
         this.law = builder.law;
         this.pii = builder.pii;
+        this.jailbreaking = builder.jailbreaking;
     }
 
     public Double getSexual() {
@@ -53,12 +61,24 @@ public class MistralAiCategoryScores {
         return dangerousAndCriminalContent;
     }
 
+    public Double getDangerous() {
+        return dangerous;
+    }
+
+    public Double getCriminal() {
+        return criminal;
+    }
+
     public Double getSelfHarm() {
         return selfHarm;
     }
 
     public Double getHealth() {
         return health;
+    }
+
+    public Double getFinancial() {
+        return financial;
     }
 
     public Double getLaw() {
@@ -69,6 +89,10 @@ public class MistralAiCategoryScores {
         return pii;
     }
 
+    public Double getJailbreaking() {
+        return jailbreaking;
+    }
+
     @Override
     public int hashCode() {
         int hash = 7;
@@ -76,10 +100,14 @@ public class MistralAiCategoryScores {
         hash = 37 * hash + Objects.hashCode(this.hateAndDiscrimination);
         hash = 37 * hash + Objects.hashCode(this.violenceAndThreats);
         hash = 37 * hash + Objects.hashCode(this.dangerousAndCriminalContent);
+        hash = 37 * hash + Objects.hashCode(this.dangerous);
+        hash = 37 * hash + Objects.hashCode(this.criminal);
         hash = 37 * hash + Objects.hashCode(this.selfHarm);
         hash = 37 * hash + Objects.hashCode(this.health);
+        hash = 37 * hash + Objects.hashCode(this.financial);
         hash = 37 * hash + Objects.hashCode(this.law);
         hash = 37 * hash + Objects.hashCode(this.pii);
+        hash = 37 * hash + Objects.hashCode(this.jailbreaking);
         return hash;
     }
 
@@ -93,10 +121,14 @@ public class MistralAiCategoryScores {
                 && Objects.equals(this.hateAndDiscrimination, other.hateAndDiscrimination)
                 && Objects.equals(this.violenceAndThreats, other.violenceAndThreats)
                 && Objects.equals(this.dangerousAndCriminalContent, other.dangerousAndCriminalContent)
+                && Objects.equals(this.dangerous, other.dangerous)
+                && Objects.equals(this.criminal, other.criminal)
                 && Objects.equals(this.selfHarm, other.selfHarm)
                 && Objects.equals(this.health, other.health)
+                && Objects.equals(this.financial, other.financial)
                 && Objects.equals(this.law, other.law)
-                && Objects.equals(this.pii, other.pii);
+                && Objects.equals(this.pii, other.pii)
+                && Objects.equals(this.jailbreaking, other.jailbreaking);
     }
 
     @Override
@@ -106,10 +138,14 @@ public class MistralAiCategoryScores {
                 .add("hateAndDiscrimination=" + this.getHateAndDiscrimination())
                 .add("violenceAndThreats=" + this.getViolenceAndThreats())
                 .add("dangerousAndCriminalContent=" + this.getDangerousAndCriminalContent())
+                .add("dangerous=" + this.getDangerous())
+                .add("criminal=" + this.getCriminal())
                 .add("selfHarm=" + this.getSelfHarm())
                 .add("health=" + this.getHealth())
+                .add("financial=" + this.getFinancial())
                 .add("law=" + this.getLaw())
                 .add("pii=" + this.getPii())
+                .add("jailbreaking=" + this.getJailbreaking())
                 .toString();
     }
 
@@ -126,10 +162,14 @@ public class MistralAiCategoryScores {
         private Double hateAndDiscrimination;
         private Double violenceAndThreats;
         private Double dangerousAndCriminalContent;
+        private Double dangerous;
+        private Double criminal;
         private Double selfHarm;
         private Double health;
+        private Double financial;
         private Double law;
         private Double pii;
+        private Double jailbreaking;
 
         private MistralCategoryScoresBuilder() {}
 
@@ -153,6 +193,16 @@ public class MistralAiCategoryScores {
             return this;
         }
 
+        public MistralCategoryScoresBuilder dangerous(Double dangerous) {
+            this.dangerous = dangerous;
+            return this;
+        }
+
+        public MistralCategoryScoresBuilder criminal(Double criminal) {
+            this.criminal = criminal;
+            return this;
+        }
+
         public MistralCategoryScoresBuilder selfharm(Double selfHarm) {
             this.selfHarm = selfHarm;
             return this;
@@ -163,6 +213,11 @@ public class MistralAiCategoryScores {
             return this;
         }
 
+        public MistralCategoryScoresBuilder financial(Double financial) {
+            this.financial = financial;
+            return this;
+        }
+
         public MistralCategoryScoresBuilder law(Double law) {
             this.law = law;
             return this;
@@ -170,6 +225,11 @@ public class MistralAiCategoryScores {
 
         public MistralCategoryScoresBuilder pii(Double pii) {
             this.pii = pii;
+            return this;
+        }
+
+        public MistralCategoryScoresBuilder jailbreaking(Double jailbreaking) {
+            this.jailbreaking = jailbreaking;
             return this;
         }
 

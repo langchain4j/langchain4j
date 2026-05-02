@@ -18,7 +18,6 @@ import dev.langchain4j.model.moderation.ModerationRequest;
 import dev.langchain4j.model.moderation.ModerationResponse;
 import dev.langchain4j.model.moderation.listener.ModerationModelListener;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
@@ -141,15 +140,18 @@ public class WatsonxModerationModel implements ModerationModel {
 
     private ModerationResponse createModerationResponse(DetectionTextResponse detectionTextResponse) {
         Moderation moderation = Moderation.flagged(detectionTextResponse.text());
-        Map<String, Object> metadata = Map.of(
-                "detection", detectionTextResponse.detection(),
-                "detection_type", detectionTextResponse.detectionType(),
-                "start", detectionTextResponse.start(),
-                "end", detectionTextResponse.end(),
-                "score", detectionTextResponse.score());
+        WatsonxModerationResponseMetadata metadata = WatsonxModerationResponseMetadata.builder()
+                .detection(detectionTextResponse.detection())
+                .detectionType(detectionTextResponse.detectionType())
+                .start(detectionTextResponse.start())
+                .end(detectionTextResponse.end())
+                .score(detectionTextResponse.score())
+                .build();
+
         return ModerationResponse.builder()
                 .moderation(moderation)
-                .metadata(metadata)
+                .metadata(metadata.toMap())
+                .typedMetadata(metadata)
                 .build();
     }
 

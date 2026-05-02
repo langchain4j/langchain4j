@@ -9,7 +9,6 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
 import java.util.Objects;
 
 @JsonDeserialize(builder = CategoryScores.Builder.class)
@@ -18,13 +17,31 @@ import java.util.Objects;
 public final class CategoryScores {
 
     @JsonProperty
+    private final Double harassment;
+
+    @JsonProperty("harassment/threatening")
+    private final Double harassmentThreatening;
+
+    @JsonProperty
     private final Double hate;
 
     @JsonProperty("hate/threatening")
     private final Double hateThreatening;
 
+    @JsonProperty
+    private final Double illicit;
+
+    @JsonProperty("illicit/violent")
+    private final Double illicitViolent;
+
     @JsonProperty("self-harm")
     private final Double selfHarm;
+
+    @JsonProperty("self-harm/intent")
+    private final Double selfHarmIntent;
+
+    @JsonProperty("self-harm/instructions")
+    private final Double selfHarmInstructions;
 
     @JsonProperty
     private final Double sexual;
@@ -39,13 +56,27 @@ public final class CategoryScores {
     private final Double violenceGraphic;
 
     public CategoryScores(Builder builder) {
+        this.harassment = builder.harassment;
+        this.harassmentThreatening = builder.harassmentThreatening;
         this.hate = builder.hate;
         this.hateThreatening = builder.hateThreatening;
+        this.illicit = builder.illicit;
+        this.illicitViolent = builder.illicitViolent;
         this.selfHarm = builder.selfHarm;
+        this.selfHarmIntent = builder.selfHarmIntent;
+        this.selfHarmInstructions = builder.selfHarmInstructions;
         this.sexual = builder.sexual;
         this.sexualMinors = builder.sexualMinors;
         this.violence = builder.violence;
         this.violenceGraphic = builder.violenceGraphic;
+    }
+
+    public Double harassment() {
+        return harassment;
+    }
+
+    public Double harassmentThreatening() {
+        return harassmentThreatening;
     }
 
     public Double hate() {
@@ -56,8 +87,24 @@ public final class CategoryScores {
         return hateThreatening;
     }
 
+    public Double illicit() {
+        return illicit;
+    }
+
+    public Double illicitViolent() {
+        return illicitViolent;
+    }
+
     public Double selfHarm() {
         return selfHarm;
+    }
+
+    public Double selfHarmIntent() {
+        return selfHarmIntent;
+    }
+
+    public Double selfHarmInstructions() {
+        return selfHarmInstructions;
     }
 
     public Double sexual() {
@@ -80,15 +127,20 @@ public final class CategoryScores {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof CategoryScores
-                && equalTo((CategoryScores) another);
+        return another instanceof CategoryScores && equalTo((CategoryScores) another);
     }
 
     @JacocoIgnoreCoverageGenerated
     private boolean equalTo(CategoryScores another) {
-        return Objects.equals(hate, another.hate)
+        return Objects.equals(harassment, another.harassment)
+                && Objects.equals(harassmentThreatening, another.harassmentThreatening)
+                && Objects.equals(hate, another.hate)
                 && Objects.equals(hateThreatening, another.hateThreatening)
+                && Objects.equals(illicit, another.illicit)
+                && Objects.equals(illicitViolent, another.illicitViolent)
                 && Objects.equals(selfHarm, another.selfHarm)
+                && Objects.equals(selfHarmIntent, another.selfHarmIntent)
+                && Objects.equals(selfHarmInstructions, another.selfHarmInstructions)
                 && Objects.equals(sexual, another.sexual)
                 && Objects.equals(sexualMinors, another.sexualMinors)
                 && Objects.equals(violence, another.violence)
@@ -99,9 +151,15 @@ public final class CategoryScores {
     @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
+        h += (h << 5) + Objects.hashCode(harassment);
+        h += (h << 5) + Objects.hashCode(harassmentThreatening);
         h += (h << 5) + Objects.hashCode(hate);
         h += (h << 5) + Objects.hashCode(hateThreatening);
+        h += (h << 5) + Objects.hashCode(illicit);
+        h += (h << 5) + Objects.hashCode(illicitViolent);
         h += (h << 5) + Objects.hashCode(selfHarm);
+        h += (h << 5) + Objects.hashCode(selfHarmIntent);
+        h += (h << 5) + Objects.hashCode(selfHarmInstructions);
         h += (h << 5) + Objects.hashCode(sexual);
         h += (h << 5) + Objects.hashCode(sexualMinors);
         h += (h << 5) + Objects.hashCode(violence);
@@ -113,9 +171,15 @@ public final class CategoryScores {
     @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "CategoryScores{"
-                + "hate=" + hate
+                + "harassment=" + harassment
+                + ", harassmentThreatening=" + harassmentThreatening
+                + ", hate=" + hate
                 + ", hateThreatening=" + hateThreatening
+                + ", illicit=" + illicit
+                + ", illicitViolent=" + illicitViolent
                 + ", selfHarm=" + selfHarm
+                + ", selfHarmIntent=" + selfHarmIntent
+                + ", selfHarmInstructions=" + selfHarmInstructions
                 + ", sexual=" + sexual
                 + ", sexualMinors=" + sexualMinors
                 + ", violence=" + violence
@@ -132,13 +196,30 @@ public final class CategoryScores {
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static final class Builder {
 
+        private Double harassment;
+        private Double harassmentThreatening;
         private Double hate;
         private Double hateThreatening;
+        private Double illicit;
+        private Double illicitViolent;
         private Double selfHarm;
+        private Double selfHarmIntent;
+        private Double selfHarmInstructions;
         private Double sexual;
         private Double sexualMinors;
         private Double violence;
         private Double violenceGraphic;
+
+        public Builder harassment(Double harassment) {
+            this.harassment = harassment;
+            return this;
+        }
+
+        @JsonSetter("harassment/threatening")
+        public Builder harassmentThreatening(Double harassmentThreatening) {
+            this.harassmentThreatening = harassmentThreatening;
+            return this;
+        }
 
         public Builder hate(Double hate) {
             this.hate = hate;
@@ -151,9 +232,32 @@ public final class CategoryScores {
             return this;
         }
 
+        public Builder illicit(Double illicit) {
+            this.illicit = illicit;
+            return this;
+        }
+
+        @JsonSetter("illicit/violent")
+        public Builder illicitViolent(Double illicitViolent) {
+            this.illicitViolent = illicitViolent;
+            return this;
+        }
+
         @JsonSetter("self-harm")
         public Builder selfHarm(Double selfHarm) {
             this.selfHarm = selfHarm;
+            return this;
+        }
+
+        @JsonSetter("self-harm/intent")
+        public Builder selfHarmIntent(Double selfHarmIntent) {
+            this.selfHarmIntent = selfHarmIntent;
+            return this;
+        }
+
+        @JsonSetter("self-harm/instructions")
+        public Builder selfHarmInstructions(Double selfHarmInstructions) {
+            this.selfHarmInstructions = selfHarmInstructions;
             return this;
         }
 
