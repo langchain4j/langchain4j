@@ -548,13 +548,20 @@ class DefaultAiServices<T> extends AiServices<T> {
                         .eventListenerRegistrar(context.eventListenerRegistrar)
                         .build();
                 ChatResponse initialResponse = repromptExecutor.execute();
+
+                if (!initialResponse.aiMessage().hasToolExecutionRequests()) {
+                    return initialResponse;
+                }
+
+                // Tool calls in the reprompt response: run the tool loop without
+                // writing to memory (reprompt intermediates must not persist).
                 ToolServiceResult toolResult = context.toolService.executeInferenceAndToolsLoop(
                         context,
                         memoryId,
                         initialResponse,
                         parameters,
                         chatMessages,
-                        chatMemory,
+                        null,
                         invocationContext,
                         toolServiceContext,
                         isReturnTypeResult);
