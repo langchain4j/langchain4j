@@ -18,7 +18,10 @@ import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.structured.Description;
+import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Deque;
@@ -94,6 +97,7 @@ class JsonSchemaElementUtilsTest {
         assertThat(jsonSchemaElement)
                 .isEqualTo(JsonStringSchema.builder()
                         .description("String in a UUID format")
+                        .format("uuid")
                         .build());
     }
 
@@ -114,7 +118,12 @@ class JsonSchemaElementUtilsTest {
         // then
         assertThat(jsonSchemaElement)
                 .isEqualTo(JsonObjectSchema.builder()
-                        .addStringProperty("uuid", "String in a UUID format")
+                        .addProperty(
+                                "uuid",
+                                JsonStringSchema.builder()
+                                        .description("String in a UUID format")
+                                        .format("uuid")
+                                        .build())
                         .required("uuid")
                         .build());
     }
@@ -137,9 +146,27 @@ class JsonSchemaElementUtilsTest {
         // then
         assertThat(jsonSchemaElement)
                 .isEqualTo(JsonObjectSchema.builder()
-                        .addStringProperty("uuid", "My UUID")
+                        .addProperty(
+                                "uuid",
+                                JsonStringSchema.builder()
+                                        .description("My UUID")
+                                        .format("uuid")
+                                        .build())
                         .required("uuid")
                         .build());
+    }
+
+    @Test
+    void should_set_date_time_formats() {
+
+        assertThat(jsonSchemaElementFrom(LocalDate.class, null, null, true, new LinkedHashMap<>()))
+                .isEqualTo(JsonStringSchema.builder().format("date").build());
+
+        assertThat(jsonSchemaElementFrom(LocalTime.class, null, null, true, new LinkedHashMap<>()))
+                .isEqualTo(JsonStringSchema.builder().format("time").build());
+
+        assertThat(jsonSchemaElementFrom(Duration.class, null, null, true, new LinkedHashMap<>()))
+                .isEqualTo(JsonStringSchema.builder().format("duration").build());
     }
 
     @Test
@@ -187,9 +214,7 @@ class JsonSchemaElementUtilsTest {
         Map<String, Object> map = toMap(person, false);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map))
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
                 {
                    "type":"object",
                    "properties":{
@@ -221,9 +246,7 @@ class JsonSchemaElementUtilsTest {
         Map<String, Object> map = toMap(person, true);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map))
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
                 {
                    "type":"object",
                    "properties":{
@@ -245,8 +268,7 @@ class JsonSchemaElementUtilsTest {
     @Test
     void nativeSchemaToMap() throws JsonProcessingException {
         ObjectMapper mapper = new ObjectMapper();
-        String rawJsonSchema =
-                """
+        String rawJsonSchema = """
         {
             "additionalProperties": false,
             "type" : "object",
@@ -297,16 +319,17 @@ class JsonSchemaElementUtilsTest {
 
         // given
         enum MyEnum {
-            A, B, C;
+            A,
+            B,
+            C;
         }
 
         // when
         JsonSchemaElement schema = jsonSchemaElementFrom(MyEnum.class);
 
         // then
-        assertThat(schema).isEqualTo(JsonEnumSchema.builder()
-                .enumValues("A", "B", "C")
-                .build());
+        assertThat(schema)
+                .isEqualTo(JsonEnumSchema.builder().enumValues("A", "B", "C").build());
     }
 
     @Test
@@ -314,7 +337,9 @@ class JsonSchemaElementUtilsTest {
 
         // given
         enum MyEnumWithToString {
-            A, B, C;
+            A,
+            B,
+            C;
 
             @Override
             public String toString() {
@@ -328,61 +353,53 @@ class JsonSchemaElementUtilsTest {
         JsonSchemaElement schema = jsonSchemaElementFrom(MyEnumWithToString.class);
 
         // then
-        assertThat(schema).isEqualTo(JsonEnumSchema.builder()
-                .enumValues("A", "B", "C")
-                .build());
+        assertThat(schema)
+                .isEqualTo(JsonEnumSchema.builder().enumValues("A", "B", "C").build());
     }
 
     @Test
     void shouldConvertJsonStringSchemaToMap() {
         JsonStringSchema schema = JsonStringSchema.builder()
                 .description("string description")
+                .format("date-time")
                 .build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
         assertThat(map)
                 .containsEntry("type", "string")
-                .containsEntry("description", "string description");
+                .containsEntry("description", "string description")
+                .containsEntry("format", "date-time");
     }
 
     @Test
     void shouldConvertJsonIntegerSchemaToMap() {
-        JsonIntegerSchema schema = JsonIntegerSchema.builder()
-                .description("integer description")
-                .build();
+        JsonIntegerSchema schema =
+                JsonIntegerSchema.builder().description("integer description").build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
-        assertThat(map)
-                .containsEntry("type", "integer")
-                .containsEntry("description", "integer description");
+        assertThat(map).containsEntry("type", "integer").containsEntry("description", "integer description");
     }
 
     @Test
     void shouldConvertJsonNumberSchemaToMap() {
-        JsonNumberSchema schema = JsonNumberSchema.builder()
-                .description("number description")
-                .build();
+        JsonNumberSchema schema =
+                JsonNumberSchema.builder().description("number description").build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
-        assertThat(map)
-                .containsEntry("type", "number")
-                .containsEntry("description", "number description");
+        assertThat(map).containsEntry("type", "number").containsEntry("description", "number description");
     }
 
     @Test
     void shouldConvertJsonBooleanSchemaToMap() {
-        JsonBooleanSchema schema = JsonBooleanSchema.builder()
-                .description("boolean description")
-                .build();
+        JsonBooleanSchema schema =
+                JsonBooleanSchema.builder().description("boolean description").build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
-        assertThat(map)
-                .containsEntry("type", "boolean")
-                .containsEntry("description", "boolean description");
+        assertThat(map).containsEntry("type", "boolean").containsEntry("description", "boolean description");
     }
 
     @Test
@@ -439,9 +456,8 @@ class JsonSchemaElementUtilsTest {
 
     @Test
     void shouldConvertJsonReferenceSchemaToMap() {
-        JsonReferenceSchema schema = JsonReferenceSchema.builder()
-                .reference("my-ref")
-                .build();
+        JsonReferenceSchema schema =
+                JsonReferenceSchema.builder().reference("my-ref").build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
@@ -453,8 +469,7 @@ class JsonSchemaElementUtilsTest {
         JsonAnyOfSchema schema = JsonAnyOfSchema.builder()
                 .anyOf(Arrays.asList(
                         JsonSchemaElementUtils.jsonSchemaElementFrom(String.class),
-                        JsonSchemaElementUtils.jsonSchemaElementFrom(Integer.class)
-                ))
+                        JsonSchemaElementUtils.jsonSchemaElementFrom(Integer.class)))
                 .description("anyOf description")
                 .build();
 
@@ -481,7 +496,8 @@ class JsonSchemaElementUtilsTest {
     @Test
     void shouldConvertJsonRawSchemaToMap() {
         Map<String, Object> rawMap = Map.of("foo", "bar");
-        JsonRawSchema schema = JsonRawSchema.builder().schema(Json.toJson(rawMap)).build();
+        JsonRawSchema schema =
+                JsonRawSchema.builder().schema(Json.toJson(rawMap)).build();
 
         Map<String, Object> map = JsonSchemaElementUtils.toMap(schema);
 
