@@ -1,5 +1,8 @@
 package dev.langchain4j.service.guardrail;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessageType;
@@ -20,16 +23,12 @@ import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.service.AiServices;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 class AiServiceGuardrailTests {
     private static final ImageContent IMAGE_CONTENT = ImageContent.from(
@@ -163,7 +162,8 @@ class AiServiceGuardrailTests {
 
         assistant.chat("Original prompt");
 
-        UserMessage userMessage = (UserMessage) chatModelMock.request().messages().get(0);
+        UserMessage userMessage =
+                (UserMessage) chatModelMock.request().messages().get(0);
         assertThat(userMessage.contents()).containsExactly(TextContent.from("Rewritten prompt"));
         assertThat(userMessage.hasSingleText()).isTrue();
     }
@@ -361,6 +361,58 @@ class AiServiceGuardrailTests {
             return failure(
                     responseFromLLM.text() + " failure from " + getClass().getSimpleName());
         }
+    }
+
+    @Test
+    void output_guardrail_reprompt_should_execute_tool_loop_before_revalidating() {
+        // Scenario: guardrail reprompts on "bad response"; reprompted LLM responds with a tool call
+        // instead of text; tool executes; final LLM response passes the guardrail.
+        // Before the fix, the tool-only AiMessage (text == null) was handed directly to the guardrail.
+        var toolWasCalled = new java.util.concurrent.atomic.AtomicBoolean(false);
+
+        var toolCallResponse = AiMessage.from(dev.langchain4j.agent.tool.ToolExecutionRequest.builder()
+                .id("call-1")
+                .name("verify")
+                .arguments("{}")
+                .build());
+
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from("bad response"), // triggers reprompt
+                toolCallResponse, // reprompted LLM picks a tool
+                AiMessage.from("good response")); // final text after tool execution
+
+        var tools = new Object() {
+            @dev.langchain4j.agent.tool.Tool("verify something")
+            public String verify() {
+                toolWasCalled.set(true);
+                return "verified";
+            }
+        };
+
+        OutputGuardrail repromptOnBad = new OutputGuardrail() {
+            @Override
+            public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+                if ("bad response".equals(responseFromLLM.text())) {
+                    return reprompt("Invalid response", "Please try again using the verify tool");
+                }
+                return success();
+            }
+        };
+
+        interface RepromptAssistant {
+            String chat(String message);
+        }
+
+        RepromptAssistant assistant = AiServices.builder(RepromptAssistant.class)
+                .chatModel(model)
+                .tools(tools)
+                .outputGuardrails(repromptOnBad)
+                .build();
+
+        String result = assistant.chat("Hello");
+
+        assertThat(toolWasCalled).isTrue();
+        assertThat(result).isEqualTo("good response");
     }
 
     public static class MyChatModel implements ChatModel {

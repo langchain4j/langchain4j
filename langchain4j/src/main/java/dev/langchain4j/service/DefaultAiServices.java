@@ -51,7 +51,6 @@ import dev.langchain4j.service.guardrail.GuardrailService;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.service.output.ServiceOutputParser;
-import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
@@ -346,11 +345,20 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
 
+                        ChatExecutor toolAwareRepromptExecutor = buildToolAwareRepromptExecutor(
+                                chatExecutor,
+                                context,
+                                memoryId,
+                                parameters,
+                                invocationContext,
+                                toolServiceContext,
+                                isReturnTypeResult);
+
                         var response = invokeOutputGuardrails(
                                 context.guardrailService(),
                                 method,
                                 aggregateResponse,
-                                chatExecutor,
+                                toolAwareRepromptExecutor,
                                 commonGuardrailParam);
 
                         if (response != null) {
@@ -512,6 +520,46 @@ class DefaultAiServices<T> extends AiServices<T> {
         return userMessage;
     }
 
+    private ChatExecutor buildToolAwareRepromptExecutor(
+            ChatExecutor rawChatExecutor,
+            AiServiceContext context,
+            Object memoryId,
+            ChatRequestParameters parameters,
+            InvocationContext invocationContext,
+            ToolServiceContext toolServiceContext,
+            boolean isReturnTypeResult) {
+        return new ChatExecutor() {
+            @Override
+            public ChatResponse execute() {
+                return rawChatExecutor.execute();
+            }
+
+            @Override
+            public ChatResponse execute(List<ChatMessage> chatMessages) {
+                // Delegate to rawChatExecutor to preserve chatRequestTransformer behaviour.
+                ChatResponse initialResponse = rawChatExecutor.execute(chatMessages);
+
+                if (!initialResponse.aiMessage().hasToolExecutionRequests()) {
+                    return initialResponse;
+                }
+
+                // Tool calls in the reprompt response: run the tool loop without
+                // writing to memory (reprompt intermediates must not persist).
+                ToolServiceResult toolResult = context.toolService.executeInferenceAndToolsLoop(
+                        context,
+                        memoryId,
+                        initialResponse,
+                        parameters,
+                        chatMessages,
+                        null,
+                        invocationContext,
+                        toolServiceContext,
+                        isReturnTypeResult);
+                return toolResult.aggregateResponse();
+            }
+        };
+    }
+
     private <T> T invokeOutputGuardrails(
             GuardrailService guardrailService,
             Method method,
@@ -532,10 +580,11 @@ class DefaultAiServices<T> extends AiServices<T> {
     }
 
     private Optional<SystemMessage> prepareSystemMessage(Object memoryId, Method method, Object[] args) {
-        return findSystemMessageTemplate(memoryId, method).map(systemMessageTemplate -> PromptTemplate.from(
-                        systemMessageTemplate)
-                .apply(InternalReflectionVariableResolver.findTemplateVariables(systemMessageTemplate, method, args))
-                .toSystemMessage());
+        return findSystemMessageTemplate(memoryId, method)
+                .map(systemMessageTemplate -> PromptTemplate.from(systemMessageTemplate)
+                        .apply(InternalReflectionVariableResolver.findTemplateVariables(
+                                systemMessageTemplate, method, args))
+                        .toSystemMessage());
     }
 
     private Optional<String> findSystemMessageTemplate(Object memoryId, Method method) {
