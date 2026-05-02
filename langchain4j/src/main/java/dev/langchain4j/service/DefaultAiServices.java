@@ -350,7 +350,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 context,
                                 memoryId,
                                 parameters,
-                                chatMemory,
                                 invocationContext,
                                 toolServiceContext,
                                 isReturnTypeResult);
@@ -526,7 +525,6 @@ class DefaultAiServices<T> extends AiServices<T> {
             AiServiceContext context,
             Object memoryId,
             ChatRequestParameters parameters,
-            ChatMemory chatMemory,
             InvocationContext invocationContext,
             ToolServiceContext toolServiceContext,
             boolean isReturnTypeResult) {
@@ -538,16 +536,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
             @Override
             public ChatResponse execute(List<ChatMessage> chatMessages) {
-                ChatRequest repromptRequest = ChatRequest.builder()
-                        .messages(chatMessages)
-                        .parameters(parameters)
-                        .build();
-                ChatExecutor repromptExecutor = ChatExecutor.builder(context.chatModel)
-                        .chatRequest(repromptRequest)
-                        .invocationContext(invocationContext)
-                        .eventListenerRegistrar(context.eventListenerRegistrar)
-                        .build();
-                ChatResponse initialResponse = repromptExecutor.execute();
+                // Delegate to rawChatExecutor to preserve chatRequestTransformer behaviour.
+                ChatResponse initialResponse = rawChatExecutor.execute(chatMessages);
 
                 if (!initialResponse.aiMessage().hasToolExecutionRequests()) {
                     return initialResponse;
