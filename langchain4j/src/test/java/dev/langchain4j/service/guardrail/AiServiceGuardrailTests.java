@@ -1,5 +1,8 @@
 package dev.langchain4j.service.guardrail;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessageType;
@@ -20,16 +23,12 @@ import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.service.AiServices;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 class AiServiceGuardrailTests {
     private static final ImageContent IMAGE_CONTENT = ImageContent.from(
@@ -163,7 +162,8 @@ class AiServiceGuardrailTests {
 
         assistant.chat("Original prompt");
 
-        UserMessage userMessage = (UserMessage) chatModelMock.request().messages().get(0);
+        UserMessage userMessage =
+                (UserMessage) chatModelMock.request().messages().get(0);
         assertThat(userMessage.contents()).containsExactly(TextContent.from("Rewritten prompt"));
         assertThat(userMessage.hasSingleText()).isTrue();
     }
@@ -370,16 +370,15 @@ class AiServiceGuardrailTests {
         // Before the fix, the tool-only AiMessage (text == null) was handed directly to the guardrail.
         var toolWasCalled = new java.util.concurrent.atomic.AtomicBoolean(false);
 
-        var toolCallResponse = AiMessage.from(
-                dev.langchain4j.agent.tool.ToolExecutionRequest.builder()
-                        .id("call-1")
-                        .name("verify")
-                        .arguments("{}")
-                        .build());
+        var toolCallResponse = AiMessage.from(dev.langchain4j.agent.tool.ToolExecutionRequest.builder()
+                .id("call-1")
+                .name("verify")
+                .arguments("{}")
+                .build());
 
         ChatModelMock model = ChatModelMock.thatAlwaysResponds(
-                AiMessage.from("bad response"),   // triggers reprompt
-                toolCallResponse,                  // reprompted LLM picks a tool
+                AiMessage.from("bad response"), // triggers reprompt
+                toolCallResponse, // reprompted LLM picks a tool
                 AiMessage.from("good response")); // final text after tool execution
 
         var tools = new Object() {
