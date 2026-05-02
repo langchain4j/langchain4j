@@ -346,11 +346,21 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
 
+                        ChatExecutor toolAwareRepromptExecutor = buildToolAwareRepromptExecutor(
+                                chatExecutor,
+                                context,
+                                memoryId,
+                                parameters,
+                                chatMemory,
+                                invocationContext,
+                                toolServiceContext,
+                                isReturnTypeResult);
+
                         var response = invokeOutputGuardrails(
                                 context.guardrailService(),
                                 method,
                                 aggregateResponse,
-                                chatExecutor,
+                                toolAwareRepromptExecutor,
                                 commonGuardrailParam);
 
                         if (response != null) {
@@ -510,6 +520,48 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
 
         return userMessage;
+    }
+
+    private ChatExecutor buildToolAwareRepromptExecutor(
+            ChatExecutor rawChatExecutor,
+            AiServiceContext context,
+            Object memoryId,
+            ChatRequestParameters parameters,
+            ChatMemory chatMemory,
+            InvocationContext invocationContext,
+            ToolServiceContext toolServiceContext,
+            boolean isReturnTypeResult) {
+        return new ChatExecutor() {
+            @Override
+            public ChatResponse execute() {
+                return rawChatExecutor.execute();
+            }
+
+            @Override
+            public ChatResponse execute(List<ChatMessage> chatMessages) {
+                ChatRequest repromptRequest = ChatRequest.builder()
+                        .messages(chatMessages)
+                        .parameters(parameters)
+                        .build();
+                ChatExecutor repromptExecutor = ChatExecutor.builder(context.chatModel)
+                        .chatRequest(repromptRequest)
+                        .invocationContext(invocationContext)
+                        .eventListenerRegistrar(context.eventListenerRegistrar)
+                        .build();
+                ChatResponse initialResponse = repromptExecutor.execute();
+                ToolServiceResult toolResult = context.toolService.executeInferenceAndToolsLoop(
+                        context,
+                        memoryId,
+                        initialResponse,
+                        parameters,
+                        chatMessages,
+                        chatMemory,
+                        invocationContext,
+                        toolServiceContext,
+                        isReturnTypeResult);
+                return toolResult.aggregateResponse();
+            }
+        };
     }
 
     private <T> T invokeOutputGuardrails(
