@@ -175,7 +175,8 @@ public class DefaultToolExecutor implements ToolExecutor {
             return List.of(ImageContent.from(image));
         } else if (result instanceof Content content) {
             return List.of(content);
-        } else if (result instanceof Collection<?> collection && !collection.isEmpty()
+        } else if (result instanceof Collection<?> collection
+                && !collection.isEmpty()
                 && collection.iterator().next() instanceof Content) {
             return collection.stream().map(Content.class::cast).toList();
         } else if (result instanceof Content[] array) {
@@ -232,6 +233,8 @@ public class DefaultToolExecutor implements ToolExecutor {
                 arguments[i] = createOptional(argument, parameterName, parameterType);
             } else if (argument != null) {
                 arguments[i] = coerceArgument(argument, parameterName, parameterClass, parameterType);
+            } else if (parameterClass.isPrimitive()) {
+                arguments[i] = defaultPrimitiveValue(parameterClass);
             }
         }
 
@@ -265,6 +268,18 @@ public class DefaultToolExecutor implements ToolExecutor {
         Class<?> actualClass = extractActualClass(actualType);
         Object coercedValue = coerceArgument(argument, parameterName, actualClass, actualType);
         return Optional.of(coercedValue);
+    }
+
+    private static Object defaultPrimitiveValue(Class<?> primitiveClass) {
+        if (primitiveClass == boolean.class) return false;
+        if (primitiveClass == char.class) return '\0';
+        if (primitiveClass == byte.class) return (byte) 0;
+        if (primitiveClass == short.class) return (short) 0;
+        if (primitiveClass == int.class) return 0;
+        if (primitiveClass == long.class) return 0L;
+        if (primitiveClass == float.class) return 0.0f;
+        if (primitiveClass == double.class) return 0.0;
+        return null;
     }
 
     static Object coerceArgument(Object argument, String parameterName, Class<?> parameterClass, Type parameterType) {
