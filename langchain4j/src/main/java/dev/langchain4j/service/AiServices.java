@@ -8,7 +8,6 @@ import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
-import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -21,6 +20,7 @@ import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
@@ -274,6 +274,27 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> systemMessageProvider(Function<Object, String> systemMessageProvider) {
         context.systemMessageProvider = systemMessageProvider.andThen(Optional::ofNullable);
+        context.contextAwareSystemMessageProvider = null;
+        return this;
+    }
+
+    /**
+     * Configures the system message provider, which provides a system message to be used each time an AI service is invoked.
+     * <br>
+     * When both {@code @SystemMessage} and the system message provider are configured,
+     * {@code @SystemMessage} takes precedence.
+     *
+     * @param systemMessageProvider A {@link Function} that accepts the current {@link InvocationContext}
+     *                              and returns a system message to be used.
+     *                              The user message has not been prepared yet when this function is invoked.
+     *                              The returned {@link String} can be either a complete system message
+     *                              or a system message template containing unresolved template variables (e.g. "{{name}}"),
+     *                              which will be resolved using the values of method parameters annotated with @{@link V}.
+     * @return builder
+     * @since 1.15.0
+     */
+    public AiServices<T> systemMessageProviderWithContext(Function<InvocationContext, String> systemMessageProvider) {
+        context.contextAwareSystemMessageProvider = systemMessageProvider.andThen(Optional::ofNullable);
         return this;
     }
 

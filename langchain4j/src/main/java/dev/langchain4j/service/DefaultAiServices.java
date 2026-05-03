@@ -51,7 +51,6 @@ import dev.langchain4j.service.guardrail.GuardrailService;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.service.output.ServiceOutputParser;
-import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
@@ -169,7 +168,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 ? context.chatMemoryService.getOrCreateChatMemory(memoryId)
                                 : null;
 
-                        Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
+                        Optional<SystemMessage> systemMessage = prepareSystemMessage(invocationContext, method, args);
                         if (context.systemMessageTransformer != null) {
                             String transformedSystemMessage = context.systemMessageTransformer.apply(
                                     systemMessage.map(SystemMessage::text).orElse(null), invocationContext);
@@ -531,14 +530,16 @@ class DefaultAiServices<T> extends AiServices<T> {
         return (T) responseFromLLM;
     }
 
-    private Optional<SystemMessage> prepareSystemMessage(Object memoryId, Method method, Object[] args) {
-        return findSystemMessageTemplate(memoryId, method).map(systemMessageTemplate -> PromptTemplate.from(
-                        systemMessageTemplate)
-                .apply(InternalReflectionVariableResolver.findTemplateVariables(systemMessageTemplate, method, args))
-                .toSystemMessage());
+    private Optional<SystemMessage> prepareSystemMessage(
+            InvocationContext invocationContext, Method method, Object[] args) {
+        return findSystemMessageTemplate(invocationContext, method)
+                .map(systemMessageTemplate -> PromptTemplate.from(systemMessageTemplate)
+                        .apply(InternalReflectionVariableResolver.findTemplateVariables(
+                                systemMessageTemplate, method, args))
+                        .toSystemMessage());
     }
 
-    private Optional<String> findSystemMessageTemplate(Object memoryId, Method method) {
+    private Optional<String> findSystemMessageTemplate(InvocationContext invocationContext, Method method) {
         dev.langchain4j.service.SystemMessage annotation =
                 method.getAnnotation(dev.langchain4j.service.SystemMessage.class);
         if (annotation != null) {
@@ -546,7 +547,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                     method, "System", annotation.fromResource(), annotation.value(), annotation.delimiter()));
         }
 
-        return context.systemMessageProvider.apply(memoryId);
+        if (context.contextAwareSystemMessageProvider != null) {
+            return context.contextAwareSystemMessageProvider.apply(invocationContext);
+        }
+
+        return context.systemMessageProvider.apply(invocationContext.chatMemoryId());
     }
 
     private static UserMessage prepareUserMessage(
