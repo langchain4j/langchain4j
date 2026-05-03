@@ -1,7 +1,11 @@
 package dev.langchain4j.model.audio;
 
+import static dev.langchain4j.internal.Utils.copy;
+import static java.util.Arrays.asList;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.audio.Audio;
+import java.util.List;
 
 /**
  * Request to transcribe audio.
@@ -13,12 +17,14 @@ public class AudioTranscriptionRequest {
     private final String prompt;
     private final String language;
     private final Double temperature;
+    private final List<String> timestampGranularities;
 
     private AudioTranscriptionRequest(Builder builder) {
         this.audio = builder.audio;
         this.prompt = builder.prompt;
         this.language = builder.language;
         this.temperature = builder.temperature;
+        this.timestampGranularities = copy(builder.timestampGranularities);
     }
 
     /**
@@ -49,6 +55,19 @@ public class AudioTranscriptionRequest {
         return temperature;
     }
 
+    /**
+     * @return Optional timestamp granularities to include in the transcription response.
+     * <p>
+     * This feature is disabled by default. When configured, integrations may request
+     * a provider-specific verbose response format to return timestamps.
+     * Supported values and model or deployment support are provider-specific.
+     * If the selected model or deployment does not support the requested timestamp
+     * granularity, the provider will return an error.
+     */
+    public List<String> timestampGranularities() {
+        return timestampGranularities;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -62,6 +81,7 @@ public class AudioTranscriptionRequest {
         private String prompt;
         private String language;
         private Double temperature;
+        private List<String> timestampGranularities;
 
         /**
          * Sets the audio data to transcribe.
@@ -105,6 +125,35 @@ public class AudioTranscriptionRequest {
         public Builder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
+        }
+
+        /**
+         * Sets optional timestamp granularities to include in the transcription response.
+         * <p>
+         * This feature is disabled by default. When configured, integrations may request
+         * a provider-specific verbose response format to return timestamps.
+         * Supported values and model or deployment support are provider-specific.
+         * If the selected model or deployment does not support the requested timestamp
+         * granularity, the provider will return an error.
+         *
+         * @param timestampGranularities The timestamp granularities, for example "word" or "segment"
+         * @return builder
+         */
+        public Builder timestampGranularities(List<String> timestampGranularities) {
+            this.timestampGranularities = timestampGranularities;
+            return this;
+        }
+
+        /**
+         * Sets optional timestamp granularities to include in the transcription response.
+         *
+         * @see #timestampGranularities(List)
+         *
+         * @param timestampGranularities The timestamp granularities, for example "word" or "segment"
+         * @return builder
+         */
+        public Builder timestampGranularities(String... timestampGranularities) {
+            return timestampGranularities(asList(timestampGranularities));
         }
 
         public AudioTranscriptionRequest build() {

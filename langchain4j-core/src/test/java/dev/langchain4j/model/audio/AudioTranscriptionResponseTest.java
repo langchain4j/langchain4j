@@ -2,6 +2,8 @@ package dev.langchain4j.model.audio;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class AudioTranscriptionResponseTest {
@@ -127,6 +129,33 @@ class AudioTranscriptionResponseTest {
 
         // then
         assertThat(response1.text()).isEqualTo(response2.text());
+    }
+
+    @Test
+    void should_create_text_response_with_empty_timestamp_lists() {
+        // when
+        AudioTranscriptionResponse response = AudioTranscriptionResponse.from("Text only");
+
+        // then
+        assertThat(response.segments()).isEmpty();
+        assertThat(response.words()).isEmpty();
+    }
+
+    @Test
+    void should_create_response_with_segments_and_words() {
+        // given
+        AudioTranscriptionSegment segment =
+                new AudioTranscriptionSegment("Hello world", Duration.ZERO, Duration.ofMillis(1200));
+        AudioTranscriptionWord word = new AudioTranscriptionWord("Hello", Duration.ZERO, Duration.ofMillis(500));
+
+        // when
+        AudioTranscriptionResponse response =
+                new AudioTranscriptionResponse("Hello world", List.of(segment), List.of(word));
+
+        // then
+        assertThat(response.text()).isEqualTo("Hello world");
+        assertThat(response.segments()).containsExactly(segment);
+        assertThat(response.words()).containsExactly(word);
     }
 
     @Test
