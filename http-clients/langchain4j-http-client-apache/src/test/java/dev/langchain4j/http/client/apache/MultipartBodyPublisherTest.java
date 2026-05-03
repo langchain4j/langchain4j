@@ -19,8 +19,7 @@ class MultipartBodyPublisherTest {
 
         String body = bodyAsString(publisher.parts());
 
-        String expected =
-                """
+        String expected = """
                         ------LangChain4j
                         Content-Disposition: form-data; name="field1"
 
@@ -42,8 +41,7 @@ class MultipartBodyPublisherTest {
 
         String body = bodyAsString(publisher.parts());
 
-        String expected =
-                """
+        String expected = """
                         ------LangChain4j
                         Content-Disposition: form-data; name="file"; filename="test.txt"
                         Content-Type: text/plain
@@ -67,8 +65,7 @@ class MultipartBodyPublisherTest {
 
         String body = bodyAsString(publisher.parts());
 
-        String expected =
-                """
+        String expected = """
                         ------LangChain4j
                         Content-Disposition: form-data; name="field1"
 
@@ -78,6 +75,31 @@ class MultipartBodyPublisherTest {
                         Content-Type: text/plain
 
                         hello
+                        ------LangChain4j--
+                        """;
+
+        assertEquals(normalize(expected), body);
+    }
+
+    @Test
+    void should_build_body_with_repeated_form_fields() {
+        MultipartBodyPublisher publisher = new MultipartBodyPublisher();
+
+        publisher.addField("timestamp_granularities[]", "word");
+        publisher.addField("timestamp_granularities[]", "segment");
+        publisher.build();
+
+        String body = bodyAsString(publisher.parts());
+
+        String expected = """
+                        ------LangChain4j
+                        Content-Disposition: form-data; name="timestamp_granularities[]"
+
+                        word
+                        ------LangChain4j
+                        Content-Disposition: form-data; name="timestamp_granularities[]"
+
+                        segment
                         ------LangChain4j--
                         """;
 
