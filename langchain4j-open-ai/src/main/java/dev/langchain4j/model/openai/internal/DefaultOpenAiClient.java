@@ -220,6 +220,16 @@ public class DefaultOpenAiClient extends OpenAiClient {
             httpRequestBuilder.addFormDataField("temperature", Double.toString(request.temperature()));
         }
 
+        if (request.responseFormat() != null) {
+            httpRequestBuilder.addFormDataField("response_format", request.responseFormat());
+        }
+
+        if (!isNullOrEmpty(request.timestampGranularities())) {
+            request.timestampGranularities()
+                    .forEach(granularity ->
+                            httpRequestBuilder.addFormDataField("timestamp_granularities[]", granularity));
+        }
+
         return new RequestExecutor<>(httpClient, httpRequestBuilder.build(), OpenAiAudioTranscriptionResponse.class);
     }
 
