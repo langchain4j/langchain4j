@@ -178,13 +178,13 @@ public class ApacheHttpClient implements HttpClient {
                     case POST -> new HttpPost(request.url());
                 };
 
-        if (request.formDataFields().isEmpty() && request.formDataFiles().isEmpty()) {
+        if (request.formDataFieldEntries().isEmpty() && request.formDataFiles().isEmpty()) {
             if (request.body() != null) {
                 apacheRequest.setEntity(new StringEntity(request.body(), ContentType.APPLICATION_JSON));
             }
         } else {
             HttpEntity entity =
-                    MultipartBodyPublisher.buildMultipartEntity(request.formDataFields(), request.formDataFiles());
+                    MultipartBodyPublisher.buildMultipartEntity(request.formDataFieldEntries(), request.formDataFiles());
             apacheRequest.setEntity(entity);
         }
 
@@ -203,7 +203,7 @@ public class ApacheHttpClient implements HttpClient {
         SimpleRequestBuilder builder;
         String uri = request.url();
 
-        if (request.formDataFields().isEmpty() && request.formDataFiles().isEmpty()) {
+        if (request.formDataFieldEntries().isEmpty() && request.formDataFiles().isEmpty()) {
             builder = switch (request.method()) {
                 case GET -> SimpleRequestBuilder.get(uri);
                 case DELETE -> SimpleRequestBuilder.delete(uri);
@@ -216,7 +216,7 @@ public class ApacheHttpClient implements HttpClient {
         } else {
             builder = SimpleRequestBuilder.post(uri);
             HttpEntity entity =
-                    MultipartBodyPublisher.buildMultipartEntity(request.formDataFields(), request.formDataFiles());
+                    MultipartBodyPublisher.buildMultipartEntity(request.formDataFieldEntries(), request.formDataFiles());
             try {
                 byte[] bytes = EntityUtils.toByteArray(entity);
                 String contentTypeStr = entity.getContentType();

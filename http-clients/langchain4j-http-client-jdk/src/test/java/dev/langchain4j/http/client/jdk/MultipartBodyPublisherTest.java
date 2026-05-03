@@ -85,6 +85,32 @@ class MultipartBodyPublisherTest {
         assertEquals(normalize(expected), body);
     }
 
+    @Test
+    void should_build_body_with_repeated_form_fields() {
+        MultipartBodyPublisher publisher = new MultipartBodyPublisher();
+
+        publisher.addField("timestamp_granularities[]", "word");
+        publisher.addField("timestamp_granularities[]", "segment");
+        publisher.build();
+
+        String body = bodyAsString(publisher.parts());
+
+        String expected =
+                """
+                        ------LangChain4j
+                        Content-Disposition: form-data; name="timestamp_granularities[]"
+
+                        word
+                        ------LangChain4j
+                        Content-Disposition: form-data; name="timestamp_granularities[]"
+
+                        segment
+                        ------LangChain4j--
+                        """;
+
+        assertEquals(normalize(expected), body);
+    }
+
     private static String bodyAsString(List<byte[]> parts) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         for (byte[] part : parts) {
