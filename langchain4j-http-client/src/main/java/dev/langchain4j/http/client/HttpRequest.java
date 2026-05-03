@@ -12,6 +12,8 @@ import static java.util.stream.Collectors.joining;
 import dev.langchain4j.Experimental;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.AbstractMap.SimpleImmutableEntry;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -23,6 +25,7 @@ public class HttpRequest {
     private final String url;
     private final Map<String, List<String>> headers;
     private final Map<String, String> formDataFields;
+    private final List<Map.Entry<String, String>> formDataFieldEntries;
     private final Map<String, FormDataFile> formDataFiles;
     private final String body;
 
@@ -32,13 +35,14 @@ public class HttpRequest {
         this.url = buildUrl(builder);
         this.headers = copy(builder.headers);
         this.formDataFields = copy(builder.formDataFields);
+        this.formDataFieldEntries = copy(builder.formDataFieldEntries);
         this.formDataFiles = copy(builder.formDataFiles);
         this.body = builder.body;
     }
 
     private static void validate(Builder builder) {
         boolean hasBody = builder.body != null;
-        boolean hasFormDataFields = builder.formDataFields != null && !builder.formDataFields.isEmpty();
+        boolean hasFormDataFields = builder.formDataFieldEntries != null && !builder.formDataFieldEntries.isEmpty();
         boolean hasFormDataFiles = builder.formDataFiles != null && !builder.formDataFiles.isEmpty();
         if (hasBody && hasFormDataFields) {
             throw illegalArgument("Cannot specify both body and formDataFields");
@@ -90,6 +94,14 @@ public class HttpRequest {
     }
 
     /**
+     * @since 1.15.0
+     */
+    @Experimental
+    public List<Map.Entry<String, String>> formDataFieldEntries() {
+        return formDataFieldEntries;
+    }
+
+    /**
      * @since 1.10.0
      */
     @Experimental
@@ -112,6 +124,7 @@ public class HttpRequest {
         private Map<String, List<String>> headers;
         private Map<String, String> queryParams;
         private Map<String, String> formDataFields;
+        private List<Map.Entry<String, String>> formDataFieldEntries;
         private Map<String, FormDataFile> formDataFiles;
         private String body;
 
@@ -211,6 +224,12 @@ public class HttpRequest {
                 this.formDataFields = new LinkedHashMap<>();
             }
             this.formDataFields.put(name, value);
+
+            if (this.formDataFieldEntries == null) {
+                this.formDataFieldEntries = new ArrayList<>();
+            }
+            this.formDataFieldEntries.add(new SimpleImmutableEntry<>(name, value));
+
             return this;
         }
 
@@ -221,8 +240,12 @@ public class HttpRequest {
         public Builder formDataFields(Map<String, String> formDataFields) {
             if (formDataFields == null) {
                 this.formDataFields = null;
+                this.formDataFieldEntries = null;
             } else {
                 this.formDataFields = new LinkedHashMap<>(formDataFields);
+                this.formDataFieldEntries = new ArrayList<>();
+                formDataFields.forEach(
+                        (name, value) -> this.formDataFieldEntries.add(new SimpleImmutableEntry<>(name, value)));
             }
             return this;
         }
