@@ -49,11 +49,11 @@ class MultipartBodyPublisher {
     }
 
     static HttpEntity buildMultipartEntity(
-            Map<String, String> formDataFields, Map<String, FormDataFile> formDataFiles) {
+            List<Map.Entry<String, String>> formDataFields, Map<String, FormDataFile> formDataFiles) {
         MultipartBodyPublisher publisher = new MultipartBodyPublisher();
 
-        for (Map.Entry<String, String> entry : formDataFields.entrySet()) {
-            publisher.addField(entry.getKey(), entry.getValue());
+        for (Map.Entry<String, String> field : formDataFields) {
+            publisher.addField(field.getKey(), field.getValue());
         }
 
         for (Map.Entry<String, FormDataFile> entry : formDataFiles.entrySet()) {

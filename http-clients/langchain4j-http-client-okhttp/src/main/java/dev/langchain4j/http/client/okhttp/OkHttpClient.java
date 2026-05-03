@@ -164,12 +164,12 @@ public class OkHttpClient implements HttpClient {
     }
 
     private RequestBody buildRequestBody(HttpRequest request) {
-        if (!request.formDataFields().isEmpty() || !request.formDataFiles().isEmpty()) {
+        if (!request.formDataFieldEntries().isEmpty() || !request.formDataFiles().isEmpty()) {
             MultipartBody.Builder multipartBuilder =
                     new MultipartBody.Builder().setType(MultipartBody.FORM);
 
-            for (Map.Entry<String, String> entry : request.formDataFields().entrySet()) {
-                multipartBuilder.addFormDataPart(entry.getKey(), entry.getValue());
+            for (Map.Entry<String, String> field : request.formDataFieldEntries()) {
+                multipartBuilder.addFormDataPart(field.getKey(), field.getValue());
             }
 
             for (Map.Entry<String, FormDataFile> entry : request.formDataFiles().entrySet()) {

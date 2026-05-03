@@ -12,10 +12,13 @@ import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.AudioTranscription;
 import com.azure.ai.openai.models.AudioTranscriptionFormat;
 import com.azure.ai.openai.models.AudioTranscriptionOptions;
+import com.azure.ai.openai.models.AudioTranscriptionTimestampGranularity;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.model.audio.AudioTranscriptionRequest;
 import dev.langchain4j.model.audio.AudioTranscriptionResponse;
+import java.time.Duration;
 import java.util.Base64;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -300,5 +303,100 @@ class AzureOpenAiAudioTranscriptionModelTest {
         // then - should use default filename "audio.mp3"
         verify(client)
                 .getAudioTranscription(eq("test-deployment"), eq("audio.mp3"), any(AudioTranscriptionOptions.class));
+    }
+
+    @Test
+    void should_not_request_verbose_response_when_timestamp_granularities_are_empty() {
+        // given
+        OpenAIClient client = mock(OpenAIClient.class);
+        AudioTranscription mockTranscription = mock(AudioTranscription.class);
+        when(mockTranscription.getText()).thenReturn("Transcribed text");
+        when(client.getAudioTranscription(any(), any(), any(AudioTranscriptionOptions.class)))
+                .thenReturn(mockTranscription);
+
+        AzureOpenAiAudioTranscriptionModel model =
+                new AzureOpenAiAudioTranscriptionModel(client, "test-deployment", AudioTranscriptionFormat.JSON);
+
+        Audio audio = Audio.builder()
+                .binaryData("test audio".getBytes())
+                .mimeType("audio/wav")
+                .build();
+
+        AudioTranscriptionRequest request = AudioTranscriptionRequest.builder()
+                .audio(audio)
+                .timestampGranularities(List.of())
+                .build();
+
+        // when
+        AudioTranscriptionResponse response = model.transcribe(request);
+
+        // then
+        ArgumentCaptor<AudioTranscriptionOptions> optionsCaptor =
+                ArgumentCaptor.forClass(AudioTranscriptionOptions.class);
+        verify(client).getAudioTranscription(eq("test-deployment"), eq("audio.mp3"), optionsCaptor.capture());
+
+        assertThat(optionsCaptor.getValue().getResponseFormat()).isEqualTo(AudioTranscriptionFormat.JSON);
+        assertThat(response.text()).isEqualTo("Transcribed text");
+        assertThat(response.segments()).isEmpty();
+        assertThat(response.words()).isEmpty();
+    }
+
+    @Test
+    void should_transcribe_with_timestamp_granularities() {
+        // given
+        OpenAIClient client = mock(OpenAIClient.class);
+        AudioTranscription mockTranscription = mock(AudioTranscription.class);
+        com.azure.ai.openai.models.AudioTranscriptionSegment mockSegment =
+                mock(com.azure.ai.openai.models.AudioTranscriptionSegment.class);
+        com.azure.ai.openai.models.AudioTranscriptionWord mockWord =
+                mock(com.azure.ai.openai.models.AudioTranscriptionWord.class);
+
+        when(mockTranscription.getText()).thenReturn("Hello world");
+        when(mockTranscription.getSegments()).thenReturn(List.of(mockSegment));
+        when(mockTranscription.getWords()).thenReturn(List.of(mockWord));
+        when(mockSegment.getText()).thenReturn("Hello world");
+        when(mockSegment.getStart()).thenReturn(Duration.ZERO);
+        when(mockSegment.getEnd()).thenReturn(Duration.ofMillis(1200));
+        when(mockWord.getWord()).thenReturn("Hello");
+        when(mockWord.getStart()).thenReturn(Duration.ZERO);
+        when(mockWord.getEnd()).thenReturn(Duration.ofMillis(500));
+        when(client.getAudioTranscription(any(), any(), any(AudioTranscriptionOptions.class)))
+                .thenReturn(mockTranscription);
+
+        AzureOpenAiAudioTranscriptionModel model =
+                new AzureOpenAiAudioTranscriptionModel(client, "test-deployment", AudioTranscriptionFormat.JSON);
+
+        Audio audio = Audio.builder()
+                .binaryData("test audio".getBytes())
+                .mimeType("audio/wav")
+                .build();
+
+        AudioTranscriptionRequest request = AudioTranscriptionRequest.builder()
+                .audio(audio)
+                .timestampGranularities("word", "segment")
+                .build();
+
+        // when
+        AudioTranscriptionResponse response = model.transcribe(request);
+
+        // then
+        ArgumentCaptor<AudioTranscriptionOptions> optionsCaptor =
+                ArgumentCaptor.forClass(AudioTranscriptionOptions.class);
+        verify(client).getAudioTranscription(eq("test-deployment"), eq("audio.mp3"), optionsCaptor.capture());
+
+        assertThat(optionsCaptor.getValue().getResponseFormat()).isEqualTo(AudioTranscriptionFormat.VERBOSE_JSON);
+        assertThat(optionsCaptor.getValue().getTimestampGranularities())
+                .containsExactly(
+                        AudioTranscriptionTimestampGranularity.WORD, AudioTranscriptionTimestampGranularity.SEGMENT);
+
+        assertThat(response.text()).isEqualTo("Hello world");
+        assertThat(response.segments()).hasSize(1);
+        assertThat(response.segments().get(0).text()).isEqualTo("Hello world");
+        assertThat(response.segments().get(0).startTime()).isEqualTo(Duration.ZERO);
+        assertThat(response.segments().get(0).endTime()).isEqualTo(Duration.ofMillis(1200));
+        assertThat(response.words()).hasSize(1);
+        assertThat(response.words().get(0).word()).isEqualTo("Hello");
+        assertThat(response.words().get(0).startTime()).isEqualTo(Duration.ZERO);
+        assertThat(response.words().get(0).endTime()).isEqualTo(Duration.ofMillis(500));
     }
 }

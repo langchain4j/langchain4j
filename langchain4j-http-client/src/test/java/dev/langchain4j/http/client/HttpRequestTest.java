@@ -2,6 +2,7 @@ package dev.langchain4j.http.client;
 
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
+import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
@@ -492,5 +493,23 @@ class HttpRequestTest {
         // then
         assertThat(builder.build().url()).isEqualTo("http://example.com/api");
         assertThat(builder.build().formDataFields()).isEmpty();
+    }
+
+    @Test
+    void should_preserve_repeated_form_data_fields() {
+        // when
+        HttpRequest request = HttpRequest.builder()
+                .method(POST)
+                .url("http://example.com/api")
+                .addFormDataField("timestamp_granularities[]", "word")
+                .addFormDataField("timestamp_granularities[]", "segment")
+                .build();
+
+        // then
+        assertThat(request.formDataFields()).containsEntry("timestamp_granularities[]", "segment");
+        assertThat(request.formDataFieldEntries())
+                .containsExactly(
+                        entry("timestamp_granularities[]", "word"),
+                        entry("timestamp_granularities[]", "segment"));
     }
 }

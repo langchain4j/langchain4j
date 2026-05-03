@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
+import java.util.List;
 import java.util.Objects;
 
 @JsonDeserialize(builder = OpenAiAudioTranscriptionResponse.Builder.class)
@@ -22,9 +23,17 @@ public final class OpenAiAudioTranscriptionResponse {
     @JsonProperty
     private final AudioTokenUsage usage;
 
+    @JsonProperty
+    private final List<OpenAiAudioTranscriptionSegment> segments;
+
+    @JsonProperty
+    private final List<OpenAiAudioTranscriptionWord> words;
+
     public OpenAiAudioTranscriptionResponse(Builder builder) {
         this.text = builder.text;
         this.usage = builder.usage;
+        this.segments = builder.segments;
+        this.words = builder.words;
     }
 
     public String text() {
@@ -33,6 +42,14 @@ public final class OpenAiAudioTranscriptionResponse {
 
     public AudioTokenUsage usage() {
         return usage;
+    }
+
+    public List<OpenAiAudioTranscriptionSegment> segments() {
+        return segments;
+    }
+
+    public List<OpenAiAudioTranscriptionWord> words() {
+        return words;
     }
 
     @Override
@@ -45,7 +62,10 @@ public final class OpenAiAudioTranscriptionResponse {
 
     @JacocoIgnoreCoverageGenerated
     private boolean equalTo(OpenAiAudioTranscriptionResponse another) {
-        return Objects.equals(text, another.text) && Objects.equals(usage, another.usage);
+        return Objects.equals(text, another.text)
+                && Objects.equals(usage, another.usage)
+                && Objects.equals(segments, another.segments)
+                && Objects.equals(words, another.words);
     }
 
     @Override
@@ -54,13 +74,16 @@ public final class OpenAiAudioTranscriptionResponse {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(text);
         h += (h << 5) + Objects.hashCode(usage);
+        h += (h << 5) + Objects.hashCode(segments);
+        h += (h << 5) + Objects.hashCode(words);
         return h;
     }
 
     @Override
     @JacocoIgnoreCoverageGenerated
     public String toString() {
-        return "OpenAiAudioTranscriptionResponse{" + "text=" + text + ", usage=" + usage + "}";
+        return "OpenAiAudioTranscriptionResponse{" + "text=" + text + ", usage=" + usage + ", segments=" + segments
+                + ", words=" + words + "}";
     }
 
     public static Builder builder() {
@@ -74,6 +97,8 @@ public final class OpenAiAudioTranscriptionResponse {
 
         private String text;
         private AudioTokenUsage usage;
+        private List<OpenAiAudioTranscriptionSegment> segments;
+        private List<OpenAiAudioTranscriptionWord> words;
 
         public Builder text(String text) {
             this.text = text;
@@ -82,6 +107,16 @@ public final class OpenAiAudioTranscriptionResponse {
 
         public Builder usage(AudioTokenUsage usage) {
             this.usage = usage;
+            return this;
+        }
+
+        public Builder segments(List<OpenAiAudioTranscriptionSegment> segments) {
+            this.segments = segments;
+            return this;
+        }
+
+        public Builder words(List<OpenAiAudioTranscriptionWord> words) {
+            this.words = words;
             return this;
         }
 

@@ -8,6 +8,7 @@ import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.AudioTranscription;
 import com.azure.ai.openai.models.AudioTranscriptionFormat;
 import com.azure.ai.openai.models.AudioTranscriptionOptions;
+import com.azure.ai.openai.models.AudioTranscriptionTimestampGranularity;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
@@ -20,8 +21,11 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.audio.AudioTranscriptionModel;
 import dev.langchain4j.model.audio.AudioTranscriptionRequest;
 import dev.langchain4j.model.audio.AudioTranscriptionResponse;
+import dev.langchain4j.model.audio.AudioTranscriptionSegment;
+import dev.langchain4j.model.audio.AudioTranscriptionWord;
 import dev.langchain4j.model.azure.spi.AzureOpenAiAudioTranscriptionModelBuilderFactory;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -124,10 +128,40 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioTranscriptionMod
             options.setTemperature(request.temperature());
         }
 
+        if (!request.timestampGranularities().isEmpty()) {
+            options.setResponseFormat(AudioTranscriptionFormat.VERBOSE_JSON);
+            options.setTimestampGranularities(request.timestampGranularities().stream()
+                    .map(AudioTranscriptionTimestampGranularity::fromString)
+                    .toList());
+        }
+
         AudioTranscription audioTranscription =
                 client.getAudioTranscription(deploymentName, options.getFilename(), options);
 
-        return AudioTranscriptionResponse.from(audioTranscription.getText());
+        return new AudioTranscriptionResponse(
+                audioTranscription.getText(),
+                toAudioTranscriptionSegments(audioTranscription.getSegments()),
+                toAudioTranscriptionWords(audioTranscription.getWords()));
+    }
+
+    private static List<AudioTranscriptionSegment> toAudioTranscriptionSegments(
+            List<com.azure.ai.openai.models.AudioTranscriptionSegment> segments) {
+        if (segments == null || segments.isEmpty()) {
+            return List.of();
+        }
+        return segments.stream()
+                .map(segment -> new AudioTranscriptionSegment(segment.getText(), segment.getStart(), segment.getEnd()))
+                .toList();
+    }
+
+    private static List<AudioTranscriptionWord> toAudioTranscriptionWords(
+            List<com.azure.ai.openai.models.AudioTranscriptionWord> words) {
+        if (words == null || words.isEmpty()) {
+            return List.of();
+        }
+        return words.stream()
+                .map(word -> new AudioTranscriptionWord(word.getWord(), word.getStart(), word.getEnd()))
+                .toList();
     }
 
     /**
