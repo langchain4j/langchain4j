@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import static org.mockito.Mockito.when;
 import static dev.langchain4j.MockitoUtils.ignoreInteractions;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.containsTool;
@@ -14,6 +15,7 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -26,6 +28,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.LoggingChatModelListener;
 import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -1717,6 +1720,59 @@ class StreamingAiServicesWithToolsIT {
                     && toolResult.contents().size() == 1
                     && toolResult.contents().get(0) instanceof dev.langchain4j.data.message.ImageContent;
         }), any());
+    }
+
+    /**
+     * Regression test for langchain4j issue #5079:
+     * ToolProvider's ReturnBehavior.IMMEDIATE was silently ignored in streaming AI services.
+     * AiServiceStreamingResponseHandler was reading ReturnBehavior from context.toolService
+     * (only statically registered tools) instead of from the per-invocation toolServiceContext
+     * (which includes ToolProvider-supplied tools). This test verifies that a ToolProvider
+     * tool with ReturnBehavior.IMMEDIATE returns immediately without an extra LLM call.
+     */
+    @Test
+    void should_return_immediately_when_tool_provider_tool_has_ReturnBehavior_IMMEDIATE() throws Exception {
+
+        // given
+        ToolExecutor toolExecutor = mock(ToolExecutor.class);
+        when(toolExecutor.execute(any(ToolExecutionRequest.class), any(Object.class)))
+                .thenReturn("42");
+
+        ToolProvider toolProvider = (toolProviderRequest) -> ToolProviderResult.builder()
+                .add(EXPECTED_SPECIFICATION, toolExecutor, ReturnBehavior.IMMEDIATE)
+                .build();
+
+        StreamingChatModel spyModel = spy(models().findFirst().get());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatModel(spyModel)
+                .chatMemory(chatMemory)
+                .toolProvider(toolProvider)
+                .build();
+
+        String userMessage = "What is the amount of transaction T001?";
+
+        // when
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+        assistant
+                .chat(userMessage)
+                .onPartialResponse(ignored -> {})
+                .onCompleteResponse(future::complete)
+                .onError(future::completeExceptionally)
+                .start();
+        ChatResponse response = future.get(60, SECONDS);
+
+        // then
+        assertThat(response.aiMessage().text()).contains("42");
+
+        // then - tool was called once
+        verify(toolExecutor, times(1)).execute(any(ToolExecutionRequest.class), any(Object.class));
+
+        // then - only ONE LLM call was made (no extra call after IMMEDIATE tool result)
+        verify(spyModel, times(1)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
     }
 
     // TODO all other tests from sync version

@@ -310,7 +310,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                                 toResultMessage(toolRequest, toolResult);
                         addToMemory(toolExecutionResultMessage);
                         anyToolErrored = anyToolErrored || toolResult.isError();
-                        returnBehaviors.add(context.toolService.returnBehavior(toolRequest.name()));
+                        returnBehaviors.add(toolServiceContext.returnBehavior(toolRequest.name()));
                     } catch (ExecutionException e) {
                         if (e.getCause() instanceof RuntimeException re) {
                             throw re;
@@ -332,7 +332,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                             toResultMessage(toolRequest, toolResult);
                     addToMemory(toolExecutionResultMessage);
                     anyToolErrored = anyToolErrored || toolResult.isError();
-                    returnBehaviors.add(context.toolService.returnBehavior(toolRequest.name()));
+                    returnBehaviors.add(toolServiceContext.returnBehavior(toolRequest.name()));
                 }
             }
 
