@@ -67,4 +67,12 @@ class OllamaAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT 
     @Override
     @Disabled("llama 3.1 cannot do it properly")
     protected void should_extract_set_of_pojo(ChatModel model) {}
+
+    @Override
+    @Disabled("llama 3.1 cannot do it properly")
+    protected void should_extract_polymorphic_type(ChatModel model) {}
+
+    @Override
+    @Disabled("llama 3.1 cannot do it properly")
+    protected void should_extract_pojo_with_nested_polymorphic_field(ChatModel model) {}
 }
