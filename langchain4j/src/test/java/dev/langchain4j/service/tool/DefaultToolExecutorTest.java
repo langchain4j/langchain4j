@@ -364,6 +364,66 @@ class DefaultToolExecutorTest implements WithAssertions {
         assertThat(result).isEqualTo(expectedResult);
     }
 
+    private static class PrimitiveTool {
+
+        @Tool
+        public int sum(int a, int b) {
+            return a + b;
+        }
+
+        @Tool
+        public boolean and(boolean x, boolean y) {
+            return x && y;
+        }
+
+        @Tool
+        public long multiply(long a, long b) {
+            return a * b;
+        }
+    }
+
+    @Test
+    void missing_primitive_int_argument_defaults_to_zero() throws NoSuchMethodException {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("sum")
+                .arguments("{ \"arg0\": 3 }")
+                .build();
+
+        DefaultToolExecutor executor = new DefaultToolExecutor(
+                new PrimitiveTool(), PrimitiveTool.class.getDeclaredMethod("sum", int.class, int.class));
+
+        assertThat(executor.execute(request, "DEFAULT")).isEqualTo("3");
+    }
+
+    @Test
+    void missing_primitive_boolean_argument_defaults_to_false() throws NoSuchMethodException {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("and")
+                .arguments("{ \"arg0\": true }")
+                .build();
+
+        DefaultToolExecutor executor = new DefaultToolExecutor(
+                new PrimitiveTool(), PrimitiveTool.class.getDeclaredMethod("and", boolean.class, boolean.class));
+
+        assertThat(executor.execute(request, "DEFAULT")).isEqualTo("false");
+    }
+
+    @Test
+    void missing_primitive_long_argument_defaults_to_zero() throws NoSuchMethodException {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("multiply")
+                .arguments("{}")
+                .build();
+
+        DefaultToolExecutor executor = new DefaultToolExecutor(
+                new PrimitiveTool(), PrimitiveTool.class.getDeclaredMethod("multiply", long.class, long.class));
+
+        assertThat(executor.execute(request, "DEFAULT")).isEqualTo("0");
+    }
+
     private static class PersonTool {
 
         @Tool
@@ -448,9 +508,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor2 = new DefaultToolExecutor(new PersonTool(), request2);
         String result2 = toolExecutor2.execute(request2, "DEFAULT");
-        assertThat(result2)
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(result2).isEqualToIgnoringWhitespace("""
                 [
                   {
                     "name": "Klaus",
@@ -469,9 +527,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor3 = new DefaultToolExecutor(new PersonTool(), request3);
         String result3 = toolExecutor3.execute(request3, "DEFAULT");
-        assertThat(result3)
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(result3).isEqualToIgnoringWhitespace("""
                 [
                   {
                     "name": "Peter",
@@ -491,9 +547,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor4 = new DefaultToolExecutor(new PersonTool(), request4);
         String result4 = toolExecutor4.execute(request4, "DEFAULT");
-        assertThat(result4)
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(result4).isEqualToIgnoringWhitespace("""
                 {
                   "p1": {
                     "name": "Klaus",
@@ -512,9 +566,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor5 = new DefaultToolExecutor(new PersonTool(), request5);
         String result5 = toolExecutor5.execute(request5, "DEFAULT");
-        assertThat(result5)
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(result5).isEqualToIgnoringWhitespace("""
                 [
                   {
                     "name": "Klaus",
