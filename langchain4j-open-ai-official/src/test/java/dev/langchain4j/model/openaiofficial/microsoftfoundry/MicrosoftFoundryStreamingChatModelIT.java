@@ -1,9 +1,5 @@
 package dev.langchain4j.model.openaiofficial.microsoftfoundry;
 
-import static dev.langchain4j.model.openaiofficial.microsoftfoundry.InternalMicrosoftFoundryTestHelper.CHAT_MODEL_NAME_ALTERNATE;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -15,7 +11,6 @@ import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialStreamingChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
-import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -23,41 +18,55 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InOrder;
 
+import java.util.List;
+
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+
 @EnabledIfEnvironmentVariable(named = "MICROSOFT_FOUNDRY_API_KEY", matches = ".+")
 class MicrosoftFoundryStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected List<StreamingChatModel> models() {
-        return InternalMicrosoftFoundryTestHelper.chatModelsStreamingNormalAndJsonStrict();
+        return List.of(
+                OpenAiOfficialStreamingChatModel.builder()
+                        .baseUrl(System.getenv("MICROSOFT_FOUNDRY_ENDPOINT"))
+                        .apiKey(System.getenv("MICROSOFT_FOUNDRY_API_KEY"))
+                        .modelName("gpt-4o-mini")
+                        .build()
+        );
     }
 
     @Override
     protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
-        OpenAiOfficialStreamingChatModel.Builder openAiChatModelBuilder = OpenAiOfficialStreamingChatModel.builder()
+        return OpenAiOfficialStreamingChatModel.builder()
                 .baseUrl(System.getenv("MICROSOFT_FOUNDRY_ENDPOINT"))
                 .apiKey(System.getenv("MICROSOFT_FOUNDRY_API_KEY"))
-                .microsoftFoundryDeploymentName(CHAT_MODEL_NAME_ALTERNATE.asString())
-                .defaultRequestParameters(parameters);
-
-        if (parameters.modelName() == null) {
-            openAiChatModelBuilder.modelName(CHAT_MODEL_NAME_ALTERNATE);
-        }
-        return openAiChatModelBuilder.build();
+                .microsoftFoundryDeploymentName("gpt-4o")
+                .modelName(getOrDefault(parameters.modelName(), "gpt-4o"))
+                .defaultRequestParameters(parameters)
+                .build();
     }
 
     @Override
     protected String customModelName() {
-        return CHAT_MODEL_NAME_ALTERNATE.asString();
+        return "gpt-4o";
     }
 
     @Override
     protected boolean supportsModelNameParameter() {
-        return false;
+        return false; // can't change model name after creating OpenAiOfficialStreamingChatModel instance
     }
 
     @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {
-        return null; // TODO implement
+        return OpenAiOfficialStreamingChatModel.builder()
+                .baseUrl(System.getenv("MICROSOFT_FOUNDRY_ENDPOINT"))
+                .apiKey(System.getenv("MICROSOFT_FOUNDRY_API_KEY"))
+                .modelName("gpt-4o-mini")
+                .listeners(List.of(listener))
+                .build();
     }
 
     @Override
@@ -75,6 +84,18 @@ class MicrosoftFoundryStreamingChatModelIT extends AbstractStreamingChatModelIT 
     @Override
     protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel streamingChatModel) {
         return OpenAiOfficialTokenUsage.class;
+    }
+
+    @Override
+    protected int maxOutputTokens() {
+        return 10;
+    }
+
+    @Override
+    protected ChatRequestParameters saveTokens(ChatRequestParameters parameters) {
+        return parameters.overrideWith(OpenAiOfficialChatRequestParameters.builder()
+                .maxCompletionTokens(1)
+                .build());
     }
 
     @Override
@@ -117,24 +138,8 @@ class MicrosoftFoundryStreamingChatModelIT extends AbstractStreamingChatModelIT 
     @Override
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
-    @EnabledIf("supportsSingleImageInputAsBase64EncodedString")
-    protected void should_accept_single_image_as_base64_encoded_string(StreamingChatModel model) {}
-
-    @Disabled(
-            "TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Microsoft Foundry API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
-    @Override
-    @ParameterizedTest
-    @MethodSource("modelsSupportingImageInputs")
     @EnabledIf("supportsMultipleImageInputsAsPublicURLs")
     protected void should_accept_multiple_images_as_public_URLs(StreamingChatModel model) {}
-
-    @Disabled(
-            "TODO fix: com.openai.errors.RateLimitException: 429: Requests to the ChatCompletions_Create Operation under Microsoft Foundry API version 2024-10-21 have exceeded token rate limit of your current OpenAI S0 pricing tier.")
-    @Override
-    @ParameterizedTest
-    @MethodSource("modelsSupportingImageInputs")
-    @EnabledIf("supportsMultipleImageInputsAsBase64EncodedStrings")
-    protected void should_accept_multiple_images_as_base64_encoded_strings(StreamingChatModel model) {}
 
     @Disabled("Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.")
     @Override
