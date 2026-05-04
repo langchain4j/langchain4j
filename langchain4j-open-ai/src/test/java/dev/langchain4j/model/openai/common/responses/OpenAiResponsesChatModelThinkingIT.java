@@ -71,10 +71,7 @@ class OpenAiResponsesChatModelThinkingIT {
         // then
         AiMessage aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.text()).containsIgnoringCase("0.05");
-        assertThat(aiMessage.thinking())
-                .satisfiesAnyOf(
-                        thinking -> assertThat(thinking).isNotBlank(),
-                        thinking -> assertThat(thinking).isNull());
+        assertThat(aiMessage.thinking()).isNotBlank();
 
         OpenAiTokenUsage tokenUsage = (OpenAiTokenUsage) chatResponse.tokenUsage();
         assertThat(tokenUsage.outputTokensDetails().reasoningTokens()).isNotNull();
