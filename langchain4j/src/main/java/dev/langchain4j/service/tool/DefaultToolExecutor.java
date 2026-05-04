@@ -234,6 +234,13 @@ public class DefaultToolExecutor implements ToolExecutor {
             } else if (argument != null) {
                 arguments[i] = coerceArgument(argument, parameterName, parameterClass, parameterType);
             } else if (parameterClass.isPrimitive()) {
+                P pAnnotation = parameter.getAnnotation(P.class);
+                boolean isRequired = pAnnotation == null || pAnnotation.required();
+                if (isRequired) {
+                    throw new ToolArgumentsException(new IllegalArgumentException(String.format(
+                            "Argument \"%s\" of type %s is required but was not provided",
+                            parameterName, parameterClass.getName())));
+                }
                 arguments[i] = defaultPrimitiveValue(parameterClass);
             }
         }

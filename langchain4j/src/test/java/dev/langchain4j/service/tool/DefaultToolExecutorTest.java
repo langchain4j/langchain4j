@@ -6,9 +6,11 @@ import static java.util.Collections.singletonMap;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
+import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.invocation.InvocationContext;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
@@ -372,7 +374,12 @@ class DefaultToolExecutorTest implements WithAssertions {
         }
 
         @Tool
-        public boolean and(boolean x, boolean y) {
+        public int sumWithOptionalB(int a, @P(required = false) int b) {
+            return a + b;
+        }
+
+        @Tool
+        public boolean and(@P(required = false) boolean x, @P(required = false) boolean y) {
             return x && y;
         }
 
@@ -383,7 +390,7 @@ class DefaultToolExecutorTest implements WithAssertions {
     }
 
     @Test
-    void missing_primitive_int_argument_defaults_to_zero() throws NoSuchMethodException {
+    void missing_required_primitive_int_argument_throws() throws NoSuchMethodException {
         ToolExecutionRequest request = ToolExecutionRequest.builder()
                 .id("1")
                 .name("sum")
@@ -393,15 +400,32 @@ class DefaultToolExecutorTest implements WithAssertions {
         DefaultToolExecutor executor = new DefaultToolExecutor(
                 new PrimitiveTool(), PrimitiveTool.class.getDeclaredMethod("sum", int.class, int.class));
 
+        assertThatExceptionOfType(ToolArgumentsException.class)
+                .isThrownBy(() -> executor.execute(request, "DEFAULT"))
+                .withMessageContaining("arg1")
+                .withMessageContaining("required but was not provided");
+    }
+
+    @Test
+    void missing_optional_primitive_int_argument_defaults_to_zero() throws NoSuchMethodException {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("sumWithOptionalB")
+                .arguments("{ \"arg0\": 3 }")
+                .build();
+
+        DefaultToolExecutor executor = new DefaultToolExecutor(
+                new PrimitiveTool(), PrimitiveTool.class.getDeclaredMethod("sumWithOptionalB", int.class, int.class));
+
         assertThat(executor.execute(request, "DEFAULT")).isEqualTo("3");
     }
 
     @Test
-    void missing_primitive_boolean_argument_defaults_to_false() throws NoSuchMethodException {
+    void missing_optional_primitive_boolean_argument_defaults_to_false() throws NoSuchMethodException {
         ToolExecutionRequest request = ToolExecutionRequest.builder()
                 .id("1")
                 .name("and")
-                .arguments("{ \"arg0\": true }")
+                .arguments("{}")
                 .build();
 
         DefaultToolExecutor executor = new DefaultToolExecutor(
@@ -411,7 +435,7 @@ class DefaultToolExecutorTest implements WithAssertions {
     }
 
     @Test
-    void missing_primitive_long_argument_defaults_to_zero() throws NoSuchMethodException {
+    void missing_required_primitive_long_argument_throws() throws NoSuchMethodException {
         ToolExecutionRequest request = ToolExecutionRequest.builder()
                 .id("1")
                 .name("multiply")
@@ -421,7 +445,9 @@ class DefaultToolExecutorTest implements WithAssertions {
         DefaultToolExecutor executor = new DefaultToolExecutor(
                 new PrimitiveTool(), PrimitiveTool.class.getDeclaredMethod("multiply", long.class, long.class));
 
-        assertThat(executor.execute(request, "DEFAULT")).isEqualTo("0");
+        assertThatExceptionOfType(ToolArgumentsException.class)
+                .isThrownBy(() -> executor.execute(request, "DEFAULT"))
+                .withMessageContaining("required but was not provided");
     }
 
     private static class PersonTool {
