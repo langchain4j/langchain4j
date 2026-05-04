@@ -1,22 +1,25 @@
 package dev.langchain4j.data.document.parser.docling;
 
-import ai.docling.api.serve.DoclingServeApi;
-import ai.docling.api.serve.convert.request.ConvertDocumentRequest;
-import ai.docling.api.serve.convert.request.options.ConvertDocumentOptions;
-import ai.docling.api.serve.convert.request.source.FileSource;
-import ai.docling.api.serve.convert.response.ConvertDocumentResponse;
+import ai.docling.serve.api.DoclingServeApi;
+import ai.docling.serve.api.convert.request.ConvertDocumentRequest;
+import ai.docling.serve.api.convert.request.options.ConvertDocumentOptions;
+import ai.docling.serve.api.convert.request.source.FileSource;
+import ai.docling.serve.api.convert.response.ConvertDocumentResponse;
+import ai.docling.serve.api.convert.response.ErrorItem;
+import ai.docling.serve.api.convert.response.InBodyConvertDocumentResponse;
+import ai.docling.serve.api.convert.response.ResponseType;
+import dev.langchain4j.data.document.BlankDocumentException;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.Metadata;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import dev.langchain4j.internal.ValidationUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Base64;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DoclingDocumentParser implements DocumentParser {
-
     private static final Logger log = LoggerFactory.getLogger(DoclingDocumentParser.class);
 
     private final DoclingServeApi doclingClient;
@@ -27,62 +30,66 @@ public class DoclingDocumentParser implements DocumentParser {
     }
 
     public DoclingDocumentParser(DoclingServeApi doclingClient, ConvertDocumentOptions options) {
-        if (doclingClient == null) {
-            throw new IllegalArgumentException("DoclingServeApi instance cannot be null.");
-        }
-        this.doclingClient = doclingClient;
+        this.doclingClient = ValidationUtils.ensureNotNull(doclingClient, "DoclingServeApi instance cannot be null");
         this.options = options;
     }
 
+    @Override
     public Document parse(InputStream inputStream) {
-        if (inputStream == null) {
-            throw new IllegalArgumentException("Input stream cannot be null");
-        }
+        ValidationUtils.ensureNotNull(inputStream, "Input stream cannot be null");
 
         try {
             byte[] documentBytes = inputStream.readAllBytes();
 
+            Metadata metadata = new Metadata();
+            metadata.put("document_size_bytes", String.valueOf(documentBytes.length));
+
             if (documentBytes.length == 0) {
-                throw new IllegalArgumentException("Input stream is empty. Please provide a document with content.");
+                throw new BlankDocumentException();
             }
 
             String base64Content = Base64.getEncoder().encodeToString(documentBytes);
 
             ConvertDocumentRequest.Builder requestBuilder = ConvertDocumentRequest.builder()
-                    .source(FileSource.builder().base64String(base64Content).build());
+                    .source(FileSource.builder()
+                            .base64String(base64Content)
+                            .filename("document")
+                            .build());
+
             if (this.options != null) {
                 requestBuilder.options(this.options);
             }
-            ConvertDocumentRequest request = requestBuilder.build();
 
-            ConvertDocumentResponse response = doclingClient.convertSource(request);
+            ConvertDocumentResponse response = doclingClient.convertSource(requestBuilder.build());
 
-            Metadata metadata = new Metadata();
-            metadata.put("document_size_bytes", String.valueOf(documentBytes.length));
-
-            if (response == null || response.getDocument() == null) {
-                log.warn("Docling returned an empty response");
-                return Document.from("", metadata);
+            if (response.getResponseType() != ResponseType.IN_BODY) {
+                log.warn("Docling returned unexpected response type: {}", response.getResponseType());
+                throw new IllegalStateException(
+                        "Only %s response types expected. Docling returned unexpected response type: %s"
+                                .formatted(ResponseType.IN_BODY, response.getResponseType()));
             }
 
-            if (response.getErrors() != null && !response.getErrors().isEmpty()) {
-                log.warn("Docling reported {} error(s). First: [{}] {}",
-                        response.getErrors().size(),
-                        response.getErrors().get(0).getComponentType(),
-                        response.getErrors().get(0).getErrorMessage());
+            InBodyConvertDocumentResponse inBodyResponse = (InBodyConvertDocumentResponse) response;
+
+            if (!inBodyResponse.getErrors().isEmpty()) {
+                ErrorItem first = inBodyResponse.getErrors().get(0);
+                log.warn(
+                        "Docling reported {} error(s). First: [{}] {}",
+                        inBodyResponse.getErrors().size(),
+                        first.getComponentType(),
+                        first.getErrorMessage());
             }
 
-            String parsedText = response.getDocument().getMarkdownContent();
-            if (parsedText == null || parsedText.isEmpty()) {
+            String parsedText = inBodyResponse.getDocument().getMarkdownContent();
+            if ((parsedText == null) || parsedText.strip().isEmpty()) {
                 log.warn("Docling returned no text content");
-                return Document.from("", metadata);
+                throw new BlankDocumentException();
             }
 
             return Document.from(parsedText, metadata);
-
         } catch (IOException e) {
             throw new RuntimeException("Failed to read input stream: " + e.getMessage(), e);
-        } catch (IllegalArgumentException e) {
+        } catch (BlankDocumentException e) {
             throw e;
         } catch (Exception e) {
             throw new RuntimeException("Docling failed to parse document: " + e.getMessage(), e);

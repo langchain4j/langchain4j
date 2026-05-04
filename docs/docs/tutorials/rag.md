@@ -284,6 +284,8 @@ To parse each of these formats, there's a `DocumentParser` interface with severa
 (e.g. DOC, DOCX, PPT, PPTX, XLS, XLSX, etc.)
 - `ApacheTikaDocumentParser` from the `langchain4j-document-parser-apache-tika` module,
 which can automatically detect and parse almost all existing file formats
+- `DoclingDocumentParser` from the `langchain4j-document-parser-docling` module, 
+  which uses [Docling Java](https://docling-project.github.io/docling-java/current/) and [Docling](https://docling.ai) to process documents.
 - `MarkdownDocumentParser` from the `langchain4j-document-parser-markdown` module,
   which can parse files in markdown format
 - `YamlDocumentParser` from the `langchain4j-document-parser-yaml` module,

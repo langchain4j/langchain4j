@@ -6,7 +6,7 @@ sidebar_position: 7
 
 [Docling](https://docling.ai) is an IBM Research document processing engine that extracts text and structure from various document formats including PDF, DOCX, PPTX, and more. It provides advanced capabilities such as OCR, table extraction, and layout analysis.
 
-This integration communicates with a running [docling-serve](https://github.com/DS4SD/docling-serve) instance via REST API and is built using the [official Docling Java library](https://docling-project.github.io/docling-java/current/).
+This integration communicates with a running [docling-serve](https://github.com/docling-project/docling-serve) instance via REST API and is built using the [official Docling Java library](https://docling-project.github.io/docling-java/current/).
 
 
 ## Maven Dependency
@@ -27,7 +27,7 @@ This module depends on `docling-serve-api` (the interface) and includes `docling
 <dependency>
     <groupId>ai.docling</groupId>
     <artifactId>docling-serve-client</artifactId>
-    <version>0.1.5</version>
+    <version>0.5.1</version>
 </dependency>
 ```
 
@@ -36,15 +36,14 @@ Frameworks such as [Quarkus](https://quarkus.io) or [Spring Boot](https://spring
 
 ## Usage
 
-Start a `docling-serve` instance (see [docling-serve docs](https://ds4sd.github.io/docling-serve/)), then build a `DoclingServeApi` client and pass it to the parser:
+Start a `docling-serve` instance (see [docling-serve docs](https://github.com/docling-project/docling-serve)), then build a `DoclingServeApi` client and pass it to the parser:
 
 ```java
-DoclingServeApi api = DoclingServeClientBuilderFactory.newBuilder()
+DoclingServeApi api = DoclingServeApi.builder()
         .baseUrl("http://localhost:5001")
         .build();
 
 DoclingDocumentParser parser = new DoclingDocumentParser(api);
-
 Document document = parser.parse(inputStream);
 String text = document.text();
 ```
@@ -58,7 +57,6 @@ ConvertDocumentOptions options = ConvertDocumentOptions.builder()
 
 DoclingDocumentParser parser = new DoclingDocumentParser(api, options);
 ```
-
 
 ## APIs
 
