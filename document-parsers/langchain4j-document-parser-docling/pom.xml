@@ -87,4 +87,19 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.honton.chas</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <!-- logback-classic has EPL-1.0 / LGPL-2.1 licenses (test-only dependency) -->
+                        <exclude>ch.qos.logback:logback-classic</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>
