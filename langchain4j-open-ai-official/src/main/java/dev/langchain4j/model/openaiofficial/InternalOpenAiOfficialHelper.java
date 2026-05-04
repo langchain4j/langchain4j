@@ -45,7 +45,6 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -53,10 +52,7 @@ import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.model.output.Response;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -402,33 +398,6 @@ class InternalOpenAiOfficialHelper {
             case AUTO -> ChatCompletionToolChoiceOption.ofAuto(ChatCompletionToolChoiceOption.Auto.AUTO);
             case REQUIRED -> ChatCompletionToolChoiceOption.ofAuto(ChatCompletionToolChoiceOption.Auto.REQUIRED);
             case NONE -> ChatCompletionToolChoiceOption.ofAuto(ChatCompletionToolChoiceOption.Auto.NONE);
-        };
-    }
-
-    static Response<AiMessage> convertResponse(ChatResponse chatResponse) {
-        return Response.from(
-                chatResponse.aiMessage(),
-                chatResponse.metadata().tokenUsage(),
-                chatResponse.metadata().finishReason());
-    }
-
-    static StreamingChatResponseHandler convertHandler(StreamingResponseHandler<AiMessage> handler) {
-        return new StreamingChatResponseHandler() {
-
-            @Override
-            public void onPartialResponse(String partialResponse) {
-                handler.onNext(partialResponse);
-            }
-
-            @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-                handler.onComplete(convertResponse(completeResponse));
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                handler.onError(error);
-            }
         };
     }
 
