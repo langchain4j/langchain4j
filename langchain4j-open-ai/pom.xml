@@ -10,7 +10,6 @@
     </parent>
 
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.15.0-beta25-SNAPSHOT</version>
     <name>LangChain4j :: Integration :: OpenAI</name>
 
     <dependencies>
@@ -18,19 +17,19 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.15.0-beta25-SNAPSHOT</version>
+            <version>${langchain4j.beta.version}</version>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-http-client</artifactId>
-            <version>1.15.0-beta25-SNAPSHOT</version>
+            <version>${langchain4j.beta.version}</version>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-http-client-jdk</artifactId>
-            <version>1.15.0-beta25-SNAPSHOT</version>
+            <version>${langchain4j.beta.version}</version>
             <scope>runtime</scope>
         </dependency>
 
@@ -61,7 +60,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.15.0-beta25-SNAPSHOT</version>
+            <version>${langchain4j.beta.version}</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -70,7 +69,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-http-client</artifactId>
-            <version>1.15.0-beta25-SNAPSHOT</version>
+            <version>${langchain4j.beta.version}</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
