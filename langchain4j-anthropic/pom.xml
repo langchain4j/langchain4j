@@ -10,7 +10,6 @@
     </parent>
 
     <artifactId>langchain4j-anthropic</artifactId>
-    <version>${langchain4j.beta.version}</version>
     <name>LangChain4j :: Integration :: Anthropic</name>
 
     <dependencies>

@@ -9,7 +9,6 @@
     </parent>
 
     <artifactId>langchain4j-ollama</artifactId>
-    <version>${langchain4j.beta.version}</version>
     <name>LangChain4j :: Integration :: Ollama</name>
 
     <properties>

@@ -10,7 +10,6 @@
     </parent>
 
     <artifactId>langchain4j-mistral-ai</artifactId>
-    <version>${langchain4j.beta.version}</version>
     <name>LangChain4j :: Integration :: MistralAI</name>
 
     <developers>

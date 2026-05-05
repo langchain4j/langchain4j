@@ -10,7 +10,6 @@
     </parent>
 
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>${langchain4j.beta.version}</version>
     <name>LangChain4j :: Integration :: Google AI Gemini</name>
 
     <developers>

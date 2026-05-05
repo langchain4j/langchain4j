@@ -10,7 +10,6 @@
     </parent>
 
     <artifactId>langchain4j-azure-open-ai</artifactId>
-    <version>${langchain4j.beta.version}</version>
     <name>LangChain4j :: Integration :: Azure OpenAI</name>
 
     <developers>

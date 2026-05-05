@@ -10,7 +10,6 @@
     </parent>
 
     <artifactId>langchain4j-code-execution-engine-azure-acads</artifactId>
-    <version>${langchain4j.beta.version}</version>
     <name>LangChain4j :: Integration :: Azure ACADS</name>
     <description>Implementation of a code execution engine using Azure ACA Dynamic Sessions</description>
 
