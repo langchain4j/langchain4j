@@ -7,7 +7,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -101,8 +100,7 @@ public class Metadata {
             throw illegalArgument(
                     "The metadata key '%s' has the value '%s', which is of the unsupported type '%s'. "
                             + "Currently, the supported types are: %s",
-                    key, value, value.getClass().getName(), SUPPORTED_VALUE_TYPES
-            );
+                    key, value, value.getClass().getName(), SUPPORTED_VALUE_TYPES);
         }
     }
 
@@ -119,8 +117,7 @@ public class Metadata {
                         "The metadata key '%s' has a collection value with mixed types. "
                                 + "Currently, all values in a collection must be of the same type. "
                                 + "Offending value: '%s' of type '%s'. Expected type: '%s'.",
-                        key, value, value.getClass().getName(), collectionType.getName()
-                );
+                        key, value, value.getClass().getName(), collectionType.getName());
             }
         }
     }
@@ -164,17 +161,17 @@ public class Metadata {
 
         if (element instanceof String string) {
             if (type == Integer.class) return (T) Integer.valueOf(Integer.parseInt(string));
-            if (type == Long.class)    return (T) Long.valueOf(Long.parseLong(string));
-            if (type == Float.class)   return (T) Float.valueOf(Float.parseFloat(string));
-            if (type == Double.class)  return (T) Double.valueOf(Double.parseDouble(string));
-            if (type == UUID.class)    return (T) UUID.fromString(string);
+            if (type == Long.class) return (T) Long.valueOf(Long.parseLong(string));
+            if (type == Float.class) return (T) Float.valueOf(Float.parseFloat(string));
+            if (type == Double.class) return (T) Double.valueOf(Double.parseDouble(string));
+            if (type == UUID.class) return (T) UUID.fromString(string);
         }
 
         if (element instanceof Number number) {
             if (type == Integer.class) return (T) Integer.valueOf(number.intValue());
-            if (type == Long.class)    return (T) Long.valueOf(number.longValue());
-            if (type == Float.class)   return (T) Float.valueOf(number.floatValue());
-            if (type == Double.class)  return (T) Double.valueOf(number.doubleValue());
+            if (type == Long.class) return (T) Long.valueOf(number.longValue());
+            if (type == Float.class) return (T) Float.valueOf(number.floatValue());
+            if (type == Double.class) return (T) Double.valueOf(number.doubleValue());
         }
 
         throw runtime(
