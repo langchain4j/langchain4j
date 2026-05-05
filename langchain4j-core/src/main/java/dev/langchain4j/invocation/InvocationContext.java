@@ -195,7 +195,8 @@ public interface InvocationContext {
         /**
          * Sets the LC4j managed parameters for the builder.
          */
-        public Builder managedParameters(Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters) {
+        public Builder managedParameters(
+                Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters) {
             this.managedParameters = managedParameters;
             return this;
         }
@@ -253,7 +254,7 @@ public interface InvocationContext {
         }
 
         public Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters() {
-            return managedParameters;
+            return managedParameters != null ? managedParameters : Map.of();
         }
 
         public Instant timestamp() {
