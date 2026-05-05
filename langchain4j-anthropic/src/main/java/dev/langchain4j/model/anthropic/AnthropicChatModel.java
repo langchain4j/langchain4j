@@ -41,6 +41,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 
@@ -96,6 +97,7 @@ public class AnthropicChatModel implements ChatModel {
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .logger(builder.logger)
+                .customHeaders(builder.customHeadersSupplier)
                 .build();
 
         this.cacheSystemMessages = getOrDefault(builder.cacheSystemMessages, false);
@@ -182,6 +184,7 @@ public class AnthropicChatModel implements ChatModel {
         private Map<String, Object> customParameters;
         private Boolean strictTools;
         private Set<Capability> supportedCapabilities;
+        private Supplier<Map<String, String>> customHeadersSupplier;
 
         public AnthropicChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -474,6 +477,16 @@ public class AnthropicChatModel implements ChatModel {
 
         public AnthropicChatModelBuilder strictTools(Boolean strictTools) {
             this.strictTools = strictTools;
+            return this;
+        }
+
+        public AnthropicChatModelBuilder customHeaders(Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        public AnthropicChatModelBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 
