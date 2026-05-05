@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
+import dev.langchain4j.model.chat.request.json.JsonArraySchema;
+import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -79,8 +82,7 @@ class AwsDocumentConverterTest {
     @Test
     void convert_json_to_primitive_types() {
         // Given
-        String json =
-                """
+        String json = """
                 {
                     "string": "test",
                     "integer": 42,
@@ -102,8 +104,7 @@ class AwsDocumentConverterTest {
     @Test
     void convert_json_to_list() {
         // Given
-        String json =
-                """
+        String json = """
                 {
                     "list": ["item1", 2, true]
                 }
@@ -122,8 +123,7 @@ class AwsDocumentConverterTest {
     @Test
     void convert_json_to_nested_object() {
         // Given
-        String json =
-                """
+        String json = """
                 {
                     "nested": {
                         "inner_key": "inner_value"
@@ -167,6 +167,114 @@ class AwsDocumentConverterTest {
 
         List<Document> required = docMap.get("required").asList();
         assertThat(required).containsExactlyInAnyOrder(Document.fromString("param2"), Document.fromString("param4"));
+    }
+
+    @Test
+    void convert_tool_specification_to_strict_document() {
+        // Given
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("test-tool")
+                .description("Test tool description")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("name")
+                        .addProperty(
+                                "location",
+                                JsonObjectSchema.builder()
+                                        .addStringProperty("city")
+                                        .addStringProperty("country")
+                                        .required("city")
+                                        .build())
+                        .addProperty(
+                                "stops",
+                                JsonArraySchema.builder()
+                                        .items(JsonObjectSchema.builder()
+                                                .addStringProperty("station")
+                                                .required("station")
+                                                .build())
+                                        .build())
+                        .addProperty(
+                                "metadata",
+                                JsonAnyOfSchema.builder()
+                                        .anyOf(
+                                                JsonObjectSchema.builder()
+                                                        .addStringProperty("source")
+                                                        .required("source")
+                                                        .build(),
+                                                new JsonNullSchema())
+                                        .build())
+                        .required("location")
+                        .build())
+                .build();
+
+        // When
+        Document document = AwsDocumentConverter.convertJsonObjectSchemaToDocument(toolSpec, true);
+
+        // Then
+        Map<String, Document> docMap = document.asMap();
+        assertThat(docMap.get("additionalProperties").asBoolean()).isFalse();
+        assertThat(docMap.get("required").asList()).containsExactly(Document.fromString("location"));
+
+        Map<String, Document> properties = docMap.get("properties").asMap();
+        assertThat(properties.get("name").asMap().get("type").asString()).isEqualTo("string");
+
+        Map<String, Document> location = properties.get("location").asMap();
+        assertThat(location.get("additionalProperties").asBoolean()).isFalse();
+        assertThat(location.get("required").asList())
+                .containsExactlyInAnyOrder(Document.fromString("city"), Document.fromString("country"));
+
+        Map<String, Document> country =
+                location.get("properties").asMap().get("country").asMap();
+        assertThat(country.get("type").asList())
+                .containsExactly(Document.fromString("string"), Document.fromString("null"));
+
+        Map<String, Document> stopsItems =
+                properties.get("stops").asMap().get("items").asMap();
+        assertThat(stopsItems.get("additionalProperties").asBoolean()).isFalse();
+
+        Map<String, Document> metadataObjectBranch =
+                properties.get("metadata").asMap().get("anyOf").asList().get(0).asMap();
+        assertThat(metadataObjectBranch.get("additionalProperties").asBoolean()).isFalse();
+    }
+
+    @Test
+    void convert_tool_specification_to_non_strict_document() {
+        // Given
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("test-tool")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty(
+                                "location",
+                                JsonObjectSchema.builder()
+                                        .addStringProperty("city")
+                                        .build())
+                        .build())
+                .build();
+
+        // When
+        Document document = AwsDocumentConverter.convertJsonObjectSchemaToDocument(toolSpec, false);
+
+        // Then
+        Map<String, Document> docMap = document.asMap();
+        assertThat(docMap).doesNotContainKey("additionalProperties");
+
+        Map<String, Document> location =
+                docMap.get("properties").asMap().get("location").asMap();
+        assertThat(location).doesNotContainKey("additionalProperties");
+    }
+
+    @Test
+    void convert_tool_specification_without_parameters_to_strict_document() {
+        // Given
+        ToolSpecification toolSpec =
+                ToolSpecification.builder().name("test-tool").build();
+
+        // When
+        Document document = AwsDocumentConverter.convertJsonObjectSchemaToDocument(toolSpec, true);
+
+        // Then
+        Map<String, Document> docMap = document.asMap();
+        assertThat(docMap.get("type").asString()).isEqualTo("object");
+        assertThat(docMap.get("additionalProperties").asBoolean()).isFalse();
     }
 
     @Test

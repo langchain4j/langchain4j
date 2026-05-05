@@ -181,6 +181,7 @@ abstract class AbstractBedrockChatModel {
                 .additionalModelRequestFields(bedrockParameters.additionalModelRequestFields())
                 .promptCaching(bedrockParameters.cachePointPlacement(), bedrockParameters.cacheTtl())
                 .guardrailConfiguration(bedrockParameters.bedrockGuardrailConfiguration())
+                .strictTools(getOrDefault(builder.strictTools, bedrockParameters.strictTools()))
                 .build();
     }
 
@@ -509,6 +510,8 @@ abstract class AbstractBedrockChatModel {
             ChatRequest chatRequest, BedrockCachePointPlacement cachePointPlacement, CacheTTL cacheTtl) {
         List<ToolSpecification> toolSpecifications = chatRequest.toolSpecifications();
         ChatRequestParameters parameters = chatRequest.parameters();
+        boolean strictTools = parameters instanceof BedrockChatRequestParameters bedrockParameters
+                && Boolean.TRUE.equals(bedrockParameters.strictTools());
 
         final List<Tool> allTools = new ArrayList<>();
         final ToolConfiguration.Builder toolConfigurationBuilder = ToolConfiguration.builder();
@@ -517,12 +520,13 @@ abstract class AbstractBedrockChatModel {
             final List<Tool> tools = toolSpecifications.stream()
                     .map(toolSpecification -> {
                         ToolInputSchema toolInputSchema = ToolInputSchema.builder()
-                                .json(convertJsonObjectSchemaToDocument(toolSpecification))
+                                .json(convertJsonObjectSchemaToDocument(toolSpecification, strictTools))
                                 .build();
                         return software.amazon.awssdk.services.bedrockruntime.model.ToolSpecification.builder()
                                 .name(toolSpecification.name())
                                 .description(toolSpecification.description())
                                 .inputSchema(toolInputSchema)
+                                .strict(strictTools ? Boolean.TRUE : null)
                                 .build();
                     })
                     .map(toolSpecification ->
@@ -1093,6 +1097,7 @@ abstract class AbstractBedrockChatModel {
         protected Duration timeout;
         protected Boolean returnThinking;
         protected Boolean sendThinking;
+        protected Boolean strictTools;
         protected ChatRequestParameters defaultRequestParameters;
         protected Boolean logRequests;
         protected Boolean logResponses;
@@ -1152,6 +1157,11 @@ abstract class AbstractBedrockChatModel {
          */
         public T sendThinking(Boolean sendThinking) {
             this.sendThinking = sendThinking;
+            return self();
+        }
+
+        public T strictTools(Boolean strictTools) {
+            this.strictTools = strictTools;
             return self();
         }
 

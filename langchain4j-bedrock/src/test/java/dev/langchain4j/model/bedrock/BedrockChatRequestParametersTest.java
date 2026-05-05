@@ -213,6 +213,26 @@ class BedrockChatRequestParametersTest {
     }
 
     @Test
+    void should_build_with_strict_tools() {
+        // Given & When
+        BedrockChatRequestParameters params =
+                BedrockChatRequestParameters.builder().strictTools(true).build();
+
+        // Then
+        assertThat(params.strictTools()).isTrue();
+    }
+
+    @Test
+    void should_build_without_strict_tools() {
+        // Given & When
+        BedrockChatRequestParameters params =
+                BedrockChatRequestParameters.builder().temperature(0.7).build();
+
+        // Then
+        assertThat(params.strictTools()).isNull();
+    }
+
+    @Test
     void should_set_different_service_tiers() {
         // Test PRIORITY
         BedrockChatRequestParameters paramsPriority = BedrockChatRequestParameters.builder()
@@ -262,6 +282,27 @@ class BedrockChatRequestParametersTest {
         // Then
         assertThat(merged.temperature()).isEqualTo(0.8);
         assertThat(merged.serviceTier()).isEqualTo(BedrockServiceTier.PRIORITY);
+    }
+
+    @Test
+    void should_override_with_strict_tools_parameters() {
+        // Given
+        BedrockChatRequestParameters original = BedrockChatRequestParameters.builder()
+                .temperature(0.5)
+                .strictTools(true)
+                .build();
+
+        BedrockChatRequestParameters override = BedrockChatRequestParameters.builder()
+                .temperature(0.8)
+                .strictTools(false)
+                .build();
+
+        // When
+        BedrockChatRequestParameters merged = original.overrideWith(override);
+
+        // Then
+        assertThat(merged.temperature()).isEqualTo(0.8);
+        assertThat(merged.strictTools()).isFalse();
     }
 
     @Test

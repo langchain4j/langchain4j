@@ -106,17 +106,25 @@ class AwsDocumentConverter {
     }
 
     public static Document convertJsonObjectSchemaToDocument(ToolSpecification toolSpecification) {
+        return convertJsonObjectSchemaToDocument(toolSpecification, false);
+    }
+
+    public static Document convertJsonObjectSchemaToDocument(ToolSpecification toolSpecification, boolean strict) {
         Map<String, Object> schemaMap = new HashMap<>();
         schemaMap.put("type", "object");
 
         if (toolSpecification.parameters() != null) {
+            var parameters = toolSpecification.parameters();
             Map<String, Map<String, Object>> propertiesMap =
-                    JsonSchemaElementUtils.toMap(toolSpecification.parameters().properties());
+                    JsonSchemaElementUtils.toMap(parameters.properties(), strict);
             schemaMap.put("properties", propertiesMap);
 
-            List<String> required =
-                    new ArrayList<>(toolSpecification.parameters().required());
+            List<String> required = new ArrayList<>(parameters.required());
             schemaMap.put("required", required);
+        }
+
+        if (strict) {
+            schemaMap.put("additionalProperties", false);
         }
 
         try {
