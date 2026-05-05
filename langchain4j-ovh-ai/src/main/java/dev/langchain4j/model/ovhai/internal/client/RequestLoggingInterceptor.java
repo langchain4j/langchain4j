@@ -16,6 +16,10 @@ import java.util.stream.Collectors;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.stream.StreamSupport.stream;
 
+/**
+ * @deprecated Do not use anymore, use {@code langchain4j-open-ai} module instead
+ */
+@Deprecated(forRemoval = true, since = "1.14.0")
 class RequestLoggingInterceptor implements Interceptor {
 
     private static final Logger DEFAULT_LOG = LoggerFactory.getLogger(RequestLoggingInterceptor.class);

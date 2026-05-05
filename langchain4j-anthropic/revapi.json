@@ -1,0 +1,15 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307",
+          "justification": "Model no longer exists and was previously deprecated; removed intentionally"
+        }
+      ]
+    }
+  }
+]

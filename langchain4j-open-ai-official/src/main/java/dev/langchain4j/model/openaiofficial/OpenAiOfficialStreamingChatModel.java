@@ -1,8 +1,10 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.finishReasonFrom;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.toOpenAiChatCompletionCreateParams;
@@ -136,7 +138,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                             }
 
                             if (error.isPresent()) {
-                                handler.onError(error.get());
+                                withLoggingExceptions(() -> handler.onError(error.get()));
                             } else {
                                 if (toolCallBuilder.hasRequests()) {
                                     onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
@@ -154,14 +156,14 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                                         .metadata(responseMetadataBuilder.build())
                                         .build();
 
-                                handler.onCompleteResponse(chatResponse);
+                                onCompleteResponse(handler, chatResponse);
                             }
                         }
                     });
 
             streamingHandle.set(new OpenAiOfficialStreamingHandle(asyncStreamResponse));
         } catch (Exception e) {
-            handler.onError(e);
+            withLoggingExceptions(() -> handler.onError(e));
         }
     }
 

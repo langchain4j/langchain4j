@@ -369,6 +369,8 @@ Methods annotated with `@Tool` can accept any number of parameters of various ty
 - Object types: `String`, `Integer`, `Double`, etc
 - Custom POJOs (can contain nested POJOs)
 - `enum`s
+- Polymorphic types (sealed interfaces/classes or types annotated with Jackson
+  `@JsonSubTypes` / `@JsonTypeInfo`) — see [Polymorphic Tool Parameters](#polymorphic-tool-parameters)
 - `List<T>`/`Set<T>` where `T` is one of the above-mentioned types
 - `Map<K,V>` (you need to manually specify the types of `K` and `V` in the parameter description with `@P`)
 
@@ -445,6 +447,67 @@ all fields and sub-fields are considered **_optional_** by default.
 
 Recursive parameters (e.g., a `Person` class having a `Set<Person> children` field)
 are currently supported only by OpenAI.
+
+#### Polymorphic Tool Parameters
+
+A tool parameter can be a polymorphic type — a base type whose concrete subtype is decided
+by the LLM at call time. Sealed interfaces and sealed classes work without annotations;
+plain abstract classes and interfaces must declare their subtypes with Jackson's
+`@JsonSubTypes`.
+The schema sent to the LLM contains an `anyOf` over the permitted subtypes, each with a
+discriminator property (defaulting to `"type"`) so the LLM can communicate which concrete
+type it produced; the framework deserializes the LLM's argument into the right subtype
+before invoking your tool method.
+
+This works for the polymorphic type as a parameter, for `List<T>` / `Set<T>` of polymorphic
+types, and for polymorphic types nested inside another POJO parameter.
+
+**Sealed interfaces and classes — no annotations needed:**
+
+```java
+sealed interface Animal permits Dog, Cat {}
+
+record Dog(String name, String breed) implements Animal {}
+
+record Cat(String name, boolean indoor) implements Animal {}
+
+class AnimalRegistry {
+
+    @Tool("Registers a single animal")
+    void registerAnimal(Animal animal) { /* dispatched to Dog or Cat */ }
+
+    @Tool("Registers a batch of animals")
+    void registerAnimals(List<Animal> animals) { /* mixed Dog / Cat */ }
+
+    @Tool("Registers an owner with their pet")
+    void registerOwner(Owner owner) { /* Owner.pet is dispatched */ }
+}
+
+record Owner(String name, Animal pet) {}
+```
+
+**Jackson `@JsonSubTypes` / `@JsonTypeInfo`** are also supported and let you decouple wire
+names from Java class names:
+
+```java
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "kind")
+@JsonSubTypes({
+    @JsonSubTypes.Type(value = Square.class, name = "square"),
+    @JsonSubTypes.Type(value = Circle.class, name = "circle")
+})
+interface Shape {}
+
+class ShapeRegistry {
+
+    @Tool("Registers a shape")
+    void registerShape(Shape shape) { /* dispatched to Square or Circle */ }
+}
+```
+
+The set of supported `@JsonTypeInfo` options, the discriminator-name resolution order,
+`defaultImpl` behavior, the `visible` flag, and field-collision detection are described in
+detail in [Polymorphic Types](/tutorials/structured-outputs#polymorphic-types) under
+Structured Outputs — they apply identically to tool parameters.
 
 ### Tool Method Return Types
 Methods annotated with `@Tool` can return any type, including `void`.
@@ -895,22 +958,47 @@ ToolExecutor toolExecutor = new DefaultToolExecutor(tools, method);
 ```
 
 Once we have one or multiple (`ToolSpecification`, `ToolExecutor`) pairs,
-we can specify them when creating an AI Service:
+we wrap each pair in an `AiServiceTool` and pass the list to the AI Service:
 ```java
+AiServiceTool tool = AiServiceTool.builder()
+        .toolSpecification(toolSpecification)
+        .toolExecutor(toolExecutor)
+        .build();
+
 Assistant assistant = AiServices.builder(Assistant.class)
     .chatModel(chatModel)
-    .tools(Map.of(toolSpecification, toolExecutor))
+    .tools(List.of(tool))
     .build();
 ```
 
-Additionally, we can pass a list of tool names that should [immediately/directly return](/tutorials/tools#returning-immediately-the-result-of-a-tool-execution-request) their results and not send them to the LLM for reprocessing.
+#### Configuring Immediate Return for Programmatic Tools
+
+In case you need to specify
+[immediate return behavior](/tutorials/tools#returning-immediately-the-result-of-a-tool-execution-request)
+for a tool, set its `ReturnBehavior` on the `AiServiceTool` builder:
 
 ```java
-Set<String> immediateReturnToolNames = Set.of("get_booking_details");
+AiServiceTool bookingTool = AiServiceTool.builder()
+        .toolSpecification(bookingToolSpec)
+        .toolExecutor(bookingExecutor)
+        .returnBehavior(IMMEDIATE)
+        .build();
+
+AiServiceTool closeTool = AiServiceTool.builder()
+        .toolSpecification(closeToolSpec)
+        .toolExecutor(closeExecutor)
+        .returnBehavior(IMMEDIATE_IF_LAST)
+        .build();
+
+AiServiceTool weatherTool = AiServiceTool.builder()
+        .toolSpecification(weatherToolSpec)
+        .toolExecutor(weatherExecutor)
+        // ReturnBehavior.TO_LLM by default
+        .build();
 
 Assistant assistant = AiServices.builder(Assistant.class)
     .chatModel(chatModel)
-    .tools(Map.of(toolSpecification, toolExecutor), immediateReturnToolNames)
+    .tools(List.of(bookingTool, closeTool, weatherTool))
     .build();
 ```
 
@@ -921,7 +1009,7 @@ One can configure a `ToolProvider` that will be called each time the AI service 
 and will provide the tools that should be included in the current request to the LLM.
 The `ToolProvider` accepts a `ToolProviderRequest`
 (that contains the `UserMessage`, chat memory ID and [`InvocationParameters`](/tutorials/tools#invocationparameters))
-and returns a `ToolProviderResult` that contains tools in a form of a `Map` from `ToolSpecification` to `ToolExecutor`.
+and returns a `ToolProviderResult` that contains tools for the current AI Service invocation.
 
 Here is an example of how to add the `get_booking_details` tool only when the user's message contains the word "booking":
 ```java
@@ -948,31 +1036,26 @@ Assistant assistant = AiServices.builder(Assistant.class)
     .build();
 ```
 
-#### Configuring Immediate Return in Dynamic Tools
+It is possible to mix statically (both `@Tool`-annotated methods and tools configured programmatically)
+and dynamically specified tools in the same AI Service invocation.
+In this case all static and dynamic tools are merged together.
 
-When building `ToolProviderResult`, you can mark tools for [immediate return](/tutorials/tools#returning-immediately-the-result-of-a-tool-execution-request) using the ToolProviderResult.builder():
+#### Configuring Immediate Return for Dynamic Tools
+
+When building `ToolProviderResult`, you can mark tools for
+[immediate return](/tutorials/tools#returning-immediately-the-result-of-a-tool-execution-request)
+using `ToolProviderResult.builder()`. The `add(ToolSpecification, ToolExecutor, ReturnBehavior)` overload
+accepts any of `TO_LLM`, `IMMEDIATE`, or `IMMEDIATE_IF_LAST`:
 
 ```java
 ToolProvider toolProvider = (toolProviderRequest) -> {
     return ToolProviderResult.builder()
         .add(bookingToolSpec, bookingExecutor, ReturnBehavior.IMMEDIATE)
-        .add(weatherToolSpec, weatherExecutor)
+        .add(closeToolSpec, closeExecutor, ReturnBehavior.IMMEDIATE_IF_LAST)
+        .add(weatherToolSpec, weatherExecutor) // ReturnBehavior.TO_LLM by default
         .build();
 };
 ```
-
-You can also mark multiple tools by name:
-
-```java
-ToolProvider toolProvider = (toolProviderRequest) -> {
-    return ToolProviderResult.builder()
-        .addAll(allTools)
-        .immediateReturnToolNames(Set.of("get_booking_details", "cancel_booking"))
-        .build();
-};
-```
-
-It is possible for an AI service to use both programmatically and dynamically specified tools in the same invocation.
 
 ### Tool Search
 
@@ -1139,7 +1222,13 @@ Tool search is currently marked as experimental and may evolve in future release
 
 ### Returning immediately the result of a tool execution request
 
-By default, the result of a tool execution request is sent back to the LLM that uses this result and further reprocesses it. However, in some circumstances, the result produced by that tool execution request already represents the expected result of the AI service invocation. In this case it is possible to configure the tool to immediately/directly return its result, skipping a wasteful and resource consuming reprocessing by the LLM. This can be done by configuring the `returnBehavior` field of the `@Tool` annotation as in the following example:
+By default, the result of a tool execution request is sent back to the LLM
+that uses this result and further reprocesses it. However, in some circumstances,
+the result produced by that tool execution request already represents the expected result
+of the AI service invocation. In this case it is possible to configure the tool to
+immediately/directly return its result, skipping a wasteful and resource consuming
+reprocessing by the LLM. This can be done by configuring the `returnBehavior` field of the
+`@Tool` annotation as in the following example:
 
 ```java
 class CalculatorWithImmediateReturn {
@@ -1152,7 +1241,9 @@ class CalculatorWithImmediateReturn {
 ```
 
 :::note
-This feature is supported only on AI Services having a `Result<T>` return type. Attempting to use it on AI Service with a different return type will produce an `IllegalConfigurationException`. See [Return Types](/tutorials/ai-services#return-types) for more information about `Result<T>`.
+This feature is supported only on AI Services having a `Result<T>` return type.
+Attempting to use it on AI Service with a different return type will produce an `IllegalConfigurationException`.
+See [Return Types](/tutorials/ai-services#return-types) for more information about `Result<T>`.
 :::
 
 In this way, an `Assistant` service like the following
@@ -1178,16 +1269,77 @@ will return a response directly from the tool invocation. For instance, promptin
 Result<String> result = assistant.chat("How much is 37 plus 87?");
 ```
 
-will produce a `Result` with a null content, while the actual response of `124` will have to be retrieved from the `result.toolExecutions()`. Without the immediate return, the LLM would have to reprocess the result of the `add` tool execution request, thus returning a response like: `The result of adding 37 and 87 is 124.`
+will produce a `Result` with a `Result.content() == null`,
+while the actual response of `124` will have to be retrieved from the `result.toolExecutions()`.
+Without the immediate return, the LLM would have to reprocess the result of the `add` tool execution request,
+thus returning a response like: `The result of adding 37 and 87 is 124.`
 
-Also note that if the LLM calls multiple tools and at least one of them is not immediate, then reprocessing will happen.
+#### Immediate-return rule with multiple tool calls in a single response
 
-:::note
-When using programmatic tools, you can mark tools for immediate return by passing a set of tool names
-to the `.tools()` method. When using dynamic tools via `ToolProvider`, you can use the overloaded method, 
-`.add(ToolSpecification, ToolExecutor, ReturnBehavior)`, on `ToolProviderResult.builder()`. 
-See the respective sections above for examples.
-:::
+When the LLM returns multiple tool calls in a single response,
+the loop returns immediately (without sending the results back to the LLM) only when **both** of the following hold:
+
+1. **No tool errored.** Any error in any tool call forces reprocessing so the LLM can react to the error on the next turn.
+2. **Either** every tool in the response is `IMMEDIATE` (no `TO_LLM` tools mixed in) **or** the last tool is `IMMEDIATE_IF_LAST` (see next section).
+
+Examples (tools listed in the order returned by the LLM in a single response;
+`(err)` marks a tool whose execution errored):
+
+| Tool calls in the response                     | Outcome            | Why                                                          |
+|------------------------------------------------|--------------------|--------------------------------------------------------------|
+| `[IMMEDIATE]`                                  | return immediately | only tool is `IMMEDIATE`                                     |
+| `[IMMEDIATE, IMMEDIATE]`                       | return immediately | every tool is `IMMEDIATE`/`IMMEDIATE_IF_LAST`                |
+| `[IMMEDIATE, TO_LLM]`                          | reprocess          | `TO_LLM` disqualifies the all-immediate rule                 |
+| `[IMMEDIATE_IF_LAST]`                          | return immediately | last tool is `IMMEDIATE_IF_LAST`                             |
+| `[TO_LLM, IMMEDIATE_IF_LAST]`                  | return immediately | last tool is `IMMEDIATE_IF_LAST`                             |
+| `[IMMEDIATE_IF_LAST, TO_LLM]`                  | reprocess          | not last, and `TO_LLM` disqualifies the all-immediate rule   |
+| `[IMMEDIATE, IMMEDIATE_IF_LAST]`               | return immediately | last tool is `IMMEDIATE_IF_LAST`                             |
+| `[IMMEDIATE_IF_LAST, IMMEDIATE]`               | return immediately | every tool is `IMMEDIATE`/`IMMEDIATE_IF_LAST`                |
+| `[TO_LLM, IMMEDIATE_IF_LAST, IMMEDIATE]`       | reprocess          | not last, and `TO_LLM` disqualifies the all-immediate rule   |
+| `[IMMEDIATE_IF_LAST(err)]`                     | reprocess          | any error disables immediate return                          |
+| `[TO_LLM(err), IMMEDIATE_IF_LAST]`             | reprocess          | any error disables immediate return                          |
+
+See the Javadoc of `ReturnBehavior` for the full immediate-return-vs-reprocess matrix.
+
+#### `IMMEDIATE_IF_LAST` for tools that explicitly close an action sequence
+
+`ReturnBehavior.IMMEDIATE_IF_LAST` is meant for tools the LLM uses to explicitly signal
+the end of a multi-step action — for example, an `endExecutionAndGetFinalResult` tool
+the LLM appendsafter a sequence of clicks, navigations, etc.
+
+Without `IMMEDIATE_IF_LAST`, the LLM would typically need two turns to close out execution:
+one turn that mixes work tools (`TO_LLM`) with the closing tool,
+and a second turn where the LLM, after seeing all the results,
+calls the closing tool alone. The loop only returns immediately on the second turn.
+
+With `IMMEDIATE_IF_LAST`, the loop returns immediately as soon as the LLM places the tool last
+in its response — saving one full LLM round trip per invocation.
+
+```java
+class ScreenAutomation {
+
+    @Tool
+    String leftMouseClick(int x, int y) { /* ... */ }
+
+    @Tool
+    String typeText(String text) { /* ... */ }
+
+    @Tool(returnBehavior = ReturnBehavior.IMMEDIATE_IF_LAST)
+    String endExecutionAndGetFinalResult(String summary) { return summary; }
+}
+```
+
+For an LLM response of `[leftMouseClick, typeText, endExecutionAndGetFinalResult]`,
+the loop returns immediately after executing all three tools.
+If the LLM puts the closing tool anywhere other than last
+(e.g. `[endExecutionAndGetFinalResult, leftMouseClick]`),
+the loop continues and sends all results back to the LLM.
+
+`IMMEDIATE_IF_LAST` also counts toward the all-immediate rule of `IMMEDIATE`:
+a response made up only of `IMMEDIATE` and/or `IMMEDIATE_IF_LAST` tools returns immediately
+regardless of which one is last (still subject to the no-errors rule).
+
+Like `IMMEDIATE`, `IMMEDIATE_IF_LAST` is only allowed on AI services with a `Result<T>` return type.
 
 ### Error Handling
 

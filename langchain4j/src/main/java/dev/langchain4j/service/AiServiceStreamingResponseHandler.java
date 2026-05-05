@@ -5,9 +5,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
 import static dev.langchain4j.service.tool.ToolService.refreshDynamicProviders;
 
-import dev.langchain4j.service.tool.search.ToolSearchService;
-
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -41,7 +40,9 @@ import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.service.tool.ToolServiceContext;
+import dev.langchain4j.service.tool.search.ToolSearchService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -292,8 +293,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 intermediateResponseHandler.accept(chatResponse);
             }
 
-            boolean immediateToolReturn = true;
             List<ToolExecutionResult> toolResults = new ArrayList<>();
+            boolean anyToolErrored = false;
+            List<ReturnBehavior> returnBehaviors = new ArrayList<>();
 
             if (toolExecutor != null) {
                 for (Future<ToolRequestResult> toolExecutionFuture : toolExecutionFutures) {
@@ -306,8 +308,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                         ToolExecutionResultMessage toolExecutionResultMessage =
                                 toResultMessage(toolRequest, toolResult);
                         addToMemory(toolExecutionResultMessage);
-                        immediateToolReturn = immediateToolReturn
-                                && context.toolService.isImmediateTool(toolExecutionResultMessage.toolName());
+                        anyToolErrored = anyToolErrored || toolResult.isError();
+                        returnBehaviors.add(toolServiceContext.returnBehavior(toolRequest.name()));
                     } catch (ExecutionException e) {
                         if (e.getCause() instanceof RuntimeException re) {
                             throw re;
@@ -325,15 +327,14 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     toolResults.add(toolResult);
                     ToolRequestResult toolRequestResult = new ToolRequestResult(toolRequest, toolResult);
                     fireToolExecutedEvent(toolRequestResult);
-                    ToolExecutionResultMessage toolExecutionResultMessage =
-                            toResultMessage(toolRequest, toolResult);
+                    ToolExecutionResultMessage toolExecutionResultMessage = toResultMessage(toolRequest, toolResult);
                     addToMemory(toolExecutionResultMessage);
-                    immediateToolReturn =
-                            immediateToolReturn && context.toolService.isImmediateTool(toolRequest.name());
+                    anyToolErrored = anyToolErrored || toolResult.isError();
+                    returnBehaviors.add(toolServiceContext.returnBehavior(toolRequest.name()));
                 }
             }
 
-            if (immediateToolReturn) {
+            if (ToolService.shouldReturnImmediately(anyToolErrored, returnBehaviors)) {
                 ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
                 fireInvocationComplete(finalChatResponse);
 
@@ -345,11 +346,12 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
             List<ChatMessage> messages = messagesToSend(invocationContext.chatMemoryId());
 
-            ToolServiceContext updatedToolContext = refreshDynamicProviders(toolServiceContext, messages, invocationContext);
+            ToolServiceContext updatedToolContext =
+                    refreshDynamicProviders(toolServiceContext, messages, invocationContext);
             updatedToolContext = ToolSearchService.addFoundTools(updatedToolContext, toolResults);
 
-            ChatRequestParameters parameters = chatRequestParameters(invocationContext.methodArguments(),
-                    updatedToolContext.effectiveTools());
+            ChatRequestParameters parameters =
+                    chatRequestParameters(invocationContext.methodArguments(), updatedToolContext.effectiveTools());
 
             ChatRequest nextChatRequest = context.chatRequestTransformer.apply(
                     ChatRequest.builder()

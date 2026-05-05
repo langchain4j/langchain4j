@@ -54,7 +54,9 @@ record GeminiGenerateContentResponse(
     record GeminiUsageMetadata(
             @JsonProperty("promptTokenCount") Integer promptTokenCount,
             @JsonProperty("candidatesTokenCount") Integer candidatesTokenCount,
-            @JsonProperty("totalTokenCount") Integer totalTokenCount) {
+            @JsonProperty("totalTokenCount") Integer totalTokenCount,
+            @JsonProperty("cachedContentTokenCount") Integer cachedContentTokenCount,
+            @JsonProperty("thoughtsTokenCount") Integer thoughtsTokenCount) {
 
         public static Builder builder() {
             return new Builder();
@@ -64,6 +66,8 @@ record GeminiGenerateContentResponse(
             private Integer promptTokenCount;
             private Integer candidatesTokenCount;
             private Integer totalTokenCount;
+            private Integer cachedContentTokenCount;
+            private Integer thoughtsTokenCount;
 
             private Builder() {}
 
@@ -82,8 +86,23 @@ record GeminiGenerateContentResponse(
                 return this;
             }
 
+            Builder cachedContentTokenCount(Integer cachedContentTokenCount) {
+                this.cachedContentTokenCount = cachedContentTokenCount;
+                return this;
+            }
+
+            Builder thoughtsTokenCount(Integer thoughtsTokenCount) {
+                this.thoughtsTokenCount = thoughtsTokenCount;
+                return this;
+            }
+
             GeminiUsageMetadata build() {
-                return new GeminiUsageMetadata(promptTokenCount, candidatesTokenCount, totalTokenCount);
+                return new GeminiUsageMetadata(
+                        promptTokenCount,
+                        candidatesTokenCount,
+                        totalTokenCount,
+                        cachedContentTokenCount,
+                        thoughtsTokenCount);
             }
         }
     }

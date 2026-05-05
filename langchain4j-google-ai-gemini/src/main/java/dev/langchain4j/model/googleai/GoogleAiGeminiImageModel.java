@@ -227,10 +227,13 @@ public class GoogleAiGeminiImageModel implements ImageModel {
 
         TokenUsage tokenUsage = null;
         if (response.usageMetadata() != null) {
-            tokenUsage = new TokenUsage(
-                    response.usageMetadata().promptTokenCount(),
-                    response.usageMetadata().candidatesTokenCount(),
-                    response.usageMetadata().totalTokenCount());
+            tokenUsage = GoogleAiGeminiTokenUsage.builder()
+                    .inputTokenCount(response.usageMetadata().promptTokenCount())
+                    .outputTokenCount(response.usageMetadata().candidatesTokenCount())
+                    .totalTokenCount(response.usageMetadata().totalTokenCount())
+                    .cachedContentTokenCount(response.usageMetadata().cachedContentTokenCount())
+                    .thoughtsTokenCount(response.usageMetadata().thoughtsTokenCount())
+                    .build();
         }
 
         FinishReason finishReason = null;

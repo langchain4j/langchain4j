@@ -117,10 +117,13 @@ class GeminiStreamingResponseBuilder {
 
     private void updateTokenUsage(GeminiUsageMetadata usageMetadata) {
         if (usageMetadata != null) {
-            TokenUsage tokenUsage = new TokenUsage(
-                    usageMetadata.promptTokenCount(),
-                    usageMetadata.candidatesTokenCount(),
-                    usageMetadata.totalTokenCount());
+            TokenUsage tokenUsage = GoogleAiGeminiTokenUsage.builder()
+                    .inputTokenCount(usageMetadata.promptTokenCount())
+                    .outputTokenCount(usageMetadata.candidatesTokenCount())
+                    .totalTokenCount(usageMetadata.totalTokenCount())
+                    .cachedContentTokenCount(usageMetadata.cachedContentTokenCount())
+                    .thoughtsTokenCount(usageMetadata.thoughtsTokenCount())
+                    .build();
             this.tokenUsage.set(tokenUsage);
         }
     }

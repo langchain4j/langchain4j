@@ -52,6 +52,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
@@ -478,11 +479,6 @@ public class AnthropicMapper {
             // All Anthropic object schemas require setting additionalProperties=false
             // https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-schema-limitations
             map.put("additionalProperties", false);
-
-            if (!objectSchema.definitions().isEmpty()) {
-                map.put("$defs", mapDefs(objectSchema.definitions()));
-            }
-
             return map;
         }
         if (schemaElement instanceof JsonArraySchema arraySchema) {
@@ -499,6 +495,20 @@ public class AnthropicMapper {
             } else {
                 map.put("items", Collections.emptyMap());
             }
+
+            return map;
+        }
+        if (schemaElement instanceof JsonAnyOfSchema anyOfSchema) {
+            Map<String, Object> map = new LinkedHashMap<>();
+
+            if (anyOfSchema.description() != null) {
+                map.put("description", anyOfSchema.description());
+            }
+
+            List<Map<String, Object>> anyOf = anyOfSchema.anyOf().stream()
+                    .map(AnthropicMapper::toAnthropicSchema)
+                    .toList();
+            map.put("anyOf", anyOf);
 
             return map;
         }

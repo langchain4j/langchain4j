@@ -302,12 +302,24 @@ McpClient mcpClient = new DefaultMcpClient.Builder()
 The MCP client supports listeners that can listen to events happening
 during the lifetime of the client. The interface
 `dev.langchain4j.mcp.client.McpClientListener` serves as the base
-for listener implementations. The listener will
-be invoked before and after every tool call, prompt rendering
-and resource access. The respective `McpCallContext` is injected when calling
-the listeners. This object contains the actual MCP message being sent to the
-server and an instance of `InvocationContext` when applicable (only when this
+for listener implementations. Multiple listeners can be registered
+on a single client; they will all be invoked before and after every
+tool call, prompt rendering and resource access. The respective
+`McpCallContext` is injected when calling the listeners. This object
+contains the actual MCP message being sent to the server and an
+instance of `InvocationContext` when applicable (only when this
 call happens as part of an AI service invocation).
+
+Listeners can be added one by one or in bulk:
+
+```java
+McpClient mcpClient = DefaultMcpClient.builder()
+    .transport(transport)
+    .addListener(new MyFirstListener())
+    .addListener(new MySecondListener())
+    .addListeners(List.of(new MyThirdListener(), new MyFourthListener()))
+    .build();
+```
 
 ## Resources
 
