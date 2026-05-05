@@ -2,8 +2,12 @@ package dev.langchain4j.data.document;
 
 import static java.util.Collections.singletonMap;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
@@ -158,6 +162,18 @@ class MetadataTest implements WithAssertions {
         map.put("uuid", uuid);
         map.put("uuid_as_string", uuid.toString());
 
+        List<String> stringList = List.of("A", "B", "C");
+        map.put("string_list", stringList);
+
+        Set<String> stringSet = Set.of("A", "B", "C");
+        map.put("string_set", stringSet);
+
+        List<Double> doublesList = List.of(1.0, 2.0, 3.0);
+        map.put("doubles_list", doublesList);
+
+        Set<Double> doublesSet = Set.of(1.0, 2.0, 3.0);
+        map.put("doubles_set", doublesSet);
+
         // when
         Metadata metadata = new Metadata(map);
 
@@ -203,6 +219,11 @@ class MetadataTest implements WithAssertions {
         assertThat(metadata.getDouble("double_as_long")).isEqualTo(1d);
         assertThat(metadata.getDouble("double_as_float")).isEqualTo(1d);
         assertThat(metadata.getDouble("banana")).isNull();
+
+        assertThat(metadata.getStrings("string_list")).contains("A", "B", "C");
+        assertThat(metadata.getStrings("string_set")).contains("A", "B", "C");
+        assertThat(metadata.getDoubles("doubles_list")).contains(1.0, 2.0, 3.0);
+        assertThat(metadata.getDoubles("doubles_set")).contains(1.0, 2.0, 3.0);
     }
 
     @ParameterizedTest
@@ -254,14 +275,34 @@ class MetadataTest implements WithAssertions {
                 .hasMessageStartingWith("The metadata key 'key' has the value")
                 .hasMessageEndingWith("which is of the unsupported type 'java.lang.Object'. "
                         + "Currently, the supported types are: [class java.lang.String, class java.util.UUID, int, class java.lang.Integer, "
-                        + "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double]");
+                        + "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double, interface java.util.Collection]");
 
         assertThatThrownBy(() -> Metadata.from(map))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageStartingWith("The metadata key 'key' has the value")
                 .hasMessageEndingWith("which is of the unsupported type 'java.lang.Object'. "
                         + "Currently, the supported types are: [class java.lang.String, class java.util.UUID, int, class java.lang.Integer, "
-                        + "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double]");
+                        + "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double, interface java.util.Collection]");
+    }
+
+    @Test
+    void should_fail_when_collection_contains_unsupported_type() {
+        List<Object> invalid = List.of(new Object());
+
+        assertThatThrownBy(() -> new Metadata().put("key", invalid))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("unsupported type");
+    }
+
+    @Test
+    void should_fail_when_collection_has_mixed_types() {
+        List<Object> mixed = List.of("A", 1);
+
+        Metadata metadata = new Metadata();
+
+        assertThatThrownBy(() -> metadata.put("mixed", mixed))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("mixed types");
     }
 
     @Test
@@ -324,6 +365,10 @@ class MetadataTest implements WithAssertions {
         assertThatThrownBy(() -> metadata.put(null, 1d))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("The metadata key with the value '1.0' cannot be null or blank");
+
+        assertThatThrownBy(() -> metadata.put(null, List.of()))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The metadata key with the value '[]' cannot be null or blank");
     }
 
     @Test
@@ -340,6 +385,27 @@ class MetadataTest implements WithAssertions {
         assertThatThrownBy(() -> metadata.put("key", (UUID) null))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("The metadata value for the key 'key' cannot be null");
+
+        assertThatThrownBy(() -> metadata.put("key", (Collection<?>) null))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The metadata value for the key 'key' cannot be null");
+    }
+
+    @Test
+    void should_copy_collection_defensively() {
+        List<String> original = new ArrayList<>(List.of("a", "b"));
+        Metadata metadata1 = new Metadata().put("string_list", original);
+
+        // Changing the original list shouldn't change the Metadata
+        original.add("c");
+        assertThat(metadata1.getStrings("string_list")).containsExactly("a", "b");
+
+        // copy() should work independently:
+        Metadata metadata2 = metadata1.copy();
+        assertThat(metadata1).isEqualTo(metadata2);
+
+        metadata2.put("other_string_list", List.of("x", "y"));
+        assertThat(metadata1.getStrings("string_list")).containsExactly("a", "b");
     }
 
     @Test
@@ -353,6 +419,7 @@ class MetadataTest implements WithAssertions {
         originalMap.put("long", 1L);
         originalMap.put("float", 1f);
         originalMap.put("double", 1d);
+        originalMap.put("strings", List.of("a", "b"));
         Metadata metadata = Metadata.from(originalMap);
 
         // when

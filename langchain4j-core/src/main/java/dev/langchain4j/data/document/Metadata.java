@@ -7,13 +7,18 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -51,6 +56,8 @@ public class Metadata {
 
         SUPPORTED_VALUE_TYPES.add(double.class);
         SUPPORTED_VALUE_TYPES.add(Double.class);
+
+        SUPPORTED_VALUE_TYPES.add(Collection.class);
     }
 
     private final Map<String, Object> metadata;
@@ -66,7 +73,7 @@ public class Metadata {
      * Constructs a Metadata object from a map of key-value pairs.
      *
      * @param metadata the map of key-value pairs; must not be {@code null}. {@code null} values are not permitted.
-     *                 Supported value types: {@link String}, {@link Integer}, {@link Long}, {@link Float}, {@link Double}, {@link UUID}
+     *                 Supported value types: {@link String}, {@link Integer}, {@link Long}, {@link Float}, {@link Double}, {@link UUID}, {@link Collection}
      */
     public Metadata(Map<String, ?> metadata) {
         validate(metadata);
@@ -76,11 +83,10 @@ public class Metadata {
     private static void validate(Map<String, ?> metadata) {
         ensureNotNull(metadata, "metadata").forEach((key, value) -> {
             validate(key, value);
-            if (!SUPPORTED_VALUE_TYPES.contains(value.getClass())) {
-                throw illegalArgument(
-                        "The metadata key '%s' has the value '%s', which is of the unsupported type '%s'. "
-                                + "Currently, the supported types are: %s",
-                        key, value, value.getClass().getName(), SUPPORTED_VALUE_TYPES);
+            if (value instanceof Collection<?>) {
+                validateCollection(key, (Collection<?>) value);
+            } else {
+                validateValue(key, value);
             }
         });
     }
@@ -88,6 +94,93 @@ public class Metadata {
     private static void validate(String key, Object value) {
         ensureNotBlank(key, "The metadata key with the value '" + value + "'");
         ensureNotNull(value, "The metadata value for the key '" + key + "'");
+    }
+
+    private static void validateValue(String key, Object value) {
+        if (!SUPPORTED_VALUE_TYPES.contains(value.getClass())) {
+            throw illegalArgument(
+                    "The metadata key '%s' has the value '%s', which is of the unsupported type '%s'. "
+                            + "Currently, the supported types are: %s",
+                    key, value, value.getClass().getName(), SUPPORTED_VALUE_TYPES
+            );
+        }
+    }
+
+    private static void validateCollection(String key, Collection<?> values) {
+        Class<?> collectionType = null;
+
+        for (Object value : values) {
+            validateValue(key, value);
+
+            if (collectionType == null) {
+                collectionType = value.getClass();
+            } else if (!collectionType.equals(value.getClass())) {
+                throw illegalArgument(
+                        "The metadata key '%s' has a collection value with mixed types. "
+                                + "Currently, all values in a collection must be of the same type. "
+                                + "Offending value: '%s' of type '%s'. Expected type: '%s'.",
+                        key, value, value.getClass().getName(), collectionType.getName()
+                );
+            }
+        }
+    }
+
+    private <T> Collection<T> getCollection(String key, Class<T> type) {
+        Object value = metadata.get(key);
+
+        if (value == null) {
+            return Collections.emptyList();
+        }
+
+        if (value instanceof Collection<?> collection) {
+            if (collection.isEmpty()) {
+                return Collections.emptyList();
+            }
+
+            return collection.stream()
+                    .map(element -> convertElement(key, element, type))
+                    .collect(Collectors.toList());
+        }
+
+        throw runtime(
+                "Metadata entry with the key '%s' has a value of '%s' and type '%s'. "
+                        + "It cannot be returned as a Collection.",
+                key, value, value.getClass().getName());
+    }
+
+    /**
+     * Some {@link EmbeddingStore} implementations store values as Strings or numbers as Long.
+     * Because of that, we have to convert the {@link EmbeddingStore}s specific value to the requested format.
+     * @param key the key
+     * @param element the element to convert
+     * @param type the type expected to be received
+     * @return the converted value associated with the key
+     */
+    @SuppressWarnings("unchecked")
+    private <T> T convertElement(String key, Object element, Class<T> type) {
+        if (type.isInstance(element)) {
+            return (T) element;
+        }
+
+        if (element instanceof String string) {
+            if (type == Integer.class) return (T) Integer.valueOf(Integer.parseInt(string));
+            if (type == Long.class)    return (T) Long.valueOf(Long.parseLong(string));
+            if (type == Float.class)   return (T) Float.valueOf(Float.parseFloat(string));
+            if (type == Double.class)  return (T) Double.valueOf(Double.parseDouble(string));
+            if (type == UUID.class)    return (T) UUID.fromString(string);
+        }
+
+        if (element instanceof Number number) {
+            if (type == Integer.class) return (T) Integer.valueOf(number.intValue());
+            if (type == Long.class)    return (T) Long.valueOf(number.longValue());
+            if (type == Float.class)   return (T) Float.valueOf(number.floatValue());
+            if (type == Double.class)  return (T) Double.valueOf(number.doubleValue());
+        }
+
+        throw runtime(
+                "Metadata entry with the key '%s' has a collection element '%s' of type '%s'. "
+                        + "It cannot be converted to %s.",
+                key, element, element.getClass().getName(), type.getSimpleName());
     }
 
     /**
@@ -282,6 +375,72 @@ public class Metadata {
     }
 
     /**
+     * Returns the {@code Collection<String>} associated with the given key.
+     *
+     * @param key the key
+     * @return the {@code Collection<String>} associated with the given key, or an empty collection if the key is not present.
+     * @throws RuntimeException if the value is not a collection or cannot be converted to {@code String}
+     */
+    public Collection<String> getStrings(String key) {
+        return getCollection(key, String.class);
+    }
+
+    /**
+     * Returns the {@code Collection<Integer>} associated with the given key.
+     *
+     * @param key the key
+     * @return the {@code Collection<Integer>} associated with the given key, or an empty collection if the key is not present.
+     * @throws RuntimeException if the value is not a collection or cannot be converted to {@code Integer}
+     */
+    public Collection<Integer> getIntegers(String key) {
+        return getCollection(key, Integer.class);
+    }
+
+    /**
+     * Returns the {@code Collection<Long>} associated with the given key.
+     *
+     * @param key the key
+     * @return the {@code Collection<Long>} associated with the given key, or an empty collection if the key is not present.
+     * @throws RuntimeException if the value is not a collection or cannot be converted to {@code Long}
+     */
+    public Collection<Long> getLongs(String key) {
+        return getCollection(key, Long.class);
+    }
+
+    /**
+     * Returns the {@code Collection<Float>} associated with the given key.
+     *
+     * @param key the key
+     * @return the {@code Collection<Float>} associated with the given key, or an empty collection if the key is not present.
+     * @throws RuntimeException if the value is not a collection or cannot be converted to {@code Float}
+     */
+    public Collection<Float> getFloats(String key) {
+        return getCollection(key, Float.class);
+    }
+
+    /**
+     * Returns the {@code Collection<Double>} associated with the given key.
+     *
+     * @param key the key
+     * @return the {@code Collection<Double>} associated with the given key, or an empty collection if the key is not present.
+     * @throws RuntimeException if the value is not a collection or cannot be converted to {@code Double}
+     */
+    public Collection<Double> getDoubles(String key) {
+        return getCollection(key, Double.class);
+    }
+
+    /**
+     * Returns the {@code Collection<UUID>} associated with the given key.
+     *
+     * @param key the key
+     * @return the {@code Collection<UUID>} associated with the given key, or an empty collection if the key is not present.
+     * @throws RuntimeException if the value is not a collection or cannot be converted to {@code UUID}
+     */
+    public Collection<UUID> getUUIDs(String key) {
+        return getCollection(key, UUID.class);
+    }
+
+    /**
      * Check whether this {@code Metadata} contains a given key.
      *
      * @param key the key
@@ -366,6 +525,20 @@ public class Metadata {
     public Metadata put(String key, double value) {
         validate(key, value);
         this.metadata.put(key, value);
+        return this;
+    }
+
+    /**
+     * Adds a key-value pair to the metadata.
+     *
+     * @param key   the key
+     * @param values the values; must not be {@code null} or empty; elements must not be {@code null}
+     * @return {@code this}
+     */
+    public Metadata put(String key, Collection<?> values) {
+        validate(key, values);
+        validateCollection(key, values);
+        this.metadata.put(key, List.copyOf(values));
         return this;
     }
 
