@@ -10,7 +10,7 @@
     </parent>
 
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>1.15.0-beta25-SNAPSHOT</version>
+    <version>${langchain4j.beta.version}</version>
     <name>LangChain4j :: Integration :: Google AI Gemini</name>
 
     <developers>
@@ -30,19 +30,19 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.15.0-beta25-SNAPSHOT</version>
+            <version>${langchain4j.beta.version}</version>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-http-client</artifactId>
-            <version>1.15.0-beta25-SNAPSHOT</version>
+            <version>${langchain4j.beta.version}</version>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-http-client-jdk</artifactId>
-            <version>1.15.0-beta25-SNAPSHOT</version>
+            <version>${langchain4j.beta.version}</version>
             <scope>runtime</scope>
         </dependency>
 
@@ -66,7 +66,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.15.0-beta25-SNAPSHOT</version>
+            <version>${langchain4j.beta.version}</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -75,7 +75,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-http-client</artifactId>
-            <version>1.15.0-beta25-SNAPSHOT</version>
+            <version>${langchain4j.beta.version}</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -84,14 +84,14 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.15.0-beta25-SNAPSHOT</version>
+            <version>${langchain4j.beta.version}</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.15.0-beta25-SNAPSHOT</version>
+            <version>${langchain4j.beta.version}</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>

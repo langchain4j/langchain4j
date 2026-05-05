@@ -10,7 +10,6 @@
     </parent>
 
     <artifactId>langchain4j-bom</artifactId>
-    <version>1.15.0-beta25-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: BOM</name>
@@ -27,13 +26,13 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-core</artifactId>
-                <version>${langchain4j.stable.version}</version>
+                <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j</artifactId>
-                <version>${langchain4j.stable.version}</version>
+                <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
@@ -45,13 +44,13 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-http-client</artifactId>
-                <version>${langchain4j.stable.version}</version>
+                <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-http-client-jdk</artifactId>
-                <version>${langchain4j.stable.version}</version>
+                <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
@@ -95,19 +94,19 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-anthropic</artifactId>
-                <version>${langchain4j.stable.version}</version>
+                <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-azure-open-ai</artifactId>
-                <version>${langchain4j.stable.version}</version>
+                <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-bedrock</artifactId>
-                <version>${langchain4j.stable.version}</version>
+                <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
@@ -155,7 +154,7 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-mistral-ai</artifactId>
-                <version>${langchain4j.stable.version}</version>
+                <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
@@ -167,13 +166,13 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-ollama</artifactId>
-                <version>${langchain4j.stable.version}</version>
+                <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-open-ai</artifactId>
-                <version>${langchain4j.stable.version}</version>
+                <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
@@ -203,13 +202,13 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-vertex-ai-anthropic</artifactId>
-                <version>1.15.0-beta25-SNAPSHOT</version>
+                <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-google-ai-gemini</artifactId>
-                <version>${langchain4j.stable.version}</version>
+                <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>

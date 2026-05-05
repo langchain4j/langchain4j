@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>langchain4j-bedrock</artifactId>
-    <version>1.15.0-beta25-SNAPSHOT</version>
+    <version>${langchain4j.beta.version}</version>
     <name>LangChain4j :: Integration :: Amazon Bedrock</name>
 
     <dependencyManagement>
@@ -32,7 +32,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.15.0-beta25-SNAPSHOT</version>
+            <version>${langchain4j.beta.version}</version>
         </dependency>
 
         <dependency>
@@ -65,7 +65,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.15.0-beta25-SNAPSHOT</version>
+            <version>${langchain4j.beta.version}</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -74,14 +74,14 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.15.0-beta25-SNAPSHOT</version>
+            <version>${langchain4j.beta.version}</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.15.0-beta25-SNAPSHOT</version>
+            <version>${langchain4j.beta.version}</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
