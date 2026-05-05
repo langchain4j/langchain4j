@@ -626,6 +626,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 .url(baseUrl, "models")
                 .addHeader("x-api-key", apiKey)
                 .addHeader("anthropic-version", version)
+                .addHeaders(customHeadersSupplier.get())
                 .build();
         SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
         return fromJson(successfulHttpResponse.body(), AnthropicModelsListResponse.class);
