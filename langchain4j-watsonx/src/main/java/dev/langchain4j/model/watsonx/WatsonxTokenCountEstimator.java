@@ -89,17 +89,17 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
                 List<CompletableFuture<TokenizationResponse>> futures = new ArrayList<>();
 
                 if (isNotNullOrEmpty(aiMessage.thinking()))
-                    futures.add(tokenizationService.asyncTokenize(aiMessage.thinking()));
+                    futures.add(tokenizationService.tokenizeAsync(aiMessage.thinking()));
 
                 if (isNotNullOrEmpty(aiMessage.text()))
-                    futures.add(tokenizationService.asyncTokenize(aiMessage.text()));
+                    futures.add(tokenizationService.tokenizeAsync(aiMessage.text()));
 
                 if (aiMessage.hasToolExecutionRequests()) {
                     for (var toolExecutionRequest : aiMessage.toolExecutionRequests()) {
-                        futures.add(tokenizationService.asyncTokenize(toolExecutionRequest.id()));
-                        futures.add(tokenizationService.asyncTokenize(toolExecutionRequest.name()));
+                        futures.add(tokenizationService.tokenizeAsync(toolExecutionRequest.id()));
+                        futures.add(tokenizationService.tokenizeAsync(toolExecutionRequest.name()));
                         if (!isNullOrBlank(toolExecutionRequest.arguments()))
-                            futures.add(tokenizationService.asyncTokenize(toolExecutionRequest.arguments()));
+                            futures.add(tokenizationService.tokenizeAsync(toolExecutionRequest.arguments()));
                     }
                 }
 
@@ -117,11 +117,11 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
                 List<CompletableFuture<TokenizationResponse>> futures = new ArrayList<>();
 
                 if (isNotNullOrBlank(userMessage.name()))
-                    futures.add(tokenizationService.asyncTokenize(userMessage.name()));
+                    futures.add(tokenizationService.tokenizeAsync(userMessage.name()));
 
                 for (Content content : userMessage.contents()) {
                     switch (content.type()) {
-                        case TEXT -> futures.add(tokenizationService.asyncTokenize(((TextContent) content).text()));
+                        case TEXT -> futures.add(tokenizationService.tokenizeAsync(((TextContent) content).text()));
                         case AUDIO, IMAGE, PDF, VIDEO ->
                             throw new UnsupportedOperationException(
                                     "The " + content.type().name()

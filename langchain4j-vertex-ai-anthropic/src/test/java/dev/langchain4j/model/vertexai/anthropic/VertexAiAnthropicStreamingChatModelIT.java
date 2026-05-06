@@ -2,6 +2,7 @@ package dev.langchain4j.model.vertexai.anthropic;
 
 import static dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicFixtures.DEFAULT_LOCATION;
 import static dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicFixtures.DEFAULT_MODEL_NAME;
+import static org.junit.jupiter.api.condition.JRE.JAVA_17;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeast;
@@ -14,35 +15,41 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.condition.EnabledOnJre;
 import org.mockito.InOrder;
 
+@EnabledIf(
+        value = "dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicChatModelIT#isMonday",
+        disabledReason = "Not enough quota to run it more often")
+@EnabledOnJre(value = JAVA_17, disabledReason = "Not enough quota to run it more often")
 @EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")
 class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
-    static final StreamingChatModel VERTEX_AI_ANTHROPIC_STREAMING_CHAT_MODEL =
-            VertexAiAnthropicStreamingChatModel.builder()
-                    .project(System.getenv("GCP_PROJECT_ID"))
-                    .location(DEFAULT_LOCATION)
-                    .modelName(DEFAULT_MODEL_NAME)
-                    .temperature(0.0)
-                    .logRequests(false)
-                    .logResponses(true)
-                    .build();
+    private final StreamingChatModel model = VertexAiAnthropicStreamingChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(DEFAULT_LOCATION)
+            .modelName(DEFAULT_MODEL_NAME)
+            .temperature(0.0)
+            .logRequests(false)
+            .logResponses(true)
+            .build();
 
     @Override
     protected List<StreamingChatModel> models() {
-        return List.of(VERTEX_AI_ANTHROPIC_STREAMING_CHAT_MODEL);
+        return List.of(model);
     }
 
     @Override
     protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
         VertexAiAnthropicStreamingChatModel.VertexAiAnthropicStreamingChatModelBuilder
                 vertexAiAnthropicStreamingChatModelBuilder = VertexAiAnthropicStreamingChatModel.builder()
-                .project(System.getenv("GCP_PROJECT_ID"))
-                .location(DEFAULT_LOCATION)
-                .logRequests(true)
-                .logResponses(true);
+                        .project(System.getenv("GCP_PROJECT_ID"))
+                        .location(DEFAULT_LOCATION)
+                        .logRequests(true)
+                        .logResponses(true);
         if (parameters.modelName() == null) {
             vertexAiAnthropicStreamingChatModelBuilder.modelName(DEFAULT_MODEL_NAME);
         } else {
@@ -139,15 +146,13 @@ class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT
         io.verify(handler, atLeast(0)).onPartialResponse(any());
 
         // Vertex AI Anthropic doesn't support partial tool streaming, so we only verify onCompleteToolCall
-        io.verify(handler).onCompleteToolCall(argThat(toolCall ->
-                {
-                    ToolExecutionRequest request = toolCall.toolExecutionRequest();
-                    return toolCall.index() == 0
-                            && request.id().equals(id)
-                            && request.name().equals("getWeather")
-                            && request.arguments().replaceAll("\\s+", "").equals("{\"city\":\"Munich\"}");
-                }
-        ));
+        io.verify(handler).onCompleteToolCall(argThat(toolCall -> {
+            ToolExecutionRequest request = toolCall.toolExecutionRequest();
+            return toolCall.index() == 0
+                    && request.id().equals(id)
+                    && request.name().equals("getWeather")
+                    && request.arguments().replaceAll("\\s+", "").equals("{\"city\":\"Munich\"}");
+        }));
     }
 
     @Override
@@ -155,24 +160,20 @@ class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT
         // Handle multiple tool calls - account for onPartialResponse calls first
         io.verify(handler, atLeast(0)).onPartialResponse(any());
 
-        io.verify(handler).onCompleteToolCall(argThat(toolCall ->
-                {
-                    ToolExecutionRequest request = toolCall.toolExecutionRequest();
-                    return toolCall.index() == 0
-                            && request.id().equals(id1)
-                            && request.name().equals("getWeather")
-                            && request.arguments().replaceAll("\\s+", "").equals("{\"city\":\"Munich\"}");
-                }
-        ));
-        io.verify(handler).onCompleteToolCall(argThat(toolCall ->
-                {
-                    ToolExecutionRequest request = toolCall.toolExecutionRequest();
-                    return toolCall.index() == 1
-                            && request.id().equals(id2)
-                            && request.name().equals("getTime")
-                            && request.arguments().replaceAll("\\s+", "").equals("{\"country\":\"France\"}");
-                }
-        ));
+        io.verify(handler).onCompleteToolCall(argThat(toolCall -> {
+            ToolExecutionRequest request = toolCall.toolExecutionRequest();
+            return toolCall.index() == 0
+                    && request.id().equals(id1)
+                    && request.name().equals("getWeather")
+                    && request.arguments().replaceAll("\\s+", "").equals("{\"city\":\"Munich\"}");
+        }));
+        io.verify(handler).onCompleteToolCall(argThat(toolCall -> {
+            ToolExecutionRequest request = toolCall.toolExecutionRequest();
+            return toolCall.index() == 1
+                    && request.id().equals(id2)
+                    && request.name().equals("getTime")
+                    && request.arguments().replaceAll("\\s+", "").equals("{\"country\":\"France\"}");
+        }));
     }
 
     @Override
@@ -183,5 +184,13 @@ class VertexAiAnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT
     @Override
     protected boolean assertExceptionType() {
         return false; // Streaming exceptions get wrapped in RuntimeException/ExecutionException
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_VERTEX_AI_ANTHROPIC");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }

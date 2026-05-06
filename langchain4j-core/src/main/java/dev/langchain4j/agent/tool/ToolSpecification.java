@@ -1,15 +1,15 @@
 package dev.langchain4j.agent.tool;
 
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.mutableCopy;
 import static dev.langchain4j.internal.Utils.quoted;
+
+import dev.langchain4j.internal.ToolSpecificationJsonUtils;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * Describes a tool that language model can execute.
@@ -77,8 +77,7 @@ public class ToolSpecification {
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof ToolSpecification ts
-                && equalTo(ts);
+        return another instanceof ToolSpecification ts && equalTo(ts);
     }
 
     private boolean equalTo(ToolSpecification another) {
@@ -106,6 +105,27 @@ public class ToolSpecification {
                 + ", parameters = " + parameters
                 + ", metadata = " + metadata
                 + " }";
+    }
+
+    /**
+     * Serializes this {@link ToolSpecification} to a JSON string.
+     *
+     * @return a JSON string representing this tool specification.
+     * @see #fromJson(String)
+     */
+    public String toJson() {
+        return ToolSpecificationJsonUtils.toJson(this);
+    }
+
+    /**
+     * Deserializes a {@link ToolSpecification} from a JSON string.
+     *
+     * @param json the JSON string to deserialize.
+     * @return the deserialized {@link ToolSpecification}.
+     * @see #toJson()
+     */
+    public static ToolSpecification fromJson(String json) {
+        return ToolSpecificationJsonUtils.fromJson(json);
     }
 
     public Builder toBuilder() {

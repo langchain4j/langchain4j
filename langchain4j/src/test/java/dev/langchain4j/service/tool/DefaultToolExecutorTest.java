@@ -291,6 +291,49 @@ class DefaultToolExecutorTest implements WithAssertions {
         }
     }
 
+    private static class ThrowingTool {
+
+        @Tool
+        public String throwsWithMessage() {
+            throw new IllegalStateException("something went wrong");
+        }
+
+        @Tool
+        public String throwsWithoutMessage() {
+            throw new NullPointerException();
+        }
+    }
+
+    @Test
+    void tool_exception_with_message_is_returned_as_error() throws NoSuchMethodException {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("throwsWithMessage")
+                .arguments("{}")
+                .build();
+
+        DefaultToolExecutor executor =
+                new DefaultToolExecutor(new ThrowingTool(), ThrowingTool.class.getDeclaredMethod("throwsWithMessage"));
+
+        String result = executor.execute(request, "DEFAULT");
+        assertThat(result).isEqualTo("something went wrong");
+    }
+
+    @Test
+    void tool_exception_without_message_falls_back_to_class_name() throws NoSuchMethodException {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("throwsWithoutMessage")
+                .arguments("{}")
+                .build();
+
+        DefaultToolExecutor executor = new DefaultToolExecutor(
+                new ThrowingTool(), ThrowingTool.class.getDeclaredMethod("throwsWithoutMessage"));
+
+        String result = executor.execute(request, "DEFAULT");
+        assertThat(result).isEqualTo(NullPointerException.class.getName());
+    }
+
     @Test
     void should_execute_tool_by_method_name() throws NoSuchMethodException {
         ToolExecutionRequest request = ToolExecutionRequest.builder()
@@ -448,9 +491,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor2 = new DefaultToolExecutor(new PersonTool(), request2);
         String result2 = toolExecutor2.execute(request2, "DEFAULT");
-        assertThat(result2)
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(result2).isEqualToIgnoringWhitespace("""
                 [
                   {
                     "name": "Klaus",
@@ -469,9 +510,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor3 = new DefaultToolExecutor(new PersonTool(), request3);
         String result3 = toolExecutor3.execute(request3, "DEFAULT");
-        assertThat(result3)
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(result3).isEqualToIgnoringWhitespace("""
                 [
                   {
                     "name": "Peter",
@@ -491,9 +530,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor4 = new DefaultToolExecutor(new PersonTool(), request4);
         String result4 = toolExecutor4.execute(request4, "DEFAULT");
-        assertThat(result4)
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(result4).isEqualToIgnoringWhitespace("""
                 {
                   "p1": {
                     "name": "Klaus",
@@ -512,9 +549,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor5 = new DefaultToolExecutor(new PersonTool(), request5);
         String result5 = toolExecutor5.execute(request5, "DEFAULT");
-        assertThat(result5)
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(result5).isEqualToIgnoringWhitespace("""
                 [
                   {
                     "name": "Klaus",

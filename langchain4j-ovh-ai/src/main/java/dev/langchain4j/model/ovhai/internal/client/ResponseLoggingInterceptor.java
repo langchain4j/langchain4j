@@ -10,7 +10,10 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ovhai.internal.client.RequestLoggingInterceptor.inOneLine;
 import java.io.IOException;
 
-
+/**
+ * @deprecated Do not use anymore, use {@code langchain4j-open-ai} module instead
+ */
+@Deprecated(forRemoval = true, since = "1.14.0")
 class ResponseLoggingInterceptor implements Interceptor {
 
     private static final Logger DEFAULT_LOG = LoggerFactory.getLogger(ResponseLoggingInterceptor.class);

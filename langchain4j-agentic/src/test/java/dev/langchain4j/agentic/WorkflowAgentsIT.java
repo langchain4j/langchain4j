@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
@@ -144,6 +146,63 @@ public class WorkflowAgentsIT {
     }
 
     @Test
+    void optional_agent_test() {
+        CreativeWriter creativeWriter = spy(AgenticServices.agentBuilder(CreativeWriter.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build());
+
+        AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
+                .chatModel(baseModel())
+                .optional(true)
+                .outputKey("story")
+                .build());
+
+        StyleEditor styleEditor = spy(AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build());
+
+        List<?> subagents = List.of(creativeWriter, audienceEditor, styleEditor);
+
+        UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+                .subAgents(subagents)
+                .outputKey("story")
+                .build();
+
+        Map<String, Object> completeInput = Map.of(
+                "topic", "dragons and wizards",
+                "style", "fantasy",
+                "audience", "young adults");
+
+        novelCreator.invoke(completeInput);
+
+        verify(creativeWriter).generateStory("dragons and wizards");
+        verify(audienceEditor).editStory(any(), eq("young adults"));
+        verify(styleEditor).editStory(any(), eq("fantasy"));
+
+        reset(creativeWriter, audienceEditor, styleEditor);
+
+        Map<String, Object> missingAudienceInput = Map.of(
+                "topic", "dragons and wizards",
+                "style", "fantasy");
+
+        novelCreator.invoke(missingAudienceInput);
+
+        verify(creativeWriter).generateStory("dragons and wizards");
+        verify(audienceEditor, never())
+                .editStory(any(), any()); // audienceEditor should be skipped due to missing argument
+        verify(styleEditor).editStory(any(), eq("fantasy"));
+
+        Map<String, Object> missingStyleInput = Map.of(
+                "topic", "dragons and wizards",
+                "audience", "young adults");
+
+        assertThat(assertThrows(MissingArgumentException.class, () -> novelCreator.invoke(missingStyleInput)))
+                .hasMessageContaining("style");
+    }
+
+    @Test
     void agent_with_programmatic_user_message_test() {
         // the UserMessage is passed as an argument when invoking the agent
 
@@ -168,8 +227,7 @@ public class WorkflowAgentsIT {
                 .build();
 
         Map<String, Object> input = Map.of(
-                "userMessage",
-                        """
+                "userMessage", """
                                You are a creative writer.
                                Generate a draft of a story long no more than 3 sentence around the given topic.
                                Return only the story and nothing else.
@@ -192,9 +250,7 @@ public class WorkflowAgentsIT {
 
         CreativeWriterWithArgMessage creativeWriter = AgenticServices.agentBuilder(CreativeWriterWithArgMessage.class)
                 .chatModel(baseModel())
-                .defaultKeyValue(
-                        "userMessage",
-                        """
+                .defaultKeyValue("userMessage", """
                                You are a creative writer.
                                Generate a draft of a story long no more than 3 sentence around the given topic.
                                Return only the story and nothing else.
@@ -258,13 +314,37 @@ public class WorkflowAgentsIT {
     }
 
     @Test
-    void sequential_agents_with_error_recovery_tests() {
+    void sequential_declarative_agents_with_error_recovery_tests() {
+        sequential_agents_with_error_recovery_tests(false);
+    }
+
+    @Test
+    void sequential_programmatic_agents_with_error_recovery_tests() {
+        sequential_agents_with_error_recovery_tests(true);
+    }
+
+    void sequential_agents_with_error_recovery_tests(boolean useProgrammaticAgent) {
         AtomicBoolean errorRecoveryCalled = new AtomicBoolean(false);
 
-        CreativeWriter creativeWriter = spy(AgenticServices.agentBuilder(CreativeWriter.class)
+        Object creativeWriter = useProgrammaticAgent ?
+            AgenticServices.agentBuilder()
+                .chatModel(baseModel())
+                .name("generateStory")
+                .description("Generate a story based on the given topic")
+                .userMessage("""
+                    You are a creative writer.
+                    Generate a draft of a story long no more than 3 sentence around the given topic.
+                    Return only the story and nothing else.
+                    The topic is {{topic}}.
+                    """)
+                .inputKey(String.class, "topic")
+                .returnType(String.class) // String is the default return type for untyped agents
+                .outputKey("story")
+                .build() :
+            AgenticServices.agentBuilder(CreativeWriter.class)
                 .chatModel(baseModel())
                 .outputKey("story")
-                .build());
+                .build();
 
         AudienceEditor audienceEditor = spy(AgenticServices.agentBuilder(AudienceEditor.class)
                 .chatModel(baseModel())
@@ -302,7 +382,6 @@ public class WorkflowAgentsIT {
 
         assertThat(errorRecoveryCalled.get()).isTrue();
 
-        verify(creativeWriter).generateStory("dragons and wizards");
         verify(audienceEditor).editStory(any(), eq("young adults"));
         verify(styleEditor).editStory(any(), eq("fantasy"));
     }
@@ -554,11 +633,13 @@ public class WorkflowAgentsIT {
 
         assertThat(topLevelInvocation.nestedInvocations()).hasSize(2);
         assertThat(topLevelInvocation.nestedInvocations().get(0).agent().name()).isEqualTo("generateStory");
+        assertThat(topLevelInvocation.nestedInvocations().get(0).totalTokenCount())
+                .isGreaterThan(0);
         assertThat(topLevelInvocation.nestedInvocations().get(1).agent().name()).isEqualTo("reviewLoop");
 
         System.out.println(execution);
 
-        //        generateReport(monitor, Path.of("src", "test", "resources", "review-loop.html"));
+        //                generateReport(monitor, Path.of("src", "test", "resources", "review-loop.html"));
     }
 
     @Test
@@ -900,11 +981,12 @@ public class WorkflowAgentsIT {
                         technicalExpert)
                 .build();
 
-        assertThat(assertThrows(AgenticSystemConfigurationException.class, () -> AgenticServices.sequenceBuilder(
-                                ExpertRouterAgent.class)
-                        .subAgents(routerAgent, expertsAgent)
-                        .outputKey("response")
-                        .build()))
+        assertThat(assertThrows(
+                        AgenticSystemConfigurationException.class,
+                        () -> AgenticServices.sequenceBuilder(ExpertRouterAgent.class)
+                                .subAgents(routerAgent, expertsAgent)
+                                .outputKey("response")
+                                .build()))
                 .hasMessageContaining("category");
     }
 
@@ -1116,8 +1198,7 @@ public class WorkflowAgentsIT {
 
     public interface FoodExpertWithNotification {
 
-        @UserMessage(
-                """
+        @UserMessage("""
             You are a great evening planner.
             Propose a list of 3 meals matching the given mood.
             The mood is {{mood}}.
@@ -1133,8 +1214,7 @@ public class WorkflowAgentsIT {
 
     public interface MovieExpertWithNotification {
 
-        @UserMessage(
-                """
+        @UserMessage("""
             You are a great evening planner.
             Propose a list of 3 movies matching the given mood.
             The mood is {{mood}}.
@@ -1174,8 +1254,7 @@ public class WorkflowAgentsIT {
 
     public interface CreativeWriterDeclarative {
 
-        @UserMessage(
-                """
+        @UserMessage("""
                 You are a creative writer.
                 Generate a draft of a story long no more than 3 sentence around the given topic.
                 Return only the story and nothing else.
@@ -1192,8 +1271,7 @@ public class WorkflowAgentsIT {
 
     public interface AudienceEditorDeclarative {
 
-        @UserMessage(
-                """
+        @UserMessage("""
             You are a professional editor.
             Analyze and rewrite the following story to better align with the target audience of {{audience}}.
             Return only the story and nothing else.
@@ -1213,12 +1291,10 @@ public class WorkflowAgentsIT {
     public record Person(String name, String sign) {}
 
     public interface PersonAstrologyAgent {
-        @SystemMessage(
-                """
+        @SystemMessage("""
             You are an astrologist that generates horoscopes based on the user's name and zodiac sign.
             """)
-        @UserMessage(
-                """
+        @UserMessage("""
             Generate the horoscope for {{person}}.
             The person has a name and a zodiac sign. Use both to create a personalized horoscope.
             """)
@@ -1251,8 +1327,11 @@ public class WorkflowAgentsIT {
         assertThat(subagent.name()).isEqualTo("horoscope");
         assertThat(subagent.outputKey()).isEqualTo("horoscope");
 
-        String[] horoscopes = agent.generateHoroscopes(new Person("Mario", "aries"), new Person("Luigi", "pisces"), new Person("Peach", "leo"));
-        assertThat(horoscopes).hasSize(3).allSatisfy(horoscope -> assertThat(horoscope).isNotBlank());
+        String[] horoscopes = agent.generateHoroscopes(
+                new Person("Mario", "aries"), new Person("Luigi", "pisces"), new Person("Peach", "leo"));
+        assertThat(horoscopes)
+                .hasSize(3)
+                .allSatisfy(horoscope -> assertThat(horoscope).isNotBlank());
     }
 
     @Test
@@ -1263,9 +1342,13 @@ public class WorkflowAgentsIT {
                 .outputKey("horoscope")
                 .build();
 
-        assertThat(assertThrows(Exception.class, () -> AgenticServices.parallelMapperBuilder(BatchHoroscopeAgent.class)
-                .subAgents(personAstrologyAgent)
-                .build())).rootCause().isInstanceOf(AgenticSystemConfigurationException.class);
+        assertThat(assertThrows(
+                        Exception.class,
+                        () -> AgenticServices.parallelMapperBuilder(BatchHoroscopeAgent.class)
+                                .subAgents(personAstrologyAgent)
+                                .build()))
+                .rootCause()
+                .isInstanceOf(AgenticSystemConfigurationException.class);
     }
 
     @Test
@@ -1285,7 +1368,9 @@ public class WorkflowAgentsIT {
                 .build();
 
         List<String> horoscopes = (List<String>) agent.invoke(Map.of("persons", persons));
-        assertThat(horoscopes).hasSize(persons.size()).allSatisfy(horoscope -> assertThat(horoscope).isNotBlank());
+        assertThat(horoscopes)
+                .hasSize(persons.size())
+                .allSatisfy(horoscope -> assertThat(horoscope).isNotBlank());
     }
 
     @Test

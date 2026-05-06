@@ -5,6 +5,8 @@ package dev.langchain4j.model.anthropic;
  */
 public enum AnthropicChatModelName {
 
+    CLAUDE_OPUS_4_7("claude-opus-4-7"),
+
     CLAUDE_OPUS_4_6("claude-opus-4-6"),
     CLAUDE_SONNET_4_6("claude-sonnet-4-6"),
 
@@ -15,10 +17,7 @@ public enum AnthropicChatModelName {
     CLAUDE_OPUS_4_1_20250805("claude-opus-4-1-20250805"),
 
     CLAUDE_OPUS_4_20250514("claude-opus-4-20250514"),
-    CLAUDE_SONNET_4_20250514("claude-sonnet-4-20250514"),
-
-    @Deprecated
-    CLAUDE_3_HAIKU_20240307("claude-3-haiku-20240307");
+    CLAUDE_SONNET_4_20250514("claude-sonnet-4-20250514");
 
     private final String stringValue;
 

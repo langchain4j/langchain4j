@@ -11,13 +11,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static dev.langchain4j.service.AiServicesUserMessageConfigTest.VALIDATION_ERROR_MESSAGE_SUFFIX;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class AiServicesSystemAndUserMessageConfigsTest {
@@ -27,32 +25,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
     @AfterEach
     void afterEach() {
-        try {
-            verify(model, atLeastOnce()).doChat(any());
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).defaultRequestParameters();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).supportedCapabilities();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).listeners();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).provider();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        verifyNoMoreInteractions(model);
+        verifyNoMoreInteractionsFor(model);
     }
 
     interface AiService {

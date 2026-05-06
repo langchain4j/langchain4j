@@ -5,6 +5,8 @@ import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
 import java.util.Collections;
 import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -17,7 +19,7 @@ class GoogleAiGeminiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     protected List<ChatModel> models() {
         return Collections.singletonList(GoogleAiGeminiChatModel.builder()
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-                .modelName("gemini-2.0-flash")
+                .modelName("gemini-2.5-flash")
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
@@ -30,9 +32,16 @@ class GoogleAiGeminiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     @MethodSource("models")
     protected void should_execute_tool_with_pojo_with_nested_pojo(ChatModel model) {}
 
-    @Disabled("Gemini cannot do it properly")
     @Override
-    @ParameterizedTest
-    @MethodSource("models")
-    protected void should_execute_tool_with_list_of_strings_parameter(ChatModel model) {}
+    protected boolean supportsMultimodalToolResults() {
+        return true;
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
+    }
 }

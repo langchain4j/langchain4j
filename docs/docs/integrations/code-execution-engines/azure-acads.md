@@ -10,7 +10,7 @@ sidebar_position: 1
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-code-execution-engine-azure-acads</artifactId>
-    <version>1.12.1-beta21</version>
+    <version>1.14.0-beta24</version>
 </dependency>
 ```
 

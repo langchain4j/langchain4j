@@ -1,16 +1,12 @@
 package dev.langchain4j.observation.listener;
 
-import static convention.ChatModelDocumentation.LowCardinalityValues.OPERATION_NAME;
-import static convention.ChatModelDocumentation.LowCardinalityValues.PROVIDER_NAME;
-import static convention.ChatModelDocumentation.LowCardinalityValues.REQUEST_MODEL;
-import static convention.ChatModelDocumentation.LowCardinalityValues.RESPONSE_MODEL;
-import static convention.ChatModelDocumentation.LowCardinalityValues.TOKEN_TYPE;
+import static dev.langchain4j.observation.convention.ChatModelDocumentation.LowCardinalityValues.OPERATION_NAME;
+import static dev.langchain4j.observation.convention.ChatModelDocumentation.LowCardinalityValues.PROVIDER_NAME;
+import static dev.langchain4j.observation.convention.ChatModelDocumentation.LowCardinalityValues.REQUEST_MODEL;
+import static dev.langchain4j.observation.convention.ChatModelDocumentation.LowCardinalityValues.RESPONSE_MODEL;
+import static dev.langchain4j.observation.convention.ChatModelDocumentation.LowCardinalityValues.TOKEN_TYPE;
 import static java.util.Optional.ofNullable;
 
-import context.ChatModelObservationContext;
-import convention.ChatModelConvention;
-import convention.ChatModelDocumentation;
-import convention.DefaultChatModelConvention;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
@@ -20,6 +16,10 @@ import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.observation.context.ChatModelObservationContext;
+import dev.langchain4j.observation.convention.ChatModelConvention;
+import dev.langchain4j.observation.convention.ChatModelDocumentation;
+import dev.langchain4j.observation.convention.DefaultChatModelConvention;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Meter.MeterProvider;
 import io.micrometer.core.instrument.MeterRegistry;

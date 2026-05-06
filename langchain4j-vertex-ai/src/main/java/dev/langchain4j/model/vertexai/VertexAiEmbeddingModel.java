@@ -8,6 +8,7 @@ import static dev.langchain4j.model.vertexai.Json.toJson;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
 
+import com.google.api.gax.core.CredentialsProvider;
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.aiplatform.v1beta1.*;
@@ -22,6 +23,7 @@ import dev.langchain4j.model.vertexai.spi.VertexAiEmbeddingModelBuilderFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Represents a Google Vertex AI embedding model, such as textembedding-gecko.
@@ -94,18 +96,21 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 ensureNotBlank(builder.modelName, "modelName"));
 
         try {
+            Optional<CredentialsProvider> credentialsProvider = Optional.empty();
+
+            if (builder.credentials != null) {
+                credentialsProvider = Optional.of(FixedCredentialsProvider.create(
+                        builder.credentials.createScoped("https://www.googleapis.com/auth/cloud-platform")));
+            }
             PredictionServiceSettings.Builder settingsBuilder =
                     PredictionServiceSettings.newBuilder().setEndpoint(regionWithBaseAPI);
-            if (builder.credentials != null) {
-                GoogleCredentials scopedCredentials =
-                        builder.credentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
-                settingsBuilder.setCredentialsProvider(FixedCredentialsProvider.create(scopedCredentials));
-            }
+            credentialsProvider.ifPresent(settingsBuilder::setCredentialsProvider);
             this.settings = settingsBuilder.build();
 
-            this.llmUtilitySettings = LlmUtilityServiceSettings.newBuilder()
-                    .setEndpoint(settings.getEndpoint())
-                    .build();
+            LlmUtilityServiceSettings.Builder utilBuilder =
+                    LlmUtilityServiceSettings.newBuilder().setEndpoint(settings.getEndpoint());
+            credentialsProvider.ifPresent(utilBuilder::setCredentialsProvider);
+            this.llmUtilitySettings = utilBuilder.build();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -155,8 +160,7 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .taskType(taskType)
                 .titleMetadataKey(titleMetadataKey)
                 .outputDimensionality(outputDimensionality)
-                .autoTruncate(autoTruncate)
-        );
+                .autoTruncate(autoTruncate));
     }
 
     @Override

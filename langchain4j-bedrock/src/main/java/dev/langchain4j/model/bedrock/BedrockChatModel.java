@@ -16,6 +16,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
+import software.amazon.awssdk.services.bedrockruntime.model.CacheTTL;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
 
@@ -74,6 +75,7 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
         BedrockChatRequestParameters parameters = (BedrockChatRequestParameters) chatRequest.parameters();
 
         BedrockCachePointPlacement cachePointPlacement = parameters.cachePointPlacement();
+        CacheTTL cacheTtl = parameters.cacheTtl();
         BedrockGuardrailConfiguration bedrockGuardrailConfiguration = parameters.bedrockGuardrailConfiguration();
         BedrockServiceTier bedrockServiceTier = parameters.serviceTier();
 
@@ -85,9 +87,9 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
         return ConverseRequest.builder()
                 .modelId(chatRequest.modelName())
                 .inferenceConfig(inferenceConfigFrom(chatRequest.parameters()))
-                .system(extractSystemMessages(chatRequest.messages(), cachePointPlacement))
-                .messages(extractRegularMessages(chatRequest.messages(), cachePointPlacement))
-                .toolConfig(extractToolConfigurationFrom(chatRequest, cachePointPlacement))
+                .system(extractSystemMessages(chatRequest.messages(), cachePointPlacement, cacheTtl))
+                .messages(extractRegularMessages(chatRequest.messages(), cachePointPlacement, cacheTtl))
+                .toolConfig(extractToolConfigurationFrom(chatRequest, cachePointPlacement, cacheTtl))
                 .additionalModelRequestFields(additionalRequestModelFieldsFrom(chatRequest.parameters()))
                 .guardrailConfig(guardrailConfigFrom(bedrockGuardrailConfiguration))
                 .outputConfig(outputConfigFrom(chatRequest.responseFormat()))

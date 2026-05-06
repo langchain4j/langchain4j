@@ -3,7 +3,7 @@ Thank you for investing your time and effort in contributing to our project, we 
 # General guidelines
 
 - For new integrations, please consider adding it in [community repo](https://github.com/langchain4j/langchain4j-community) first.
-- If you want to contribute a bug fix or a new feature that isn't listed in the [issues](https://github.com/langchain4j/langchain4j/issues) yet, please open a new issue for it. We will triage is shortly.
+- If you want to contribute a bug fix or a new feature that isn't listed in the [issues](https://github.com/langchain4j/langchain4j/issues) yet, please open a new issue for it. We will triage it shortly.
 - Follow [Google's Best Practices for Java Libraries](https://jlbp.dev/)
 - Keep the code compatible with Java 17.
 - When integrating third-party services, use the official SDK whenever possible. If no official SDK is available, implement the client using `langchain4j-http-client` and Jackson.

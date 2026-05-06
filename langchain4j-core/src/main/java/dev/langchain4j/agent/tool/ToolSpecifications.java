@@ -1,5 +1,6 @@
 package dev.langchain4j.agent.tool;
 
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
@@ -26,9 +27,6 @@ import java.util.Set;
 
 import static dev.langchain4j.agent.tool.SearchBehavior.SEARCHABLE;
 import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static java.util.Arrays.stream;
-import static java.util.stream.Collectors.toList;
 
 /**
  * Utility methods for {@link ToolSpecification}s.
@@ -149,14 +147,20 @@ public class ToolSpecifications {
             }
 
             boolean isOptional = Optional.class.equals(parameter.getType());
+            P pAnnotation = parameter.getAnnotation(P.class);
             boolean isRequired = !isOptional
-                    && Optional.ofNullable(parameter.getAnnotation(P.class))
+                    && Optional.ofNullable(pAnnotation)
                             .map(P::required)
                             .orElse(true);
 
-            properties.put(parameter.getName(), jsonSchemaElementFrom(parameter, visited));
+            String parameterName = Optional.ofNullable(pAnnotation)
+                    .map(P::name)
+                    .filter(name -> isNotNullOrBlank(name))
+                    .orElse(parameter.getName());
+
+            properties.put(parameterName, jsonSchemaElementFrom(parameter, visited));
             if (isRequired) {
-                required.add(parameter.getName());
+                required.add(parameterName);
             }
         }
 
@@ -181,7 +185,20 @@ public class ToolSpecifications {
     private static JsonSchemaElement jsonSchemaElementFrom(
             Parameter parameter, Map<Class<?>, VisitedClassMetadata> visited) {
         P annotation = parameter.getAnnotation(P.class);
-        String description = annotation == null ? null : annotation.value();
+        String description = null;
+
+        if (annotation != null) {
+            if (isNotNullOrBlank(annotation.value()) && isNotNullOrBlank(annotation.description())) {
+                throw new IllegalArgumentException(String.format(
+                        "Parameter '%s' has both 'value' and 'description' set in @P. Use one or the other, but not both.",
+                        parameter.getName()));
+            }
+            if (isNotNullOrBlank(annotation.description())) {
+                description = annotation.description();
+            } else if (isNotNullOrBlank(annotation.value())) {
+                description = annotation.value();
+            }
+        }
 
         Type type = parameter.getParameterizedType();
         Class<?> clazz = parameter.getType();

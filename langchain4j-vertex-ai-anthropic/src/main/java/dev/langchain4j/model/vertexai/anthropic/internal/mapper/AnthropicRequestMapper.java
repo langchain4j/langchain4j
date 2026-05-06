@@ -110,6 +110,11 @@ public class AnthropicRequestMapper {
     }
 
     private static AnthropicContent toAnthropicToolResultContent(ToolExecutionResultMessage message) {
+        if (!message.hasSingleText()) {
+            throw new UnsupportedFeatureException(
+                    "Vertex AI Anthropic does not support non-text content in tool results. "
+                            + "Only text content is supported.");
+        }
         return AnthropicContent.toolResult(message.id(), message.text());
     }
 

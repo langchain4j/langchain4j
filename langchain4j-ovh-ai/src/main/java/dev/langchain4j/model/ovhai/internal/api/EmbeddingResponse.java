@@ -2,6 +2,10 @@ package dev.langchain4j.model.ovhai.internal.api;
 
 import java.util.List;
 
+/**
+ * @deprecated use {@code EmbeddingResponse} from {@code langchain4j-open-ai} module instead
+ */
+@Deprecated(forRemoval = true, since = "1.14.0")
 public class EmbeddingResponse {
     private List<float[]> embeddings;
 

@@ -18,19 +18,28 @@ public final class BatchRequestResponse {
     /**
      * Represents a batch operation that is currently pending or in progress.
      */
-    public record BatchIncomplete<T>(BatchName batchName, BatchJobState state) implements BatchResponse<T> {}
+    public record BatchIncomplete<T>(
+            @JsonProperty("batchName") BatchName batchName,
+            @JsonProperty("state") BatchJobState state) implements BatchResponse<T> {}
 
     /**
      * Represents a successful batch operation.
      */
-    public record BatchSuccess<T>(BatchName batchName, List<T> responses, @Nullable List<Operation.Status> errors)
+    public record BatchSuccess<T>(
+            @JsonProperty("batchName") BatchName batchName,
+            @JsonProperty("responses") List<T> responses,
+            @JsonProperty("errors") @Nullable List<Operation.Status> errors)
             implements BatchResponse<T> {}
 
     /**
      * Represents an error that occurred during a batch operation.
      */
     public record BatchError<T>(
-            BatchName batchName, int code, String message, BatchJobState state, List<Map<String, Object>> details)
+            @JsonProperty("batchName") BatchName batchName,
+            @JsonProperty("code") int code,
+            @JsonProperty("message") String message,
+            @JsonProperty("state") BatchJobState state,
+            @JsonProperty("details") List<Map<String, Object>> details)
             implements BatchResponse<T> {}
 
     /**
@@ -39,12 +48,14 @@ public final class BatchRequestResponse {
      * @param pageToken Token used to paginate to the next page.
      * @param responses List of batch responses.
      */
-    public record BatchList<T>(String pageToken, List<BatchResponse<T>> responses) {}
+    public record BatchList<T>(
+            @JsonProperty("pageToken") String pageToken,
+            @JsonProperty("responses") List<BatchResponse<T>> responses) {}
 
     /**
      * Represents the name of a batch operation.
      */
-    public record BatchName(String value) {
+    public record BatchName(@JsonProperty("value") String value) {
         public BatchName {
             ensureOperationNameFormat(value);
         }
@@ -77,7 +88,7 @@ public final class BatchRequestResponse {
      *
      * @param <REQ> The type of request (e.g., GeminiGenerateContentRequest, GeminiEmbeddingRequest)
      */
-    record BatchCreateRequest<REQ>(Batch<REQ> batch) {
+    record BatchCreateRequest<REQ>(@JsonProperty("batch") Batch<REQ> batch) {
 
         /**
          * The batch configuration containing display name, input config, and priority.
@@ -90,21 +101,21 @@ public final class BatchRequestResponse {
         record Batch<REQ>(
                 @JsonProperty("display_name") String displayName,
                 @JsonProperty("input_config") InputConfig<REQ> inputConfig,
-                long priority) {}
+                @JsonProperty("priority") long priority) {}
 
         /**
          * Configures the input to the batch request.
          *
          * @param requests The list of inlined requests to be processed in the batch.
          */
-        record InputConfig<REQ>(Requests<REQ> requests) {}
+        record InputConfig<REQ>(@JsonProperty("requests") Requests<REQ> requests) {}
 
         /**
          * Wrapper for the list of inlined requests.
          *
          * @param requests The list of inlined requests to be processed in the batch.
          */
-        record Requests<REQ>(List<InlinedRequest<REQ>> requests) {}
+        record Requests<REQ>(@JsonProperty("requests") List<InlinedRequest<REQ>> requests) {}
 
         /**
          * Individual request to be processed in the batch.
@@ -112,10 +123,12 @@ public final class BatchRequestResponse {
          * @param request  Required. The request to be processed in the batch.
          * @param metadata Optional. The metadata to be associated with the request.
          */
-        record InlinedRequest<REQ>(REQ request, Map<String, String> metadata) {}
+        record InlinedRequest<REQ>(
+                @JsonProperty("request") REQ request,
+                @JsonProperty("metadata") Map<String, String> metadata) {}
     }
 
-    record BatchCreateFileRequest(FileBatch batch) {
+    record BatchCreateFileRequest(@JsonProperty("batch") FileBatch batch) {
 
         record FileBatch(
                 @JsonProperty("display_name") String displayName,
@@ -130,7 +143,9 @@ public final class BatchRequestResponse {
      * @param <RESP> The type of response (e.g., GeminiGenerateContentResponse, GeminiEmbeddingResponse)
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record BatchCreateResponse<RESP>(@JsonProperty("@type") String type, InlinedResponses<RESP> inlinedResponses) {
+    record BatchCreateResponse<RESP>(
+            @JsonProperty("@type") String type,
+            @JsonProperty("inlinedResponses") InlinedResponses<RESP> inlinedResponses) {
 
         /**
          * Wrapper for the list of inlined responses.
@@ -138,7 +153,8 @@ public final class BatchRequestResponse {
          * @param inlinedResponses The list of individual response wrappers.
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record InlinedResponses<RESP>(List<InlinedResponseWrapper<RESP>> inlinedResponses) {}
+        record InlinedResponses<RESP>(
+                @JsonProperty("inlinedResponses") List<InlinedResponseWrapper<RESP>> inlinedResponses) {}
 
         /**
          * Wrapper for an individual (successful) response OR error.
@@ -147,7 +163,9 @@ public final class BatchRequestResponse {
          * @param error An error including message and code
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record InlinedResponseWrapper<RESP>(@Nullable RESP response, @Nullable Status error) {}
+        record InlinedResponseWrapper<RESP>(
+                @JsonProperty("response") @Nullable RESP response,
+                @JsonProperty("error") @Nullable Status error) {}
     }
 
     /**
@@ -157,7 +175,11 @@ public final class BatchRequestResponse {
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
     record Operation<RESP>(
-            String name, Map<String, Object> metadata, boolean done, Status error, BatchCreateResponse<RESP> response) {
+            @JsonProperty("name") String name,
+            @JsonProperty("metadata") Map<String, Object> metadata,
+            @JsonProperty("done") boolean done,
+            @JsonProperty("error") Status error,
+            @JsonProperty("response") BatchCreateResponse<RESP> response) {
 
         /**
          * Represents the error status of an operation.
@@ -167,7 +189,10 @@ public final class BatchRequestResponse {
          * @param details A list of messages that carry the error details.
          */
         @JsonIgnoreProperties(ignoreUnknown = true)
-        public record Status(int code, String message, @Nullable List<Map<String, Object>> details) {}
+        public record Status(
+                @JsonProperty("code") int code,
+                @JsonProperty("message") String message,
+                @JsonProperty("details") @Nullable List<Map<String, Object>> details) {}
     }
 
     /**
@@ -177,7 +202,9 @@ public final class BatchRequestResponse {
      * @param operations    a list of operations to be performed
      * @param nextPageToken a token for retrieving the next page of operations, if available; null if there are no more pages
      */
-    record ListOperationsResponse<RESP>(@Nullable List<Operation<RESP>> operations, @Nullable String nextPageToken) {}
+    record ListOperationsResponse<RESP>(
+            @JsonProperty("operations") @Nullable List<Operation<RESP>> operations,
+            @JsonProperty("nextPageToken") @Nullable String nextPageToken) {}
 
     /**
      * Represents a batch request for a file operation.
@@ -186,5 +213,7 @@ public final class BatchRequestResponse {
      * @param key     a unique identifier for the request
      * @param request the actual request payload containing the details of the operation
      */
-    public record BatchFileRequest<REQ>(String key, REQ request) {}
+    public record BatchFileRequest<REQ>(
+            @JsonProperty("key") String key,
+            @JsonProperty("request") REQ request) {}
 }

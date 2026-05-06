@@ -64,6 +64,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -271,9 +272,11 @@ public class DefaultAnthropicClient extends AnthropicClient {
             final List<String> thinkingSignatures = synchronizedList(new ArrayList<>());
             final List<String> redactedThinkings = synchronizedList(new ArrayList<>());
 
-            volatile String currentContentBlockStartType;
+            final ConcurrentHashMap<Integer, String> contentBlockTypes = new ConcurrentHashMap<>();
 
-            final ToolCallBuilder toolCallBuilder = new ToolCallBuilder(-1);
+            final ConcurrentHashMap<Integer, ToolCallBuilder> toolCallBuilders = new ConcurrentHashMap<>();
+            final AtomicInteger toolCallIndex = new AtomicInteger(-1);
+            final Queue<ToolExecutionRequest> completedToolExecutionRequests = new ConcurrentLinkedQueue<>();
             final List<AnthropicServerToolResult> serverToolResults = synchronizedList(new ArrayList<>());
 
             final AtomicInteger inputTokenCount = new AtomicInteger();
@@ -316,7 +319,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 } else if ("content_block_delta".equals(event.event())) {
                     handleContentBlockDelta(data, streamingHandle);
                 } else if ("content_block_stop".equals(event.event())) {
-                    handleContentBlockStop(streamingHandle);
+                    handleContentBlockStop(data, streamingHandle);
                 } else if ("message_delta".equals(event.event())) {
                     handleMessageDelta(data);
                 } else if ("message_stop".equals(event.event())) {
@@ -363,15 +366,16 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     return;
                 }
 
-                this.currentContentBlockStartType = data.contentBlock.type;
+                String blockType = data.contentBlock.type;
+                contentBlockTypes.put(data.index, blockType);
 
-                if (CONTENT_BLOCK_TEXT.equals(currentContentBlockStartType)) {
+                if (CONTENT_BLOCK_TEXT.equals(blockType)) {
                     String text = data.contentBlock.text;
                     if (isNotNullOrEmpty(text)) {
                         contentBuilder.append(text);
                         onPartialResponse(handler, text, streamingHandle);
                     }
-                } else if (CONTENT_BLOCK_THINKING.equals(currentContentBlockStartType) && options.returnThinking()) {
+                } else if (CONTENT_BLOCK_THINKING.equals(blockType) && options.returnThinking()) {
                     String thinking = data.contentBlock.thinking;
                     if (isNotNullOrEmpty(thinking)) {
                         thinkingBuilder.append(thinking);
@@ -381,17 +385,18 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     if (isNotNullOrEmpty(signature)) {
                         thinkingSignatures.add(signature);
                     }
-                } else if (CONTENT_BLOCK_REDACTED_THINKING.equals(currentContentBlockStartType)
+                } else if (CONTENT_BLOCK_REDACTED_THINKING.equals(blockType)
                         && options.returnThinking()) {
                     String redactedThinking = data.contentBlock.data;
                     if (isNotNullOrEmpty(redactedThinking)) {
                         redactedThinkings.add(redactedThinking);
                     }
-                } else if (CONTENT_BLOCK_TOOL_USE.equals(currentContentBlockStartType)) {
-                    toolCallBuilder.updateIndex(toolCallBuilder.index() + 1);
+                } else if (CONTENT_BLOCK_TOOL_USE.equals(blockType)) {
+                    ToolCallBuilder toolCallBuilder = new ToolCallBuilder(toolCallIndex.incrementAndGet());
                     toolCallBuilder.updateId(data.contentBlock.id);
                     toolCallBuilder.updateName(data.contentBlock.name);
-                } else if (isServerToolResultType(currentContentBlockStartType) && options.returnServerToolResults()) {
+                    toolCallBuilders.put(data.index, toolCallBuilder);
+                } else if (isServerToolResultType(blockType) && options.returnServerToolResults()) {
                     AnthropicServerToolResult result = AnthropicServerToolResult.builder()
                             .type(data.contentBlock.type)
                             .toolUseId(data.contentBlock.toolUseId)
@@ -410,13 +415,15 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     return;
                 }
 
-                if (CONTENT_BLOCK_TEXT.equals(currentContentBlockStartType)) {
+                String blockType = contentBlockTypes.get(data.index);
+
+                if (CONTENT_BLOCK_TEXT.equals(blockType)) {
                     String text = data.delta.text;
                     if (isNotNullOrEmpty(text)) {
                         contentBuilder.append(text);
                         onPartialResponse(handler, text, streamingHandle);
                     }
-                } else if (CONTENT_BLOCK_THINKING.equals(currentContentBlockStartType) && options.returnThinking()) {
+                } else if (CONTENT_BLOCK_THINKING.equals(blockType) && options.returnThinking()) {
                     String thinking = data.delta.thinking;
                     if (isNotNullOrEmpty(thinking)) {
                         thinkingBuilder.append(thinking);
@@ -426,15 +433,16 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     if (isNotNullOrEmpty(signature)) {
                         thinkingSignatures.add(signature);
                     }
-                } else if (CONTENT_BLOCK_REDACTED_THINKING.equals(currentContentBlockStartType)
+                } else if (CONTENT_BLOCK_REDACTED_THINKING.equals(blockType)
                         && options.returnThinking()) {
                     String redactedThinking = data.delta.data;
                     if (isNotNullOrEmpty(redactedThinking)) {
                         redactedThinkings.add(redactedThinking);
                     }
-                } else if (CONTENT_BLOCK_TOOL_USE.equals(currentContentBlockStartType)) {
+                } else if (CONTENT_BLOCK_TOOL_USE.equals(blockType)) {
                     String partialJson = data.delta.partialJson;
                     if (isNotNullOrEmpty(partialJson)) {
+                        ToolCallBuilder toolCallBuilder = toolCallBuilders.get(data.index);
                         toolCallBuilder.appendArguments(partialJson);
 
                         PartialToolCall partialToolRequest = PartialToolCall.builder()
@@ -448,15 +456,19 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 }
             }
 
-            private void handleContentBlockStop(StreamingHandle streamingHandle) {
-                if (CONTENT_BLOCK_TEXT.equals(currentContentBlockStartType)) {
+            private void handleContentBlockStop(AnthropicStreamingData data, StreamingHandle streamingHandle) {
+                String blockType = contentBlockTypes.remove(data.index);
+
+                if (CONTENT_BLOCK_TEXT.equals(blockType)) {
                     contents.add(contentBuilder.toString());
                     contentBuilder.setLength(0);
-                } else if (CONTENT_BLOCK_THINKING.equals(currentContentBlockStartType) && options.returnThinking()) {
+                } else if (CONTENT_BLOCK_THINKING.equals(blockType) && options.returnThinking()) {
                     thinkings.add(thinkingBuilder.toString());
                     thinkingBuilder.setLength(0);
-                } else if (CONTENT_BLOCK_TOOL_USE.equals(currentContentBlockStartType)) {
+                } else if (CONTENT_BLOCK_TOOL_USE.equals(blockType)) {
+                    ToolCallBuilder toolCallBuilder = toolCallBuilders.remove(data.index);
                     CompleteToolCall completeToolCall = toolCallBuilder.buildAndReset();
+                    completedToolExecutionRequests.add(completeToolCall.toolExecutionRequest());
 
                     if (completeToolCall.toolExecutionRequest().arguments().equals("{}")) {
                         PartialToolCall partialToolRequest = PartialToolCall.builder()
@@ -512,10 +524,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     attributes.put(SERVER_TOOL_RESULTS_KEY, serverToolResults);
                 }
 
-                List<ToolExecutionRequest> toolExecutionRequests = List.of();
-                if (toolCallBuilder.hasRequests()) {
-                    toolExecutionRequests = toolCallBuilder.allRequests();
-                }
+                List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>(completedToolExecutionRequests);
 
                 AnthropicTokenUsage tokenUsage = AnthropicTokenUsage.builder()
                         .inputTokenCount(inputTokenCount.get())

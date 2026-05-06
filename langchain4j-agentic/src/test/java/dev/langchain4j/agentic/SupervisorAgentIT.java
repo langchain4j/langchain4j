@@ -2,6 +2,7 @@ package dev.langchain4j.agentic;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.plannerModel;
+import static dev.langchain4j.agentic.observability.HtmlReportGenerator.generateReport;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.offset;
@@ -26,9 +27,14 @@ import dev.langchain4j.agentic.Agents.ColorExpert;
 import dev.langchain4j.agentic.Agents.ColorMixerExpert;
 import dev.langchain4j.agentic.declarative.Output;
 import dev.langchain4j.agentic.observability.AfterAgentToolExecution;
+import dev.langchain4j.agentic.observability.AgentInvocation;
 import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
+import dev.langchain4j.agentic.observability.MonitoredAgent;
+import dev.langchain4j.agentic.observability.MonitoredExecution;
+import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
@@ -199,6 +205,10 @@ public class SupervisorAgentIT {
     static class BankTool {
 
         private final Map<String, Double> accounts = new HashMap<>();
+
+        void clearAccounts() {
+            accounts.clear();
+        }
 
         void createAccount(String user, Double initialBalance) {
             if (accounts.containsKey(user)) {
@@ -608,6 +618,19 @@ public class SupervisorAgentIT {
         typed_banker_test(false);
     }
 
+    public record ExchangeRequest(String originalCurrency, Double amount, String targetCurrency) { }
+
+    public interface TypedExchangeAgent {
+        @UserMessage(
+                """
+            You are an operator exchanging money in different currencies.
+            Use the tool to calculate the given {{exchangeRequest}}
+            returning only the final amount provided by the tool as it is and nothing else.
+            """)
+        @Agent(outputKey = "exchange")
+        Double exchange(@V("exchangeRequest") ExchangeRequest exchangeRequest);
+    }
+
     private void typed_banker_test(boolean useMaxAgentsInvocations) {
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("exchange")
@@ -642,7 +665,7 @@ public class SupervisorAgentIT {
                 .tools(bankTool)
                 .build();
 
-        ExchangeAgent exchangeAgent = AgenticServices.agentBuilder(ExchangeAgent.class)
+        TypedExchangeAgent exchangeAgent = AgenticServices.agentBuilder(TypedExchangeAgent.class)
                 .chatModel(baseModel())
                 .description(
                         "A money exchanger that converts a given amount of money from the original to the target currency")
@@ -679,7 +702,7 @@ public class SupervisorAgentIT {
         }
     }
 
-    public interface TypedBankerAgentWithMemory extends ChatMemoryAccess {
+    public interface TypedBankerAgentWithMemory extends ChatMemoryAccess, MonitoredAgent {
 
         @Agent
         TransactionDetails execute(@MemoryId String memoryId, @V("request") String request);
@@ -747,6 +770,49 @@ public class SupervisorAgentIT {
         ChatMessage lastMessage = messages.get(messages.size() - 1);
         assertThat(lastMessage).isInstanceOf(AiMessage.class);
         assertThat(((AiMessage) lastMessage).text()).contains("done");
+
+        AgentMonitor monitor = bankSupervisor.agentMonitor();
+        assertThat(monitor).isNotNull();
+
+        List<MonitoredExecution> successful = monitor.successfulExecutionsFor("1");
+        assertThat(successful).hasSize(1);
+
+        MonitoredExecution execution = successful.get(0);
+        assertThat(execution.done()).isTrue();
+        assertThat(execution.hasError()).isFalse();
+
+        AgentInvocation topLevel = execution.topLevelInvocations();
+        assertThat(topLevel.done()).isTrue();
+
+        List<AgentInvocation> nestedInvocations = topLevel.nestedInvocations();
+        assertThat(nestedInvocations).isNotEmpty();
+
+        List<ToolExecution> allToolExecutions = collectToolExecutions(topLevel);
+        assertThat(allToolExecutions).isNotEmpty();
+
+        for (ToolExecution toolExec : allToolExecutions) {
+            assertThat(toolExec.request().name()).isNotBlank();
+            assertThat(toolExec.startTime()).isNotNull();
+            assertThat(toolExec.finishTime()).isNotNull();
+            assertThat(toolExec.duration()).isNotNull();
+            assertThat(toolExec.result()).isNotNull();
+        }
+
+        Set<String> toolNames = allToolExecutions.stream()
+                .map(te -> te.request().name())
+                .collect(Collectors.toSet());
+        assertThat(toolNames).contains("withdraw", "credit");
+
+        System.out.println(execution);
+//        generateReport(monitor, Path.of("src", "test", "resources", "agents-exection-with-tools.html"));
+    }
+
+    private List<ToolExecution> collectToolExecutions(AgentInvocation invocation) {
+        List<ToolExecution> result = new ArrayList<>(invocation.toolExecutions());
+        for (AgentInvocation nested : invocation.nestedInvocations()) {
+            result.addAll(collectToolExecutions(nested));
+        }
+        return result;
     }
 
     public interface GeneralAssistant extends ChatMemoryAccess {

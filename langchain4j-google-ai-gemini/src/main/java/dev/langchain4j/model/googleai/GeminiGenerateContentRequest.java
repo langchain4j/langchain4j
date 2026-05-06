@@ -6,13 +6,13 @@ import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 record GeminiGenerateContentRequest(
-        String model,
-        List<GeminiContent> contents,
-        GeminiTool tools,
-        GeminiToolConfig toolConfig,
-        List<GeminiSafetySetting> safetySettings,
-        GeminiContent systemInstruction,
-        GeminiGenerationConfig generationConfig) {
+        @JsonProperty("model") String model,
+        @JsonProperty("contents") List<GeminiContent> contents,
+        @JsonProperty("tools") List<GeminiTool> tools,
+        @JsonProperty("toolConfig") GeminiToolConfig toolConfig,
+        @JsonProperty("safetySettings") List<GeminiSafetySetting> safetySettings,
+        @JsonProperty("systemInstruction") GeminiContent systemInstruction,
+        @JsonProperty("generationConfig") GeminiGenerationConfig generationConfig) {
 
     static GeminiGenerateContentRequestBuilder builder() {
         return new GeminiGenerateContentRequestBuilder();
@@ -21,7 +21,7 @@ record GeminiGenerateContentRequest(
     static class GeminiGenerateContentRequestBuilder {
         private String model;
         private List<GeminiContent> contents;
-        private GeminiTool tools;
+        private List<GeminiTool> tools;
         private GeminiToolConfig toolConfig;
         private List<GeminiSafetySetting> safetySettings;
         private GeminiContent systemInstruction;
@@ -39,7 +39,7 @@ record GeminiGenerateContentRequest(
             return this;
         }
 
-        GeminiGenerateContentRequestBuilder tools(GeminiTool tools) {
+        GeminiGenerateContentRequestBuilder tools(List<GeminiTool> tools) {
             this.tools = tools;
             return this;
         }
@@ -78,11 +78,11 @@ record GeminiGenerateContentRequest(
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record GeminiTool(
-            List<GeminiFunctionDeclaration> functionDeclarations,
-            GeminiCodeExecution codeExecution,
+            @JsonProperty("functionDeclarations") List<GeminiFunctionDeclaration> functionDeclarations,
+            @JsonProperty("codeExecution") GeminiCodeExecution codeExecution,
             @JsonProperty("google_search") GeminiGoogleSearchRetrieval googleSearch,
-            GeminiUrlContext urlContext,
-            GeminiGoogleMaps googleMaps) {
+            @JsonProperty("urlContext") GeminiUrlContext urlContext,
+            @JsonProperty("googleMaps") GeminiGoogleMaps googleMaps) {
 
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiCodeExecution() {}
@@ -94,9 +94,11 @@ record GeminiGenerateContentRequest(
         record GeminiGoogleSearchRetrieval() {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record GeminiGoogleMaps(Boolean enableWidget) {}
+        record GeminiGoogleMaps(
+                @JsonProperty("enableWidget") Boolean enableWidget) {}
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record GeminiToolConfig(GeminiFunctionCallingConfig functionCallingConfig) {}
+    record GeminiToolConfig(
+            @JsonProperty("functionCallingConfig") GeminiFunctionCallingConfig functionCallingConfig) {}
 }

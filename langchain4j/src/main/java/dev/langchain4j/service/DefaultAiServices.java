@@ -51,6 +51,7 @@ import dev.langchain4j.service.guardrail.GuardrailService;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.service.output.ServiceOutputParser;
+import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
@@ -212,6 +213,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                             userMessageForAugmentation = (UserMessage) augmentationResult.chatMessage();
                         }
 
+                        UserMessage userMessage = addContentsToUserMessage(method, args, userMessageForAugmentation);
+
                         var commonGuardrailParam = GuardrailRequestParams.builder()
                                 .chatMemory(chatMemory)
                                 .augmentationResult(augmentationResult)
@@ -221,8 +224,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .variables(variables)
                                 .build();
 
-                        UserMessage userMessage = invokeInputGuardrails(
-                                context.guardrailService(), method, userMessageForAugmentation, commonGuardrailParam);
+                        userMessage = invokeInputGuardrails(
+                                context.guardrailService(), method, userMessage, commonGuardrailParam);
 
                         Type returnType =
                                 context.returnType != null ? context.returnType : method.getGenericReturnType();
@@ -240,8 +243,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                             userMessage = appendOutputFormatInstructions(returnType, userMessage);
                         }
 
-                        userMessage = addContentsToUserMessage(method, args, userMessage);
-
                         List<ChatMessage> messages = new ArrayList<>();
                         if (context.hasChatMemory()) {
                             systemMessage.ifPresent(chatMemory::add);
@@ -257,17 +258,19 @@ class DefaultAiServices<T> extends AiServices<T> {
                             messages.add(userMessage);
                         }
 
+                        invocationContext = invocationContext.toBuilder()
+                                .userMessage(userMessage)
+                                .build();
+
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
                         ToolServiceContext toolServiceContext =
-                                context.toolService.createContext(invocationContext, userMessage, chatMemory);
+                                context.toolService.createContext(invocationContext, userMessage, messages);
 
                         if (streaming) {
                             var tokenStreamParameters = AiServiceTokenStreamParameters.builder()
                                     .messages(messages)
-                                    .effectiveTools(toolServiceContext.effectiveTools())
-                                    .availableTools(toolServiceContext.availableTools())
-                                    .toolExecutors(toolServiceContext.toolExecutors())
+                                    .toolServiceContext(toolServiceContext)
                                     .toolArgumentsErrorHandler(context.toolService.argumentsErrorHandler())
                                     .toolExecutionErrorHandler(context.toolService.executionErrorHandler())
                                     .toolExecutor(context.toolService.executor())

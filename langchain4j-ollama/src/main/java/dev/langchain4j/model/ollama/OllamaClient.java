@@ -211,6 +211,7 @@ class OllamaClient {
                         }
 
                         toolCallBuilder.updateName(toolCall.getFunction().getName());
+                        toolCallBuilder.updateId(toolCall.getId());
 
                         String partialArguments =
                                 toJsonWithoutIdent(toolCall.getFunction().getArguments());

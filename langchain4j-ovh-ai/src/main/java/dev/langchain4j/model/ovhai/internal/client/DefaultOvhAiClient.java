@@ -15,6 +15,10 @@ import java.util.List;
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
+/**
+ * @deprecated Do not use anymore, use {@code langchain4j-open-ai} module instead
+ */
+@Deprecated(forRemoval = true, since = "1.14.0")
 public class DefaultOvhAiClient extends OvhAiClient {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().enable(INDENT_OUTPUT);
