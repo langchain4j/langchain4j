@@ -22,6 +22,8 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ServerToolExecution;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatRequestParameters;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatRequestParameters;
@@ -31,6 +33,10 @@ import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -208,6 +214,41 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     }
 
     @Test
+    void should_emit_real_web_search_server_tool_lifecycle_events() throws Exception {
+        StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .modelName(GPT_5_4)
+                .serverTools(Tool.ofWebSearch(WebSearchTool.builder()
+                        .type(WebSearchTool.Type.of("web_search"))
+                        .filters(WebSearchTool.Filters.builder()
+                                .allowedDomains(List.of("developers.openai.com"))
+                                .build())
+                        .build()))
+                .defaultRequestParameters(OpenAiOfficialResponsesChatRequestParameters.builder()
+                        .toolChoice(ToolChoice.REQUIRED)
+                        .build())
+                .build();
+
+        RecordingServerToolHandler handler = new RecordingServerToolHandler();
+        model.chat(
+                "Use web search on the OpenAI developer docs and answer with one short sentence about the web search tool.",
+                handler);
+
+        ChatResponse response = handler.await();
+
+        assertThat(response.aiMessage().text()).isNotBlank();
+        assertThat(handler.started).isNotEmpty();
+        assertThat(handler.completed).isNotEmpty();
+        assertThat(handler.started)
+                .extracting(ServerToolExecution::type)
+                .contains("response.web_search_call.in_progress");
+        assertThat(handler.completed)
+                .extracting(ServerToolExecution::type)
+                .contains("response.web_search_call.completed");
+    }
+
+    @Test
     void should_execute_real_tool_search_with_namespace_and_deferred_function_loading() {
         Tool toolSearch = Tool.ofSearch(ToolSearchTool.builder()
                 .type(JsonValue.from("tool_search"))
@@ -336,5 +377,44 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         model.chat(List.of(userMessage), handler);
 
         assertThat(handler.get().aiMessage().text()).containsIgnoringCase("Whitehorse");
+    }
+
+    private static class RecordingServerToolHandler implements StreamingChatResponseHandler {
+
+        private final List<ServerToolExecution> started = new CopyOnWriteArrayList<>();
+        private final List<ServerToolExecution> completed = new CopyOnWriteArrayList<>();
+        private final CountDownLatch done = new CountDownLatch(1);
+        private final AtomicReference<ChatResponse> response = new AtomicReference<>();
+        private final AtomicReference<Throwable> error = new AtomicReference<>();
+
+        @Override
+        public void beforeServerToolExecution(ServerToolExecution serverToolExecution) {
+            started.add(serverToolExecution);
+        }
+
+        @Override
+        public void onServerToolExecuted(ServerToolExecution serverToolExecution) {
+            completed.add(serverToolExecution);
+        }
+
+        @Override
+        public void onCompleteResponse(ChatResponse completeResponse) {
+            response.set(completeResponse);
+            done.countDown();
+        }
+
+        @Override
+        public void onError(Throwable error) {
+            this.error.set(error);
+            done.countDown();
+        }
+
+        private ChatResponse await() throws Exception {
+            assertThat(done.await(60, TimeUnit.SECONDS)).isTrue();
+            if (error.get() != null) {
+                throw new AssertionError("Streaming failed", error.get());
+            }
+            return response.get();
+        }
     }
 }
