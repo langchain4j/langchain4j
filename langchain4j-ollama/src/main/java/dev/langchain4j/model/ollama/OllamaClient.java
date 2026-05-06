@@ -134,6 +134,13 @@ class OllamaClient {
             public void onEvent(ServerSentEvent event) {
 
                 CompletionResponse completionResponse = fromJson(event.data(), CompletionResponse.class);
+
+                String error = completionResponse.getError();
+                if (error != null) {
+                    handler.onError(ExceptionMapper.DEFAULT.mapException(new OllamaStreamingException(error)));
+                    return;
+                }
+
                 contentBuilder.append(completionResponse.getResponse());
                 handler.onNext(completionResponse.getResponse());
 
@@ -183,6 +190,13 @@ class OllamaClient {
                 }
 
                 OllamaChatResponse ollamaChatResponse = fromJson(event.data(), OllamaChatResponse.class);
+
+                String error = ollamaChatResponse.getError();
+                if (error != null) {
+                    withLoggingExceptions(() -> handler.onError(new OllamaStreamingException(error)));
+                    return;
+                }
+
                 responseBuilder.append(ollamaChatResponse);
 
                 Message message = ollamaChatResponse.getMessage();

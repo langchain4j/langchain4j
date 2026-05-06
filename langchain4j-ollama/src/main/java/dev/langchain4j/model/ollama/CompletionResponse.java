@@ -1,11 +1,11 @@
 package dev.langchain4j.model.ollama;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
@@ -18,17 +18,25 @@ class CompletionResponse {
     private Boolean done;
     private Integer promptEvalCount;
     private Integer evalCount;
+    private String error;
 
-    CompletionResponse() {
-    }
+    CompletionResponse() {}
 
-    CompletionResponse(String model, String createdAt, String response, Boolean done, Integer promptEvalCount, Integer evalCount) {
+    CompletionResponse(
+            String model,
+            String createdAt,
+            String response,
+            Boolean done,
+            Integer promptEvalCount,
+            Integer evalCount,
+            String error) {
         this.model = model;
         this.createdAt = createdAt;
         this.response = response;
         this.done = done;
         this.promptEvalCount = promptEvalCount;
         this.evalCount = evalCount;
+        this.error = error;
     }
 
     public String getModel() {
@@ -79,6 +87,14 @@ class CompletionResponse {
         this.evalCount = evalCount;
     }
 
+    public String getError() {
+        return error;
+    }
+
+    public void setError(String error) {
+        this.error = error;
+    }
+
     static class Builder {
 
         private String model;
@@ -87,6 +103,7 @@ class CompletionResponse {
         private Boolean done;
         private Integer promptEvalCount;
         private Integer evalCount;
+        private String error;
 
         Builder model(String model) {
             this.model = model;
@@ -118,8 +135,13 @@ class CompletionResponse {
             return this;
         }
 
+        Builder error(String error) {
+            this.error = error;
+            return this;
+        }
+
         CompletionResponse build() {
-            return new CompletionResponse(model, createdAt, response, done, promptEvalCount, evalCount);
+            return new CompletionResponse(model, createdAt, response, done, promptEvalCount, evalCount, error);
         }
     }
 }
