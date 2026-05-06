@@ -124,6 +124,8 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
                     config.apiCallTimeout(this.timeout);
                     if (logRequests || logResponses)
                         config.addExecutionInterceptor(new AwsLoggingInterceptor(logRequests, logResponses, logger));
+                    if (customHeadersSupplier != null)
+                        config.addExecutionInterceptor(new BedrockCustomHeadersInterceptor(customHeadersSupplier));
                 })
                 .build();
     }
