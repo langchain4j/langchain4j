@@ -1,8 +1,8 @@
 package dev.langchain4j.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -150,7 +150,9 @@ class AiServiceTokenStreamTest {
 
     @Test
     void start_beforeServerToolExecutionInvoked_shouldNotThrowException() {
-        tokenStream.beforeServerToolExecution(DUMMY_SERVER_TOOL_EXECUTION_HANDLER).ignoreErrors();
+        tokenStream
+                .beforeServerToolExecution(DUMMY_SERVER_TOOL_EXECUTION_HANDLER)
+                .ignoreErrors();
 
         assertThatNoException().isThrownBy(() -> tokenStream.start());
     }
@@ -169,7 +171,9 @@ class AiServiceTokenStreamTest {
 
     @Test
     void start_onServerToolExecutionProgressInvoked_shouldNotThrowException() {
-        tokenStream.onServerToolExecutionProgress(DUMMY_SERVER_TOOL_EXECUTION_HANDLER).ignoreErrors();
+        tokenStream
+                .onServerToolExecutionProgress(DUMMY_SERVER_TOOL_EXECUTION_HANDLER)
+                .ignoreErrors();
 
         assertThatNoException().isThrownBy(() -> tokenStream.start());
     }
@@ -383,9 +387,6 @@ class AiServiceTokenStreamTest {
     }
 
     private static ServerToolExecution serverToolExecution(String type) {
-        return ServerToolExecution.builder()
-                .id("ws_123")
-                .type(type)
-                .build();
+        return ServerToolExecution.builder().id("ws_123").type(type).build();
     }
 }

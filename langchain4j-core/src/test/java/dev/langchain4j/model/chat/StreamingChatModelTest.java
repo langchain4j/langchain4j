@@ -7,12 +7,11 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ServerToolExecution;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import org.assertj.core.api.WithAssertions;
-import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import org.assertj.core.api.WithAssertions;
+import org.junit.jupiter.api.Test;
 
 class StreamingChatModelTest implements WithAssertions {
 
@@ -53,8 +52,7 @@ class StreamingChatModelTest implements WithAssertions {
         }
 
         @Override
-        public void onPartialResponse(String partialResponse) {
-        }
+        public void onPartialResponse(String partialResponse) {}
 
         @Override
         public void beforeServerToolExecution(ServerToolExecution serverToolExecution) {
@@ -77,8 +75,7 @@ class StreamingChatModelTest implements WithAssertions {
         }
 
         @Override
-        public void onError(Throwable error) {
-        }
+        public void onError(Throwable error) {}
     }
 
     @Test
@@ -134,9 +131,8 @@ class StreamingChatModelTest implements WithAssertions {
                 handler.beforeServerToolExecution(started);
                 handler.onServerToolExecutionProgress(progress);
                 handler.onServerToolExecuted(completed);
-                handler.onCompleteResponse(ChatResponse.builder()
-                        .aiMessage(new AiMessage("done"))
-                        .build());
+                handler.onCompleteResponse(
+                        ChatResponse.builder().aiMessage(new AiMessage("done")).build());
             }
         };
 

@@ -175,8 +175,7 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     @Override
-    public TokenStream onServerToolExecutionProgress(
-            Consumer<ServerToolExecution> serverToolExecutionProgressHandler) {
+    public TokenStream onServerToolExecutionProgress(Consumer<ServerToolExecution> serverToolExecutionProgressHandler) {
         this.serverToolExecutionProgressHandler = serverToolExecutionProgressHandler;
         this.onServerToolExecutionProgressInvoked++;
         return this;

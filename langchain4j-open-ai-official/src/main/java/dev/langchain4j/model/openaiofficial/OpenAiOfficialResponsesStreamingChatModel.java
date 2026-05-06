@@ -1130,15 +1130,18 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         }
 
         private void handleWebSearchCallInProgress(ResponseWebSearchCallInProgressEvent event) {
-            beforeServerToolExecution(handler, serverToolExecution(event.itemId(), event._type().convert(String.class), event));
+            beforeServerToolExecution(
+                    handler, serverToolExecution(event.itemId(), event._type().convert(String.class), event));
         }
 
         private void handleWebSearchCallSearching(ResponseWebSearchCallSearchingEvent event) {
-            onServerToolExecutionProgress(handler, serverToolExecution(event.itemId(), event._type().convert(String.class), event));
+            onServerToolExecutionProgress(
+                    handler, serverToolExecution(event.itemId(), event._type().convert(String.class), event));
         }
 
         private void handleWebSearchCallCompleted(ResponseWebSearchCallCompletedEvent event) {
-            onServerToolExecuted(handler, serverToolExecution(event.itemId(), event._type().convert(String.class), event));
+            onServerToolExecuted(
+                    handler, serverToolExecution(event.itemId(), event._type().convert(String.class), event));
         }
 
         private ServerToolExecution serverToolExecution(String id, String type, Object rawEvent) {

@@ -66,16 +66,14 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
         Tool webSearch = webSearchTool();
         Tool toolSearch = toolSearchTool();
 
-        OpenAiOfficialResponsesChatRequestParameters defaults =
-                OpenAiOfficialResponsesChatRequestParameters.builder()
-                        .modelName("gpt-5.4-mini")
-                        .serverTools(List.of(webSearch))
-                        .build();
+        OpenAiOfficialResponsesChatRequestParameters defaults = OpenAiOfficialResponsesChatRequestParameters.builder()
+                .modelName("gpt-5.4-mini")
+                .serverTools(List.of(webSearch))
+                .build();
 
-        OpenAiOfficialResponsesChatRequestParameters override =
-                OpenAiOfficialResponsesChatRequestParameters.builder()
-                        .serverTools(List.of(toolSearch))
-                        .build();
+        OpenAiOfficialResponsesChatRequestParameters override = OpenAiOfficialResponsesChatRequestParameters.builder()
+                .serverTools(List.of(toolSearch))
+                .build();
 
         OpenAiOfficialResponsesChatRequestParameters merged = defaults.overrideWith(override);
 
@@ -94,13 +92,12 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
                         .build())
                 .build();
 
-        OpenAiOfficialResponsesChatRequestParameters parameters =
-                OpenAiOfficialResponsesChatRequestParameters.builder()
-                        .modelName("gpt-5.4-mini")
-                        .toolSpecifications(List.of(functionTool))
-                        .toolChoice(ToolChoice.REQUIRED)
-                        .serverTools(List.of(webSearch))
-                        .build();
+        OpenAiOfficialResponsesChatRequestParameters parameters = OpenAiOfficialResponsesChatRequestParameters.builder()
+                .modelName("gpt-5.4-mini")
+                .toolSpecifications(List.of(functionTool))
+                .toolChoice(ToolChoice.REQUIRED)
+                .serverTools(List.of(webSearch))
+                .build();
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Hello"))

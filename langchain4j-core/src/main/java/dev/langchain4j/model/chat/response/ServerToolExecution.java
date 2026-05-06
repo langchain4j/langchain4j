@@ -5,7 +5,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
 import java.util.Objects;
 
 /**
@@ -69,10 +68,7 @@ public class ServerToolExecution {
 
     @Override
     public String toString() {
-        return "ServerToolExecution{" + "id="
-                + quoted(id) + ", type="
-                + quoted(type) + ", rawEvent="
-                + rawEvent + '}';
+        return "ServerToolExecution{" + "id=" + quoted(id) + ", type=" + quoted(type) + ", rawEvent=" + rawEvent + '}';
     }
 
     public static Builder builder() {
