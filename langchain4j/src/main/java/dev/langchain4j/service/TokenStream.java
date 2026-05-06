@@ -9,6 +9,7 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
+import dev.langchain4j.model.chat.response.ServerToolExecution;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.BeforeToolExecution;
@@ -157,6 +158,40 @@ public interface TokenStream {
      * @since 1.2.0
      */
     default TokenStream beforeToolExecution(Consumer<BeforeToolExecution> beforeToolExecutionHandler) {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    /**
+     * The provided consumer will be invoked right before a provider-hosted tool is executed.
+     *
+     * @param beforeServerToolExecutionHandler lambda that consumes {@link ServerToolExecution}
+     * @return token stream instance used to configure or start stream processing
+     */
+    @Experimental
+    default TokenStream beforeServerToolExecution(Consumer<ServerToolExecution> beforeServerToolExecutionHandler) {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    /**
+     * The provided consumer will be invoked when a provider-hosted tool reports progress.
+     *
+     * @param serverToolExecutionProgressHandler lambda that consumes {@link ServerToolExecution}
+     * @return token stream instance used to configure or start stream processing
+     */
+    @Experimental
+    default TokenStream onServerToolExecutionProgress(
+            Consumer<ServerToolExecution> serverToolExecutionProgressHandler) {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    /**
+     * The provided consumer will be invoked right after a provider-hosted tool is executed.
+     *
+     * @param serverToolExecutedHandler lambda that consumes {@link ServerToolExecution}
+     * @return token stream instance used to configure or start stream processing
+     */
+    @Experimental
+    default TokenStream onServerToolExecuted(Consumer<ServerToolExecution> serverToolExecutedHandler) {
         throw new UnsupportedOperationException("not implemented");
     }
 

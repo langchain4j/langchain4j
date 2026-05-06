@@ -11,6 +11,7 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
+import dev.langchain4j.model.chat.response.ServerToolExecution;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import org.slf4j.Logger;
@@ -126,6 +127,33 @@ public class InternalStreamingChatResponseHandlerUtils {
     public static void onCompleteToolCall(StreamingChatResponseHandler handler, CompleteToolCall completeToolCall) {
         try {
             handler.onCompleteToolCall(completeToolCall);
+        } catch (Exception e) {
+            withLoggingExceptions(() -> handler.onError(e));
+        }
+    }
+
+    public static void beforeServerToolExecution(StreamingChatResponseHandler handler,
+                                                 ServerToolExecution serverToolExecution) {
+        try {
+            handler.beforeServerToolExecution(serverToolExecution);
+        } catch (Exception e) {
+            withLoggingExceptions(() -> handler.onError(e));
+        }
+    }
+
+    public static void onServerToolExecutionProgress(StreamingChatResponseHandler handler,
+                                                     ServerToolExecution serverToolExecution) {
+        try {
+            handler.onServerToolExecutionProgress(serverToolExecution);
+        } catch (Exception e) {
+            withLoggingExceptions(() -> handler.onError(e));
+        }
+    }
+
+    public static void onServerToolExecuted(StreamingChatResponseHandler handler,
+                                            ServerToolExecution serverToolExecution) {
+        try {
+            handler.onServerToolExecuted(serverToolExecution);
         } catch (Exception e) {
             withLoggingExceptions(() -> handler.onError(e));
         }

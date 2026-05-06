@@ -2,7 +2,10 @@ package dev.langchain4j.service;
 
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
@@ -10,6 +13,7 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.PartialResponseContext;
@@ -17,6 +21,8 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
+import dev.langchain4j.model.chat.response.ServerToolExecution;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
@@ -28,6 +34,7 @@ import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -54,6 +61,7 @@ class AiServiceTokenStreamTest {
     static Consumer<Throwable> DUMMY_ERROR_HANDLER = (error) -> {};
     static Consumer<ChatResponse> DUMMY_CHAT_RESPONSE_HANDLER = (chatResponse) -> {};
     static Consumer<BeforeToolExecution> DUMMY_BEFORE_TOOL_EXECUTION_HANDLER = (beforeToolExecution) -> {};
+    static Consumer<ServerToolExecution> DUMMY_SERVER_TOOL_EXECUTION_HANDLER = (serverToolExecution) -> {};
 
     List<ChatMessage> messages = new ArrayList<>();
 
@@ -138,6 +146,97 @@ class AiServiceTokenStreamTest {
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("beforeToolExecution can be invoked on TokenStream at most 1 time");
+    }
+
+    @Test
+    void start_beforeServerToolExecutionInvoked_shouldNotThrowException() {
+        tokenStream.beforeServerToolExecution(DUMMY_SERVER_TOOL_EXECUTION_HANDLER).ignoreErrors();
+
+        assertThatNoException().isThrownBy(() -> tokenStream.start());
+    }
+
+    @Test
+    void start_beforeServerToolExecutionInvokedMultipleTimes_shouldThrowException() {
+        tokenStream
+                .beforeServerToolExecution(DUMMY_SERVER_TOOL_EXECUTION_HANDLER)
+                .beforeServerToolExecution(DUMMY_SERVER_TOOL_EXECUTION_HANDLER)
+                .ignoreErrors();
+
+        assertThatThrownBy(() -> tokenStream.start())
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("beforeServerToolExecution can be invoked on TokenStream at most 1 time");
+    }
+
+    @Test
+    void start_onServerToolExecutionProgressInvoked_shouldNotThrowException() {
+        tokenStream.onServerToolExecutionProgress(DUMMY_SERVER_TOOL_EXECUTION_HANDLER).ignoreErrors();
+
+        assertThatNoException().isThrownBy(() -> tokenStream.start());
+    }
+
+    @Test
+    void start_onServerToolExecutionProgressInvokedMultipleTimes_shouldThrowException() {
+        tokenStream
+                .onServerToolExecutionProgress(DUMMY_SERVER_TOOL_EXECUTION_HANDLER)
+                .onServerToolExecutionProgress(DUMMY_SERVER_TOOL_EXECUTION_HANDLER)
+                .ignoreErrors();
+
+        assertThatThrownBy(() -> tokenStream.start())
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("onServerToolExecutionProgress can be invoked on TokenStream at most 1 time");
+    }
+
+    @Test
+    void start_onServerToolExecutedInvoked_shouldNotThrowException() {
+        tokenStream.onServerToolExecuted(DUMMY_SERVER_TOOL_EXECUTION_HANDLER).ignoreErrors();
+
+        assertThatNoException().isThrownBy(() -> tokenStream.start());
+    }
+
+    @Test
+    void start_onServerToolExecutedInvokedMultipleTimes_shouldThrowException() {
+        tokenStream
+                .onServerToolExecuted(DUMMY_SERVER_TOOL_EXECUTION_HANDLER)
+                .onServerToolExecuted(DUMMY_SERVER_TOOL_EXECUTION_HANDLER)
+                .ignoreErrors();
+
+        assertThatThrownBy(() -> tokenStream.start())
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("onServerToolExecuted can be invoked on TokenStream at most 1 time");
+    }
+
+    @Test
+    void start_shouldForwardServerToolExecutionCallbacks() {
+        StreamingChatModel streamingModel = mock(StreamingChatModel.class);
+        tokenStream = setupAiServiceTokenStream(streamingModel);
+        List<ServerToolExecution> beforeEvents = new ArrayList<>();
+        List<ServerToolExecution> progressEvents = new ArrayList<>();
+        List<ServerToolExecution> completedEvents = new ArrayList<>();
+
+        ServerToolExecution started = serverToolExecution("in_progress");
+        ServerToolExecution searching = serverToolExecution("searching");
+        ServerToolExecution completed = serverToolExecution("completed");
+
+        tokenStream
+                .beforeServerToolExecution(beforeEvents::add)
+                .onServerToolExecutionProgress(progressEvents::add)
+                .onServerToolExecuted(completedEvents::add)
+                .ignoreErrors();
+
+        tokenStream.start();
+
+        ArgumentCaptor<StreamingChatResponseHandler> handlerCaptor =
+                ArgumentCaptor.forClass(StreamingChatResponseHandler.class);
+        verify(streamingModel).chat(any(ChatRequest.class), handlerCaptor.capture());
+        StreamingChatResponseHandler handler = handlerCaptor.getValue();
+
+        handler.beforeServerToolExecution(started);
+        handler.onServerToolExecutionProgress(searching);
+        handler.onServerToolExecuted(completed);
+
+        assertThat(beforeEvents).containsExactly(started);
+        assertThat(progressEvents).containsExactly(searching);
+        assertThat(completedEvents).containsExactly(completed);
     }
 
     @Test
@@ -251,7 +350,10 @@ class AiServiceTokenStreamTest {
     }
 
     private AiServiceTokenStream setupAiServiceTokenStream() {
-        StreamingChatModel streamingModel = mock(StreamingChatModel.class);
+        return setupAiServiceTokenStream(mock(StreamingChatModel.class));
+    }
+
+    private AiServiceTokenStream setupAiServiceTokenStream(StreamingChatModel streamingModel) {
         ChatModel chatModel = mock(ChatModel.class);
 
         AiServiceContext context = AiServiceContext.create(getClass());
@@ -278,5 +380,12 @@ class AiServiceTokenStreamTest {
                 })
                 .toolExecutionErrorHandler((e, c) -> ToolErrorHandlerResult.text(e.getMessage()))
                 .build());
+    }
+
+    private static ServerToolExecution serverToolExecution(String type) {
+        return ServerToolExecution.builder()
+                .id("ws_123")
+                .type(type)
+                .build();
     }
 }

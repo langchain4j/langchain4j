@@ -21,6 +21,7 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
+import dev.langchain4j.model.chat.response.ServerToolExecution;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.rag.content.Content;
@@ -59,6 +60,9 @@ public class AiServiceTokenStream implements TokenStream {
     private Consumer<List<Content>> contentsHandler;
     private Consumer<ChatResponse> intermediateResponseHandler;
     private Consumer<BeforeToolExecution> beforeToolExecutionHandler;
+    private Consumer<ServerToolExecution> beforeServerToolExecutionHandler;
+    private Consumer<ServerToolExecution> serverToolExecutionProgressHandler;
+    private Consumer<ServerToolExecution> serverToolExecutedHandler;
     private Consumer<ToolExecution> toolExecutionHandler;
     private Consumer<ChatResponse> completeResponseHandler;
     private Consumer<Throwable> errorHandler;
@@ -73,6 +77,9 @@ public class AiServiceTokenStream implements TokenStream {
     private int onCompleteResponseInvoked;
     private int onRetrievedInvoked;
     private int beforeToolExecutionInvoked;
+    private int beforeServerToolExecutionInvoked;
+    private int onServerToolExecutionProgressInvoked;
+    private int onServerToolExecutedInvoked;
     private int onToolExecutedInvoked;
     private int onErrorInvoked;
     private int ignoreErrorsInvoked;
@@ -161,6 +168,28 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     @Override
+    public TokenStream beforeServerToolExecution(Consumer<ServerToolExecution> beforeServerToolExecutionHandler) {
+        this.beforeServerToolExecutionHandler = beforeServerToolExecutionHandler;
+        this.beforeServerToolExecutionInvoked++;
+        return this;
+    }
+
+    @Override
+    public TokenStream onServerToolExecutionProgress(
+            Consumer<ServerToolExecution> serverToolExecutionProgressHandler) {
+        this.serverToolExecutionProgressHandler = serverToolExecutionProgressHandler;
+        this.onServerToolExecutionProgressInvoked++;
+        return this;
+    }
+
+    @Override
+    public TokenStream onServerToolExecuted(Consumer<ServerToolExecution> serverToolExecutedHandler) {
+        this.serverToolExecutedHandler = serverToolExecutedHandler;
+        this.onServerToolExecutedInvoked++;
+        return this;
+    }
+
+    @Override
     public TokenStream onToolExecuted(Consumer<ToolExecution> toolExecutionHandler) {
         this.toolExecutionHandler = toolExecutionHandler;
         this.onToolExecutedInvoked++;
@@ -221,6 +250,9 @@ public class AiServiceTokenStream implements TokenStream {
                 partialToolCallHandler,
                 partialToolCallWithContextHandler,
                 beforeToolExecutionHandler,
+                beforeServerToolExecutionHandler,
+                serverToolExecutionProgressHandler,
+                serverToolExecutedHandler,
                 toolExecutionHandler,
                 intermediateResponseHandler,
                 completeResponseHandler,
@@ -272,6 +304,18 @@ public class AiServiceTokenStream implements TokenStream {
         }
         if (beforeToolExecutionInvoked > 1) {
             throw new IllegalConfigurationException("beforeToolExecution can be invoked on TokenStream at most 1 time");
+        }
+        if (beforeServerToolExecutionInvoked > 1) {
+            throw new IllegalConfigurationException(
+                    "beforeServerToolExecution can be invoked on TokenStream at most 1 time");
+        }
+        if (onServerToolExecutionProgressInvoked > 1) {
+            throw new IllegalConfigurationException(
+                    "onServerToolExecutionProgress can be invoked on TokenStream at most 1 time");
+        }
+        if (onServerToolExecutedInvoked > 1) {
+            throw new IllegalConfigurationException(
+                    "onServerToolExecuted can be invoked on TokenStream at most 1 time");
         }
         if (onToolExecutedInvoked > 1) {
             throw new IllegalConfigurationException("onToolExecuted can be invoked on TokenStream at most 1 time");
