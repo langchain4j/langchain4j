@@ -137,12 +137,9 @@ public class CanaryTokenOutputGuardrail implements OutputGuardrail {
      * </ol>
      */
     private CanaryTokenGuardrailConfig resolveConfig(GuardrailRequestParams params) {
-        CanaryTokenGuardrailConfig managedConfig = CanaryTokenGuardrailConfig.fromManaged(params);
-        if (managedConfig != null) {
-            return managedConfig;
-        }
-        return constructorConfig != null
-                ? constructorConfig
-                : CanaryTokenGuardrailConfig.builder().build();
+        return CanaryTokenGuardrailConfig.fromManaged(params)
+                .orElseGet(() -> constructorConfig != null
+                        ? constructorConfig
+                        : CanaryTokenGuardrailConfig.builder().build());
     }
 }

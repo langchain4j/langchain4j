@@ -4,6 +4,7 @@ import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 /**
@@ -48,31 +49,28 @@ public class CanaryTokenGuardrailConfig implements LangChain4jManaged {
     }
     /**
      * Returns the {@link CanaryTokenGuardrailConfig} stored in the invocation-scoped managed
-     * parameters of the given {@link GuardrailRequestParams}, or {@code null} if none is present.
-     * <p>
-     * Use this when you need to distinguish between "an explicit config was found" and
-     * "nothing was found, use defaults". For the common case where you just want a non-null
-     * config, use {@link #from(GuardrailRequestParams)} instead.
-     * </p>
+     * parameters of the given {@link GuardrailRequestParams}, or an empty {@link Optional} if
+     * none is present.
      *
      * @param params the guardrail request params for the current invocation
-     * @return the stored config, or {@code null} if not present
+     * @return an {@link Optional} containing the stored config, or empty if not present
      */
-    public static CanaryTokenGuardrailConfig fromManaged(GuardrailRequestParams params) {
+    public static Optional<CanaryTokenGuardrailConfig> fromManaged(GuardrailRequestParams params) {
         if (params == null) {
-            return null;
+            return Optional.empty();
         }
         InvocationContext ctx = params.invocationContext();
         if (ctx == null) {
-            return null;
+            return Optional.empty();
         }
         Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managed = ctx.managedParameters();
         if (managed == null) {
-            return null;
+            return Optional.empty();
         }
         LangChain4jManaged value = managed.get(CanaryTokenGuardrailConfig.class);
-        return (value instanceof CanaryTokenGuardrailConfig cfg) ? cfg : null;
+        return value instanceof CanaryTokenGuardrailConfig cfg ? Optional.of(cfg) : Optional.empty();
     }
+
     /**
      * Resolves the {@link CanaryTokenGuardrailConfig} from the given {@link GuardrailRequestParams},
      * falling back to built-in defaults when nothing is found.
@@ -82,14 +80,12 @@ public class CanaryTokenGuardrailConfig implements LangChain4jManaged {
      *   <li>Config stored in the invocation-scoped managed parameters</li>
      *   <li>Built-in defaults (BLOCK remediation, enabled)</li>
      * </ol>
-     * </p>
      *
      * @param params the guardrail request params for the current invocation
      * @return the resolved config, never {@code null}
      */
     public static CanaryTokenGuardrailConfig from(GuardrailRequestParams params) {
-        CanaryTokenGuardrailConfig managed = fromManaged(params);
-        return managed != null ? managed : builder().build();
+        return fromManaged(params).orElseGet(() -> builder().build());
     }
 
     public boolean isDisabled() {
