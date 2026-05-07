@@ -10,7 +10,7 @@ sidebar_position: 4
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-cohere</artifactId>
-    <version>1.14.0-beta24</version>
+    <version>1.14.1-beta24</version>
 </dependency>
 ```
 

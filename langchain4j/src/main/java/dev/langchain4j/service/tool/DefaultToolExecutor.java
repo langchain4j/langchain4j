@@ -114,7 +114,7 @@ public class DefaultToolExecutor implements ToolExecutor {
                 } else {
                     return ToolExecutionResult.builder()
                             .isError(true)
-                            .resultText(e2.getCause().getMessage())
+                            .resultText(errorMessage(e2.getCause()))
                             .build();
                 }
             }
@@ -124,7 +124,7 @@ public class DefaultToolExecutor implements ToolExecutor {
             } else {
                 return ToolExecutionResult.builder()
                         .isError(true)
-                        .resultText(e.getCause().getMessage())
+                        .resultText(errorMessage(e.getCause()))
                         .build();
             }
         }
@@ -175,7 +175,8 @@ public class DefaultToolExecutor implements ToolExecutor {
             return List.of(ImageContent.from(image));
         } else if (result instanceof Content content) {
             return List.of(content);
-        } else if (result instanceof Collection<?> collection && !collection.isEmpty()
+        } else if (result instanceof Collection<?> collection
+                && !collection.isEmpty()
                 && collection.iterator().next() instanceof Content) {
             return collection.stream().map(Content.class::cast).toList();
         } else if (result instanceof Content[] array) {
@@ -236,6 +237,11 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
 
         return arguments;
+    }
+
+    private static String errorMessage(Throwable cause) {
+        String message = cause.getMessage();
+        return message != null ? message : cause.getClass().getName();
     }
 
     private static String getName(Parameter parameter) {

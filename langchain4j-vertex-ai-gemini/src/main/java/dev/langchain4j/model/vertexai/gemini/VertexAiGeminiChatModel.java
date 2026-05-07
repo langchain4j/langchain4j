@@ -181,10 +181,18 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
                     .build();
         }
 
+        final Map<String, String> headers;
+        if (builder.customHeaders != null) {
+            headers = new HashMap<>(builder.customHeaders);
+            headers.putIfAbsent("user-agent", "LangChain4j");
+        } else {
+            headers = Map.of("user-agent", "LangChain4j");
+        }
+
         VertexAI.Builder vertexAiBuilder = new VertexAI.Builder()
                 .setProjectId(ensureNotBlank(builder.project, "project"))
                 .setLocation(ensureNotBlank(builder.location, "location"))
-                .setCustomHeaders(Collections.singletonMap("user-agent", "LangChain4j"));
+                .setCustomHeaders(headers);
 
         if (builder.credentials != null) {
             GoogleCredentials scopedCredentials =
@@ -586,6 +594,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         private Boolean logResponses;
         private List<ChatModelListener> listeners;
         private Set<Capability> supportedCapabilities;
+        private Map<String, String> customHeaders;
         private GoogleCredentials credentials;
         private String apiEndpoint;
 
@@ -704,6 +713,22 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
 
         public VertexAiGeminiChatModelBuilder apiEndpoint(String apiEndpoint) {
             this.apiEndpoint = apiEndpoint;
+            return this;
+        }
+
+        /**
+         * Sets custom headers to be included in the LLM requests.
+         * Main use-case is to support provision throughput quota.
+         * E.g: "X-Vertex-AI-LLM-Request-Type: dedicated" will exhaust the provisioned throughput quota first, and will
+         * return HTTP_429 if the quota is exhausted.
+         * "X-Vertex-AI-LLM-Request-Type: shared" will bypass the provisioned throughput quota completely.
+         *  For more information please refer to the <a href="https://cloud.google.com/vertex-ai/generative-ai/docs/use-provisioned-throughput">official documentation</a>
+         *
+         * @param customHeaders a map of custom header keys and their corresponding values
+         * @return the updated instance of {@code VertexAiGeminiChatModelBuilder}
+         */
+        public VertexAiGeminiChatModelBuilder customHeaders(Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
             return this;
         }
 

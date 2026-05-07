@@ -139,7 +139,8 @@ public final class GoogleAiGeminiBatchImageModel {
                 getOrDefault(builder.logRequests, false),
                 getOrDefault(builder.logResponses, false),
                 builder.logger,
-                builder.timeout);
+                builder.timeout,
+                null);
     }
 
     /**
