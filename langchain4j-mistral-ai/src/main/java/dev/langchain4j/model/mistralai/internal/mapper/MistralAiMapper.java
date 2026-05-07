@@ -167,8 +167,6 @@ public class MistralAiMapper {
             toolExecutionRequests = toToolExecutionRequests(toolCalls);
         }
 
-        // OpenAI-compatible servers (e.g. vLLM) return content=null when the assistant
-        // emits only tool calls. Treat null content as empty to avoid an NPE.
         List<MistralAiMessageContent> contents = aiMistralMessage.getContent();
         if (contents == null) {
             contents = List.of();
