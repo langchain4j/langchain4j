@@ -66,6 +66,59 @@ class ToolSpecificationJsonTest {
     }
 
     @Test
+    void should_round_trip_with_strict_true() {
+        ToolSpecification original = ToolSpecification.builder()
+                .name("strict_tool")
+                .description("A tool with strict enforcement")
+                .strict(true)
+                .build();
+
+        String json = original.toJson();
+        assertThat(json).contains("\"strict\":true");
+
+        ToolSpecification restored = ToolSpecification.fromJson(json);
+        assertThat(restored).isEqualTo(original);
+        assertThat(restored.strict()).isTrue();
+    }
+
+    @Test
+    void should_round_trip_with_strict_false() {
+        ToolSpecification original = ToolSpecification.builder()
+                .name("non_strict_tool")
+                .strict(false)
+                .build();
+
+        String json = original.toJson();
+        assertThat(json).contains("\"strict\":false");
+
+        ToolSpecification restored = ToolSpecification.fromJson(json);
+        assertThat(restored).isEqualTo(original);
+        assertThat(restored.strict()).isFalse();
+    }
+
+    @Test
+    void should_round_trip_with_strict_null() {
+        ToolSpecification original = ToolSpecification.builder()
+                .name("default_tool")
+                .build();
+
+        String json = original.toJson();
+        assertThat(json).doesNotContain("strict");
+
+        ToolSpecification restored = ToolSpecification.fromJson(json);
+        assertThat(restored).isEqualTo(original);
+        assertThat(restored.strict()).isNull();
+    }
+
+    @Test
+    void should_reject_non_boolean_strict() {
+        String json = "{\"name\":\"test\",\"strict\":\"yes\"}";
+        assertThatThrownBy(() -> ToolSpecification.fromJson(json))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("strict");
+    }
+
+    @Test
     void should_reject_non_object_parameters() {
         String json = "{\"name\":\"test\",\"parameters\":{\"type\":\"string\"}}";
         assertThatThrownBy(() -> ToolSpecification.fromJson(json))

@@ -295,11 +295,15 @@ public class OpenAiUtils {
     }
 
     private static Tool toTool(ToolSpecification toolSpecification, boolean strict) {
+        // Per-tool strict overrides model-level default
+        boolean effectiveStrict = toolSpecification.strict() != null
+                ? Boolean.TRUE.equals(toolSpecification.strict())
+                : strict;
         Function.Builder functionBuilder = Function.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())
-                .parameters(toOpenAiParameters(toolSpecification.parameters(), strict));
-        if (strict) {
+                .parameters(toOpenAiParameters(toolSpecification.parameters(), effectiveStrict));
+        if (effectiveStrict) {
             functionBuilder.strict(true);
         }
         Function function = functionBuilder.build();
