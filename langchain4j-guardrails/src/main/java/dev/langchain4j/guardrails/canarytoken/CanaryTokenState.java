@@ -31,6 +31,7 @@ import java.util.Optional;
  * Optional<CanaryTokenState> state = CanaryTokenState.from(request.requestParams());
  * state.ifPresent(s -> ...);
  * }</pre>
+ * @param canaryValue the canary token value injected into the system prompt
  */
 @Internal
 public record CanaryTokenState(String canaryValue) implements LangChain4jManaged {
