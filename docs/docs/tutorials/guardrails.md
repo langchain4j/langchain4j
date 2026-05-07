@@ -243,6 +243,7 @@ There are several common use cases where implementations of an input guardrail a
 | Guardrail class                                                                                                                                                                              | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 |:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`MessageModeratorInputGuardrail`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-guardrails/src/main/java/dev/langchain4j/guardrails/MessageModeratorInputGuardrail.java) | An input guardrail that validates user messages using a [`ModerationModel`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/model/moderation/ModerationModel.java) to detect potentially harmful, inappropriate, or policy-violating content.<br/> - Checks incoming messages for hate speech, violence, self-harm, sexual content, or other categories defined by the moderation model.<br/> - If the message is flagged, validation fails with a fatal result, preventing the message from being processed further.<br/> - Useful for ensuring user inputs comply with content policies before being sent to an LLM. |
+| [`CanaryTokenInputGuardrail`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-guardrails/src/main/java/dev/langchain4j/guardrails/canarytoken/CanaryTokenInputGuardrail.java) | An input guardrail that injects a unique canary token into the system message to detect system prompt leakage (OWASP LLM07).<br/> - Generates a cryptographically random token and embeds it into the system prompt with a steering instruction asking the LLM to keep it secret.<br/> - Stores the token in the invocation-scoped managed parameters so the paired [`CanaryTokenOutputGuardrail`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-guardrails/src/main/java/dev/langchain4j/guardrails/canarytoken/CanaryTokenOutputGuardrail.java) can detect leakage.<br/> - Must be used together with `CanaryTokenOutputGuardrail`. |
 
 ## Output Guardrails
 
@@ -443,6 +444,37 @@ There are several common use cases where implementations of an output guardrail 
 | Guardrail class                                                                                                                                                                         | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 |:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`JsonExtractorOutputGuardrail`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-guardrails/src/main/java/dev/langchain4j/guardrails/JsonExtractorOutputGuardrail.java) | An output guardrail that will check whether or not a response can be successfully deserialized from JSON to an object of a certain type.<br/> - Uses a [Jackson ObjectMapper](https://github.com/FasterXML/jackson-databind) to try and deserialize an object.<br/> - The LLM is reprompted if the response can't be deserialized into the expected object type.<br/> - Can be used as-is, or can be extended and customized (there are several `protected` methods that can be overridden to customize behavior). |
+| [`CanaryTokenOutputGuardrail`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-guardrails/src/main/java/dev/langchain4j/guardrails/canarytoken/CanaryTokenOutputGuardrail.java) | An output guardrail that checks the LLM response for the canary token injected by [`CanaryTokenInputGuardrail`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-guardrails/src/main/java/dev/langchain4j/guardrails/canarytoken/CanaryTokenInputGuardrail.java).<br/> - If the token appears in the response, system prompt leakage is detected and a remediation strategy is applied.<br/> - Three strategies are available via [`CanaryTokenLeakageRemediation`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-guardrails/src/main/java/dev/langchain4j/guardrails/canarytoken/CanaryTokenLeakageRemediation.java): `BLOCK` (replace with a safe message), `REDACT` (replace the token in the response), or `THROW_EXCEPTION` (throw a [`CanaryTokenLeakageException`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-guardrails/src/main/java/dev/langchain4j/guardrails/canarytoken/CanaryTokenLeakageException.java)).<br/> - Must be used together with `CanaryTokenInputGuardrail`. |
+
+#### Canary Token Guardrail Usage
+
+Both guardrails are stateless and can be declared via annotations or programmatically. They share state through the invocation-scoped managed parameters — no shared instance or static state is needed.
+
+**Annotation-based (uses built-in defaults — `BLOCK` remediation):**
+
+```java
+interface Assistant {
+    @InputGuardrails(CanaryTokenInputGuardrail.class)
+    @OutputGuardrails(CanaryTokenOutputGuardrail.class)
+    String chat(String message);
+}
+```
+
+**Programmatic with custom config:**
+
+```java
+CanaryTokenGuardrailConfig config = CanaryTokenGuardrailConfig.builder()
+    .remediation(CanaryTokenLeakageRemediation.REDACT)
+    .redactionPlaceholder("[REDACTED]")
+    .build();
+
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatModel(model)
+    .chatMemory(memory)
+    .inputGuardrails(new CanaryTokenInputGuardrail(config))
+    .outputGuardrails(new CanaryTokenOutputGuardrail(config))
+    .build();
+```
 
 ### Unit Testing Output Guardrails
 
