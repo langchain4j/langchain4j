@@ -13,11 +13,11 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
-import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.Test;
 
 class ElasticsearchEmbeddingStoreKnnIT extends AbstractElasticsearchEmbeddingStoreIT {
 
@@ -75,8 +75,9 @@ class ElasticsearchEmbeddingStoreKnnIT extends AbstractElasticsearchEmbeddingSto
         Filter filter = new IsEqualTo("uuid_list", uuid1);
         Embedding embedding = embeddingModel().embed("matching").content();
         EmbeddingSearchRequest searchRequest = new EmbeddingSearchRequest(embedding, null, null, filter);
-        
-        List<EmbeddingMatch<TextSegment>> matches = embeddingStore().search(searchRequest).matches();
+
+        List<EmbeddingMatch<TextSegment>> matches =
+                embeddingStore().search(searchRequest).matches();
 
         assertThat(matches.size()).isEqualTo(1);
         Metadata metadata = matches.get(0).embedded().metadata();
