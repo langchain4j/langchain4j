@@ -121,6 +121,10 @@ class AwsDocumentConverter {
 
             List<String> required = new ArrayList<>(parameters.required());
             schemaMap.put("required", required);
+
+            if (!parameters.definitions().isEmpty()) {
+                schemaMap.put("$defs", JsonSchemaElementUtils.toMap(parameters.definitions(), strict));
+            }
         }
 
         if (strict) {

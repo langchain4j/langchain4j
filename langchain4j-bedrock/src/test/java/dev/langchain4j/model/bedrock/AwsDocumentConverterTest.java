@@ -8,6 +8,7 @@ import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -234,6 +235,46 @@ class AwsDocumentConverterTest {
         Map<String, Document> metadataObjectBranch =
                 properties.get("metadata").asMap().get("anyOf").asList().get(0).asMap();
         assertThat(metadataObjectBranch.get("additionalProperties").asBoolean()).isFalse();
+    }
+
+    @Test
+    void convert_tool_specification_with_definitions_to_strict_document() {
+        // Given
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("test-tool")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty(
+                                "person",
+                                JsonReferenceSchema.builder()
+                                        .reference("Person")
+                                        .build())
+                        .required("person")
+                        .definitions(Map.of(
+                                "Person",
+                                JsonObjectSchema.builder()
+                                        .addStringProperty("name")
+                                        .required("name")
+                                        .build()))
+                        .build())
+                .build();
+
+        // When
+        Document document = AwsDocumentConverter.convertJsonObjectSchemaToDocument(toolSpec, true);
+
+        // Then
+        Map<String, Document> docMap = document.asMap();
+        assertThat(docMap.get("properties")
+                        .asMap()
+                        .get("person")
+                        .asMap()
+                        .get("$ref")
+                        .asString())
+                .isEqualTo("#/$defs/Person");
+
+        Map<String, Document> personDefinition =
+                docMap.get("$defs").asMap().get("Person").asMap();
+        assertThat(personDefinition.get("additionalProperties").asBoolean()).isFalse();
+        assertThat(personDefinition.get("required").asList()).containsExactly(Document.fromString("name"));
     }
 
     @Test
