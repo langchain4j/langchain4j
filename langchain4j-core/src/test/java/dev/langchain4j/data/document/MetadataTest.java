@@ -273,16 +273,18 @@ class MetadataTest implements WithAssertions {
         assertThatThrownBy(() -> new Metadata(map))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageStartingWith("The metadata key 'key' has the value")
-                .hasMessageEndingWith("which is of the unsupported type 'java.lang.Object'. "
-                        + "Currently, the supported types are: [class java.lang.String, class java.util.UUID, int, class java.lang.Integer, "
-                        + "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double, interface java.util.Collection]");
+                .hasMessageEndingWith(
+                        "which is of the unsupported type 'java.lang.Object'. "
+                                + "Currently, the supported types are: [class java.lang.String, class java.util.UUID, int, class java.lang.Integer, "
+                                + "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double, interface java.util.Collection]");
 
         assertThatThrownBy(() -> Metadata.from(map))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageStartingWith("The metadata key 'key' has the value")
-                .hasMessageEndingWith("which is of the unsupported type 'java.lang.Object'. "
-                        + "Currently, the supported types are: [class java.lang.String, class java.util.UUID, int, class java.lang.Integer, "
-                        + "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double, interface java.util.Collection]");
+                .hasMessageEndingWith(
+                        "which is of the unsupported type 'java.lang.Object'. "
+                                + "Currently, the supported types are: [class java.lang.String, class java.util.UUID, int, class java.lang.Integer, "
+                                + "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double, interface java.util.Collection]");
     }
 
     @Test
@@ -443,7 +445,11 @@ class MetadataTest implements WithAssertions {
         assertThat(new Metadata().put("k1", "v1").putAll(Map.of("k1", "v2")).toMap())
                 .isEqualTo(Map.of("k1", "v2"));
 
-        assertThatThrownBy(() -> new Metadata().putAll(new HashMap<>() {{ put("k", null); }}))
+        assertThatThrownBy(() -> new Metadata().putAll(new HashMap<>() {
+                    {
+                        put("k", null);
+                    }
+                }))
                 .isExactlyInstanceOf(IllegalArgumentException.class);
 
         assertThatThrownBy(() -> new Metadata().putAll(Map.of("k", new Object())))
