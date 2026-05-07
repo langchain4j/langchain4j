@@ -115,8 +115,6 @@ public class CanaryTokenInputGuardrail implements InputGuardrail {
         String canary = config.getCanaryGenerator().get();
         CanaryTokenState.store(params, new CanaryTokenState(canary));
 
-        log.debug("Injected canary: {}", canary);
-
         // Inject canary into system message
         ChatMemory memory = params.chatMemory();
         if (memory != null) {
@@ -126,7 +124,7 @@ public class CanaryTokenInputGuardrail implements InputGuardrail {
                     String enhancedPrompt =
                             systemMessage.text() + "\n\n" + String.format(config.getSteeringInstruction(), canary);
 
-                    log.debug("Enhanced system prompt:\n{}", enhancedPrompt);
+                    log.debug("Canary token injected into system message");
 
                     List<ChatMessage> allMessages = new ArrayList<>(messages);
                     allMessages.set(i, SystemMessage.from(enhancedPrompt));

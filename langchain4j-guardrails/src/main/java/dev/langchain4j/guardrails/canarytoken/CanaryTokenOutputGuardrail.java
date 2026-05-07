@@ -102,7 +102,7 @@ public class CanaryTokenOutputGuardrail implements OutputGuardrail {
         }
 
         // Leakage detected - apply remediation
-        log.debug("Guardrail detected system prompt leakage in response: {}", content);
+        log.debug("Canary token leakage detected, applying {} remediation", config.getRemediation());
 
         return switch (config.getRemediation()) {
             case BLOCK -> {
@@ -112,12 +112,9 @@ public class CanaryTokenOutputGuardrail implements OutputGuardrail {
             case REDACT -> {
                 String redactedContent = content.replace(canary, config.getRedactionPlaceholder());
                 AiMessage redactedMessage = AiMessage.from(redactedContent);
-                log.debug("Original response: {}", content);
-                log.debug("Redacted response: {}", redactedContent);
                 yield successWith(redactedMessage);
             }
             case THROW_EXCEPTION -> {
-                log.debug("Guardrail detected leakage!");
                 yield fatal("System prompt leakage detected", new CanaryTokenLeakageException(canary, content));
             }
         };

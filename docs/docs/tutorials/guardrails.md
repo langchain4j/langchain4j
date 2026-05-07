@@ -460,6 +460,10 @@ interface Assistant {
 }
 ```
 
+:::note
+The canary token is injected into the first `SystemMessage` found in the `ChatMemory` at the time the input guardrail runs. The `@SystemMessage` annotation and system message templates are applied **after** input guardrails execute, so the canary will only be injected if the system message has already been added to the `ChatMemory` beforehand.
+:::
+
 **Programmatic with custom config:**
 
 ```java
