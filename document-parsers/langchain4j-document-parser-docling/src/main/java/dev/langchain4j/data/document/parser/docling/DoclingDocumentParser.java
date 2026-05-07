@@ -30,13 +30,13 @@ public class DoclingDocumentParser implements DocumentParser {
     }
 
     public DoclingDocumentParser(DoclingServeApi doclingClient, ConvertDocumentOptions options) {
-        this.doclingClient = ValidationUtils.ensureNotNull(doclingClient, "DoclingServeApi instance cannot be null");
+        this.doclingClient = ValidationUtils.ensureNotNull(doclingClient, "doclingClient");
         this.options = options;
     }
 
     @Override
     public Document parse(InputStream inputStream) {
-        ValidationUtils.ensureNotNull(inputStream, "Input stream cannot be null");
+        ValidationUtils.ensureNotNull(inputStream, "inputStream");
 
         try {
             byte[] documentBytes = inputStream.readAllBytes();
@@ -63,7 +63,6 @@ public class DoclingDocumentParser implements DocumentParser {
             ConvertDocumentResponse response = doclingClient.convertSource(requestBuilder.build());
 
             if (response.getResponseType() != ResponseType.IN_BODY) {
-                log.warn("Docling returned unexpected response type: {}", response.getResponseType());
                 throw new IllegalStateException(
                         "Only %s response types expected. Docling returned unexpected response type: %s"
                                 .formatted(ResponseType.IN_BODY, response.getResponseType()));
@@ -82,7 +81,6 @@ public class DoclingDocumentParser implements DocumentParser {
 
             String parsedText = inBodyResponse.getDocument().getMarkdownContent();
             if ((parsedText == null) || parsedText.strip().isEmpty()) {
-                log.warn("Docling returned no text content");
                 throw new BlankDocumentException();
             }
 
