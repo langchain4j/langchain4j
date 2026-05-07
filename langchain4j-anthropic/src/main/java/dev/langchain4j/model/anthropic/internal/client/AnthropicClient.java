@@ -11,6 +11,8 @@ import dev.langchain4j.model.anthropic.internal.api.MessageTokenCountResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.spi.ServiceHelper;
 import java.time.Duration;
+import java.util.Map;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 
 @Internal
@@ -104,6 +106,7 @@ public abstract class AnthropicClient {
         public Logger logger;
         public Boolean logRequests;
         public Boolean logResponses;
+        public Supplier<Map<String, String>> customHeadersSupplier;
 
         /**
          * Builds and returns a new {@link AnthropicClient} instance.
@@ -272,6 +275,31 @@ public abstract class AnthropicClient {
          */
         public B logger(Logger logger) {
             this.logger = logger;
+            return self();
+        }
+
+        /**
+         * Sets custom HTTP headers to be sent with every request.
+         *
+         * @param customHeaders a map of header names to values
+         * @return this builder for method chaining
+         */
+        public B customHeaders(Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return self();
+        }
+
+        /**
+         * Sets a supplier that provides custom HTTP headers to be sent with every request.
+         *
+         * <p>The supplier is called for each request, allowing headers to be computed dynamically
+         * (e.g., short-lived auth tokens).</p>
+         *
+         * @param customHeadersSupplier a supplier that provides a map of header names to values
+         * @return this builder for method chaining
+         */
+        public B customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return self();
         }
 

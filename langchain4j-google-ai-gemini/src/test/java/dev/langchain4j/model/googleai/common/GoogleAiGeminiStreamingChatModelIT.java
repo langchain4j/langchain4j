@@ -112,8 +112,17 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
         return GoogleAiGeminiTokenUsage.class;
     }
 
+    @Override
+    protected void sleepIfNeeded() {
+        try {
+            sleep();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @AfterEach
-    void afterEach() throws InterruptedException {
+    void sleep() throws InterruptedException {
         String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI");
         if (ciDelaySeconds != null) {
             Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);

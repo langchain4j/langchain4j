@@ -2,7 +2,7 @@ package dev.langchain4j.model.anthropic.common;
 
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
-import static java.lang.System.getenv;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeast;
@@ -185,5 +185,11 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
     protected ImageContent diceImageContentBase64() {
         String base64Data = Base64.getEncoder().encodeToString(readBytes(diceImageUrl()));
         return ImageContent.from(base64Data, "image/webp");
+    }
+
+    @Override
+    protected void assertOutputTokenCount(TokenUsage tokenUsage, Integer maxOutputTokens) {
+        // Sometimes Anthropic produces one token less than expected (e.g., 4 instead of 5)
+        assertThat(tokenUsage.outputTokenCount()).isBetween(maxOutputTokens - 1, maxOutputTokens);
     }
 }

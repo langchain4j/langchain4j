@@ -20,8 +20,12 @@ public class OllamaModelCard {
     private String modelfile;
     private String parameters;
     private String template;
+    private String system;
     private OllamaModelDetails details;
+    private List<OllamaModelMessage> messages;
     private Map<String, Object> modelInfo;
+    private Map<String, Object> projectorInfo;
+    private List<OllamaModelTensor> tensors;
 
     @JsonDeserialize(using = OllamaDateDeserializer.class)
     private OffsetDateTime modifiedAt;
@@ -73,6 +77,14 @@ public class OllamaModelCard {
         this.template = template;
     }
 
+    public String getSystem() {
+        return system;
+    }
+
+    public void setSystem(String system) {
+        this.system = system;
+    }
+
     public OllamaModelDetails getDetails() {
         return details;
     }
@@ -81,12 +93,36 @@ public class OllamaModelCard {
         this.details = details;
     }
 
+    public List<OllamaModelMessage> getMessages() {
+        return messages;
+    }
+
+    public void setMessages(List<OllamaModelMessage> messages) {
+        this.messages = messages;
+    }
+
     public Map<String, Object> getModelInfo() {
         return modelInfo;
     }
 
     public void setModelInfo(Map<String, Object> modelInfo) {
         this.modelInfo = modelInfo;
+    }
+
+    public Map<String, Object> getProjectorInfo() {
+        return projectorInfo;
+    }
+
+    public void setProjectorInfo(Map<String, Object> projectorInfo) {
+        this.projectorInfo = projectorInfo;
+    }
+
+    public List<OllamaModelTensor> getTensors() {
+        return tensors;
+    }
+
+    public void setTensors(List<OllamaModelTensor> tensors) {
+        this.tensors = tensors;
     }
 
     public OffsetDateTime getModifiedAt() {
@@ -111,8 +147,12 @@ public class OllamaModelCard {
         private String modelfile;
         private String parameters;
         private String template;
+        private String system;
         private OllamaModelDetails details;
+        private List<OllamaModelMessage> messages;
         private Map<String, Object> modelInfo;
+        private Map<String, Object> projectorInfo;
+        private List<OllamaModelTensor> tensors;
         private OffsetDateTime modifiedAt;
         private List<String> capabilities;
 
@@ -136,13 +176,33 @@ public class OllamaModelCard {
             return this;
         }
 
+        public Builder system(String system) {
+            this.system = system;
+            return this;
+        }
+
         public Builder details(OllamaModelDetails details) {
             this.details = details;
             return this;
         }
 
+        public Builder messages(List<OllamaModelMessage> messages) {
+            this.messages = messages;
+            return this;
+        }
+
         public Builder modelInfo(Map<String, Object> modelInfo) {
             this.modelInfo = modelInfo;
+            return this;
+        }
+
+        public Builder projectorInfo(Map<String, Object> projectorInfo) {
+            this.projectorInfo = projectorInfo;
+            return this;
+        }
+
+        public Builder tensors(List<OllamaModelTensor> tensors) {
+            this.tensors = tensors;
             return this;
         }
 
@@ -157,7 +217,16 @@ public class OllamaModelCard {
         }
 
         public OllamaModelCard build() {
-            return new OllamaModelCard(modelfile, parameters, template, details);
+            OllamaModelCard modelCard = new OllamaModelCard(modelfile, parameters, template, details);
+            modelCard.setLicense(license);
+            modelCard.setSystem(system);
+            modelCard.setMessages(messages);
+            modelCard.setModelInfo(modelInfo);
+            modelCard.setProjectorInfo(projectorInfo);
+            modelCard.setTensors(tensors);
+            modelCard.setCapabilities(capabilities);
+            modelCard.setModifiedAt(modifiedAt);
+            return modelCard;
         }
     }
 }

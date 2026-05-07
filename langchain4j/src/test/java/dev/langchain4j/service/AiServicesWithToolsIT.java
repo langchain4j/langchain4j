@@ -21,6 +21,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -2017,5 +2019,123 @@ class AiServicesWithToolsIT {
                     && toolResult.text().contains("Camera is broken")
                     && Boolean.TRUE.equals(toolResult.isError());
         }));
+    }
+
+    sealed interface Animal permits Dog, Cat {}
+
+    record Dog(String name, String breed) implements Animal {}
+
+    record Cat(String name, boolean indoor) implements Animal {}
+
+    @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "kind")
+    @JsonSubTypes({
+        @JsonSubTypes.Type(value = Square.class, name = "square"),
+        @JsonSubTypes.Type(value = Circle.class, name = "circle")
+    })
+    interface Shape {}
+
+    static class Square implements Shape {
+        double side;
+
+        Square() {}
+    }
+
+    static class Circle implements Shape {
+        double radius;
+
+        Circle() {}
+    }
+
+    record Owner(String name, Animal pet) {}
+
+    static class AnimalRegistry {
+
+        @Tool("registers a single animal")
+        void registerAnimal(Animal animal) {}
+
+        @Tool("registers a batch of animals at once")
+        void registerAnimals(List<Animal> animals) {}
+
+        @Tool("registers an owner with their pet")
+        void registerOwner(Owner owner) {}
+
+        @Tool("registers a shape preference")
+        void registerShape(Shape shape) {}
+    }
+
+    interface RegistryAssistant {
+        Result<String> chat(String userMessage);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_call_tool_with_polymorphic_sealed_argument(ChatModel chatModel) {
+
+        AnimalRegistry registry = spy(new AnimalRegistry());
+
+        RegistryAssistant assistant = AiServices.builder(RegistryAssistant.class)
+                .chatModel(chatModel)
+                .tools(registry)
+                .build();
+
+        assistant.chat("Please register a Labrador dog named Rex.");
+
+        verify(registry).registerAnimal(argThat(animal -> animal instanceof Dog dog
+                && dog.name().equalsIgnoreCase("Rex")
+                && dog.breed().toLowerCase().contains("labrador")));
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_call_tool_with_list_of_polymorphic_arguments(ChatModel chatModel) {
+
+        AnimalRegistry registry = spy(new AnimalRegistry());
+
+        RegistryAssistant assistant = AiServices.builder(RegistryAssistant.class)
+                .chatModel(chatModel)
+                .tools(registry)
+                .build();
+
+        assistant.chat("Register a batch of two animals in a single call using the registerAnimals tool "
+                + "(do NOT use registerAnimal): a Labrador dog named Rex, and an indoor cat named Whiskers.");
+
+        verify(registry).registerAnimals(argThat(animals -> animals.size() == 2
+                && animals.stream().anyMatch(Dog.class::isInstance)
+                && animals.stream().anyMatch(Cat.class::isInstance)));
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_call_tool_with_pojo_containing_nested_polymorphic_field(ChatModel chatModel) {
+
+        AnimalRegistry registry = spy(new AnimalRegistry());
+
+        RegistryAssistant assistant = AiServices.builder(RegistryAssistant.class)
+                .chatModel(chatModel)
+                .tools(registry)
+                .build();
+
+        assistant.chat("Please register Alice as the owner of her Labrador dog named Rex.");
+
+        verify(registry).registerOwner(argThat(owner -> owner.name().equalsIgnoreCase("Alice")
+                && owner.pet() instanceof Dog dog
+                && dog.name().equalsIgnoreCase("Rex")
+                && dog.breed().toLowerCase().contains("labrador")));
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_call_tool_with_jackson_annotated_polymorphic_argument(ChatModel chatModel) {
+
+        AnimalRegistry registry = spy(new AnimalRegistry());
+
+        RegistryAssistant assistant = AiServices.builder(RegistryAssistant.class)
+                .chatModel(chatModel)
+                .tools(registry)
+                .build();
+
+        assistant.chat("Please register a circle shape with radius 4.");
+
+        verify(registry).registerShape(argThat(shape -> shape instanceof Circle circle && circle.radius == 4.0));
     }
 }

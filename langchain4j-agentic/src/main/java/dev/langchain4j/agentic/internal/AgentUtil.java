@@ -285,6 +285,9 @@ public class AgentUtil {
                 default -> value;
             };
         }
+        if (value instanceof Map && !Map.class.isAssignableFrom(type)) {
+            return Json.fromJson(Json.toJson(value), type);
+        }
         if (value instanceof Image image && type == ImageContent.class) {
             return ImageContent.from(image);
         }

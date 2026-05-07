@@ -34,6 +34,8 @@ public class McpOperationHandler {
     private final Consumer<String> onResourceUpdate;
     private final Supplier<List<McpRoot>> roots;
     private final McpProgressHandler progressHandler;
+    private final Runnable onServerPing;
+    private final Runnable onServerRootsList;
 
     public McpOperationHandler(
             Map<Long, CompletableFuture<JsonNode>> pendingOperations,
@@ -44,7 +46,9 @@ public class McpOperationHandler {
             Runnable onResourceListUpdate,
             Runnable onPromptListUpdate,
             Consumer<String> onResourceUpdate,
-            McpProgressHandler progressHandler) {
+            McpProgressHandler progressHandler,
+            Runnable onServerPing,
+            Runnable onServerRootsList) {
         this.pendingOperations = pendingOperations;
         this.transport = transport;
         this.logMessageConsumer = logMessageConsumer;
@@ -54,6 +58,8 @@ public class McpOperationHandler {
         this.onResourceUpdate = onResourceUpdate;
         this.roots = roots;
         this.progressHandler = progressHandler;
+        this.onServerPing = onServerPing;
+        this.onServerRootsList = onServerRootsList;
     }
 
     public void handle(JsonNode message) {
@@ -84,9 +90,15 @@ public class McpOperationHandler {
             switch (method) {
                 case PING:
                     transport.executeOperationWithoutResponse(new McpPingResponse(messageId));
+                    if (onServerPing != null) {
+                        onServerPing.run();
+                    }
                     break;
                 case ROOTS_LIST:
                     transport.executeOperationWithoutResponse(new McpRootsListResponse(messageId, roots.get()));
+                    if (onServerRootsList != null) {
+                        onServerRootsList.run();
+                    }
                     break;
                 default:
                     log.warn("Received response for unknown message id: {}", messageId);

@@ -6,13 +6,17 @@ import static dev.langchain4j.mcp.client.integration.McpServerHelper.skipTestsIf
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.McpClientListener;
 import dev.langchain4j.mcp.client.McpGetPromptResult;
+import dev.langchain4j.mcp.client.McpPrompt;
 import dev.langchain4j.mcp.client.McpReadResourceResult;
+import dev.langchain4j.mcp.client.McpResource;
+import dev.langchain4j.mcp.client.McpResourceTemplate;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.client.transport.stdio.StdioMcpTransport;
 import dev.langchain4j.mcp.protocol.McpClientMethod;
@@ -48,6 +52,9 @@ public class McpClientListenerIT {
                 .transport(transport)
                 .addListener(testListener)
                 .toolExecutionTimeout(Duration.ofSeconds(4))
+                .cacheToolList(false)
+                .cacheResourceList(false)
+                .cachePromptList(false)
                 .build();
     }
 
@@ -193,6 +200,92 @@ public class McpClientListenerIT {
         }
     }
 
+    @Test
+    public void toolsList() {
+        List<ToolSpecification> tools = mcpClient.listTools();
+        assertThat(tools).isNotEmpty();
+
+        assertThat(testListener.toolsListContext).isNotNull();
+        assertThat(testListener.toolsListContext.message().method).isEqualTo(McpClientMethod.TOOLS_LIST);
+        assertThat(testListener.toolsListContext.message().getId()).isNotNull();
+
+        assertThat(testListener.toolsListResult).isNotNull();
+        assertThat(testListener.toolsListResult).isNotEmpty();
+        assertThat(testListener.toolsListResultContext).isSameAs(testListener.toolsListContext);
+    }
+
+    @Test
+    public void resourcesList() {
+        List<McpResource> resources = mcpClient.listResources();
+        assertThat(resources).isNotEmpty();
+
+        assertThat(testListener.resourcesListContext).isNotNull();
+        assertThat(testListener.resourcesListContext.message().method).isEqualTo(McpClientMethod.RESOURCES_LIST);
+        assertThat(testListener.resourcesListContext.message().getId()).isNotNull();
+
+        assertThat(testListener.resourcesListResult).isNotNull();
+        assertThat(testListener.resourcesListResult).isNotEmpty();
+        assertThat(testListener.resourcesListResultContext).isSameAs(testListener.resourcesListContext);
+    }
+
+    @Test
+    public void resourceTemplatesList() {
+        List<McpResourceTemplate> templates = mcpClient.listResourceTemplates();
+
+        assertThat(testListener.resourceTemplatesListContext).isNotNull();
+        assertThat(testListener.resourceTemplatesListContext.message().method)
+                .isEqualTo(McpClientMethod.RESOURCES_TEMPLATES_LIST);
+        assertThat(testListener.resourceTemplatesListContext.message().getId()).isNotNull();
+
+        assertThat(testListener.resourceTemplatesListResultContext).isSameAs(testListener.resourceTemplatesListContext);
+    }
+
+    @Test
+    public void promptsList() {
+        List<McpPrompt> prompts = mcpClient.listPrompts();
+        assertThat(prompts).isNotEmpty();
+
+        assertThat(testListener.promptsListContext).isNotNull();
+        assertThat(testListener.promptsListContext.message().method).isEqualTo(McpClientMethod.PROMPTS_LIST);
+        assertThat(testListener.promptsListContext.message().getId()).isNotNull();
+
+        assertThat(testListener.promptsListResult).isNotNull();
+        assertThat(testListener.promptsListResult).isNotEmpty();
+        assertThat(testListener.promptsListResultContext).isSameAs(testListener.promptsListContext);
+    }
+
+    @Test
+    public void ping() {
+        mcpClient.checkHealth();
+
+        assertThat(testListener.pingContext).isNotNull();
+        assertThat(testListener.pingContext.message().method).isEqualTo(McpClientMethod.PING);
+        assertThat(testListener.pingContext.message().getId()).isNotNull();
+
+        assertThat(testListener.pingAfterContext).isSameAs(testListener.pingContext);
+    }
+
+    @Test
+    public void resourceSubscribeAndUnsubscribe() {
+        mcpClient.subscribeToResource("file:///test-resource");
+
+        assertThat(testListener.resourceSubscribeContext).isNotNull();
+        assertThat(testListener.resourceSubscribeContext.message().method)
+                .isEqualTo(McpClientMethod.RESOURCES_SUBSCRIBE);
+        assertThat(testListener.resourceSubscribeContext.message().getId()).isNotNull();
+        assertThat(testListener.resourceSubscribeAfterContext).isSameAs(testListener.resourceSubscribeContext);
+
+        testListener.clear();
+
+        mcpClient.unsubscribeFromResource("file:///test-resource");
+
+        assertThat(testListener.resourceUnsubscribeContext).isNotNull();
+        assertThat(testListener.resourceUnsubscribeContext.message().method)
+                .isEqualTo(McpClientMethod.RESOURCES_UNSUBSCRIBE);
+        assertThat(testListener.resourceUnsubscribeContext.message().getId()).isNotNull();
+        assertThat(testListener.resourceUnsubscribeAfterContext).isSameAs(testListener.resourceUnsubscribeContext);
+    }
+
     static class TestListener implements McpClientListener {
 
         volatile McpCallContext toolContext;
@@ -212,6 +305,31 @@ public class McpClientListenerIT {
         volatile McpCallContext promptResultContext;
         volatile McpCallContext promptErrorContext;
         volatile Throwable promptError;
+
+        volatile McpCallContext toolsListContext;
+        volatile List<ToolSpecification> toolsListResult;
+        volatile McpCallContext toolsListResultContext;
+
+        volatile McpCallContext resourcesListContext;
+        volatile List<McpResource> resourcesListResult;
+        volatile McpCallContext resourcesListResultContext;
+
+        volatile McpCallContext resourceTemplatesListContext;
+        volatile List<McpResourceTemplate> resourceTemplatesListResult;
+        volatile McpCallContext resourceTemplatesListResultContext;
+
+        volatile McpCallContext promptsListContext;
+        volatile List<McpPrompt> promptsListResult;
+        volatile McpCallContext promptsListResultContext;
+
+        volatile McpCallContext pingContext;
+        volatile McpCallContext pingAfterContext;
+
+        volatile McpCallContext resourceSubscribeContext;
+        volatile McpCallContext resourceSubscribeAfterContext;
+
+        volatile McpCallContext resourceUnsubscribeContext;
+        volatile McpCallContext resourceUnsubscribeAfterContext;
 
         @Override
         public void beforeExecuteTool(McpCallContext context) {
@@ -266,6 +384,80 @@ public class McpClientListenerIT {
             promptError = error;
         }
 
+        @Override
+        public void beforeToolsList(McpCallContext context) {
+            toolsListContext = context;
+        }
+
+        @Override
+        public void afterToolsList(McpCallContext context, List<ToolSpecification> tools) {
+            toolsListResultContext = context;
+            toolsListResult = tools;
+        }
+
+        @Override
+        public void beforeResourcesList(McpCallContext context) {
+            resourcesListContext = context;
+        }
+
+        @Override
+        public void afterResourcesList(McpCallContext context, List<McpResource> resources) {
+            resourcesListResultContext = context;
+            resourcesListResult = resources;
+        }
+
+        @Override
+        public void beforeResourceTemplatesList(McpCallContext context) {
+            resourceTemplatesListContext = context;
+        }
+
+        @Override
+        public void afterResourceTemplatesList(McpCallContext context, List<McpResourceTemplate> templates) {
+            resourceTemplatesListResultContext = context;
+            resourceTemplatesListResult = templates;
+        }
+
+        @Override
+        public void beforePromptsList(McpCallContext context) {
+            promptsListContext = context;
+        }
+
+        @Override
+        public void afterPromptsList(McpCallContext context, List<McpPrompt> prompts) {
+            promptsListResultContext = context;
+            promptsListResult = prompts;
+        }
+
+        @Override
+        public void beforePing(McpCallContext context) {
+            pingContext = context;
+        }
+
+        @Override
+        public void afterPing(McpCallContext context) {
+            pingAfterContext = context;
+        }
+
+        @Override
+        public void beforeResourceSubscribe(McpCallContext context) {
+            resourceSubscribeContext = context;
+        }
+
+        @Override
+        public void afterResourceSubscribe(McpCallContext context) {
+            resourceSubscribeAfterContext = context;
+        }
+
+        @Override
+        public void beforeResourceUnsubscribe(McpCallContext context) {
+            resourceUnsubscribeContext = context;
+        }
+
+        @Override
+        public void afterResourceUnsubscribe(McpCallContext context) {
+            resourceUnsubscribeAfterContext = context;
+        }
+
         void clear() {
             toolContext = null;
             toolResult = null;
@@ -284,6 +476,31 @@ public class McpClientListenerIT {
             promptResultContext = null;
             promptErrorContext = null;
             promptError = null;
+
+            toolsListContext = null;
+            toolsListResult = null;
+            toolsListResultContext = null;
+
+            resourcesListContext = null;
+            resourcesListResult = null;
+            resourcesListResultContext = null;
+
+            resourceTemplatesListContext = null;
+            resourceTemplatesListResult = null;
+            resourceTemplatesListResultContext = null;
+
+            promptsListContext = null;
+            promptsListResult = null;
+            promptsListResultContext = null;
+
+            pingContext = null;
+            pingAfterContext = null;
+
+            resourceSubscribeContext = null;
+            resourceSubscribeAfterContext = null;
+
+            resourceUnsubscribeContext = null;
+            resourceUnsubscribeAfterContext = null;
         }
     }
 }

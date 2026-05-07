@@ -90,6 +90,11 @@ class OpenAiOfficialResponsesChatModelIT extends AbstractChatModelIT {
 
     @Disabled("gpt-5.4-mini cannot do it properly")
     @Override
+    protected void should_respect_JSON_response_format_with_schema(ChatModel model) {
+    }
+
+    @Disabled("gpt-5.4-mini cannot do it properly")
+    @Override
     protected void should_respect_JsonRawSchema_responseFormat(ChatModel model) {
     }
 
