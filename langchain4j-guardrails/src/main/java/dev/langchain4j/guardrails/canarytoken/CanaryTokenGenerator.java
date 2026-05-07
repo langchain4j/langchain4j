@@ -2,13 +2,14 @@ package dev.langchain4j.guardrails.canarytoken;
 
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Generates unique canary tokens for prompt leakage detection.
  */
 public class CanaryTokenGenerator {
 
-    private static final SecureRandom RANDOM = new SecureRandom();
+    private static final AtomicReference<SecureRandom> RANDOM = new AtomicReference<>();
     public static final int DEFAULT_LENGTH = 32;
     public static final String CANARY_PREFIX = "CANARY_";
 
@@ -24,7 +25,11 @@ public class CanaryTokenGenerator {
      */
     public static String generate(int byteLength) {
         byte[] randomBytes = new byte[byteLength];
-        RANDOM.nextBytes(randomBytes);
+        random().nextBytes(randomBytes);
         return CANARY_PREFIX + Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+    }
+
+    private static SecureRandom random() {
+        return RANDOM.updateAndGet(r -> r != null ? r : new SecureRandom());
     }
 }
