@@ -7,9 +7,9 @@ import dev.langchain4j.exception.LangChain4jException;
  *
  * @see <a href="https://docs.ollama.com/api/errors#errors-that-occur-while-streaming">Ollama streaming errors</a>
  */
-class OllamaStreamingException extends LangChain4jException {
+public class OllamaStreamingException extends LangChain4jException {
 
-    OllamaStreamingException(String message) {
+    public OllamaStreamingException(String message) {
         super(message);
     }
 }

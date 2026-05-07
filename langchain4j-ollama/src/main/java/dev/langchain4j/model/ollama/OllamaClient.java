@@ -137,7 +137,8 @@ class OllamaClient {
 
                 String error = completionResponse.getError();
                 if (error != null) {
-                    handler.onError(ExceptionMapper.DEFAULT.mapException(new OllamaStreamingException(error)));
+                    withLoggingExceptions(() ->
+                            handler.onError(ExceptionMapper.DEFAULT.mapException(new OllamaStreamingException(error))));
                     return;
                 }
 
@@ -193,7 +194,8 @@ class OllamaClient {
 
                 String error = ollamaChatResponse.getError();
                 if (error != null) {
-                    withLoggingExceptions(() -> handler.onError(new OllamaStreamingException(error)));
+                    withLoggingExceptions(() ->
+                            handler.onError(ExceptionMapper.DEFAULT.mapException(new OllamaStreamingException(error))));
                     return;
                 }
 
