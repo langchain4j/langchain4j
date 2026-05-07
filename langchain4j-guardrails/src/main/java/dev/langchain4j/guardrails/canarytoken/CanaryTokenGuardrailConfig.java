@@ -64,6 +64,9 @@ public class CanaryTokenGuardrailConfig implements LangChain4jManaged {
             return Optional.empty();
         }
         Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managed = ctx.managedParameters();
+        if (managed == null) {
+            return Optional.empty();
+        }
         LangChain4jManaged value = managed.get(CanaryTokenGuardrailConfig.class);
         return value instanceof CanaryTokenGuardrailConfig cfg ? Optional.of(cfg) : Optional.empty();
     }
