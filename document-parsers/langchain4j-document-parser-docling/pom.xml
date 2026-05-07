@@ -14,8 +14,6 @@
 
     <properties>
         <docling.version>0.5.1</docling.version>
-        <!-- docling-serve-client brings in conflicting Jackson transitive versions -->
-        <enforcer.skipRules>dependencyConvergence,requireUpperBoundDeps</enforcer.skipRules>
     </properties>
 
     <dependencyManagement>
@@ -31,31 +29,17 @@
     </dependencyManagement>
 
     <dependencies>
-        <!-- LangChain4j Core -->
+
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
             <version>1.15.0-SNAPSHOT</version>
         </dependency>
 
-        <!-- Docling Serve API -->
         <dependency>
             <groupId>ai.docling</groupId>
             <artifactId>docling-serve-api</artifactId>
             <version>${docling.version}</version>
-        </dependency>
-
-        <!-- Testing -->
-        <dependency>
-            <groupId>org.assertj</groupId>
-            <artifactId>assertj-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
         </dependency>
 
         <!-- Docling reference client - optional; frameworks like Spring/Quarkus provide their own impl -->
@@ -67,7 +51,8 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Docling Testcontainers for integration testing -->
+        <!-- Testing -->
+
         <dependency>
             <groupId>ai.docling</groupId>
             <artifactId>docling-testcontainers</artifactId>
@@ -86,6 +71,7 @@
             <artifactId>logback-classic</artifactId>
             <scope>test</scope>
         </dependency>
+
     </dependencies>
 
     <build>
@@ -102,4 +88,5 @@
             </plugin>
         </plugins>
     </build>
+
 </project>
