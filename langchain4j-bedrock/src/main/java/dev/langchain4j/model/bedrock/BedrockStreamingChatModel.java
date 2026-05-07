@@ -250,6 +250,8 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                     config.apiCallTimeout(this.timeout);
                     if (logRequests || logResponses)
                         config.addExecutionInterceptor(new AwsLoggingInterceptor(logRequests, logResponses, logger));
+                    if (customHeadersSupplier != null)
+                        config.addExecutionInterceptor(new BedrockCustomHeadersInterceptor(customHeadersSupplier));
                 })
                 .build();
     }

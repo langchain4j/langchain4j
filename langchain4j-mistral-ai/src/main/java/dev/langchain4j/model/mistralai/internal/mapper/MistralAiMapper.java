@@ -110,9 +110,8 @@ public class MistralAiMapper {
 
         if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
             if (!toolExecutionResultMessage.hasSingleText()) {
-                throw new UnsupportedFeatureException(
-                        "Mistral AI does not support non-text content in tool results. "
-                                + "Only text content is supported.");
+                throw new UnsupportedFeatureException("Mistral AI does not support non-text content in tool results. "
+                        + "Only text content is supported.");
             }
             return MistralAiChatMessage.builder()
                     .role(MistralAiRole.TOOL)
@@ -168,7 +167,12 @@ public class MistralAiMapper {
             toolExecutionRequests = toToolExecutionRequests(toolCalls);
         }
 
-        String text = aiMistralMessage.getContent().stream()
+        List<MistralAiMessageContent> contents = aiMistralMessage.getContent();
+        if (contents == null) {
+            contents = List.of();
+        }
+
+        String text = contents.stream()
                 .filter(content -> "text".equals(content.getType()))
                 .map(MistralAiTextContent.class::cast)
                 .map(MistralAiTextContent::getText)
@@ -176,7 +180,7 @@ public class MistralAiMapper {
 
         String thinking = null;
         if (returnThinking) {
-            List<String> thinkingTexts = aiMistralMessage.getContent().stream()
+            List<String> thinkingTexts = contents.stream()
                     .filter(content -> "thinking".equals(content.getType()))
                     .map(MistralAiThinkingContent.class::cast)
                     .map(MistralAiThinkingContent::getThinking)
