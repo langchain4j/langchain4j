@@ -1,0 +1,25 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class ai.docling.serve.api.DoclingServeApi",
+          "justification": "Docling Serve API type intentionally exposed by the Docling document parser integration for client configuration"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class ai.docling.serve.api.convert.request.options.ConvertDocumentOptions",
+          "justification": "Docling Serve API type intentionally exposed by the Docling document parser integration for document conversion options"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.data.document.Document",
+          "justification": "Core langchain4j type intentionally part of the document parser API"
+        }
+      ]
+    }
+  }
+]

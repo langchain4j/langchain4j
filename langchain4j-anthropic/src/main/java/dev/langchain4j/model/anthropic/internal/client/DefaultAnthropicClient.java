@@ -60,6 +60,7 @@ import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.FinishReason;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,6 +69,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 /**
  * Default implementation of {@link AnthropicClient} that provides methods to interact with the
@@ -130,6 +132,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
     private final String apiKey;
     private final String version;
     private final String beta;
+    private final Supplier<Map<String, String>> customHeadersSupplier;
 
     /**
      * Creates a new builder for constructing a {@link DefaultAnthropicClient} instance.
@@ -189,6 +192,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
         this.apiKey = ensureNotBlank(builder.apiKey, "apiKey");
         this.version = ensureNotBlank(builder.version, "version");
         this.beta = builder.beta;
+        this.customHeadersSupplier =
+                builder.customHeadersSupplier != null ? builder.customHeadersSupplier : Collections::emptyMap;
     }
 
     /**
@@ -385,8 +390,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     if (isNotNullOrEmpty(signature)) {
                         thinkingSignatures.add(signature);
                     }
-                } else if (CONTENT_BLOCK_REDACTED_THINKING.equals(blockType)
-                        && options.returnThinking()) {
+                } else if (CONTENT_BLOCK_REDACTED_THINKING.equals(blockType) && options.returnThinking()) {
                     String redactedThinking = data.contentBlock.data;
                     if (isNotNullOrEmpty(redactedThinking)) {
                         redactedThinkings.add(redactedThinking);
@@ -433,8 +437,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     if (isNotNullOrEmpty(signature)) {
                         thinkingSignatures.add(signature);
                     }
-                } else if (CONTENT_BLOCK_REDACTED_THINKING.equals(blockType)
-                        && options.returnThinking()) {
+                } else if (CONTENT_BLOCK_REDACTED_THINKING.equals(blockType) && options.returnThinking()) {
                     String redactedThinking = data.delta.data;
                     if (isNotNullOrEmpty(redactedThinking)) {
                         redactedThinkings.add(redactedThinking);
@@ -623,6 +626,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 .url(baseUrl, "models")
                 .addHeader("x-api-key", apiKey)
                 .addHeader("anthropic-version", version)
+                .addHeaders(customHeadersSupplier.get())
                 .build();
         SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
         return fromJson(successfulHttpResponse.body(), AnthropicModelsListResponse.class);
@@ -664,6 +668,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 .addHeader("Content-Type", "application/json")
                 .addHeader("x-api-key", apiKey)
                 .addHeader("anthropic-version", version)
+                .addHeaders(customHeadersSupplier.get())
                 .body(jsonRequest);
 
         if (this.beta != null) {

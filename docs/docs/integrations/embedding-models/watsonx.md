@@ -13,7 +13,7 @@ sidebar_position: 23
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-watsonx</artifactId>
-    <version>1.14.0-beta24</version>
+    <version>1.14.1-beta24</version>
 </dependency>
 ```
 
