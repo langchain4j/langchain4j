@@ -479,6 +479,11 @@ public class AnthropicMapper {
             // All Anthropic object schemas require setting additionalProperties=false
             // https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-schema-limitations
             map.put("additionalProperties", false);
+
+            if (!objectSchema.definitions().isEmpty()) {
+                map.put("$defs", mapDefs(objectSchema.definitions()));
+            }
+
             return map;
         }
         if (schemaElement instanceof JsonArraySchema arraySchema) {
