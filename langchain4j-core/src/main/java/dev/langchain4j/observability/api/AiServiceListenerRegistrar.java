@@ -1,10 +1,10 @@
 package dev.langchain4j.observability.api;
 
-import java.util.Arrays;
-import java.util.ServiceLoader;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import dev.langchain4j.spi.observability.AiServiceListenerRegistrarFactory;
+import java.util.Arrays;
+import java.util.ServiceLoader;
 
 /**
  * A registrar for registering {@link AiServiceListener}s.
@@ -112,9 +112,13 @@ public interface AiServiceListenerRegistrar {
     /**
      * Retrieves an instance of {@link AiServiceListenerRegistrar}.
      *
-     * This method first attempts to load an instance of {@link AiServiceListenerRegistrar}
-     * using {@link ServiceLoader}. If no implementation is found, the default
-     * instance provided by {@link DefaultAiServiceListenerRegistrar#newInstance()} is returned.
+     * <p>This method always returns a fresh {@link DefaultAiServiceListenerRegistrar} to guarantee
+     * per-agent listener isolation. If an {@link AiServiceListenerRegistrarFactory} is registered
+     * via Java SPI, the factory-provided registrar is used as a delegate: events fired by the
+     * returned instance are forwarded to it after notifying local listeners. This allows global
+     * listeners pre-configured in the SPI registrar to receive all events, while preventing
+     * cross-agent listener leakage that would occur if the factory returned a singleton.
+     *
      * @param shouldThrowExceptionOnEventError Indicates whether to throw exceptions on event errors.
      *                                         If {@code true}, exceptions will be thrown; otherwise, errors
      *                                         will be handled silently.
@@ -122,7 +126,12 @@ public interface AiServiceListenerRegistrar {
     static AiServiceListenerRegistrar newInstance(boolean shouldThrowExceptionOnEventError) {
         var registrar = ServiceLoader.load(AiServiceListenerRegistrarFactory.class)
                 .findFirst()
-                .map(AiServiceListenerRegistrarFactory::get)
+                .map(factory -> {
+                    AiServiceListenerRegistrar delegate = factory.get();
+                    return delegate != null
+                            ? new DefaultAiServiceListenerRegistrar(delegate)
+                            : new DefaultAiServiceListenerRegistrar();
+                })
                 .orElseGet(DefaultAiServiceListenerRegistrar::new);
 
         registrar.shouldThrowExceptionOnEventError(shouldThrowExceptionOnEventError);

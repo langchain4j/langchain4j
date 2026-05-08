@@ -2,6 +2,8 @@ package dev.langchain4j.observability.api;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.observability.api.event.AiServiceEvent;
+import dev.langchain4j.observability.api.listener.AiServiceListener;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Optional;
@@ -10,8 +12,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import dev.langchain4j.observability.api.event.AiServiceEvent;
-import dev.langchain4j.observability.api.listener.AiServiceListener;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -27,6 +27,27 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
 
     // Defaults to false to preserve backwards compatibility
     private final AtomicBoolean shouldThrowExceptionOnEventError = new AtomicBoolean(false);
+
+    /**
+     * An optional delegate registrar to which events are forwarded after local listeners have been notified.
+     * Used to propagate events to a global/shared registrar provided via SPI while keeping per-instance
+     * listener registration isolated.
+     */
+    @Nullable
+    private final AiServiceListenerRegistrar delegate;
+
+    public DefaultAiServiceListenerRegistrar() {
+        this.delegate = null;
+    }
+
+    /**
+     * Creates a registrar that forwards all fired events to the given {@code delegate} after notifying
+     * its own locally registered listeners. This allows a shared/global registrar (e.g. provided via
+     * SPI) to receive events without being mutated by per-agent listener registrations.
+     */
+    public DefaultAiServiceListenerRegistrar(@NonNull AiServiceListenerRegistrar delegate) {
+        this.delegate = ensureNotNull(delegate, "delegate");
+    }
 
     /**
      * Registers a listener to receive {@link AiServiceEvent} notifications.
@@ -64,11 +85,17 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
         Optional.ofNullable(this.listeners.get(event.eventClass()))
                 .map(l -> (EventListeners<T>) l)
                 .ifPresent(l -> l.fireEvent(event));
+        if (delegate != null) {
+            delegate.fireEvent(event);
+        }
     }
 
     @Override
     public void shouldThrowExceptionOnEventError(boolean shouldThrowExceptionOnEventError) {
-        this.shouldThrowExceptionOnEventError.compareAndSet(!shouldThrowExceptionOnEventError, shouldThrowExceptionOnEventError);
+        // Intentionally not forwarded to the delegate: the delegate may be a shared singleton
+        // and mutating its error-handling setting from a per-agent context would cause races.
+        this.shouldThrowExceptionOnEventError.compareAndSet(
+                !shouldThrowExceptionOnEventError, shouldThrowExceptionOnEventError);
     }
 
     private <T extends AiServiceEvent> EventListeners<T> addToExistingOrNewList(
