@@ -98,7 +98,8 @@ class ToolSpecificationJsonTest {
 
     @Test
     void should_round_trip_with_strict_null() {
-        ToolSpecification original = ToolSpecification.builder().name("default_tool").build();
+        ToolSpecification original =
+                ToolSpecification.builder().name("default_tool").build();
 
         String json = original.toJson();
         assertThat(json).doesNotContain("strict");

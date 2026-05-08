@@ -10,13 +10,15 @@ class ToolSpecificationUtilsTest {
 
     @Test
     void per_tool_true_overrides_model_false() {
-        ToolSpecification tool = ToolSpecification.builder().name("t").strict(true).build();
+        ToolSpecification tool =
+                ToolSpecification.builder().name("t").strict(true).build();
         assertThat(isEffectivelyStrict(tool, false)).isTrue();
     }
 
     @Test
     void per_tool_false_overrides_model_true() {
-        ToolSpecification tool = ToolSpecification.builder().name("t").strict(false).build();
+        ToolSpecification tool =
+                ToolSpecification.builder().name("t").strict(false).build();
         assertThat(isEffectivelyStrict(tool, true)).isFalse();
     }
 
