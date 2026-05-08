@@ -179,4 +179,55 @@ class AiServicesBuilderTest {
                 .withMessageContaining("is a primitive")
                 .withMessageContaining("@P(required = false)");
     }
+
+    @Test
+    void should_allow_optional_primitive_when_default_value_is_set() {
+        class ToolWithDefaultPrimitive {
+            @Tool("Read part of a file")
+            void readFile(String filePath, @P(required = false, defaultValue = "0") int startLine) {}
+        }
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+
+        TestService service = AiServices.builder(TestService.class)
+                .chatModel(chatModel)
+                .tools(new ToolWithDefaultPrimitive())
+                .build();
+
+        assertThat(service).isNotNull();
+    }
+
+    @Test
+    void should_raise_an_error_when_default_value_cannot_be_parsed() {
+        class ToolWithBadDefault {
+            @Tool
+            void tool(@P(defaultValue = "not-an-int") int x) {}
+        }
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() -> AiServices.builder(TestService.class)
+                        .chatModel(chatModel)
+                        .tools(new ToolWithBadDefault())
+                        .build())
+                .withMessageContaining("Cannot parse @P(defaultValue = \"not-an-int\")");
+    }
+
+    @Test
+    void should_raise_an_error_when_default_value_is_combined_with_Optional() {
+        class ToolWithDefaultAndOptional {
+            @Tool
+            void tool(@P(defaultValue = "10") java.util.Optional<Integer> x) {}
+        }
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() -> AiServices.builder(TestService.class)
+                        .chatModel(chatModel)
+                        .tools(new ToolWithDefaultAndOptional())
+                        .build())
+                .withMessageContaining("Optional<T>");
+    }
 }

@@ -26,6 +26,8 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -39,6 +41,7 @@ public class DefaultToolExecutor implements ToolExecutor {
     private final Method methodToInvoke;
     private final boolean wrapToolArgumentsExceptions;
     private final boolean propagateToolExecutionExceptions;
+    private final Map<String, Object> defaultArgumentValues;
 
     public DefaultToolExecutor(Builder builder) {
         this.object = ensureNotNull(builder.object, "object");
@@ -46,6 +49,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.methodToInvoke = ensureNotNull(builder.methodToInvoke, "methodToInvoke");
         this.wrapToolArgumentsExceptions = getOrDefault(builder.wrapToolArgumentsExceptions, false);
         this.propagateToolExecutionExceptions = getOrDefault(builder.propagateToolExecutionExceptions, false);
+        this.defaultArgumentValues = parseDefaultArgumentValues(this.originalMethod);
     }
 
     public DefaultToolExecutor(Object object, Method method) {
@@ -54,6 +58,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.methodToInvoke = this.originalMethod;
         this.wrapToolArgumentsExceptions = false;
         this.propagateToolExecutionExceptions = false;
+        this.defaultArgumentValues = parseDefaultArgumentValues(this.originalMethod);
     }
 
     public DefaultToolExecutor(Object object, ToolExecutionRequest toolExecutionRequest) {
@@ -63,6 +68,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.methodToInvoke = this.originalMethod;
         this.wrapToolArgumentsExceptions = false;
         this.propagateToolExecutionExceptions = false;
+        this.defaultArgumentValues = parseDefaultArgumentValues(this.originalMethod);
     }
 
     private Method findMethod(Object object, ToolExecutionRequest toolExecutionRequest) {
@@ -94,6 +100,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.methodToInvoke = ensureNotNull(methodToInvoke, "methodToInvoke");
         this.wrapToolArgumentsExceptions = false;
         this.propagateToolExecutionExceptions = false;
+        this.defaultArgumentValues = parseDefaultArgumentValues(this.originalMethod);
     }
 
     @Override
@@ -143,7 +150,8 @@ public class DefaultToolExecutor implements ToolExecutor {
     private Object[] prepareArguments(ToolExecutionRequest toolExecutionRequest, InvocationContext context) {
         try {
             Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
-            return prepareArguments(originalMethod, toolExecutionRequest.name(), argumentsMap, context);
+            return prepareArguments(
+                    originalMethod, toolExecutionRequest.name(), argumentsMap, defaultArgumentValues, context);
         } catch (Exception e) {
             if (wrapToolArgumentsExceptions) {
                 throw new ToolArgumentsException(unwrapRuntimeException(e));
@@ -198,6 +206,15 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     static Object[] prepareArguments(
             Method method, String toolName, Map<String, Object> argumentsMap, InvocationContext context) {
+        return prepareArguments(method, toolName, argumentsMap, Collections.emptyMap(), context);
+    }
+
+    static Object[] prepareArguments(
+            Method method,
+            String toolName,
+            Map<String, Object> argumentsMap,
+            Map<String, Object> defaultArgumentValues,
+            InvocationContext context) {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
 
@@ -234,6 +251,8 @@ public class DefaultToolExecutor implements ToolExecutor {
                 arguments[i] = createOptional(argument, parameterName, parameterType);
             } else if (argument != null) {
                 arguments[i] = coerceArgument(argument, parameterName, parameterClass, parameterType);
+            } else if (defaultArgumentValues.containsKey(parameterName)) {
+                arguments[i] = defaultArgumentValues.get(parameterName);
             } else if (parameterClass.isPrimitive()) {
                 throw new IllegalArgumentException(String.format(
                         "Required parameter \"%s\" of tool \"%s\" is missing", parameterName, toolName));
@@ -275,6 +294,55 @@ public class DefaultToolExecutor implements ToolExecutor {
         Class<?> actualClass = extractActualClass(actualType);
         Object coercedValue = coerceArgument(argument, parameterName, actualClass, actualType);
         return Optional.of(coercedValue);
+    }
+
+    Map<String, Object> defaultArgumentValues() {
+        return defaultArgumentValues;
+    }
+
+    private static Map<String, Object> parseDefaultArgumentValues(Method method) {
+        Map<String, Object> defaults = new HashMap<>();
+        for (Parameter parameter : method.getParameters()) {
+            P p = parameter.getAnnotation(P.class);
+            if (p == null || P.NO_DEFAULT.equals(p.defaultValue())) {
+                continue;
+            }
+            String parameterName = getName(parameter);
+            defaults.put(
+                    parameterName,
+                    parseDefaultValue(
+                            p.defaultValue(),
+                            parameterName,
+                            parameter.getType(),
+                            parameter.getParameterizedType()));
+        }
+        return defaults;
+    }
+
+    static Object parseDefaultValue(
+            String defaultValue, String parameterName, Class<?> parameterClass, Type parameterType) {
+        if (parameterClass == String.class) {
+            return defaultValue;
+        }
+        if (parameterClass.isEnum()) {
+            return coerceArgument(defaultValue, parameterName, parameterClass, parameterType);
+        }
+        Object jsonParsed;
+        try {
+            jsonParsed = Json.fromJson(defaultValue, Object.class);
+        } catch (Exception e) {
+            throw new IllegalArgumentException(
+                    String.format(
+                            "Cannot parse @P(defaultValue = \"%s\") for parameter \"%s\" of type %s: %s",
+                            defaultValue, parameterName, parameterClass.getName(), e.getMessage()),
+                    e);
+        }
+        if (jsonParsed == null) {
+            throw new IllegalArgumentException(String.format(
+                    "@P(defaultValue = \"%s\") parses to null for parameter \"%s\" of type %s",
+                    defaultValue, parameterName, parameterClass.getName()));
+        }
+        return coerceArgument(jsonParsed, parameterName, parameterClass, parameterType);
     }
 
     static Object coerceArgument(Object argument, String parameterName, Class<?> parameterClass, Type parameterType) {
