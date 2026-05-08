@@ -196,13 +196,16 @@ class InternalOpenAiOfficialHelper {
     }
 
     private static ChatCompletionTool toTool(ToolSpecification toolSpecification, boolean strict) {
+        // Per-tool strict overrides model-level default
+        boolean effectiveStrict =
+                toolSpecification.strict() != null ? Boolean.TRUE.equals(toolSpecification.strict()) : strict;
 
         FunctionDefinition.Builder functionDefinitionBuilder = FunctionDefinition.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description() != null ? toolSpecification.description() : "")
-                .parameters(toOpenAiParameters(toolSpecification, strict));
+                .parameters(toOpenAiParameters(toolSpecification, effectiveStrict));
 
-        if (strict) {
+        if (effectiveStrict) {
             functionDefinitionBuilder.strict(true);
         }
 
