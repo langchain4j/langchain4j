@@ -92,6 +92,17 @@ public class ToolSpecification {
         return strict;
     }
 
+    /**
+     * Resolves whether this tool should use strict schema enforcement,
+     * falling back to the model-level default when no per-tool value is set.
+     *
+     * @param modelLevelStrict the model-level strict setting to use as fallback
+     * @return {@code true} if strict enforcement should be used, {@code false} otherwise
+     */
+    public boolean isEffectivelyStrict(boolean modelLevelStrict) {
+        return strict != null ? strict : modelLevelStrict;
+    }
+
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;

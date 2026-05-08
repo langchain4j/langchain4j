@@ -409,9 +409,7 @@ public class AnthropicMapper {
             Boolean strictTools) {
         JsonObjectSchema parameters = toolSpecification.parameters();
 
-        // Per-tool strict overrides model-level default
-        Boolean effectiveStrict = toolSpecification.strict() != null ? toolSpecification.strict() : strictTools;
-        boolean strict = Boolean.TRUE.equals(effectiveStrict);
+        boolean strict = toolSpecification.isEffectivelyStrict(Boolean.TRUE.equals(strictTools));
 
         AnthropicTool.Builder toolBuilder = AnthropicTool.builder()
                 .name(toolSpecification.name())
