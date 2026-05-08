@@ -4,6 +4,7 @@ import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -300,7 +301,7 @@ class OpenAiResponsesClient {
         if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
             List<Map<String, Object>> tools = new ArrayList<>();
             for (ToolSpecification toolSpec : toolSpecifications) {
-                boolean effectiveStrict = toolSpec.isEffectivelyStrict(strictTools);
+                boolean effectiveStrict = isEffectivelyStrict(toolSpec, strictTools);
 
                 Map<String, Object> tool = new LinkedHashMap<>();
                 tool.put(FIELD_TYPE, TYPE_FUNCTION);

@@ -62,6 +62,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.ToolSpecificationUtils;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -653,7 +654,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     }
 
     private static FunctionTool toResponsesTool(ToolSpecification toolSpec, boolean strict) {
-        boolean effectiveStrict = toolSpec.isEffectivelyStrict(strict);
+        boolean effectiveStrict = ToolSpecificationUtils.isEffectivelyStrict(toolSpec, strict);
         try {
             var parametersBuilder = FunctionTool.Parameters.builder();
             if (toolSpec.parameters() != null) {
