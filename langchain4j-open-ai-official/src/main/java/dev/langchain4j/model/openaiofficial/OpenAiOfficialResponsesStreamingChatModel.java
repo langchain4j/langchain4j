@@ -1,5 +1,16 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.setupSyncClient;
+import static java.util.Arrays.asList;
+
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.client.OpenAIClient;
 import com.openai.core.JsonField;
@@ -25,7 +36,6 @@ import com.openai.models.responses.ResponseFunctionCallArgumentsDeltaEvent;
 import com.openai.models.responses.ResponseFunctionCallArgumentsDoneEvent;
 import com.openai.models.responses.ResponseFunctionCallOutputItem;
 import com.openai.models.responses.ResponseFunctionToolCall;
-import com.openai.models.responses.ResponseInProgressEvent;
 import com.openai.models.responses.ResponseIncludable;
 import com.openai.models.responses.ResponseIncompleteEvent;
 import com.openai.models.responses.ResponseInputContent;
@@ -82,9 +92,6 @@ import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.FinishReason;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -98,17 +105,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
-import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
-import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.setupSyncClient;
-import static java.util.Arrays.asList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * StreamingChatModel implementation using the official OpenAI Java client for the Responses API.
@@ -130,19 +128,19 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         this.client = builder.client != null
                 ? builder.client
                 : setupSyncClient(
-                builder.baseUrl,
-                builder.apiKey,
-                builder.credential,
-                builder.microsoftFoundryDeploymentName,
-                builder.azureOpenAIServiceVersion,
-                builder.organizationId,
-                builder.isMicrosoftFoundry,
-                builder.isGitHubModels,
-                builder.modelName,
-                builder.timeout,
-                builder.maxRetries,
-                builder.proxy,
-                builder.customHeaders);
+                        builder.baseUrl,
+                        builder.apiKey,
+                        builder.credential,
+                        builder.microsoftFoundryDeploymentName,
+                        builder.azureOpenAIServiceVersion,
+                        builder.organizationId,
+                        builder.isMicrosoftFoundry,
+                        builder.isGitHubModels,
+                        builder.modelName,
+                        builder.timeout,
+                        builder.maxRetries,
+                        builder.proxy,
+                        builder.customHeaders);
         this.executorService =
                 getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutorService);
 
@@ -160,7 +158,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                         : OpenAiOfficialResponsesChatRequestParameters.EMPTY;
 
         this.defaultRequestParameters = OpenAiOfficialResponsesChatRequestParameters.builder()
-
                 .modelName(ensureNotNull(getOrDefault(builder.modelName, commonParameters.modelName()), "modelName"))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
@@ -168,7 +165,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
                 .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
-
                 .previousResponseId(getOrDefault(builder.previousResponseId, responsesParameters.previousResponseId()))
                 .maxToolCalls(getOrDefault(builder.maxToolCalls, responsesParameters.maxToolCalls()))
                 .parallelToolCalls(getOrDefault(builder.parallelToolCalls, responsesParameters.parallelToolCalls()))
@@ -178,11 +174,13 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 .serviceTier(getOrDefault(builder.serviceTier, responsesParameters.serviceTier()))
                 .safetyIdentifier(getOrDefault(builder.safetyIdentifier, responsesParameters.safetyIdentifier()))
                 .promptCacheKey(getOrDefault(builder.promptCacheKey, responsesParameters.promptCacheKey()))
-                .promptCacheRetention(getOrDefault(builder.promptCacheRetention, responsesParameters.promptCacheRetention()))
+                .promptCacheRetention(
+                        getOrDefault(builder.promptCacheRetention, responsesParameters.promptCacheRetention()))
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, responsesParameters.reasoningEffort()))
                 .reasoningSummary(getOrDefault(builder.reasoningSummary, responsesParameters.reasoningSummary()))
                 .textVerbosity(getOrDefault(builder.textVerbosity, responsesParameters.textVerbosity()))
-                .streamIncludeObfuscation(getOrDefault(builder.streamIncludeObfuscation, responsesParameters.streamIncludeObfuscation()))
+                .streamIncludeObfuscation(
+                        getOrDefault(builder.streamIncludeObfuscation, responsesParameters.streamIncludeObfuscation()))
                 .store(getOrDefault(builder.store, getOrDefault(responsesParameters.store(), false)))
                 .strictTools(getOrDefault(builder.strictTools, responsesParameters.strictTools()))
                 .strictJsonSchema(getOrDefault(builder.strictJsonSchema, responsesParameters.strictJsonSchema()))
@@ -217,8 +215,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 }
             });
 
-            var eventHandler = new ResponsesEventHandler(
-                    handler, responseIdRef, parameters.modelName(), streamingHandle);
+            var eventHandler =
+                    new ResponsesEventHandler(handler, responseIdRef, parameters.modelName(), streamingHandle);
 
             // The forEach call blocks, so it is submitted to the executor service to run asynchronously.
             // We keep this on our executor (instead of OpenAIClientAsync callbacks) to ensure that user
@@ -319,14 +317,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     }
 
     static AiMessage buildAiMessage(
-            String text,
-            String thinking,
-            List<ToolExecutionRequest> toolExecutionRequests,
-            String encryptedReasoning) {
-        AiMessage.Builder builder = AiMessage.builder()
-                .text(text)
-                .thinking(thinking)
-                .toolExecutionRequests(toolExecutionRequests);
+            String text, String thinking, List<ToolExecutionRequest> toolExecutionRequests, String encryptedReasoning) {
+        AiMessage.Builder builder =
+                AiMessage.builder().text(text).thinking(thinking).toolExecutionRequests(toolExecutionRequests);
         if (encryptedReasoning != null) {
             builder.attributes(Map.of(ENCRYPTED_REASONING_KEY, encryptedReasoning));
         }
@@ -468,8 +461,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         }
 
         boolean strictJsonSchema = Boolean.TRUE.equals(parameters.strictJsonSchema());
-        ResponseTextConfig textConfig = toResponseTextConfig(
-                parameters.responseFormat(), strictJsonSchema, parameters.textVerbosity());
+        ResponseTextConfig textConfig =
+                toResponseTextConfig(parameters.responseFormat(), strictJsonSchema, parameters.textVerbosity());
         if (textConfig != null) {
             paramsBuilder.text(textConfig);
         }
@@ -482,10 +475,12 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             throw new UnsupportedFeatureException("'topK' parameter is not supported by OpenAI Responses API");
         }
         if (parameters.frequencyPenalty() != null) {
-            throw new UnsupportedFeatureException("'frequencyPenalty' parameter is not supported by OpenAI Responses API");
+            throw new UnsupportedFeatureException(
+                    "'frequencyPenalty' parameter is not supported by OpenAI Responses API");
         }
         if (parameters.presencePenalty() != null) {
-            throw new UnsupportedFeatureException("'presencePenalty' parameter is not supported by OpenAI Responses API");
+            throw new UnsupportedFeatureException(
+                    "'presencePenalty' parameter is not supported by OpenAI Responses API");
         }
         if (parameters.stopSequences() != null && !parameters.stopSequences().isEmpty()) {
             throw new UnsupportedFeatureException("'stopSequences' parameter is not supported by OpenAI Responses API");
@@ -530,8 +525,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
             return items;
         } else if (msg instanceof ToolExecutionResultMessage toolResultMessage) {
-            var outputBuilder = ResponseInputItem.FunctionCallOutput.builder()
-                    .callId(toolResultMessage.id());
+            var outputBuilder = ResponseInputItem.FunctionCallOutput.builder().callId(toolResultMessage.id());
 
             if (toolResultMessage.hasSingleText()) {
                 outputBuilder.output(toolResultMessage.text());
@@ -539,24 +533,22 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 var outputItems = new ArrayList<ResponseFunctionCallOutputItem>();
                 for (Content content : toolResultMessage.contents()) {
                     if (content instanceof TextContent textContent) {
-                        outputItems.add(ResponseFunctionCallOutputItem.ofInputText(
-                                ResponseInputTextContent.builder()
-                                        .text(textContent.text())
-                                        .build()));
+                        outputItems.add(ResponseFunctionCallOutputItem.ofInputText(ResponseInputTextContent.builder()
+                                .text(textContent.text())
+                                .build()));
                     } else if (content instanceof ImageContent imageContent) {
-                        outputItems.add(ResponseFunctionCallOutputItem.ofInputImage(
-                                ResponseInputImageContent.builder()
-                                        .imageUrl(buildImageUrl(imageContent.image()))
-                                        .detail(toResponsesImageDetail(imageContent.detailLevel()))
-                                        .build()));
+                        outputItems.add(ResponseFunctionCallOutputItem.ofInputImage(ResponseInputImageContent.builder()
+                                .imageUrl(buildImageUrl(imageContent.image()))
+                                .detail(toResponsesImageDetail(imageContent.detailLevel()))
+                                .build()));
                     } else {
                         throw new UnsupportedFeatureException("Unsupported content type in tool result: "
                                 + content.getClass().getName()
                                 + ". Only TextContent and ImageContent are supported.");
                     }
                 }
-                outputBuilder.output(ResponseInputItem.FunctionCallOutput.Output
-                        .ofResponseFunctionCallOutputItemList(outputItems));
+                outputBuilder.output(
+                        ResponseInputItem.FunctionCallOutput.Output.ofResponseFunctionCallOutputItemList(outputItems));
             }
 
             return List.of(ResponseInputItem.ofFunctionCallOutput(outputBuilder.build()));
@@ -638,8 +630,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             case LOW -> ResponseInputImage.Detail.LOW;
             case HIGH -> ResponseInputImage.Detail.HIGH;
             case AUTO -> ResponseInputImage.Detail.AUTO;
-            default -> throw new UnsupportedFeatureException(
-                    "DetailLevel " + detailLevel + " is not supported by OpenAI Responses API. Supported values: LOW, HIGH, AUTO");
+            default ->
+                throw new UnsupportedFeatureException("DetailLevel " + detailLevel
+                        + " is not supported by OpenAI Responses API. Supported values: LOW, HIGH, AUTO");
         };
     }
 
@@ -648,8 +641,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             case LOW -> ResponseInputImageContent.Detail.LOW;
             case HIGH -> ResponseInputImageContent.Detail.HIGH;
             case AUTO -> ResponseInputImageContent.Detail.AUTO;
-            default -> throw new UnsupportedFeatureException(
-                    "DetailLevel " + detailLevel + " is not supported by OpenAI Responses API. Supported values: LOW, HIGH, AUTO");
+            default ->
+                throw new UnsupportedFeatureException("DetailLevel " + detailLevel
+                        + " is not supported by OpenAI Responses API. Supported values: LOW, HIGH, AUTO");
         };
     }
 
@@ -1261,10 +1255,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private void extractTokenUsageAndComplete(com.openai.models.responses.Response response) {
             var text = !textBuilder.isEmpty() ? textBuilder.toString() : null;
             var aiMessage = buildAiMessage(
-                    text,
-                    extractReasoningSummary(response),
-                    completedToolCalls,
-                    extractEncryptedReasoning(response));
+                    text, extractReasoningSummary(response), completedToolCalls, extractEncryptedReasoning(response));
 
             tokenUsage = extractTokenUsage(response);
             var metadata = buildResponseMetadata(responseId, modelName, response, finishReason, tokenUsage);
