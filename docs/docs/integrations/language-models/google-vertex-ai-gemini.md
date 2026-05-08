@@ -296,6 +296,29 @@ The model will then be able to reply with a text response.
 
 Parallel function calling is also supported, when the model asks to make multiple tool execution requests in a single response.
 
+### Function call thought signatures
+
+Some Vertex AI Gemini models require
+[thought signatures](https://cloud.google.com/vertex-ai/generative-ai/docs/thought-signatures)
+returned with function calls to be sent back in follow-up requests.
+
+To preserve and send these signatures, enable both `returnThinking(true)` and `sendThinking(true)`:
+
+```java
+ChatModel model = VertexAiGeminiChatModel.builder()
+        .project(PROJECT_ID)
+        .location(LOCATION)
+        .modelName(MODEL_NAME)
+        .returnThinking(true)
+        .sendThinking(true)
+        .build();
+```
+
+:::note
+For Vertex AI Gemini, these settings do not enable or return thinking text.
+They only preserve and send thought signatures returned with function calls.
+:::
+
 ### Tool support with AiServices
 
 You can use `AiServices` to create your own assistants powered by tools.
