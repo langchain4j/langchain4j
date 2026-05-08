@@ -11,6 +11,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -37,6 +38,7 @@ import dev.langchain4j.service.Result;
 import dev.langchain4j.service.tool.search.ToolSearchService;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -131,6 +133,24 @@ public class ToolService {
         addTools(tools, this.toolExecutors, this.toolSpecifications, this.returnBehaviors);
     }
 
+    private static void validateToolParameters(Method toolMethod) {
+        for (Parameter parameter : toolMethod.getParameters()) {
+            if (!parameter.getType().isPrimitive()) {
+                continue;
+            }
+            P pAnnotation = parameter.getAnnotation(P.class);
+            if (pAnnotation != null && !pAnnotation.required()) {
+                throw illegalConfiguration(
+                        "Parameter '%s' of tool '%s.%s' is a primitive (%s) and cannot be marked as @P(required = false). "
+                                + "Use a boxed type (e.g. Integer instead of int) or Optional<T> to allow optional values.",
+                        parameter.getName(),
+                        toolMethod.getDeclaringClass().getName(),
+                        toolMethod.getName(),
+                        parameter.getType().getName());
+            }
+        }
+    }
+
     private static ToolExecutor createToolExecutor(Object object, Method method) {
         return DefaultToolExecutor.builder()
                 .object(object)
@@ -166,6 +186,7 @@ public class ToolService {
             Optional<Method> annotatedMethod = getAnnotatedMethod(method, Tool.class);
             if (annotatedMethod.isPresent()) {
                 Method toolMethod = annotatedMethod.get();
+                validateToolParameters(toolMethod);
                 result.add(AiServiceTool.builder()
                         .toolSpecification(toolSpecificationFrom(toolMethod))
                         .toolExecutor(createToolExecutor(objectWithTools, toolMethod))
