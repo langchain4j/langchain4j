@@ -404,7 +404,8 @@ void getTemperature(
 #### Required and Optional
 
 By default, all tool method parameters are considered **_required_**.
-This means that the LLM will have to produce a value for such a parameter.
+This means the parameter is listed in the JSON schema's `required` array sent to the LLM,
+instructing it to produce a value.
 A parameter can be made optional by annotating it with `@P(required = false)`:
 ```java
 @Tool
@@ -412,6 +413,19 @@ void getTemperature(String location, @P("Unit of temperature", required = false)
     ...
 }
 ```
+
+:::caution Required is advisory: the LLM can still omit arguments
+The `required` flag controls the JSON schema sent to the LLM (required parameters are listed
+in the schema's `required` array). The LLM is expected to honour this, but in practice it can
+disregard the schema and omit an argument anyway.
+
+In LangChain4j 1.x, this is detected only for **primitive** parameters (`int`, `long`, `boolean`, …) — a
+missing primitive triggers the `ToolArgumentsErrorHandler` (see [Error Handling](#handling-tool-arguments-errors)
+below). **Missing object parameters are not validated**: `null` is passed to the
+`@Tool`-annotated method even though the schema marked the parameter as required.
+
+This asymmetry will be removed in LangChain4j 2.0, where all required arguments will be validated uniformly.
+:::
 
 #### Alternative: Using `Optional<T>` for Optional Parameters
 
