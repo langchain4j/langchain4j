@@ -231,7 +231,7 @@ public class AiServiceTokenStream implements TokenStream {
                 initTemporaryMemory(context, messages),
                 new TokenUsage(),
                 toolServiceContext,
-                context.toolService.maxSequentialToolsInvocations(),
+                context.toolService.maxToolCallingRoundTrips(),
                 toolArgumentsErrorHandler,
                 toolExecutionErrorHandler,
                 toolExecutor,

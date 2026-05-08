@@ -98,7 +98,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     private Map<ToolSpecification, ToolExecutor> toolsMap;
     private Set<String> immediateReturnToolNames;
     private final List<ToolProvider> toolProviders = new ArrayList<>();
-    private Integer maxSequentialToolsInvocations;
+    private Integer maxToolCallingRoundTrips;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy;
     private boolean executeToolsConcurrently;
     private Executor concurrentToolsExecutor;
@@ -265,8 +265,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         if (!toolProviders.isEmpty()) {
             aiServices.toolProviders(toolProviders);
         }
-        if (maxSequentialToolsInvocations != null) {
-            aiServices.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
+        if (maxToolCallingRoundTrips != null) {
+            aiServices.maxToolCallingRoundTrips(maxToolCallingRoundTrips);
         }
         if (hallucinatedToolNameStrategy != null) {
             aiServices.hallucinatedToolNameStrategy(hallucinatedToolNameStrategy);
@@ -344,9 +344,15 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         return toolProviders(asList(toolProviders));
     }
 
-    public B maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
-        this.maxSequentialToolsInvocations = maxSequentialToolsInvocations;
+    public B maxToolCallingRoundTrips(int maxToolCallingRoundTrips) {
+        this.maxToolCallingRoundTrips = maxToolCallingRoundTrips;
         return (B) this;
+    }
+
+    /** @deprecated Use {@link #maxToolCallingRoundTrips(int)} instead. */
+    @Deprecated(forRemoval = true)
+    public B maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
+        return maxToolCallingRoundTrips(maxSequentialToolsInvocations);
     }
 
     public B hallucinatedToolNameStrategy(

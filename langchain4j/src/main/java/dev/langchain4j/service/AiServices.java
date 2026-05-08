@@ -636,23 +636,31 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Sets the maximum number of times the LLM may respond with tool calls.
+     * Sets the maximum number of tool calling round trips (i.e. LLM responses containing tool calls).
      * If this limit is exceeded, an exception is thrown and the AI service invocation is terminated.
      *
      * <p>
-     * NOTE: This value does not represent the total number of tool calls.
-     * Each LLM response that contains one or more tool calls counts as a single invocation
+     * NOTE: This value does not represent the total number of individual tool calls.
+     * Each LLM response that contains one or more tool calls counts as a single round trip
      * and reduces this limit by one.
      *
      * <p>
      * The default value is 100.
      *
-     * @param maxSequentialToolsInvocations the maximum number of LLM responses containing tool calls
+     * @param maxToolCallingRoundTrips the maximum number of LLM responses containing tool calls
      * @return the builder instance
      */
-    public AiServices<T> maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
-        context.toolService.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
+    public AiServices<T> maxToolCallingRoundTrips(int maxToolCallingRoundTrips) {
+        context.toolService.maxToolCallingRoundTrips(maxToolCallingRoundTrips);
         return this;
+    }
+
+    /**
+     * @deprecated Use {@link #maxToolCallingRoundTrips(int)} instead.
+     */
+    @Deprecated(forRemoval = true)
+    public AiServices<T> maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
+        return maxToolCallingRoundTrips(maxSequentialToolsInvocations);
     }
 
     /**
