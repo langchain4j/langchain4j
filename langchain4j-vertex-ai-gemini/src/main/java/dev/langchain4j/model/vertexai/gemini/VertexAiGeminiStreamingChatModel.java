@@ -87,6 +87,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
     private final List<ChatModelListener> listeners;
 
     private final Executor executor;
+    private final Boolean returnThinking;
+    private final boolean sendThinking;
 
     public VertexAiGeminiStreamingChatModel(VertexAiGeminiStreamingChatModelBuilder builder) {
         ensureNotBlank(builder.modelName, "modelName");
@@ -194,6 +196,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.logResponses = getOrDefault(builder.logResponses, false);
         this.listeners = copy(builder.listeners);
         this.executor = getOrDefault(builder.executor, VertexAiGeminiStreamingChatModel::createDefaultExecutor);
+        this.returnThinking = builder.returnThinking;
+        this.sendThinking = getOrDefault(builder.sendThinking, false);
     }
 
     /**
@@ -322,6 +326,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
 
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.executor = getOrDefault(executor, VertexAiGeminiStreamingChatModel::createDefaultExecutor);
+        this.returnThinking = null;
+        this.sendThinking = false;
     }
 
     public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel, GenerationConfig generationConfig) {
@@ -341,6 +347,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.logResponses = false;
         this.listeners = Collections.emptyList();
         this.executor = VertexAiGeminiStreamingChatModel.createDefaultExecutor();
+        this.returnThinking = null;
+        this.sendThinking = false;
     }
 
     public VertexAiGeminiStreamingChatModel(
@@ -361,6 +369,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.logResponses = false;
         this.listeners = Collections.emptyList();
         this.executor = getOrDefault(executor, VertexAiGeminiStreamingChatModel::createDefaultExecutor);
+        this.returnThinking = null;
+        this.sendThinking = false;
     }
 
     private static ExecutorService createDefaultExecutor() {
@@ -408,7 +418,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         GenerativeModel model = this.generativeModel.withTools(tools).withToolConfig(this.toolConfig);
 
         ContentsMapper.InstructionAndContent instructionAndContent =
-                ContentsMapper.splitInstructionAndContent(messages);
+                ContentsMapper.splitInstructionAndContent(messages, sendThinking);
 
         if (instructionAndContent.systemInstruction != null) {
             model = model.withSystemInstruction(instructionAndContent.systemInstruction);
@@ -443,7 +453,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
             }
         });
 
-        StreamingChatResponseBuilder responseBuilder = new StreamingChatResponseBuilder();
+        StreamingChatResponseBuilder responseBuilder = new StreamingChatResponseBuilder(returnThinking);
         final GenerativeModel finalModel = model;
         AtomicInteger toolIndex = new AtomicInteger(0);
         StreamingHandle streamingHandle = new VertexAiGeminiStreamingHandle();
@@ -585,6 +595,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         private Map<String, String> customHeaders;
         private GoogleCredentials credentials;
         private String apiEndpoint;
+        private Boolean returnThinking;
+        private Boolean sendThinking;
 
         public VertexAiGeminiStreamingChatModelBuilder() {
             // This is public so it can be extended
@@ -683,6 +695,32 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
 
         public VertexAiGeminiStreamingChatModelBuilder apiEndpoint(String apiEndpoint) {
             this.apiEndpoint = apiEndpoint;
+            return this;
+        }
+
+        /**
+         * Controls whether to preserve Gemini thought signatures returned with function calls.
+         * Please note that this does not enable thinking/reasoning for the LLM; it only controls whether to store
+         * thought signatures from the API response inside the {@link AiMessage#attributes()}.
+         * <p>
+         * Disabled by default.
+         *
+         * @see #sendThinking(Boolean)
+         */
+        public VertexAiGeminiStreamingChatModelBuilder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
+            return this;
+        }
+
+        /**
+         * Controls whether to send preserved Gemini thought signatures in follow-up requests.
+         * <p>
+         * Disabled by default.
+         *
+         * @see #returnThinking(Boolean)
+         */
+        public VertexAiGeminiStreamingChatModelBuilder sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
             return this;
         }
 
