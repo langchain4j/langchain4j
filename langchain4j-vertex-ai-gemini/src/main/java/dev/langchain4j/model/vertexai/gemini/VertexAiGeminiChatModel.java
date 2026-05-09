@@ -571,15 +571,8 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         return this.labels;
     }
 
-    /**
-     * Builds a {@link GenerateContentRequest} that mirrors what the SDK's
-     * {@link GenerativeModel#generateContent(List)} would build internally, plus the supplied
-     * billing/reporting labels.
-     *
-     * <p>The SDK's own request-building method is private and {@link GenerativeModel} is final, so
-     * this method replicates the request envelope and adds {@code putAllLabels(...)}. It is only
-     * called when labels are non-empty; otherwise the SDK's call path is used unchanged.
-     */
+    // mirrors the SDK's private GenerativeModel.buildGenerateContentRequest envelope and
+    // adds putAllLabels; only called when labels are non-empty
     static GenerateContentRequest buildGenerateContentRequest(
             GenerativeModel model, VertexAI vertexAI, List<Content> contents, Map<String, String> labels) {
         GenerateContentRequest.Builder requestBuilder = GenerateContentRequest.newBuilder()
@@ -599,11 +592,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         return requestBuilder.build();
     }
 
-    /**
-     * Reconstructs the fully-qualified Vertex AI model resource name in the same way as the SDK's
-     * private {@code GenerativeModel.getResourceName(...)} helper, so that the request envelope
-     * built by {@link #buildGenerateContentRequest} matches what the SDK would produce.
-     */
+    // mirrors the SDK's private GenerativeModel.getResourceName rules
     static String buildResourceName(String modelName, VertexAI vertexAI) {
         if (modelName.startsWith("projects/")) {
             return modelName;
