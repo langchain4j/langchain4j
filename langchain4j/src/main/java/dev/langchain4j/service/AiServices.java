@@ -26,6 +26,7 @@ import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
@@ -48,6 +49,7 @@ import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import dev.langchain4j.spi.services.AiServicesFactory;
 import java.util.Collection;
@@ -61,6 +63,7 @@ import java.util.concurrent.Future;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
 /**
@@ -679,6 +682,81 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> maxToolCallsPerResponse(int maxToolCallsPerResponse) {
         context.toolService.maxToolCallsPerResponse(maxToolCallsPerResponse);
+        return this;
+    }
+
+    /**
+     * Controls whether {@link ToolChoice#REQUIRED} is automatically rewritten to
+     * {@link ToolChoice#AUTO} after the first iteration of the inference-and-tools loop.
+     *
+     * <p>This is an opt-in self-protection hook for downstream framework integrators
+     * (e.g. {@code quarkus-langchain4j}) that set {@link ToolChoice#REQUIRED} on the
+     * first request but want to allow the LLM to terminate the loop on follow-up
+     * iterations. With this flag enabled, {@code REQUIRED} is rewritten to
+     * {@link ToolChoice#AUTO} on every iteration after the first; without it, the
+     * caller-supplied tool choice is forwarded unchanged.
+     *
+     * <p>Default is {@code false}, which preserves the existing behavior of forwarding
+     * the caller-supplied {@link ToolChoice} on every iteration.
+     *
+     * @param forceToolChoiceAutoAfterFirstIteration whether to rewrite
+     *                                               {@link ToolChoice#REQUIRED} to
+     *                                               {@link ToolChoice#AUTO} after the first iteration
+     * @return the builder instance
+     * @since 1.14.0
+     */
+    public AiServices<T> forceToolChoiceAutoAfterFirstIteration(boolean forceToolChoiceAutoAfterFirstIteration) {
+        context.toolService.forceToolChoiceAutoAfterFirstIteration(forceToolChoiceAutoAfterFirstIteration);
+        return this;
+    }
+
+    /**
+     * Configures a predicate that, when it evaluates to {@code true} for a tool execution
+     * exception, causes the exception to propagate unchanged instead of being routed
+     * through the configured {@link ToolExecutionErrorHandler}.
+     *
+     * <p>This hook is intended for downstream framework integrators that need to let
+     * specific marker-typed exceptions (e.g. authorization or guardrail violations)
+     * surface to the caller verbatim rather than be summarized into a string sent back
+     * to the LLM. The predicate is evaluated on the exception thrown by the
+     * {@link ToolExecutor}; if it returns {@code true}, the exception is rethrown
+     * unchanged (wrapped in a {@link RuntimeException} only if it is a checked exception).
+     *
+     * <p>The default predicate returns {@code false} for all throwables, which preserves
+     * the existing behavior of routing every exception through the error handler.
+     *
+     * @param errorHandlerBypass the bypass predicate. If {@code null}, the default predicate
+     *                           ({@code e -> false}) is used.
+     * @return the builder instance
+     * @since 1.14.0
+     */
+    public AiServices<T> errorHandlerBypass(Predicate<Throwable> errorHandlerBypass) {
+        context.toolService.errorHandlerBypass(errorHandlerBypass);
+        return this;
+    }
+
+    /**
+     * Configures a factory used to build the {@link ToolProviderRequest} passed to
+     * {@link ToolProvider}s, both during initial context creation and dynamic refresh.
+     *
+     * <p>This hook is intended for downstream framework integrators that need to attach
+     * additional context to the {@link ToolProviderRequest}, typically by returning a
+     * subclass enriched with framework-specific attributes. Tool providers can then
+     * downcast the request to access those attributes.
+     *
+     * <p>The default factory invokes {@link ToolProviderRequest.Builder#build()},
+     * which preserves the existing behavior of constructing a plain
+     * {@link ToolProviderRequest}.
+     *
+     * @param toolProviderRequestFactory factory consuming a fully populated builder and
+     *                                   returning the request to pass to providers.
+     *                                   If {@code null}, the default factory is used.
+     * @return the builder instance
+     * @since 1.14.0
+     */
+    public AiServices<T> toolProviderRequestFactory(
+            Function<ToolProviderRequest.Builder, ToolProviderRequest> toolProviderRequestFactory) {
+        context.toolService.toolProviderRequestFactory(toolProviderRequestFactory);
         return this;
     }
 

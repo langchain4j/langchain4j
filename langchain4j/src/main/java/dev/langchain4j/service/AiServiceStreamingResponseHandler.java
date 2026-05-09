@@ -3,7 +3,6 @@ package dev.langchain4j.service;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
-import static dev.langchain4j.service.tool.ToolService.refreshDynamicProviders;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
@@ -364,8 +363,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
             List<ChatMessage> messages = messagesToSend(invocationContext.chatMemoryId());
 
-            ToolServiceContext updatedToolContext =
-                    refreshDynamicProviders(toolServiceContext, messages, invocationContext);
+            ToolServiceContext updatedToolContext = context.toolService.refreshDynamicProvidersWithFactory(
+                    toolServiceContext, messages, invocationContext);
             updatedToolContext = ToolSearchService.addFoundTools(updatedToolContext, toolResults);
 
             ChatRequestParameters parameters =
