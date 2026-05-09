@@ -657,6 +657,32 @@ public abstract class AiServices<T> {
     }
 
     /**
+     * Sets the maximum number of tool calls allowed within a single LLM response.
+     * If a single LLM response contains more tool execution requests than this limit, a
+     * {@link dev.langchain4j.service.tool.ToolCallsLimitExceededException} is thrown and the AI
+     * service invocation is terminated.
+     *
+     * <p>
+     * This is intended for cooperative truncation when an LLM returns more tool calls in
+     * a single response than the user wants to spend (for example, to bound execution
+     * cost or latency). Unlike {@link #maxSequentialToolsInvocations(int)}, which limits
+     * the number of LLM <em>responses</em> that may contain tool calls, this option
+     * limits the number of tool execution requests within a single LLM response.
+     *
+     * <p>
+     * A value of {@code 0} (the default) means unlimited — no cap is enforced.
+     *
+     * @param maxToolCallsPerResponse the maximum number of tool execution requests permitted
+     *                                in a single LLM response, or {@code 0} for unlimited
+     * @return the builder instance
+     * @since 1.14.0
+     */
+    public AiServices<T> maxToolCallsPerResponse(int maxToolCallsPerResponse) {
+        context.toolService.maxToolCallsPerResponse(maxToolCallsPerResponse);
+        return this;
+    }
+
+    /**
      * Configures a callback to be invoked before each tool execution.
      *
      * @param beforeToolExecution A {@link Consumer} that accepts a {@link BeforeToolExecution}

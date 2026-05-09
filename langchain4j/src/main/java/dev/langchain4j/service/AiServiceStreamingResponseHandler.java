@@ -36,6 +36,7 @@ import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
+import dev.langchain4j.service.tool.ToolCallsLimitExceededException;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionResult;
@@ -52,6 +53,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
@@ -95,6 +97,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final ToolExecutionErrorHandler toolExecutionErrorHandler;
     private final Executor toolExecutor;
     private final Queue<Future<ToolRequestResult>> toolExecutionFutures = new ConcurrentLinkedQueue<>();
+    private final AtomicInteger streamedToolCallsCount = new AtomicInteger();
 
     private final List<String> responseBuffer = new ArrayList<>();
     private final boolean hasOutputGuardrails;
@@ -227,6 +230,14 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     @Override
     public void onCompleteToolCall(CompleteToolCall completeToolCall) {
         if (toolExecutor != null) {
+            // If the cap is configured, do not submit any future once we have already seen more
+            // tool calls than allowed. This prevents the tool from running before
+            // onCompleteResponse gets a chance to throw ToolCallsLimitExceededException.
+            int maxToolCallsPerResponse = context.toolService.maxToolCallsPerResponse();
+            int seen = streamedToolCallsCount.incrementAndGet();
+            if (maxToolCallsPerResponse > 0 && seen > maxToolCallsPerResponse) {
+                return;
+            }
             ToolExecutionRequest toolRequest = completeToolCall.toolExecutionRequest();
             var future = CompletableFuture.supplyAsync(
                     () -> {
@@ -287,6 +298,13 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 throw runtime(
                         "Something is wrong, exceeded %s sequential tool invocations",
                         context.toolService.maxSequentialToolsInvocations());
+            }
+
+            int maxToolCallsPerResponse = context.toolService.maxToolCallsPerResponse();
+            if (maxToolCallsPerResponse > 0
+                    && aiMessage.toolExecutionRequests().size() > maxToolCallsPerResponse) {
+                throw new ToolCallsLimitExceededException(
+                        maxToolCallsPerResponse, aiMessage.toolExecutionRequests().size());
             }
 
             if (intermediateResponseHandler != null) {

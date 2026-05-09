@@ -78,6 +78,7 @@ public class ToolService {
     private final Set<ToolProvider> toolProviders = new LinkedHashSet<>();
     private Executor executor;
     private int maxSequentialToolsInvocations = 100;
+    private int maxToolCallsPerResponse = 0;
     private ToolArgumentsErrorHandler argumentsErrorHandler;
     private ToolExecutionErrorHandler executionErrorHandler;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy =
@@ -226,6 +227,35 @@ public class ToolService {
 
     public int maxSequentialToolsInvocations() {
         return maxSequentialToolsInvocations;
+    }
+
+    /**
+     * Sets the maximum number of tool execution requests allowed within a single LLM response.
+     *
+     * <p>
+     * Intended for cooperative truncation when an LLM returns more tool calls in a single
+     * response than the user wants to spend. When an LLM response contains more than this
+     * many tool execution requests, a {@link ToolCallsLimitExceededException} is thrown
+     * before any tool is executed for that response.
+     *
+     * <p>
+     * A value of {@code 0} (the default) means unlimited — no cap is enforced.
+     *
+     * @param maxToolCallsPerResponse the maximum number of tool execution requests permitted
+     *                                in a single LLM response, or {@code 0} for unlimited
+     * @since 1.14.0
+     */
+    public void maxToolCallsPerResponse(int maxToolCallsPerResponse) {
+        this.maxToolCallsPerResponse = maxToolCallsPerResponse;
+    }
+
+    /**
+     * @return the maximum number of tool execution requests permitted in a single LLM response,
+     *         or {@code 0} for unlimited
+     * @since 1.14.0
+     */
+    public int maxToolCallsPerResponse() {
+        return maxToolCallsPerResponse;
     }
 
     /**
@@ -382,9 +412,13 @@ public class ToolService {
                 break;
             }
 
+            List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
+            if (maxToolCallsPerResponse > 0 && toolExecutionRequests.size() > maxToolCallsPerResponse) {
+                throw new ToolCallsLimitExceededException(maxToolCallsPerResponse, toolExecutionRequests.size());
+            }
+
             intermediateResponses.add(chatResponse);
 
-            List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults =
                     execute(toolExecutionRequests, toolServiceContext.toolExecutors(), invocationContext);
 
