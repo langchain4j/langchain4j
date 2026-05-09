@@ -43,6 +43,7 @@ import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.DefaultToolExecutor;
+import dev.langchain4j.service.tool.StreamingToolDispatchHook;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import dev.langchain4j.service.tool.ToolExecution;
@@ -757,6 +758,37 @@ public abstract class AiServices<T> {
     public AiServices<T> toolProviderRequestFactory(
             Function<ToolProviderRequest.Builder, ToolProviderRequest> toolProviderRequestFactory) {
         context.toolService.toolProviderRequestFactory(toolProviderRequestFactory);
+        return this;
+    }
+
+    /**
+     * Configures an integration hook used by the streaming response handler to dispatch the
+     * batch of tool calls produced by a single LLM response.
+     *
+     * <p>This hook is intended for downstream framework integrators (e.g. {@code quarkus-langchain4j})
+     * that need to control the threading and context propagation around the tool batch:
+     * <ul>
+     *   <li>Switch to a worker thread before tool execution begins.</li>
+     *   <li>Propagate framework context (Vert.x duplicated context, MDC, security context) into
+     *       the tool dispatch and the subsequent follow-up streaming inference call.</li>
+     *   <li>Hook cancellation into framework cancellation.</li>
+     * </ul>
+     *
+     * <p>The default is {@link StreamingToolDispatchHook#INLINE}, which runs the dispatch on the
+     * thread invoking {@code onCompleteResponse}. This preserves the existing behavior.
+     *
+     * <p>This hook is independent of the per-tool {@link Executor} configured via
+     * {@link #executeToolsConcurrently(Executor)} — that executor is passed to
+     * {@code ToolBatchDispatcher} and only fans out individual tool calls. The dispatch hook
+     * wraps the whole batch (and the follow-up streaming inference) and runs once per batch.
+     *
+     * @param hook the integration hook. If {@code null}, the default {@link StreamingToolDispatchHook#INLINE}
+     *             is used.
+     * @return the builder instance
+     * @since 1.15.0-beta25
+     */
+    public AiServices<T> streamingToolDispatchHook(StreamingToolDispatchHook hook) {
+        context.streamingToolDispatchHook = hook;
         return this;
     }
 

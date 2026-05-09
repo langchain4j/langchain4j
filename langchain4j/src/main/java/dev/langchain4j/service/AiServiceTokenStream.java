@@ -236,7 +236,10 @@ public class AiServiceTokenStream implements TokenStream {
                 toolExecutionErrorHandler,
                 toolExecutor,
                 commonGuardrailParams,
-                methodKey);
+                methodKey,
+                null,
+                context.streamingToolDispatchHook,
+                chatRequest.parameters());
 
         if (contentsHandler != null && retrievedContents != null) {
             contentsHandler.accept(retrievedContents);

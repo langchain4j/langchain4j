@@ -204,10 +204,10 @@ class MaxToolCallsPerResponseTest {
         ToolCallsLimitExceededException ex = (ToolCallsLimitExceededException) error;
         assertThat(ex.getLimit()).isEqualTo(2);
         assertThat(ex.getAttempted()).isEqualTo(5);
-        // With a concurrent executor onCompleteToolCall fires per tool as the stream arrives
-        // and dispatches eagerly. Calls beyond the cap must not be submitted, so at most 'limit'
-        // tools may have executed, never more.
-        assertThat(tool.calls.get()).isLessThanOrEqualTo(2);
+        // Atomic streaming cap: tool calls are buffered until onCompleteResponse, so a response
+        // that exceeds the cap rejects the entire batch before any tool runs — even when a
+        // concurrent executor is configured.
+        assertThat(tool.calls.get()).isZero();
     }
 
     @Test
