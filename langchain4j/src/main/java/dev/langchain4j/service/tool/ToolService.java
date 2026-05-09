@@ -45,14 +45,11 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 
 import java.util.function.Consumer;
@@ -274,10 +271,31 @@ public class ToolService {
     }
 
     /**
+     * @since 1.15.0-beta25
+     */
+    public Consumer<BeforeToolExecution> beforeToolExecution() {
+        return beforeToolExecution;
+    }
+
+    /**
      * @since 1.11.0
      */
     public void afterToolExecution(Consumer<ToolExecution> afterToolExecution) {
         this.afterToolExecution = afterToolExecution;
+    }
+
+    /**
+     * @since 1.15.0-beta25
+     */
+    public Consumer<ToolExecution> afterToolExecution() {
+        return afterToolExecution;
+    }
+
+    /**
+     * @since 1.15.0-beta25
+     */
+    public Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy() {
+        return toolHallucinationStrategy;
     }
 
     /**
@@ -795,54 +813,21 @@ public class ToolService {
             List<ToolExecutionRequest> toolRequests,
             Map<String, ToolExecutor> toolExecutors,
             InvocationContext invocationContext) {
-        if (executor != null && toolRequests.size() > 1) {
-            return executeConcurrently(toolRequests, toolExecutors, invocationContext);
-        } else {
-            // when there is only one tool to execute, it doesn't make sense to do it in a separate thread
-            return executeSequentially(toolRequests, toolExecutors, invocationContext);
-        }
-    }
-
-    private Map<ToolExecutionRequest, ToolExecutionResult> executeConcurrently(
-            List<ToolExecutionRequest> toolRequests,
-            Map<String, ToolExecutor> toolExecutors,
-            InvocationContext invocationContext) {
-        Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> futures = new LinkedHashMap<>();
-
-        for (ToolExecutionRequest toolRequest : toolRequests) {
-            CompletableFuture<ToolExecutionResult> future = CompletableFuture.supplyAsync(
-                    () -> executeTool(invocationContext, toolExecutors, toolRequest), executor);
-            futures.put(toolRequest, future);
-        }
-
-        Map<ToolExecutionRequest, ToolExecutionResult> results = new LinkedHashMap<>();
-        for (Map.Entry<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> entry : futures.entrySet()) {
-            try {
-                results.put(entry.getKey(), entry.getValue().get());
-            } catch (ExecutionException e) {
-                if (e.getCause() instanceof RuntimeException re) {
-                    throw re;
-                } else {
-                    throw new RuntimeException(e.getCause());
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException(e);
-            }
-        }
-
-        return results;
-    }
-
-    private Map<ToolExecutionRequest, ToolExecutionResult> executeSequentially(
-            List<ToolExecutionRequest> toolRequests,
-            Map<String, ToolExecutor> toolExecutors,
-            InvocationContext invocationContext) {
-        Map<ToolExecutionRequest, ToolExecutionResult> toolResults = new LinkedHashMap<>();
-        for (ToolExecutionRequest toolRequest : toolRequests) {
-            toolResults.put(toolRequest, executeTool(invocationContext, toolExecutors, toolRequest));
-        }
-        return toolResults;
+        return ToolBatchDispatcher.dispatch(ToolBatchDispatcher.Request.builder()
+                .toolRequests(toolRequests)
+                .toolExecutors(toolExecutors)
+                .executor(executor)
+                .invocationContext(invocationContext)
+                .beforeToolExecution(beforeToolExecution)
+                .afterToolExecution(afterToolExecution)
+                .errorHandlerBypass(errorHandlerBypass)
+                .argumentsErrorHandler(argumentsErrorHandler())
+                .executionErrorHandler(executionErrorHandler())
+                .hallucinationStrategy(toolHallucinationStrategy)
+                // The cap is enforced at the loop level (see executeInferenceAndToolsLoop)
+                // so we do not configure it here; passing 0 keeps the dispatcher's check inert.
+                .maxToolCallsPerResponse(0)
+                .build());
     }
 
     private ToolExecutionResult executeTool(
