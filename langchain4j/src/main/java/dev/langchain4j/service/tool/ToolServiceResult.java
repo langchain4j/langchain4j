@@ -3,11 +3,12 @@ package dev.langchain4j.service.tool;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import java.util.List;
-import java.util.Objects;
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 @Internal
 public class ToolServiceResult {
@@ -17,6 +18,7 @@ public class ToolServiceResult {
     private final List<ToolExecution> toolExecutions;
     private final TokenUsage aggregateTokenUsage;
     private final boolean immediateToolReturn;
+    private final Map<String, Integer> toolExecutionCounts;
 
     /**
      * @since 1.2.0
@@ -27,19 +29,21 @@ public class ToolServiceResult {
         this.toolExecutions = ensureNotNull(builder.toolExecutions, "toolExecutions");
         this.aggregateTokenUsage = builder.aggregateTokenUsage;
         this.immediateToolReturn = builder.immediateToolReturn;
+        this.toolExecutionCounts =
+                builder.toolExecutionCounts == null ? Map.of() : Map.copyOf(builder.toolExecutionCounts);
     }
 
     /**
      * @deprecated Please use {@link #ToolServiceResult(Builder)} instead
      */
     @Deprecated(since = "1.2.0")
-    public ToolServiceResult(ChatResponse chatResponse,
-                             List<ToolExecution> toolExecutions) {
+    public ToolServiceResult(ChatResponse chatResponse, List<ToolExecution> toolExecutions) {
         this.intermediateResponses = List.of();
         this.finalResponse = ensureNotNull(chatResponse, "chatResponse");
         this.toolExecutions = ensureNotNull(toolExecutions, "toolExecutions");
         this.aggregateTokenUsage = chatResponse.tokenUsage();
         this.immediateToolReturn = false;
+        this.toolExecutionCounts = Map.of();
     }
 
     /**
@@ -94,6 +98,16 @@ public class ToolServiceResult {
         return immediateToolReturn;
     }
 
+    /**
+     * Returns the number of times each tool was executed during this AI service call.
+     *
+     * @return an unmodifiable map from tool name to execution count
+     * @since 1.14.0
+     */
+    public Map<String, Integer> toolExecutionCounts() {
+        return toolExecutionCounts;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (obj == this) return true;
@@ -103,23 +117,30 @@ public class ToolServiceResult {
                 && Objects.equals(this.finalResponse, that.finalResponse)
                 && Objects.equals(this.toolExecutions, that.toolExecutions)
                 && Objects.equals(this.aggregateTokenUsage, that.aggregateTokenUsage)
-                && Objects.equals(this.immediateToolReturn, that.immediateToolReturn);
+                && Objects.equals(this.immediateToolReturn, that.immediateToolReturn)
+                && Objects.equals(this.toolExecutionCounts, that.toolExecutionCounts);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(intermediateResponses, finalResponse, toolExecutions, aggregateTokenUsage, immediateToolReturn);
+        return Objects.hash(
+                intermediateResponses,
+                finalResponse,
+                toolExecutions,
+                aggregateTokenUsage,
+                immediateToolReturn,
+                toolExecutionCounts);
     }
 
     @Override
     public String toString() {
-        return "ToolServiceResult{" +
-                "intermediateResponses=" + intermediateResponses +
-                ", finalResponse=" + finalResponse +
-                ", toolExecutions=" + toolExecutions +
-                ", aggregateTokenUsage=" + aggregateTokenUsage +
-                ", immediateToolReturn=" + immediateToolReturn +
-                '}';
+        return "ToolServiceResult{" + "intermediateResponses="
+                + intermediateResponses + ", finalResponse="
+                + finalResponse + ", toolExecutions="
+                + toolExecutions + ", aggregateTokenUsage="
+                + aggregateTokenUsage + ", immediateToolReturn="
+                + immediateToolReturn + ", toolExecutionCounts="
+                + toolExecutionCounts + '}';
     }
 
     public static Builder builder() {
@@ -133,6 +154,7 @@ public class ToolServiceResult {
         private List<ToolExecution> toolExecutions;
         private TokenUsage aggregateTokenUsage;
         private boolean immediateToolReturn;
+        private Map<String, Integer> toolExecutionCounts;
 
         public Builder intermediateResponses(List<ChatResponse> intermediateResponses) {
             this.intermediateResponses = intermediateResponses;
@@ -156,6 +178,14 @@ public class ToolServiceResult {
 
         public Builder immediateToolReturn(boolean immediateToolReturn) {
             this.immediateToolReturn = immediateToolReturn;
+            return this;
+        }
+
+        /**
+         * @since 1.14.0
+         */
+        public Builder toolExecutionCounts(Map<String, Integer> toolExecutionCounts) {
+            this.toolExecutionCounts = toolExecutionCounts;
             return this;
         }
 

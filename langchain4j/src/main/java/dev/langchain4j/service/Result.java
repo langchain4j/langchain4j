@@ -1,5 +1,7 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.internal.Utils.copy;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -8,9 +10,7 @@ import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import java.util.Map;
 
 /**
  * Represents the result of an AI Service invocation.
@@ -37,6 +37,7 @@ public class Result<T> {
     private final List<ToolExecution> toolExecutions;
     private final List<ChatResponse> intermediateResponses;
     private final ChatResponse finalResponse;
+    private final Map<String, Integer> toolExecutionCounts;
 
     /**
      * @since 1.2.0
@@ -49,13 +50,16 @@ public class Result<T> {
         this.toolExecutions = copy(builder.toolExecutions);
         this.intermediateResponses = copy(builder.intermediateResponses);
         this.finalResponse = builder.finalResponse;
+        this.toolExecutionCounts =
+                builder.toolExecutionCounts == null ? Map.of() : Map.copyOf(builder.toolExecutionCounts);
     }
 
-    public Result(T content,
-                  TokenUsage tokenUsage,
-                  List<Content> sources,
-                  FinishReason finishReason,
-                  List<ToolExecution> toolExecutions) {
+    public Result(
+            T content,
+            TokenUsage tokenUsage,
+            List<Content> sources,
+            FinishReason finishReason,
+            List<ToolExecution> toolExecutions) {
         this.content = content;
         this.tokenUsage = tokenUsage;
         this.sources = copy(sources);
@@ -63,6 +67,7 @@ public class Result<T> {
         this.toolExecutions = copy(toolExecutions);
         this.intermediateResponses = List.of();
         this.finalResponse = null;
+        this.toolExecutionCounts = Map.of();
     }
 
     public static <T> ResultBuilder<T> builder() {
@@ -121,6 +126,16 @@ public class Result<T> {
         return finalResponse;
     }
 
+    /**
+     * Returns the number of times each tool was executed during this AI service call.
+     *
+     * @return an unmodifiable map from tool name to execution count
+     * @since 1.14.0
+     */
+    public Map<String, Integer> toolExecutionCounts() {
+        return toolExecutionCounts;
+    }
+
     public static class ResultBuilder<T> {
 
         private T content;
@@ -130,9 +145,9 @@ public class Result<T> {
         private List<ToolExecution> toolExecutions;
         private List<ChatResponse> intermediateResponses;
         private ChatResponse finalResponse;
+        private Map<String, Integer> toolExecutionCounts;
 
-        ResultBuilder() {
-        }
+        ResultBuilder() {}
 
         public ResultBuilder<T> content(T content) {
             this.content = content;
@@ -172,6 +187,14 @@ public class Result<T> {
          */
         public ResultBuilder<T> finalResponse(ChatResponse finalResponse) {
             this.finalResponse = finalResponse;
+            return this;
+        }
+
+        /**
+         * @since 1.14.0
+         */
+        public ResultBuilder<T> toolExecutionCounts(Map<String, Integer> toolExecutionCounts) {
+            this.toolExecutionCounts = toolExecutionCounts;
             return this;
         }
 

@@ -1,20 +1,18 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.internal.Utils.copy;
+import static java.util.stream.Collectors.toSet;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.ToolSpecification;
-
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.service.tool.search.ToolSearchStrategy;
-
-import static dev.langchain4j.internal.Utils.copy;
-import static java.util.stream.Collectors.toSet;
 
 @Internal
 public class ToolServiceContext {
@@ -118,6 +116,24 @@ public class ToolServiceContext {
         return dynamicToolProviders;
     }
 
+    /**
+     * Returns a new {@link ToolServiceContext} with the specified tools removed from
+     * {@link #effectiveTools()}.
+     *
+     * @param excludedToolNames names of tools to exclude
+     * @return a new context with exhausted tools filtered out
+     * @since 1.14.0
+     */
+    public ToolServiceContext withoutTools(Set<String> excludedToolNames) {
+        if (excludedToolNames.isEmpty()) {
+            return this;
+        }
+        List<ToolSpecification> filtered = effectiveTools.stream()
+                .filter(t -> !excludedToolNames.contains(t.name()))
+                .toList();
+        return toBuilder().effectiveTools(filtered).build();
+    }
+
     public Builder toBuilder() {
         return builder()
                 .effectiveTools(effectiveTools)
@@ -145,13 +161,12 @@ public class ToolServiceContext {
 
     @Override
     public String toString() {
-        return "ToolServiceContext{" +
-                "effectiveTools=" + effectiveTools +
-                ", availableTools=" + availableTools +
-                ", toolExecutors=" + toolExecutors +
-                ", returnBehaviorByName=" + returnBehaviors +
-                ", dynamicToolProviders=" + dynamicToolProviders +
-                '}';
+        return "ToolServiceContext{" + "effectiveTools="
+                + effectiveTools + ", availableTools="
+                + availableTools + ", toolExecutors="
+                + toolExecutors + ", returnBehaviorByName="
+                + returnBehaviors + ", dynamicToolProviders="
+                + dynamicToolProviders + '}';
     }
 
     public static Builder builder() {
