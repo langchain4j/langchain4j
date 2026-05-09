@@ -1,7 +1,13 @@
 package dev.langchain4j.model.vertexai.gemini;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import com.google.cloud.vertexai.VertexAI;
+import com.google.cloud.vertexai.api.Content;
+import com.google.cloud.vertexai.api.GenerateContentRequest;
+import com.google.cloud.vertexai.api.Part;
+import com.google.cloud.vertexai.generativeai.GenerativeModel;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -56,5 +62,114 @@ class VertexAiGeminiChatModelBuilderTest {
                 .build();
 
         assertThat(model.vertexAI().getApiEndpoint()).isEqualTo(customEndpoint);
+    }
+
+    @Test
+    void setLabels() {
+        VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
+                .project("does-not-matter")
+                .location("does-not-matter")
+                .modelName("does-not-matter")
+                .labels(Map.of("company_id", "20096", "user_id", "12345"))
+                .build();
+
+        assertThat(model.labels()).containsEntry("company_id", "20096").containsEntry("user_id", "12345");
+    }
+
+    @Test
+    void labelsDefaultToEmpty() {
+        VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
+                .project("does-not-matter")
+                .location("does-not-matter")
+                .modelName("does-not-matter")
+                .build();
+
+        assertThat(model.labels()).isEmpty();
+    }
+
+    @Test
+    void buildGenerateContentRequestAttachesLabels() {
+        VertexAI vertexAI = new VertexAI("test-project", "us-central1");
+        try {
+            GenerativeModel model = new GenerativeModel("gemini-2.5-flash", vertexAI);
+            List<Content> contents = List.of(Content.newBuilder()
+                    .setRole("user")
+                    .addParts(Part.newBuilder().setText("hello").build())
+                    .build());
+
+            GenerateContentRequest request = VertexAiGeminiChatModel.buildGenerateContentRequest(
+                    model, vertexAI, contents, Map.of("company_id", "20096", "user_id", "12345"));
+
+            assertThat(request.getLabelsMap())
+                    .containsEntry("company_id", "20096")
+                    .containsEntry("user_id", "12345");
+        } finally {
+            vertexAI.close();
+        }
+    }
+
+    @Test
+    void buildGenerateContentRequestNoLabelsWhenEmpty() {
+        VertexAI vertexAI = new VertexAI("test-project", "us-central1");
+        try {
+            GenerativeModel model = new GenerativeModel("gemini-2.5-flash", vertexAI);
+            List<Content> contents = List.of(Content.newBuilder()
+                    .setRole("user")
+                    .addParts(Part.newBuilder().setText("hello").build())
+                    .build());
+
+            GenerateContentRequest request =
+                    VertexAiGeminiChatModel.buildGenerateContentRequest(model, vertexAI, contents, Map.of());
+
+            assertThat(request.getLabelsMap()).isEmpty();
+        } finally {
+            vertexAI.close();
+        }
+    }
+
+    @Test
+    void buildResourceNamePassesThroughFullyQualifiedName() {
+        VertexAI vertexAI = new VertexAI("test-project", "us-central1");
+        try {
+            String alreadyQualified =
+                    "projects/other-project/locations/europe-west4/publishers/google/models/gemini-2.5-flash";
+            assertThat(VertexAiGeminiChatModel.buildResourceName(alreadyQualified, vertexAI))
+                    .isEqualTo(alreadyQualified);
+        } finally {
+            vertexAI.close();
+        }
+    }
+
+    @Test
+    void buildResourceNameQualifiesPublishersPrefix() {
+        VertexAI vertexAI = new VertexAI("test-project", "us-central1");
+        try {
+            assertThat(VertexAiGeminiChatModel.buildResourceName("publishers/google/models/gemini-2.5-flash", vertexAI))
+                    .isEqualTo("projects/test-project/locations/us-central1/publishers/google/models/gemini-2.5-flash");
+        } finally {
+            vertexAI.close();
+        }
+    }
+
+    @Test
+    void buildResourceNameQualifiesModelsPrefix() {
+        VertexAI vertexAI = new VertexAI("test-project", "us-central1");
+        try {
+            assertThat(VertexAiGeminiChatModel.buildResourceName("models/gemini-2.5-flash", vertexAI))
+                    .isEqualTo("projects/test-project/locations/us-central1/publishers/google/models/gemini-2.5-flash");
+        } finally {
+            vertexAI.close();
+        }
+    }
+
+    @Test
+    void buildResourceNameQualifiesBareModelName() {
+        VertexAI vertexAI = new VertexAI("test-project", "us-central1");
+        try {
+            assertThat(VertexAiGeminiChatModel.buildResourceName("gemini-2.5-flash", vertexAI))
+                    .isEqualTo("projects/test-project/locations/us-central1/publishers/google/models/gemini-2.5-flash");
+        } finally {
+            vertexAI.close();
+        }
     }
 }
