@@ -115,36 +115,34 @@ class AiServiceInteractionEventTests {
         registrar.fireEvent(completed(ctx2));
 
         assertThat(capturedInteractions).hasSize(2);
-        // ctx1 interaction has 3 events (started, requestIssued, completed)
+        // ctx1: started, requestIssued, completed
         assertThat(capturedInteractions.get(0).events()).hasSize(3);
-        // ctx2 interaction has only 2 events (started, completed) plus the nested ctx1 interaction event
-        assertThat(capturedInteractions.get(1).events()).hasSize(3);
+        // ctx2: started, completed — must NOT capture ctx1's interaction event
+        assertThat(capturedInteractions.get(1).events()).hasSize(2);
+        assertThat(capturedInteractions.get(1).events()).noneMatch(e -> e instanceof AiServiceInteractionEvent);
     }
 
     @Test
-    void nestedSubInteractionAppearsInParentEventList() {
-        var parentCtx = ctx(UUID.randomUUID());
-        var subCtx = ctx(UUID.randomUUID());
+    void concurrentInvocationsDoNotCrossContaminateEachOther() {
+        var ctx1 = ctx(UUID.randomUUID());
+        var ctx2 = ctx(UUID.randomUUID());
 
-        // Parent starts
-        registrar.fireEvent(started(parentCtx));
-        // Sub-interaction starts and completes during parent
-        registrar.fireEvent(started(subCtx));
-        registrar.fireEvent(completed(subCtx));
-        // Parent continues and completes
-        registrar.fireEvent(completed(parentCtx));
+        registrar.fireEvent(started(ctx1));
+        registrar.fireEvent(started(ctx2));
+        registrar.fireEvent(requestIssued(ctx1));
+        registrar.fireEvent(requestIssued(ctx2));
+        registrar.fireEvent(completed(ctx2));
+        registrar.fireEvent(completed(ctx1));
 
         assertThat(capturedInteractions).hasSize(2);
-
-        // Sub-interaction event (fired first)
-        AiServiceInteractionEvent subInteraction = capturedInteractions.get(0);
-        assertThat(subInteraction.invocationContext().invocationId()).isEqualTo(subCtx.invocationId());
-
-        // Parent interaction contains: started, the sub-interaction event, completed
-        AiServiceInteractionEvent parentInteraction = capturedInteractions.get(1);
-        assertThat(parentInteraction.invocationContext().invocationId()).isEqualTo(parentCtx.invocationId());
-        assertThat(parentInteraction.events()).hasSize(3);
-        assertThat(parentInteraction.events().get(1)).isInstanceOf(AiServiceInteractionEvent.class);
+        // ctx2 completes first: started + requestIssued + completed
+        assertThat(capturedInteractions.get(0).events()).hasSize(3);
+        assertThat(capturedInteractions.get(0).invocationContext().invocationId())
+                .isEqualTo(ctx2.invocationId());
+        // ctx1 completes second: started + requestIssued + completed — no ctx2 events leaked
+        assertThat(capturedInteractions.get(1).events()).hasSize(3);
+        assertThat(capturedInteractions.get(1).invocationContext().invocationId())
+                .isEqualTo(ctx1.invocationId());
     }
 
     @Test

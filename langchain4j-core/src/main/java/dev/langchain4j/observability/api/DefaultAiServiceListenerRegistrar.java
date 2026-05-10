@@ -8,6 +8,8 @@ import dev.langchain4j.observability.api.event.AiServiceEvent;
 import dev.langchain4j.observability.api.event.AiServiceInteractionEvent;
 import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -15,7 +17,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -82,27 +83,30 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
     }
 
     private void trackInteraction(AiServiceEvent event) {
+        if (event.invocationContext() == null) {
+            return;
+        }
         UUID invocationId = event.invocationContext().invocationId();
         if (invocationId == null) {
             return;
         }
 
         if (event instanceof AiServiceStartedEvent) {
-            List<AiServiceEvent> events = new CopyOnWriteArrayList<>();
+            List<AiServiceEvent> events = Collections.synchronizedList(new ArrayList<>());
             events.add(event);
             interactionTracker.put(invocationId, events);
         } else if (event instanceof AiServiceCompletedEvent || event instanceof AiServiceErrorEvent) {
             List<AiServiceEvent> events = interactionTracker.remove(invocationId);
             if (events != null) {
-                events.add(event);
+                synchronized (events) {
+                    events.add(event);
+                }
                 AiServiceInteractionEvent interactionEvent = AiServiceInteractionEvent.builder()
                         .invocationContext(event.invocationContext())
                         .events(List.copyOf(events))
                         .build();
                 // Fire directly to interaction listeners — bypass trackInteraction to avoid recursion
                 fireToListeners(interactionEvent);
-                // Add to any parent tracking lists so nested sub-interactions are captured
-                interactionTracker.forEach((parentId, parentEvents) -> parentEvents.add(interactionEvent));
             }
         } else if (!(event instanceof AiServiceInteractionEvent)) {
             // Intermediate event: append to this invocation's tracking list

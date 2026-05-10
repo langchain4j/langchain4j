@@ -24,11 +24,14 @@ public interface AiServiceInteractionEvent extends AiServiceEvent {
     List<AiServiceEvent> events();
 
     /**
-     * Returns {@code true} if the interaction completed successfully
-     * (i.e. the terminal event is an {@link AiServiceCompletedEvent}).
+     * Returns {@code true} if the interaction completed successfully.
+     * This is determined by checking whether the last event in the list is an
+     * {@link AiServiceCompletedEvent} — avoiding false positives from nested
+     * sub-interaction events that may themselves contain completed events.
      */
     default boolean isSuccessful() {
-        return events().stream().anyMatch(e -> e instanceof AiServiceCompletedEvent);
+        List<AiServiceEvent> all = events();
+        return !all.isEmpty() && all.get(all.size() - 1) instanceof AiServiceCompletedEvent;
     }
 
     /**
