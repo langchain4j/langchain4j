@@ -19,7 +19,6 @@ import org.slf4j.LoggerFactory;
  * Neither this class nor {@link CanaryTokenInputGuardrail} reference {@code InvocationContext}
  * or {@code LangChain4jManaged} directly - all transport is encapsulated behind
  * {@link GuardrailRequestParams}.
- * </p>
  * <p>
  * Config resolution order (first match wins):
  * <ol>
@@ -27,11 +26,9 @@ import org.slf4j.LoggerFactory;
  *   <li>Config supplied at construction time (programmatic wiring)</li>
  *   <li>Built-in defaults (BLOCK remediation, enabled)</li>
  * </ol>
- * </p>
  * <p>
  * Both guardrails can be registered independently - no stateful container
  * is required and annotation-based wiring works naturally:
- * </p>
  * <pre>{@code
  * @InputGuardrails(CanaryTokenInputGuardrail.class)
  * @OutputGuardrails(CanaryTokenOutputGuardrail.class)
@@ -77,7 +74,6 @@ public class CanaryTokenOutputGuardrail implements OutputGuardrail {
      * <p>
      * The canary value is retrieved via {@link CanaryTokenState#from(GuardrailRequestParams)}
      * where {@link CanaryTokenInputGuardrail} stored it during the same invocation.
-     * </p>
      *
      * @param request the {@link OutputGuardrailRequest} containing the AI's response
      * @return an {@link OutputGuardrailResult} with the validated or remediated response
@@ -106,7 +102,7 @@ public class CanaryTokenOutputGuardrail implements OutputGuardrail {
         }
 
         // Leakage detected - apply remediation
-        log.debug("Guardrail detected system prompt leakage in response: {}", content);
+        log.debug("Canary token leakage detected, applying {} remediation", config.getRemediation());
 
         return switch (config.getRemediation()) {
             case BLOCK -> {
@@ -116,12 +112,9 @@ public class CanaryTokenOutputGuardrail implements OutputGuardrail {
             case REDACT -> {
                 String redactedContent = content.replace(canary, config.getRedactionPlaceholder());
                 AiMessage redactedMessage = AiMessage.from(redactedContent);
-                log.debug("Original response: {}", content);
-                log.debug("Redacted response: {}", redactedContent);
                 yield successWith(redactedMessage);
             }
             case THROW_EXCEPTION -> {
-                log.debug("Guardrail detected leakage!");
                 yield fatal("System prompt leakage detected", new CanaryTokenLeakageException(canary, content));
             }
         };
