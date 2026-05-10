@@ -6,6 +6,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.invocation.InvocationContext;
@@ -706,6 +707,7 @@ public abstract class AiServices<T> {
      * @return the builder instance
      * @since 1.14.0
      */
+    @Experimental
     public AiServices<T> forceToolChoiceAutoAfterFirstIteration(boolean forceToolChoiceAutoAfterFirstIteration) {
         context.toolService.forceToolChoiceAutoAfterFirstIteration(forceToolChoiceAutoAfterFirstIteration);
         return this;
@@ -731,6 +733,7 @@ public abstract class AiServices<T> {
      * @return the builder instance
      * @since 1.14.0
      */
+    @Experimental
     public AiServices<T> errorHandlerBypass(Predicate<Throwable> errorHandlerBypass) {
         context.toolService.errorHandlerBypass(errorHandlerBypass);
         return this;
@@ -755,6 +758,7 @@ public abstract class AiServices<T> {
      * @return the builder instance
      * @since 1.14.0
      */
+    @Experimental
     public AiServices<T> toolProviderRequestFactory(
             Function<ToolProviderRequest.Builder, ToolProviderRequest> toolProviderRequestFactory) {
         context.toolService.toolProviderRequestFactory(toolProviderRequestFactory);
@@ -787,6 +791,7 @@ public abstract class AiServices<T> {
      * @return the builder instance
      * @since 1.15.0-beta25
      */
+    @Experimental
     public AiServices<T> streamingToolDispatchHook(StreamingToolDispatchHook hook) {
         context.streamingToolDispatchHook = hook;
         return this;
