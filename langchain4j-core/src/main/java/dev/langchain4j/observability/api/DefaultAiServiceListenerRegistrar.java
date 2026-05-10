@@ -2,16 +2,23 @@ package dev.langchain4j.observability.api;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
+import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
+import dev.langchain4j.observability.api.event.AiServiceEvent;
+import dev.langchain4j.observability.api.event.AiServiceInteractionEvent;
+import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
+import dev.langchain4j.observability.api.listener.AiServiceListener;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import dev.langchain4j.observability.api.event.AiServiceEvent;
-import dev.langchain4j.observability.api.listener.AiServiceListener;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -27,6 +34,9 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
 
     // Defaults to false to preserve backwards compatibility
     private final AtomicBoolean shouldThrowExceptionOnEventError = new AtomicBoolean(false);
+
+    // Tracks in-flight interaction events per invocationId, thread-safe for concurrent invocations
+    private final Map<UUID, List<AiServiceEvent>> interactionTracker = new ConcurrentHashMap<>();
 
     /**
      * Registers a listener to receive {@link AiServiceEvent} notifications.
@@ -61,14 +71,52 @@ public class DefaultAiServiceListenerRegistrar implements AiServiceListenerRegis
     @Override
     public <T extends AiServiceEvent> void fireEvent(T event) {
         ensureNotNull(event, "event");
+        fireToListeners(event);
+        trackInteraction(event);
+    }
+
+    private <T extends AiServiceEvent> void fireToListeners(T event) {
         Optional.ofNullable(this.listeners.get(event.eventClass()))
                 .map(l -> (EventListeners<T>) l)
                 .ifPresent(l -> l.fireEvent(event));
     }
 
+    private void trackInteraction(AiServiceEvent event) {
+        UUID invocationId = event.invocationContext().invocationId();
+        if (invocationId == null) {
+            return;
+        }
+
+        if (event instanceof AiServiceStartedEvent) {
+            List<AiServiceEvent> events = new CopyOnWriteArrayList<>();
+            events.add(event);
+            interactionTracker.put(invocationId, events);
+        } else if (event instanceof AiServiceCompletedEvent || event instanceof AiServiceErrorEvent) {
+            List<AiServiceEvent> events = interactionTracker.remove(invocationId);
+            if (events != null) {
+                events.add(event);
+                AiServiceInteractionEvent interactionEvent = AiServiceInteractionEvent.builder()
+                        .invocationContext(event.invocationContext())
+                        .events(List.copyOf(events))
+                        .build();
+                // Fire directly to interaction listeners — bypass trackInteraction to avoid recursion
+                fireToListeners(interactionEvent);
+                // Add to any parent tracking lists so nested sub-interactions are captured
+                interactionTracker.forEach((parentId, parentEvents) -> parentEvents.add(interactionEvent));
+            }
+        } else if (!(event instanceof AiServiceInteractionEvent)) {
+            // Intermediate event: append to this invocation's tracking list
+            List<AiServiceEvent> tracking = interactionTracker.get(invocationId);
+            if (tracking != null) {
+                tracking.add(event);
+            }
+        }
+    }
+
     @Override
     public void shouldThrowExceptionOnEventError(boolean shouldThrowExceptionOnEventError) {
-        this.shouldThrowExceptionOnEventError.compareAndSet(!shouldThrowExceptionOnEventError, shouldThrowExceptionOnEventError);
+        this.shouldThrowExceptionOnEventError.compareAndSet(
+                !shouldThrowExceptionOnEventError, shouldThrowExceptionOnEventError);
     }
 
     private <T extends AiServiceEvent> EventListeners<T> addToExistingOrNewList(
