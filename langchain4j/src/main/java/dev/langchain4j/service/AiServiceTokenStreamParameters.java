@@ -4,6 +4,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -32,6 +33,7 @@ public class AiServiceTokenStreamParameters {
     private final InvocationContext invocationContext;
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
+    private final StreamingChatModel streamingChatModel;
 
     protected AiServiceTokenStreamParameters(Builder builder) {
         this.messages = builder.messages;
@@ -44,6 +46,7 @@ public class AiServiceTokenStreamParameters {
         this.invocationContext = builder.invocationContext;
         this.commonGuardrailParams = builder.commonGuardrailParams;
         this.methodKey = builder.methodKey;
+        this.streamingChatModel = builder.streamingChatModel;
     }
 
     /**
@@ -164,6 +167,13 @@ public class AiServiceTokenStreamParameters {
     }
 
     /**
+     * Returns the per-call {@link StreamingChatModel}, or null to use the context's default model.
+     */
+    public StreamingChatModel streamingChatModel() {
+        return streamingChatModel;
+    }
+
+    /**
      * Creates a new builder for {@link AiServiceTokenStreamParameters}.
      *
      * @return a new builder
@@ -187,6 +197,7 @@ public class AiServiceTokenStreamParameters {
         private InvocationContext invocationContext;
         private GuardrailRequestParams commonGuardrailParams;
         private Object methodKey;
+        private StreamingChatModel streamingChatModel;
 
         protected Builder() {}
 
@@ -345,6 +356,14 @@ public class AiServiceTokenStreamParameters {
          */
         public Builder methodKey(Object methodKey) {
             this.methodKey = methodKey;
+            return this;
+        }
+
+        /**
+         * Sets the per-call {@link StreamingChatModel}. When non-null, overrides the context's default model.
+         */
+        public Builder streamingChatModel(StreamingChatModel streamingChatModel) {
+            this.streamingChatModel = streamingChatModel;
             return this;
         }
 
