@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 
 class BaseGeminiChatModel {
@@ -112,7 +113,8 @@ class BaseGeminiChatModel {
                 getOrDefault(builder.logRequests, false),
                 getOrDefault(builder.logResponses, false),
                 builder.logger,
-                builder.timeout);
+                builder.timeout,
+                builder.customHeadersSupplier);
     }
 
     protected GeminiGenerateContentRequest createGenerateContentRequest(ChatRequest chatRequest) {
@@ -345,6 +347,7 @@ class BaseGeminiChatModel {
         protected Boolean mediaResolutionPerPartEnabled;
         protected String aspectRatio;
         protected String imageSize;
+        protected Supplier<Map<String, String>> customHeadersSupplier;
 
         @SuppressWarnings("unchecked")
         protected B builder() {
@@ -741,6 +744,16 @@ class BaseGeminiChatModel {
          */
         public B imageSize(String imageSize) {
             this.imageSize = imageSize;
+            return builder();
+        }
+
+        public B customHeaders(Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return builder();
+        }
+
+        public B customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return builder();
         }
     }

@@ -1,5 +1,7 @@
 package dev.langchain4j.agent.tool;
 
+import dev.langchain4j.exception.ToolArgumentsException;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
@@ -78,6 +80,19 @@ public @interface P {
     /**
      * Whether the parameter is required.
      * Default is {@code true}.
+     * <p>
+     * The {@code required} flag controls the JSON schema sent to the LLM: required parameters are
+     * listed in the schema's {@code required} array. The LLM is expected to honour this, but in
+     * practice it can disregard the schema and omit an argument anyway.
+     * <p>
+     * <b>1.x behaviour when a required argument is missing:</b>
+     * <ul>
+     *   <li><b>Primitive parameters</b> ({@code int}, {@code long}, {@code boolean}, …) — detected
+     *       and surfaced as a {@link ToolArgumentsException}.</li>
+     *   <li><b>Object parameters</b> — not validated; {@code null} is passed to the
+     *       {@link Tool}-annotated method, even though the schema marked the parameter as required.</li>
+     * </ul>
+     * This asymmetry will be removed in LangChain4j 2.0, where all required arguments will be validated uniformly.
      *
      * @return {@code true} if the parameter is required, {@code false} otherwise
      */

@@ -4,16 +4,21 @@ import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -242,5 +247,38 @@ class AiServicesWithToolsWithRequiredIT {
         ToolSpecification toolSpecification = toolSpecifications.get(0);
         assertThat(toolSpecification.name()).isEqualTo("process");
         assertThat(toolSpecification.parameters()).isEqualTo(ToolWithOptionalComplexType.EXPECTED_SCHEMA);
+    }
+
+    @Test
+    void should_fail_when_LLM_omits_required_primitive_parameter() {
+
+        // given
+        class ToolWithPrimitiveParameter {
+
+            @Tool
+            void process(@P("name") String name, @P("age") int age) {
+                // this method is empty
+            }
+        }
+
+        ToolWithPrimitiveParameter tool = spy(new ToolWithPrimitiveParameter());
+
+        ChatModel chatModelMock = spy(ChatModelMock.thatAlwaysResponds(AiMessage.from(ToolExecutionRequest.builder()
+                .id("1")
+                .name("process")
+                .arguments("{\"arg0\":\"Klaus\"}")
+                .build())));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModelMock)
+                .tools(tool)
+                .build();
+
+        // when - then
+        assertThatThrownBy(() -> assistant.chat("does not matter"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContainingAll("Required parameter", "arg1");
+
+        verifyNoInteractions(tool);
     }
 }
