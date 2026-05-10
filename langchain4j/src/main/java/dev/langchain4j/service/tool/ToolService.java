@@ -429,7 +429,38 @@ public class ToolService {
     public ToolServiceContext createContext(InvocationContext invocationContext,
                                             UserMessage userMessage,
                                             List<ChatMessage> messages) {
-        ToolServiceContext context = createContextFromStaticToolsAndProviders(invocationContext, userMessage, messages);
+        return createContext(invocationContext, userMessage, messages, null);
+    }
+
+    /**
+     * Variant of {@link #createContext(InvocationContext, UserMessage, List)} that merges a
+     * caller-supplied set of <i>base tools</i> with this service's configured static tools and
+     * applies the same provider/refresh pipeline (static {@link ToolProvider}s, optional
+     * {@link ToolSearchService}, and dynamic provider refresh) on top of that merged set.
+     *
+     * <p>This overload is intended for downstream framework integrators (e.g. {@code quarkus-langchain4j})
+     * that resolve additional method-scoped tools per AI service method invocation (for example, via a
+     * {@code @ToolBox}-style annotation) and need them to participate in the same provider semantics
+     * as the AI-service-level tools — including dynamic provider invocation on the first request.
+     *
+     * <p>The {@code baseTools} are added to the {@code effectiveTools} / {@code availableTools} /
+     * {@code toolExecutors} / {@code returnBehaviors} of the returned context BEFORE static and dynamic
+     * providers contribute their tools, so providers may add to the merged set but not replace base
+     * tools. Tool-name collisions are resolved using the same precedence as
+     * {@link #tools(List)}: a duplicate tool name from a provider throws
+     * {@link IllegalConfigurationException}.
+     *
+     * @param baseTools method-scoped tools to merge into the resolved context. May be {@code null}
+     *                  or empty, in which case this overload behaves identically to
+     *                  {@link #createContext(InvocationContext, UserMessage, List)}.
+     * @since 1.15.0-beta25
+     */
+    public ToolServiceContext createContext(InvocationContext invocationContext,
+                                            UserMessage userMessage,
+                                            List<ChatMessage> messages,
+                                            List<AiServiceTool> baseTools) {
+        ToolServiceContext context = createContextFromStaticToolsAndProviders(
+                invocationContext, userMessage, messages, baseTools);
         if (toolSearchService != null) {
             context = toolSearchService.adjust(context, messages, invocationContext);
         }
@@ -439,17 +470,33 @@ public class ToolService {
 
     private ToolServiceContext createContextFromStaticToolsAndProviders(InvocationContext invocationContext,
                                                                         UserMessage userMessage,
-                                                                        List<ChatMessage> messages) {
+                                                                        List<ChatMessage> messages,
+                                                                        List<AiServiceTool> baseTools) {
+        boolean hasBaseTools = baseTools != null && !baseTools.isEmpty();
+
         if (this.toolProviders.isEmpty()) {
-            if (this.toolSpecifications.isEmpty()) {
+            if (this.toolSpecifications.isEmpty() && !hasBaseTools) {
                 return ToolServiceContext.Empty.INSTANCE;
             }
 
+            if (!hasBaseTools) {
+                return ToolServiceContext.builder()
+                        .effectiveTools(this.toolSpecifications)
+                        .availableTools(this.toolSpecifications)
+                        .toolExecutors(this.toolExecutors)
+                        .returnBehaviors(this.returnBehaviors)
+                        .build();
+            }
+
+            List<ToolSpecification> mergedSpecs = new ArrayList<>(this.toolSpecifications);
+            Map<String, ToolExecutor> mergedExecutors = new HashMap<>(this.toolExecutors);
+            Map<String, ReturnBehavior> mergedReturnBehaviors = new HashMap<>(this.returnBehaviors);
+            addTools(baseTools, mergedExecutors, mergedSpecs, mergedReturnBehaviors);
             return ToolServiceContext.builder()
-                    .effectiveTools(this.toolSpecifications)
-                    .availableTools(this.toolSpecifications)
-                    .toolExecutors(this.toolExecutors)
-                    .returnBehaviors(this.returnBehaviors)
+                    .effectiveTools(mergedSpecs)
+                    .availableTools(mergedSpecs)
+                    .toolExecutors(mergedExecutors)
+                    .returnBehaviors(mergedReturnBehaviors)
                     .build();
         }
 
@@ -457,6 +504,10 @@ public class ToolService {
         Map<String, ToolExecutor> toolExecutors = new HashMap<>(this.toolExecutors);
         Map<String, ReturnBehavior> returnBehaviors = new HashMap<>(this.returnBehaviors);
         List<ToolProvider> dynamicToolProviders = new ArrayList<>();
+
+        if (hasBaseTools) {
+            addTools(baseTools, toolExecutors, toolSpecifications, returnBehaviors);
+        }
 
         ToolProviderRequest toolProviderRequest = toolProviderRequestFactory.apply(ToolProviderRequest.builder()
                 .invocationContext(invocationContext)
