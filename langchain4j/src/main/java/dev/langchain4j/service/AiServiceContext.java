@@ -14,6 +14,7 @@ import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.service.guardrail.GuardrailService;
 import dev.langchain4j.service.memory.ChatMemoryService;
+import dev.langchain4j.service.tool.StreamingToolDispatchHook;
 import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.spi.services.AiServiceContextFactory;
 import java.util.Optional;
@@ -54,6 +55,14 @@ public class AiServiceContext {
     public BiFunction<String, InvocationContext, String> systemMessageTransformer = null;
 
     public BiFunction<ChatRequest, Object, ChatRequest> chatRequestTransformer = (req, memId) -> req;
+
+    /**
+     * Optional integration hook for the streaming response handler's tool batch dispatch.
+     * Defaults to {@link StreamingToolDispatchHook#INLINE} when {@code null}.
+     *
+     * @since 1.15.0-beta25
+     */
+    public StreamingToolDispatchHook streamingToolDispatchHook;
 
     protected AiServiceContext(Class<?> aiServiceClass) {
         this.aiServiceClass = aiServiceClass;

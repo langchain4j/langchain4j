@@ -12,6 +12,7 @@ import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -51,6 +52,7 @@ public class AiServiceTokenStream implements TokenStream {
     private final InvocationContext invocationContext;
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
+    private final StreamingChatModel perCallStreamingChatModel;
 
     private Consumer<String> partialResponseHandler;
     private BiConsumer<PartialResponse, PartialResponseContext> partialResponseWithContextHandler;
@@ -97,6 +99,7 @@ public class AiServiceTokenStream implements TokenStream {
         this.invocationContext = parameters.invocationContext();
         this.commonGuardrailParams = parameters.commonGuardrailParams();
         this.methodKey = parameters.methodKey();
+        this.perCallStreamingChatModel = parameters.streamingChatModel();
     }
 
     @Override
@@ -205,7 +208,11 @@ public class AiServiceTokenStream implements TokenStream {
                         .build(),
                 invocationContext.chatMemoryId());
 
-        ChatExecutor chatExecutor = ChatExecutor.builder(context.streamingChatModel)
+        StreamingChatModel modelToUse = perCallStreamingChatModel != null
+                ? perCallStreamingChatModel
+                : context.streamingChatModel;
+
+        ChatExecutor chatExecutor = ChatExecutor.builder(modelToUse)
                 .errorHandler(errorHandler)
                 .chatRequest(chatRequest)
                 .invocationContext(invocationContext)
@@ -236,7 +243,10 @@ public class AiServiceTokenStream implements TokenStream {
                 toolExecutionErrorHandler,
                 toolExecutor,
                 commonGuardrailParams,
-                methodKey);
+                methodKey,
+                modelToUse,
+                context.streamingToolDispatchHook,
+                chatRequest.parameters());
 
         if (contentsHandler != null && retrievedContents != null) {
             contentsHandler.accept(retrievedContents);
@@ -247,7 +257,7 @@ public class AiServiceTokenStream implements TokenStream {
                 .request(chatRequest)
                 .build());
 
-        context.streamingChatModel.chat(chatRequest, handler);
+        modelToUse.chat(chatRequest, handler);
     }
 
     private void validateConfiguration() {

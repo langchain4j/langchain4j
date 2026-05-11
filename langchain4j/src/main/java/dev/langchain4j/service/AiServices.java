@@ -6,6 +6,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.invocation.InvocationContext;
@@ -26,6 +27,7 @@ import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
@@ -42,12 +44,14 @@ import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.DefaultToolExecutor;
+import dev.langchain4j.service.tool.StreamingToolDispatchHook;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import dev.langchain4j.spi.services.AiServicesFactory;
 import java.util.Collection;
@@ -61,6 +65,7 @@ import java.util.concurrent.Future;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
 /**
@@ -653,6 +658,142 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
         context.toolService.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
+        return this;
+    }
+
+    /**
+     * Sets the maximum number of tool calls allowed within a single LLM response.
+     * If a single LLM response contains more tool execution requests than this limit, a
+     * {@link dev.langchain4j.service.tool.ToolCallsLimitExceededException} is thrown and the AI
+     * service invocation is terminated.
+     *
+     * <p>
+     * This is intended for cooperative truncation when an LLM returns more tool calls in
+     * a single response than the user wants to spend (for example, to bound execution
+     * cost or latency). Unlike {@link #maxSequentialToolsInvocations(int)}, which limits
+     * the number of LLM <em>responses</em> that may contain tool calls, this option
+     * limits the number of tool execution requests within a single LLM response.
+     *
+     * <p>
+     * A value of {@code 0} (the default) means unlimited — no cap is enforced.
+     *
+     * @param maxToolCallsPerResponse the maximum number of tool execution requests permitted
+     *                                in a single LLM response, or {@code 0} for unlimited
+     * @return the builder instance
+     * @since 1.14.0
+     */
+    public AiServices<T> maxToolCallsPerResponse(int maxToolCallsPerResponse) {
+        context.toolService.maxToolCallsPerResponse(maxToolCallsPerResponse);
+        return this;
+    }
+
+    /**
+     * Controls whether {@link ToolChoice#REQUIRED} is automatically rewritten to
+     * {@link ToolChoice#AUTO} after the first iteration of the inference-and-tools loop.
+     *
+     * <p>This is an opt-in self-protection hook for downstream framework integrators
+     * (e.g. {@code quarkus-langchain4j}) that set {@link ToolChoice#REQUIRED} on the
+     * first request but want to allow the LLM to terminate the loop on follow-up
+     * iterations. With this flag enabled, {@code REQUIRED} is rewritten to
+     * {@link ToolChoice#AUTO} on every iteration after the first; without it, the
+     * caller-supplied tool choice is forwarded unchanged.
+     *
+     * <p>Default is {@code false}, which preserves the existing behavior of forwarding
+     * the caller-supplied {@link ToolChoice} on every iteration.
+     *
+     * @param forceToolChoiceAutoAfterFirstIteration whether to rewrite
+     *                                               {@link ToolChoice#REQUIRED} to
+     *                                               {@link ToolChoice#AUTO} after the first iteration
+     * @return the builder instance
+     * @since 1.14.0
+     */
+    @Experimental
+    public AiServices<T> forceToolChoiceAutoAfterFirstIteration(boolean forceToolChoiceAutoAfterFirstIteration) {
+        context.toolService.forceToolChoiceAutoAfterFirstIteration(forceToolChoiceAutoAfterFirstIteration);
+        return this;
+    }
+
+    /**
+     * Configures a predicate that, when it evaluates to {@code true} for a tool execution
+     * exception, causes the exception to propagate unchanged instead of being routed
+     * through the configured {@link ToolExecutionErrorHandler}.
+     *
+     * <p>This hook is intended for downstream framework integrators that need to let
+     * specific marker-typed exceptions (e.g. authorization or guardrail violations)
+     * surface to the caller verbatim rather than be summarized into a string sent back
+     * to the LLM. The predicate is evaluated on the exception thrown by the
+     * {@link ToolExecutor}; if it returns {@code true}, the exception is rethrown
+     * unchanged (wrapped in a {@link RuntimeException} only if it is a checked exception).
+     *
+     * <p>The default predicate returns {@code false} for all throwables, which preserves
+     * the existing behavior of routing every exception through the error handler.
+     *
+     * @param errorHandlerBypass the bypass predicate. If {@code null}, the default predicate
+     *                           ({@code e -> false}) is used.
+     * @return the builder instance
+     * @since 1.14.0
+     */
+    @Experimental
+    public AiServices<T> errorHandlerBypass(Predicate<Throwable> errorHandlerBypass) {
+        context.toolService.errorHandlerBypass(errorHandlerBypass);
+        return this;
+    }
+
+    /**
+     * Configures a factory used to build the {@link ToolProviderRequest} passed to
+     * {@link ToolProvider}s, both during initial context creation and dynamic refresh.
+     *
+     * <p>This hook is intended for downstream framework integrators that need to attach
+     * additional context to the {@link ToolProviderRequest}, typically by returning a
+     * subclass enriched with framework-specific attributes. Tool providers can then
+     * downcast the request to access those attributes.
+     *
+     * <p>The default factory invokes {@link ToolProviderRequest.Builder#build()},
+     * which preserves the existing behavior of constructing a plain
+     * {@link ToolProviderRequest}.
+     *
+     * @param toolProviderRequestFactory factory consuming a fully populated builder and
+     *                                   returning the request to pass to providers.
+     *                                   If {@code null}, the default factory is used.
+     * @return the builder instance
+     * @since 1.14.0
+     */
+    @Experimental
+    public AiServices<T> toolProviderRequestFactory(
+            Function<ToolProviderRequest.Builder, ToolProviderRequest> toolProviderRequestFactory) {
+        context.toolService.toolProviderRequestFactory(toolProviderRequestFactory);
+        return this;
+    }
+
+    /**
+     * Configures an integration hook used by the streaming response handler to dispatch the
+     * batch of tool calls produced by a single LLM response.
+     *
+     * <p>This hook is intended for downstream framework integrators (e.g. {@code quarkus-langchain4j})
+     * that need to control the threading and context propagation around the tool batch:
+     * <ul>
+     *   <li>Switch to a worker thread before tool execution begins.</li>
+     *   <li>Propagate framework context (Vert.x duplicated context, MDC, security context) into
+     *       the tool dispatch and the subsequent follow-up streaming inference call.</li>
+     *   <li>Hook cancellation into framework cancellation.</li>
+     * </ul>
+     *
+     * <p>The default is {@link StreamingToolDispatchHook#INLINE}, which runs the dispatch on the
+     * thread invoking {@code onCompleteResponse}. This preserves the existing behavior.
+     *
+     * <p>This hook is independent of the per-tool {@link Executor} configured via
+     * {@link #executeToolsConcurrently(Executor)} — that executor is passed to
+     * {@code ToolBatchDispatcher} and only fans out individual tool calls. The dispatch hook
+     * wraps the whole batch (and the follow-up streaming inference) and runs once per batch.
+     *
+     * @param hook the integration hook. If {@code null}, the default {@link StreamingToolDispatchHook#INLINE}
+     *             is used.
+     * @return the builder instance
+     * @since 1.15.0-beta25
+     */
+    @Experimental
+    public AiServices<T> streamingToolDispatchHook(StreamingToolDispatchHook hook) {
+        context.streamingToolDispatchHook = hook;
         return this;
     }
 

@@ -24,8 +24,10 @@ import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
@@ -43,18 +45,16 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 @Internal
 public class ToolService {
@@ -78,6 +78,7 @@ public class ToolService {
     private final Set<ToolProvider> toolProviders = new LinkedHashSet<>();
     private Executor executor;
     private int maxSequentialToolsInvocations = 100;
+    private int maxToolCallsPerResponse = 0;
     private ToolArgumentsErrorHandler argumentsErrorHandler;
     private ToolExecutionErrorHandler executionErrorHandler;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy =
@@ -86,6 +87,11 @@ public class ToolService {
 
     private Consumer<BeforeToolExecution> beforeToolExecution = null;
     private Consumer<ToolExecution> afterToolExecution = null;
+
+    private boolean forceToolChoiceAutoAfterFirstIteration = false;
+    private Predicate<Throwable> errorHandlerBypass = e -> false;
+    private Function<ToolProviderRequest.Builder, ToolProviderRequest> toolProviderRequestFactory =
+            ToolProviderRequest.Builder::build;
 
     public void hallucinatedToolNameStrategy(
             Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy) {
@@ -229,6 +235,35 @@ public class ToolService {
     }
 
     /**
+     * Sets the maximum number of tool execution requests allowed within a single LLM response.
+     *
+     * <p>
+     * Intended for cooperative truncation when an LLM returns more tool calls in a single
+     * response than the user wants to spend. When an LLM response contains more than this
+     * many tool execution requests, a {@link ToolCallsLimitExceededException} is thrown
+     * before any tool is executed for that response.
+     *
+     * <p>
+     * A value of {@code 0} (the default) means unlimited — no cap is enforced.
+     *
+     * @param maxToolCallsPerResponse the maximum number of tool execution requests permitted
+     *                                in a single LLM response, or {@code 0} for unlimited
+     * @since 1.14.0
+     */
+    public void maxToolCallsPerResponse(int maxToolCallsPerResponse) {
+        this.maxToolCallsPerResponse = maxToolCallsPerResponse;
+    }
+
+    /**
+     * @return the maximum number of tool execution requests permitted in a single LLM response,
+     *         or {@code 0} for unlimited
+     * @since 1.14.0
+     */
+    public int maxToolCallsPerResponse() {
+        return maxToolCallsPerResponse;
+    }
+
+    /**
      * @since 1.11.0
      */
     public void beforeToolExecution(Consumer<BeforeToolExecution> beforeToolExecution) {
@@ -236,10 +271,31 @@ public class ToolService {
     }
 
     /**
+     * @since 1.15.0-beta25
+     */
+    public Consumer<BeforeToolExecution> beforeToolExecution() {
+        return beforeToolExecution;
+    }
+
+    /**
      * @since 1.11.0
      */
     public void afterToolExecution(Consumer<ToolExecution> afterToolExecution) {
         this.afterToolExecution = afterToolExecution;
+    }
+
+    /**
+     * @since 1.15.0-beta25
+     */
+    public Consumer<ToolExecution> afterToolExecution() {
+        return afterToolExecution;
+    }
+
+    /**
+     * @since 1.15.0-beta25
+     */
+    public Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy() {
+        return toolHallucinationStrategy;
     }
 
     /**
@@ -271,6 +327,99 @@ public class ToolService {
     }
 
     /**
+     * Controls whether {@link ToolChoice#REQUIRED} is automatically rewritten to {@link ToolChoice#AUTO}
+     * after the first iteration of {@link #executeInferenceAndToolsLoop}.
+     *
+     * <p>When the LLM↔tools loop reuses the original {@link ChatRequestParameters} on follow-up
+     * iterations, a caller-supplied {@link ToolChoice#REQUIRED} would force the model to keep
+     * calling tools forever. This flag is intended for downstream framework integrators
+     * (e.g. {@code quarkus-langchain4j}) that want to set {@code REQUIRED} once on the very
+     * first request but allow the model to terminate the loop on subsequent iterations.
+     *
+     * <p>Default is {@code false}, which preserves the original behavior of forwarding the
+     * caller-supplied {@link ToolChoice} on every iteration.
+     *
+     * @param forceToolChoiceAutoAfterFirstIteration if {@code true}, the loop rewrites
+     *                                               {@link ToolChoice#REQUIRED} to {@link ToolChoice#AUTO}
+     *                                               on every iteration after the first.
+     * @since 1.14.0
+     */
+    public void forceToolChoiceAutoAfterFirstIteration(boolean forceToolChoiceAutoAfterFirstIteration) {
+        this.forceToolChoiceAutoAfterFirstIteration = forceToolChoiceAutoAfterFirstIteration;
+    }
+
+    /**
+     * @return whether {@link ToolChoice#REQUIRED} is rewritten to {@link ToolChoice#AUTO}
+     *         after the first iteration of the inference loop.
+     * @since 1.14.0
+     */
+    public boolean forceToolChoiceAutoAfterFirstIteration() {
+        return forceToolChoiceAutoAfterFirstIteration;
+    }
+
+    /**
+     * Configures a predicate that, when it evaluates to {@code true} for a tool execution
+     * exception, causes the exception to propagate unchanged instead of being routed
+     * through the configured {@link ToolExecutionErrorHandler}.
+     *
+     * <p>This hook is intended for downstream framework integrators that need to let
+     * specific marker-typed exceptions (e.g. authorization or guardrail violations)
+     * surface to the caller verbatim rather than be summarized into a string sent back
+     * to the LLM.
+     *
+     * <p>The default predicate returns {@code false} for all throwables, which preserves
+     * the original behavior of routing every exception through the error handler.
+     *
+     * @param errorHandlerBypass a predicate; when {@code true} the exception is rethrown
+     *                           unchanged. Must not be {@code null}.
+     * @since 1.14.0
+     */
+    public void errorHandlerBypass(Predicate<Throwable> errorHandlerBypass) {
+        this.errorHandlerBypass = errorHandlerBypass == null ? e -> false : errorHandlerBypass;
+    }
+
+    /**
+     * @return the predicate that controls whether a tool execution exception bypasses
+     *         the error handler. The default predicate returns {@code false} for all throwables.
+     * @since 1.14.0
+     */
+    public Predicate<Throwable> errorHandlerBypass() {
+        return errorHandlerBypass;
+    }
+
+    /**
+     * Configures a factory used to build the {@link ToolProviderRequest} passed to
+     * {@link ToolProvider}s, both during initial context creation and dynamic refresh.
+     *
+     * <p>This hook is intended for downstream framework integrators that need to attach
+     * additional context to the {@link ToolProviderRequest}, typically by returning a
+     * subclass enriched with framework-specific attributes. Tool providers can then
+     * downcast the request to access those attributes.
+     *
+     * <p>The default factory invokes {@link ToolProviderRequest.Builder#build()},
+     * which preserves the original behavior of constructing a plain {@link ToolProviderRequest}.
+     *
+     * @param toolProviderRequestFactory a factory that consumes a fully populated
+     *                                   {@link ToolProviderRequest.Builder} and returns the
+     *                                   {@link ToolProviderRequest} to pass to tool providers.
+     *                                   Must not be {@code null}.
+     * @since 1.14.0
+     */
+    public void toolProviderRequestFactory(
+            Function<ToolProviderRequest.Builder, ToolProviderRequest> toolProviderRequestFactory) {
+        this.toolProviderRequestFactory =
+                toolProviderRequestFactory == null ? ToolProviderRequest.Builder::build : toolProviderRequestFactory;
+    }
+
+    /**
+     * @return the factory used to build the {@link ToolProviderRequest} passed to tool providers.
+     * @since 1.14.0
+     */
+    public Function<ToolProviderRequest.Builder, ToolProviderRequest> toolProviderRequestFactory() {
+        return toolProviderRequestFactory;
+    }
+
+    /**
      * @since 1.12.0
      */
     public void toolSearchStrategy(ToolSearchStrategy toolSearchStrategy) {
@@ -280,27 +429,74 @@ public class ToolService {
     public ToolServiceContext createContext(InvocationContext invocationContext,
                                             UserMessage userMessage,
                                             List<ChatMessage> messages) {
-        ToolServiceContext context = createContextFromStaticToolsAndProviders(invocationContext, userMessage, messages);
+        return createContext(invocationContext, userMessage, messages, null);
+    }
+
+    /**
+     * Variant of {@link #createContext(InvocationContext, UserMessage, List)} that merges a
+     * caller-supplied set of <i>base tools</i> with this service's configured static tools and
+     * applies the same provider/refresh pipeline (static {@link ToolProvider}s, optional
+     * {@link ToolSearchService}, and dynamic provider refresh) on top of that merged set.
+     *
+     * <p>This overload is intended for downstream framework integrators (e.g. {@code quarkus-langchain4j})
+     * that resolve additional method-scoped tools per AI service method invocation (for example, via a
+     * {@code @ToolBox}-style annotation) and need them to participate in the same provider semantics
+     * as the AI-service-level tools — including dynamic provider invocation on the first request.
+     *
+     * <p>The {@code baseTools} are added to the {@code effectiveTools} / {@code availableTools} /
+     * {@code toolExecutors} / {@code returnBehaviors} of the returned context BEFORE static and dynamic
+     * providers contribute their tools, so providers may add to the merged set but not replace base
+     * tools. Tool-name collisions are resolved using the same precedence as
+     * {@link #tools(List)}: a duplicate tool name from a provider throws
+     * {@link IllegalConfigurationException}.
+     *
+     * @param baseTools method-scoped tools to merge into the resolved context. May be {@code null}
+     *                  or empty, in which case this overload behaves identically to
+     *                  {@link #createContext(InvocationContext, UserMessage, List)}.
+     * @since 1.15.0-beta25
+     */
+    public ToolServiceContext createContext(InvocationContext invocationContext,
+                                            UserMessage userMessage,
+                                            List<ChatMessage> messages,
+                                            List<AiServiceTool> baseTools) {
+        ToolServiceContext context = createContextFromStaticToolsAndProviders(
+                invocationContext, userMessage, messages, baseTools);
         if (toolSearchService != null) {
             context = toolSearchService.adjust(context, messages, invocationContext);
         }
-        context = refreshDynamicProviders(context, messages, invocationContext);
+        context = refreshDynamicProvidersWithFactory(context, messages, invocationContext);
         return context;
     }
 
     private ToolServiceContext createContextFromStaticToolsAndProviders(InvocationContext invocationContext,
                                                                         UserMessage userMessage,
-                                                                        List<ChatMessage> messages) {
+                                                                        List<ChatMessage> messages,
+                                                                        List<AiServiceTool> baseTools) {
+        boolean hasBaseTools = baseTools != null && !baseTools.isEmpty();
+
         if (this.toolProviders.isEmpty()) {
-            if (this.toolSpecifications.isEmpty()) {
+            if (this.toolSpecifications.isEmpty() && !hasBaseTools) {
                 return ToolServiceContext.Empty.INSTANCE;
             }
 
+            if (!hasBaseTools) {
+                return ToolServiceContext.builder()
+                        .effectiveTools(this.toolSpecifications)
+                        .availableTools(this.toolSpecifications)
+                        .toolExecutors(this.toolExecutors)
+                        .returnBehaviors(this.returnBehaviors)
+                        .build();
+            }
+
+            List<ToolSpecification> mergedSpecs = new ArrayList<>(this.toolSpecifications);
+            Map<String, ToolExecutor> mergedExecutors = new HashMap<>(this.toolExecutors);
+            Map<String, ReturnBehavior> mergedReturnBehaviors = new HashMap<>(this.returnBehaviors);
+            addTools(baseTools, mergedExecutors, mergedSpecs, mergedReturnBehaviors);
             return ToolServiceContext.builder()
-                    .effectiveTools(this.toolSpecifications)
-                    .availableTools(this.toolSpecifications)
-                    .toolExecutors(this.toolExecutors)
-                    .returnBehaviors(this.returnBehaviors)
+                    .effectiveTools(mergedSpecs)
+                    .availableTools(mergedSpecs)
+                    .toolExecutors(mergedExecutors)
+                    .returnBehaviors(mergedReturnBehaviors)
                     .build();
         }
 
@@ -309,11 +505,14 @@ public class ToolService {
         Map<String, ReturnBehavior> returnBehaviors = new HashMap<>(this.returnBehaviors);
         List<ToolProvider> dynamicToolProviders = new ArrayList<>();
 
-        ToolProviderRequest toolProviderRequest = ToolProviderRequest.builder()
+        if (hasBaseTools) {
+            addTools(baseTools, toolExecutors, toolSpecifications, returnBehaviors);
+        }
+
+        ToolProviderRequest toolProviderRequest = toolProviderRequestFactory.apply(ToolProviderRequest.builder()
                 .invocationContext(invocationContext)
                 .userMessage(userMessage)
-                .messages(messages)
-                .build();
+                .messages(messages));
         toolProviders.forEach(toolProvider -> {
             if (toolProvider.isDynamic()) {
                 dynamicToolProviders.add(toolProvider);
@@ -357,6 +556,48 @@ public class ToolService {
             InvocationContext invocationContext,
             ToolServiceContext toolServiceContext,
             boolean isReturnTypeResult) {
+        return executeInferenceAndToolsLoop(
+                context,
+                context == null ? null : context.chatModel,
+                memoryId,
+                chatResponse,
+                parameters,
+                messages,
+                chatMemory,
+                invocationContext,
+                toolServiceContext,
+                isReturnTypeResult);
+    }
+
+    /**
+     * Variant of {@link #executeInferenceAndToolsLoop(AiServiceContext, Object, ChatResponse,
+     * ChatRequestParameters, List, ChatMemory, InvocationContext, ToolServiceContext, boolean)}
+     * that uses an explicit {@link ChatModel} for follow-up inference requests inside the loop,
+     * instead of {@code context.chatModel}.
+     *
+     * <p>This overload is intended for downstream framework integrators (e.g. {@code quarkus-langchain4j})
+     * that select the {@link ChatModel} per AI service method via mechanisms such as a
+     * {@code @ModelName} qualifier resolved against the method's arguments. The chat model
+     * supplied here is used for every iteration after the initial response that the caller
+     * already passed in via {@code chatResponse}.
+     *
+     * @param chatModel the {@link ChatModel} to use for follow-up inference requests inside
+     *                  the loop. If {@code null}, falls back to {@code context.chatModel}.
+     * @since 1.14.0
+     */
+    public ToolServiceResult executeInferenceAndToolsLoop(
+            AiServiceContext context,
+            ChatModel chatModel,
+            Object memoryId,
+            ChatResponse chatResponse,
+            ChatRequestParameters parameters,
+            List<ChatMessage> messages,
+            ChatMemory chatMemory,
+            InvocationContext invocationContext,
+            ToolServiceContext toolServiceContext,
+            boolean isReturnTypeResult) {
+        ChatModel effectiveChatModel = chatModel != null ? chatModel : context.chatModel;
+
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
@@ -382,9 +623,13 @@ public class ToolService {
                 break;
             }
 
+            List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
+            if (maxToolCallsPerResponse > 0 && toolExecutionRequests.size() > maxToolCallsPerResponse) {
+                throw new ToolCallsLimitExceededException(maxToolCallsPerResponse, toolExecutionRequests.size());
+            }
+
             intermediateResponses.add(chatResponse);
 
-            List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults =
                     execute(toolExecutionRequests, toolServiceContext.toolExecutors(), invocationContext);
 
@@ -437,13 +682,27 @@ public class ToolService {
                 }
             }
 
-            toolServiceContext = refreshDynamicProviders(toolServiceContext, messages, invocationContext);
+            toolServiceContext = refreshDynamicProvidersWithFactory(toolServiceContext, messages, invocationContext);
             if (toolSearchService != null) {
                 toolServiceContext = ToolSearchService.addFoundTools(toolServiceContext, toolResults.values());
             }
-            parameters = parameters.overrideWith(ChatRequestParameters.builder()
-                    .toolSpecifications(toolServiceContext.effectiveTools())
-                    .build());
+
+            // Hook 2: opt-in self-protection against infinite loops when the caller set
+            // ToolChoice.REQUIRED. Iteration 0 has just completed (we are about to send
+            // iteration 1), so from this point on the original REQUIRED is rewritten to AUTO
+            // to let the LLM terminate the loop.
+            ChatRequestParameters override;
+            if (forceToolChoiceAutoAfterFirstIteration && parameters.toolChoice() == ToolChoice.REQUIRED) {
+                override = ChatRequestParameters.builder()
+                        .toolSpecifications(toolServiceContext.effectiveTools())
+                        .toolChoice(ToolChoice.AUTO)
+                        .build();
+            } else {
+                override = ChatRequestParameters.builder()
+                        .toolSpecifications(toolServiceContext.effectiveTools())
+                        .build();
+            }
+            parameters = parameters.overrideWith(override);
 
             ChatRequest chatRequest = context.chatRequestTransformer.apply(
                     ChatRequest.builder()
@@ -453,7 +712,7 @@ public class ToolService {
                     memoryId);
 
             fireRequestIssuedEvent(chatRequest, invocationContext, context.eventListenerRegistrar);
-            chatResponse = context.chatModel.chat(chatRequest);
+            chatResponse = effectiveChatModel.chat(chatRequest);
             fireResponseReceivedEvent(chatRequest, chatResponse, invocationContext, context.eventListenerRegistrar);
             aggregateTokenUsage =
                     TokenUsage.sum(aggregateTokenUsage, chatResponse.metadata().tokenUsage());
@@ -485,11 +744,39 @@ public class ToolService {
      * Tools returned by dynamic providers are only added, never removed: once a tool
      * is present in the context, it stays for the remainder of the AI service invocation.
      *
+     * <p>This static variant uses a default {@link ToolProviderRequest.Builder#build()} factory.
+     * Frameworks that need to inject a custom {@link ToolProviderRequest} subclass should use
+     * {@link #refreshDynamicProvidersWithFactory(ToolServiceContext, List, InvocationContext)} on a
+     * configured {@link ToolService} instance instead.
+     *
      * @since 1.13.0
      */
     public static ToolServiceContext refreshDynamicProviders(ToolServiceContext toolServiceContext,
                                                              List<ChatMessage> messages,
                                                              InvocationContext invocationContext) {
+        return doRefreshDynamicProviders(
+                toolServiceContext, messages, invocationContext, ToolProviderRequest.Builder::build);
+    }
+
+    /**
+     * Instance variant of {@link #refreshDynamicProviders(ToolServiceContext, List, InvocationContext)}
+     * that uses the {@link #toolProviderRequestFactory()} configured on this service to build the
+     * {@link ToolProviderRequest} passed to dynamic providers.
+     *
+     * @since 1.14.0
+     */
+    public ToolServiceContext refreshDynamicProvidersWithFactory(ToolServiceContext toolServiceContext,
+                                                                 List<ChatMessage> messages,
+                                                                 InvocationContext invocationContext) {
+        return doRefreshDynamicProviders(
+                toolServiceContext, messages, invocationContext, toolProviderRequestFactory);
+    }
+
+    private static ToolServiceContext doRefreshDynamicProviders(
+            ToolServiceContext toolServiceContext,
+            List<ChatMessage> messages,
+            InvocationContext invocationContext,
+            Function<ToolProviderRequest.Builder, ToolProviderRequest> requestFactory) {
         if (toolServiceContext == null) {
             return null;
         }
@@ -500,11 +787,10 @@ public class ToolService {
         }
 
         UserMessage userMessage = UserMessage.findLast(messages).orElseThrow();
-        ToolProviderRequest request = ToolProviderRequest.builder()
+        ToolProviderRequest request = requestFactory.apply(ToolProviderRequest.builder()
                 .invocationContext(invocationContext)
                 .userMessage(userMessage)
-                .messages(messages)
-                .build();
+                .messages(messages));
 
         List<ToolSpecification> newEffectiveTools = new ArrayList<>(toolServiceContext.effectiveTools());
         List<ToolSpecification> newAvailableTools = new ArrayList<>(toolServiceContext.availableTools());
@@ -578,54 +864,21 @@ public class ToolService {
             List<ToolExecutionRequest> toolRequests,
             Map<String, ToolExecutor> toolExecutors,
             InvocationContext invocationContext) {
-        if (executor != null && toolRequests.size() > 1) {
-            return executeConcurrently(toolRequests, toolExecutors, invocationContext);
-        } else {
-            // when there is only one tool to execute, it doesn't make sense to do it in a separate thread
-            return executeSequentially(toolRequests, toolExecutors, invocationContext);
-        }
-    }
-
-    private Map<ToolExecutionRequest, ToolExecutionResult> executeConcurrently(
-            List<ToolExecutionRequest> toolRequests,
-            Map<String, ToolExecutor> toolExecutors,
-            InvocationContext invocationContext) {
-        Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> futures = new LinkedHashMap<>();
-
-        for (ToolExecutionRequest toolRequest : toolRequests) {
-            CompletableFuture<ToolExecutionResult> future = CompletableFuture.supplyAsync(
-                    () -> executeTool(invocationContext, toolExecutors, toolRequest), executor);
-            futures.put(toolRequest, future);
-        }
-
-        Map<ToolExecutionRequest, ToolExecutionResult> results = new LinkedHashMap<>();
-        for (Map.Entry<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> entry : futures.entrySet()) {
-            try {
-                results.put(entry.getKey(), entry.getValue().get());
-            } catch (ExecutionException e) {
-                if (e.getCause() instanceof RuntimeException re) {
-                    throw re;
-                } else {
-                    throw new RuntimeException(e.getCause());
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException(e);
-            }
-        }
-
-        return results;
-    }
-
-    private Map<ToolExecutionRequest, ToolExecutionResult> executeSequentially(
-            List<ToolExecutionRequest> toolRequests,
-            Map<String, ToolExecutor> toolExecutors,
-            InvocationContext invocationContext) {
-        Map<ToolExecutionRequest, ToolExecutionResult> toolResults = new LinkedHashMap<>();
-        for (ToolExecutionRequest toolRequest : toolRequests) {
-            toolResults.put(toolRequest, executeTool(invocationContext, toolExecutors, toolRequest));
-        }
-        return toolResults;
+        return ToolBatchDispatcher.dispatch(ToolBatchDispatcher.Request.builder()
+                .toolRequests(toolRequests)
+                .toolExecutors(toolExecutors)
+                .executor(executor)
+                .invocationContext(invocationContext)
+                .beforeToolExecution(beforeToolExecution)
+                .afterToolExecution(afterToolExecution)
+                .errorHandlerBypass(errorHandlerBypass)
+                .argumentsErrorHandler(argumentsErrorHandler())
+                .executionErrorHandler(executionErrorHandler())
+                .hallucinationStrategy(toolHallucinationStrategy)
+                // The cap is enforced at the loop level (see executeInferenceAndToolsLoop)
+                // so we do not configure it here; passing 0 keeps the dispatcher's check inert.
+                .maxToolCallsPerResponse(0)
+                .build());
     }
 
     private ToolExecutionResult executeTool(
@@ -676,7 +929,12 @@ public class ToolService {
         ToolExecutionResult toolResult = executor == null
                 ? applyToolHallucinationStrategy(toolRequest)
                 : executeWithErrorHandling(
-                        toolRequest, executor, invocationContext, argumentsErrorHandler(), executionErrorHandler());
+                        toolRequest,
+                        executor,
+                        invocationContext,
+                        argumentsErrorHandler(),
+                        executionErrorHandler(),
+                        errorHandlerBypass);
 
         if (afterToolExecution != null) {
             afterToolExecution.accept(ToolExecution.builder()
@@ -696,9 +954,41 @@ public class ToolService {
             InvocationContext invocationContext,
             ToolArgumentsErrorHandler argumentsErrorHandler,
             ToolExecutionErrorHandler executionErrorHandler) {
+        return executeWithErrorHandling(
+                toolRequest, toolExecutor, invocationContext, argumentsErrorHandler, executionErrorHandler, e -> false);
+    }
+
+    /**
+     * Variant of {@link #executeWithErrorHandling(ToolExecutionRequest, ToolExecutor, InvocationContext,
+     * ToolArgumentsErrorHandler, ToolExecutionErrorHandler)} that also accepts a predicate which,
+     * when it evaluates to {@code true} for a thrown exception, causes that exception to propagate
+     * unchanged instead of being routed through the configured error handlers.
+     *
+     * <p>This overload is intended for downstream framework integrators that need to let
+     * specific marker-typed exceptions surface to the caller verbatim.
+     *
+     * @param errorHandlerBypass a predicate; when {@code true} for the thrown exception, the
+     *                           exception is rethrown unchanged. May be {@code null}, in which
+     *                           case no exception bypasses the error handlers.
+     * @since 1.14.0
+     */
+    public static ToolExecutionResult executeWithErrorHandling(
+            ToolExecutionRequest toolRequest,
+            ToolExecutor toolExecutor,
+            InvocationContext invocationContext,
+            ToolArgumentsErrorHandler argumentsErrorHandler,
+            ToolExecutionErrorHandler executionErrorHandler,
+            Predicate<Throwable> errorHandlerBypass) {
         try {
             return toolExecutor.executeWithContext(toolRequest, invocationContext);
         } catch (Exception e) {
+            if (errorHandlerBypass != null && errorHandlerBypass.test(e)) {
+                if (e instanceof RuntimeException re) {
+                    throw re;
+                }
+                throw new RuntimeException(e);
+            }
+
             ToolErrorContext errorContext = ToolErrorContext.builder()
                     .toolExecutionRequest(toolRequest)
                     .invocationContext(invocationContext)
