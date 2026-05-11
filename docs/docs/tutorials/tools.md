@@ -409,41 +409,15 @@ instructing it to produce a value.
 A parameter can be made optional by annotating it with `@P(required = false)`:
 ```java
 @Tool
-void getTemperature(String location, @P("Unit of temperature", required = false) Unit unit) {
+String getTemperature(String location, @P(required = false) Unit unit) {
     ...
 }
 ```
 
-:::caution Required is advisory: the LLM can still omit arguments
-The `required` flag controls the JSON schema sent to the LLM (required parameters are listed
-in the schema's `required` array). The LLM is expected to honor this, but in practice it can
-disregard the schema and omit an argument anyway.
-
-In LangChain4j 1.x, this is detected only for **primitive** parameters (`int`, `long`, `boolean`, …) — a
-missing primitive triggers the `ToolArgumentsErrorHandler` (see [Error Handling](#handling-tool-arguments-errors)
-below). **Missing object parameters are not validated**: `null` is passed to the
-`@Tool`-annotated method even though the schema marked the parameter as required.
-
-We are planning to remove this asymmetry in LangChain4j 2.0 so that all required arguments are
-validated uniformly. If this planned change would affect your use case, please
-[open an issue](https://github.com/langchain4j/langchain4j/issues) so we can hear your feedback before it lands.
-
-If you want a real fallback instead of `null` (or instead of an error for primitive parameters), use
-[`@P(defaultValue = ...)`](#default-parameter-values).
-:::
-
-#### Alternative: Using `Optional<T>` for Optional Parameters
-
-Instead of annotating parameters with `@P(required = false)`, you simply declare the parameter as `Optional<T>`.
-Any parameter of type `Optional<T>` will be treated as optional automatically, even without specify `required = false` in the `@P` annotation.
-
-**Example:**
+Alternatively, you can declare the parameter as `Optional<T>`:
 ```java
 @Tool
-void getTemperature(
-    @P("Temperature value") double value,
-    @P("Unit of temperature") Optional<String> unit
-) {
+String getTemperature(String location, Optional<String> unit) {
     ...
 }
 ```
@@ -464,6 +438,24 @@ Please note that when used with [structured outputs](/tutorials/structured-outpu
 all fields and sub-fields are considered **_optional_** by default.
 :::
 
+:::caution Required is advisory: the LLM can still omit arguments
+The `required` flag controls the JSON schema sent to the LLM (required parameters are listed
+in the schema's `required` array). The LLM is expected to honor this, but in practice it can
+disregard the schema and omit an argument anyway.
+
+In LangChain4j 1.x, this is detected only for **primitive** parameters (`int`, `long`, `boolean`, …) — a
+missing primitive triggers the `ToolArgumentsErrorHandler` (see [Error Handling](#handling-tool-arguments-errors)
+below). **Missing object parameters are not validated**: `null` is passed to the
+`@Tool`-annotated method even though the schema marked the parameter as required.
+
+We are planning to remove this asymmetry in LangChain4j 2.0 so that all required arguments are
+validated uniformly. If this planned change would affect your use case, please
+[open an issue](https://github.com/langchain4j/langchain4j/issues) so we can hear your feedback before it lands.
+
+If you want a real fallback instead of `null` (or instead of an error for primitive parameters), use
+[`@P(defaultValue = ...)`](#default-parameter-values).
+:::
+
 Recursive parameters (e.g., a `Person` class having a `Set<Person> children` field)
 are currently supported only by OpenAI.
 
@@ -474,13 +466,19 @@ omits the argument. It's the simplest way to make a parameter optional and suppl
 sensible fallback that your tool method receives.
 
 ```java
+enum SortBy { RELEVANCE, DATE, RATING }
+
 @Tool
-List<Product> searchProducts(
+List<Article> searchArticles(
     String query,
     @P(defaultValue = "10") int limit,
-    @P(defaultValue = "0") int offset
+    @P(defaultValue = "[\"en\"]") List<String> languages,
+    @P(defaultValue = "RELEVANCE") SortBy sortBy
 ) {
-    // If the LLM omits 'limit', it is 10. If it omits 'offset', it is 0.
+    // When the LLM omits them:
+    //   'limit'     -> 10
+    //   'languages' -> ["en"]
+    //   'sortBy'    -> SortBy.RELEVANCE
 }
 ```
 
