@@ -158,8 +158,7 @@ class CompletionResponse {
         }
 
         CompletionResponse build() {
-            return new CompletionResponse(
-                    model, createdAt, response, image, done, promptEvalCount, evalCount, error);
+            return new CompletionResponse(model, createdAt, response, image, done, promptEvalCount, evalCount, error);
         }
     }
 }
