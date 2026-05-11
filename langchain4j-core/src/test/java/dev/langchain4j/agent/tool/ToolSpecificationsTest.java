@@ -72,8 +72,8 @@ class ToolSpecificationsTest implements WithAssertions {
                 Collection<String> p24,
                 E p25,
                 Person p26,
-                @P(value = "optional", required = false) int p27,
-                @P(value = "required") int p28) {
+                @P(description = "optional", required = false) int p27,
+                @P(description = "required") int p28) {
             return 42;
         }
 
@@ -422,7 +422,7 @@ class ToolSpecificationsTest implements WithAssertions {
     void parameter_explicitly_required_true_is_required() throws NoSuchMethodException {
         class Tools {
             @Tool
-            public void tool(@P(value = "foo", required = true) String foo, @P("bar") String bar) {}
+            public void tool(@P(description = "foo", required = true) String foo, @P("bar") String bar) {}
         }
         Method method = Tools.class.getMethod("tool", String.class, String.class);
         ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);

@@ -1,11 +1,11 @@
 package dev.langchain4j.model.ollama;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
@@ -15,17 +15,25 @@ class CompletionResponse {
     private String model;
     private String createdAt;
     private String response;
+    private String image;
     private Boolean done;
     private Integer promptEvalCount;
     private Integer evalCount;
 
-    CompletionResponse() {
-    }
+    CompletionResponse() {}
 
-    CompletionResponse(String model, String createdAt, String response, Boolean done, Integer promptEvalCount, Integer evalCount) {
+    CompletionResponse(
+            String model,
+            String createdAt,
+            String response,
+            String image,
+            Boolean done,
+            Integer promptEvalCount,
+            Integer evalCount) {
         this.model = model;
         this.createdAt = createdAt;
         this.response = response;
+        this.image = image;
         this.done = done;
         this.promptEvalCount = promptEvalCount;
         this.evalCount = evalCount;
@@ -63,6 +71,14 @@ class CompletionResponse {
         this.response = response;
     }
 
+    public String getImage() {
+        return image;
+    }
+
+    public void setImage(String image) {
+        this.image = image;
+    }
+
     public Integer getPromptEvalCount() {
         return promptEvalCount;
     }
@@ -84,6 +100,7 @@ class CompletionResponse {
         private String model;
         private String createdAt;
         private String response;
+        private String image;
         private Boolean done;
         private Integer promptEvalCount;
         private Integer evalCount;
@@ -103,6 +120,11 @@ class CompletionResponse {
             return this;
         }
 
+        Builder image(String image) {
+            this.image = image;
+            return this;
+        }
+
         Builder done(Boolean done) {
             this.done = done;
             return this;
@@ -119,7 +141,7 @@ class CompletionResponse {
         }
 
         CompletionResponse build() {
-            return new CompletionResponse(model, createdAt, response, done, promptEvalCount, evalCount);
+            return new CompletionResponse(model, createdAt, response, image, done, promptEvalCount, evalCount);
         }
     }
 }
