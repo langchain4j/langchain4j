@@ -2,6 +2,7 @@ package dev.langchain4j.model.openai.internal;
 
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.aiMessageFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiToolChoice;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.toTools;
 import static dev.langchain4j.model.openai.internal.chat.ToolType.FUNCTION;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -9,15 +10,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.openai.internal.chat.AssistantMessage;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.FunctionCall;
+import dev.langchain4j.model.openai.internal.chat.Tool;
 import dev.langchain4j.model.openai.internal.chat.ToolCall;
 import dev.langchain4j.model.openai.internal.chat.ToolChoiceMode;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -272,5 +277,67 @@ class OpenAiUtilsTest {
         assertThatThrownBy(() -> aiMessageFrom(response))
                 .isInstanceOf(InternalServerException.class)
                 .hasMessageContaining("no choices returned");
+    }
+
+    @Test
+    void per_tool_strict_true_should_override_model_level_false() {
+        // given
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("strict_tool")
+                .description("description")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("param")
+                        .required("param")
+                        .build())
+                .strict(true)
+                .build();
+
+        // when - model-level strict is false
+        List<Tool> tools = toTools(List.of(toolSpec), false);
+
+        // then
+        assertThat(tools).hasSize(1);
+        assertThat(tools.get(0).function().strict()).isTrue();
+    }
+
+    @Test
+    void per_tool_strict_false_should_override_model_level_true() {
+        // given
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("non_strict_tool")
+                .description("description")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("param")
+                        .required("param")
+                        .build())
+                .strict(false)
+                .build();
+
+        // when - model-level strict is true
+        List<Tool> tools = toTools(List.of(toolSpec), true);
+
+        // then
+        assertThat(tools).hasSize(1);
+        assertThat(tools.get(0).function().strict()).isNull();
+    }
+
+    @Test
+    void per_tool_strict_null_should_fall_back_to_model_level() {
+        // given
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("default_tool")
+                .description("description")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("param")
+                        .required("param")
+                        .build())
+                .build();
+
+        // when - model-level strict is true
+        List<Tool> tools = toTools(List.of(toolSpec), true);
+
+        // then - falls back to model-level
+        assertThat(tools).hasSize(1);
+        assertThat(tools.get(0).function().strict()).isTrue();
     }
 }

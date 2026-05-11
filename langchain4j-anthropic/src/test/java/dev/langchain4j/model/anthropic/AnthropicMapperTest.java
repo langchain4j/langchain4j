@@ -395,6 +395,68 @@ class AnthropicMapperTest {
     }
 
     @Test
+    void per_tool_strict_true_should_override_model_level_null() {
+        // given
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("strict_tool")
+                .description("description")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("param")
+                        .required("param")
+                        .build())
+                .strict(true)
+                .build();
+
+        // when - model-level strictTools is null
+        AnthropicTool tool = toAnthropicTool(toolSpec, AnthropicCacheType.NO_CACHE, Set.of(), null);
+
+        // then
+        assertThat(tool.strict).isTrue();
+        assertThat(tool.inputSchema.additionalProperties).isFalse();
+    }
+
+    @Test
+    void per_tool_strict_false_should_override_model_level_true() {
+        // given
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("non_strict_tool")
+                .description("description")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("param")
+                        .required("param")
+                        .build())
+                .strict(false)
+                .build();
+
+        // when - model-level strictTools is true
+        AnthropicTool tool = toAnthropicTool(toolSpec, AnthropicCacheType.NO_CACHE, Set.of(), true);
+
+        // then
+        assertThat(tool.strict).isNull();
+        assertThat(tool.inputSchema.additionalProperties).isNull();
+    }
+
+    @Test
+    void per_tool_strict_null_should_fall_back_to_model_level() {
+        // given
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("default_tool")
+                .description("description")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("param")
+                        .required("param")
+                        .build())
+                .build();
+
+        // when - model-level strictTools is true
+        AnthropicTool tool = toAnthropicTool(toolSpec, AnthropicCacheType.NO_CACHE, Set.of(), true);
+
+        // then - falls back to model-level
+        assertThat(tool.strict).isTrue();
+        assertThat(tool.inputSchema.additionalProperties).isFalse();
+    }
+
+    @Test
     void should_retain_keys() {
         assertThat(retainKeys(Map.of(), Set.of())).isEqualTo(Map.of());
         assertThat(retainKeys(Map.of("one", "one"), Set.of("one"))).isEqualTo(Map.of("one", "one"));

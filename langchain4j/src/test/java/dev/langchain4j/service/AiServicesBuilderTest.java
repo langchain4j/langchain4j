@@ -179,4 +179,129 @@ class AiServicesBuilderTest {
                 .withMessageContaining("is a primitive")
                 .withMessageContaining("@P(required = false)");
     }
+
+    @Test
+    void should_allow_optional_primitive_when_default_value_is_set() {
+        class ToolWithDefaultPrimitive {
+            @Tool("Read part of a file")
+            void readFile(String filePath, @P(required = false, defaultValue = "0") int startLine) {}
+        }
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+
+        TestService service = AiServices.builder(TestService.class)
+                .chatModel(chatModel)
+                .tools(new ToolWithDefaultPrimitive())
+                .build();
+
+        assertThat(service).isNotNull();
+    }
+
+    @Test
+    void should_raise_an_error_when_default_value_cannot_be_parsed() {
+        class ToolWithBadDefault {
+            @Tool
+            void tool(@P(defaultValue = "not-an-int") int x) {}
+        }
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() -> AiServices.builder(TestService.class)
+                        .chatModel(chatModel)
+                        .tools(new ToolWithBadDefault())
+                        .build())
+                .withMessageContaining("Cannot parse @P(defaultValue = \"not-an-int\")");
+    }
+
+    @Test
+    void should_raise_an_error_when_default_value_is_combined_with_Optional() {
+        class ToolWithDefaultAndOptional {
+            @Tool
+            void tool(@P(defaultValue = "10") java.util.Optional<Integer> x) {}
+        }
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() -> AiServices.builder(TestService.class)
+                        .chatModel(chatModel)
+                        .tools(new ToolWithDefaultAndOptional())
+                        .build())
+                .withMessageContaining("Optional<T>");
+    }
+
+    @Test
+    void should_raise_an_error_when_default_value_overflows_target_type() {
+        // 999999999999999 fits in long but not int → bounds check at registration time.
+        class ToolWithOverflowingDefault {
+            @Tool
+            void tool(@P(defaultValue = "999999999999999") int x) {}
+        }
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() -> AiServices.builder(TestService.class)
+                        .chatModel(chatModel)
+                        .tools(new ToolWithOverflowingDefault())
+                        .build())
+                .withMessageContaining("Cannot parse @P(defaultValue = \"999999999999999\")");
+    }
+
+    @Test
+    void should_raise_an_error_when_default_value_is_not_a_valid_boolean() {
+        class ToolWithBadBooleanDefault {
+            @Tool
+            void tool(@P(defaultValue = "yes") boolean x) {}
+        }
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() -> AiServices.builder(TestService.class)
+                        .chatModel(chatModel)
+                        .tools(new ToolWithBadBooleanDefault())
+                        .build())
+                .withMessageContaining("Cannot parse @P(defaultValue = \"yes\")");
+    }
+
+    enum Currency {
+        USD,
+        EUR
+    }
+
+    @Test
+    void should_raise_an_error_when_default_value_is_not_a_valid_enum_constant() {
+        class ToolWithBadEnumDefault {
+            @Tool
+            void tool(@P(defaultValue = "ZZZ") Currency c) {}
+        }
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() -> AiServices.builder(TestService.class)
+                        .chatModel(chatModel)
+                        .tools(new ToolWithBadEnumDefault())
+                        .build())
+                .withMessageContaining("Cannot parse @P(defaultValue = \"ZZZ\")");
+    }
+
+    @Test
+    void should_raise_an_error_when_default_value_is_not_a_valid_UUID() {
+        class ToolWithBadUuidDefault {
+            @Tool
+            void tool(@P(defaultValue = "not-a-uuid") java.util.UUID id) {}
+        }
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() -> AiServices.builder(TestService.class)
+                        .chatModel(chatModel)
+                        .tools(new ToolWithBadUuidDefault())
+                        .build())
+                .withMessageContaining("Cannot parse @P(defaultValue = \"not-a-uuid\")");
+    }
 }

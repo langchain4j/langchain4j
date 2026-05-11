@@ -20,9 +20,12 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.invocation.InvocationParameters;
+import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -134,18 +137,60 @@ public class ToolService {
 
     private static void validateToolParameters(Method toolMethod) {
         for (Parameter parameter : toolMethod.getParameters()) {
-            if (!parameter.getType().isPrimitive()) {
+            P pAnnotation = parameter.getAnnotation(P.class);
+            if (pAnnotation == null) {
                 continue;
             }
-            P pAnnotation = parameter.getAnnotation(P.class);
-            if (pAnnotation != null && !pAnnotation.required()) {
+            Class<?> type = parameter.getType();
+            boolean hasDefault = !P.NO_DEFAULT.equals(pAnnotation.defaultValue());
+
+            if (type.isPrimitive() && !pAnnotation.required() && !hasDefault) {
                 throw illegalConfiguration(
                         "Parameter '%s' of tool '%s.%s' is a primitive (%s) and cannot be marked as @P(required = false). "
-                                + "Use a boxed type (e.g. Integer instead of int) or Optional<T> to allow optional values.",
+                                + "Use a boxed type (e.g. Integer instead of int), Optional<T>, or @P(defaultValue = ...).",
                         parameter.getName(),
                         toolMethod.getDeclaringClass().getName(),
                         toolMethod.getName(),
-                        parameter.getType().getName());
+                        type.getName());
+            }
+
+            if (!hasDefault) {
+                continue;
+            }
+
+            if (type == Optional.class) {
+                throw illegalConfiguration(
+                        "Parameter '%s' of tool '%s.%s' has @P(defaultValue = ...) and is Optional<T>. "
+                                + "Optional<T> already represents \"absent\"; use one mechanism or the other.",
+                        parameter.getName(),
+                        toolMethod.getDeclaringClass().getName(),
+                        toolMethod.getName());
+            }
+
+            if (parameter.isAnnotationPresent(ToolMemoryId.class)
+                    || InvocationParameters.class.isAssignableFrom(type)
+                    || type == InvocationContext.class
+                    || LangChain4jManaged.class.isAssignableFrom(type)) {
+                throw illegalConfiguration(
+                        "Parameter '%s' of tool '%s.%s' has @P(defaultValue = ...) but is a framework-injected parameter; "
+                                + "default values are not supported on framework-injected parameters.",
+                        parameter.getName(),
+                        toolMethod.getDeclaringClass().getName(),
+                        toolMethod.getName());
+            }
+
+            try {
+                DefaultToolExecutor.parseDefaultValue(
+                        pAnnotation.defaultValue(), parameter.getName(), type, parameter.getParameterizedType());
+            } catch (Exception e) {
+                throw illegalConfiguration(
+                        "Cannot parse @P(defaultValue = \"%s\") for parameter '%s' of tool '%s.%s' (type %s): %s",
+                        pAnnotation.defaultValue(),
+                        parameter.getName(),
+                        toolMethod.getDeclaringClass().getName(),
+                        toolMethod.getName(),
+                        type.getName(),
+                        e.getMessage());
             }
         }
     }
