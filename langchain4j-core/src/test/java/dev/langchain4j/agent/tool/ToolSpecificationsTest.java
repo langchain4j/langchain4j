@@ -449,8 +449,7 @@ class ToolSpecificationsTest implements WithAssertions {
     }
 
     @Test
-    void parameter_with_default_value_is_not_required_even_when_required_is_true()
-            throws NoSuchMethodException {
+    void parameter_with_default_value_is_not_required_even_when_required_is_true() throws NoSuchMethodException {
         // defaultValue takes precedence over required = true for the schema's required array.
         class Tools {
             @Tool

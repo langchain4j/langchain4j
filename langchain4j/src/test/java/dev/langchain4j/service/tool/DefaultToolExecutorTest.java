@@ -6,6 +6,7 @@ import static java.util.Collections.singletonMap;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
@@ -711,15 +712,11 @@ class DefaultToolExecutorTest implements WithAssertions {
     }
 
     @SuppressWarnings("unused")
-    public void primitiveToolWithDefault(
-            String filePath,
-            @dev.langchain4j.agent.tool.P(defaultValue = "10") int startLine,
-            @dev.langchain4j.agent.tool.P(defaultValue = "20") int endLine) {}
+    public void primitiveToolWithDefault(String filePath, @P(defaultValue = "10") int startLine) {}
 
     @Test
     void should_substitute_default_when_primitive_is_missing() throws Exception {
-        Method method = getClass()
-                .getMethod("primitiveToolWithDefault", String.class, int.class, int.class);
+        Method method = getClass().getMethod("primitiveToolWithDefault", String.class, int.class);
         DefaultToolExecutor executor = DefaultToolExecutor.builder()
                 .object(this)
                 .originalMethod(method)
@@ -735,15 +732,14 @@ class DefaultToolExecutorTest implements WithAssertions {
                 method,
                 "primitiveToolWithDefault",
                 arguments,
-                executor.defaultArgumentValues(),
+                executor.defaultArguments(),
                 context);
 
-        assertThat(args).containsExactly("/tmp/foo.txt", 10, 20);
+        assertThat(args).containsExactly("/tmp/foo.txt", 10);
     }
 
     @SuppressWarnings("unused")
-    public void toolWithStringDefault(
-            @dev.langchain4j.agent.tool.P(defaultValue = "USD") String currency) {}
+    public void toolWithStringDefault(@P(defaultValue = "USD") String currency) {}
 
     @Test
     void should_substitute_default_for_string_parameter() throws Exception {
@@ -760,7 +756,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 method,
                 "toolWithStringDefault",
                 new HashMap<>(),
-                executor.defaultArgumentValues(),
+                executor.defaultArguments(),
                 context);
 
         assertThat(args).containsExactly("USD");
@@ -768,7 +764,7 @@ class DefaultToolExecutorTest implements WithAssertions {
 
     @SuppressWarnings("unused")
     public void toolWithListDefault(
-            @dev.langchain4j.agent.tool.P(defaultValue = "[\"a\",\"b\"]") List<String> tags) {}
+            @P(defaultValue = "[\"a\",\"b\"]") List<String> tags) {}
 
     @Test
     void should_substitute_default_for_list_parameter() throws Exception {
@@ -785,7 +781,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 method,
                 "toolWithListDefault",
                 new HashMap<>(),
-                executor.defaultArgumentValues(),
+                executor.defaultArguments(),
                 context);
 
         assertThat(args).hasSize(1);
@@ -794,8 +790,7 @@ class DefaultToolExecutorTest implements WithAssertions {
 
     @Test
     void should_use_llm_provided_value_over_default() throws Exception {
-        Method method = getClass()
-                .getMethod("primitiveToolWithDefault", String.class, int.class, int.class);
+        Method method = getClass().getMethod("primitiveToolWithDefault", String.class, int.class);
         DefaultToolExecutor executor = DefaultToolExecutor.builder()
                 .object(this)
                 .originalMethod(method)
@@ -805,7 +800,6 @@ class DefaultToolExecutorTest implements WithAssertions {
         Map<String, Object> arguments = new HashMap<>();
         arguments.put("arg0", "/tmp/foo.txt");
         arguments.put("arg1", 5.0);
-        arguments.put("arg2", 30.0);
 
         InvocationContext context = InvocationContext.builder().build();
 
@@ -813,17 +807,17 @@ class DefaultToolExecutorTest implements WithAssertions {
                 method,
                 "primitiveToolWithDefault",
                 arguments,
-                executor.defaultArgumentValues(),
+                executor.defaultArguments(),
                 context);
 
-        assertThat(args).containsExactly("/tmp/foo.txt", 5, 30);
+        assertThat(args).containsExactly("/tmp/foo.txt", 5);
     }
 
     @Test
     void should_throw_when_default_value_cannot_be_parsed() throws Exception {
         @SuppressWarnings("unused")
         class BadDefault {
-            public void tool(@dev.langchain4j.agent.tool.P(defaultValue = "ten") int x) {}
+            public void tool(@P(defaultValue = "ten") int x) {}
         }
         Method method = BadDefault.class.getMethod("tool", int.class);
 

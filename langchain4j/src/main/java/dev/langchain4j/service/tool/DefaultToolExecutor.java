@@ -41,7 +41,7 @@ public class DefaultToolExecutor implements ToolExecutor {
     private final Method methodToInvoke;
     private final boolean wrapToolArgumentsExceptions;
     private final boolean propagateToolExecutionExceptions;
-    private final Map<String, Object> defaultArgumentValues;
+    private final Map<String, Object> defaultArguments; // TODO good place?
 
     public DefaultToolExecutor(Builder builder) {
         this.object = ensureNotNull(builder.object, "object");
@@ -49,7 +49,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.methodToInvoke = ensureNotNull(builder.methodToInvoke, "methodToInvoke");
         this.wrapToolArgumentsExceptions = getOrDefault(builder.wrapToolArgumentsExceptions, false);
         this.propagateToolExecutionExceptions = getOrDefault(builder.propagateToolExecutionExceptions, false);
-        this.defaultArgumentValues = parseDefaultArgumentValues(this.originalMethod);
+        this.defaultArguments = parseDefaultArguments(this.originalMethod);
     }
 
     public DefaultToolExecutor(Object object, Method method) {
@@ -58,7 +58,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.methodToInvoke = this.originalMethod;
         this.wrapToolArgumentsExceptions = false;
         this.propagateToolExecutionExceptions = false;
-        this.defaultArgumentValues = parseDefaultArgumentValues(this.originalMethod);
+        this.defaultArguments = parseDefaultArguments(this.originalMethod);
     }
 
     public DefaultToolExecutor(Object object, ToolExecutionRequest toolExecutionRequest) {
@@ -68,7 +68,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.methodToInvoke = this.originalMethod;
         this.wrapToolArgumentsExceptions = false;
         this.propagateToolExecutionExceptions = false;
-        this.defaultArgumentValues = parseDefaultArgumentValues(this.originalMethod);
+        this.defaultArguments = parseDefaultArguments(this.originalMethod);
     }
 
     private Method findMethod(Object object, ToolExecutionRequest toolExecutionRequest) {
@@ -100,7 +100,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.methodToInvoke = ensureNotNull(methodToInvoke, "methodToInvoke");
         this.wrapToolArgumentsExceptions = false;
         this.propagateToolExecutionExceptions = false;
-        this.defaultArgumentValues = parseDefaultArgumentValues(this.originalMethod);
+        this.defaultArguments = parseDefaultArguments(this.originalMethod);
     }
 
     @Override
@@ -151,7 +151,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         try {
             Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
             return prepareArguments(
-                    originalMethod, toolExecutionRequest.name(), argumentsMap, defaultArgumentValues, context);
+                    originalMethod, toolExecutionRequest.name(), argumentsMap, defaultArguments, context);
         } catch (Exception e) {
             if (wrapToolArgumentsExceptions) {
                 throw new ToolArgumentsException(unwrapRuntimeException(e));
@@ -206,14 +206,14 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     static Object[] prepareArguments(
             Method method, String toolName, Map<String, Object> argumentsMap, InvocationContext context) {
-        return prepareArguments(method, toolName, argumentsMap, Collections.emptyMap(), context);
+        return prepareArguments(method, toolName, argumentsMap, Map.of(), context);
     }
 
     static Object[] prepareArguments(
             Method method,
             String toolName,
             Map<String, Object> argumentsMap,
-            Map<String, Object> defaultArgumentValues,
+            Map<String, Object> defaultArguments,
             InvocationContext context) {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
@@ -251,8 +251,8 @@ public class DefaultToolExecutor implements ToolExecutor {
                 arguments[i] = createOptional(argument, parameterName, parameterType);
             } else if (argument != null) {
                 arguments[i] = coerceArgument(argument, parameterName, parameterClass, parameterType);
-            } else if (defaultArgumentValues.containsKey(parameterName)) {
-                arguments[i] = defaultArgumentValues.get(parameterName);
+            } else if (defaultArguments.containsKey(parameterName)) {
+                arguments[i] = defaultArguments.get(parameterName);
             } else if (parameterClass.isPrimitive()) {
                 throw new IllegalArgumentException(String.format(
                         "Required parameter \"%s\" of tool \"%s\" is missing", parameterName, toolName));
@@ -296,11 +296,11 @@ public class DefaultToolExecutor implements ToolExecutor {
         return Optional.of(coercedValue);
     }
 
-    Map<String, Object> defaultArgumentValues() {
-        return defaultArgumentValues;
+    Map<String, Object> defaultArguments() {
+        return defaultArguments;
     }
 
-    private static Map<String, Object> parseDefaultArgumentValues(Method method) {
+    private static Map<String, Object> parseDefaultArguments(Method method) {
         Map<String, Object> defaults = new HashMap<>();
         for (Parameter parameter : method.getParameters()) {
             P p = parameter.getAnnotation(P.class);
