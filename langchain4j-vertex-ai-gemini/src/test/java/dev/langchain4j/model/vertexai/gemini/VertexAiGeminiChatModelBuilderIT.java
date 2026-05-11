@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-class VertexAiGeminiChatModelBuilderTest {
+class VertexAiGeminiChatModelBuilderIT {
 
     @Test
     void setCustomHeader() {
