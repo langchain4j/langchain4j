@@ -417,7 +417,7 @@ String getTemperature(String location, @P(required = false) Unit unit) {
 Alternatively, you can declare the parameter as `Optional<T>`:
 ```java
 @Tool
-String getTemperature(String location, Optional<String> unit) {
+String getTemperature(String location, Optional<Unit> unit) {
     ...
 }
 ```
@@ -455,9 +455,6 @@ validated uniformly. If this planned change would affect your use case, please
 If you want a real fallback instead of `null` (or instead of an error for primitive parameters), use
 [`@P(defaultValue = ...)`](#default-parameter-values).
 :::
-
-Recursive parameters (e.g., a `Person` class having a `Set<Person> children` field)
-are currently supported only by OpenAI.
 
 #### Default Parameter Values
 
@@ -586,6 +583,11 @@ The set of supported `@JsonTypeInfo` options, the discriminator-name resolution 
 `defaultImpl` behavior, the `visible` flag, and field-collision detection are described in
 detail in [Polymorphic Types](/tutorials/structured-outputs#polymorphic-types) under
 Structured Outputs — they apply identically to tool parameters.
+
+#### Recursive Parameters
+
+Recursive parameters (e.g., a `Person` class having a `Set<Person> children` field)
+are currently supported only by OpenAI.
 
 ### Tool Method Return Types
 Methods annotated with `@Tool` can return any type, including `void`.
