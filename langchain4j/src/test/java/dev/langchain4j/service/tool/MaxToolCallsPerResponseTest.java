@@ -13,7 +13,6 @@ import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -50,10 +49,7 @@ class MaxToolCallsPerResponseTest {
         // given
         CountingTool tool = new CountingTool();
         // LLM returns a single response with 3 tool calls; limit is 2
-        AiMessage threeToolCallResponse = AiMessage.from(
-                toolCall("c1", "a"),
-                toolCall("c2", "b"),
-                toolCall("c3", "c"));
+        AiMessage threeToolCallResponse = AiMessage.from(toolCall("c1", "a"), toolCall("c2", "b"), toolCall("c3", "c"));
         ChatModelMock model = ChatModelMock.thatAlwaysResponds(threeToolCallResponse);
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -138,10 +134,7 @@ class MaxToolCallsPerResponseTest {
     void should_throw_when_response_has_more_tool_calls_than_limit__streaming() throws Exception {
 
         CountingTool tool = new CountingTool();
-        AiMessage threeToolCallResponse = AiMessage.from(
-                toolCall("c1", "a"),
-                toolCall("c2", "b"),
-                toolCall("c3", "c"));
+        AiMessage threeToolCallResponse = AiMessage.from(toolCall("c1", "a"), toolCall("c2", "b"), toolCall("c3", "c"));
         StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(threeToolCallResponse);
 
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)

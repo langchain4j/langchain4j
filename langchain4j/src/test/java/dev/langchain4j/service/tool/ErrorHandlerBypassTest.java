@@ -87,8 +87,7 @@ class ErrorHandlerBypassTest {
                 // DefaultToolExecutor wraps tool-thrown RuntimeExceptions in ToolExecutionException,
                 // so the predicate inspects the cause. This mirrors how Quarkus's predicate is
                 // typically structured against its PreventsErrorHandlerExecution marker.
-                .errorHandlerBypass(e -> e instanceof ToolExecutionException
-                        && e.getCause() instanceof MarkerException)
+                .errorHandlerBypass(e -> e instanceof ToolExecutionException && e.getCause() instanceof MarkerException)
                 .build();
 
         // DefaultToolExecutor wraps the tool's RuntimeException in ToolExecutionException; the

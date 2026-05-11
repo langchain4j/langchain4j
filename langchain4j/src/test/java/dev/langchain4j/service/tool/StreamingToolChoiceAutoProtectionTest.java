@@ -80,9 +80,10 @@ class StreamingToolChoiceAutoProtectionTest {
                     if (n == 0) {
                         return ChatRequest.builder()
                                 .messages(req.messages())
-                                .parameters(req.parameters().overrideWith(ChatRequestParameters.builder()
-                                        .toolChoice(ToolChoice.REQUIRED)
-                                        .build()))
+                                .parameters(req.parameters()
+                                        .overrideWith(ChatRequestParameters.builder()
+                                                .toolChoice(ToolChoice.REQUIRED)
+                                                .build()))
                                 .build();
                     }
                     // Capture the toolChoice on the follow-up request — proves the rewrite happened.
@@ -132,9 +133,10 @@ class StreamingToolChoiceAutoProtectionTest {
                     if (n == 0) {
                         return ChatRequest.builder()
                                 .messages(req.messages())
-                                .parameters(req.parameters().overrideWith(ChatRequestParameters.builder()
-                                        .toolChoice(ToolChoice.REQUIRED)
-                                        .build()))
+                                .parameters(req.parameters()
+                                        .overrideWith(ChatRequestParameters.builder()
+                                                .toolChoice(ToolChoice.REQUIRED)
+                                                .build()))
                                 .build();
                     }
                     if (req.parameters().toolChoice() == ToolChoice.AUTO) {
