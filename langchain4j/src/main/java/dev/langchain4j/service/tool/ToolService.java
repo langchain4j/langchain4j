@@ -84,7 +84,7 @@ public class ToolService {
     private final Map<String, ReturnBehavior> returnBehaviors = new HashMap<>();
     private final Set<ToolProvider> toolProviders = new LinkedHashSet<>();
     private Executor executor;
-    private int maxSequentialToolsInvocations = 100;
+    private int maxToolCallingRoundTrips = 100;
     private ToolArgumentsErrorHandler argumentsErrorHandler;
     private ToolExecutionErrorHandler executionErrorHandler;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy =
@@ -232,12 +232,24 @@ public class ToolService {
         return DefaultExecutorProvider.getDefaultExecutorService();
     }
 
-    public void maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
-        this.maxSequentialToolsInvocations = maxSequentialToolsInvocations;
+    public void maxToolCallingRoundTrips(int maxToolCallingRoundTrips) {
+        this.maxToolCallingRoundTrips = maxToolCallingRoundTrips;
     }
 
+    public int maxToolCallingRoundTrips() {
+        return maxToolCallingRoundTrips;
+    }
+
+    /** @deprecated Use {@link #maxToolCallingRoundTrips(int)} instead. */
+    @Deprecated(since = "1.15.0")
+    public void maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
+        this.maxToolCallingRoundTrips = maxSequentialToolsInvocations;
+    }
+
+    /** @deprecated Use {@link #maxToolCallingRoundTrips()} instead. */
+    @Deprecated(since = "1.15.0")
     public int maxSequentialToolsInvocations() {
-        return maxSequentialToolsInvocations;
+        return maxToolCallingRoundTrips;
     }
 
     /**
@@ -398,12 +410,11 @@ public class ToolService {
         List<ChatResponse> intermediateResponses = new ArrayList<>();
         Map<String, Integer> toolExecutionCounts = new HashMap<>();
 
-        int sequentialToolsInvocationsLeft = maxSequentialToolsInvocations;
+        int roundTripsLeft = maxToolCallingRoundTrips;
         while (true) {
 
-            if (sequentialToolsInvocationsLeft-- == 0) {
-                throw runtime(
-                        "Something is wrong, exceeded %s sequential tool invocations", maxSequentialToolsInvocations);
+            if (roundTripsLeft-- == 0) {
+                throw runtime("Something is wrong, exceeded %s tool calling round trips (maxToolCallingRoundTrips)", maxToolCallingRoundTrips);
             }
 
             AiMessage aiMessage = chatResponse.aiMessage();

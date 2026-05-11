@@ -639,56 +639,31 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Sets the maximum number of times the LLM may respond with tool calls.
+     * Sets the maximum number of tool calling round trips (i.e. LLM responses containing tool calls).
      * If this limit is exceeded, an exception is thrown and the AI service invocation is terminated.
      *
      * <p>
-     * NOTE: This value does not represent the total number of tool calls.
-     * Each LLM response that contains one or more tool calls counts as a single invocation
+     * NOTE: This value does not represent the total number of individual tool calls.
+     * Each LLM response that contains one or more tool calls counts as a single round trip
      * and reduces this limit by one.
      *
      * <p>
      * The default value is 100.
      *
-     * @param maxSequentialToolsInvocations the maximum number of LLM responses containing tool calls
+     * @param maxToolCallingRoundTrips the maximum number of LLM responses containing tool calls
      * @return the builder instance
      */
-    public AiServices<T> maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
-        context.toolService.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
+    public AiServices<T> maxToolCallingRoundTrips(int maxToolCallingRoundTrips) {
+        context.toolService.maxToolCallingRoundTrips(maxToolCallingRoundTrips);
         return this;
     }
 
     /**
-     * Configures per-tool execution limits for this AI service call.
-     * <p>
-     * When a tool reaches its configured limit, it is removed from the tool set for
-     * subsequent LLM calls, and any over-budget calls within the same LLM response are
-     * handled according to the configured {@link ToolLimitExceededBehavior}
-     * (default: {@link ToolLimitExceededBehavior#CONTINUE}).
-     * <p>
-     * These limits are independent of {@link #maxSequentialToolsInvocations(int)},
-     * which caps the number of LLM response rounds, not individual tool calls.
-     * <p>
-     * Example:
-     * <pre>{@code
-     * AiServices.builder(Assistant.class)
-     *     .chatModel(model)
-     *     .tools(new SearchTool(), new CalculatorTool())
-     *     .toolExecutionLimits(ToolExecutionLimits.builder()
-     *         .defaultLimit(5)
-     *         .maxExecutions("search", 10)
-     *         .maxExecutions("calculate", 1, ToolLimitExceededBehavior.ERROR)
-     *         .build())
-     *     .build();
-     * }</pre>
-     *
-     * @param limits the tool execution limits configuration
-     * @return builder
-     * @since 1.14.0
+     * @deprecated Use {@link #maxToolCallingRoundTrips(int)} instead.
      */
-    public AiServices<T> toolExecutionLimits(ToolExecutionLimits limits) {
-        context.toolService.toolExecutionLimits(limits);
-        return this;
+    @Deprecated(since = "1.15.0")
+    public AiServices<T> maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
+        return maxToolCallingRoundTrips(maxSequentialToolsInvocations);
     }
 
     /**
