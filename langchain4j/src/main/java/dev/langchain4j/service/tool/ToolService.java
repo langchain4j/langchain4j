@@ -228,13 +228,13 @@ public class ToolService {
     }
 
     /** @deprecated Use {@link #maxToolCallingRoundTrips(int)} instead. */
-    @Deprecated(forRemoval = true)
+    @Deprecated(since = "1.15.0")
     public void maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
         this.maxToolCallingRoundTrips = maxSequentialToolsInvocations;
     }
 
     /** @deprecated Use {@link #maxToolCallingRoundTrips()} instead. */
-    @Deprecated(forRemoval = true)
+    @Deprecated(since = "1.15.0")
     public int maxSequentialToolsInvocations() {
         return maxToolCallingRoundTrips;
     }
@@ -375,7 +375,7 @@ public class ToolService {
         while (true) {
 
             if (roundTripsLeft-- == 0) {
-                throw runtime("Something is wrong, exceeded %s tool calling round trips", maxToolCallingRoundTrips);
+                throw runtime("Something is wrong, exceeded %s tool calling round trips (maxToolCallingRoundTrips)", maxToolCallingRoundTrips);
             }
 
             AiMessage aiMessage = chatResponse.aiMessage();

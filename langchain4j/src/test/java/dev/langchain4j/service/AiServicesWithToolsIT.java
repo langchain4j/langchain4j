@@ -1329,7 +1329,7 @@ class AiServicesWithToolsIT {
 
         assertThatExceptionOfType(RuntimeException.class)
                 .isThrownBy(() -> assistant.chat(userMessage))
-                .withMessage("Something is wrong, exceeded 1 tool calling round trips");
+                .withMessage("Something is wrong, exceeded 1 tool calling round trips (maxToolCallingRoundTrips)");
     }
 
     @ParameterizedTest

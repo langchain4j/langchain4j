@@ -285,7 +285,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
             if (toolCallingRoundTripsLeft-- == 0) {
                 throw runtime(
-                        "Something is wrong, exceeded %s tool calling round trips",
+                        "Something is wrong, exceeded %s tool calling round trips (maxToolCallingRoundTrips)",
                         context.toolService.maxToolCallingRoundTrips());
             }
 

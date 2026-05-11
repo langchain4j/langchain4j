@@ -1447,7 +1447,7 @@ class StreamingAiServicesWithToolsIT {
         // then
         assertThat(future.get(30, SECONDS))
                 .isExactlyInstanceOf(RuntimeException.class)
-                .hasMessage("Something is wrong, exceeded 1 tool calling round trips");
+                .hasMessage("Something is wrong, exceeded 1 tool calling round trips (maxToolCallingRoundTrips)");
     }
 
     @Test

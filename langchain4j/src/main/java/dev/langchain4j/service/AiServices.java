@@ -659,7 +659,7 @@ public abstract class AiServices<T> {
     /**
      * @deprecated Use {@link #maxToolCallingRoundTrips(int)} instead.
      */
-    @Deprecated(forRemoval = true)
+    @Deprecated(since = "1.15.0")
     public AiServices<T> maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
         return maxToolCallingRoundTrips(maxSequentialToolsInvocations);
     }

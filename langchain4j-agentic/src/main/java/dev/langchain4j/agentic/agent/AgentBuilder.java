@@ -350,7 +350,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     }
 
     /** @deprecated Use {@link #maxToolCallingRoundTrips(int)} instead. */
-    @Deprecated(forRemoval = true)
+    @Deprecated(since = "1.15.0")
     public B maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
         return maxToolCallingRoundTrips(maxSequentialToolsInvocations);
     }
