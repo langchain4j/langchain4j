@@ -26,7 +26,6 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -321,10 +320,7 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     static Object parseDefaultValue(
             String defaultValue, String parameterName, Class<?> parameterClass, Type parameterType) {
-        if (parameterClass == String.class) {
-            return defaultValue;
-        }
-        if (parameterClass.isEnum()) {
+        if (parameterClass == String.class || parameterClass.isEnum() || parameterClass == UUID.class) {
             return coerceArgument(defaultValue, parameterName, parameterClass, parameterType);
         }
         Object jsonParsed;
