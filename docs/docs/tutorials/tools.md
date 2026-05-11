@@ -429,7 +429,7 @@ validated uniformly. If this planned change would affect your use case, please
 [open an issue](https://github.com/langchain4j/langchain4j/issues) so we can hear your feedback before it lands.
 
 If you want a real fallback instead of `null` (or instead of an error for primitive parameters), use
-[`@P(defaultValue = ...)`](#default-values).
+[`@P(defaultValue = ...)`](#default-parameter-values).
 :::
 
 #### Alternative: Using `Optional<T>` for Optional Parameters
@@ -467,7 +467,7 @@ all fields and sub-fields are considered **_optional_** by default.
 Recursive parameters (e.g., a `Person` class having a `Set<Person> children` field)
 are currently supported only by OpenAI.
 
-#### Default Values
+#### Default Parameter Values
 
 `@P(defaultValue = "...")` declares a value that LangChain4j substitutes when the LLM
 omits the argument. It's the simplest way to make a parameter optional and supply a
