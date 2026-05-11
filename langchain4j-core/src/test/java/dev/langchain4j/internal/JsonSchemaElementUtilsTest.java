@@ -292,6 +292,102 @@ class JsonSchemaElementUtilsTest {
         assertThat(isJsonArray(Iterable.class)).isTrue();
     }
 
+    static class GenericBox<T> {
+
+        T value;
+    }
+
+    static class HolderOfBoxedStrings {
+
+        List<GenericBox<String>> items;
+    }
+
+    @Test
+    void should_create_schema_when_collection_element_type_is_parameterized() {
+
+        // given
+        Class<HolderOfBoxedStrings> clazz = HolderOfBoxedStrings.class;
+
+        // when
+        JsonSchemaElement schema = jsonSchemaElementFrom(clazz, null, null, true, new LinkedHashMap<>());
+
+        // then — element class is the raw GenericBox; its T-typed `value` field erases to Object,
+        // which has no schema-relevant fields, so the box becomes an empty object.
+        assertThat(schema)
+                .isEqualTo(JsonObjectSchema.builder()
+                        .addProperty(
+                                "items",
+                                JsonArraySchema.builder()
+                                        .items(JsonObjectSchema.builder()
+                                                .addProperty(
+                                                        "value",
+                                                        JsonObjectSchema.builder().build())
+                                                .required("value")
+                                                .build())
+                                        .build())
+                        .required("items")
+                        .build());
+    }
+
+    static class HolderOfWildcardBoxes {
+
+        List<? extends GenericBox<String>> items;
+    }
+
+    @Test
+    void should_create_schema_when_collection_element_type_is_a_wildcard() {
+
+        // given
+        Class<HolderOfWildcardBoxes> clazz = HolderOfWildcardBoxes.class;
+
+        // when
+        JsonSchemaElement schema = jsonSchemaElementFrom(clazz, null, null, true, new LinkedHashMap<>());
+
+        // then — same shape as the parameterized case: the wildcard's upper bound resolves to GenericBox.
+        assertThat(schema)
+                .isEqualTo(JsonObjectSchema.builder()
+                        .addProperty(
+                                "items",
+                                JsonArraySchema.builder()
+                                        .items(JsonObjectSchema.builder()
+                                                .addProperty(
+                                                        "value",
+                                                        JsonObjectSchema.builder().build())
+                                                .required("value")
+                                                .build())
+                                        .build())
+                        .required("items")
+                        .build());
+    }
+
+    static class HolderOfNestedCollection {
+
+        List<List<String>> nested;
+    }
+
+    @Test
+    void should_create_nested_array_schema_for_collection_of_collections() {
+
+        // given
+        Class<HolderOfNestedCollection> clazz = HolderOfNestedCollection.class;
+
+        // when
+        JsonSchemaElement schema = jsonSchemaElementFrom(clazz, null, null, true, new LinkedHashMap<>());
+
+        // then — array-of-array-of-string, fully resolved through both Collection layers.
+        assertThat(schema)
+                .isEqualTo(JsonObjectSchema.builder()
+                        .addProperty(
+                                "nested",
+                                JsonArraySchema.builder()
+                                        .items(JsonArraySchema.builder()
+                                                .items(JsonStringSchema.builder().build())
+                                                .build())
+                                        .build())
+                        .required("nested")
+                        .build());
+    }
+
     @Test
     void should_create_schema_for_enum() {
 
