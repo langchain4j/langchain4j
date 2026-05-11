@@ -2,6 +2,7 @@ package dev.langchain4j.model.openaiofficial;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
@@ -196,13 +197,14 @@ class InternalOpenAiOfficialHelper {
     }
 
     private static ChatCompletionTool toTool(ToolSpecification toolSpecification, boolean strict) {
+        boolean effectiveStrict = isEffectivelyStrict(toolSpecification, strict);
 
         FunctionDefinition.Builder functionDefinitionBuilder = FunctionDefinition.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description() != null ? toolSpecification.description() : "")
-                .parameters(toOpenAiParameters(toolSpecification, strict));
+                .parameters(toOpenAiParameters(toolSpecification, effectiveStrict));
 
-        if (strict) {
+        if (effectiveStrict) {
             functionDefinitionBuilder.strict(true);
         }
 

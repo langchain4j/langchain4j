@@ -2,6 +2,7 @@ package dev.langchain4j.model.openai.internal;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -295,11 +296,12 @@ public class OpenAiUtils {
     }
 
     private static Tool toTool(ToolSpecification toolSpecification, boolean strict) {
+        boolean effectiveStrict = isEffectivelyStrict(toolSpecification, strict);
         Function.Builder functionBuilder = Function.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())
-                .parameters(toOpenAiParameters(toolSpecification.parameters(), strict));
-        if (strict) {
+                .parameters(toOpenAiParameters(toolSpecification.parameters(), effectiveStrict));
+        if (effectiveStrict) {
             functionBuilder.strict(true);
         }
         Function function = functionBuilder.build();
