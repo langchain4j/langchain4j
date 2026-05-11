@@ -8,13 +8,15 @@ import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
- * Marks a method as a supplier of the chat model(s) to be used by an agent.
- * The method must be static and return either a single {@link ChatModel} or a {@code ChatModel[]}.
+ * Marks a method as a supplier of the chat model to be used by an agent.
+ * The method must be static and return a {@link ChatModel}.
  * <p>
- * When returning a {@code ChatModel[]}, a {@link ChatModelSelectorSupplier} method must also be
- * present on the same agent interface to select which model to use at each invocation.
+ * When the method has no parameters, it is invoked once at build time to provide a fixed model.
+ * When the method has parameters annotated with {@link dev.langchain4j.service.V @V},
+ * they are resolved from the current {@link dev.langchain4j.agentic.scope.AgenticScope AgenticScope}
+ * at each invocation, enabling dynamic model selection based on runtime state.
  * <p>
- * Example (single model):
+ * Example (fixed model):
  * <pre>
  * {@code
  *      public interface SupervisorBanker {
@@ -33,7 +35,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * }
  * </pre>
  * <p>
- * Example (multiple models with selector):
+ * Example (dynamic model selection):
  * <pre>
  * {@code
  *      public interface MyEditor {
@@ -42,13 +44,8 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  *         String edit(@V("story") String story, @V("critique") CritiqueResult critique);
  *
  *         @ChatModelSupplier
- *         static ChatModel[] chatModels() {
- *             return new ChatModel[] { baseModel(), enhancedModel() };
- *         }
- *
- *         @ChatModelSelectorSupplier
- *         static int selectModel(@V("critique") CritiqueResult critique) {
- *             return critique != null && critique.score() > 8.0 ? 1 : 0;
+ *         static ChatModel chatModel(@V("critique") CritiqueResult critique) {
+ *             return critique != null && critique.score() > 8.0 ? enhancedModel() : baseModel();
  *         }
  *     }
  * }

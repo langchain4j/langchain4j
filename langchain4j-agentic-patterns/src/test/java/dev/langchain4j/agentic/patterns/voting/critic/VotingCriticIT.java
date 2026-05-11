@@ -74,12 +74,10 @@ public class VotingCriticIT {
                 .build();
 
         StoryEditor storyEditor = AgenticServices.agentBuilder(StoryEditor.class)
-                .conditionalChatModel(
-                        scope -> {
-                            CritiqueResult critique = (CritiqueResult) scope.readState("critique");
-                            return critique != null && critique.score() > 7.8 ? 1 : 0;
-                        },
-                        baseModel(), enhancedModel())
+                .chatModel(scope -> {
+                    CritiqueResult critique = (CritiqueResult) scope.readState("critique");
+                    return critique != null && critique.score() > 7.8 ? enhancedModel() : baseModel();
+                })
                 .outputKey("story")
                 .build();
 
@@ -89,7 +87,7 @@ public class VotingCriticIT {
                 .maxIterations(5)
                 .exitCondition(scope -> {
                     CritiqueResult critique = (CritiqueResult) scope.readState("critique");
-                    System.err.println("critique.score() = " + critique.score());
+                    System.out.println("critique score = " + critique.score());
                     return critique.score() >= 8.5;
                 })
                 .name("reviewLoop")
@@ -115,7 +113,7 @@ public class VotingCriticIT {
         System.out.println("Average score: " + result.score());
         System.out.println("Last suggestions: " + result.suggestions());
 
-        HtmlReportGenerator.generateReport(evaluator.agentMonitor(),
-                Path.of("src", "test", "resources", "voting-critic-report.html"));
+//        HtmlReportGenerator.generateReport(evaluator.agentMonitor(),
+//                Path.of("src", "test", "resources", "voting-critic-report.html"));
     }
 }

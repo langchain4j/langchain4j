@@ -674,27 +674,25 @@ TokenStream tokenStream = novelCreator.writeStory("dragons and wizards", "young 
 
 the streaming responses of the first two agents are internally fully consumed before the invocation of the subsequent agents can start, and only the streaming response of the last `StyleEditor` agent is propagated as the streaming response of the whole `novelCreator` agent.
 
-## Conditional chat model selection
+## Dynamic chat model selection
 
 By default, an agent is bound to a single `ChatModel` at build time. However, there are scenarios where you may want to dynamically select which model to use at each invocation based on the current state of the agentic system. For example, you might want to use a cheaper, faster model for routine work and switch to a more capable one when quality thresholds demand it.
 
-The `conditionalChatModel` method on `AgentBuilder` enables this by accepting a selector function and a varargs of `ChatModel`s:
+The `chatModel` method on `AgentBuilder` has an overload that accepts a `Function<AgenticScope, ChatModel>`:
 
 ```java
 StoryEditor storyEditor = AgenticServices.agentBuilder(StoryEditor.class)
-        .conditionalChatModel(
-                scope -> {
-                    CritiqueResult critique = (CritiqueResult) scope.readState("critique");
-                    return critique != null && critique.score() > 7.8 ? 1 : 0;
-                },
-                baseModel(), enhancedModel())
+        .chatModel(scope -> {
+            CritiqueResult critique = (CritiqueResult) scope.readState("critique");
+            return critique != null && critique.score() > 7.8 ? enhancedModel() : baseModel();
+        })
         .outputKey("story")
         .build();
 ```
 
-The selector function receives the current `AgenticScope` and returns an integer representing the index into the models array of the model to be used for the current invocation. In this example, a `StoryEditor` agent uses a `baseModel()` (index 0) by default, when the story to be edited has a critique score below 7.8, and then there is still a lot to improve and a cheaper model can be enough to do this job, switching to an `enhancedModel()` (index 1) when the score exceeds that threshold and then a better model could be necessary for the final refinements. The function is evaluated before every invocation, so the model can change across different invocations of the same agent.
+The function receives the current `AgenticScope` and returns the `ChatModel` to use for the current invocation. In this example, a `StoryEditor` agent uses `baseModel()` by default, when the story to be edited has a critique score below 7.8 and there is still a lot to improve. It switches to `enhancedModel()` when the score exceeds that threshold and a better model could be necessary for the final refinements. The function is evaluated before every invocation, so the model can change across different invocations of the same agent.
 
-This method is mutually exclusive with `chatModel()` and `streamingChatModel()` — only one of the three can be set on a given agent.
+The same dynamic selection is also possible for the `streamingChatModel` method.
 
 ## Error handling
 
@@ -1005,9 +1003,8 @@ In a very similar way, annotating other `static` methods in the agent interface,
 
 | Annotation Name               | Description                                                                                                                                                   |
 |-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `@ChatModelSupplier`          | Returns the `ChatModel` to be used by this agent. It can be an array of `ChatModel`s if there is also a chat model selector                                   |
-| `@ChatModelSelectorSupplier`   | Returns the index of the `ChatModel` to be used by a scpecific agent invocation.                                                                             |
-| `@StreamingChatModelSupplier` | Returns the `StreamingChatModel` to be used by this agent.                                                                                                    |
+| `@ChatModelSupplier`          | Returns the `ChatModel` to be used by this agent. It could be both a fixed model, if the method has no argument, or a function of the `AgenticScope`.         |
+| `@StreamingChatModelSupplier` | Returns the `StreamingChatModel` to be used by this agent. It could be both a fixed model, if the method has no argument, or a function of the `AgenticScope` |
 | `@ChatMemorySupplier`         | Returns the `ChatMemory` to be used by this agent.                                                                                                            |
 | `@ChatMemoryProviderSupplier` | Returns the `ChatMemoryProvider` to be used by this agent.<br/>This method requires as argument an `Object` to be used as the memoryId of the created memory. |
 | `@ContentRetrieverSupplier`   | Returns the `ContentRetriever` to be used by this agent.                                                                                                      |

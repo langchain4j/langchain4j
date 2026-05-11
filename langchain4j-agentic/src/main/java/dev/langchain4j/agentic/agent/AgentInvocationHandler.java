@@ -15,6 +15,8 @@ import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.LangChain4jManaged;
@@ -37,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
@@ -53,7 +56,8 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
     private final AgentBuilder<?, ?> builder;
     private final Object agent;
     private final boolean agenticScopeDependent;
-    private final ConditionalChatModel conditionalChatModel;
+    private final Function<AgenticScope, ChatModel> chatModelProvider;
+    private final Function<AgenticScope, StreamingChatModel> streamingChatModelProvider;
     private String agentId;
     private InternalAgent parent;
     private AgentListener agentListener;
@@ -71,7 +75,8 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         this.agentId = builder.name;
         this.agenticScopeDependent = agenticScopeDependent;
         this.agentListener = builder.agentListener;
-        this.conditionalChatModel = builder.conditionalChatModel;
+        this.chatModelProvider = builder.chatModelProvider;
+        this.streamingChatModelProvider = builder.streamingChatModelProvider;
     }
 
     @Override
@@ -165,8 +170,10 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
 
         AgenticScope agenticScope = LangChain4jManaged.current(AgenticScope.class);
         if (agenticScope != null) {
-            if (conditionalChatModel != null) {
-                context.chatModel = conditionalChatModel.select(agenticScope);
+            if (chatModelProvider != null) {
+                context.chatModel = chatModelProvider.apply(agenticScope);
+            } else if (streamingChatModelProvider != null) {
+                context.streamingChatModel = streamingChatModelProvider.apply(agenticScope);
             }
             return method.invoke(agent, args);
         }

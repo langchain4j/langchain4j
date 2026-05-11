@@ -27,7 +27,7 @@ public class DeclarativeVotingCriticIT {
         System.out.println("Average score: " + result.score());
         System.out.println("Last suggestions: " + result.suggestions());
 
-        HtmlReportGenerator.generateReport(evaluator.agentMonitor(),
-                Path.of("src", "test", "resources", "voting-critic-declarative-report.html"));
+//        HtmlReportGenerator.generateReport(evaluator.agentMonitor(),
+//                Path.of("src", "test", "resources", "voting-critic-declarative-report.html"));
     }
 }

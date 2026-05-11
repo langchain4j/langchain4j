@@ -4,7 +4,6 @@ import static dev.langchain4j.agentic.patterns.Models.baseModel;
 import static dev.langchain4j.agentic.patterns.Models.enhancedModel;
 import static dev.langchain4j.agentic.patterns.voting.critic.VotingCriticIT.critiquesAggregator;
 
-import dev.langchain4j.agentic.declarative.ChatModelSelectorSupplier;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.declarative.ExitCondition;
 import dev.langchain4j.agentic.declarative.LoopAgent;
@@ -57,13 +56,8 @@ public class DeclarativeCriticAgents {
     public interface DeclarativeStoryEditor extends CriticAgents.StoryEditor {
 
         @ChatModelSupplier
-        static ChatModel[] chatModels() {
-            return new ChatModel[] { baseModel(), enhancedModel() };
-        }
-
-        @ChatModelSelectorSupplier
-        static int selectModel(@V("critique") CritiqueResult critique) {
-            return critique != null && critique.score() > 7.8 ? 1 : 0;
+        static ChatModel chatModel(@V("critique") CritiqueResult critique) {
+            return critique != null && critique.score() > 7.8 ? enhancedModel() : baseModel();
         }
     }
 
@@ -92,7 +86,7 @@ public class DeclarativeCriticAgents {
 
         @ExitCondition
         static boolean shouldExit(@V("critique") CritiqueResult critique) {
-            System.err.println("critique.score() = " + critique.score());
+            System.out.println("critique score = " + critique.score());
             return critique.score() >= 8.5;
         }
     }
