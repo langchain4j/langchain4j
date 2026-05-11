@@ -8,7 +8,6 @@ import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
-import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -21,6 +20,7 @@ import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
@@ -637,23 +637,31 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Sets the maximum number of times the LLM may respond with tool calls.
+     * Sets the maximum number of tool calling round trips (i.e. LLM responses containing tool calls).
      * If this limit is exceeded, an exception is thrown and the AI service invocation is terminated.
      *
      * <p>
-     * NOTE: This value does not represent the total number of tool calls.
-     * Each LLM response that contains one or more tool calls counts as a single invocation
+     * NOTE: This value does not represent the total number of individual tool calls.
+     * Each LLM response that contains one or more tool calls counts as a single round trip
      * and reduces this limit by one.
      *
      * <p>
      * The default value is 100.
      *
-     * @param maxSequentialToolsInvocations the maximum number of LLM responses containing tool calls
+     * @param maxToolCallingRoundTrips the maximum number of LLM responses containing tool calls
      * @return the builder instance
      */
-    public AiServices<T> maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
-        context.toolService.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
+    public AiServices<T> maxToolCallingRoundTrips(int maxToolCallingRoundTrips) {
+        context.toolService.maxToolCallingRoundTrips(maxToolCallingRoundTrips);
         return this;
+    }
+
+    /**
+     * @deprecated Use {@link #maxToolCallingRoundTrips(int)} instead.
+     */
+    @Deprecated(since = "1.15.0")
+    public AiServices<T> maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
+        return maxToolCallingRoundTrips(maxSequentialToolsInvocations);
     }
 
     /**

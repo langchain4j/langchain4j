@@ -89,7 +89,7 @@ class VertexAiGeminiChatModelBuilderTest {
 
     @Test
     void buildGenerateContentRequestAttachesLabels() {
-        VertexAI vertexAI = new VertexAI("test-project", "us-central1");
+        VertexAI vertexAI = newTestVertexAI();
         try {
             GenerativeModel model = new GenerativeModel("gemini-2.5-flash", vertexAI);
             List<Content> contents = List.of(Content.newBuilder()
@@ -110,7 +110,7 @@ class VertexAiGeminiChatModelBuilderTest {
 
     @Test
     void buildGenerateContentRequestNoLabelsWhenEmpty() {
-        VertexAI vertexAI = new VertexAI("test-project", "us-central1");
+        VertexAI vertexAI = newTestVertexAI();
         try {
             GenerativeModel model = new GenerativeModel("gemini-2.5-flash", vertexAI);
             List<Content> contents = List.of(Content.newBuilder()
@@ -129,7 +129,7 @@ class VertexAiGeminiChatModelBuilderTest {
 
     @Test
     void buildResourceNamePassesThroughFullyQualifiedName() {
-        VertexAI vertexAI = new VertexAI("test-project", "us-central1");
+        VertexAI vertexAI = newTestVertexAI();
         try {
             String alreadyQualified =
                     "projects/other-project/locations/europe-west4/publishers/google/models/gemini-2.5-flash";
@@ -142,7 +142,7 @@ class VertexAiGeminiChatModelBuilderTest {
 
     @Test
     void buildResourceNameQualifiesPublishersPrefix() {
-        VertexAI vertexAI = new VertexAI("test-project", "us-central1");
+        VertexAI vertexAI = newTestVertexAI();
         try {
             assertThat(VertexAiGeminiChatModel.buildResourceName("publishers/google/models/gemini-2.5-flash", vertexAI))
                     .isEqualTo("projects/test-project/locations/us-central1/publishers/google/models/gemini-2.5-flash");
@@ -153,7 +153,7 @@ class VertexAiGeminiChatModelBuilderTest {
 
     @Test
     void buildResourceNameQualifiesModelsPrefix() {
-        VertexAI vertexAI = new VertexAI("test-project", "us-central1");
+        VertexAI vertexAI = newTestVertexAI();
         try {
             assertThat(VertexAiGeminiChatModel.buildResourceName("models/gemini-2.5-flash", vertexAI))
                     .isEqualTo("projects/test-project/locations/us-central1/publishers/google/models/gemini-2.5-flash");
@@ -164,12 +164,19 @@ class VertexAiGeminiChatModelBuilderTest {
 
     @Test
     void buildResourceNameQualifiesBareModelName() {
-        VertexAI vertexAI = new VertexAI("test-project", "us-central1");
+        VertexAI vertexAI = newTestVertexAI();
         try {
             assertThat(VertexAiGeminiChatModel.buildResourceName("gemini-2.5-flash", vertexAI))
                     .isEqualTo("projects/test-project/locations/us-central1/publishers/google/models/gemini-2.5-flash");
         } finally {
             vertexAI.close();
         }
+    }
+
+    private static VertexAI newTestVertexAI() {
+        return new VertexAI.Builder()
+                .setProjectId("test-project")
+                .setLocation("us-central1")
+                .build();
     }
 }
