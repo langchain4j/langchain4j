@@ -437,7 +437,7 @@ class ToolSpecificationsTest implements WithAssertions {
     void parameter_with_default_value_is_not_required() throws NoSuchMethodException {
         class Tools {
             @Tool
-            public void tool(@P("foo") String foo, @P(value = "bar", defaultValue = "10") int bar) {}
+            public void tool(String foo, @P(defaultValue = "10") int bar) {}
         }
         Method method = Tools.class.getMethod("tool", String.class, int.class);
         ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
@@ -454,9 +454,7 @@ class ToolSpecificationsTest implements WithAssertions {
         // defaultValue takes precedence over required = true for the schema's required array.
         class Tools {
             @Tool
-            public void tool(
-                    @P("foo") String foo,
-                    @P(value = "bar", required = true, defaultValue = "10") int bar) {}
+            public void tool(String foo, @P(required = true, defaultValue = "10") int bar) {}
         }
         Method method = Tools.class.getMethod("tool", String.class, int.class);
         ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
