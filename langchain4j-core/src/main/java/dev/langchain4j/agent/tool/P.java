@@ -44,13 +44,6 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 public @interface P {
 
     /**
-     * Sentinel value for {@link #defaultValue()} meaning "no default set".
-     * Lets the framework distinguish between "the developer did not specify a default"
-     * and "the default is an empty string".
-     */
-    String NO_DEFAULT = "\0__LANGCHAIN4J_NO_DEFAULT__\0";
-
-    /**
      * Name of the parameter as seen by the LLM.
      * <p>If not specified, the actual method parameter name is used (requires the {@code -parameters} javac option;
      * otherwise the name defaults to {@code arg0}, {@code arg1}, etc.).
@@ -108,10 +101,10 @@ public @interface P {
     /**
      * Default value to substitute when the LLM omits this argument.
      * <p>
-     * Setting a default value makes the parameter <b>optional in the JSON schema</b> sent to the LLM
-     * (the parameter is not added to the schema's {@code required} array). When the LLM omits the
-     * argument, the framework substitutes this default at runtime instead of passing {@code null}
-     * (or, for primitives, throwing).
+     * Setting a default value is equivalent to setting {@link #required()} to {@code false}: the parameter is
+     * marked as <b>optional in the JSON schema</b> sent to the LLM (it is not added to the schema's
+     * {@code required} array). When the LLM omits the argument, the framework substitutes this
+     * default at runtime instead of passing {@code null} (or, for primitives, throwing).
      * <p>
      * The string is parsed at AI Service registration time according to the parameter's type:
      * <ul>
@@ -121,8 +114,7 @@ public @interface P {
      *   <li>Collections, maps, POJOs: parsed as JSON
      *       (e.g. {@code "[]"}, {@code "{\"name\":\"foo\"}"}).</li>
      * </ul>
-     * If the value cannot be parsed into the parameter's type, AI Service construction fails with
-     * {@link dev.langchain4j.service.IllegalConfigurationException}.
+     * If the value cannot be parsed into the parameter's type, AI Service construction fails with exception.
      * <p>
      * <b>Restrictions:</b>
      * <ul>
@@ -135,4 +127,11 @@ public @interface P {
      * @return the default value as a string, or {@link #NO_DEFAULT} if not set
      */
     String defaultValue() default NO_DEFAULT;
+
+    /**
+     * Sentinel value for {@link #defaultValue()} meaning "no default set".
+     * Lets the framework distinguish between "the developer did not specify a default"
+     * and "the default is an empty string".
+     */
+    String NO_DEFAULT = "\0__LANGCHAIN4J_NO_DEFAULT__\0";
 }
