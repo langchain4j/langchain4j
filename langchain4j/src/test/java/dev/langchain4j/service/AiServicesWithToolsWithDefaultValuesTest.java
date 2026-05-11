@@ -23,6 +23,8 @@ import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -51,8 +53,9 @@ class AiServicesWithToolsWithDefaultValuesTest {
     // Primitives
     // ---------------------------------------------------------------------
 
-    @Test
-    void should_substitute_default_for_primitive_int_when_LLM_omits_it() {
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_substitute_default_for_primitive_int_when_LLM_omits_it(String missingArguments) {
         class Tools {
             @Tool
             void process(@P(defaultValue = "10") int limit) {}
@@ -60,7 +63,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
         Tools tool = spy(new Tools());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(mockReturningToolCallWithArgs("process", "{}"))
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
                 .tools(tool)
                 .build();
 
@@ -70,8 +73,9 @@ class AiServicesWithToolsWithDefaultValuesTest {
         verifyNoMoreInteractions(tool);
     }
 
-    @Test
-    void should_substitute_default_for_primitive_double_when_LLM_omits_it() {
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_substitute_default_for_primitive_double_when_LLM_omits_it(String missingArguments) {
         class Tools {
             @Tool
             void process(@P(defaultValue = "3.14") double pi) {}
@@ -79,7 +83,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
         Tools tool = spy(new Tools());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(mockReturningToolCallWithArgs("process", "{}"))
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
                 .tools(tool)
                 .build();
 
@@ -89,8 +93,9 @@ class AiServicesWithToolsWithDefaultValuesTest {
         verifyNoMoreInteractions(tool);
     }
 
-    @Test
-    void should_substitute_default_for_primitive_boolean_when_LLM_omits_it() {
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_substitute_default_for_primitive_boolean_when_LLM_omits_it(String missingArguments) {
         class Tools {
             @Tool
             void process(@P(defaultValue = "true") boolean verbose) {}
@@ -98,7 +103,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
         Tools tool = spy(new Tools());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(mockReturningToolCallWithArgs("process", "{}"))
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
                 .tools(tool)
                 .build();
 
@@ -108,8 +113,9 @@ class AiServicesWithToolsWithDefaultValuesTest {
         verifyNoMoreInteractions(tool);
     }
 
-    @Test
-    void should_substitute_default_for_primitive_long_when_LLM_omits_it() {
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_substitute_default_for_primitive_long_when_LLM_omits_it(String missingArguments) {
         class Tools {
             @Tool
             void process(@P(defaultValue = "9999999999") long bigNumber) {}
@@ -117,7 +123,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
         Tools tool = spy(new Tools());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(mockReturningToolCallWithArgs("process", "{}"))
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
                 .tools(tool)
                 .build();
 
@@ -131,8 +137,9 @@ class AiServicesWithToolsWithDefaultValuesTest {
     // Boxed / object scalar types
     // ---------------------------------------------------------------------
 
-    @Test
-    void should_substitute_default_for_boxed_Integer_when_LLM_omits_it() {
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_substitute_default_for_boxed_Integer_when_LLM_omits_it(String missingArguments) {
         class Tools {
             @Tool
             void process(@P(defaultValue = "42") Integer limit) {}
@@ -140,7 +147,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
         Tools tool = spy(new Tools());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(mockReturningToolCallWithArgs("process", "{}"))
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
                 .tools(tool)
                 .build();
 
@@ -150,8 +157,9 @@ class AiServicesWithToolsWithDefaultValuesTest {
         verifyNoMoreInteractions(tool);
     }
 
-    @Test
-    void should_substitute_default_for_String_when_LLM_omits_it() {
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_substitute_default_for_String_when_LLM_omits_it(String missingArguments) {
         class Tools {
             @Tool
             void process(@P(defaultValue = "USD") String currency) {}
@@ -159,7 +167,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
         Tools tool = spy(new Tools());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(mockReturningToolCallWithArgs("process", "{}"))
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
                 .tools(tool)
                 .build();
 
@@ -169,8 +177,9 @@ class AiServicesWithToolsWithDefaultValuesTest {
         verifyNoMoreInteractions(tool);
     }
 
-    @Test
-    void should_substitute_default_for_BigDecimal_when_LLM_omits_it() {
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_substitute_default_for_BigDecimal_when_LLM_omits_it(String missingArguments) {
         class Tools {
             @Tool
             void process(@P(defaultValue = "1.5") BigDecimal value) {}
@@ -178,7 +187,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
         Tools tool = spy(new Tools());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(mockReturningToolCallWithArgs("process", "{}"))
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
                 .tools(tool)
                 .build();
 
@@ -198,8 +207,9 @@ class AiServicesWithToolsWithDefaultValuesTest {
         GBP
     }
 
-    @Test
-    void should_substitute_default_for_enum_when_LLM_omits_it() {
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_substitute_default_for_enum_when_LLM_omits_it(String missingArguments) {
         class Tools {
             @Tool
             void process(@P(defaultValue = "EUR") Currency currency) {}
@@ -207,7 +217,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
         Tools tool = spy(new Tools());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(mockReturningToolCallWithArgs("process", "{}"))
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
                 .tools(tool)
                 .build();
 
@@ -225,11 +235,13 @@ class AiServicesWithToolsWithDefaultValuesTest {
 
     public record Person(String name, int age, Address address) {}
 
-    @Test
-    void should_substitute_default_for_POJO_with_nested_POJO_when_LLM_omits_it() {
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_substitute_default_for_POJO_with_nested_POJO_when_LLM_omits_it(String missingArguments) {
         class Tools {
 
-            public static final String DEFAULT_PERSON = """
+            public static final String DEFAULT_PERSON =
+                    """
                     {"name":"Klaus","age":42,"address":{"city":"Berlin","country":"DE"}}""";
 
             @Tool
@@ -238,7 +250,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
         Tools tool = spy(new Tools());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(mockReturningToolCallWithArgs("process", "{}"))
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
                 .tools(tool)
                 .build();
 
@@ -263,8 +275,9 @@ class AiServicesWithToolsWithDefaultValuesTest {
 
     public record Dog(String breed) implements Animal {}
 
-    @Test
-    void should_substitute_default_for_polymorphic_sealed_type_when_LLM_omits_it() {
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_substitute_default_for_polymorphic_sealed_type_when_LLM_omits_it(String missingArguments) {
         class Tools {
             @Tool
             void process(@P(defaultValue = "{\"type\":\"cat\",\"name\":\"Whiskers\"}") Animal animal) {}
@@ -272,7 +285,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
         Tools tool = spy(new Tools());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(mockReturningToolCallWithArgs("process", "{}"))
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
                 .tools(tool)
                 .build();
 
@@ -286,8 +299,9 @@ class AiServicesWithToolsWithDefaultValuesTest {
     // Collections and maps
     // ---------------------------------------------------------------------
 
-    @Test
-    void should_substitute_default_for_List_of_strings_when_LLM_omits_it() {
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_substitute_default_for_List_of_strings_when_LLM_omits_it(String missingArguments) {
         class Tools {
             @Tool
             void process(@P(defaultValue = "[\"red\",\"green\",\"blue\"]") List<String> colors) {}
@@ -295,7 +309,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
         Tools tool = spy(new Tools());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(mockReturningToolCallWithArgs("process", "{}"))
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
                 .tools(tool)
                 .build();
 
@@ -305,8 +319,9 @@ class AiServicesWithToolsWithDefaultValuesTest {
         verifyNoMoreInteractions(tool);
     }
 
-    @Test
-    void should_substitute_default_for_Set_of_integers_when_LLM_omits_it() {
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_substitute_default_for_Set_of_integers_when_LLM_omits_it(String missingArguments) {
         class Tools {
             @Tool
             void process(@P(defaultValue = "[1,2,3]") Set<Integer> ids) {}
@@ -314,7 +329,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
         Tools tool = spy(new Tools());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(mockReturningToolCallWithArgs("process", "{}"))
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
                 .tools(tool)
                 .build();
 
@@ -324,17 +339,19 @@ class AiServicesWithToolsWithDefaultValuesTest {
         verifyNoMoreInteractions(tool);
     }
 
-    @Test
-    void should_substitute_default_for_Map_when_LLM_omits_it() {
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_substitute_default_for_Map_when_LLM_omits_it(String missingArguments) {
         class Tools {
             @Tool
-            void process(@P(value = "string keys to integer values", defaultValue = "{\"a\":1,\"b\":2}")
-                    Map<String, Integer> counts) {}
+            void process(
+                    @P(value = "string keys to integer values", defaultValue = "{\"a\":1,\"b\":2}")
+                            Map<String, Integer> counts) {}
         }
         Tools tool = spy(new Tools());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(mockReturningToolCallWithArgs("process", "{}"))
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
                 .tools(tool)
                 .build();
 
@@ -343,6 +360,101 @@ class AiServicesWithToolsWithDefaultValuesTest {
         Map<String, Integer> expected = new LinkedHashMap<>();
         expected.put("a", 1);
         expected.put("b", 2);
+        verify(tool).process(expected);
+        verifyNoMoreInteractions(tool);
+    }
+
+    // ---------------------------------------------------------------------
+    // Collections of POJOs
+    // ---------------------------------------------------------------------
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_substitute_default_for_List_of_POJOs_when_LLM_omits_it(String missingArguments) {
+        class Tools {
+            public static final String DEFAULT_PEOPLE =
+                    """
+                    [
+                      {"name":"Klaus","age":42,"address":{"city":"Berlin","country":"DE"}},
+                      {"name":"Peter","age":43,"address":{"city":"Munich","country":"DE"}}
+                    ]""";
+
+            @Tool
+            void process(@P(defaultValue = DEFAULT_PEOPLE) List<Person> people) {}
+        }
+        Tools tool = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
+                .tools(tool)
+                .build();
+
+        assistant.chat("call the tool");
+
+        verify(tool)
+                .process(List.of(
+                        new Person("Klaus", 42, new Address("Berlin", "DE")),
+                        new Person("Peter", 43, new Address("Munich", "DE"))));
+        verifyNoMoreInteractions(tool);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_substitute_default_for_Set_of_POJOs_when_LLM_omits_it(String missingArguments) {
+        class Tools {
+            public static final String DEFAULT_PEOPLE =
+                    """
+                    [
+                      {"name":"Klaus","age":42,"address":{"city":"Berlin","country":"DE"}},
+                      {"name":"Peter","age":43,"address":{"city":"Munich","country":"DE"}}
+                    ]""";
+
+            @Tool
+            void process(@P(defaultValue = DEFAULT_PEOPLE) Set<Person> people) {}
+        }
+        Tools tool = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
+                .tools(tool)
+                .build();
+
+        assistant.chat("call the tool");
+
+        Set<Person> expected = new LinkedHashSet<>();
+        expected.add(new Person("Klaus", 42, new Address("Berlin", "DE")));
+        expected.add(new Person("Peter", 43, new Address("Munich", "DE")));
+        verify(tool).process(expected);
+        verifyNoMoreInteractions(tool);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_substitute_default_for_Map_of_String_to_POJO_when_LLM_omits_it(String missingArguments) {
+        class Tools {
+            public static final String DEFAULT_MAP =
+                    """
+                    {
+                      "p1": {"name":"Klaus","age":42,"address":{"city":"Berlin","country":"DE"}},
+                      "p2": {"name":"Peter","age":43,"address":{"city":"Munich","country":"DE"}}
+                    }""";
+
+            @Tool
+            void process(
+                    @P(value = "string id to person", defaultValue = DEFAULT_MAP) Map<String, Person> people) {}
+        }
+        Tools tool = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
+                .tools(tool)
+                .build();
+
+        assistant.chat("call the tool");
+
+        Map<String, Person> expected = new LinkedHashMap<>();
+        expected.put("p1", new Person("Klaus", 42, new Address("Berlin", "DE")));
+        expected.put("p2", new Person("Peter", 43, new Address("Munich", "DE")));
         verify(tool).process(expected);
         verifyNoMoreInteractions(tool);
     }
@@ -370,8 +482,13 @@ class AiServicesWithToolsWithDefaultValuesTest {
         verifyNoMoreInteractions(tool);
     }
 
-    @Test
-    void should_mix_defaulted_and_LLM_provided_parameters() {
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "{\"arg0\":\"hello\"}",
+                "{\"arg0\":\"hello\",\"arg1\":null,\"arg2\":null}"
+            })
+    void should_mix_defaulted_and_LLM_provided_parameters(String arguments) {
         class Tools {
             @Tool
             void search(String query, @P(defaultValue = "10") int limit, @P(defaultValue = "0") int offset) {}
@@ -379,7 +496,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
         Tools tool = spy(new Tools());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(mockReturningToolCallWithArgs("search", "{\"arg0\":\"hello\"}"))
+                .chatModel(mockReturningToolCallWithArgs("search", arguments))
                 .tools(tool)
                 .build();
 
@@ -389,8 +506,9 @@ class AiServicesWithToolsWithDefaultValuesTest {
         verifyNoMoreInteractions(tool);
     }
 
-    @Test
-    void should_apply_default_even_when_required_is_explicitly_true() {
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_apply_default_even_when_required_is_explicitly_true(String missingArguments) {
         // defaultValue forces the schema to mark the param as optional
         // (so the LLM is told it can omit it), and supplies the runtime fallback.
         class Tools {
@@ -399,7 +517,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
         }
         Tools tool = spy(new Tools());
 
-        ChatModel chatModelMock = mockReturningToolCallWithArgs("process", "{}");
+        ChatModel chatModelMock = mockReturningToolCallWithArgs("process", missingArguments);
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModelMock)
                 .tools(tool)
