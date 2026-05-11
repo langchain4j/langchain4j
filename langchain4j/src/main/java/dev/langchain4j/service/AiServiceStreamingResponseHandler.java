@@ -109,10 +109,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final List<String> responseBuffer = new ArrayList<>();
     private final boolean hasOutputGuardrails;
 
-    private int sequentialToolsInvocationsLeft;
+    private int toolCallingRoundTripsLeft;
     private final Map<String, Integer> toolExecutionCounts;
     private final Set<String> overBudgetToolNames = ConcurrentHashMap.newKeySet();
-    private int toolCallingRoundTripsLeft;
 
     private record ToolRequestResult(ToolExecutionRequest request, ToolExecutionResult result) {}
 
@@ -160,7 +159,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 temporaryMemory,
                 tokenUsage,
                 toolServiceContext,
-                sequentialToolsInvocationsLeft,
+                toolCallingRoundTripsLeft,
                 toolArgumentsErrorHandler,
                 toolExecutionErrorHandler,
                 toolExecutor,
@@ -188,7 +187,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             ChatMemory temporaryMemory,
             TokenUsage tokenUsage,
             ToolServiceContext toolServiceContext,
-            int sequentialToolsInvocationsLeft,
+            int toolCallingRoundTripsLeft,
             ToolArgumentsErrorHandler toolArgumentsErrorHandler,
             ToolExecutionErrorHandler toolExecutionErrorHandler,
             Executor toolExecutor,
@@ -225,9 +224,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
         this.hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
 
-        this.sequentialToolsInvocationsLeft = sequentialToolsInvocationsLeft;
-        this.toolExecutionCounts = toolExecutionCounts;
         this.toolCallingRoundTripsLeft = toolCallingRoundTripsLeft;
+        this.toolExecutionCounts = toolExecutionCounts;
     }
 
     @Override
@@ -532,7 +530,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                             temporaryMemory,
                             TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage()),
                             ToolServiceContext.Empty.INSTANCE,
-                            sequentialToolsInvocationsLeft,
+                            toolCallingRoundTripsLeft,
                             toolArgumentsErrorHandler,
                             toolExecutionErrorHandler,
                             toolExecutor,

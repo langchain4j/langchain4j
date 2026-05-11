@@ -667,6 +667,39 @@ public abstract class AiServices<T> {
     }
 
     /**
+     * Configures per-tool execution limits for this AI service call.
+     * <p>
+     * When a tool reaches its configured limit, it is removed from the tool set for
+     * subsequent LLM calls, and any over-budget calls within the same LLM response are
+     * handled according to the configured {@link ToolLimitExceededBehavior}
+     * (default: {@link ToolLimitExceededBehavior#CONTINUE}).
+     * <p>
+     * These limits are independent of {@link #maxToolCallingRoundTrips(int)},
+     * which caps the number of LLM response rounds, not individual tool calls.
+     * <p>
+     * Example:
+     * <pre>{@code
+     * AiServices.builder(Assistant.class)
+     *     .chatModel(model)
+     *     .tools(new SearchTool(), new CalculatorTool())
+     *     .toolExecutionLimits(ToolExecutionLimits.builder()
+     *         .defaultLimit(5)
+     *         .maxExecutions("search", 10)
+     *         .maxExecutions("calculate", 1, ToolLimitExceededBehavior.ERROR)
+     *         .build())
+     *     .build();
+     * }</pre>
+     *
+     * @param limits the tool execution limits configuration
+     * @return builder
+     * @since 1.14.0
+     */
+    public AiServices<T> toolExecutionLimits(ToolExecutionLimits limits) {
+        context.toolService.toolExecutionLimits(limits);
+        return this;
+    }
+
+    /**
      * Configures a callback to be invoked before each tool execution.
      *
      * @param beforeToolExecution A {@link Consumer} that accepts a {@link BeforeToolExecution}
