@@ -275,4 +275,19 @@ public class ValidationUtils {
         }
         return i;
     }
+    
+    /**
+     * Ensures that the given integer is either null or greater than zero.
+     *
+     * @param i The integer to check.
+     * @param name The logical name of the integer, used in the exception message.
+     * @return The value if it is null or greater than zero.
+     * @throws IllegalArgumentException if the value is zero or negative.
+     */
+    public static Integer ensureGreaterThanZeroIfNotNull(Integer i, String name) {
+        if (i != null && i <= 0) {
+            throw illegalArgument("%s must be greater than zero, but is: %s", name, i);
+        }
+        return i;
+    }
 }

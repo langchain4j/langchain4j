@@ -16,19 +16,28 @@ import static java.util.stream.Collectors.toList;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.pdf.PdfFile;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiAudioBase64Content;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiAudioUrlContent;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionResponse;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiChatMessage;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiDocumentBase64Content;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiDocumentUrlContent;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiFunction;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiFunctionCall;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiImageBase64Content;
@@ -100,6 +109,10 @@ public class MistralAiMapper {
         }
 
         if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+            if (!toolExecutionResultMessage.hasSingleText()) {
+                throw new UnsupportedFeatureException("Mistral AI does not support non-text content in tool results. "
+                        + "Only text content is supported.");
+            }
             return MistralAiChatMessage.builder()
                     .role(MistralAiRole.TOOL)
                     .toolCallId(toolExecutionResultMessage.id())
@@ -154,7 +167,12 @@ public class MistralAiMapper {
             toolExecutionRequests = toToolExecutionRequests(toolCalls);
         }
 
-        String text = aiMistralMessage.getContent().stream()
+        List<MistralAiMessageContent> contents = aiMistralMessage.getContent();
+        if (contents == null) {
+            contents = List.of();
+        }
+
+        String text = contents.stream()
                 .filter(content -> "text".equals(content.getType()))
                 .map(MistralAiTextContent.class::cast)
                 .map(MistralAiTextContent::getText)
@@ -162,7 +180,7 @@ public class MistralAiMapper {
 
         String thinking = null;
         if (returnThinking) {
-            List<String> thinkingTexts = aiMistralMessage.getContent().stream()
+            List<String> thinkingTexts = contents.stream()
                     .filter(content -> "thinking".equals(content.getType()))
                     .map(MistralAiThinkingContent.class::cast)
                     .map(MistralAiThinkingContent::getThinking)
@@ -257,6 +275,16 @@ public class MistralAiMapper {
                         return image.url() != null
                                 ? new MistralAiImageUrlContent(image.url().toString())
                                 : new MistralAiImageBase64Content(image.base64Data());
+                    } else if (content instanceof AudioContent audioContent) {
+                        Audio audio = audioContent.audio();
+                        return audio.url() != null
+                                ? new MistralAiAudioUrlContent(audio.url().toString())
+                                : new MistralAiAudioBase64Content(audio.base64Data(), audio.mimeType());
+                    } else if (content instanceof PdfFileContent pdfFileContent) {
+                        PdfFile pdfFile = pdfFileContent.pdfFile();
+                        return pdfFile.url() != null
+                                ? new MistralAiDocumentUrlContent(pdfFile.url().toString())
+                                : new MistralAiDocumentBase64Content(pdfFile.base64Data(), pdfFile.mimeType());
                     } else {
                         throw illegalArgument("Unknown content type: " + content);
                     }

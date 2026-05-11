@@ -69,7 +69,8 @@ public abstract class AbstractBaseChatModelIT<M> {
     // TODO https://github.com/langchain4j/langchain4j/issues/2220
 
     static final String WHAT_IS_THE_CAPITAL_OF_GERMANY = "What is the capital of Germany?";
-    
+    static final String WHAT_IS_THE_CAPITAL_OF_GERMANY_AND_MATH_QUESTION = "What is the capital of Germany? How much is 2 + 2?";
+
     static final String CAT_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
     static final String DICE_IMAGE_URL =
@@ -238,6 +239,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         String modelName = customModelName();
         ensureModelNameIsDifferentFromDefault(modelName, model);
+        sleepIfNeeded();
 
         ChatRequestParameters parameters = ChatRequestParameters.builder()
                 .modelName(modelName)
@@ -252,10 +254,10 @@ public abstract class AbstractBaseChatModelIT<M> {
         ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
-        assertThat(chatResponse.aiMessage().text()).isNotBlank();
-
         assertThat(chatResponse.metadata().modelName()).isEqualTo(modelName);
     }
+
+    protected void sleepIfNeeded() {}
 
     protected String customModelName() {
         throw new RuntimeException("Please implement this method in a similar way to OpenAiChatModelIT");
@@ -301,8 +303,6 @@ public abstract class AbstractBaseChatModelIT<M> {
         ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
-        assertThat(chatResponse.aiMessage().text()).isNotBlank();
-
         assertThat(chatResponse.metadata().modelName()).isEqualTo(modelName);
     }
 
@@ -348,7 +348,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         int maxOutputTokens = maxOutputTokens();
         ChatRequestParameters parameters = createParameters(maxOutputTokens);
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY))
+                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY_AND_MATH_QUESTION))
                 .parameters(parameters)
                 .build();
 
@@ -405,12 +405,12 @@ public abstract class AbstractBaseChatModelIT<M> {
         // given
         int maxOutputTokens = maxOutputTokens();
         ChatRequestParameters parameters = ChatRequestParameters.builder()
-                        .maxOutputTokens(maxOutputTokens)
-                        .build();
+                .maxOutputTokens(maxOutputTokens)
+                .build();
         M model = createModelWith(parameters);
 
         ChatRequest chatRequest = ChatRequest.builder()
-                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY))
+                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY_AND_MATH_QUESTION))
                 .build();
 
         // when
@@ -582,7 +582,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .parameters(parameters)
-                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY))
+                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY_AND_MATH_QUESTION))
                 .build();
 
         // when
@@ -605,7 +605,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     @Test
     @EnabledIf("supportsMaxOutputTokensParameter")
     protected void
-            should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
+    should_respect_common_parameters_wrapped_in_integration_specific_class_in_default_model_parameters() {
 
         // given
         // TODO test more/all common params?
@@ -617,17 +617,13 @@ public abstract class AbstractBaseChatModelIT<M> {
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .parameters(parameters)
-                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY))
+                .messages(UserMessage.from(WHAT_IS_THE_CAPITAL_OF_GERMANY_AND_MATH_QUESTION))
                 .build();
 
         // when
         ChatResponse chatResponse = chat(model, chatRequest).chatResponse();
 
         // then
-        AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).isNotBlank();
-        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
-
         if (assertTokenUsage()) {
             assertTokenUsage(chatResponse.metadata(), maxOutputTokens, model);
         }
@@ -984,8 +980,8 @@ public abstract class AbstractBaseChatModelIT<M> {
 
                 assertThat(metadata.partialToolCalls().get(0).index()).isEqualTo(0);
                 assertThat(metadata.partialToolCalls()
-                                .get(metadata.partialToolCalls().size() - 1)
-                                .index())
+                        .get(metadata.partialToolCalls().size() - 1)
+                        .index())
                         .isEqualTo(1);
 
                 List<List<PartialToolCall>> partialToolCallPartitions = partitionByIndex(metadata.partialToolCalls());

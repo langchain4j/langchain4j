@@ -69,6 +69,7 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
     private final Boolean logResponses;
     private final Boolean enablePromptCaching;
     private final List<ChatModelListener> listeners;
+    private final String location;
 
     public VertexAiAnthropicChatModel(VertexAiAnthropicChatModelBuilder builder) {
         this.client = new VertexAiAnthropicClient(
@@ -86,6 +87,7 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
         this.logResponses = getOrDefault(builder.logResponses, false);
         this.enablePromptCaching = getOrDefault(builder.enablePromptCaching, false);
         this.listeners = builder.listeners != null ? List.copyOf(builder.listeners) : List.of();
+        this.location = ensureNotBlank(builder.location, "location");
     }
 
     @Override
@@ -104,6 +106,7 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
             String requestModelName = getOrDefault(parameters.modelName(), modelName);
 
             if (logRequests) {
+                logger.debug("Base URL: {}-aiplatform.googleapis.com:443", location);
                 logger.debug(
                         "Using model name: {} (from parameters: {}, default: {})",
                         requestModelName,

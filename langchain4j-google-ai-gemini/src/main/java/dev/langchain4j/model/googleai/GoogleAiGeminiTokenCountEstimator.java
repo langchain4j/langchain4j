@@ -33,7 +33,8 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
                 getOrDefault(builder.logRequests, false),
                 getOrDefault(builder.logResponses, false),
                 builder.logger,
-                builder.timeout);
+                builder.timeout,
+                null);
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
@@ -85,7 +86,7 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
                 GeminiGenerateContentRequest.builder()
                         .model("models/" + this.modelName)
                         .contents(singletonList(dummyContent))
-                        .tools(FunctionMapper.fromToolSepcsToGTool(allTools, false, false, false, false, false))
+                        .tools(FunctionMapper.fromToolSpecsToGTools(allTools, false, false, false, false, false))
                         .build());
 
         // The API doesn't allow us to make a request to count the tokens of the tool specifications only.

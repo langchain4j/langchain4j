@@ -73,7 +73,7 @@ abstract class PgVectorFilterMapper {
     private String mapNotEqual(IsNotEqualTo isNotEqualTo) {
         String key =
                 formatKey(isNotEqualTo.key(), isNotEqualTo.comparisonValue().getClass());
-        return format("%s is null or %s != %s", key, key, formatValue(isNotEqualTo.comparisonValue()));
+        return format("(%s is null or %s != %s)", key, key, formatValue(isNotEqualTo.comparisonValue()));
     }
 
     private String mapGreaterThan(IsGreaterThan isGreaterThan) {
@@ -114,7 +114,7 @@ abstract class PgVectorFilterMapper {
 
     private String mapNotIn(IsNotIn isNotIn) {
         String key = formatKeyAsString(isNotIn.key());
-        return format("%s is null or %s not in %s", key, key, formatValuesAsString(isNotIn.comparisonValues()));
+        return format("(%s is null or %s not in %s)", key, key, formatValuesAsString(isNotIn.comparisonValues()));
     }
 
     private String mapAnd(And and) {

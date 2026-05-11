@@ -39,9 +39,11 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
+import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.DefaultToolExecutor;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
+import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
@@ -536,6 +538,21 @@ public abstract class AiServices<T> {
 
     /**
      * Configures the tools that the LLM can use.
+     * <p>
+     * Each {@link AiServiceTool} carries its own {@link ToolSpecification}, {@link ToolExecutor},
+     * and {@link ReturnBehavior}.
+     *
+     * @param tools list of {@link AiServiceTool}s to expose to the LLM.
+     * @return builder
+     * @since 1.14.0
+     */
+    public AiServices<T> tools(List<AiServiceTool> tools) {
+        context.toolService.tools(tools);
+        return this;
+    }
+
+    /**
+     * Configures the tools that the LLM can use.
      *
      * @param tools A map of {@link ToolSpecification} to {@link ToolExecutor} entries.
      *              This method of configuring tools is useful when tools must be configured programmatically.
@@ -560,7 +577,9 @@ public abstract class AiServices<T> {
      *               perform a llm call with the tool results provided by a {@link ToolExecutor}.
      *               This is similar to using the {@link ReturnBehavior#IMMEDIATE} when using the {@link Tool}-annotated java methods
      * @return builder
+     * @deprecated use {@link #tools(List)} instead in order to specify {@link ReturnBehavior}
      */
+    @Deprecated(since = "1.14.0")
     public AiServices<T> tools(Map<ToolSpecification, ToolExecutor> tools, Set<String> immediateReturnToolNames) {
         context.toolService.tools(tools, immediateReturnToolNames);
         return this;
@@ -680,7 +699,7 @@ public abstract class AiServices<T> {
 
     /**
      * Configures the handler to be invoked when errors related to tool arguments occur,
-     * such as JSON parsing failures or mismatched argument types.
+     * such as JSON parsing failures, missing required parameters, or mismatched argument types.
      * <p>
      * Within this handler, you can either:
      * <p>
@@ -688,6 +707,18 @@ public abstract class AiServices<T> {
      * <p>
      * 2. Return a text message (e.g., an error description) that will be sent back to the LLM,
      * allowing it to respond appropriately (for example, by correcting the error and retrying).
+     * <p>
+     * <b>Recommendation:</b> the current default (throw) is rarely what you want.
+     * Argument errors usually originate from the LLM (malformed JSON, missing fields, wrong types),
+     * and LLMs can typically self-correct when given a clear error message. Configuring a handler
+     * that returns the error text via {@link ToolErrorHandlerResult#text(String)} lets the LLM retry,
+     * which is more in line with how agentic systems are expected to behave.
+     * The default will change to "Return a text message" in LangChain4j 2.0.
+     * <p>
+     * Example:
+     * <pre>{@code
+     * .toolArgumentsErrorHandler((error, ctx) -> ToolErrorHandlerResult.text(error.getMessage()))
+     * }</pre>
      * <p>
      * NOTE: If you create a {@link DefaultToolExecutor} manually or use a custom {@link ToolExecutor},
      * ensure that a {@link ToolArgumentsException} is thrown by {@link ToolExecutor} in such cases.
@@ -715,6 +746,20 @@ public abstract class AiServices<T> {
      * allowing it to respond appropriately (for example, by correcting the error and retrying).
      * This is the default behavior if no handler is configured.
      * The {@link Throwable#getMessage()} is sent to the LLM by default.
+     * <p>
+     * <b>Recommendation:</b> the current default sends the raw exception message to the LLM,
+     * which can leak internal application data — stack traces, file paths, downstream API responses,
+     * credentials and/or PII embedded in error strings, etc.
+     * Once fed to the LLM, this content can flow into responses, chat history, observability pipelines,
+     * and the LLM provider's logs. For production use, configure a handler that returns either a
+     * generic message or a sanitized/curated description of the failure, and rely on logs/events for
+     * the underlying detail.
+     * The default will change to "Throw an exception" in LangChain4j 2.0.
+     * <p>
+     * Example:
+     * <pre>{@code
+     * .toolExecutionErrorHandler((error, ctx) -> ToolErrorHandlerResult.text("Tool execution failed."))
+     * }</pre>
      * <p>
      * NOTE: If you create a {@link DefaultToolExecutor} manually or use a custom {@link ToolExecutor},
      * ensure that a {@link ToolExecutionException} is thrown by {@link ToolExecutor} in such cases.

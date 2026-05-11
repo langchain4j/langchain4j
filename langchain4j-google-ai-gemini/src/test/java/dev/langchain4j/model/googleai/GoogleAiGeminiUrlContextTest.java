@@ -107,7 +107,7 @@ class GoogleAiGeminiUrlContextTest {
             var request = requestCaptor.getValue();
             assertThat(request.tools()).isNotNull();
 
-            GeminiTool tool = request.tools();
+            GeminiTool tool = request.tools().get(0);
             assertThat(tool.urlContext()).isNotNull();
         }
     }
@@ -137,7 +137,7 @@ class GoogleAiGeminiUrlContextTest {
                     urlContextMetadata,
                     null);
 
-            var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(0, 0, 0);
+            var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(0, 0, 0, null, null);
             var response = new GeminiGenerateContentResponse("id", "model", List.of(candidate), usageMetadata, null);
 
             when(mockGeminiService.generateContent(any(), any())).thenReturn(response);
@@ -169,7 +169,7 @@ class GoogleAiGeminiUrlContextTest {
                 GeminiFinishReason.STOP,
                 null,
                 null);
-        var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(0, 0, 0);
+        var usageMetadata = new GeminiGenerateContentResponse.GeminiUsageMetadata(0, 0, 0, null, null);
         return new GeminiGenerateContentResponse("id", "model", List.of(candidate), usageMetadata, null);
     }
 }

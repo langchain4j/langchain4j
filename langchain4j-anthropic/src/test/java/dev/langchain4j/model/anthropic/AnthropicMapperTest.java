@@ -41,6 +41,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import java.net.URI;
 import java.util.AbstractMap;
@@ -273,9 +274,7 @@ class AnthropicMapperTest {
         Map<String, Object> map = toAnthropicSchema(jsonSchemaElement);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map))
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
                         {
                           "type": "object",
                           "properties": {
@@ -286,6 +285,47 @@ class AnthropicMapperTest {
                           },
                           "required": ["name", "email", "plan_interest", "demo_requested"],
                           "additionalProperties": false
+                        }
+                       """);
+    }
+
+    @Test
+    void test_toAnthropicSchema_with_definitions() throws JsonProcessingException {
+
+        // given
+        String reference = "Person";
+        JsonSchemaElement personSchema = JsonObjectSchema.builder()
+                .addStringProperty("name")
+                .required("name")
+                .build();
+        JsonSchemaElement rootSchema = JsonObjectSchema.builder()
+                .addProperty(
+                        "person",
+                        JsonReferenceSchema.builder().reference(reference).build())
+                .required("person")
+                .definitions(Map.of(reference, personSchema))
+                .build();
+
+        // when
+        Map<String, Object> map = toAnthropicSchema(rootSchema);
+
+        // then
+        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
+                        {
+                          "type": "object",
+                          "properties": {
+                              "person": { "$ref": "#/$defs/Person" }
+                          },
+                          "required": ["person"],
+                          "additionalProperties": false,
+                          "$defs": {
+                              "Person": {
+                                  "type": "object",
+                                  "properties": { "name": { "type": "string" } },
+                                  "required": ["name"],
+                                  "additionalProperties": false
+                              }
+                          }
                         }
                        """);
     }
@@ -306,9 +346,7 @@ class AnthropicMapperTest {
         Map<String, Object> map = toAnthropicSchema(bookRecord);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map))
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
                         {
                           "type": "object",
                           "properties": {

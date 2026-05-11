@@ -73,6 +73,18 @@ public interface McpClient extends AutoCloseable {
     McpReadResourceResult readResource(String uri, InvocationContext invocationContext);
 
     /**
+     * Subscribes to updates for the resource with the specified URI.
+     * When the resource changes, the server will send a {@code notifications/resources/updated} notification.
+     * The client will invoke the {@code onResourceUpdated} callback (if configured) with the URI of the updated resource.
+     */
+    void subscribeToResource(String uri);
+
+    /**
+     * Unsubscribes from updates for the resource with the specified URI.
+     */
+    void unsubscribeFromResource(String uri);
+
+    /**
      * Obtain a list of prompts available on the MCP server.
      */
     List<McpPrompt> listPrompts();

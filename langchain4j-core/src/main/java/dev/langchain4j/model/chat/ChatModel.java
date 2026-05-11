@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.OTHER;
 import static dev.langchain4j.model.chat.ChatModelListenerUtils.onError;
 import static dev.langchain4j.model.chat.ChatModelListenerUtils.onRequest;
@@ -32,6 +33,20 @@ public interface ChatModel {
      * @return a {@link ChatResponse}, containing all the outputs from the LLM
      */
     default ChatResponse chat(ChatRequest chatRequest) {
+        return chat(chatRequest, ChatRequestOptions.EMPTY);
+    }
+
+    /**
+     * Sends a chat request with additional invocation options.
+     *
+     * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
+     * @param options     a {@link ChatRequestOptions} carrying listener attributes and other per-call metadata
+     * @return a {@link ChatResponse}, containing all the outputs from the LLM
+     * @since 1.13.0
+     */
+    default ChatResponse chat(ChatRequest chatRequest, ChatRequestOptions options) {
+
+        ChatRequestOptions effectiveOptions = getOrDefault(options, ChatRequestOptions.EMPTY);
 
         ChatRequest finalChatRequest = ChatRequest.builder()
                 .messages(chatRequest.messages())
@@ -39,7 +54,7 @@ public interface ChatModel {
                 .build();
 
         List<ChatModelListener> listeners = listeners();
-        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        Map<Object, Object> attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
 
         onRequest(finalChatRequest, provider(), attributes, listeners);
         try {

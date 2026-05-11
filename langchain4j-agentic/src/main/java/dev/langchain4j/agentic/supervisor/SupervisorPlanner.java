@@ -4,12 +4,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.ChatMemoryAccessProvider;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
+import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -94,9 +96,34 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     private static String toCard(AgentInstance agent) {
         List<String> agentArguments = agent.arguments().stream()
                 .filter(a -> !a.name().equals("@MemoryId"))
-                .map(a -> a.name() + ": " + a.rawType().getSimpleName())
+                .map(SupervisorPlanner::argumentDescription)
                 .toList();
         return "{'" + agent.agentId() + "', '" + agent.description() + "', " + agentArguments + "}";
+    }
+
+    private static String argumentDescription(AgentArgument arg) {
+        return argumentDescription(arg.rawType(), arg.name());
+    }
+
+    private static String argumentDescription(Class<?> type, String name) {
+        if (name == null) {
+            return "";
+        }
+
+        if (type.isPrimitive() || type.isEnum() || type == String.class ||
+                type == Boolean.class || Number.class.isAssignableFrom(type)) {
+            return name + ": " + type.getSimpleName();
+        }
+
+        String fieldsDescription = type.isRecord() ?
+                Stream.of(type.getDeclaredConstructors()[0].getParameters())
+                        .map(p -> argumentDescription(p.getType(), ParameterNameResolver.name(p)))
+                        .collect(Collectors.joining(", ")) :
+                Stream.of(type.getDeclaredFields())
+                        .map(f -> argumentDescription(f.getType(), f.getName()))
+                        .collect(Collectors.joining(", "));
+
+        return name + ": {" + fieldsDescription + "}";
     }
 
     private Action nextSubagent(AgenticScope agenticScope, String lastResponse) {
@@ -212,6 +239,19 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
 
     private String agentId() {
         return outputKey + "@Supervisor";
+    }
+
+    @Override
+    public Map<String, Object> executionState() {
+        return Map.of("loopCount", loopCount);
+    }
+
+    @Override
+    public void restoreExecutionState(Map<String, Object> state) {
+        Object savedLoopCount = state.get("loopCount");
+        if (savedLoopCount instanceof Number n) {
+            this.loopCount = n.intValue();
+        }
     }
 
     @Override
