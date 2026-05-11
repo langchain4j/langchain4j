@@ -143,7 +143,7 @@ public class DefaultToolExecutor implements ToolExecutor {
     private Object[] prepareArguments(ToolExecutionRequest toolExecutionRequest, InvocationContext context) {
         try {
             Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
-            return prepareArguments(originalMethod, argumentsMap, context);
+            return prepareArguments(originalMethod, toolExecutionRequest.name(), argumentsMap, context);
         } catch (Exception e) {
             if (wrapToolArgumentsExceptions) {
                 throw new ToolArgumentsException(unwrapRuntimeException(e));
@@ -196,7 +196,8 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
     }
 
-    static Object[] prepareArguments(Method method, Map<String, Object> argumentsMap, InvocationContext context) {
+    static Object[] prepareArguments(
+            Method method, String toolName, Map<String, Object> argumentsMap, InvocationContext context) {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
 
@@ -233,6 +234,9 @@ public class DefaultToolExecutor implements ToolExecutor {
                 arguments[i] = createOptional(argument, parameterName, parameterType);
             } else if (argument != null) {
                 arguments[i] = coerceArgument(argument, parameterName, parameterClass, parameterType);
+            } else if (parameterClass.isPrimitive()) {
+                throw new IllegalArgumentException(String.format(
+                        "Required parameter \"%s\" of tool \"%s\" is missing", parameterName, toolName));
             }
         }
 

@@ -20,7 +20,6 @@ import org.mockito.InOrder;
 
 import java.util.List;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 
@@ -40,13 +39,15 @@ class MicrosoftFoundryStreamingChatModelIT extends AbstractStreamingChatModelIT 
 
     @Override
     protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
-        return OpenAiOfficialStreamingChatModel.builder()
+        OpenAiOfficialStreamingChatModel.Builder builder = OpenAiOfficialStreamingChatModel.builder()
                 .baseUrl(System.getenv("MICROSOFT_FOUNDRY_ENDPOINT"))
                 .apiKey(System.getenv("MICROSOFT_FOUNDRY_API_KEY"))
                 .microsoftFoundryDeploymentName("gpt-4o")
-                .modelName(getOrDefault(parameters.modelName(), "gpt-4o"))
-                .defaultRequestParameters(parameters)
-                .build();
+                .defaultRequestParameters(parameters);
+        if (parameters.modelName() == null) {
+            builder.modelName("gpt-4o");
+        }
+        return builder.build();
     }
 
     @Override

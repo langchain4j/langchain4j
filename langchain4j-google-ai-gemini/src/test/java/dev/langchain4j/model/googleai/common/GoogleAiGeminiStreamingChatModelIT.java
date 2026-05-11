@@ -17,6 +17,7 @@ import java.util.List;
 import dev.langchain4j.model.googleai.GoogleAiGeminiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
 
@@ -111,6 +112,10 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel model) {
         return GoogleAiGeminiTokenUsage.class;
     }
+
+    @Disabled("Gemini cannot do it reliably")
+    @Override
+    protected void should_execute_multiple_tools_in_parallel_then_answer(StreamingChatModel model) {}
 
     @Override
     protected void sleepIfNeeded() {

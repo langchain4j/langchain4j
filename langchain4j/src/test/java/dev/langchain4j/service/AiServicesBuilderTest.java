@@ -4,6 +4,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.mockito.Mockito.mock;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
@@ -159,5 +160,23 @@ class AiServicesBuilderTest {
                         .tools((Object) listOfTools) // passing a List as a single tool object
                         .build())
                 .withMessageContaining("is an Iterable");
+    }
+
+    @Test
+    void should_raise_an_error_when_primitive_tool_parameter_is_marked_as_optional() {
+        class ToolWithOptionalPrimitive {
+            @Tool("Read part of a file")
+            void readFile(String filePath, @P(required = false) int startLine) {}
+        }
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds("Hello there!");
+
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() -> AiServices.builder(TestService.class)
+                        .chatModel(chatModel)
+                        .tools(new ToolWithOptionalPrimitive())
+                        .build())
+                .withMessageContaining("is a primitive")
+                .withMessageContaining("@P(required = false)");
     }
 }

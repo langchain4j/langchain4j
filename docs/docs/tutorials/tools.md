@@ -404,7 +404,8 @@ void getTemperature(
 #### Required and Optional
 
 By default, all tool method parameters are considered **_required_**.
-This means that the LLM will have to produce a value for such a parameter.
+This means the parameter is listed in the JSON schema's `required` array sent to the LLM,
+instructing it to produce a value.
 A parameter can be made optional by annotating it with `@P(required = false)`:
 ```java
 @Tool
@@ -412,6 +413,19 @@ void getTemperature(String location, @P("Unit of temperature", required = false)
     ...
 }
 ```
+
+:::caution Required is advisory: the LLM can still omit arguments
+The `required` flag controls the JSON schema sent to the LLM (required parameters are listed
+in the schema's `required` array). The LLM is expected to honour this, but in practice it can
+disregard the schema and omit an argument anyway.
+
+In LangChain4j 1.x, this is detected only for **primitive** parameters (`int`, `long`, `boolean`, …) — a
+missing primitive triggers the `ToolArgumentsErrorHandler` (see [Error Handling](#handling-tool-arguments-errors)
+below). **Missing object parameters are not validated**: `null` is passed to the
+`@Tool`-annotated method even though the schema marked the parameter as required.
+
+This asymmetry will be removed in LangChain4j 2.0, where all required arguments will be validated uniformly.
+:::
 
 #### Alternative: Using `Optional<T>` for Optional Parameters
 
@@ -1364,8 +1378,18 @@ AssistantHallucinatedTool assistant = AiServices.builder(AssistantHallucinatedTo
 
 #### Handling Tool Arguments Errors
 
-By default, when something is wrong with tool arguments (e.g., the LLM generates an invalid JSON),
-the AI Service will not be able to execute the tool, so it will fail with an exception.
+By default, when something is wrong with tool arguments (e.g., the LLM generates an invalid JSON
+or omits a required parameter), the AI Service will not be able to execute the tool, so it will
+fail with an exception.
+
+:::caution Recommended: feed argument errors back to the LLM
+The current default (throw) is rarely what you want.
+Argument errors usually come from the LLM, and LLMs can typically self-correct when given a clear
+error message. Configure a `ToolArgumentsErrorHandler` that returns the error text so the LLM can
+retry with corrected arguments.
+
+The default will change to this behaviour in LangChain4j 2.0.
+:::
 
 You can customize this behaviour by configuring a `ToolArgumentsErrorHandler` on the AI Service:
 
@@ -1383,7 +1407,17 @@ Currently, there are two ways to handle errors inside the `ToolArgumentsErrorHan
 - Return a text message (e.g., an error description) that will be sent back to the LLM,
   allowing it to respond appropriately (for example, by correcting the error and retrying).
 
-Here is an example of the first approach:
+**Recommended (let the LLM retry):**
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(tools)
+        .toolArgumentsErrorHandler((error, errorContext) -> ToolErrorHandlerResult.text(error.getMessage()))
+        .build();
+```
+
+**Strict (stop the flow on any argument error):**
 
 ```java
 Assistant assistant = AiServices.builder(Assistant.class)
@@ -1399,21 +1433,24 @@ try {
 }
 ```
 
-Here is an example of the second approach:
-
-```java
-Assistant assistant = AiServices.builder(Assistant.class)
-        .chatModel(chatModel)
-        .tools(tools)
-        .toolArgumentsErrorHandler((error, errorContext) -> ToolErrorHandlerResult.text("Something is wrong with tool arguments: " + error.getMessage()))
-        .build();
-```
-
 #### Handling Tool Execution Errors
 
 By default, when a method annotated with `@Tool` throws an `Exception`,
 the message of the `Exception` (`e.getMessage()`) will be sent to the LLM as the result of tool's execution.
 This allows the LLM to correct its mistake and retry, if it considers it necessary.
+
+:::warning Recommended: do not send raw exception messages to the LLM in production
+The current default sends the raw exception message back to the LLM. In production this can leak
+internal application data: stack traces, file paths, credentials embedded in error strings,
+downstream API responses, PII from error messages, etc.
+Once fed to the LLM, this content can flow into responses, chat history, observability pipelines,
+and the LLM provider's logs.
+
+Configure a `ToolExecutionErrorHandler` that returns either a generic message or a curated/sanitized
+description of the failure, and rely on logs and observability events for the underlying detail.
+
+The default will change to "Throw an exception and abort AI Service invocation" in LangChain4j 2.0.
+:::
 
 You can customize this behaviour by configuring a `ToolExecutionErrorHandler` on the AI Service:
 
@@ -1421,7 +1458,7 @@ You can customize this behaviour by configuring a `ToolExecutionErrorHandler` on
 Assistant assistant = AiServices.builder(Assistant.class)
         .chatModel(chatModel)
         .tools(tools)
-        .toolExecutionErrorHandler((error, errorContext) -> ToolErrorHandlerResult.text("Something is wrong with tool execution: " + error.getMessage()))
+        .toolExecutionErrorHandler((error, errorContext) -> ToolErrorHandlerResult.text("Tool execution failed."))
         .build();
 ```
 
