@@ -19,6 +19,7 @@ import org.mockito.Captor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -27,8 +28,11 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
@@ -407,9 +411,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
     void should_substitute_default_for_Map_when_LLM_omits_it(String missingArguments) {
         class Tools {
             @Tool
-            void process(
-                    @P(value = "string keys to integer values", defaultValue = "{\"a\":1,\"b\":2}")
-                    Map<String, Integer> counts) {
+            void process(@P(defaultValue = "{\"a\":1,\"b\":2}") Map<String, Integer> counts) {
             }
         }
         Tools tool = spy(new Tools());
@@ -506,8 +508,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
                             }""";
 
             @Tool
-            void process(
-                    @P(value = "string id to person", defaultValue = DEFAULT_MAP) Map<String, Person> people) {
+            void process(@P(defaultValue = DEFAULT_MAP) Map<String, Person> people) {
             }
         }
         Tools tool = spy(new Tools());
@@ -547,7 +548,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
 
         assistant.chat("call the tool");
 
-        verify(tool).process(new int[] {1, 2, 3});
+        verify(tool).process(new int[]{1, 2, 3});
         verifyNoMoreInteractions(tool);
     }
 
@@ -568,7 +569,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
 
         assistant.chat("call the tool");
 
-        verify(tool).process(new String[] {"a", "b"});
+        verify(tool).process(new String[]{"a", "b"});
         verifyNoMoreInteractions(tool);
     }
 
@@ -602,8 +603,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
     void should_substitute_default_for_empty_Map_when_LLM_omits_it(String missingArguments) {
         class Tools {
             @Tool
-            void process(@P(value = "string keys to string values", defaultValue = "{}")
-                    Map<String, String> entries) {
+            void process(@P(defaultValue = "{}") Map<String, String> entries) {
             }
         }
         Tools tool = spy(new Tools());
@@ -649,7 +649,9 @@ class AiServicesWithToolsWithDefaultValuesTest {
     // tool-side mutation does not contaminate later calls.
     // ---------------------------------------------------------------------
 
-    /** Helper: two consecutive tool calls, both omitting the argument. */
+    /**
+     * Helper: two consecutive tool calls, both omitting the argument.
+     */
     private static ChatModel mockReturningTwoToolCalls(String toolName) {
         return ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
@@ -667,7 +669,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
 
     @Test
     void mutation_of_List_default_does_not_leak_between_invocations() {
-        java.util.List<Integer> sizesAtEntry = new java.util.ArrayList<>();
+        List<Integer> sizesAtEntry = new ArrayList<>();
         class Tools {
             @Tool
             void process(@P(defaultValue = "[\"a\",\"b\"]") List<String> tags) {
@@ -687,7 +689,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
 
     @Test
     void mutation_of_Set_default_does_not_leak_between_invocations() {
-        java.util.List<Integer> sizesAtEntry = new java.util.ArrayList<>();
+        List<Integer> sizesAtEntry = new ArrayList<>();
         class Tools {
             @Tool
             void process(@P(defaultValue = "[1,2]") Set<Integer> ids) {
@@ -707,11 +709,10 @@ class AiServicesWithToolsWithDefaultValuesTest {
 
     @Test
     void mutation_of_Map_default_does_not_leak_between_invocations() {
-        java.util.List<Integer> sizesAtEntry = new java.util.ArrayList<>();
+        List<Integer> sizesAtEntry = new ArrayList<>();
         class Tools {
             @Tool
-            void process(@P(value = "string keys to integer values", defaultValue = "{\"a\":1}")
-                    Map<String, Integer> counts) {
+            void process(@P(defaultValue = "{\"a\":1}") Map<String, Integer> counts) {
                 sizesAtEntry.add(counts.size());
                 counts.put("b", 2);
             }
@@ -726,14 +727,16 @@ class AiServicesWithToolsWithDefaultValuesTest {
         assertThat(sizesAtEntry).containsExactly(1, 1);
     }
 
-    /** POJO whose internal collection is mutable — mutation through the field must not leak either. */
+    /**
+     * POJO whose internal collection is mutable — mutation through the field must not leak either.
+     */
     public static final class MutableContainer {
-        public java.util.List<String> items = new java.util.ArrayList<>();
+        public List<String> items = new ArrayList<>();
     }
 
     @Test
     void mutation_of_POJO_default_does_not_leak_between_invocations() {
-        java.util.List<Integer> sizesAtEntry = new java.util.ArrayList<>();
+        List<Integer> sizesAtEntry = new ArrayList<>();
         class Tools {
             @Tool
             void process(@P(defaultValue = "{\"items\":[\"a\",\"b\"]}") MutableContainer container) {
@@ -756,11 +759,12 @@ class AiServicesWithToolsWithDefaultValuesTest {
      * A naive cache that stores the parsed record would share the same inner list
      * across invocations — this test ensures fresh inner state on each call.
      */
-    public record RecordWithList(java.util.List<String> items) {}
+    public record RecordWithList(List<String> items) {
+    }
 
     @Test
     void mutation_of_record_inner_collection_does_not_leak_between_invocations() {
-        java.util.List<Integer> sizesAtEntry = new java.util.ArrayList<>();
+        List<Integer> sizesAtEntry = new ArrayList<>();
         class Tools {
             @Tool
             void process(@P(defaultValue = "{\"items\":[\"a\",\"b\"]}") RecordWithList container) {
@@ -801,7 +805,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
 
         assistant.chat("call the tool");
 
-        verify(tool).process((Person) null);
+        verify(tool).process(null);
         verifyNoMoreInteractions(tool);
     }
 
@@ -828,10 +832,10 @@ class AiServicesWithToolsWithDefaultValuesTest {
                 .tools(tool)
                 .build();
 
-        org.assertj.core.api.Assertions.assertThatExceptionOfType(IllegalArgumentException.class)
+        assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> assistant.chat("call the tool"))
                 .withMessageContaining("not convertable to int");
-        org.mockito.Mockito.verifyNoInteractions(tool);
+        verifyNoInteractions(tool);
     }
 
     @Test
@@ -914,8 +918,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
         }
         Tools tool = spy(new Tools());
 
-        ChatModel chatModelMock = org.mockito.Mockito.spy(
-                mockReturningToolCallWithArgs("process", "{\"arg0\":\"hi\"}"));
+        ChatModel chatModelMock = spy(mockReturningToolCallWithArgs("process", "{\"arg0\":\"hi\"}"));
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModelMock)
                 .tools(tool)
@@ -923,7 +926,7 @@ class AiServicesWithToolsWithDefaultValuesTest {
 
         assistant.chat("call the tool");
 
-        verify(chatModelMock, org.mockito.Mockito.atLeastOnce()).chat(chatRequestCaptor.capture());
+        verify(chatModelMock, atLeastOnce()).chat(chatRequestCaptor.capture());
         ToolSpecification spec = chatRequestCaptor.getValue().parameters().toolSpecifications().get(0);
         assertThat(spec.parameters().required()).containsExactly("arg0");
         assertThat(spec.parameters().properties().keySet()).containsExactly("arg0", "arg1");
