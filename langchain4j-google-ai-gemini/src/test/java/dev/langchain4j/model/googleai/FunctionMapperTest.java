@@ -161,7 +161,7 @@ class FunctionMapperTest {
 
     static class OrderSystem {
         @Tool("Make an order")
-        boolean makeOrder(@P(value = "The order to make") Order order) {
+        boolean makeOrder(@P("The order to make") Order order) {
             return true;
         }
     }
