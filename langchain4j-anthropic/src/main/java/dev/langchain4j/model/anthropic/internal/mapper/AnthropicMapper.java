@@ -2,6 +2,7 @@ package dev.langchain4j.model.anthropic.internal.mapper;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -409,8 +410,7 @@ public class AnthropicMapper {
             Boolean strictTools) {
         JsonObjectSchema parameters = toolSpecification.parameters();
 
-        // prevent NPE during unboxing
-        boolean strict = Boolean.TRUE.equals(strictTools);
+        boolean strict = isEffectivelyStrict(toolSpecification, Boolean.TRUE.equals(strictTools));
 
         AnthropicTool.Builder toolBuilder = AnthropicTool.builder()
                 .name(toolSpecification.name())

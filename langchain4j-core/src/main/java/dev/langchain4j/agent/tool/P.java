@@ -92,9 +92,49 @@ public @interface P {
      *   <li><b>Object parameters</b> — not validated; {@code null} is passed to the
      *       {@link Tool}-annotated method, even though the schema marked the parameter as required.</li>
      * </ul>
-     * This asymmetry will be removed in LangChain4j 2.0, where all required arguments will be validated uniformly.
+     * We are planning to remove this asymmetry in LangChain4j 2.0 so that all required arguments are
+     * validated uniformly. If this planned change would affect your use case, please open an issue at
+     * <a href="https://github.com/langchain4j/langchain4j/issues">github.com/langchain4j/langchain4j/issues</a>
+     * so we can hear your feedback before it lands.
      *
      * @return {@code true} if the parameter is required, {@code false} otherwise
      */
     boolean required() default true;
+
+    /**
+     * Default value to substitute when the LLM omits this argument.
+     * <p>
+     * Setting a default value is equivalent to setting {@link #required()} to {@code false}: the parameter is
+     * marked as <b>optional in the JSON schema</b> sent to the LLM (it is not added to the schema's
+     * {@code required} array). When the LLM omits the argument, the framework substitutes this
+     * default at runtime instead of passing {@code null} (or, for primitives, throwing).
+     * <p>
+     * The string is parsed at AI Service registration time according to the parameter's type:
+     * <ul>
+     *   <li>{@code String} parameters: used verbatim.</li>
+     *   <li>Primitives, boxed primitives, enums, {@code BigDecimal}, {@code BigInteger}, {@code UUID}:
+     *       parsed via type-specific conversion.</li>
+     *   <li>Collections, maps, POJOs: parsed as JSON
+     *       (e.g. {@code "[]"}, {@code "{\"name\":\"foo\"}"}).</li>
+     * </ul>
+     * If the value cannot be parsed into the parameter's type, AI Service construction fails with exception.
+     * <p>
+     * <b>Restrictions:</b>
+     * <ul>
+     *   <li>Cannot be combined with {@code Optional<T>} parameters
+     *       (Optional already represents "absent"; pick one mechanism).</li>
+     *   <li>Cannot be set on framework-injected parameters
+     *       ({@link ToolMemoryId @ToolMemoryId} and similar).</li>
+     * </ul>
+     *
+     * @return the default value as a string, or {@link #NO_DEFAULT} if not set
+     */
+    String defaultValue() default NO_DEFAULT;
+
+    /**
+     * Sentinel value for {@link #defaultValue()} meaning "no default set".
+     * Lets the framework distinguish between "the developer did not specify a default"
+     * and "the default is an empty string".
+     */
+    String NO_DEFAULT = "\0__LANGCHAIN4J_NO_DEFAULT__\0";
 }

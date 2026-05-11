@@ -12,6 +12,9 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.TypedKey;
+import dev.langchain4j.agentic.internal.AgentUtil;
+import dev.langchain4j.agentic.internal.AgenticScopeOwner;
+import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AfterAgentToolExecution;
 import dev.langchain4j.agentic.observability.AgentListener;
@@ -19,9 +22,6 @@ import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.observability.MonitoredAgent;
-import dev.langchain4j.agentic.internal.AgentUtil;
-import dev.langchain4j.agentic.internal.AgenticScopeOwner;
-import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
@@ -33,7 +33,6 @@ import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
@@ -98,7 +97,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     private Map<ToolSpecification, ToolExecutor> toolsMap;
     private Set<String> immediateReturnToolNames;
     private final List<ToolProvider> toolProviders = new ArrayList<>();
-    private Integer maxSequentialToolsInvocations;
+    private Integer maxToolCallingRoundTrips;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy;
     private boolean executeToolsConcurrently;
     private Executor concurrentToolsExecutor;
@@ -148,8 +147,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         AiServiceContext context = AiServiceContext.create(agentServiceClass);
         AiServices<T> aiServices = AiServices.builder(context);
         if (model != null && streamingChatModel != null) {
-            throw new AgenticSystemConfigurationException(
-                    "Both chatModel and streamingChatModel are set for agent '" + this.name + "'. Please set only one of them.");
+            throw new AgenticSystemConfigurationException("Both chatModel and streamingChatModel are set for agent '"
+                    + this.name + "'. Please set only one of them.");
         }
         if (model != null) {
             aiServices.chatModel(model);
@@ -189,8 +188,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
                 aiServices.chatRequestTransformer(
                         new Context.AgenticScopeContextGenerator(agenticScope, contextProvider));
             } else {
-                aiServices.chatRequestTransformer(
-                        new Context.Summarizer(agenticScope, model, contextProvidingAgents));
+                aiServices.chatRequestTransformer(new Context.Summarizer(agenticScope, model, contextProvidingAgents));
             }
         }
 
@@ -206,8 +204,10 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
                 agentServiceClass.getClassLoader(),
                 new Class<?>[] {
                     agentServiceClass,
-                    InternalAgent.class, AgenticScopeOwner.class,
-                    ChatMemoryAccess.class, ChatMessagesAccess.class,
+                    InternalAgent.class,
+                    AgenticScopeOwner.class,
+                    ChatMemoryAccess.class,
+                    ChatMessagesAccess.class,
                     AiServiceResponseReceivedListener.class
                 },
                 new AgentInvocationHandler(context, aiServices.build(), this, agenticScopeDependent));
@@ -228,7 +228,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         return (T) agent;
     }
 
-    protected void build(DefaultAgenticScope agenticScope, AiServiceContext context, AiServices<T> aiServices) { }
+    protected void build(DefaultAgenticScope agenticScope, AiServiceContext context, AiServices<T> aiServices) {}
 
     private void setupGuardrails(AiServices<T> aiServices) {
         if (inputGuardrailsConfig != null) {
@@ -265,8 +265,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         if (!toolProviders.isEmpty()) {
             aiServices.toolProviders(toolProviders);
         }
-        if (maxSequentialToolsInvocations != null) {
-            aiServices.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
+        if (maxToolCallingRoundTrips != null) {
+            aiServices.maxToolCallingRoundTrips(maxToolCallingRoundTrips);
         }
         if (hallucinatedToolNameStrategy != null) {
             aiServices.hallucinatedToolNameStrategy(hallucinatedToolNameStrategy);
@@ -344,9 +344,15 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         return toolProviders(asList(toolProviders));
     }
 
-    public B maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
-        this.maxSequentialToolsInvocations = maxSequentialToolsInvocations;
+    public B maxToolCallingRoundTrips(int maxToolCallingRoundTrips) {
+        this.maxToolCallingRoundTrips = maxToolCallingRoundTrips;
         return (B) this;
+    }
+
+    /** @deprecated Use {@link #maxToolCallingRoundTrips(int)} instead. */
+    @Deprecated(since = "1.15.0")
+    public B maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
+        return maxToolCallingRoundTrips(maxSequentialToolsInvocations);
     }
 
     public B hallucinatedToolNameStrategy(
@@ -375,14 +381,12 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         return (B) this;
     }
 
-    public <I extends InputGuardrail> B inputGuardrailClasses(
-            Class<? extends I>... inputGuardrailClasses) {
+    public <I extends InputGuardrail> B inputGuardrailClasses(Class<? extends I>... inputGuardrailClasses) {
         this.inputGuardrailClasses = inputGuardrailClasses;
         return (B) this;
     }
 
-    public <O extends OutputGuardrail> B outputGuardrailClasses(
-            Class<? extends O>... outputGuardrailClasses) {
+    public <O extends OutputGuardrail> B outputGuardrailClasses(Class<? extends O>... outputGuardrailClasses) {
         this.outputGuardrailClasses = outputGuardrailClasses;
         return (B) this;
     }
@@ -503,5 +507,4 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         }
         return (B) this;
     }
-
 }

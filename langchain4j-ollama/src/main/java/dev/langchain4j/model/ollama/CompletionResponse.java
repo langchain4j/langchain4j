@@ -15,6 +15,7 @@ class CompletionResponse {
     private String model;
     private String createdAt;
     private String response;
+    private String image;
     private Boolean done;
     private Integer promptEvalCount;
     private Integer evalCount;
@@ -26,6 +27,7 @@ class CompletionResponse {
             String model,
             String createdAt,
             String response,
+            String image,
             Boolean done,
             Integer promptEvalCount,
             Integer evalCount,
@@ -33,6 +35,7 @@ class CompletionResponse {
         this.model = model;
         this.createdAt = createdAt;
         this.response = response;
+        this.image = image;
         this.done = done;
         this.promptEvalCount = promptEvalCount;
         this.evalCount = evalCount;
@@ -71,6 +74,14 @@ class CompletionResponse {
         this.response = response;
     }
 
+    public String getImage() {
+        return image;
+    }
+
+    public void setImage(String image) {
+        this.image = image;
+    }
+
     public Integer getPromptEvalCount() {
         return promptEvalCount;
     }
@@ -100,6 +111,7 @@ class CompletionResponse {
         private String model;
         private String createdAt;
         private String response;
+        private String image;
         private Boolean done;
         private Integer promptEvalCount;
         private Integer evalCount;
@@ -117,6 +129,11 @@ class CompletionResponse {
 
         Builder response(String response) {
             this.response = response;
+            return this;
+        }
+
+        Builder image(String image) {
+            this.image = image;
             return this;
         }
 
@@ -141,7 +158,8 @@ class CompletionResponse {
         }
 
         CompletionResponse build() {
-            return new CompletionResponse(model, createdAt, response, done, promptEvalCount, evalCount, error);
+            return new CompletionResponse(
+                    model, createdAt, response, image, done, promptEvalCount, evalCount, error);
         }
     }
 }

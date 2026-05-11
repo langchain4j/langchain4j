@@ -72,8 +72,8 @@ class ToolSpecificationsTest implements WithAssertions {
                 Collection<String> p24,
                 E p25,
                 Person p26,
-                @P(value = "optional", required = false) int p27,
-                @P(value = "required") int p28) {
+                @P(description = "optional", required = false) int p27,
+                @P(description = "required") int p28) {
             return 42;
         }
 
@@ -422,7 +422,7 @@ class ToolSpecificationsTest implements WithAssertions {
     void parameter_explicitly_required_true_is_required() throws NoSuchMethodException {
         class Tools {
             @Tool
-            public void tool(@P(value = "foo", required = true) String foo, @P("bar") String bar) {}
+            public void tool(@P(description = "foo", required = true) String foo, @P("bar") String bar) {}
         }
         Method method = Tools.class.getMethod("tool", String.class, String.class);
         ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
@@ -430,6 +430,37 @@ class ToolSpecificationsTest implements WithAssertions {
         assertThat(ts.parameters()).isInstanceOf(JsonObjectSchema.class);
         JsonObjectSchema schema = ts.parameters();
         assertThat(schema.required()).containsExactly("arg0", "arg1"); // both required
+        assertThat(schema.properties().keySet()).containsExactly("arg0", "arg1");
+    }
+
+    @Test
+    void parameter_with_default_value_is_not_required() throws NoSuchMethodException {
+        class Tools {
+            @Tool
+            public void tool(String foo, @P(defaultValue = "10") int bar) {}
+        }
+        Method method = Tools.class.getMethod("tool", String.class, int.class);
+        ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
+
+        assertThat(ts.parameters()).isInstanceOf(JsonObjectSchema.class);
+        JsonObjectSchema schema = ts.parameters();
+        assertThat(schema.required()).containsExactly("arg0"); // 'bar' is optional because it has a default
+        assertThat(schema.properties().keySet()).containsExactly("arg0", "arg1");
+    }
+
+    @Test
+    void parameter_with_default_value_is_not_required_even_when_required_is_true() throws NoSuchMethodException {
+        // defaultValue takes precedence over required = true for the schema's required array.
+        class Tools {
+            @Tool
+            public void tool(String foo, @P(required = true, defaultValue = "10") int bar) {}
+        }
+        Method method = Tools.class.getMethod("tool", String.class, int.class);
+        ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
+
+        assertThat(ts.parameters()).isInstanceOf(JsonObjectSchema.class);
+        JsonObjectSchema schema = ts.parameters();
+        assertThat(schema.required()).containsExactly("arg0");
         assertThat(schema.properties().keySet()).containsExactly("arg0", "arg1");
     }
 

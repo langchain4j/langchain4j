@@ -65,7 +65,7 @@ class AiServicesWithToolsWithRequiredIT {
         class ToolWithOptionalParameter {
 
             @Tool
-            void process(@P("name") String name, @P(value = "age", required = false) Integer age) {
+            void process(@P("name") String name, @P(description = "age", required = false) Integer age) {
                 // this method is empty
             }
 
@@ -166,7 +166,7 @@ class AiServicesWithToolsWithRequiredIT {
         class ToolWithOptionalJavaOptional {
 
             @Tool
-            void process(@P("name") String name, @P(value = "age") Optional<Integer> age) {
+            void process(@P("name") String name, @P("age") Optional<Integer> age) {
                 // this method is empty
             }
 
@@ -210,7 +210,7 @@ class AiServicesWithToolsWithRequiredIT {
         class ToolWithOptionalComplexType {
 
             @Tool
-            void process(@P("name") String name, @P(value = "items") Optional<List<String>> items) {}
+            void process(@P("name") String name, @P("items") Optional<List<String>> items) {}
 
             static final JsonSchemaElement EXPECTED_SCHEMA = JsonObjectSchema.builder()
                     .addStringProperty("arg0", "name")

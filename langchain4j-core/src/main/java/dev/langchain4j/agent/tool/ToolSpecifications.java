@@ -148,7 +148,10 @@ public class ToolSpecifications {
 
             boolean isOptional = Optional.class.equals(parameter.getType());
             P pAnnotation = parameter.getAnnotation(P.class);
+            boolean hasDefaultValue =
+                    pAnnotation != null && !P.NO_DEFAULT.equals(pAnnotation.defaultValue());
             boolean isRequired = !isOptional
+                    && !hasDefaultValue
                     && Optional.ofNullable(pAnnotation)
                             .map(P::required)
                             .orElse(true);
