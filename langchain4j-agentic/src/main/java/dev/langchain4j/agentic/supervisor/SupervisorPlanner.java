@@ -3,10 +3,12 @@ package dev.langchain4j.agentic.supervisor;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.planner.Action;
+import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.ChatMemoryAccessProvider;
@@ -131,7 +133,8 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
                 ? SUPERVISOR_CONTEXT_PREFIX + "'" + agenticScope.readState(SUPERVISOR_CONTEXT_KEY, "") + "'."
                 : "";
 
-        AgentInvocation agentInvocation = planner(agenticScope).plan(agenticScope.memoryId(), agentsList, request, lastResponse, supervisorContext);
+        AgentInvocation agentInvocation = withAgenticScope(agenticScope,
+                () -> planner(agenticScope).plan(agenticScope.memoryId(), agentsList, request, lastResponse, supervisorContext));
         LOG.info("Agent Invocation: {}", agentInvocation);
 
         if (agentInvocation.getAgentName().equalsIgnoreCase("done")) {
@@ -144,6 +147,15 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
                 .filter(entry -> writeArgumentToScope(agenticScope, agent, entry.getKey(), entry.getValue()))
                 .forEach(entry -> agenticScope.writeState(entry.getKey(), entry.getValue()));
         return call(agent);
+    }
+
+    private static <T> T withAgenticScope(AgenticScope agenticScope, Supplier<T> supplier) {
+        LangChain4jManaged.setCurrent(Map.of(AgenticScope.class, agenticScope));
+        try {
+            return supplier.get();
+        } finally {
+            LangChain4jManaged.removeCurrent();
+        }
     }
 
     private AgentInstance findAgentByName(String agentName) {
@@ -201,7 +213,8 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
             case LAST -> lastResponse;
             case SUMMARY -> doneResponse;
             case SCORED -> {
-                ResponseScore score = responseAgent.scoreResponses(request, lastResponse, doneResponse);
+                ResponseScore score = withAgenticScope(agenticScope,
+                        () -> responseAgent.scoreResponses(request, lastResponse, doneResponse));
                 LOG.info("Response scores: {}", score);
                 yield score.getScore2() > score.getScore1() ? doneResponse : lastResponse;
             }
