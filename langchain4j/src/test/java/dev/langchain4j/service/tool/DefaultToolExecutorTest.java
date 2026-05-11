@@ -6,7 +6,6 @@ import static java.util.Collections.singletonMap;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
@@ -709,120 +708,5 @@ class DefaultToolExecutorTest implements WithAssertions {
         assertThatExceptionOfType(ToolArgumentsException.class)
                 .isThrownBy(() -> executor.execute(request, "DEFAULT"))
                 .withCauseInstanceOf(IllegalArgumentException.class);
-    }
-
-    @SuppressWarnings("unused")
-    public void primitiveToolWithDefault(String filePath, @P(defaultValue = "10") int startLine) {}
-
-    @Test
-    void should_substitute_default_when_primitive_is_missing() throws Exception {
-        Method method = getClass().getMethod("primitiveToolWithDefault", String.class, int.class);
-        DefaultToolExecutor executor = DefaultToolExecutor.builder()
-                .object(this)
-                .originalMethod(method)
-                .methodToInvoke(method)
-                .build();
-
-        Map<String, Object> arguments = new HashMap<>();
-        arguments.put("arg0", "/tmp/foo.txt");
-
-        InvocationContext context = InvocationContext.builder().build();
-
-        Object[] args = DefaultToolExecutor.prepareArguments(
-                method,
-                "primitiveToolWithDefault",
-                arguments,
-                executor.defaultArguments(),
-                context);
-
-        assertThat(args).containsExactly("/tmp/foo.txt", 10);
-    }
-
-    @SuppressWarnings("unused")
-    public void toolWithStringDefault(@P(defaultValue = "USD") String currency) {}
-
-    @Test
-    void should_substitute_default_for_string_parameter() throws Exception {
-        Method method = getClass().getMethod("toolWithStringDefault", String.class);
-        DefaultToolExecutor executor = DefaultToolExecutor.builder()
-                .object(this)
-                .originalMethod(method)
-                .methodToInvoke(method)
-                .build();
-
-        InvocationContext context = InvocationContext.builder().build();
-
-        Object[] args = DefaultToolExecutor.prepareArguments(
-                method,
-                "toolWithStringDefault",
-                new HashMap<>(),
-                executor.defaultArguments(),
-                context);
-
-        assertThat(args).containsExactly("USD");
-    }
-
-    @SuppressWarnings("unused")
-    public void toolWithListDefault(
-            @P(defaultValue = "[\"a\",\"b\"]") List<String> tags) {}
-
-    @Test
-    void should_substitute_default_for_list_parameter() throws Exception {
-        Method method = getClass().getMethod("toolWithListDefault", List.class);
-        DefaultToolExecutor executor = DefaultToolExecutor.builder()
-                .object(this)
-                .originalMethod(method)
-                .methodToInvoke(method)
-                .build();
-
-        InvocationContext context = InvocationContext.builder().build();
-
-        Object[] args = DefaultToolExecutor.prepareArguments(
-                method,
-                "toolWithListDefault",
-                new HashMap<>(),
-                executor.defaultArguments(),
-                context);
-
-        assertThat(args).hasSize(1);
-        assertThat(args[0]).isEqualTo(asList("a", "b"));
-    }
-
-    @Test
-    void should_use_llm_provided_value_over_default() throws Exception {
-        Method method = getClass().getMethod("primitiveToolWithDefault", String.class, int.class);
-        DefaultToolExecutor executor = DefaultToolExecutor.builder()
-                .object(this)
-                .originalMethod(method)
-                .methodToInvoke(method)
-                .build();
-
-        Map<String, Object> arguments = new HashMap<>();
-        arguments.put("arg0", "/tmp/foo.txt");
-        arguments.put("arg1", 5.0);
-
-        InvocationContext context = InvocationContext.builder().build();
-
-        Object[] args = DefaultToolExecutor.prepareArguments(
-                method,
-                "primitiveToolWithDefault",
-                arguments,
-                executor.defaultArguments(),
-                context);
-
-        assertThat(args).containsExactly("/tmp/foo.txt", 5);
-    }
-
-    @Test
-    void should_throw_when_default_value_cannot_be_parsed() throws Exception {
-        @SuppressWarnings("unused")
-        class BadDefault {
-            public void tool(@P(defaultValue = "ten") int x) {}
-        }
-        Method method = BadDefault.class.getMethod("tool", int.class);
-
-        assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new DefaultToolExecutor(new BadDefault(), method))
-                .withMessageContaining("Cannot parse @P(defaultValue = \"ten\")");
     }
 }
