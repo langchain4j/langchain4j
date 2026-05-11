@@ -69,6 +69,20 @@ langchain4j.open-ai.embedding-model.timeout=...
 langchain4j.open-ai.embedding-model.user=...
 ```
 
+## Setting custom embedding request parameters
+
+When using `OpenAiEmbeddingModel`, you can configure custom parameters for the embedding request
+within the HTTP request's JSON body. This is useful for OpenAI-compatible providers that require
+provider-specific embedding parameters:
+```java
+EmbeddingModel model = OpenAiEmbeddingModel.builder()
+        .baseUrl("https://integrate.api.nvidia.com/v1")
+        .apiKey(System.getenv("NVIDIA_API_KEY"))
+        .modelName("nvidia/nv-embedqa-e5-v5")
+        .customParameters(Map.of("input_type", "passage"))
+        .build();
+```
+
 ## Examples
 
 - [OpenAiEmbeddingModelExamples](https://github.com/langchain4j/langchain4j-examples/blob/main/open-ai-examples/src/main/java/OpenAiEmbeddingModelExamples.java)
