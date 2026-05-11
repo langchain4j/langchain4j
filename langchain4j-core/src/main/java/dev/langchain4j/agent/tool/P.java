@@ -92,7 +92,10 @@ public @interface P {
      *   <li><b>Object parameters</b> — not validated; {@code null} is passed to the
      *       {@link Tool}-annotated method, even though the schema marked the parameter as required.</li>
      * </ul>
-     * This asymmetry will be removed in LangChain4j 2.0, where all required arguments will be validated uniformly.
+     * We are planning to remove this asymmetry in LangChain4j 2.0 so that all required arguments are
+     * validated uniformly. If this planned change would affect your use case, please open an issue at
+     * <a href="https://github.com/langchain4j/langchain4j/issues">github.com/langchain4j/langchain4j/issues</a>
+     * so we can hear your feedback before it lands.
      *
      * @return {@code true} if the parameter is required, {@code false} otherwise
      */

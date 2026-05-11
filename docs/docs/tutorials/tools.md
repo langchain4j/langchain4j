@@ -424,7 +424,9 @@ missing primitive triggers the `ToolArgumentsErrorHandler` (see [Error Handling]
 below). **Missing object parameters are not validated**: `null` is passed to the
 `@Tool`-annotated method even though the schema marked the parameter as required.
 
-This asymmetry will be removed in LangChain4j 2.0, where all required arguments will be validated uniformly.
+We are planning to remove this asymmetry in LangChain4j 2.0 so that all required arguments are
+validated uniformly. If this planned change would affect your use case, please
+[open an issue](https://github.com/langchain4j/langchain4j/issues) so we can hear your feedback before it lands.
 
 If you want a real fallback instead of `null` (or instead of an error for primitive parameters), use
 [`@P(defaultValue = ...)`](#default-values).
@@ -446,20 +448,39 @@ void getTemperature(
 }
 ```
 
+Fields and sub-fields of complex parameters are also considered **_required_** by default.
+You can make a field optional by annotating it with `@JsonProperty(required = false)`:
+```java
+record User(String name, @JsonProperty(required = false) String email) {}
+
+@Tool
+void add(User user) {
+    ...
+}
+```
+
+:::note
+Please note that when used with [structured outputs](/tutorials/structured-outputs),
+all fields and sub-fields are considered **_optional_** by default.
+:::
+
+Recursive parameters (e.g., a `Person` class having a `Set<Person> children` field)
+are currently supported only by OpenAI.
+
 #### Default Values
 
 `@P(defaultValue = "...")` declares a value that LangChain4j substitutes when the LLM
-omits the argument. This is the most convenient way to make a parameter optional while
-keeping a non-`null`, non-default-JVM value in your tool method.
+omits the argument. It's the simplest way to make a parameter optional and supply a
+sensible fallback that your tool method receives.
 
 ```java
 @Tool
-void search(
+List<Product> searchProducts(
     String query,
     @P(defaultValue = "10") int limit,
-    @P(defaultValue = "USD") Currency currency
+    @P(defaultValue = "0") int offset
 ) {
-    // If the LLM omits 'limit', it is 10. If it omits 'currency', it is Currency.USD.
+    // If the LLM omits 'limit', it is 10. If it omits 'offset', it is 0.
 }
 ```
 
@@ -470,28 +491,21 @@ your method.
 
 **Supported types:**
 
-| Type | Format | Example |
-|---|---|---|
-| `String` | used verbatim | `defaultValue = "USD"` |
-| Primitive / boxed primitive | type-specific conversion | `"10"`, `"3.14"`, `"true"` |
-| `enum` | enum constant name | `defaultValue = "EUR"` |
-| `UUID` | `UUID.fromString` | `"550e8400-e29b-41d4-a716-446655440000"` |
-| `BigDecimal`, `BigInteger` | numeric literal | `"1.5"`, `"100"` |
-| `List<T>` / `Set<T>` / array | JSON array | `"[\"a\",\"b\"]"`, `"[1,2,3]"` |
-| `Map<K,V>` | JSON object | `"{\"a\":1,\"b\":2}"` |
-| POJOs (including nested) | JSON object | `"{\"name\":\"Klaus\",\"age\":42}"` |
+| Type                         | Format                   | Example                                  |
+|------------------------------|--------------------------|------------------------------------------|
+| `String`                     | used verbatim            | `defaultValue = "USD"`                   |
+| Primitive / boxed primitive  | type-specific conversion | `"10"`, `"3.14"`, `"true"`               |
+| `enum`                       | enum constant name       | `defaultValue = "EUR"`                   |
+| `UUID`                       | `UUID.fromString`        | `"550e8400-e29b-41d4-a716-446655440000"` |
+| `BigDecimal`, `BigInteger`   | numeric literal          | `"1.5"`, `"100"`                         |
+| `List<T>` / `Set<T>` / array | JSON array               | `"[\"a\",\"b\"]"`, `"[1,2,3]"`           |
+| `Map<K,V>`                   | JSON object              | `"{\"a\":1,\"b\":2}"`                    |
+| POJOs (including nested)     | JSON object              | `"{\"name\":\"Klaus\",\"age\":42}"`      |
 
 The default value string is parsed at AI Service registration time. If it cannot be
 converted into the parameter's type, AI Service construction fails immediately with
 `IllegalConfigurationException`, naming the offending parameter — typos are caught at
 startup rather than on the first LLM call.
-
-```java
-class BadTool {
-    @Tool
-    void search(@P(defaultValue = "ten") int limit) { ... } // <- caught at .build() time
-}
-```
 
 **Defaults only apply to absence, not to wrong values.** If the LLM provides an argument
 that fails type coercion (e.g. `"banana"` for an `int`), the coercion error propagates as
@@ -513,35 +527,6 @@ void process(@P(defaultValue = "[\"a\",\"b\"]") List<String> tags) {
   "absent"; pick one mechanism.
 - `defaultValue` cannot be set on LangChain4j-injected parameters (`@ToolMemoryId`,
   `InvocationContext`, etc.) — they don't come from the LLM.
-
-**Tip — making primitive parameters truly optional:** because Java primitives can't be
-`null`, LangChain4j rejects `@P(required = false) int x` at registration time
-(it would NPE when the LLM omits the argument). Use `defaultValue` instead to opt the
-primitive into optional-with-fallback behavior:
-
-```java
-@Tool
-void process(@P(required = false, defaultValue = "0") int startLine) { ... }
-```
-
-Fields and sub-fields of complex parameters are also considered **_required_** by default.
-You can make a field optional by annotating it with `@JsonProperty(required = false)`:
-```java
-record User(String name, @JsonProperty(required = false) String email) {}
-
-@Tool
-void add(User user) {
-    ...
-}
-```
-
-:::note
-Please note that when used with [structured outputs](/tutorials/structured-outputs),
-all fields and sub-fields are considered **_optional_** by default.
-:::
-
-Recursive parameters (e.g., a `Person` class having a `Set<Person> children` field)
-are currently supported only by OpenAI.
 
 #### Polymorphic Tool Parameters
 
@@ -1469,7 +1454,9 @@ Argument errors usually come from the LLM, and LLMs can typically self-correct w
 error message. Configure a `ToolArgumentsErrorHandler` that returns the error text so the LLM can
 retry with corrected arguments.
 
-The default will change to this behaviour in LangChain4j 2.0.
+We are planning to change the default to this behaviour in LangChain4j 2.0. If this planned change
+would affect your use case, please [open an issue](https://github.com/langchain4j/langchain4j/issues)
+so we can hear your feedback before it lands.
 :::
 
 You can customize this behaviour by configuring a `ToolArgumentsErrorHandler` on the AI Service:
@@ -1530,7 +1517,10 @@ and the LLM provider's logs.
 Configure a `ToolExecutionErrorHandler` that returns either a generic message or a curated/sanitized
 description of the failure, and rely on logs and observability events for the underlying detail.
 
-The default will change to "Throw an exception and abort AI Service invocation" in LangChain4j 2.0.
+We are planning to change the default to "Throw an exception and abort AI Service invocation" in
+LangChain4j 2.0. If this planned change would affect your use case, please
+[open an issue](https://github.com/langchain4j/langchain4j/issues) so we can hear your feedback
+before it lands.
 :::
 
 You can customize this behaviour by configuring a `ToolExecutionErrorHandler` on the AI Service:
