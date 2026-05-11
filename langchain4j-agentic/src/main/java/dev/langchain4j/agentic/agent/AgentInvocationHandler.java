@@ -53,6 +53,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
     private final AgentBuilder<?, ?> builder;
     private final Object agent;
     private final boolean agenticScopeDependent;
+    private final ConditionalChatModel conditionalChatModel;
     private String agentId;
     private InternalAgent parent;
     private AgentListener agentListener;
@@ -70,6 +71,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         this.agentId = builder.name;
         this.agenticScopeDependent = agenticScopeDependent;
         this.agentListener = builder.agentListener;
+        this.conditionalChatModel = builder.conditionalChatModel;
     }
 
     @Override
@@ -162,7 +164,13 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         }
 
         AgenticScope agenticScope = LangChain4jManaged.current(AgenticScope.class);
-        return agenticScope != null ? method.invoke(agent, args) : invokeStandaloneAgent(method, args);
+        if (agenticScope != null) {
+            if (conditionalChatModel != null) {
+                context.chatModel = conditionalChatModel.select(agenticScope);
+            }
+            return method.invoke(agent, args);
+        }
+        return invokeStandaloneAgent(method, args);
     }
 
     private Object invokeStandaloneAgent(Method method, Object[] args) {

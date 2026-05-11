@@ -61,6 +61,7 @@ import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
 public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
+
     final Class<T> agentServiceClass;
     final Method agenticMethod;
     final Class<?> agentReturnType;
@@ -76,6 +77,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     private ChatModel model;
     private StreamingChatModel streamingChatModel;
+    ConditionalChatModel conditionalChatModel;
     private ChatMemory chatMemory;
     private ChatMemoryProvider chatMemoryProvider;
     private Function<AgenticScope, String> contextProvider;
@@ -146,15 +148,16 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
         AiServiceContext context = AiServiceContext.create(agentServiceClass);
         AiServices<T> aiServices = AiServices.builder(context);
-        if (model != null && streamingChatModel != null) {
-            throw new AgenticSystemConfigurationException("Both chatModel and streamingChatModel are set for agent '"
-                    + this.name + "'. Please set only one of them.");
-        }
+        validateChatModel();
+
         if (model != null) {
             aiServices.chatModel(model);
         }
         if (streamingChatModel != null) {
             aiServices.streamingChatModel(streamingChatModel);
+        }
+        if (conditionalChatModel != null) {
+            aiServices.chatModel(conditionalChatModel.models()[0]);
         }
         if (chatMemory != null) {
             aiServices.chatMemory(chatMemory);
@@ -228,7 +231,15 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         return (T) agent;
     }
 
-    protected void build(DefaultAgenticScope agenticScope, AiServiceContext context, AiServices<T> aiServices) {}
+    private void validateChatModel() {
+        int modelConfigCount = (model != null ? 1 : 0) + (streamingChatModel != null ? 1 : 0) + (conditionalChatModel != null ? 1 : 0);
+        if (modelConfigCount != 1) {
+            throw new AgenticSystemConfigurationException(
+                    "One and only one of chatModel, streamingChatModel, or conditionalChatModel can be set for agent '" + this.name + "'.");
+        }
+    }
+
+    protected void build(DefaultAgenticScope agenticScope, AiServiceContext context, AiServices<T> aiServices) { }
 
     private void setupGuardrails(AiServices<T> aiServices) {
         if (inputGuardrailsConfig != null) {
@@ -293,6 +304,11 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     public B streamingChatModel(StreamingChatModel streamingChatModel) {
         this.streamingChatModel = streamingChatModel;
+        return (B) this;
+    }
+
+    public B conditionalChatModel(Function<AgenticScope, Integer> selector, ChatModel... models) {
+        this.conditionalChatModel = new ConditionalChatModel(selector, models);
         return (B) this;
     }
 

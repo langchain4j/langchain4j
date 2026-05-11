@@ -99,8 +99,16 @@ public class DeclarativeUtil {
         getAnnotatedMethodOnClass(agentType, ChatModelSupplier.class)
                 .ifPresentOrElse(method -> {
                             checkArguments(method);
-                            checkReturnType(method, ChatModel.class);
-                            agentBuilder.chatModel(invokeStatic(method));
+                            Object result = invokeStatic(method);
+                            if (result instanceof ChatModel[] models) {
+                                Method selectorMethod = getAnnotatedMethodOnClass(agentType, ChatModelSelectorSupplier.class)
+                                        .orElseThrow(() -> new IllegalArgumentException(
+                                                "@ChatModelSupplier returning ChatModel[] requires a @ChatModelSelectorSupplier method on " + agentType.getName()));
+                                Function<AgenticScope, Integer> selector = agenticScopeFunction(selectorMethod, Integer.class);
+                                agentBuilder.conditionalChatModel(selector, models);
+                            } else {
+                                agentBuilder.chatModel((ChatModel) result);
+                            }
                         },
                         () -> getAnnotatedMethodOnClass(agentType, StreamingChatModelSupplier.class)
                                 .ifPresentOrElse(method -> {
@@ -112,7 +120,7 @@ public class DeclarativeUtil {
                                             if (chatModel == null && !allowNullChatModel) {
                                                 throw new IllegalArgumentException("ChatModel not provided for subagent " + agentType.getName() +
                                                         ". Please provide one either with a static method annotated with @ChatModelSupplier " +
-                                                        "or @StreamingChatModelSupplier or through the parent agent's chatModel parameter.");
+                                                        "or @StreamingChatModelSupplier, or through the parent agent's chatModel parameter.");
                                             }
                                             agentBuilder.chatModel(chatModel);
                                         }));
