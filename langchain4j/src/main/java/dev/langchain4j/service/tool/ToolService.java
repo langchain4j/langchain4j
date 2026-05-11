@@ -147,7 +147,7 @@ public class ToolService {
             if (type.isPrimitive() && !pAnnotation.required() && !hasDefault) {
                 throw illegalConfiguration(
                         "Parameter '%s' of tool '%s.%s' is a primitive (%s) and cannot be marked as @P(required = false). "
-                                + "Use a boxed type (e.g. Integer instead of int), Optional<T>, or set a @P(defaultValue = ...) to allow optional values.",
+                                + "Use a boxed type (e.g. Integer instead of int), Optional<T>, or @P(defaultValue = ...).",
                         parameter.getName(),
                         toolMethod.getDeclaringClass().getName(),
                         toolMethod.getName(),

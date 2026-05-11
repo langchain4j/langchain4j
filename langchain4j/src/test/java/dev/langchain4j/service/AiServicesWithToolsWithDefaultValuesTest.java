@@ -527,8 +527,312 @@ class AiServicesWithToolsWithDefaultValuesTest {
     }
 
     // ---------------------------------------------------------------------
+    // Arrays
+    // ---------------------------------------------------------------------
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_substitute_default_for_int_array_when_LLM_omits_it(String missingArguments) {
+        class Tools {
+            @Tool
+            void process(@P(defaultValue = "[1,2,3]") int[] values) {
+            }
+        }
+        Tools tool = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
+                .tools(tool)
+                .build();
+
+        assistant.chat("call the tool");
+
+        verify(tool).process(new int[] {1, 2, 3});
+        verifyNoMoreInteractions(tool);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_substitute_default_for_String_array_when_LLM_omits_it(String missingArguments) {
+        class Tools {
+            @Tool
+            void process(@P(defaultValue = "[\"a\",\"b\"]") String[] values) {
+            }
+        }
+        Tools tool = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
+                .tools(tool)
+                .build();
+
+        assistant.chat("call the tool");
+
+        verify(tool).process(new String[] {"a", "b"});
+        verifyNoMoreInteractions(tool);
+    }
+
+    // ---------------------------------------------------------------------
+    // Empty collection / map defaults
+    // ---------------------------------------------------------------------
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_substitute_default_for_empty_List_when_LLM_omits_it(String missingArguments) {
+        class Tools {
+            @Tool
+            void process(@P(defaultValue = "[]") List<String> tags) {
+            }
+        }
+        Tools tool = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
+                .tools(tool)
+                .build();
+
+        assistant.chat("call the tool");
+
+        verify(tool).process(List.of());
+        verifyNoMoreInteractions(tool);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_substitute_default_for_empty_Map_when_LLM_omits_it(String missingArguments) {
+        class Tools {
+            @Tool
+            void process(@P(value = "string keys to string values", defaultValue = "{}")
+                    Map<String, String> entries) {
+            }
+        }
+        Tools tool = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
+                .tools(tool)
+                .build();
+
+        assistant.chat("call the tool");
+
+        verify(tool).process(Map.of());
+        verifyNoMoreInteractions(tool);
+    }
+
+    // ---------------------------------------------------------------------
+    // Enum collection
+    // ---------------------------------------------------------------------
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_substitute_default_for_List_of_enums_when_LLM_omits_it(String missingArguments) {
+        class Tools {
+            @Tool
+            void process(@P(defaultValue = "[\"USD\",\"EUR\"]") List<Currency> currencies) {
+            }
+        }
+        Tools tool = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
+                .tools(tool)
+                .build();
+
+        assistant.chat("call the tool");
+
+        verify(tool).process(List.of(Currency.USD, Currency.EUR));
+        verifyNoMoreInteractions(tool);
+    }
+
+    // ---------------------------------------------------------------------
+    // Mutation safety — verify defaults are re-parsed per invocation so
+    // tool-side mutation does not contaminate later calls.
+    // ---------------------------------------------------------------------
+
+    /** Helper: two consecutive tool calls, both omitting the argument. */
+    private static ChatModel mockReturningTwoToolCalls(String toolName) {
+        return ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name(toolName)
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("2")
+                        .name(toolName)
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("Done"));
+    }
+
+    @Test
+    void mutation_of_List_default_does_not_leak_between_invocations() {
+        java.util.List<Integer> sizesAtEntry = new java.util.ArrayList<>();
+        class Tools {
+            @Tool
+            void process(@P(defaultValue = "[\"a\",\"b\"]") List<String> tags) {
+                sizesAtEntry.add(tags.size());
+                tags.add("mutated"); // would contaminate later calls if shared
+            }
+        }
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(mockReturningTwoToolCalls("process"))
+                .tools(new Tools())
+                .build();
+        assistant.chat("call the tool twice");
+
+        assertThat(sizesAtEntry).containsExactly(2, 2);
+    }
+
+    @Test
+    void mutation_of_Set_default_does_not_leak_between_invocations() {
+        java.util.List<Integer> sizesAtEntry = new java.util.ArrayList<>();
+        class Tools {
+            @Tool
+            void process(@P(defaultValue = "[1,2]") Set<Integer> ids) {
+                sizesAtEntry.add(ids.size());
+                ids.add(99);
+            }
+        }
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(mockReturningTwoToolCalls("process"))
+                .tools(new Tools())
+                .build();
+        assistant.chat("call the tool twice");
+
+        assertThat(sizesAtEntry).containsExactly(2, 2);
+    }
+
+    @Test
+    void mutation_of_Map_default_does_not_leak_between_invocations() {
+        java.util.List<Integer> sizesAtEntry = new java.util.ArrayList<>();
+        class Tools {
+            @Tool
+            void process(@P(value = "string keys to integer values", defaultValue = "{\"a\":1}")
+                    Map<String, Integer> counts) {
+                sizesAtEntry.add(counts.size());
+                counts.put("b", 2);
+            }
+        }
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(mockReturningTwoToolCalls("process"))
+                .tools(new Tools())
+                .build();
+        assistant.chat("call the tool twice");
+
+        assertThat(sizesAtEntry).containsExactly(1, 1);
+    }
+
+    /** POJO whose internal collection is mutable — mutation through the field must not leak either. */
+    public static final class MutableContainer {
+        public java.util.List<String> items = new java.util.ArrayList<>();
+    }
+
+    @Test
+    void mutation_of_POJO_default_does_not_leak_between_invocations() {
+        java.util.List<Integer> sizesAtEntry = new java.util.ArrayList<>();
+        class Tools {
+            @Tool
+            void process(@P(defaultValue = "{\"items\":[\"a\",\"b\"]}") MutableContainer container) {
+                sizesAtEntry.add(container.items.size());
+                container.items.add("mutated");
+            }
+        }
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(mockReturningTwoToolCalls("process"))
+                .tools(new Tools())
+                .build();
+        assistant.chat("call the tool twice");
+
+        assertThat(sizesAtEntry).containsExactly(2, 2);
+    }
+
+    /**
+     * Records are immutable at the top level, but their inner collections aren't.
+     * A naive cache that stores the parsed record would share the same inner list
+     * across invocations — this test ensures fresh inner state on each call.
+     */
+    public record RecordWithList(java.util.List<String> items) {}
+
+    @Test
+    void mutation_of_record_inner_collection_does_not_leak_between_invocations() {
+        java.util.List<Integer> sizesAtEntry = new java.util.ArrayList<>();
+        class Tools {
+            @Tool
+            void process(@P(defaultValue = "{\"items\":[\"a\",\"b\"]}") RecordWithList container) {
+                sizesAtEntry.add(container.items().size());
+                container.items().add("mutated");
+            }
+        }
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(mockReturningTwoToolCalls("process"))
+                .tools(new Tools())
+                .build();
+        assistant.chat("call the tool twice");
+
+        assertThat(sizesAtEntry).containsExactly(2, 2);
+    }
+
+    // ---------------------------------------------------------------------
+    // Non-defaulted object parameter: explicit null and absent both produce null
+    // (1.x asymmetry — flagged in docs as changing in 2.x)
+    // ---------------------------------------------------------------------
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_pass_null_for_non_defaulted_object_when_LLM_omits_it(String missingArguments) {
+        // No @P(defaultValue) → object param is missing → framework passes null.
+        class Tools {
+            @Tool
+            void process(Person person) {
+            }
+        }
+        Tools tool = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
+                .tools(tool)
+                .build();
+
+        assistant.chat("call the tool");
+
+        verify(tool).process((Person) null);
+        verifyNoMoreInteractions(tool);
+    }
+
+    // ---------------------------------------------------------------------
     // Corner cases
     // ---------------------------------------------------------------------
+
+    @Test
+    void should_propagate_coercion_error_for_LLM_provided_value_instead_of_falling_back_to_default() {
+        // Default value is a fallback for absence, not for wrong-type values:
+        // if the LLM provides "banana" for an int parameter, that's a coercion error,
+        // not a trigger to use the default. With the framework's default
+        // toolArgumentsErrorHandler (which rethrows the cause), the
+        // IllegalArgumentException from coerceArgument propagates out of assistant.chat().
+        class Tools {
+            @Tool
+            void process(@P(defaultValue = "10") int limit) {
+            }
+        }
+        Tools tool = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(mockReturningToolCallWithArgs("process", "{\"arg0\":\"banana\"}"))
+                .tools(tool)
+                .build();
+
+        org.assertj.core.api.Assertions.assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> assistant.chat("call the tool"))
+                .withMessageContaining("not convertable to int");
+        org.mockito.Mockito.verifyNoInteractions(tool);
+    }
 
     @Test
     void should_use_LLM_provided_value_over_default() {
