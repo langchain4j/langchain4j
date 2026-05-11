@@ -40,7 +40,7 @@ public class DefaultToolExecutor implements ToolExecutor {
     private final Method methodToInvoke;
     private final boolean wrapToolArgumentsExceptions;
     private final boolean propagateToolExecutionExceptions;
-    private final Map<String, Object> defaultArguments; // TODO good place?
+    private final Map<String, Object> defaultArguments;
 
     public DefaultToolExecutor(Builder builder) {
         this.object = ensureNotNull(builder.object, "object");
