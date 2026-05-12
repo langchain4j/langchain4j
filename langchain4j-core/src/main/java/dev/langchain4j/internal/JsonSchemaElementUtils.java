@@ -26,8 +26,11 @@ import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.output.structured.Description;
 import java.lang.reflect.Field;
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
+import java.lang.reflect.WildcardType;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
@@ -84,9 +87,10 @@ public class JsonSchemaElementUtils {
         }
 
         if (Collection.class.isAssignableFrom(clazz)) {
+            Type elementType = collectionElementType(type);
             return JsonArraySchema.builder()
                     .items(jsonSchemaElementFrom(
-                            getActualType(type), null, null, areSubFieldsRequiredByDefault, visited))
+                            rawClassOf(elementType), elementType, null, areSubFieldsRequiredByDefault, visited))
                     .description(fieldDescription)
                     .build();
         }
@@ -112,15 +116,15 @@ public class JsonSchemaElementUtils {
         }
 
         String reference = generateUUIDFrom(baseType.getName());
-        VisitedClassMetadata metadata =
-                new VisitedClassMetadata(JsonReferenceSchema.builder().reference(reference).build(), reference, false);
+        VisitedClassMetadata metadata = new VisitedClassMetadata(
+                JsonReferenceSchema.builder().reference(reference).build(), reference, false);
         visited.put(baseType, metadata);
 
         String discriminatorProperty = discriminatorPropertyName(baseType);
         List<JsonSchemaElement> options = new ArrayList<>();
         for (Class<?> subtype : findConcreteSubtypes(baseType)) {
-            JsonSchemaElement subtypeSchema = jsonObjectOrReferenceSchemaFrom(
-                    subtype, null, areSubFieldsRequiredByDefault, visited, false);
+            JsonSchemaElement subtypeSchema =
+                    jsonObjectOrReferenceSchemaFrom(subtype, null, areSubFieldsRequiredByDefault, visited, false);
             JsonSchemaElement withDiscriminator =
                     addDiscriminator(subtypeSchema, baseType, subtype, discriminatorProperty);
             options.add(withDiscriminator);
@@ -130,9 +134,11 @@ public class JsonSchemaElementUtils {
                 subtypeMetadata.jsonSchemaElement = withDiscriminator;
             }
         }
-        String desc = description != null ? description : Optional.ofNullable(descriptionFrom(baseType))
-                .orElse(baseType.getSimpleName());
-        JsonAnyOfSchema anyOf = JsonAnyOfSchema.builder().description(desc).anyOf(options).build();
+        String desc = description != null
+                ? description
+                : Optional.ofNullable(descriptionFrom(baseType)).orElse(baseType.getSimpleName());
+        JsonAnyOfSchema anyOf =
+                JsonAnyOfSchema.builder().description(desc).anyOf(options).build();
         metadata.jsonSchemaElement = anyOf;
         return anyOf;
     }
@@ -157,8 +163,7 @@ public class JsonSchemaElementUtils {
             JsonTypeInfo info = baseType.getAnnotation(JsonTypeInfo.class);
             // The discriminator field is allowed to coexist with a same-named bean field only when
             // @JsonTypeInfo(visible=true) or @JsonTypeInfo(include=As.EXISTING_PROPERTY).
-            boolean allowed = info != null
-                    && (info.visible() || info.include() == JsonTypeInfo.As.EXISTING_PROPERTY);
+            boolean allowed = info != null && (info.visible() || info.include() == JsonTypeInfo.As.EXISTING_PROPERTY);
             if (!allowed) {
                 throw new IllegalArgumentException(String.format(
                         "Polymorphic subtype %s declares a field named '%s', which collides with the discriminator "
@@ -166,16 +171,14 @@ public class JsonSchemaElementUtils {
                                 + "name with @JsonTypeInfo(property = \"...\") on %s, set @JsonTypeInfo(visible = true), "
                                 + "or use @JsonTypeInfo(include = As.EXISTING_PROPERTY) if the field is intentionally "
                                 + "part of the subtype.",
-                        subtype.getName(),
-                        discriminatorProperty,
-                        baseType.getName(),
-                        baseType.getName()));
+                        subtype.getName(), discriminatorProperty, baseType.getName(), baseType.getName()));
             }
         }
 
         Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
         properties.put(
-                discriminatorProperty, JsonEnumSchema.builder().enumValues(discriminatorValue).build());
+                discriminatorProperty,
+                JsonEnumSchema.builder().enumValues(discriminatorValue).build());
         obj.properties().forEach(properties::putIfAbsent);
 
         List<String> required = new ArrayList<>();
@@ -320,14 +323,53 @@ public class JsonSchemaElementUtils {
         return String.join(" ", description.value());
     }
 
-    private static Class<?> getActualType(Type type) {
+    /**
+     * Returns the single type argument of a {@code Collection<E>}-shaped type, preserving its full
+     * generic shape so callers can recurse into nested generics like {@code List<List<X>>} or {@code List<Foo<Bar>>}.
+     */
+    private static Type collectionElementType(Type type) {
         if (type instanceof final ParameterizedType parameterizedType) {
             Type[] actualTypeArguments = parameterizedType.getActualTypeArguments();
             if (actualTypeArguments.length == 1) {
-                return (Class<?>) actualTypeArguments[0];
+                return actualTypeArguments[0];
             }
         }
         return null;
+    }
+
+    /**
+     * Reduces an arbitrary {@link Type} to a usable {@link Class}.
+     * Handles the common cases that arise when walking generic field types, e.g. a
+     * {@code Collection<X<Y>>} field has an actual type argument of {@code X<Y>}, which is a
+     * {@link ParameterizedType}, not a {@link Class}.
+     */
+    private static Class<?> rawClassOf(Type type) {
+        if (type == null) {
+            return Object.class;
+        }
+        if (type instanceof Class<?> clazz) {
+            return clazz;
+        }
+        if (type instanceof ParameterizedType parameterizedType
+                && parameterizedType.getRawType() instanceof Class<?> raw) {
+            return raw;
+        }
+        if (type instanceof WildcardType wildcardType) {
+            Type[] upperBounds = wildcardType.getUpperBounds();
+            if (upperBounds.length > 0) {
+                return rawClassOf(upperBounds[0]);
+            }
+        }
+        if (type instanceof TypeVariable<?> typeVariable) {
+            Type[] bounds = typeVariable.getBounds();
+            if (bounds.length > 0) {
+                return rawClassOf(bounds[0]);
+            }
+        }
+        if (type instanceof GenericArrayType genericArrayType) {
+            return rawClassOf(genericArrayType.getGenericComponentType()).arrayType();
+        }
+        return Object.class;
     }
 
     static boolean isCustomClass(Class<?> clazz) {

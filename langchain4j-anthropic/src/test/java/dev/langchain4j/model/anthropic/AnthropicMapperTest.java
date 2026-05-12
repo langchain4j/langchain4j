@@ -41,6 +41,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import java.net.URI;
 import java.util.AbstractMap;
@@ -273,9 +274,7 @@ class AnthropicMapperTest {
         Map<String, Object> map = toAnthropicSchema(jsonSchemaElement);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map))
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
                         {
                           "type": "object",
                           "properties": {
@@ -286,6 +285,47 @@ class AnthropicMapperTest {
                           },
                           "required": ["name", "email", "plan_interest", "demo_requested"],
                           "additionalProperties": false
+                        }
+                       """);
+    }
+
+    @Test
+    void test_toAnthropicSchema_with_definitions() throws JsonProcessingException {
+
+        // given
+        String reference = "Person";
+        JsonSchemaElement personSchema = JsonObjectSchema.builder()
+                .addStringProperty("name")
+                .required("name")
+                .build();
+        JsonSchemaElement rootSchema = JsonObjectSchema.builder()
+                .addProperty(
+                        "person",
+                        JsonReferenceSchema.builder().reference(reference).build())
+                .required("person")
+                .definitions(Map.of(reference, personSchema))
+                .build();
+
+        // when
+        Map<String, Object> map = toAnthropicSchema(rootSchema);
+
+        // then
+        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
+                        {
+                          "type": "object",
+                          "properties": {
+                              "person": { "$ref": "#/$defs/Person" }
+                          },
+                          "required": ["person"],
+                          "additionalProperties": false,
+                          "$defs": {
+                              "Person": {
+                                  "type": "object",
+                                  "properties": { "name": { "type": "string" } },
+                                  "required": ["name"],
+                                  "additionalProperties": false
+                              }
+                          }
                         }
                        """);
     }
@@ -306,9 +346,7 @@ class AnthropicMapperTest {
         Map<String, Object> map = toAnthropicSchema(bookRecord);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map))
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
                         {
                           "type": "object",
                           "properties": {
@@ -354,6 +392,68 @@ class AnthropicMapperTest {
                                         .required(emptyList())
                                         .build())
                                 .build()));
+    }
+
+    @Test
+    void per_tool_strict_true_should_override_model_level_null() {
+        // given
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("strict_tool")
+                .description("description")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("param")
+                        .required("param")
+                        .build())
+                .strict(true)
+                .build();
+
+        // when - model-level strictTools is null
+        AnthropicTool tool = toAnthropicTool(toolSpec, AnthropicCacheType.NO_CACHE, Set.of(), null);
+
+        // then
+        assertThat(tool.strict).isTrue();
+        assertThat(tool.inputSchema.additionalProperties).isFalse();
+    }
+
+    @Test
+    void per_tool_strict_false_should_override_model_level_true() {
+        // given
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("non_strict_tool")
+                .description("description")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("param")
+                        .required("param")
+                        .build())
+                .strict(false)
+                .build();
+
+        // when - model-level strictTools is true
+        AnthropicTool tool = toAnthropicTool(toolSpec, AnthropicCacheType.NO_CACHE, Set.of(), true);
+
+        // then
+        assertThat(tool.strict).isNull();
+        assertThat(tool.inputSchema.additionalProperties).isNull();
+    }
+
+    @Test
+    void per_tool_strict_null_should_fall_back_to_model_level() {
+        // given
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("default_tool")
+                .description("description")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("param")
+                        .required("param")
+                        .build())
+                .build();
+
+        // when - model-level strictTools is true
+        AnthropicTool tool = toAnthropicTool(toolSpec, AnthropicCacheType.NO_CACHE, Set.of(), true);
+
+        // then - falls back to model-level
+        assertThat(tool.strict).isTrue();
+        assertThat(tool.inputSchema.additionalProperties).isFalse();
     }
 
     @Test

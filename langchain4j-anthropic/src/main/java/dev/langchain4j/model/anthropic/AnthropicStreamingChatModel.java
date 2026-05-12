@@ -39,6 +39,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 
@@ -95,6 +96,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .logger(builder.logger)
+                .customHeaders(builder.customHeadersSupplier)
                 .build();
 
         ChatRequestParameters commonParameters = DefaultChatRequestParameters.EMPTY;
@@ -172,6 +174,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Map<String, Object> customParameters;
         private Boolean strictTools;
         private Set<Capability> supportedCapabilities;
+        private Supplier<Map<String, String>> customHeadersSupplier;
 
         public AnthropicStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -465,6 +468,16 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
 
         public AnthropicStreamingChatModelBuilder supportedCapabilities(Set<Capability> supportedCapabilities) {
             this.supportedCapabilities = supportedCapabilities;
+            return this;
+        }
+
+        public AnthropicStreamingChatModelBuilder customHeaders(Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        public AnthropicStreamingChatModelBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 
