@@ -11,6 +11,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
@@ -136,9 +137,8 @@ class OllamaClient {
                 CompletionResponse completionResponse = fromJson(event.data(), CompletionResponse.class);
 
                 String error = completionResponse.getError();
-                if (error != null) {
-                    withLoggingExceptions(() ->
-                            handler.onError(ExceptionMapper.DEFAULT.mapException(new OllamaStreamingException(error))));
+                if (!isNullOrBlank(error)) {
+                    onError(new OllamaStreamingException(error));
                     return;
                 }
 
@@ -193,9 +193,8 @@ class OllamaClient {
                 OllamaChatResponse ollamaChatResponse = fromJson(event.data(), OllamaChatResponse.class);
 
                 String error = ollamaChatResponse.getError();
-                if (error != null) {
-                    withLoggingExceptions(() ->
-                            handler.onError(ExceptionMapper.DEFAULT.mapException(new OllamaStreamingException(error))));
+                if (!isNullOrBlank(error)) {
+                    onError(new OllamaStreamingException(error));
                     return;
                 }
 
