@@ -12,7 +12,6 @@ import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -31,27 +30,14 @@ class VertexAiGeminiStreamingChatModelThinkingIT {
         boolean returnThinking = true;
         boolean sendThinking = true;
 
-        StreamingChatModel toolCallingModel = VertexAiGeminiStreamingChatModel.builder()
+        StreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(LOCATION)
                 .apiEndpoint(API_ENDPOINT)
                 .modelName(MODEL_NAME)
                 .temperature(0.0f)
                 .topK(1)
-                .toolCallingMode(ToolCallingMode.ANY)
-                .allowedFunctionNames(List.of("getWeather"))
                 .returnThinking(returnThinking)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        StreamingChatModel followUpModel = VertexAiGeminiStreamingChatModel.builder()
-                .project(System.getenv("GCP_PROJECT_ID"))
-                .location(LOCATION)
-                .apiEndpoint(API_ENDPOINT)
-                .modelName(MODEL_NAME)
-                .temperature(0.0f)
-                .topK(1)
                 .sendThinking(sendThinking)
                 .logRequests(true)
                 .logResponses(true)
@@ -66,7 +52,7 @@ class VertexAiGeminiStreamingChatModelThinkingIT {
 
         // when
         TestStreamingChatResponseHandler toolCallHandler = new TestStreamingChatResponseHandler();
-        toolCallingModel.chat(toolCallRequest, toolCallHandler);
+        model.chat(toolCallRequest, toolCallHandler);
         ChatResponse toolCallResponse = toolCallHandler.get();
 
         // then
@@ -81,10 +67,14 @@ class VertexAiGeminiStreamingChatModelThinkingIT {
 
         // given
         ToolExecutionResultMessage toolResultMessage = ToolExecutionResultMessage.from(toolExecutionRequest, "sunny");
+        ChatRequest finalRequest = ChatRequest.builder()
+                .messages(userMessage, toolCallMessage, toolResultMessage)
+                .toolSpecifications(toolSpecification)
+                .build();
 
         // when
         TestStreamingChatResponseHandler finalHandler = new TestStreamingChatResponseHandler();
-        followUpModel.chat(List.of(userMessage, toolCallMessage, toolResultMessage), finalHandler);
+        model.chat(finalRequest, finalHandler);
         ChatResponse finalResponse = finalHandler.get();
 
         // then

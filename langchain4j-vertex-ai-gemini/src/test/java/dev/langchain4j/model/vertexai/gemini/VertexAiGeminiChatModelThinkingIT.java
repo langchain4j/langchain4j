@@ -11,7 +11,6 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -30,27 +29,14 @@ class VertexAiGeminiChatModelThinkingIT {
         boolean returnThinking = true;
         boolean sendThinking = true;
 
-        ChatModel toolCallingModel = VertexAiGeminiChatModel.builder()
+        ChatModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(LOCATION)
                 .apiEndpoint(API_ENDPOINT)
                 .modelName(MODEL_NAME)
                 .temperature(0.0f)
                 .topK(1)
-                .toolCallingMode(ToolCallingMode.ANY)
-                .allowedFunctionNames(List.of("getWeather"))
                 .returnThinking(returnThinking)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        ChatModel followUpModel = VertexAiGeminiChatModel.builder()
-                .project(System.getenv("GCP_PROJECT_ID"))
-                .location(LOCATION)
-                .apiEndpoint(API_ENDPOINT)
-                .modelName(MODEL_NAME)
-                .temperature(0.0f)
-                .topK(1)
                 .sendThinking(sendThinking)
                 .logRequests(true)
                 .logResponses(true)
@@ -64,7 +50,7 @@ class VertexAiGeminiChatModelThinkingIT {
                 .build();
 
         // when
-        ChatResponse toolCallResponse = toolCallingModel.chat(toolCallRequest);
+        ChatResponse toolCallResponse = model.chat(toolCallRequest);
 
         // then
         AiMessage toolCallMessage = toolCallResponse.aiMessage();
@@ -78,9 +64,13 @@ class VertexAiGeminiChatModelThinkingIT {
 
         // given
         ToolExecutionResultMessage toolResultMessage = ToolExecutionResultMessage.from(toolExecutionRequest, "sunny");
+        ChatRequest finalRequest = ChatRequest.builder()
+                .messages(userMessage, toolCallMessage, toolResultMessage)
+                .toolSpecifications(toolSpecification)
+                .build();
 
         // when
-        ChatResponse finalResponse = followUpModel.chat(userMessage, toolCallMessage, toolResultMessage);
+        ChatResponse finalResponse = model.chat(finalRequest);
 
         // then
         assertThat(finalResponse.aiMessage().text()).containsIgnoringCase("sun");
