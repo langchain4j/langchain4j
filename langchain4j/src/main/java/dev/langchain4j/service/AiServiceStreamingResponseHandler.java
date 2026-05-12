@@ -401,7 +401,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
                         var outputGuardrailParams = OutputGuardrailRequest.builder()
                                 .responseFromLLM(finalChatResponse)
-                                .chatExecutor(chatExecutor)
+                                .chatExecutor(buildToolAwareRepromptExecutor())
                                 .requestParams(newCommonParams)
                                 .build();
 
@@ -432,6 +432,39 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                         .tokenUsage(tokenUsage.add(completeResponse.metadata().tokenUsage()))
                         .build())
                 .build();
+    }
+
+    private ChatExecutor buildToolAwareRepromptExecutor() {
+        int maxIterations = sequentialToolsInvocationsLeft;
+        return new ChatExecutor() {
+            @Override
+            public ChatResponse execute() {
+                return chatExecutor.execute();
+            }
+
+            @Override
+            public ChatResponse execute(List<ChatMessage> chatMessages) {
+                ChatResponse response = chatExecutor.execute(chatMessages);
+                if (!response.aiMessage().hasToolExecutionRequests()) {
+                    return response;
+                }
+                // Run the tool loop without writing to memory (reprompt intermediates must not persist).
+                List<ChatMessage> current = new ArrayList<>(chatMessages);
+                int iterationsLeft = maxIterations;
+                while (response.aiMessage().hasToolExecutionRequests()) {
+                    if (iterationsLeft-- == 0) {
+                        throw runtime("Exceeded sequential tool invocations limit during output guardrail reprompt");
+                    }
+                    current.add(response.aiMessage());
+                    List<ToolExecutionResultMessage> toolResults = response.aiMessage().toolExecutionRequests().stream()
+                            .map(req -> toResultMessage(req, AiServiceStreamingResponseHandler.this.execute(req)))
+                            .toList();
+                    current.addAll(toolResults);
+                    response = chatExecutor.execute(current);
+                }
+                return response;
+            }
+        };
     }
 
     private ToolExecutionResult execute(ToolExecutionRequest toolRequest) {
