@@ -6,7 +6,6 @@ import static dev.langchain4j.internal.PolymorphicTypes.findConcreteSubtypes;
 import static dev.langchain4j.internal.PolymorphicTypes.isPolymorphic;
 import static dev.langchain4j.internal.PolymorphicTypes.verifyJsonTypeInfoIsSupported;
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
-import static java.lang.reflect.Array.*;
 import static java.lang.reflect.Modifier.isStatic;
 import static java.util.Arrays.stream;
 
@@ -368,8 +367,7 @@ public class JsonSchemaElementUtils {
             }
         }
         if (type instanceof GenericArrayType genericArrayType) {
-            Class<?> componentClass = rawClassOf(genericArrayType.getGenericComponentType());
-            return newInstance(componentClass, 0).getClass();
+            return rawClassOf(genericArrayType.getGenericComponentType()).arrayType();
         }
         return Object.class;
     }
