@@ -503,14 +503,22 @@ public class ToolService {
             intermediateResponses.add(chatResponse);
 
             List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
-            Map<ToolExecutionRequest, ToolExecutionResult> toolResults =
-                    execute(toolExecutionRequests, toolServiceContext.toolExecutors(), invocationContext);
+            Map<ToolExecutionRequest, ToolExecutionResult> toolResults = transactional
+                    ? new LinkedHashMap<>()
+                    : execute(toolExecutionRequests, toolServiceContext.toolExecutors(), invocationContext);
 
             boolean anyToolErrored = false;
             List<ReturnBehavior> returnBehaviors = new ArrayList<>(toolExecutionRequests.size());
 
             for (ToolExecutionRequest request : toolExecutionRequests) {
+                if (transactional && !anyToolErrored) {
+                    toolResults.put(request, executeTool(invocationContext, toolServiceContext.toolExecutors(), request));
+                }
+
                 ToolExecutionResult result = toolResults.get(request);
+                if (result == null) {
+                    break;
+                }
                 ToolExecutionResultMessage resultMessage = toResultMessage(request, result);
 
                 ToolExecution toolExecution = ToolExecution.builder()

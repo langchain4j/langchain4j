@@ -66,6 +66,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
@@ -2329,6 +2330,173 @@ class AiServicesWithToolsIT {
         // balances should be restored
         assertThat(bankService.accounts.get("Mario")).isEqualTo(50.0);
         assertThat(bankService.accounts.get("Dmytro")).isEqualTo(100.0);
+    }
+
+    static class TravelBookingService {
+
+        final List<String> executionLog = new ArrayList<>();
+        final Set<String> failingTools;
+
+        TravelBookingService(String... failingTools) {
+            this.failingTools = Set.of(failingTools);
+        }
+
+        @Tool("books a flight")
+        String bookFlight(@P(name = "destination", description = "destination city") String destination) {
+            if (failingTools.contains("bookFlight")) {
+                throw new RuntimeException("No flights available to " + destination);
+            }
+            executionLog.add("bookFlight");
+            return "FL-123";
+        }
+
+        @ReverseTool("bookFlight")
+        void cancelFlight(ToolExecution toolExecution) {
+            executionLog.add("cancelFlight:" + toolExecution.result());
+        }
+
+        @Tool("books a hotel")
+        String bookHotel(@P(name = "destination", description = "destination city") String destination) {
+            if (failingTools.contains("bookHotel")) {
+                throw new RuntimeException("No hotels available in " + destination);
+            }
+            executionLog.add("bookHotel");
+            return "HT-456";
+        }
+
+        @ReverseTool("bookHotel")
+        void cancelHotel(ToolExecution toolExecution) {
+            executionLog.add("cancelHotel:" + toolExecution.result());
+        }
+
+        @Tool("rents a car")
+        String rentCar(@P(name = "destination", description = "destination city") String destination) {
+            if (failingTools.contains("rentCar")) {
+                throw new RuntimeException("No cars available in " + destination);
+            }
+            executionLog.add("rentCar");
+            return "CR-789";
+        }
+
+        @ReverseTool("rentCar")
+        void cancelCar(ToolExecution toolExecution) {
+            executionLog.add("cancelCar:" + toolExecution.result());
+        }
+    }
+
+    @Test
+    void should_rollback_in_reverse_order_when_last_tool_fails() {
+
+        // given
+        TravelBookingService travelService = new TravelBookingService("rentCar");
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(
+                        ToolExecutionRequest.builder().id("1").name("bookFlight")
+                                .arguments("{\"destination\": \"Paris\"}").build(),
+                        ToolExecutionRequest.builder().id("2").name("bookHotel")
+                                .arguments("{\"destination\": \"Paris\"}").build(),
+                        ToolExecutionRequest.builder().id("3").name("rentCar")
+                                .arguments("{\"destination\": \"Paris\"}").build()),
+                AiMessage.from("Trip booked"));
+
+        interface TravelAssistant {
+            String chat(String userMessage);
+        }
+
+        TravelAssistant assistant = AiServices.builder(TravelAssistant.class)
+                .chatModel(chatModel)
+                .tools(travelService)
+                .transactional()
+                .build();
+
+        // when
+        try {
+            assistant.chat("Book a trip to Paris");
+        } catch (Exception e) {
+            // expected
+        }
+
+        // then - rollback in reverse: cancelHotel before cancelFlight
+        assertThat(travelService.executionLog).containsExactly(
+                "bookFlight", "bookHotel",
+                "cancelHotel:HT-456", "cancelFlight:FL-123");
+    }
+
+    @Test
+    void should_rollback_when_middle_tool_fails() {
+
+        // given
+        TravelBookingService travelService = new TravelBookingService("bookHotel");
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(
+                        ToolExecutionRequest.builder().id("1").name("bookFlight")
+                                .arguments("{\"destination\": \"Rome\"}").build(),
+                        ToolExecutionRequest.builder().id("2").name("bookHotel")
+                                .arguments("{\"destination\": \"Rome\"}").build(),
+                        ToolExecutionRequest.builder().id("3").name("rentCar")
+                                .arguments("{\"destination\": \"Rome\"}").build()),
+                AiMessage.from("Trip booked"));
+
+        interface TravelAssistant {
+            String chat(String userMessage);
+        }
+
+        TravelAssistant assistant = AiServices.builder(TravelAssistant.class)
+                .chatModel(chatModel)
+                .tools(travelService)
+                .transactional()
+                .build();
+
+        // when
+        try {
+            assistant.chat("Book a trip to Rome");
+        } catch (Exception e) {
+            // expected
+        }
+
+        // then - only flight succeeded (hotel failed, car never executed), rollback flight
+        assertThat(travelService.executionLog).containsExactly(
+                "bookFlight",
+                "cancelFlight:FL-123");
+    }
+
+    @Test
+    void should_rollback_when_first_tool_fails() {
+
+        // given
+        TravelBookingService travelService = new TravelBookingService("bookFlight");
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(
+                        ToolExecutionRequest.builder().id("1").name("bookFlight")
+                                .arguments("{\"destination\": \"Tokyo\"}").build(),
+                        ToolExecutionRequest.builder().id("2").name("bookHotel")
+                                .arguments("{\"destination\": \"Tokyo\"}").build(),
+                        ToolExecutionRequest.builder().id("3").name("rentCar")
+                                .arguments("{\"destination\": \"Tokyo\"}").build()),
+                AiMessage.from("Trip booked"));
+
+        interface TravelAssistant {
+            String chat(String userMessage);
+        }
+
+        TravelAssistant assistant = AiServices.builder(TravelAssistant.class)
+                .chatModel(chatModel)
+                .tools(travelService)
+                .transactional()
+                .build();
+
+        // when
+        try {
+            assistant.chat("Book a trip to Tokyo");
+        } catch (Exception e) {
+            // expected
+        }
+
+        // then - first tool failed, no other tools executed, nothing to rollback
+        assertThat(travelService.executionLog).isEmpty();
     }
 
     @Test
