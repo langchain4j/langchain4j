@@ -354,6 +354,11 @@ public class OpenAiUtils {
         if (isNullOrEmpty(response.choices())) {
             throw new InternalServerException("Chat completion failed: no choices returned in response");
         }
+        if (response.choices().size() > 1) {
+            throw new InternalServerException(format(
+                    "Chat completion failed: expected exactly one choice, but got %s choices",
+                    response.choices().size()));
+        }
         AssistantMessage assistantMessage = response.choices().get(0).message();
 
         String refusal = assistantMessage.refusal();

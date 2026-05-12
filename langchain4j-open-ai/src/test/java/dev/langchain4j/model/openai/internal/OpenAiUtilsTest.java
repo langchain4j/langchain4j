@@ -4,6 +4,7 @@ import static dev.langchain4j.model.openai.internal.OpenAiUtils.aiMessageFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiToolChoice;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.toTools;
 import static dev.langchain4j.model.openai.internal.chat.ToolType.FUNCTION;
+import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -277,6 +278,36 @@ class OpenAiUtilsTest {
         assertThatThrownBy(() -> aiMessageFrom(response))
                 .isInstanceOf(InternalServerException.class)
                 .hasMessageContaining("no choices returned");
+    }
+
+    @Test
+    void should_throw_when_multiple_choices_are_returned() {
+        // given
+        ChatCompletionResponse response = ChatCompletionResponse.builder()
+                .choices(asList(
+                        ChatCompletionChoice.builder()
+                                .message(AssistantMessage.builder()
+                                        .content("I will inspect the file.")
+                                        .build())
+                                .build(),
+                        ChatCompletionChoice.builder()
+                                .message(AssistantMessage.builder()
+                                        .toolCalls(ToolCall.builder()
+                                                .type(FUNCTION)
+                                                .function(FunctionCall.builder()
+                                                        .name("readFile")
+                                                        .arguments("{\"path\":\"src/main/java/example/Foo.java\"}")
+                                                        .build())
+                                                .build())
+                                        .build())
+                                .build()))
+                .build();
+
+        // when/then
+        assertThatThrownBy(() -> aiMessageFrom(response))
+                .isInstanceOf(InternalServerException.class)
+                .hasMessageContaining("expected exactly one choice")
+                .hasMessageContaining("2 choices");
     }
 
     @Test

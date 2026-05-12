@@ -10,6 +10,9 @@ import static java.util.Arrays.asList;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.AgentUtil;
@@ -61,6 +64,23 @@ import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
 public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
+
+    private static final ChatModel PLACEHOLDER_CHAT_MODEL = new ChatModel() {
+        @Override
+        public ChatResponse doChat(ChatRequest chatRequest) {
+            throw new IllegalStateException("Placeholder ChatModel should never be invoked. " +
+                    "The actual model is provided dynamically via the chatModel(Function) provider.");
+        }
+    };
+
+    private static final StreamingChatModel PLACEHOLDER_STREAMING_CHAT_MODEL = new StreamingChatModel() {
+        @Override
+        public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+            throw new IllegalStateException("Placeholder StreamingChatModel should never be invoked. " +
+                    "The actual model is provided dynamically via the streamingChatModel(Function) provider.");
+        }
+    };
+
     final Class<T> agentServiceClass;
     final Method agenticMethod;
     final Class<?> agentReturnType;
@@ -76,6 +96,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     private ChatModel model;
     private StreamingChatModel streamingChatModel;
+    Function<AgenticScope, ChatModel> chatModelProvider;
+    Function<AgenticScope, StreamingChatModel> streamingChatModelProvider;
     private ChatMemory chatMemory;
     private ChatMemoryProvider chatMemoryProvider;
     private Function<AgenticScope, String> contextProvider;
@@ -146,16 +168,9 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
         AiServiceContext context = AiServiceContext.create(agentServiceClass);
         AiServices<T> aiServices = AiServices.builder(context);
-        if (model != null && streamingChatModel != null) {
-            throw new AgenticSystemConfigurationException("Both chatModel and streamingChatModel are set for agent '"
-                    + this.name + "'. Please set only one of them.");
-        }
-        if (model != null) {
-            aiServices.chatModel(model);
-        }
-        if (streamingChatModel != null) {
-            aiServices.streamingChatModel(streamingChatModel);
-        }
+
+        configureChatModel(aiServices);
+
         if (chatMemory != null) {
             aiServices.chatMemory(chatMemory);
         }
@@ -228,7 +243,31 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         return (T) agent;
     }
 
-    protected void build(DefaultAgenticScope agenticScope, AiServiceContext context, AiServices<T> aiServices) {}
+    private void configureChatModel(AiServices<T> aiServices) {
+        validateChatModel();
+        if (model != null) {
+            aiServices.chatModel(model);
+        } else if (streamingChatModel != null) {
+            aiServices.streamingChatModel(streamingChatModel);
+        } else if (chatModelProvider != null) {
+            aiServices.chatModel(PLACEHOLDER_CHAT_MODEL);
+        } else if (streamingChatModelProvider != null) {
+            aiServices.streamingChatModel(PLACEHOLDER_STREAMING_CHAT_MODEL);
+        } else {
+            throw new AgenticSystemConfigurationException("No chat model is configured for agent '" + this.name + "'.");
+        }
+    }
+
+    private void validateChatModel() {
+        int modelConfigCount = (model != null ? 1 : 0) + (streamingChatModel != null ? 1 : 0)
+                + (chatModelProvider != null ? 1 : 0) + (streamingChatModelProvider != null ? 1 : 0);
+        if (modelConfigCount != 1) {
+            throw new AgenticSystemConfigurationException(
+                    "One and only one of chatModel, streamingChatModel, or their Function variants can be set for agent '" + this.name + "'.");
+        }
+    }
+
+    protected void build(DefaultAgenticScope agenticScope, AiServiceContext context, AiServices<T> aiServices) { }
 
     private void setupGuardrails(AiServices<T> aiServices) {
         if (inputGuardrailsConfig != null) {
@@ -293,6 +332,16 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     public B streamingChatModel(StreamingChatModel streamingChatModel) {
         this.streamingChatModel = streamingChatModel;
+        return (B) this;
+    }
+
+    public B chatModel(Function<AgenticScope, ChatModel> chatModelProvider) {
+        this.chatModelProvider = chatModelProvider;
+        return (B) this;
+    }
+
+    public B streamingChatModel(Function<AgenticScope, StreamingChatModel> streamingChatModelProvider) {
+        this.streamingChatModelProvider = streamingChatModelProvider;
         return (B) this;
     }
 
