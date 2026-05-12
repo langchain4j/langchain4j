@@ -124,7 +124,8 @@ When enabled, LangChain4j sends `strict: true` in Bedrock tool definitions and s
 continue to omit `strict` and keep the current schema shape.
 
 You can also set `strictTools` in `BedrockChatRequestParameters` when configuring default
-or per-request parameters.
+or per-request parameters. Individual tools can override the model-level setting with
+`ToolSpecification.strict(true)` or `ToolSpecification.strict(false)`.
 
 ## Additional Model Request Fields
 
