@@ -143,7 +143,7 @@ public class DefaultToolExecutor implements ToolExecutor {
     private Object[] prepareArguments(ToolExecutionRequest toolExecutionRequest, InvocationContext context) {
         try {
             Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
-            return prepareArguments(originalMethod, argumentsMap, context);
+            return prepareArguments(originalMethod, toolExecutionRequest.name(), argumentsMap, context);
         } catch (Exception e) {
             if (wrapToolArgumentsExceptions) {
                 throw new ToolArgumentsException(unwrapRuntimeException(e));
@@ -196,7 +196,8 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
     }
 
-    static Object[] prepareArguments(Method method, Map<String, Object> argumentsMap, InvocationContext context) {
+    static Object[] prepareArguments(
+            Method method, String toolName, Map<String, Object> argumentsMap, InvocationContext context) {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
 
@@ -233,6 +234,15 @@ public class DefaultToolExecutor implements ToolExecutor {
                 arguments[i] = createOptional(argument, parameterName, parameterType);
             } else if (argument != null) {
                 arguments[i] = coerceArgument(argument, parameterName, parameterClass, parameterType);
+            } else {
+                P pAnnotation = parameter.getAnnotation(P.class);
+                if (pAnnotation != null && !P.NO_DEFAULT.equals(pAnnotation.defaultValue())) {
+                    arguments[i] = parseDefaultValue(
+                            pAnnotation.defaultValue(), parameterName, parameterClass, parameterType);
+                } else if (parameterClass.isPrimitive()) {
+                    throw new IllegalArgumentException(String.format(
+                            "Required parameter \"%s\" of tool \"%s\" is missing", parameterName, toolName));
+                }
             }
         }
 
@@ -271,6 +281,29 @@ public class DefaultToolExecutor implements ToolExecutor {
         Class<?> actualClass = extractActualClass(actualType);
         Object coercedValue = coerceArgument(argument, parameterName, actualClass, actualType);
         return Optional.of(coercedValue);
+    }
+
+    static Object parseDefaultValue(
+            String defaultValue, String parameterName, Class<?> parameterClass, Type parameterType) {
+        if (parameterClass == String.class || parameterClass.isEnum() || parameterClass == UUID.class) {
+            return coerceArgument(defaultValue, parameterName, parameterClass, parameterType);
+        }
+        Object jsonParsed;
+        try {
+            jsonParsed = Json.fromJson(defaultValue, Object.class);
+        } catch (Exception e) {
+            throw new IllegalArgumentException(
+                    String.format(
+                            "Cannot parse @P(defaultValue = \"%s\") for parameter \"%s\" of type %s: %s",
+                            defaultValue, parameterName, parameterClass.getName(), e.getMessage()),
+                    e);
+        }
+        if (jsonParsed == null) {
+            throw new IllegalArgumentException(String.format(
+                    "@P(defaultValue = \"%s\") parses to null for parameter \"%s\" of type %s",
+                    defaultValue, parameterName, parameterClass.getName()));
+        }
+        return coerceArgument(jsonParsed, parameterName, parameterClass, parameterType);
     }
 
     static Object coerceArgument(Object argument, String parameterName, Class<?> parameterClass, Type parameterType) {

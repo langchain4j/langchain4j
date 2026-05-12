@@ -46,6 +46,20 @@ public class Embedding {
     }
 
     /**
+     * Returns a copy of the vector as double array.
+     * @return the vector as double array.
+     */
+    public double[] vectorAsDoubleArray() {
+        double[] doubles = new double[vector.length];
+
+        for(int i = 0; i < vector.length; i++) {
+            doubles[i] = vector[i];
+        }
+
+        return doubles;
+    }
+
+    /**
      * Normalize vector
      */
     public void normalize() {

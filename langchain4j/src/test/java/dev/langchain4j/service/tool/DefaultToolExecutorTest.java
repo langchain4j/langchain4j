@@ -9,6 +9,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
+import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.invocation.InvocationContext;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
@@ -119,7 +120,7 @@ class DefaultToolExecutorTest implements WithAssertions {
         InvocationContext invocationContext =
                 InvocationContext.builder().chatMemoryId(memoryId).build();
 
-        Object[] args = DefaultToolExecutor.prepareArguments(method, arguments, invocationContext);
+        Object[] args = DefaultToolExecutor.prepareArguments(method, "example", arguments, invocationContext);
 
         assertThat(args)
                 .containsExactly(
@@ -150,7 +151,7 @@ class DefaultToolExecutorTest implements WithAssertions {
             as.put("arg1", "abc");
 
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> DefaultToolExecutor.prepareArguments(method, as, invocationContext))
+                    .isThrownBy(() -> DefaultToolExecutor.prepareArguments(method, "example", as, invocationContext))
                     .withMessage("Argument \"arg1\" is not convertable to int, got java.lang.String: <abc>")
                     .withNoCause();
         }
@@ -637,7 +638,7 @@ class DefaultToolExecutorTest implements WithAssertions {
         InvocationContext context = InvocationContext.builder().build();
 
         // when
-        Object[] args = DefaultToolExecutor.prepareArguments(method, arguments, context);
+        Object[] args = DefaultToolExecutor.prepareArguments(method, "tool", arguments, context);
 
         // then
         assertThat(args).hasSize(2);
@@ -661,12 +662,51 @@ class DefaultToolExecutorTest implements WithAssertions {
         InvocationContext context = InvocationContext.builder().build();
 
         // when
-        Object[] args = DefaultToolExecutor.prepareArguments(method, arguments, context);
+        Object[] args = DefaultToolExecutor.prepareArguments(method, "tool", arguments, context);
 
         // then
         assertThat(args).hasSize(2);
         assertThat(args[0]).isEqualTo("Klaus");
         assertThat(args[1]).isInstanceOf(Optional.class);
         assertThat((Optional<?>) args[1]).isEmpty();
+    }
+
+    @SuppressWarnings("unused")
+    public void primitiveTool(String filePath, int startLine, int endLine) {}
+
+    @Test
+    void should_throw_when_required_primitive_is_missing() throws Exception {
+        Method method = getClass().getMethod("primitiveTool", String.class, int.class, int.class);
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("arg0", "/tmp/foo.txt");
+
+        InvocationContext context = InvocationContext.builder().build();
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> DefaultToolExecutor.prepareArguments(method, "primitiveTool", arguments, context))
+                .withMessageContaining("Required parameter")
+                .withMessageContaining("arg1")
+                .withMessageContaining("primitiveTool");
+    }
+
+    @Test
+    void should_wrap_missing_required_primitive_into_ToolArgumentsException_when_configured() throws Exception {
+        Method method = getClass().getMethod("primitiveTool", String.class, int.class, int.class);
+        DefaultToolExecutor executor = DefaultToolExecutor.builder()
+                .object(this)
+                .originalMethod(method)
+                .methodToInvoke(method)
+                .wrapToolArgumentsExceptions(true)
+                .build();
+
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("primitiveTool")
+                .arguments("{ \"arg0\": \"/tmp/foo.txt\" }")
+                .build();
+
+        assertThatExceptionOfType(ToolArgumentsException.class)
+                .isThrownBy(() -> executor.execute(request, "DEFAULT"))
+                .withCauseInstanceOf(IllegalArgumentException.class);
     }
 }

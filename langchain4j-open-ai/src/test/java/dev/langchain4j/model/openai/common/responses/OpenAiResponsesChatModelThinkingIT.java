@@ -86,7 +86,7 @@ class OpenAiResponsesChatModelThinkingIT {
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName("gpt-5-mini")
-                .reasoningEffort("low")
+                .reasoningEffort("medium")
                 .logRequests(true)
                 .logResponses(true)
                 .build();
