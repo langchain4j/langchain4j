@@ -2139,7 +2139,7 @@ class AiServicesWithToolsIT {
         }
 
         @Tool("credits money to a bank account")
-        void credit(@P(name = "name", value = "account holder name") String name,
+        void credit(@P(name = "name", description = "account holder name") String name,
                     @P(name = "amount", value = "amount to credit") double amount) {
             accounts.merge(name, amount, Double::sum);
         }
