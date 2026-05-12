@@ -2197,11 +2197,7 @@ class AiServicesWithToolsIT {
                 .build();
 
         // when
-        try {
-            assistant.chat("Transfer 100 dollars from Mario's account to Dmytro's account");
-        } catch (Exception e) {
-            // expected in transactional mode
-        }
+        String response = assistant.chat("Transfer 100 dollars from Mario's account to Dmytro's account");
 
         // then - the credit to Dmytro should have been rolled back via uncredit
         verify(bankService).credit("Dmytro", 100.0);
@@ -2211,6 +2207,9 @@ class AiServicesWithToolsIT {
         // account balances should be back to their original state
         assertThat(bankService.accounts.get("Mario")).isEqualTo(50.0);
         assertThat(bankService.accounts.get("Dmytro")).isEqualTo(100.0);
+
+        // LLM received rollback info and responded
+        assertThat(response).isEqualTo("Transfer complete");
     }
 
     @Test
@@ -2318,11 +2317,7 @@ class AiServicesWithToolsIT {
                 .build();
 
         // when
-        try {
-            assistant.chat("Transfer 100 dollars from Mario's account to Dmytro's account");
-        } catch (Exception e) {
-            // expected
-        }
+        String response = assistant.chat("Transfer 100 dollars from Mario's account to Dmytro's account");
 
         // then - the reverse method received the ToolExecution with the original result
         assertThat(bankService.reversedTransactionIds).containsExactly("TX-42");
@@ -2330,6 +2325,8 @@ class AiServicesWithToolsIT {
         // balances should be restored
         assertThat(bankService.accounts.get("Mario")).isEqualTo(50.0);
         assertThat(bankService.accounts.get("Dmytro")).isEqualTo(100.0);
+
+        assertThat(response).isEqualTo("Transfer complete");
     }
 
     static class TravelBookingService {
@@ -2411,16 +2408,13 @@ class AiServicesWithToolsIT {
                 .build();
 
         // when
-        try {
-            assistant.chat("Book a trip to Paris");
-        } catch (Exception e) {
-            // expected
-        }
+        String response = assistant.chat("Book a trip to Paris");
 
         // then - rollback in reverse: cancelHotel before cancelFlight
         assertThat(travelService.executionLog).containsExactly(
                 "bookFlight", "bookHotel",
                 "cancelHotel:HT-456", "cancelFlight:FL-123");
+        assertThat(response).isEqualTo("Trip booked");
     }
 
     @Test
@@ -2450,16 +2444,13 @@ class AiServicesWithToolsIT {
                 .build();
 
         // when
-        try {
-            assistant.chat("Book a trip to Rome");
-        } catch (Exception e) {
-            // expected
-        }
+        String response = assistant.chat("Book a trip to Rome");
 
-        // then - only flight succeeded (hotel failed, car never executed), rollback flight
+        // then - flight and car succeeded, hotel failed, rollback in reverse: cancelCar then cancelFlight
         assertThat(travelService.executionLog).containsExactly(
-                "bookFlight",
-                "cancelFlight:FL-123");
+                "bookFlight", "rentCar",
+                "cancelCar:CR-789", "cancelFlight:FL-123");
+        assertThat(response).isEqualTo("Trip booked");
     }
 
     @Test
@@ -2489,14 +2480,73 @@ class AiServicesWithToolsIT {
                 .build();
 
         // when
-        try {
-            assistant.chat("Book a trip to Tokyo");
-        } catch (Exception e) {
-            // expected
+        String response = assistant.chat("Book a trip to Tokyo");
+
+        // then - hotel and car succeeded, flight failed, rollback in reverse: cancelCar then cancelHotel
+        assertThat(travelService.executionLog).containsExactly(
+                "bookHotel", "rentCar",
+                "cancelCar:CR-789", "cancelHotel:HT-456");
+        assertThat(response).isEqualTo("Trip booked");
+    }
+
+    @Test
+    void should_inform_llm_about_rolled_back_tools() {
+
+        // given
+        TravelBookingService travelService = new TravelBookingService("bookHotel");
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(20);
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(
+                        ToolExecutionRequest.builder().id("1").name("bookFlight")
+                                .arguments("{\"destination\": \"Berlin\"}").build(),
+                        ToolExecutionRequest.builder().id("2").name("bookHotel")
+                                .arguments("{\"destination\": \"Berlin\"}").build(),
+                        ToolExecutionRequest.builder().id("3").name("rentCar")
+                                .arguments("{\"destination\": \"Berlin\"}").build()),
+                AiMessage.from("Sorry, I could not complete the booking because no hotels are available in Berlin."));
+
+        interface TravelAssistant {
+            String chat(String userMessage);
         }
 
-        // then - first tool failed, no other tools executed, nothing to rollback
-        assertThat(travelService.executionLog).isEmpty();
+        TravelAssistant assistant = AiServices.builder(TravelAssistant.class)
+                .chatModel(chatModel)
+                .tools(travelService)
+                .chatMemory(chatMemory)
+                .transactional()
+                .build();
+
+        // when
+        String response = assistant.chat("Book a trip to Berlin");
+
+        // then - LLM responded with rollback-aware message
+        assertThat(response).contains("could not complete the booking");
+
+        // verify ChatMemory contains proper tool result messages
+        List<ToolExecutionResultMessage> toolResultMessages = chatMemory.messages().stream()
+                .filter(m -> m instanceof ToolExecutionResultMessage)
+                .map(m -> (ToolExecutionResultMessage) m)
+                .toList();
+
+        assertThat(toolResultMessages).hasSize(3);
+
+        // bookFlight succeeded but was rolled back
+        assertThat(toolResultMessages.get(0).text())
+                .contains("bookFlight")
+                .contains("rolled back")
+                .contains("bookHotel");
+
+        // bookHotel failed — normal error message
+        assertThat(toolResultMessages.get(1).text())
+                .contains("No hotels available");
+
+        // rentCar succeeded but was rolled back
+        assertThat(toolResultMessages.get(2).text())
+                .contains("rentCar")
+                .contains("rolled back")
+                .contains("bookHotel");
     }
 
     @Test

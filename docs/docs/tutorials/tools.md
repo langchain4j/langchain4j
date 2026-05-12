@@ -1623,7 +1623,12 @@ Assistant assistant = AiServices.builder(Assistant.class)
 
 With this configuration, if the LLM calls `credit("Dmytro", 100)` and then
 `withdraw("Mario", 100)` which fails, the framework will automatically call
-`uncredit("Dmytro", 100)` to undo the credit, and then throw a `RuntimeException`.
+`uncredit("Dmytro", 100)` to undo the credit. Instead of throwing an exception,
+the framework sends informative result messages back to the LLM for each tool:
+rolled-back tools get a message like _"Tool 'credit' was executed successfully but
+was rolled back due to failure of tool 'withdraw'"_, and the failed tool gets its
+normal error message. This keeps the `ChatMemory` consistent and lets the LLM
+decide what to do next — retry, inform the user, or take a different approach.
 
 Without `.transactional()`, the error is sent back to the LLM as usual and no
 rollback occurs — even if `@ReverseTool` annotations are present.
@@ -1642,7 +1647,7 @@ so misconfigurations are caught at startup rather than at runtime.
 
 :::note
 Rollback is best-effort: if a reverse action itself throws an exception, it is
-silently ignored and the remaining reverse actions continue to execute.
+logged at WARN level and the remaining reverse actions continue to execute.
 :::
 
 :::note

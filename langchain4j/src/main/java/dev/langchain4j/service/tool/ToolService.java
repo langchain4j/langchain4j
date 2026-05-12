@@ -503,23 +503,17 @@ public class ToolService {
             intermediateResponses.add(chatResponse);
 
             List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
-            Map<ToolExecutionRequest, ToolExecutionResult> toolResults = transactional
-                    ? new LinkedHashMap<>()
-                    : execute(toolExecutionRequests, toolServiceContext.toolExecutors(), invocationContext);
+            Map<ToolExecutionRequest, ToolExecutionResult> toolResults =
+                    execute(toolExecutionRequests, toolServiceContext.toolExecutors(), invocationContext);
 
             boolean anyToolErrored = false;
+            String failedToolName = null;
             List<ReturnBehavior> returnBehaviors = new ArrayList<>(toolExecutionRequests.size());
+            List<ToolExecutionResultMessage> resultMessages = new ArrayList<>(toolExecutionRequests.size());
 
             for (ToolExecutionRequest request : toolExecutionRequests) {
-                if (transactional && !anyToolErrored) {
-                    toolResults.put(request, executeTool(invocationContext, toolServiceContext.toolExecutors(), request));
-                }
-
                 ToolExecutionResult result = toolResults.get(request);
-                if (result == null) {
-                    break;
-                }
-                ToolExecutionResultMessage resultMessage = toResultMessage(request, result);
+                resultMessages.add(toResultMessage(request, result));
 
                 ToolExecution toolExecution = ToolExecution.builder()
                         .request(request)
@@ -530,24 +524,37 @@ public class ToolService {
 
                 fireToolExecutedEvent(invocationContext, request, toolExecution, context.eventListenerRegistrar);
 
-                if (chatMemory != null) {
-                    chatMemory.add(resultMessage);
-                } else {
-                    messages.add(resultMessage);
-                }
-
                 if (!result.isError() && transactional && reverseToolExecutors.containsKey(request.name())) {
                     successfulReversibleExecutions.add(toolExecution);
                 }
 
+                if (result.isError() && failedToolName == null) {
+                    failedToolName = request.name();
+                }
                 anyToolErrored = anyToolErrored || result.isError();
                 returnBehaviors.add(toolServiceContext.returnBehavior(request.name()));
             }
 
             if (transactional && anyToolErrored) {
                 rollback(successfulReversibleExecutions, invocationContext);
-                throw runtime("Tool execution failed, rolled back %s previous tool action(s)",
-                        successfulReversibleExecutions.size());
+                for (int i = 0; i < toolExecutionRequests.size(); i++) {
+                    ToolExecutionRequest request = toolExecutionRequests.get(i);
+                    if (!toolResults.get(request).isError()
+                            && reverseToolExecutors.containsKey(request.name())) {
+                        resultMessages.set(i, ToolExecutionResultMessage.toolExecutionResultMessage(
+                                request.id(), request.name(),
+                                "Tool '" + request.name() + "' was executed successfully"
+                                        + " but was rolled back due to failure of tool '" + failedToolName + "'"));
+                    }
+                }
+            }
+
+            for (ToolExecutionResultMessage resultMessage : resultMessages) {
+                if (chatMemory != null) {
+                    chatMemory.add(resultMessage);
+                } else {
+                    messages.add(resultMessage);
+                }
             }
 
             if (shouldReturnImmediately(anyToolErrored, returnBehaviors)) {
