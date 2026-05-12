@@ -1013,7 +1013,7 @@ abstract class AbstractBedrockChatModel {
                 }
             }
 
-            builder.ouputAssessments(outputAssessments);
+            builder.outputAssessments(outputAssessments);
         }
 
         return builder.build();

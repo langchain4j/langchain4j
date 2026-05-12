@@ -641,6 +641,14 @@ public class AgenticServices {
             return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
         }
 
+        Optional<Method> plannerMethod = getAnnotatedMethodOnClass(agentServiceClass, PlannerAgent.class);
+        if (plannerMethod.isPresent()) {
+            Method method = plannerMethod.get();
+            InternalAgent agent =
+                    (InternalAgent) buildPlannerAgent(agentServiceClass, method, chatModel, agentConfigurator);
+            return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
+        }
+
         Optional<Method> humanInTheLoopMethod =
                 getAnnotatedMethodOnClass(agentServiceClass, dev.langchain4j.agentic.declarative.HumanInTheLoop.class);
         if (humanInTheLoopMethod.isPresent()) {
