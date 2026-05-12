@@ -122,6 +122,7 @@ class OllamaClient {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "api/generate")
+                .addHeader("Content-Type", "application/json")
                 .addHeaders(buildRequestHeaders())
                 .body(toJson(request))
                 .build();
@@ -160,6 +161,7 @@ class OllamaClient {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "api/chat")
+                .addHeader("Content-Type", "application/json")
                 .addHeaders(buildRequestHeaders())
                 .body(toJson(ollamaChatRequest))
                 .build();
