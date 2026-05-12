@@ -14,7 +14,7 @@
 
     <properties>
         <infinispan.version>16.0.6</infinispan.version>
-        <protostream.version>6.0.6</protostream.version>
+        <protostream.version>6.0.7</protostream.version>
     </properties>
 
     <dependencyManagement>
