@@ -10,6 +10,8 @@ import dev.langchain4j.http.client.FormDataFile;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import java.io.BufferedReader;
@@ -24,6 +26,7 @@ import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class JdkHttpClient implements HttpClient {
 
@@ -71,29 +74,66 @@ public class JdkHttpClient implements HttpClient {
     public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
         java.net.http.HttpRequest jdkRequest = toJdkRequest(request);
 
+        AtomicBoolean completed = new AtomicBoolean(false);
         delegate.sendAsync(jdkRequest, BodyHandlers.ofInputStream())
                 .thenAccept(jdkResponse -> {
                     if (!isSuccessful(jdkResponse)) {
                         HttpException exception = new HttpException(jdkResponse.statusCode(), readBody(jdkResponse));
-                        ignoringExceptions(() -> listener.onError(exception));
+                        if (completed.compareAndSet(false, true)) {
+                            ignoringExceptions(() -> listener.onError(exception));
+                        }
                         return;
                     }
 
                     SuccessfulHttpResponse response = fromJdkResponse(jdkResponse, null);
-                    ignoringExceptions(() -> listener.onOpen(response));
+
+                    ServerSentEventListener guardedListener = new ServerSentEventListener() {
+
+                        @Override
+                        public void onOpen(SuccessfulHttpResponse r) {
+                            listener.onOpen(r);
+                        }
+
+                        @Override
+                        public void onEvent(ServerSentEvent event) {
+                            listener.onEvent(event);
+                        }
+
+                        @Override
+                        public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                            listener.onEvent(event, context);
+                        }
+
+                        @Override
+                        public void onClose() {
+                            if (completed.compareAndSet(false, true)) {
+                                listener.onClose();
+                            }
+                        }
+
+                        @Override
+                        public void onError(Throwable t) {
+                            if (completed.compareAndSet(false, true)) {
+                                listener.onError(t);
+                            }
+                        }
+                    };
+                    ignoringExceptions(() -> guardedListener.onOpen(response));
 
                     try (InputStream inputStream = jdkResponse.body()) {
-                        parser.parse(inputStream, listener);
-                        ignoringExceptions(listener::onClose);
+                        parser.parse(inputStream, guardedListener);
+                        ignoringExceptions(guardedListener::onClose);
                     } catch (IOException e) {
-                        throw new RuntimeException(e);
+                        ignoringExceptions(() -> guardedListener.onError(e));
                     }
                 })
                 .exceptionally(throwable -> {
-                    if (throwable.getCause() instanceof HttpTimeoutException) {
-                        ignoringExceptions(() -> listener.onError(new TimeoutException(throwable)));
-                    } else {
-                        ignoringExceptions(() -> listener.onError(throwable));
+                    if (completed.compareAndSet(false, true)) {
+                        if (throwable.getCause() instanceof HttpTimeoutException) {
+                            ignoringExceptions(() -> listener.onError(new TimeoutException(throwable)));
+                        } else {
+                            ignoringExceptions(() -> listener.onError(throwable));
+                        }
                     }
                     return null;
                 });
