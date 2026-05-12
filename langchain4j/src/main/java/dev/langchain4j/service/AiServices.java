@@ -609,10 +609,13 @@ public abstract class AiServices<T> {
      *             <li>When the LLM calls multiple tools, they are executed concurrently in separate threads
      *                 using the {@link Executor}.
      *                 Each tool is executed as soon as {@link StreamingChatResponseHandler#onCompleteToolCall(CompleteToolCall)}
-     *                 is called, without waiting for other tools or for the response streaming to complete.</li>
+     *                 is called, without waiting for other tools or for the response streaming to complete,
+     *                 unless {@link #maxToolCallsPerResponse(int)} is configured.</li>
      *             <li>When the LLM calls a single tool, it is executed in a separate thread using the {@link Executor}.
      *                 We cannot execute it in the same thread because, at that point,
-     *                 we do not yet know how many tools the LLM will call.</li>
+     *                 we do not yet know how many tools the LLM will call. When
+     *                 {@link #maxToolCallsPerResponse(int)} is configured, the single tool is still executed
+     *                 using the {@link Executor}, but only after the complete response passes the cap check.</li>
      *         </ul>
      *     </li>
      * </ul>
@@ -676,6 +679,16 @@ public abstract class AiServices<T> {
      *
      * <p>
      * A value of {@code 0} (the default) means unlimited — no cap is enforced.
+     * For {@link ChatModel}, the limit is strict and atomic: if the response exceeds the cap,
+     * no tool from that response is executed. For {@link StreamingChatModel}, the default
+     * {@code 0} preserves eager scheduling: when a per-tool {@link Executor} is configured via
+     * {@link #executeToolsConcurrently()} or {@link #executeToolsConcurrently(Executor)}, tools are
+     * scheduled from {@link StreamingChatResponseHandler#onCompleteToolCall(CompleteToolCall)}.
+     * Configuring a value greater than {@code 0} switches streaming tool execution to strict
+     * deferred enforcement: the full {@code onCompleteResponse} tool-call count is checked before
+     * any tool from that response is dispatched, and an over-limit response executes no tools.
+     * This strict mode may trade off streaming latency because tool execution waits for the full
+     * response.
      *
      * @param maxToolCallsPerResponse the maximum number of tool execution requests permitted
      *                                in a single LLM response, or {@code 0} for unlimited
@@ -766,25 +779,31 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Configures an integration hook used by the streaming response handler to dispatch the
+     * Configures an integration hook used by the streaming response handler to continue from the
      * batch of tool calls produced by a single LLM response.
      *
      * <p>This hook is intended for downstream framework integrators (e.g. {@code quarkus-langchain4j})
-     * that need to control the threading and context propagation around the tool batch:
+     * that need to control the threading and context propagation around the downstream continuation:
      * <ul>
-     *   <li>Switch to a worker thread before tool execution begins.</li>
+     *   <li>Switch result gathering, memory writes, follow-up streaming inference, and inline
+     *       no-executor tool execution to a worker thread.</li>
      *   <li>Propagate framework context (Vert.x duplicated context, MDC, security context) into
-     *       the tool dispatch and the subsequent follow-up streaming inference call.</li>
-     *   <li>Hook cancellation into framework cancellation.</li>
+     *       that downstream continuation.</li>
+     *   <li>Hook downstream cancellation into framework cancellation.</li>
      * </ul>
      *
      * <p>The default is {@link StreamingToolDispatchHook#INLINE}, which runs the dispatch on the
      * thread invoking {@code onCompleteResponse}. This preserves the existing behavior.
      *
-     * <p>This hook is independent of the per-tool {@link Executor} configured via
-     * {@link #executeToolsConcurrently(Executor)} — that executor is passed to
-     * {@code ToolBatchDispatcher} and only fans out individual tool calls. The dispatch hook
-     * wraps the whole batch (and the follow-up streaming inference) and runs once per batch.
+     * <p>When {@link #maxToolCallsPerResponse(int)} is left at the default {@code 0} and a per-tool
+     * {@link Executor} is configured via {@link #executeToolsConcurrently()} or
+     * {@link #executeToolsConcurrently(Executor)}, streaming tools are scheduled eagerly from
+     * {@link StreamingChatResponseHandler#onCompleteToolCall(CompleteToolCall)} before this hook is
+     * invoked. In that mode, the hook wraps result gathering, memory writes, and follow-up
+     * streaming inference, but it cannot move already-scheduled tool execution onto a different
+     * thread. When no per-tool executor is configured, or when {@code maxToolCallsPerResponse} is
+     * greater than {@code 0}, the hook wraps deferred batch dispatch from the
+     * {@code onCompleteResponse} path. The hook runs once per batch in either mode.
      *
      * @param hook the integration hook. If {@code null}, the default {@link StreamingToolDispatchHook#INLINE}
      *             is used.

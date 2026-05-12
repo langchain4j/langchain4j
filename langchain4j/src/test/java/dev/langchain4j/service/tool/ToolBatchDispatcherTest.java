@@ -124,6 +124,28 @@ class ToolBatchDispatcherTest {
     }
 
     @Test
+    void single_request_uses_executor_when_explicitly_enabled() {
+        Thread caller = Thread.currentThread();
+        AtomicBoolean otherThread = new AtomicBoolean(false);
+        ToolExecutor te = (request, memId) -> {
+            if (Thread.currentThread() != caller) {
+                otherThread.set(true);
+            }
+            return "ok";
+        };
+
+        Map<ToolExecutionRequest, ToolExecutionResult> results = ToolBatchDispatcher.dispatch(baseReq()
+                .toolRequests(List.of(req("a", "t", "1")))
+                .toolExecutors(exec("t", te))
+                .executor(executor)
+                .useExecutorForSingleTool(true)
+                .build());
+
+        assertThat(results).hasSize(1);
+        assertThat(otherThread).as("explicit opt-in should dispatch a single tool on the executor").isTrue();
+    }
+
+    @Test
     void parallel_path_when_executor_and_multiple_requests_runs_concurrently_and_preserves_order()
             throws InterruptedException {
         AtomicInteger inFlight = new AtomicInteger();

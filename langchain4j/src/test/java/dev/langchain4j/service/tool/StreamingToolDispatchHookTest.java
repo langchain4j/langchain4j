@@ -230,11 +230,10 @@ class StreamingToolDispatchHookTest {
 
     @Test
     void hook_returning_without_invoking_work_silently_drops_the_batch() throws Exception {
-        // Per Javadoc: "Returning without invoking work will silently drop the tool batch."
-        // Validates that contract — if the hook never invokes work.get(), no tool executor runs
-        // and no follow-up streaming inference is issued. The test must NOT hang waiting for a
-        // final response (since none will arrive), so it uses a short timeout and asserts the
-        // future remains incomplete.
+        // Without a per-tool executor, tools run inside the hook's work supplier. If the hook
+        // drops that supplier, no tool executor runs and no follow-up streaming inference is issued.
+        // The test must NOT hang waiting for a final response (since none will arrive), so it uses
+        // a short timeout and asserts the future remains incomplete.
         CountingTool tool = new CountingTool();
         AiMessage oneToolCall = AiMessage.from(toolCall("c1", "a"));
         AiMessage finalAnswer = AiMessage.from("done");
@@ -283,6 +282,57 @@ class StreamingToolDispatchHookTest {
         assertThat(tool.calls.get())
                 .as("tool executor must not run when the hook drops the batch")
                 .isZero();
+        assertThat(future).as("no final response should have been delivered").isNotDone();
+    }
+
+    @Test
+    void hook_returning_without_invoking_work_does_not_cancel_already_scheduled_tool_executor_work()
+            throws Exception {
+        CountingTool tool = new CountingTool();
+        AiMessage oneToolCall = AiMessage.from(toolCall("c1", "a"));
+        AiMessage finalAnswer = AiMessage.from("done");
+        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(oneToolCall, finalAnswer);
+
+        AtomicInteger hookInvocations = new AtomicInteger();
+        StreamingToolDispatchHook droppingHook = new StreamingToolDispatchHook() {
+            @Override
+            public <T> CompletionStage<T> dispatch(Supplier<T> work) {
+                hookInvocations.incrementAndGet();
+                // Deliberately do NOT invoke work.get().
+                return CompletableFuture.completedFuture(null);
+            }
+        };
+
+        StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(model)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+                .tools(tool)
+                .executeToolsConcurrently(Runnable::run)
+                .streamingToolDispatchHook(droppingHook)
+                .build();
+
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+        assistant
+                .chat("go")
+                .onPartialResponse(ignored -> {})
+                .onCompleteResponse(future::complete)
+                .onError(future::completeExceptionally)
+                .start();
+
+        try {
+            future.get(1, TimeUnit.SECONDS);
+            throw new AssertionError(
+                    "Final response future completed even though hook dropped follow-up work: " + future.get());
+        } catch (TimeoutException expected) {
+            // Expected: no follow-up response when batch result gathering is dropped.
+        }
+
+        assertThat(hookInvocations.get())
+                .as("hook should have been invoked for the tool-call response")
+                .isEqualTo(1);
+        assertThat(tool.calls.get())
+                .as("per-tool executor work is scheduled eagerly before the hook runs")
+                .isEqualTo(1);
         assertThat(future).as("no final response should have been delivered").isNotDone();
     }
 

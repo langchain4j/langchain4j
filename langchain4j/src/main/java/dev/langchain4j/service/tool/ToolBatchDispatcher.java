@@ -26,9 +26,11 @@ import java.util.function.Predicate;
  * {@code ToolService.execute(...)} loop and the streaming response handler:
  * <ul>
  *   <li>Atomic enforcement of {@code maxToolCallsPerResponse} <em>before</em> any tool runs.</li>
- *   <li>Serial execution when no {@link Executor} is configured or only one tool is requested.</li>
+ *   <li>Serial execution when no {@link Executor} is configured, or only one tool is requested
+ *       and the caller has not opted into executor dispatch for single-tool batches.</li>
  *   <li>Concurrent execution via {@link CompletableFuture#supplyAsync(java.util.function.Supplier, Executor)}
- *       when an executor is configured and there are multiple tools.</li>
+ *       when an executor is configured and there are multiple tools, or when the caller explicitly
+ *       opts into executor dispatch for a single-tool batch.</li>
  *   <li>Ordered gather of results into a {@link LinkedHashMap} keyed by the original request.</li>
  *   <li>Best-effort sibling cancellation when a sibling future fails.</li>
  *   <li>Routing of tool execution exceptions through the configured argument and execution
@@ -64,6 +66,7 @@ public final class ToolBatchDispatcher {
         private final ToolArgumentsErrorHandler argumentsErrorHandler;
         private final ToolExecutionErrorHandler executionErrorHandler;
         private final int maxToolCallsPerResponse;
+        private final boolean useExecutorForSingleTool;
         private final Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinationStrategy;
 
         private Request(Builder b) {
@@ -77,6 +80,7 @@ public final class ToolBatchDispatcher {
             this.argumentsErrorHandler = b.argumentsErrorHandler;
             this.executionErrorHandler = b.executionErrorHandler;
             this.maxToolCallsPerResponse = b.maxToolCallsPerResponse;
+            this.useExecutorForSingleTool = b.useExecutorForSingleTool;
             this.hallucinationStrategy = b.hallucinationStrategy;
         }
 
@@ -95,6 +99,7 @@ public final class ToolBatchDispatcher {
             private ToolArgumentsErrorHandler argumentsErrorHandler;
             private ToolExecutionErrorHandler executionErrorHandler;
             private int maxToolCallsPerResponse = 0;
+            private boolean useExecutorForSingleTool = false;
             private Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinationStrategy;
 
             private Builder() {}
@@ -149,6 +154,11 @@ public final class ToolBatchDispatcher {
                 return this;
             }
 
+            public Builder useExecutorForSingleTool(boolean useExecutorForSingleTool) {
+                this.useExecutorForSingleTool = useExecutorForSingleTool;
+                return this;
+            }
+
             public Builder hallucinationStrategy(Function<ToolExecutionRequest, ToolExecutionResultMessage> strategy) {
                 this.hallucinationStrategy = strategy;
                 return this;
@@ -168,8 +178,9 @@ public final class ToolBatchDispatcher {
      * tool is executed.
      *
      * <p>If {@link Request#executor} is non-{@code null} and the batch contains more than one
-     * request, tools are dispatched concurrently using the supplied executor. Otherwise tools are
-     * executed sequentially on the calling thread.
+     * request, tools are dispatched concurrently using the supplied executor. Single-tool batches
+     * use the executor only when {@link Request#useExecutorForSingleTool} is {@code true}.
+     * Otherwise tools are executed sequentially on the calling thread.
      *
      * <p>The returned map preserves the order of the original {@code toolRequests} list.
      *
@@ -189,8 +200,9 @@ public final class ToolBatchDispatcher {
             return Collections.emptyMap();
         }
 
-        // Serial path: no executor or only one tool.
-        if (request.executor == null || request.toolRequests.size() == 1) {
+        // Serial path: no executor, or a single tool whose caller did not opt into executor dispatch.
+        if (request.executor == null
+                || (request.toolRequests.size() == 1 && !request.useExecutorForSingleTool)) {
             return executeSerially(request);
         }
 

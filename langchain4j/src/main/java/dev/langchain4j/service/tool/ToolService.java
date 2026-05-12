@@ -878,6 +878,7 @@ public class ToolService {
                 // The cap is enforced at the loop level (see executeInferenceAndToolsLoop)
                 // so we do not configure it here; passing 0 keeps the dispatcher's check inert.
                 .maxToolCallsPerResponse(0)
+                .useExecutorForSingleTool(false)
                 .build());
     }
 
