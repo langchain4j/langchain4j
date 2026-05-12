@@ -65,7 +65,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.propagateToolExecutionExceptions = false;
     }
 
-    public Method getOriginalMethod() {
+    public Method originalMethod() {
         return originalMethod;
     }
 

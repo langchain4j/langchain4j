@@ -42,6 +42,8 @@ import dev.langchain4j.service.Result;
 import dev.langchain4j.service.tool.search.ToolSearchService;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import java.lang.reflect.Method;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.lang.reflect.Parameter;
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -62,6 +64,8 @@ import java.util.function.Function;
 
 @Internal
 public class ToolService {
+
+    private static final Logger log = LoggerFactory.getLogger(ToolService.class);
 
     private static final ToolArgumentsErrorHandler DEFAULT_TOOL_ARGUMENTS_ERROR_HANDLER = (error, context) -> {
         if (error instanceof RuntimeException re) {
@@ -267,7 +271,7 @@ public class ToolService {
                             "@ReverseTool(\"%s\") on method '%s.%s' references a non-existent tool",
                             toolName, objectWithTools.getClass().getName(), method.getName());
                 }
-                Method toolMethod = ((DefaultToolExecutor) toolExecutor).getOriginalMethod();
+                Method toolMethod = ((DefaultToolExecutor) toolExecutor).originalMethod();
                 if (!Arrays.equals(toolMethod.getParameterTypes(), method.getParameterTypes())) {
                     throw illegalConfiguration(
                             "@ReverseTool(\"%s\") on method '%s.%s' must have the same parameter types as tool '%s'",
@@ -576,7 +580,7 @@ public class ToolService {
             try {
                 reverseExecutor.executeWithContext(request, invocationContext);
             } catch (Exception e) {
-                // best-effort: continue rolling back remaining actions
+                log.warn("Failed to rollback tool '{}': {}", request.name(), e.getMessage(), e);
             }
         }
     }
