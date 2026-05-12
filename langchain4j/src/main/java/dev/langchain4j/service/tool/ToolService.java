@@ -13,6 +13,7 @@ import static dev.langchain4j.service.IllegalConfigurationException.illegalConfi
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.ReturnBehavior;
+import dev.langchain4j.agent.tool.ReverseTool;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -43,6 +44,7 @@ import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -77,7 +79,9 @@ public class ToolService {
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
     private final Map<String, ReturnBehavior> returnBehaviors = new HashMap<>();
+    private final Map<String, ToolExecutor> reverseToolExecutors = new HashMap<>();
     private final Set<ToolProvider> toolProviders = new LinkedHashSet<>();
+    private boolean transactional;
     private Executor executor;
     private int maxToolCallingRoundTrips = 100;
     private ToolArgumentsErrorHandler argumentsErrorHandler;
@@ -125,6 +129,7 @@ public class ToolService {
         for (Object objectWithTools : objectsWithTools) {
             List<AiServiceTool> tools = findTools(objectWithTools);
             addTools(tools, this.toolExecutors, this.toolSpecifications, this.returnBehaviors);
+            this.reverseToolExecutors.putAll(findReverseTools(objectWithTools, this.toolExecutors));
         }
     }
 
@@ -244,6 +249,38 @@ public class ToolService {
                     objectWithTools.getClass().getName());
         }
         return result;
+    }
+
+    public void transactional(boolean transactional) {
+        this.transactional = transactional;
+    }
+
+    static Map<String, ToolExecutor> findReverseTools(Object objectWithTools, Map<String, ToolExecutor> toolExecutors) {
+        Map<String, ToolExecutor> reverseExecutors = new HashMap<>();
+        for (Method method : objectWithTools.getClass().getDeclaredMethods()) {
+            ReverseTool reverseTool = method.getAnnotation(ReverseTool.class);
+            if (reverseTool != null) {
+                String toolName = reverseTool.value();
+                ToolExecutor toolExecutor = toolExecutors.get(toolName);
+                if (!(toolExecutor instanceof DefaultToolExecutor)) {
+                    throw illegalConfiguration(
+                            "@ReverseTool(\"%s\") on method '%s.%s' references a non-existent tool",
+                            toolName, objectWithTools.getClass().getName(), method.getName());
+                }
+                Method toolMethod = ((DefaultToolExecutor) toolExecutor).getOriginalMethod();
+                if (!Arrays.equals(toolMethod.getParameterTypes(), method.getParameterTypes())) {
+                    throw illegalConfiguration(
+                            "@ReverseTool(\"%s\") on method '%s.%s' must have the same parameter types as tool '%s'",
+                            toolName, objectWithTools.getClass().getName(), method.getName(), toolName);
+                }
+                reverseExecutors.put(toolName, DefaultToolExecutor.builder()
+                        .object(objectWithTools)
+                        .originalMethod(toolMethod)
+                        .methodToInvoke(method)
+                        .build());
+            }
+        }
+        return reverseExecutors;
     }
 
     /**
@@ -415,6 +452,7 @@ public class ToolService {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
+        List<ToolExecutionRequest> successfulReversibleExecutions = transactional ? new ArrayList<>() : null;
 
         int roundTripsLeft = maxToolCallingRoundTrips;
         while (true) {
@@ -464,8 +502,18 @@ public class ToolService {
                     messages.add(resultMessage);
                 }
 
+                if (!result.isError() && transactional && reverseToolExecutors.containsKey(request.name())) {
+                    successfulReversibleExecutions.add(request);
+                }
+
                 anyToolErrored = anyToolErrored || result.isError();
                 returnBehaviors.add(toolServiceContext.returnBehavior(request.name()));
+            }
+
+            if (transactional && anyToolErrored) {
+                rollback(successfulReversibleExecutions, invocationContext);
+                throw runtime("Tool execution failed, rolled back %s previous tool action(s)",
+                        successfulReversibleExecutions.size());
             }
 
             if (shouldReturnImmediately(anyToolErrored, returnBehaviors)) {
@@ -519,6 +567,18 @@ public class ToolService {
                 .toolExecutions(toolExecutions)
                 .aggregateTokenUsage(aggregateTokenUsage)
                 .build();
+    }
+
+    private void rollback(List<ToolExecutionRequest> successfulReversibleExecutions, InvocationContext invocationContext) {
+        for (int i = successfulReversibleExecutions.size() - 1; i >= 0; i--) {
+            ToolExecutionRequest request = successfulReversibleExecutions.get(i);
+            ToolExecutor reverseExecutor = reverseToolExecutors.get(request.name());
+            try {
+                reverseExecutor.executeWithContext(request, invocationContext);
+            } catch (Exception e) {
+                // best-effort: continue rolling back remaining actions
+            }
+        }
     }
 
     public static boolean shouldReturnImmediately(boolean anyToolErrored, List<ReturnBehavior> returnBehaviors) {

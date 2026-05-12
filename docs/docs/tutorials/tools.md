@@ -1536,6 +1536,98 @@ Assistant assistant = AiServices.builder(Assistant.class)
 As with the `ToolArgumentsErrorHandler`, there are two ways to handle errors in `ToolExecutionErrorHandler`:
 throw an exception or return a text message.
 
+### Transactional Tool Execution
+
+When an AI Service uses multiple tools to accomplish a task, a failure in one tool
+can leave the system in an inconsistent state — some tools have already executed
+successfully while others have not. For example, in a bank transfer the LLM might
+credit the recipient's account first and then fail to withdraw from the sender's
+account due to insufficient funds, leaving the recipient with extra money.
+
+To handle this, you can mark an AI Service as **transactional**. When enabled,
+if any tool execution fails, all previously successful tool calls that declare a
+reverse action are automatically rolled back in reverse order.
+
+#### Declaring Reverse Actions with `@ReverseTool`
+
+Use the `@ReverseTool` annotation on a method to declare it as the compensating
+action for a `@Tool`. The `value` must match the name of the tool it reverses
+(either the `@Tool` method name or its `@Tool(name = ...)` attribute).
+The reverse method must have the same parameter types as the tool it reverses.
+
+```java
+class BankAccountService {
+
+    @Tool("credits money to a bank account")
+    void credit(String name, double amount) {
+        accounts.merge(name, amount, Double::sum);
+    }
+
+    @ReverseTool("credit")
+    void uncredit(String name, double amount) {
+        accounts.merge(name, -amount, Double::sum);
+    }
+
+    @Tool("withdraws money from a bank account")
+    void withdraw(String name, double amount) {
+        if (accounts.getOrDefault(name, 0.0) < amount) {
+            throw new RuntimeException("Insufficient funds");
+        }
+        accounts.merge(name, -amount, Double::sum);
+    }
+
+    @ReverseTool("withdraw")
+    void unwithdraw(String name, double amount) {
+        accounts.merge(name, amount, Double::sum);
+    }
+}
+```
+
+#### Enabling Transactional Mode
+
+Call `.transactional()` when building the AI Service:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(model)
+        .tools(new BankAccountService())
+        .transactional()
+        .build();
+```
+
+With this configuration, if the LLM calls `credit("Dmytro", 100)` and then
+`withdraw("Mario", 100)` which fails, the framework will automatically call
+`uncredit("Dmytro", 100)` to undo the credit, and then throw a `RuntimeException`.
+
+Without `.transactional()`, the error is sent back to the LLM as usual and no
+rollback occurs — even if `@ReverseTool` annotations are present.
+
+#### Validation
+
+At AI Service build time, each `@ReverseTool` is validated:
+- The referenced tool must exist (by name) on the same object.
+- The reverse method must have exactly the same parameter types as the tool.
+
+If either check fails, an `IllegalConfigurationException` is thrown immediately,
+so misconfigurations are caught at startup rather than at runtime.
+
+#### Notes and Limitations
+
+:::note
+Rollback is best-effort: if a reverse action itself throws an exception, it is
+silently ignored and the remaining reverse actions continue to execute.
+:::
+
+:::note
+`@ReverseTool` methods are not exposed to the LLM — they are internal rollback
+infrastructure and do not appear in tool specifications.
+:::
+
+:::note
+Transactional tool execution is currently marked as experimental and may evolve
+in future releases.
+:::
+
 ## Model Context Protocol (MCP)
 
 You can also import [tools from MCP server](https://modelcontextprotocol.io/docs/concepts/tools).

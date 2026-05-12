@@ -28,6 +28,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.LoggingChatModelListener;
 import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.ReverseTool;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -2126,5 +2127,152 @@ class AiServicesWithToolsIT {
         assistant.chat("Please register a circle shape with radius 4.");
 
         verify(registry).registerShape(argThat(shape -> shape instanceof Circle circle && circle.radius == 4.0));
+    }
+
+    static class BankAccountService {
+
+        final Map<String, Double> accounts = new HashMap<>();
+
+        BankAccountService() {
+            accounts.put("Mario", 50.0);
+            accounts.put("Dmytro", 100.0);
+        }
+
+        @Tool("credits money to a bank account")
+        void credit(@P(name = "name", value = "account holder name") String name,
+                    @P(name = "amount", value = "amount to credit") double amount) {
+            accounts.merge(name, amount, Double::sum);
+        }
+
+        @ReverseTool("credit")
+        void uncredit(String name, double amount) {
+            accounts.merge(name, -amount, Double::sum);
+        }
+
+        @Tool("withdraws money from a bank account")
+        void withdraw(@P(name = "name", value = "account holder name") String name,
+                      @P(name = "amount", value = "amount to withdraw") double amount) {
+            if (accounts.getOrDefault(name, 0.0) < amount) {
+                throw new RuntimeException("Insufficient funds in " + name + "'s account");
+            }
+            accounts.merge(name, -amount, Double::sum);
+        }
+
+        @ReverseTool("withdraw")
+        void unwithdraw(String name, double amount) {
+            accounts.merge(name, amount, Double::sum);
+        }
+    }
+
+    @Test
+    void should_rollback_tool_executions_on_failure_when_transactional() {
+
+        // given
+        BankAccountService bankService = spy(new BankAccountService());
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                // First LLM response: credit Dmytro's account
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("credit")
+                        .arguments("{\"name\": \"Dmytro\", \"amount\": 100.0}")
+                        .build()),
+                // Second LLM response: withdraw from Mario's account (will fail - insufficient funds)
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("2")
+                        .name("withdraw")
+                        .arguments("{\"name\": \"Mario\", \"amount\": 100.0}")
+                        .build()),
+                AiMessage.from("Transfer complete"));
+
+        interface BankAssistant {
+            String chat(String userMessage);
+        }
+
+        BankAssistant assistant = AiServices.builder(BankAssistant.class)
+                .chatModel(chatModel)
+                .tools(bankService)
+                .transactional()
+                .build();
+
+        // when
+        try {
+            assistant.chat("Transfer 100 dollars from Mario's account to Dmytro's account");
+        } catch (Exception e) {
+            // expected in transactional mode
+        }
+
+        // then - the credit to Dmytro should have been rolled back via uncredit
+        verify(bankService).credit("Dmytro", 100.0);
+        verify(bankService).withdraw("Mario", 100.0);
+        verify(bankService).uncredit("Dmytro", 100.0);
+
+        // account balances should be back to their original state
+        assertThat(bankService.accounts.get("Mario")).isEqualTo(50.0);
+        assertThat(bankService.accounts.get("Dmytro")).isEqualTo(100.0);
+    }
+
+    @Test
+    void should_not_rollback_tool_executions_on_failure_when_not_transactional() {
+
+        // given
+        BankAccountService bankService = spy(new BankAccountService());
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("credit")
+                        .arguments("{\"name\": \"Dmytro\", \"amount\": 100.0}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("2")
+                        .name("withdraw")
+                        .arguments("{\"name\": \"Mario\", \"amount\": 100.0}")
+                        .build()),
+                AiMessage.from("Transfer failed, Mario has insufficient funds"));
+
+        interface BankAssistant {
+            String chat(String userMessage);
+        }
+
+        BankAssistant assistant = AiServices.builder(BankAssistant.class)
+                .chatModel(chatModel)
+                .tools(bankService)
+                .build();
+
+        // when
+        assistant.chat("Transfer 100 dollars from Mario's account to Dmytro's account");
+
+        // then - no rollback: uncredit should never be called
+        verify(bankService).credit("Dmytro", 100.0);
+        verify(bankService).withdraw("Mario", 100.0);
+        verify(bankService, times(0)).uncredit("Dmytro", 100.0);
+
+        // Dmytro's balance stays at 200 (credit was not reversed)
+        assertThat(bankService.accounts.get("Mario")).isEqualTo(50.0);
+        assertThat(bankService.accounts.get("Dmytro")).isEqualTo(200.0);
+    }
+
+    @Test
+    void should_throw_when_reverse_tool_has_wrong_signature() {
+
+        class MisconfiguredService {
+
+            @Tool("credits money to a bank account")
+            void credit(String name, double amount) {
+            }
+
+            @ReverseTool("credit")
+            void uncredit(String name) {
+            }
+        }
+
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() -> AiServices.builder(Assistant.class)
+                        .chatModel(ChatModelMock.thatAlwaysResponds("ok"))
+                        .tools(new MisconfiguredService())
+                        .build())
+                .withMessageContaining("@ReverseTool(\"credit\")")
+                .withMessageContaining("same parameter types");
     }
 }
