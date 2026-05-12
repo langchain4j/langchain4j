@@ -1553,7 +1553,11 @@ reverse action are automatically rolled back in reverse order.
 Use the `@ReverseTool` annotation on a method to declare it as the compensating
 action for a `@Tool`. The `value` must match the name of the tool it reverses
 (either the `@Tool` method name or its `@Tool(name = ...)` attribute).
-The reverse method must have the same parameter types as the tool it reverses.
+The reverse method must either have the same parameter types as the tool it reverses,
+or accept a single `ToolExecution` parameter.
+
+**Option 1: Same parameter types** — the reverse method receives the same arguments
+that were passed to the original tool:
 
 ```java
 class BankAccountService {
@@ -1583,6 +1587,28 @@ class BankAccountService {
 }
 ```
 
+**Option 2: `ToolExecution` parameter** — the reverse method receives the full
+`ToolExecution`, giving access to both the original arguments and the tool's
+**return value**. This is useful when undoing an action requires information
+produced by the original execution (e.g. a transaction ID):
+
+```java
+class BankAccountService {
+
+    @Tool("credits money to a bank account")
+    String credit(String name, double amount) {
+        accounts.merge(name, amount, Double::sum);
+        return createTransactionRecord(name, amount); // e.g. "TX-42"
+    }
+
+    @ReverseTool("credit")
+    void uncredit(ToolExecution toolExecution) {
+        String transactionId = toolExecution.result(); // "TX-42"
+        reverseTransaction(transactionId);
+    }
+}
+```
+
 #### Enabling Transactional Mode
 
 Call `.transactional()` when building the AI Service:
@@ -1606,7 +1632,8 @@ rollback occurs — even if `@ReverseTool` annotations are present.
 
 At AI Service build time, each `@ReverseTool` is validated:
 - The referenced tool must exist (by name) on the same object.
-- The reverse method must have exactly the same parameter types as the tool.
+- The reverse method must have exactly the same parameter types as the tool,
+  or accept a single `ToolExecution` parameter.
 
 If either check fails, an `IllegalConfigurationException` is thrown immediately,
 so misconfigurations are caught at startup rather than at runtime.

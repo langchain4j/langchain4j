@@ -59,6 +59,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -83,7 +84,7 @@ public class ToolService {
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
     private final Map<String, ReturnBehavior> returnBehaviors = new HashMap<>();
-    private final Map<String, ToolExecutor> reverseToolExecutors = new HashMap<>();
+    private final Map<String, BiConsumer<ToolExecution, InvocationContext>> reverseToolExecutors = new HashMap<>();
     private final Set<ToolProvider> toolProviders = new LinkedHashSet<>();
     private boolean transactional;
     private Executor executor;
@@ -259,8 +260,9 @@ public class ToolService {
         this.transactional = transactional;
     }
 
-    static Map<String, ToolExecutor> findReverseTools(Object objectWithTools, Map<String, ToolExecutor> toolExecutors) {
-        Map<String, ToolExecutor> reverseExecutors = new HashMap<>();
+    static Map<String, BiConsumer<ToolExecution, InvocationContext>> findReverseTools(
+            Object objectWithTools, Map<String, ToolExecutor> toolExecutors) {
+        Map<String, BiConsumer<ToolExecution, InvocationContext>> reverseExecutors = new HashMap<>();
         for (Method method : objectWithTools.getClass().getDeclaredMethods()) {
             ReverseTool reverseTool = method.getAnnotation(ReverseTool.class);
             if (reverseTool != null) {
@@ -272,16 +274,36 @@ public class ToolService {
                             toolName, objectWithTools.getClass().getName(), method.getName());
                 }
                 Method toolMethod = ((DefaultToolExecutor) toolExecutor).originalMethod();
-                if (!Arrays.equals(toolMethod.getParameterTypes(), method.getParameterTypes())) {
+                Class<?>[] reverseParams = method.getParameterTypes();
+                boolean acceptsToolExecution = reverseParams.length == 1
+                        && reverseParams[0] == ToolExecution.class;
+                if (!acceptsToolExecution
+                        && !Arrays.equals(toolMethod.getParameterTypes(), reverseParams)) {
                     throw illegalConfiguration(
-                            "@ReverseTool(\"%s\") on method '%s.%s' must have the same parameter types as tool '%s'",
-                            toolName, objectWithTools.getClass().getName(), method.getName(), toolName);
+                            "@ReverseTool(\"%s\") on method '%s.%s' must have the same parameter types as tool '%s'"
+                                    + " or a single %s parameter",
+                            toolName, objectWithTools.getClass().getName(), method.getName(),
+                            toolName, ToolExecution.class.getSimpleName());
                 }
-                reverseExecutors.put(toolName, DefaultToolExecutor.builder()
-                        .object(objectWithTools)
-                        .originalMethod(toolMethod)
-                        .methodToInvoke(method)
-                        .build());
+                if (acceptsToolExecution) {
+                    Method reverseMethod = method;
+                    reverseExecutors.put(toolName, (toolExecution, ctx) -> {
+                        try {
+                            reverseMethod.setAccessible(true);
+                            reverseMethod.invoke(objectWithTools, toolExecution);
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                } else {
+                    DefaultToolExecutor executor = DefaultToolExecutor.builder()
+                            .object(objectWithTools)
+                            .originalMethod(toolMethod)
+                            .methodToInvoke(method)
+                            .build();
+                    reverseExecutors.put(toolName, (toolExecution, ctx) ->
+                            executor.executeWithContext(toolExecution.request(), ctx));
+                }
             }
         }
         return reverseExecutors;
@@ -456,7 +478,7 @@ public class ToolService {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
-        List<ToolExecutionRequest> successfulReversibleExecutions = transactional ? new ArrayList<>() : null;
+        List<ToolExecution> successfulReversibleExecutions = transactional ? new ArrayList<>() : null;
 
         int roundTripsLeft = maxToolCallingRoundTrips;
         while (true) {
@@ -507,7 +529,7 @@ public class ToolService {
                 }
 
                 if (!result.isError() && transactional && reverseToolExecutors.containsKey(request.name())) {
-                    successfulReversibleExecutions.add(request);
+                    successfulReversibleExecutions.add(toolExecution);
                 }
 
                 anyToolErrored = anyToolErrored || result.isError();
@@ -573,14 +595,15 @@ public class ToolService {
                 .build();
     }
 
-    private void rollback(List<ToolExecutionRequest> successfulReversibleExecutions, InvocationContext invocationContext) {
+    private void rollback(List<ToolExecution> successfulReversibleExecutions, InvocationContext invocationContext) {
         for (int i = successfulReversibleExecutions.size() - 1; i >= 0; i--) {
-            ToolExecutionRequest request = successfulReversibleExecutions.get(i);
-            ToolExecutor reverseExecutor = reverseToolExecutors.get(request.name());
+            ToolExecution toolExecution = successfulReversibleExecutions.get(i);
+            String toolName = toolExecution.request().name();
+            BiConsumer<ToolExecution, InvocationContext> reverseExecutor = reverseToolExecutors.get(toolName);
             try {
-                reverseExecutor.executeWithContext(request, invocationContext);
+                reverseExecutor.accept(toolExecution, invocationContext);
             } catch (Exception e) {
-                log.warn("Failed to rollback tool '{}': {}", request.name(), e.getMessage(), e);
+                log.warn("Failed to rollback tool '{}': {}", toolName, e.getMessage(), e);
             }
         }
     }

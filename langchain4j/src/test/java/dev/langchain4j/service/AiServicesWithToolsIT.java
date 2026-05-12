@@ -2140,7 +2140,7 @@ class AiServicesWithToolsIT {
 
         @Tool("credits money to a bank account")
         void credit(@P(name = "name", description = "account holder name") String name,
-                    @P(name = "amount", value = "amount to credit") double amount) {
+                    @P(name = "amount", description = "amount to credit") double amount) {
             accounts.merge(name, amount, Double::sum);
         }
 
@@ -2150,8 +2150,8 @@ class AiServicesWithToolsIT {
         }
 
         @Tool("withdraws money from a bank account")
-        void withdraw(@P(name = "name", value = "account holder name") String name,
-                      @P(name = "amount", value = "amount to withdraw") double amount) {
+        void withdraw(@P(name = "name", description = "account holder name") String name,
+                      @P(name = "amount", description = "amount to withdraw") double amount) {
             if (accounts.getOrDefault(name, 0.0) < amount) {
                 throw new RuntimeException("Insufficient funds in " + name + "'s account");
             }
@@ -2251,6 +2251,84 @@ class AiServicesWithToolsIT {
         // Dmytro's balance stays at 200 (credit was not reversed)
         assertThat(bankService.accounts.get("Mario")).isEqualTo(50.0);
         assertThat(bankService.accounts.get("Dmytro")).isEqualTo(200.0);
+    }
+
+    @Test
+    void should_rollback_with_tool_execution_parameter() {
+
+        // given
+        class TransactionalBankService {
+
+            final Map<String, Double> accounts = new HashMap<>();
+            final List<String> reversedTransactionIds = new ArrayList<>();
+
+            TransactionalBankService() {
+                accounts.put("Mario", 50.0);
+                accounts.put("Dmytro", 100.0);
+            }
+
+            @Tool("credits money to a bank account")
+            String credit(@P(name = "name", description = "account holder name") String name,
+                          @P(name = "amount", description = "amount to credit") double amount) {
+                accounts.merge(name, amount, Double::sum);
+                return "TX-42";
+            }
+
+            @ReverseTool("credit")
+            void uncredit(ToolExecution toolExecution) {
+                reversedTransactionIds.add(toolExecution.result());
+                Map<String, Object> args = Json.fromJson(toolExecution.request().arguments(), Map.class);
+                accounts.merge((String) args.get("name"), -((Number) args.get("amount")).doubleValue(), Double::sum);
+            }
+
+            @Tool("withdraws money from a bank account")
+            void withdraw(@P(name = "name", description = "account holder name") String name,
+                          @P(name = "amount", description = "amount to withdraw") double amount) {
+                if (accounts.getOrDefault(name, 0.0) < amount) {
+                    throw new RuntimeException("Insufficient funds in " + name + "'s account");
+                }
+                accounts.merge(name, -amount, Double::sum);
+            }
+        }
+
+        TransactionalBankService bankService = new TransactionalBankService();
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("credit")
+                        .arguments("{\"name\": \"Dmytro\", \"amount\": 100.0}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("2")
+                        .name("withdraw")
+                        .arguments("{\"name\": \"Mario\", \"amount\": 100.0}")
+                        .build()),
+                AiMessage.from("Transfer complete"));
+
+        interface BankAssistant {
+            String chat(String userMessage);
+        }
+
+        BankAssistant assistant = AiServices.builder(BankAssistant.class)
+                .chatModel(chatModel)
+                .tools(bankService)
+                .transactional()
+                .build();
+
+        // when
+        try {
+            assistant.chat("Transfer 100 dollars from Mario's account to Dmytro's account");
+        } catch (Exception e) {
+            // expected
+        }
+
+        // then - the reverse method received the ToolExecution with the original result
+        assertThat(bankService.reversedTransactionIds).containsExactly("TX-42");
+
+        // balances should be restored
+        assertThat(bankService.accounts.get("Mario")).isEqualTo(50.0);
+        assertThat(bankService.accounts.get("Dmytro")).isEqualTo(100.0);
     }
 
     @Test
