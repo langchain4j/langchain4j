@@ -1221,7 +1221,7 @@ public abstract class AiServices<T> {
     /**
      * Configures the AI Service as transactional.
      * When enabled, if any tool execution fails, all previously executed tools'
-     * reverse actions (declared via {@link Tool#reverseAction()}) are called
+     * reverse actions (declared via {@link dev.langchain4j.agent.tool.ReverseTool}) are called
      * in reverse order to compensate/rollback the effects of the successful tool calls.
      *
      * @return builder
