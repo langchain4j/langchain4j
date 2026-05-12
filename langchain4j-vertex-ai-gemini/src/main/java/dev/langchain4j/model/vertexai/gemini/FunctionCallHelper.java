@@ -50,14 +50,13 @@ class FunctionCallHelper {
                 .toList();
     }
 
-    static AiMessage fromFunctionCallParts(List<Part> functionCallParts, Boolean returnThinking) {
+    static AiMessage fromFunctionCallParts(List<Part> functionCallParts, boolean returnThinking) {
         List<ToolExecutionRequest> toolExecutionRequests = IntStream.range(0, functionCallParts.size())
                 .mapToObj(index ->
                         fromFunctionCall(index, functionCallParts.get(index).getFunctionCall()))
                 .toList();
 
-        Map<String, Object> attributes =
-                Boolean.TRUE.equals(returnThinking) ? attributesFromFunctionCallParts(functionCallParts) : Map.of();
+        Map<String, Object> attributes = returnThinking ? attributesFromFunctionCallParts(functionCallParts) : Map.of();
 
         return AiMessage.builder()
                 .toolExecutionRequests(toolExecutionRequests)

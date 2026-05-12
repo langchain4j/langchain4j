@@ -89,7 +89,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
     private final List<ChatModelListener> listeners;
 
     private final Executor executor;
-    private final Boolean returnThinking;
+    private final boolean returnThinking;
     private final boolean sendThinking;
 
     private final Map<String, String> labels;
@@ -200,7 +200,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.logResponses = getOrDefault(builder.logResponses, false);
         this.listeners = copy(builder.listeners);
         this.executor = getOrDefault(builder.executor, VertexAiGeminiStreamingChatModel::createDefaultExecutor);
-        this.returnThinking = builder.returnThinking;
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.sendThinking = getOrDefault(builder.sendThinking, false);
         this.labels = copy(builder.labels);
     }
@@ -331,7 +331,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
 
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.executor = getOrDefault(executor, VertexAiGeminiStreamingChatModel::createDefaultExecutor);
-        this.returnThinking = null;
+        this.returnThinking = false;
         this.sendThinking = false;
         this.labels = Collections.emptyMap();
     }
@@ -353,7 +353,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.logResponses = false;
         this.listeners = Collections.emptyList();
         this.executor = VertexAiGeminiStreamingChatModel.createDefaultExecutor();
-        this.returnThinking = null;
+        this.returnThinking = false;
         this.sendThinking = false;
         this.labels = Collections.emptyMap();
     }
@@ -376,7 +376,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.logResponses = false;
         this.listeners = Collections.emptyList();
         this.executor = getOrDefault(executor, VertexAiGeminiStreamingChatModel::createDefaultExecutor);
-        this.returnThinking = null;
+        this.returnThinking = false;
         this.sendThinking = false;
         this.labels = Collections.emptyMap();
     }

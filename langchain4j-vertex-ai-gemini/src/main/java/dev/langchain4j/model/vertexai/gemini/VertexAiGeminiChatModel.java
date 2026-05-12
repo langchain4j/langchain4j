@@ -97,7 +97,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
 
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
-    private final Boolean returnThinking;
+    private final boolean returnThinking;
     private final boolean sendThinking;
 
     private final Map<String, String> labels;
@@ -216,7 +216,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         this.logResponses = getOrDefault(builder.logResponses, false);
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
-        this.returnThinking = builder.returnThinking;
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.sendThinking = getOrDefault(builder.sendThinking, false);
         this.labels = copy(builder.labels);
     }
@@ -346,7 +346,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
 
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.supportedCapabilities = copy(supportedCapabilities);
-        this.returnThinking = null;
+        this.returnThinking = false;
         this.sendThinking = false;
         this.labels = Collections.emptyMap();
     }
@@ -374,7 +374,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         this.logResponses = false;
         this.listeners = Collections.emptyList();
         this.supportedCapabilities = Set.of();
-        this.returnThinking = null;
+        this.returnThinking = false;
         this.sendThinking = false;
         this.labels = Collections.emptyMap();
     }

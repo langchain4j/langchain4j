@@ -16,16 +16,16 @@ class StreamingChatResponseBuilder {
 
     private final List<Part> functionCallParts = new ArrayList<>();
 
-    private final Boolean returnThinking;
+    private final boolean returnThinking;
 
     private volatile TokenUsage tokenUsage;
     private volatile FinishReason finishReason;
 
     StreamingChatResponseBuilder() {
-        this(null);
+        this(false);
     }
 
-    StreamingChatResponseBuilder(Boolean returnThinking) {
+    StreamingChatResponseBuilder(boolean returnThinking) {
         this.returnThinking = returnThinking;
     }
 
