@@ -98,21 +98,39 @@ public class DeclarativeUtil {
 
         getAnnotatedMethodOnClass(agentType, ChatModelSupplier.class)
                 .ifPresentOrElse(method -> {
-                            checkArguments(method);
-                            checkReturnType(method, ChatModel.class);
-                            agentBuilder.chatModel(invokeStatic(method));
+                            if (method.getParameterCount() > 0) {
+                                Function<AgenticScope, ChatModel> scopeFunction = agenticScopeFunction(method, ChatModel.class);
+                                Function<AgenticScope, ChatModel> provider = scope -> {
+                                    if (scope == null) {
+                                        return invokeStatic(method, new Object[method.getParameterCount()]);
+                                    }
+                                    return scopeFunction.apply(scope);
+                                };
+                                agentBuilder.chatModel(provider);
+                            } else {
+                                agentBuilder.chatModel((ChatModel) invokeStatic(method));
+                            }
                         },
                         () -> getAnnotatedMethodOnClass(agentType, StreamingChatModelSupplier.class)
                                 .ifPresentOrElse(method -> {
-                                            checkArguments(method);
-                                            checkReturnType(method, StreamingChatModel.class);
-                                            agentBuilder.streamingChatModel(invokeStatic(method));
+                                            if (method.getParameterCount() > 0) {
+                                                Function<AgenticScope, StreamingChatModel> scopeFunction = agenticScopeFunction(method, StreamingChatModel.class);
+                                                Function<AgenticScope, StreamingChatModel> provider = scope -> {
+                                                    if (scope == null) {
+                                                        return invokeStatic(method, new Object[method.getParameterCount()]);
+                                                    }
+                                                    return scopeFunction.apply(scope);
+                                                };
+                                                agentBuilder.streamingChatModel(provider);
+                                            } else {
+                                                agentBuilder.streamingChatModel((StreamingChatModel) invokeStatic(method));
+                                            }
                                         },
                                         () -> {
                                             if (chatModel == null && !allowNullChatModel) {
                                                 throw new IllegalArgumentException("ChatModel not provided for subagent " + agentType.getName() +
                                                         ". Please provide one either with a static method annotated with @ChatModelSupplier " +
-                                                        "or @StreamingChatModelSupplier or through the parent agent's chatModel parameter.");
+                                                        "or @StreamingChatModelSupplier, or through the parent agent's chatModel parameter.");
                                             }
                                             agentBuilder.chatModel(chatModel);
                                         }));

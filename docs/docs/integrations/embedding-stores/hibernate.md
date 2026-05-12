@@ -15,13 +15,13 @@ RAG, and more.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-hibernate</artifactId>
-    <version>1.14.1-beta24</version>
+    <version>1.11.7-beta19</version>
 </dependency>
 ```
 
 ## Gradle Dependency
 
-```implementation 'dev.langchain4j:langchain4j-hibernate:1.14.1-beta24'```
+```implementation 'dev.langchain4j:langchain4j-hibernate:1.11.7-beta19'```
 
 ## APIs
 

@@ -49,6 +49,9 @@ public class ToolSpecificationJsonUtils {
                 && !toolSpecification.metadata().isEmpty()) {
             map.put("metadata", toolSpecification.metadata());
         }
+        if (toolSpecification.strict() != null) {
+            map.put("strict", toolSpecification.strict());
+        }
         return CODEC.toJson(map);
     }
 
@@ -86,6 +89,14 @@ public class ToolSpecificationJsonUtils {
         } else if (metadataObj != null) {
             throw new IllegalArgumentException("\"metadata\" must be a JSON object, but was: "
                     + metadataObj.getClass().getSimpleName());
+        }
+
+        Object strictObj = map.get("strict");
+        if (strictObj instanceof Boolean) {
+            builder.strict((Boolean) strictObj);
+        } else if (strictObj != null) {
+            throw new IllegalArgumentException("\"strict\" must be a boolean, but was: "
+                    + strictObj.getClass().getSimpleName());
         }
 
         return builder.build();
