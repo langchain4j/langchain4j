@@ -329,25 +329,29 @@ class JsonSchemaElementUtilsTest {
                         .build());
     }
 
-    static class HolderOfWildcardBoxes {
+    static class CombinedGenericsHolder<T extends CharSequence> {
 
-        List<? extends GenericBox<String>> items;
+        List<? extends GenericBox<String>> wildcards;
+
+        List<T> typeVariables;
+
+        List<T[]> genericArrays;
     }
 
     @Test
-    void should_create_schema_when_collection_element_type_is_a_wildcard() {
+    void should_resolve_wildcard_type_variable_and_generic_array_collection_elements() {
 
         // given
-        Class<HolderOfWildcardBoxes> clazz = HolderOfWildcardBoxes.class;
+        Class<CombinedGenericsHolder> clazz = CombinedGenericsHolder.class;
 
         // when
         JsonSchemaElement schema = jsonSchemaElementFrom(clazz, null, null, true, new LinkedHashMap<>());
 
-        // then — same shape as the parameterized case: the wildcard's upper bound resolves to GenericBox.
+        // then — every Collection element resolves through its respective rawClassOf branch.
         assertThat(schema)
                 .isEqualTo(JsonObjectSchema.builder()
                         .addProperty(
-                                "items",
+                                "wildcards",
                                 JsonArraySchema.builder()
                                         .items(JsonObjectSchema.builder()
                                                 .addProperty(
@@ -356,7 +360,19 @@ class JsonSchemaElementUtilsTest {
                                                 .required("value")
                                                 .build())
                                         .build())
-                        .required("items")
+                        .addProperty(
+                                "typeVariables",
+                                JsonArraySchema.builder()
+                                        .items(JsonStringSchema.builder().build())
+                                        .build())
+                        .addProperty(
+                                "genericArrays",
+                                JsonArraySchema.builder()
+                                        .items(JsonArraySchema.builder()
+                                                .items(JsonStringSchema.builder().build())
+                                                .build())
+                                        .build())
+                        .required("wildcards", "typeVariables", "genericArrays")
                         .build());
     }
 
@@ -374,7 +390,7 @@ class JsonSchemaElementUtilsTest {
         // when
         JsonSchemaElement schema = jsonSchemaElementFrom(clazz, null, null, true, new LinkedHashMap<>());
 
-        // then — array-of-array-of-string, fully resolved through both Collection layers.
+        // then — array-of-array-of-string
         assertThat(schema)
                 .isEqualTo(JsonObjectSchema.builder()
                         .addProperty(
