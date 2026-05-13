@@ -1,5 +1,15 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
+import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
+import static dev.langchain4j.agent.tool.ReturnBehavior.TO_LLM;
+import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.Outcome.REPROCESS;
+import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.Outcome.RETURN_IMMEDIATELY;
+import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.ToolStep.err;
+import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.ToolStep.ok;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
+
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -10,25 +20,14 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.TokenStream;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
-
-import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
-import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
-import static dev.langchain4j.agent.tool.ReturnBehavior.TO_LLM;
-import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.Outcome.RETURN_IMMEDIATELY;
-import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.Outcome.REPROCESS;
-import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.ToolStep.err;
-import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.ToolStep.ok;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.params.provider.Arguments.arguments;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * Parameterized verification of the immediate-return/reprocess decision for every interesting combination
@@ -137,17 +136,25 @@ class ReturnBehaviorCombinationsTest {
 
                 // single tool errors (the only call in the response errors)
                 arguments(List.of(err(TO_LLM)), REPROCESS),
-                arguments(List.of(err(IMMEDIATE)), REPROCESS),                // would return immediately without error
-                arguments(List.of(err(IMMEDIATE_IF_LAST)), REPROCESS),        // would return immediately without error
+                arguments(List.of(err(IMMEDIATE)), REPROCESS), // would return immediately without error
+                arguments(List.of(err(IMMEDIATE_IF_LAST)), REPROCESS), // would return immediately without error
 
                 // two tools, one errors — covers both first-errors and last-errors positions
                 arguments(List.of(err(IMMEDIATE), ok(IMMEDIATE)), REPROCESS), // would return immediately without error
                 arguments(List.of(ok(IMMEDIATE), err(IMMEDIATE)), REPROCESS), // would return immediately without error
-                arguments(List.of(err(TO_LLM), ok(IMMEDIATE_IF_LAST)), REPROCESS),  // would return immediately without error
-                arguments(List.of(ok(TO_LLM), err(IMMEDIATE_IF_LAST)), REPROCESS),  // would return immediately without error (last itself errors)
-                arguments(List.of(err(IMMEDIATE_IF_LAST), ok(TO_LLM)), REPROCESS),  // already REPROCESS without error
-                arguments(List.of(err(IMMEDIATE), ok(IMMEDIATE_IF_LAST)), REPROCESS),  // would return immediately without error
-                arguments(List.of(ok(IMMEDIATE), err(IMMEDIATE_IF_LAST)), REPROCESS),  // would return immediately without error (last itself errors)
+                arguments(
+                        List.of(err(TO_LLM), ok(IMMEDIATE_IF_LAST)),
+                        REPROCESS), // would return immediately without error
+                arguments(
+                        List.of(ok(TO_LLM), err(IMMEDIATE_IF_LAST)),
+                        REPROCESS), // would return immediately without error (last itself errors)
+                arguments(List.of(err(IMMEDIATE_IF_LAST), ok(TO_LLM)), REPROCESS), // already REPROCESS without error
+                arguments(
+                        List.of(err(IMMEDIATE), ok(IMMEDIATE_IF_LAST)),
+                        REPROCESS), // would return immediately without error
+                arguments(
+                        List.of(ok(IMMEDIATE), err(IMMEDIATE_IF_LAST)),
+                        REPROCESS), // would return immediately without error (last itself errors)
 
                 // three tools, error in any position — would-return-immediately mixes
                 arguments(List.of(err(TO_LLM), ok(IMMEDIATE), ok(IMMEDIATE_IF_LAST)), REPROCESS),
@@ -164,8 +171,7 @@ class ReturnBehaviorCombinationsTest {
         // First LLM response: the tool calls under test.
         // Second LLM response: a final text answer, consumed only when the loop reprocesses.
         ChatModelMock model = ChatModelMock.thatAlwaysResponds(
-                AiMessage.from(toolRequests.toArray(new ToolExecutionRequest[0])),
-                AiMessage.from("final answer"));
+                AiMessage.from(toolRequests.toArray(new ToolExecutionRequest[0])), AiMessage.from("final answer"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
@@ -200,8 +206,7 @@ class ReturnBehaviorCombinationsTest {
         // First LLM response: the tool calls under test.
         // Second LLM response: a final text answer, consumed only when the loop reprocesses.
         StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
-                AiMessage.from(toolRequests.toArray(new ToolExecutionRequest[0])),
-                AiMessage.from("final answer"));
+                AiMessage.from(toolRequests.toArray(new ToolExecutionRequest[0])), AiMessage.from("final answer"));
 
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
                 .streamingChatModel(model)
@@ -209,9 +214,9 @@ class ReturnBehaviorCombinationsTest {
                 .build();
 
         CompletableFuture<ChatResponse> future = new CompletableFuture<>();
-        assistant.chat("go")
-                .onPartialResponse(ignored -> {
-                })
+        assistant
+                .chat("go")
+                .onPartialResponse(ignored -> {})
                 .onCompleteResponse(future::complete)
                 .onError(future::completeExceptionally)
                 .start();
@@ -248,11 +253,12 @@ class ReturnBehaviorCombinationsTest {
     }
 
     private static String toolNameFor(ToolStep step) {
-        String prefix = switch (step.behavior()) {
-            case TO_LLM -> "to_llm";
-            case IMMEDIATE -> "immediate";
-            case IMMEDIATE_IF_LAST -> "immediate_if_last";
-        };
+        String prefix =
+                switch (step.behavior()) {
+                    case TO_LLM -> "to_llm";
+                    case IMMEDIATE -> "immediate";
+                    case IMMEDIATE_IF_LAST -> "immediate_if_last";
+                };
         return prefix + (step.errors() ? "_err" : "_ok");
     }
 }

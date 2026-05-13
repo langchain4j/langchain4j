@@ -1,5 +1,9 @@
 package dev.langchain4j.skills;
 
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.util.Arrays.asList;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.service.tool.AiServiceTool;
@@ -7,7 +11,6 @@ import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import dev.langchain4j.service.tool.ToolService;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -15,10 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-
-import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.util.Arrays.asList;
 
 @Experimental
 public abstract class AbstractSkill implements Skill {
@@ -50,9 +49,8 @@ public abstract class AbstractSkill implements Skill {
         List<ToolProvider> result = new ArrayList<>();
 
         if (!allTools.isEmpty()) {
-            ToolProviderResult staticResult = ToolProviderResult.builder()
-                    .addAll(allTools)
-                    .build();
+            ToolProviderResult staticResult =
+                    ToolProviderResult.builder().addAll(allTools).build();
             result.add(request -> staticResult);
         }
 
@@ -120,8 +118,7 @@ public abstract class AbstractSkill implements Skill {
         for (SkillResource resource : resources) {
             String path = resource.relativePath();
             if (!seenPaths.add(path)) {
-                throw new IllegalStateException(
-                        "Duplicate skill resource path detected: '%s'".formatted(path));
+                throw new IllegalStateException("Duplicate skill resource path detected: '%s'".formatted(path));
             }
         }
     }

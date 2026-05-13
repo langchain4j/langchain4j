@@ -1,12 +1,11 @@
 package dev.langchain4j.model.ovhai.internal.api;
 
+import java.util.List;
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.Header;
 import retrofit2.http.Headers;
 import retrofit2.http.POST;
-
-import java.util.List;
 
 /**
  * @deprecated Do not use anymore, use {@code langchain4j-open-ai} module instead
@@ -14,7 +13,7 @@ import java.util.List;
 @Deprecated(forRemoval = true, since = "1.14.0")
 public interface OvhAiApi {
 
-  @POST("api/batch_text2vec")
-  @Headers({"Content-Type: application/json"})
-  Call<List<float[]>> embed(@Body EmbeddingRequest request, @Header("Authorization") String authorizationHeader);
+    @POST("api/batch_text2vec")
+    @Headers({"Content-Type: application/json"})
+    Call<List<float[]>> embed(@Body EmbeddingRequest request, @Header("Authorization") String authorizationHeader);
 }

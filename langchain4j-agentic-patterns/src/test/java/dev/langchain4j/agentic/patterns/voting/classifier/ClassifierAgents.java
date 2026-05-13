@@ -1,7 +1,6 @@
 package dev.langchain4j.agentic.patterns.voting.classifier;
 
 import dev.langchain4j.agentic.Agent;
-import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 

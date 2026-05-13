@@ -1,11 +1,11 @@
 package dev.langchain4j.agentic.declarative;
 
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
 import dev.langchain4j.model.chat.ChatModel;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
-
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
  * Marks a method as a supplier of the chat model to be used by an agent.
@@ -53,5 +53,4 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  */
 @Retention(RUNTIME)
 @Target({METHOD})
-public @interface ChatModelSupplier {
-}
+public @interface ChatModelSupplier {}

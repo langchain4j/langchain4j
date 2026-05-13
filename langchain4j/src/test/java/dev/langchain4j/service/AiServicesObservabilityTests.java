@@ -480,10 +480,13 @@ class AiServicesObservabilityTests {
 
     private static void assertNoEventsReceived(
             int expectedSize, Collection<? extends MyListener<? extends AiServiceEvent>> listeners) {
-        assertThat(listeners).isNotNull().hasSize(expectedSize).allSatisfy(l -> assertThat(l)
+        assertThat(listeners)
                 .isNotNull()
-                .extracting(MyListener::count, MyListener::event)
-                .containsExactly(0, null));
+                .hasSize(expectedSize)
+                .allSatisfy(l -> assertThat(l)
+                        .isNotNull()
+                        .extracting(MyListener::count, MyListener::event)
+                        .containsExactly(0, null));
     }
 
     private static void assertEventsReceived(

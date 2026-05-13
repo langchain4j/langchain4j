@@ -1,13 +1,12 @@
 package dev.langchain4j.store.embedding.pinecone;
 
 import io.pinecone.clients.Pinecone;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class PineconeNamespaceHelper {
 
@@ -25,12 +24,15 @@ class PineconeNamespaceHelper {
                     .DELETE()
                     .build();
 
-            HttpResponse<String> response = HttpClient.newHttpClient()
-                    .send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response =
+                    HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200 && response.statusCode() != 202) {
-                log.warn("Failed to delete namespace '{}': HTTP {} - {}",
-                        namespace, response.statusCode(), response.body());
+                log.warn(
+                        "Failed to delete namespace '{}': HTTP {} - {}",
+                        namespace,
+                        response.statusCode(),
+                        response.body());
             }
         } catch (Exception e) {
             log.warn("Failed to delete namespace '{}'", namespace, e);

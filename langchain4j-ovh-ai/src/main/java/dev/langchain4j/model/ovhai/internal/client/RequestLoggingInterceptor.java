@@ -1,5 +1,12 @@
 package dev.langchain4j.model.ovhai.internal.client;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static java.util.stream.StreamSupport.stream;
+
+import java.io.IOException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import okhttp3.Headers;
 import okhttp3.Interceptor;
 import okhttp3.Request;
@@ -7,14 +14,6 @@ import okhttp3.Response;
 import okio.Buffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static java.util.stream.StreamSupport.stream;
 
 /**
  * @deprecated Do not use anymore, use {@code langchain4j-open-ai} module instead
@@ -40,16 +39,11 @@ class RequestLoggingInterceptor implements Interceptor {
 
     private void log(Request request) {
         log.debug(
-                "Request:\n" +
-                        "- method: {}\n" +
-                        "- url: {}\n" +
-                        "- headers: {}\n" +
-                        "- body: {}",
+                "Request:\n" + "- method: {}\n" + "- url: {}\n" + "- headers: {}\n" + "- body: {}",
                 request.method(),
                 request.url(),
                 inOneLine(request.headers()),
-                getBody(request)
-        );
+                getBody(request));
     }
 
     static String inOneLine(Headers headers) {
@@ -61,7 +55,8 @@ class RequestLoggingInterceptor implements Interceptor {
                         headerValue = maskAuthorizationHeaderValue(headerValue);
                     }
                     return String.format("[%s: %s]", headerKey, headerValue);
-                }).collect(Collectors.joining(", "));
+                })
+                .collect(Collectors.joining(", "));
     }
 
     private static String maskAuthorizationHeaderValue(String authorizationHeaderValue) {

@@ -10,9 +10,6 @@ import static java.util.Arrays.asList;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.AgentUtil;
@@ -40,6 +37,9 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -68,16 +68,16 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     private static final ChatModel PLACEHOLDER_CHAT_MODEL = new ChatModel() {
         @Override
         public ChatResponse doChat(ChatRequest chatRequest) {
-            throw new IllegalStateException("Placeholder ChatModel should never be invoked. " +
-                    "The actual model is provided dynamically via the chatModel(Function) provider.");
+            throw new IllegalStateException("Placeholder ChatModel should never be invoked. "
+                    + "The actual model is provided dynamically via the chatModel(Function) provider.");
         }
     };
 
     private static final StreamingChatModel PLACEHOLDER_STREAMING_CHAT_MODEL = new StreamingChatModel() {
         @Override
         public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-            throw new IllegalStateException("Placeholder StreamingChatModel should never be invoked. " +
-                    "The actual model is provided dynamically via the streamingChatModel(Function) provider.");
+            throw new IllegalStateException("Placeholder StreamingChatModel should never be invoked. "
+                    + "The actual model is provided dynamically via the streamingChatModel(Function) provider.");
         }
     };
 
@@ -259,15 +259,18 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     }
 
     private void validateChatModel() {
-        int modelConfigCount = (model != null ? 1 : 0) + (streamingChatModel != null ? 1 : 0)
-                + (chatModelProvider != null ? 1 : 0) + (streamingChatModelProvider != null ? 1 : 0);
+        int modelConfigCount = (model != null ? 1 : 0)
+                + (streamingChatModel != null ? 1 : 0)
+                + (chatModelProvider != null ? 1 : 0)
+                + (streamingChatModelProvider != null ? 1 : 0);
         if (modelConfigCount != 1) {
             throw new AgenticSystemConfigurationException(
-                    "One and only one of chatModel, streamingChatModel, or their Function variants can be set for agent '" + this.name + "'.");
+                    "One and only one of chatModel, streamingChatModel, or their Function variants can be set for agent '"
+                            + this.name + "'.");
         }
     }
 
-    protected void build(DefaultAgenticScope agenticScope, AiServiceContext context, AiServices<T> aiServices) { }
+    protected void build(DefaultAgenticScope agenticScope, AiServiceContext context, AiServices<T> aiServices) {}
 
     private void setupGuardrails(AiServices<T> aiServices) {
         if (inputGuardrailsConfig != null) {

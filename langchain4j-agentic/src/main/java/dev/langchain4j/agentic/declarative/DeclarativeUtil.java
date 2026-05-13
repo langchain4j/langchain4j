@@ -1,5 +1,10 @@
 package dev.langchain4j.agentic.declarative;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.AGENTIC_SCOPE_ARG_NAME;
+import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
+import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
+import static dev.langchain4j.agentic.internal.AgentUtil.getAnnotatedMethodOnClass;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.AgenticServices.DeclarativeAgentCreationContext;
@@ -29,77 +34,77 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import static dev.langchain4j.agentic.internal.AgentUtil.AGENTIC_SCOPE_ARG_NAME;
-import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
-import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
-import static dev.langchain4j.agentic.internal.AgentUtil.getAnnotatedMethodOnClass;
-
 @Internal
 public class DeclarativeUtil {
 
-    private DeclarativeUtil() { }
+    private DeclarativeUtil() {}
 
     public static void configureAgent(Class<?> agentType, AgentBuilder<?, ?> agentBuilder) {
-        configureAgent(agentType, null, true, agentBuilder, ctx -> { });
+        configureAgent(agentType, null, true, agentBuilder, ctx -> {});
     }
 
-    public static void configureAgent(Class<?> agentType, ChatModel chatModel, AgentBuilder<?, ?> agentBuilder, Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+    public static void configureAgent(
+            Class<?> agentType,
+            ChatModel chatModel,
+            AgentBuilder<?, ?> agentBuilder,
+            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
         configureAgent(agentType, chatModel, false, agentBuilder, agentConfigurator);
     }
 
-    private static void configureAgent(Class<?> agentType, ChatModel chatModel, boolean allowNullChatModel, AgentBuilder<?, ?> agentBuilder, Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
-        getAnnotatedMethodOnClass(agentType, ToolsSupplier.class)
-                .ifPresent(method -> {
-                    checkArguments(method);
-                    Object tools = invokeStatic(method);
-                    if (tools instanceof Map) {
-                        agentBuilder.tools((Map<ToolSpecification, ToolExecutor>) tools);
-                    } else if (tools.getClass().isArray()) {
-                        agentBuilder.tools((Object[]) tools);
-                    } else {
-                        agentBuilder.tools(tools);
-                    }
-                });
+    private static void configureAgent(
+            Class<?> agentType,
+            ChatModel chatModel,
+            boolean allowNullChatModel,
+            AgentBuilder<?, ?> agentBuilder,
+            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+        getAnnotatedMethodOnClass(agentType, ToolsSupplier.class).ifPresent(method -> {
+            checkArguments(method);
+            Object tools = invokeStatic(method);
+            if (tools instanceof Map) {
+                agentBuilder.tools((Map<ToolSpecification, ToolExecutor>) tools);
+            } else if (tools.getClass().isArray()) {
+                agentBuilder.tools((Object[]) tools);
+            } else {
+                agentBuilder.tools(tools);
+            }
+        });
 
-        getAnnotatedMethodOnClass(agentType, ToolProviderSupplier.class)
-                .ifPresent(method -> {
-                    checkArguments(method);
-                    checkReturnType(method, ToolProvider.class);
-                    agentBuilder.toolProvider(invokeStatic(method));
-                });
+        getAnnotatedMethodOnClass(agentType, ToolProviderSupplier.class).ifPresent(method -> {
+            checkArguments(method);
+            checkReturnType(method, ToolProvider.class);
+            agentBuilder.toolProvider(invokeStatic(method));
+        });
 
-        getAnnotatedMethodOnClass(agentType, ContentRetrieverSupplier.class)
-                .ifPresent(method -> {
-                    checkArguments(method);
-                    checkReturnType(method, ContentRetriever.class);
-                    agentBuilder.contentRetriever(invokeStatic(method));
-                });
+        getAnnotatedMethodOnClass(agentType, ContentRetrieverSupplier.class).ifPresent(method -> {
+            checkArguments(method);
+            checkReturnType(method, ContentRetriever.class);
+            agentBuilder.contentRetriever(invokeStatic(method));
+        });
 
-        getAnnotatedMethodOnClass(agentType, RetrievalAugmentorSupplier.class)
-                .ifPresent(method -> {
-                    checkArguments(method);
-                    checkReturnType(method, RetrievalAugmentor.class);
-                    agentBuilder.retrievalAugmentor(invokeStatic(method));
-                });
+        getAnnotatedMethodOnClass(agentType, RetrievalAugmentorSupplier.class).ifPresent(method -> {
+            checkArguments(method);
+            checkReturnType(method, RetrievalAugmentor.class);
+            agentBuilder.retrievalAugmentor(invokeStatic(method));
+        });
 
-        getAnnotatedMethodOnClass(agentType, ChatMemoryProviderSupplier.class)
-                .ifPresent(method -> {
-                    checkArguments(method, Object.class);
-                    checkReturnType(method, ChatMemory.class);
-                    agentBuilder.chatMemoryProvider(memoryId -> invokeStatic(method, memoryId));
-                });
+        getAnnotatedMethodOnClass(agentType, ChatMemoryProviderSupplier.class).ifPresent(method -> {
+            checkArguments(method, Object.class);
+            checkReturnType(method, ChatMemory.class);
+            agentBuilder.chatMemoryProvider(memoryId -> invokeStatic(method, memoryId));
+        });
 
-        getAnnotatedMethodOnClass(agentType, ChatMemorySupplier.class)
-                .ifPresent(method -> {
-                    checkArguments(method);
-                    checkReturnType(method, ChatMemory.class);
-                    agentBuilder.chatMemory(invokeStatic(method));
-                });
+        getAnnotatedMethodOnClass(agentType, ChatMemorySupplier.class).ifPresent(method -> {
+            checkArguments(method);
+            checkReturnType(method, ChatMemory.class);
+            agentBuilder.chatMemory(invokeStatic(method));
+        });
 
         getAnnotatedMethodOnClass(agentType, ChatModelSupplier.class)
-                .ifPresentOrElse(method -> {
+                .ifPresentOrElse(
+                        method -> {
                             if (method.getParameterCount() > 0) {
-                                Function<AgenticScope, ChatModel> scopeFunction = agenticScopeFunction(method, ChatModel.class);
+                                Function<AgenticScope, ChatModel> scopeFunction =
+                                        agenticScopeFunction(method, ChatModel.class);
                                 Function<AgenticScope, ChatModel> provider = scope -> {
                                     if (scope == null) {
                                         return invokeStatic(method, new Object[method.getParameterCount()]);
@@ -112,34 +117,38 @@ public class DeclarativeUtil {
                             }
                         },
                         () -> getAnnotatedMethodOnClass(agentType, StreamingChatModelSupplier.class)
-                                .ifPresentOrElse(method -> {
+                                .ifPresentOrElse(
+                                        method -> {
                                             if (method.getParameterCount() > 0) {
-                                                Function<AgenticScope, StreamingChatModel> scopeFunction = agenticScopeFunction(method, StreamingChatModel.class);
+                                                Function<AgenticScope, StreamingChatModel> scopeFunction =
+                                                        agenticScopeFunction(method, StreamingChatModel.class);
                                                 Function<AgenticScope, StreamingChatModel> provider = scope -> {
                                                     if (scope == null) {
-                                                        return invokeStatic(method, new Object[method.getParameterCount()]);
+                                                        return invokeStatic(
+                                                                method, new Object[method.getParameterCount()]);
                                                     }
                                                     return scopeFunction.apply(scope);
                                                 };
                                                 agentBuilder.streamingChatModel(provider);
                                             } else {
-                                                agentBuilder.streamingChatModel((StreamingChatModel) invokeStatic(method));
+                                                agentBuilder.streamingChatModel(
+                                                        (StreamingChatModel) invokeStatic(method));
                                             }
                                         },
                                         () -> {
                                             if (chatModel == null && !allowNullChatModel) {
-                                                throw new IllegalArgumentException("ChatModel not provided for subagent " + agentType.getName() +
-                                                        ". Please provide one either with a static method annotated with @ChatModelSupplier " +
-                                                        "or @StreamingChatModelSupplier, or through the parent agent's chatModel parameter.");
+                                                throw new IllegalArgumentException(
+                                                        "ChatModel not provided for subagent " + agentType.getName()
+                                                                + ". Please provide one either with a static method annotated with @ChatModelSupplier "
+                                                                + "or @StreamingChatModelSupplier, or through the parent agent's chatModel parameter.");
                                             }
                                             agentBuilder.chatModel(chatModel);
                                         }));
 
-        getAnnotatedMethodOnClass(agentType, AgentListenerSupplier.class)
-                .ifPresent(listenerMethod -> {
-                    checkReturnType(listenerMethod, AgentListener.class);
-                    agentBuilder.listener(invokeStatic(listenerMethod));
-                });
+        getAnnotatedMethodOnClass(agentType, AgentListenerSupplier.class).ifPresent(listenerMethod -> {
+            checkReturnType(listenerMethod, AgentListener.class);
+            agentBuilder.listener(invokeStatic(listenerMethod));
+        });
 
         agentConfigurator.accept(new DefaultDeclarativeAgentCreationContext(agentType, agentBuilder));
     }
@@ -147,11 +156,13 @@ public class DeclarativeUtil {
     public static void checkArguments(Method method, Class<?>... expected) {
         Class<?>[] actual = method.getParameterTypes();
         if (actual.length != expected.length) {
-            throw new IllegalArgumentException("Method " + method + " must have " + expected.length + " arguments: " + Arrays.toString(expected));
+            throw new IllegalArgumentException(
+                    "Method " + method + " must have " + expected.length + " arguments: " + Arrays.toString(expected));
         }
         for (int i = 0; i < expected.length; i++) {
             if (!expected[i].isAssignableFrom(actual[i])) {
-                throw new IllegalArgumentException("Method " + method + " argument " + (i + 1) + " must be of type " + expected[i].getName());
+                throw new IllegalArgumentException(
+                        "Method " + method + " argument " + (i + 1) + " must be of type " + expected[i].getName());
             }
         }
     }
@@ -232,7 +243,7 @@ public class DeclarativeUtil {
         return agenticScope -> {
             try {
                 Object[] args = agentInvocationArguments(
-                        agenticScope, agentArguments, Map.of(AGENTIC_SCOPE_ARG_NAME, agenticScope))
+                                agenticScope, agentArguments, Map.of(AGENTIC_SCOPE_ARG_NAME, agenticScope))
                         .positionalArgs();
                 return (T) functionMethod.invoke(null, args);
             } catch (Exception e) {

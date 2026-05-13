@@ -3,7 +3,6 @@ package dev.langchain4j.model.openaiofficial;
 import com.openai.models.responses.Response;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
-
 import java.util.Objects;
 
 @Experimental

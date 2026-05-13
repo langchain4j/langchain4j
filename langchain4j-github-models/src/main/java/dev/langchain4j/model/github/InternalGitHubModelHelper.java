@@ -14,12 +14,6 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import com.azure.ai.inference.ChatCompletionsClientBuilder;
 import com.azure.ai.inference.EmbeddingsClientBuilder;
 import com.azure.ai.inference.ModelServiceVersion;
@@ -67,8 +61,8 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -80,6 +74,12 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -231,7 +231,10 @@ class InternalGitHubModelHelper {
                                 return new ChatMessageTextContentItem(text);
                             } else if (content instanceof ImageContent) {
                                 ImageContent imageContent = (ImageContent) content;
-                                ensureNotNull(imageContent.image().url(), "%s", "Image URL is not present. Base64 encoded images are not supported at the moment.");
+                                ensureNotNull(
+                                        imageContent.image().url(),
+                                        "%s",
+                                        "Image URL is not present. Base64 encoded images are not supported at the moment.");
                                 ChatMessageImageUrl imageUrl = new ChatMessageImageUrl(
                                         imageContent.image().url().toString());
                                 imageUrl.setDetail(ChatMessageImageDetailLevel.fromString(
@@ -425,8 +428,7 @@ class InternalGitHubModelHelper {
                 .build();
     }
 
-    static ChatResponse createListenerResponse(
-            String responseId, String responseModel, Response<AiMessage> response) {
+    static ChatResponse createListenerResponse(String responseId, String responseModel, Response<AiMessage> response) {
         if (response == null) {
             return null;
         }
@@ -441,7 +443,6 @@ class InternalGitHubModelHelper {
                         .build())
                 .build();
     }
-
 
     static ChatCompletionsResponseFormat toChatCompletionsResponseFormat(
             ResponseFormat responseFormat, Boolean strict) {
@@ -459,7 +460,8 @@ class InternalGitHubModelHelper {
                                 + jsonSchema.rootElement().getClass());
             }
             return new ChatCompletionsResponseFormatJsonSchema(new ChatCompletionsResponseFormatJsonSchemaDefinition(
-                    jsonSchema.name(), toJsonSchemaDefinition(jsonSchema.rootElement(), strict)).setStrict(strict));
+                            jsonSchema.name(), toJsonSchemaDefinition(jsonSchema.rootElement(), strict))
+                    .setStrict(strict));
         }
     }
 
@@ -469,5 +471,4 @@ class InternalGitHubModelHelper {
         map.forEach((key, value) -> result.put(key, BinaryData.fromObject(value)));
         return result;
     }
-
 }

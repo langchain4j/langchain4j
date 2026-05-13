@@ -5,7 +5,7 @@ import java.util.Map;
 
 public interface Planner {
 
-    default void init(InitPlanningContext initPlanningContext) { }
+    default void init(InitPlanningContext initPlanningContext) {}
 
     /**
      * Returns the planner's current execution state as a map of serializable values.
@@ -30,7 +30,7 @@ public interface Planner {
      *
      * @param state the previously saved execution state
      */
-    default void restoreExecutionState(Map<String, Object> state) { }
+    default void restoreExecutionState(Map<String, Object> state) {}
 
     default Action firstAction(PlanningContext planningContext) {
         return nextAction(planningContext);

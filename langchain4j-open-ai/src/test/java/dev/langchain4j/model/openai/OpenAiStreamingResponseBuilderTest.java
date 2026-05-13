@@ -114,20 +114,16 @@ class OpenAiStreamingResponseBuilderTest {
                 .id("call_1")
                 .index(0)
                 .type(ToolType.FUNCTION)
-                .function(FunctionCall.builder()
-                        .name("tool_name")
-                        .arguments("{}")
-                        .build())
+                .function(
+                        FunctionCall.builder().name("tool_name").arguments("{}").build())
                 .build();
 
         ToolCall tc2 = ToolCall.builder()
                 .id("call_2")
                 .index(1)
                 .type(ToolType.FUNCTION)
-                .function(FunctionCall.builder()
-                        .name("tool_name")
-                        .arguments("{}")
-                        .build())
+                .function(
+                        FunctionCall.builder().name("tool_name").arguments("{}").build())
                 .build();
 
         ChatCompletionResponse partial = ChatCompletionResponse.builder()
@@ -135,9 +131,7 @@ class OpenAiStreamingResponseBuilderTest {
                 .model("openai-compatible-model")
                 .choices(List.of(ChatCompletionChoice.builder()
                         .index(0)
-                        .delta(Delta.builder()
-                                .toolCalls(List.of(tc1, tc2))
-                                .build())
+                        .delta(Delta.builder().toolCalls(List.of(tc1, tc2)).build())
                         .build()))
                 .build();
 
@@ -148,9 +142,7 @@ class OpenAiStreamingResponseBuilderTest {
         // then
         List<ToolExecutionRequest> toolExecutionRequests = response.aiMessage().toolExecutionRequests();
         assertThat(toolExecutionRequests).hasSize(2);
-        assertThat(toolExecutionRequests)
-                .extracting(ToolExecutionRequest::id)
-                .containsExactly("call_1", "call_2");
+        assertThat(toolExecutionRequests).extracting(ToolExecutionRequest::id).containsExactly("call_1", "call_2");
     }
 
     private static ChatCompletionResponse chatCompletionResponse(ToolCall toolCall) {

@@ -109,21 +109,36 @@ class AiServicesUserMessageConfigTest {
         String chat17(@ExternalAnnotation1 @ExternalAnnotation2 String msg);
 
         String chat18_1(Content content);
+
         String chat18_2(AudioContent audioContent);
 
         String chat19_1(@UserMessage Content content);
+
         String chat19_2(@UserMessage AudioContent audioContent);
 
         String chat20_1(List<Content> contents);
+
         String chat20_2(List<AudioContent> audioContents);
 
         String chat21_1(@UserMessage List<Content> contents);
+
         String chat21_2(@UserMessage List<AudioContent> audioContents);
 
         String chat22_1(@UserMessage Content content1, @UserMessage Content content2);
+
         String chat22_2(@UserMessage AudioContent audio, @UserMessage ImageContent image);
 
         String chat23_1(Map<String, ?> args);
+
+        // Issue #4352: template with Content variable - Content must be passed as-is, not converted to String
+        @UserMessage("Transcribe this audio: {{audio}}")
+        String chat24(@V("audio") AudioContent audio);
+
+        @UserMessage("{{audio}}")
+        String chat24_simple(@V("audio") AudioContent audio);
+
+        @UserMessage("Describe {{image}} and transcribe {{audio}}")
+        String chat25(@V("image") ImageContent image, @V("audio") AudioContent audio);
 
         // illegal configuration
 
@@ -688,6 +703,70 @@ class AiServicesUserMessageConfigTest {
         verify(chatModel)
                 .chat(ChatRequest.builder()
                         .messages(userMessage(TextContent.from(userPrompt), audioContent, imageContent))
+                        .build());
+        verify(chatModel).supportedCapabilities();
+    }
+
+    /**
+     * Regression test for https://github.com/langchain4j/langchain4j/issues/4352
+     * When template contains {{variable}} and the variable value is Content (e.g. AudioContent),
+     * it must be passed to LLM as-is, not converted to String.
+     */
+    @Test
+    void user_message_configuration_24_simple_template_with_content_variable() {
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
+
+        String base64Data = "AAECAw==";
+        AudioContent audioContent = AudioContent.from(base64Data, "audio/wav");
+
+        aiService.chat24_simple(audioContent);
+
+        verify(chatModel)
+                .chat(ChatRequest.builder().messages(userMessage(audioContent)).build());
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_24_template_with_content_variable() {
+        // given
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
+
+        String base64Data = "AAECAw==";
+        AudioContent audioContent = AudioContent.from(base64Data, "audio/wav");
+
+        // when
+        aiService.chat24(audioContent);
+
+        // then - Content must be passed as AudioContent, NOT as TextContent("AudioContent {...}")
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(userMessage(TextContent.from("Transcribe this audio: "), audioContent))
+                        .build());
+        verify(chatModel).supportedCapabilities();
+    }
+
+    @Test
+    void user_message_configuration_25_template_with_multiple_content_variables() {
+        // given
+        AiService aiService =
+                AiServices.builder(AiService.class).chatModel(chatModel).build();
+
+        ImageContent imgContent = ImageContent.from("https://example.com/photo.jpg");
+        AudioContent audContent = AudioContent.from("AAECAw==", "audio/wav");
+
+        // when
+        aiService.chat25(imgContent, audContent);
+
+        // then - Both Content objects must be passed as-is
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(userMessage(
+                                TextContent.from("Describe "),
+                                imgContent,
+                                TextContent.from(" and transcribe "),
+                                audContent))
                         .build());
         verify(chatModel).supportedCapabilities();
     }

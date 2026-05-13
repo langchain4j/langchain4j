@@ -83,7 +83,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -125,12 +124,15 @@ public class DeclarativeAgentIT {
 
     @Test
     void declarative_optional_sequence_tests() {
-        StoryCreatorWithOptionalAudience storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithOptionalAudience.class, baseModel());
+        StoryCreatorWithOptionalAudience storyCreator =
+                AgenticServices.createAgenticSystem(StoryCreatorWithOptionalAudience.class, baseModel());
 
         String story = storyCreator.write("dragons and wizards", "fantasy", null);
         assertThat(story).isNotBlank();
 
-        assertThat(assertThrows(MissingArgumentException.class, () -> storyCreator.write("dragons and wizards", null, "young adults")))
+        assertThat(assertThrows(
+                        MissingArgumentException.class,
+                        () -> storyCreator.write("dragons and wizards", null, "young adults")))
                 .hasMessageContaining("style");
     }
 
@@ -569,8 +571,7 @@ public class DeclarativeAgentIT {
 
     public interface MedicalExpertWithMemory {
 
-        @UserMessage(
-                """
+        @UserMessage("""
             You are a medical expert.
             Analyze the following user request under a medical point of view and provide the best possible answer.
             The user request is {{request}}.
@@ -591,8 +592,7 @@ public class DeclarativeAgentIT {
 
     public interface LegalExpertWithMemory {
 
-        @UserMessage(
-                """
+        @UserMessage("""
             You are a legal expert.
             Analyze the following user request under a legal point of view and provide the best possible answer.
             The user request is {{request}}.
@@ -616,8 +616,7 @@ public class DeclarativeAgentIT {
 
     public interface TechnicalExpertWithMemory {
 
-        @UserMessage(
-                """
+        @UserMessage("""
             You are a technical expert.
             Analyze the following user request under a technical point of view and provide the best possible answer.
             The user request is {{request}}.
@@ -730,12 +729,10 @@ public class DeclarativeAgentIT {
     static SupervisorAgentIT.BankTool bankTool = new SupervisorAgentIT.BankTool();
 
     public interface WithdrawAgent {
-        @SystemMessage(
-                """
+        @SystemMessage("""
             You are a banker that can only withdraw US dollars (USD) from a user account.
             """)
-        @UserMessage(
-                """
+        @UserMessage("""
             Withdraw {{amountInUSD}} USD from {{user}}'s account and return the new balance.
             """)
         @Agent("A banker that withdraw USD from an account")
@@ -748,12 +745,10 @@ public class DeclarativeAgentIT {
     }
 
     public interface CreditAgent {
-        @SystemMessage(
-                """
+        @SystemMessage("""
             You are a banker that can only credit US dollars (USD) to a user account.
             """)
-        @UserMessage(
-                """
+        @UserMessage("""
             Credit {{amountInUSD}} USD to {{user}}'s account and return the new balance.
             """)
         @Agent("A banker that credit USD to an account")
@@ -796,9 +791,9 @@ public class DeclarativeAgentIT {
         bankTool.createAccount("Mario", 1000.0);
         bankTool.createAccount("Georgios", 1000.0);
 
-        SupervisorBanker bankSupervisor = usePlannerModel ?
-                AgenticServices.createAgenticSystem(SupervisorBankerWithPlannerModel.class, baseModel()) :
-                AgenticServices.createAgenticSystem(SupervisorBanker.class, baseModel());
+        SupervisorBanker bankSupervisor = usePlannerModel
+                ? AgenticServices.createAgenticSystem(SupervisorBankerWithPlannerModel.class, baseModel())
+                : AgenticServices.createAgenticSystem(SupervisorBanker.class, baseModel());
         String result = bankSupervisor.invoke("Transfer 100 USD from Mario's account to Georgios' one");
         assertThat(result).isNotBlank().contains("Mario").contains("Georgios");
 
@@ -871,8 +866,7 @@ public class DeclarativeAgentIT {
     }
 
     public interface AstrologyAgent {
-        @SystemMessage(
-                """
+        @SystemMessage("""
             You are an astrologist that generates horoscopes based on the user's name and zodiac sign.
             """)
         @UserMessage("""
@@ -917,12 +911,10 @@ public class DeclarativeAgentIT {
     public record Person(String name, String sign) {}
 
     public interface PersonAstrologyAgent {
-        @SystemMessage(
-                """
+        @SystemMessage("""
             You are an astrologist that generates horoscopes based on the user's name and zodiac sign.
             """)
-        @UserMessage(
-                """
+        @UserMessage("""
             Generate the horoscope for {{person}}.
             The person has a name and a zodiac sign. Use both to create a personalized horoscope.
             """)
@@ -946,7 +938,8 @@ public class DeclarativeAgentIT {
         }
 
         @Output
-        static Map<String, String> output(@V("persons") List<Person> persons, @V("horoscopes") List<String> horoscopes) {
+        static Map<String, String> output(
+                @V("persons") List<Person> persons, @V("horoscopes") List<String> horoscopes) {
             Map<String, String> output = new HashMap<>();
             for (int i = 0; i < persons.size(); i++) {
                 output.put(persons.get(i).name(), horoscopes.get(i));
@@ -971,8 +964,11 @@ public class DeclarativeAgentIT {
                 List.of(new Person("Mario", "aries"), new Person("Luigi", "pisces"), new Person("Peach", "leo"));
 
         Map<String, String> horoscopes = agent.generateHoroscopes(persons);
-        assertThat(horoscopes).hasSize(3)
-                .containsKey("Mario").containsKey("Luigi").containsKey("Peach")
+        assertThat(horoscopes)
+                .hasSize(3)
+                .containsKey("Mario")
+                .containsKey("Luigi")
+                .containsKey("Peach")
                 .allSatisfy((name, horoscope) -> assertThat(horoscope).isNotBlank());
     }
 
@@ -984,7 +980,8 @@ public class DeclarativeAgentIT {
 
     @Test
     void parallel_mapper_with_ambigous_items_provider_throws_tests() {
-        assertThat(assertThrows(AgenticSystemConfigurationException.class, () ->
-                AgenticServices.createAgenticSystem(BatchHoroscopeAgentWith2Lists.class, baseModel())));
+        assertThat(assertThrows(
+                AgenticSystemConfigurationException.class,
+                () -> AgenticServices.createAgenticSystem(BatchHoroscopeAgentWith2Lists.class, baseModel())));
     }
 }

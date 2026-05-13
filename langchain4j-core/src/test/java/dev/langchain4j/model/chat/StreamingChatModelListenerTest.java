@@ -76,14 +76,15 @@ class StreamingChatModelListenerTest {
 
         // when
         model.chat(
-                ChatRequest.builder().messages(UserMessage.from("hi")).build(), options, new StreamingChatResponseHandler() {
+                ChatRequest.builder().messages(UserMessage.from("hi")).build(),
+                options,
+                new StreamingChatResponseHandler() {
                     @Override
                     public void onCompleteResponse(ChatResponse completeResponse) {}
 
                     @Override
                     public void onError(Throwable error) {}
-                }
-        );
+                });
 
         // then
         assertThat(verified.get(5, TimeUnit.SECONDS)).isTrue();
@@ -110,14 +111,15 @@ class StreamingChatModelListenerTest {
 
         // when
         model.chat(
-                ChatRequest.builder().messages(UserMessage.from("hi")).build(), options, new StreamingChatResponseHandler() {
+                ChatRequest.builder().messages(UserMessage.from("hi")).build(),
+                options,
+                new StreamingChatResponseHandler() {
                     @Override
                     public void onCompleteResponse(ChatResponse completeResponse) {}
 
                     @Override
                     public void onError(Throwable error) {}
-                }
-        );
+                });
 
         // then
         assertThat(verified.get(5, TimeUnit.SECONDS)).isTrue();
@@ -133,13 +135,14 @@ class StreamingChatModelListenerTest {
         // when/then
         assertThatNoException()
                 .isThrownBy(() -> model.chat(
-                        ChatRequest.builder().messages(UserMessage.from("hi")).build(), null, new StreamingChatResponseHandler() {
+                        ChatRequest.builder().messages(UserMessage.from("hi")).build(),
+                        null,
+                        new StreamingChatResponseHandler() {
                             @Override
                             public void onCompleteResponse(ChatResponse completeResponse) {}
 
                             @Override
                             public void onError(Throwable error) {}
-                        }
-                ));
+                        }));
     }
 }

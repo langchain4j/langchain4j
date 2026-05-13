@@ -1,13 +1,13 @@
 package dev.langchain4j.agentic;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.scope.AgentInvocation;
-import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
@@ -16,8 +16,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 public class PlannerLoopThreadSafetyIT {
 
@@ -51,8 +50,8 @@ public class PlannerLoopThreadSafetyIT {
 
         @Override
         public void init(InitPlanningContext ctx) {
-            this.agentsById = ctx.subagents().stream()
-                    .collect(Collectors.toMap(AgentInstance::agentId, Function.identity()));
+            this.agentsById =
+                    ctx.subagents().stream().collect(Collectors.toMap(AgentInstance::agentId, Function.identity()));
         }
 
         @Override

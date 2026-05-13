@@ -203,8 +203,7 @@ class ToolSpecificationHelperTest {
 
     @Test
     void arrayWithMultipleAllowedTypes() throws JsonProcessingException {
-        String text =
-                """
+        String text = """
                         [{
                           "name": "query",
                           "description": "Execute a SELECT query",
@@ -345,8 +344,7 @@ class ToolSpecificationHelperTest {
     @Test
     void nullTypeName() throws JsonProcessingException {
         // the 'value' parameter has an empty definition, so it can be anything
-        String text =
-                """
+        String text = """
                 [{
                    "name": "set_config_value",
                    "description": "Set a specific configuration value by key",
@@ -376,8 +374,7 @@ class ToolSpecificationHelperTest {
     void nullType() throws JsonProcessingException {
         // the 'type' parameter is "null" and so most not be present
         // trimmed version from Atalassian's MCP server
-        String text =
-                """
+        String text = """
                 [{
                   "name": "createCompassCustomFieldDefinition",
                   "description": "Create a new Compass custom field definition",

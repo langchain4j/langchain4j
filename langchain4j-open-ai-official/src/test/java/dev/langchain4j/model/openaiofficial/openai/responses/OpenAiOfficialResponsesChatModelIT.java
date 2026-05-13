@@ -1,5 +1,8 @@
 package dev.langchain4j.model.openaiofficial.openai.responses;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
@@ -14,14 +17,10 @@ import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import java.util.List;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiOfficialResponsesChatModelIT extends AbstractChatModelIT {
@@ -63,7 +62,8 @@ class OpenAiOfficialResponsesChatModelIT extends AbstractChatModelIT {
     @Override
     protected ChatRequestParameters saveTokens(ChatRequestParameters parameters) {
         return parameters.overrideWith(ChatRequestParameters.builder()
-                .maxOutputTokens(MAX_OUTPUT_TOKENS_MIN_VALUE).build());
+                .maxOutputTokens(MAX_OUTPUT_TOKENS_MIN_VALUE)
+                .build());
     }
 
     @Override
@@ -90,13 +90,11 @@ class OpenAiOfficialResponsesChatModelIT extends AbstractChatModelIT {
 
     @Disabled("gpt-5.4-mini cannot do it properly")
     @Override
-    protected void should_respect_JSON_response_format_with_schema(ChatModel model) {
-    }
+    protected void should_respect_JSON_response_format_with_schema(ChatModel model) {}
 
     @Disabled("gpt-5.4-mini cannot do it properly")
     @Override
-    protected void should_respect_JsonRawSchema_responseFormat(ChatModel model) {
-    }
+    protected void should_respect_JsonRawSchema_responseFormat(ChatModel model) {}
 
     @Test
     void should_accept_pdf_file_content_as_public_url() {
@@ -108,11 +106,9 @@ class OpenAiOfficialResponsesChatModelIT extends AbstractChatModelIT {
                 .build();
 
         UserMessage userMessage = UserMessage.builder()
-                .addContent(TextContent.from(
-                        "What city appears in the attached PDF? Return only the city name."))
-                .addContent(PdfFileContent.from(PdfFile.builder()
-                        .url("https://orimi.com/pdf-test.pdf")
-                        .build()))
+                .addContent(TextContent.from("What city appears in the attached PDF? Return only the city name."))
+                .addContent(PdfFileContent.from(
+                        PdfFile.builder().url("https://orimi.com/pdf-test.pdf").build()))
                 .build();
 
         ChatResponse response = model.chat(userMessage);

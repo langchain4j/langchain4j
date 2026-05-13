@@ -1,5 +1,8 @@
 package dev.langchain4j.model.openaiofficial.microsoftfoundry;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -11,6 +14,7 @@ import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatResponseMetadata;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialStreamingChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -18,23 +22,16 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InOrder;
 
-import java.util.List;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-
 @EnabledIfEnvironmentVariable(named = "MICROSOFT_FOUNDRY_API_KEY", matches = ".+")
 class MicrosoftFoundryStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected List<StreamingChatModel> models() {
-        return List.of(
-                OpenAiOfficialStreamingChatModel.builder()
-                        .baseUrl(System.getenv("MICROSOFT_FOUNDRY_ENDPOINT"))
-                        .apiKey(System.getenv("MICROSOFT_FOUNDRY_API_KEY"))
-                        .modelName("gpt-4o-mini")
-                        .build()
-        );
+        return List.of(OpenAiOfficialStreamingChatModel.builder()
+                .baseUrl(System.getenv("MICROSOFT_FOUNDRY_ENDPOINT"))
+                .apiKey(System.getenv("MICROSOFT_FOUNDRY_API_KEY"))
+                .modelName("gpt-4o-mini")
+                .build());
     }
 
     @Override
@@ -142,7 +139,8 @@ class MicrosoftFoundryStreamingChatModelIT extends AbstractStreamingChatModelIT 
     @EnabledIf("supportsMultipleImageInputsAsPublicURLs")
     protected void should_accept_multiple_images_as_public_URLs(StreamingChatModel model) {}
 
-    @Disabled("Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.")
+    @Disabled(
+            "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.")
     @Override
     protected void should_respect_maxOutputTokens_in_default_model_parameters() {}
 
