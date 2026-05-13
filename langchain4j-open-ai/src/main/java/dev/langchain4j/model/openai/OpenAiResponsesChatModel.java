@@ -20,6 +20,7 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Experimental
@@ -77,6 +78,7 @@ public class OpenAiResponsesChatModel implements ChatModel {
                 .store(getOrDefault(builder.store, getOrDefault(responsesParameters.store(), false)))
                 .strictTools(getOrDefault(builder.strictTools, responsesParameters.strictTools()))
                 .strictJsonSchema(getOrDefault(builder.strictJsonSchema, responsesParameters.strictJsonSchema()))
+                .serverTools(getOrDefault(builder.serverTools, responsesParameters.serverTools()))
                 .build();
 
         this.listeners = copy(builder.listeners);
@@ -159,6 +161,7 @@ public class OpenAiResponsesChatModel implements ChatModel {
         private Boolean strictJsonSchema;
         private ResponseFormat responseFormat;
         private List<ToolSpecification> toolSpecifications;
+        private List<Map<String, Object>> serverTools;
         private ToolChoice toolChoice;
         private Boolean logRequests;
         private Boolean logResponses;
@@ -297,6 +300,11 @@ public class OpenAiResponsesChatModel implements ChatModel {
 
         public Builder toolSpecifications(ToolSpecification... toolSpecifications) {
             return toolSpecifications(asList(toolSpecifications));
+        }
+
+        public Builder serverTools(List<Map<String, Object>> serverTools) {
+            this.serverTools = serverTools;
+            return this;
         }
 
         public Builder toolChoice(ToolChoice toolChoice) {
