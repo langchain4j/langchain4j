@@ -1,7 +1,7 @@
 package dev.langchain4j.invocation;
 
-import dev.langchain4j.Internal;
 import java.util.Map;
+import dev.langchain4j.Internal;
 
 /**
  * A marker interface for components that are managed by LangChain4j framework.
