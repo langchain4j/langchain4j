@@ -125,7 +125,7 @@ public class PromptTemplate {
      */
     public Prompt apply(Map<String, Object> variables) {
         ensureNotNull(variables, "variables");
-        return Prompt.from(template.render(injectDateTimeVariables(variables)));
+        return Prompt.from(template.renderContents(injectDateTimeVariables(variables)));
     }
 
     /**
