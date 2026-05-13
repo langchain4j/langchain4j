@@ -297,9 +297,9 @@ class OpenAiResponsesClient {
         }
 
         boolean strictTools = Boolean.TRUE.equals(parameters.strictTools());
+        List<Map<String, Object>> tools = new ArrayList<>();
         List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
         if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
-            List<Map<String, Object>> tools = new ArrayList<>();
             for (ToolSpecification toolSpec : toolSpecifications) {
                 boolean effectiveStrict = isEffectivelyStrict(toolSpec, strictTools);
 
@@ -330,6 +330,11 @@ class OpenAiResponsesClient {
 
                 tools.add(tool);
             }
+        }
+        if (parameters.serverTools() != null) {
+            tools.addAll(parameters.serverTools());
+        }
+        if (!tools.isEmpty()) {
             payload.put(FIELD_TOOLS, tools);
 
             if (parameters.toolChoice() != null) {

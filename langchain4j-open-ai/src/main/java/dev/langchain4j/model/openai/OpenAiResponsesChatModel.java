@@ -1,5 +1,10 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Arrays.asList;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.UnsupportedFeatureException;
@@ -14,14 +19,9 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
-
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
-
-import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.Arrays.asList;
 
 @Experimental
 public class OpenAiResponsesChatModel implements ChatModel {
@@ -54,7 +54,6 @@ public class OpenAiResponsesChatModel implements ChatModel {
                         : OpenAiResponsesChatRequestParameters.EMPTY;
 
         this.defaultRequestParameters = OpenAiResponsesChatRequestParameters.builder()
-
                 .modelName(ensureNotNull(getOrDefault(builder.modelName, commonParameters.modelName()), "modelName"))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
@@ -62,7 +61,6 @@ public class OpenAiResponsesChatModel implements ChatModel {
                 .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
                 .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
-
                 .previousResponseId(getOrDefault(builder.previousResponseId, responsesParameters.previousResponseId()))
                 .maxToolCalls(getOrDefault(builder.maxToolCalls, responsesParameters.maxToolCalls()))
                 .parallelToolCalls(getOrDefault(builder.parallelToolCalls, responsesParameters.parallelToolCalls()))
@@ -72,13 +70,15 @@ public class OpenAiResponsesChatModel implements ChatModel {
                 .serviceTier(getOrDefault(builder.serviceTier, responsesParameters.serviceTier()))
                 .safetyIdentifier(getOrDefault(builder.safetyIdentifier, responsesParameters.safetyIdentifier()))
                 .promptCacheKey(getOrDefault(builder.promptCacheKey, responsesParameters.promptCacheKey()))
-                .promptCacheRetention(getOrDefault(builder.promptCacheRetention, responsesParameters.promptCacheRetention()))
+                .promptCacheRetention(
+                        getOrDefault(builder.promptCacheRetention, responsesParameters.promptCacheRetention()))
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, responsesParameters.reasoningEffort()))
                 .reasoningSummary(getOrDefault(builder.reasoningSummary, responsesParameters.reasoningSummary()))
                 .textVerbosity(getOrDefault(builder.textVerbosity, responsesParameters.textVerbosity()))
                 .store(getOrDefault(builder.store, getOrDefault(responsesParameters.store(), false)))
                 .strictTools(getOrDefault(builder.strictTools, responsesParameters.strictTools()))
                 .strictJsonSchema(getOrDefault(builder.strictJsonSchema, responsesParameters.strictJsonSchema()))
+                .serverTools(getOrDefault(builder.serverTools, responsesParameters.serverTools()))
                 .build();
 
         this.listeners = copy(builder.listeners);
@@ -101,10 +101,12 @@ public class OpenAiResponsesChatModel implements ChatModel {
             throw new UnsupportedFeatureException("'topK' parameter is not supported by OpenAI Responses API");
         }
         if (parameters.frequencyPenalty() != null) {
-            throw new UnsupportedFeatureException("'frequencyPenalty' parameter is not supported by OpenAI Responses API");
+            throw new UnsupportedFeatureException(
+                    "'frequencyPenalty' parameter is not supported by OpenAI Responses API");
         }
         if (parameters.presencePenalty() != null) {
-            throw new UnsupportedFeatureException("'presencePenalty' parameter is not supported by OpenAI Responses API");
+            throw new UnsupportedFeatureException(
+                    "'presencePenalty' parameter is not supported by OpenAI Responses API");
         }
         if (parameters.stopSequences() != null && !parameters.stopSequences().isEmpty()) {
             throw new UnsupportedFeatureException("'stopSequences' parameter is not supported by OpenAI Responses API");
@@ -159,6 +161,7 @@ public class OpenAiResponsesChatModel implements ChatModel {
         private Boolean strictJsonSchema;
         private ResponseFormat responseFormat;
         private List<ToolSpecification> toolSpecifications;
+        private List<Map<String, Object>> serverTools;
         private ToolChoice toolChoice;
         private Boolean logRequests;
         private Boolean logResponses;
@@ -297,6 +300,11 @@ public class OpenAiResponsesChatModel implements ChatModel {
 
         public Builder toolSpecifications(ToolSpecification... toolSpecifications) {
             return toolSpecifications(asList(toolSpecifications));
+        }
+
+        public Builder serverTools(List<Map<String, Object>> serverTools) {
+            this.serverTools = serverTools;
+            return this;
         }
 
         public Builder toolChoice(ToolChoice toolChoice) {

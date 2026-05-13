@@ -438,6 +438,57 @@ ChatRequest chatRequest = ChatRequest.builder()
         .build();
 ```
 
+### Configuring built-in / server tools
+
+The OpenAI Responses API integration supports OpenAI built-in tools through `serverTools`.
+
+- `serverTools` is used for OpenAI built-in tools in raw OpenAI-shaped form
+
+Use `serverTools` when you want to send built-in tools such as `web_search`, `file_search`, or other
+OpenAI Responses API tool objects without introducing an additional typed wrapper:
+
+```java
+ChatModel model = OpenAiResponsesChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-5.4")
+        .serverTools(List.of(
+                Map.of(
+                        "type", "web_search",
+                        "filters", Map.of("allowed_domains", List.of("openai.com", "developers.openai.com")),
+                        "user_location", Map.of(
+                                "type", "approximate",
+                                "country", "US")),
+                Map.of(
+                        "type", "file_search",
+                        "vector_store_ids", List.of("vs_abc123"),
+                        "max_num_results", 3,
+                        "filters", Map.of(
+                                "type", "eq",
+                                "key", "category",
+                                "value", "blog"))))
+        .build();
+```
+
+You can also configure built-in tools per request:
+
+```java
+ChatRequest chatRequest = ChatRequest.builder()
+        .messages(UserMessage.from("What's the weather in Berlin?"))
+        .parameters(OpenAiResponsesChatRequestParameters.builder()
+                .serverTools(List.of(Map.of("type", "web_search")))
+                .build())
+        .build();
+
+ChatResponse response = model.chat(chatRequest);
+```
+
+`serverTools` can be configured either on the model builder as a default, or per request via
+`OpenAiResponsesChatRequestParameters`. When both are provided, the per-request value takes
+precedence and replaces the model-level `serverTools` for that request.
+
+`serverTools` is provider-specific and intentionally mirrors the OpenAI wire format, so nested tool fields
+should be provided as regular `Map` / `List` values.
+
 ### Thinking / Reasoning
 OpenAI reasoning models (e.g. `gpt-5.4`, `gpt-5-mini`) support
 [reasoning summaries](https://developers.openai.com/api/docs/guides/reasoning#reasoning-summaries)

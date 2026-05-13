@@ -15,7 +15,7 @@
 
     <properties>
         <!-- pinned here to avoid surprising upgrades; adjust when updating OTel semconv -->
-        <micrometer.version>1.16.2</micrometer.version>
+        <micrometer.version>1.16.5</micrometer.version>
     </properties>
 
     <dependencyManagement>
