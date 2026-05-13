@@ -15,7 +15,7 @@
     <properties>
         <opensearch-java.version>2.9.0</opensearch-java.version>
         <opensearch-containers.version>2.0.1</opensearch-containers.version>
-        <jsonpath.version>2.9.0</jsonpath.version>
+        <jsonpath.version>2.10.0</jsonpath.version>
     </properties>
 
     <dependencyManagement>
