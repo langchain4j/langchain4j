@@ -16,7 +16,7 @@
         https://www.selenium.dev/documentation/about/copyright</description>
 
     <properties>
-        <selenium.webdriver.version>4.33.0</selenium.webdriver.version>
+        <selenium.webdriver.version>4.44.0</selenium.webdriver.version>
     </properties>
 
     <dependencies>
