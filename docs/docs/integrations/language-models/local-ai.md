@@ -13,7 +13,7 @@ https://localai.io/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-local-ai</artifactId>
-    <version>1.14.1-beta24</version>
+    <version>1.11.7-beta19</version>
 </dependency>
 ```
 

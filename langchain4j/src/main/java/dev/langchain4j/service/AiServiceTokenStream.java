@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
@@ -13,7 +14,6 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.PartialResponseContext;
@@ -21,7 +21,6 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.rag.content.Content;
@@ -29,7 +28,6 @@ import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
-import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import java.util.List;
 import java.util.concurrent.Executor;
@@ -194,9 +192,8 @@ public class AiServiceTokenStream implements TokenStream {
     public void start() {
         validateConfiguration();
 
-        List<ToolSpecification> effectiveTools = toolServiceContext != null
-                ? toolServiceContext.effectiveTools()
-                : null;
+        List<ToolSpecification> effectiveTools =
+                toolServiceContext != null ? toolServiceContext.effectiveTools() : null;
 
         ChatRequest chatRequest = context.chatRequestTransformer.apply(
                 ChatRequest.builder()
@@ -231,7 +228,7 @@ public class AiServiceTokenStream implements TokenStream {
                 initTemporaryMemory(context, messages),
                 new TokenUsage(),
                 toolServiceContext,
-                context.toolService.maxSequentialToolsInvocations(),
+                context.toolService.maxToolCallingRoundTrips(),
                 toolArgumentsErrorHandler,
                 toolExecutionErrorHandler,
                 toolExecutor,

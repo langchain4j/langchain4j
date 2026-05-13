@@ -133,7 +133,7 @@ class AnthropicAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
                     """;
 
             @Tool(metadata = TOOL_METADATA)
-            String getWeather(String location, @P(value = "temperature unit", required = false) Unit unit) {
+            String getWeather(String location, @P(description = "temperature unit", required = false) Unit unit) {
                 return "sunny";
             }
         }

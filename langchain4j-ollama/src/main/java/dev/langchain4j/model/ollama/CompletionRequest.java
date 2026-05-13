@@ -17,6 +17,9 @@ class CompletionRequest {
     private String system;
     private String prompt;
     private Options options;
+    private Integer width;
+    private Integer height;
+    private Integer steps;
 
     @JsonSerialize(using = FormatSerializer.class)
     private String format;
@@ -25,11 +28,23 @@ class CompletionRequest {
 
     CompletionRequest() {}
 
-    CompletionRequest(String model, String system, String prompt, Options options, String format, Boolean stream) {
+    CompletionRequest(
+            String model,
+            String system,
+            String prompt,
+            Options options,
+            Integer width,
+            Integer height,
+            Integer steps,
+            String format,
+            Boolean stream) {
         this.model = model;
         this.system = system;
         this.prompt = prompt;
         this.options = options;
+        this.width = width;
+        this.height = height;
+        this.steps = steps;
         this.format = format;
         this.stream = stream;
     }
@@ -70,6 +85,30 @@ class CompletionRequest {
         this.options = options;
     }
 
+    public Integer getWidth() {
+        return width;
+    }
+
+    public void setWidth(Integer width) {
+        this.width = width;
+    }
+
+    public Integer getHeight() {
+        return height;
+    }
+
+    public void setHeight(Integer height) {
+        this.height = height;
+    }
+
+    public Integer getSteps() {
+        return steps;
+    }
+
+    public void setSteps(Integer steps) {
+        this.steps = steps;
+    }
+
     public String getFormat() {
         return format;
     }
@@ -92,6 +131,9 @@ class CompletionRequest {
         private String system;
         private String prompt;
         private Options options;
+        private Integer width;
+        private Integer height;
+        private Integer steps;
         private String format;
         private Boolean stream;
 
@@ -115,6 +157,21 @@ class CompletionRequest {
             return this;
         }
 
+        Builder width(Integer width) {
+            this.width = width;
+            return this;
+        }
+
+        Builder height(Integer height) {
+            this.height = height;
+            return this;
+        }
+
+        Builder steps(Integer steps) {
+            this.steps = steps;
+            return this;
+        }
+
         Builder format(String format) {
             this.format = format;
             return this;
@@ -126,7 +183,7 @@ class CompletionRequest {
         }
 
         CompletionRequest build() {
-            return new CompletionRequest(model, system, prompt, options, format, stream);
+            return new CompletionRequest(model, system, prompt, options, width, height, steps, format, stream);
         }
     }
 }

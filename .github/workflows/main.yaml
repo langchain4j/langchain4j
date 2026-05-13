@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - 'release/**'
     paths-ignore:
       - '.gitignore'
       - '*.md'
@@ -15,6 +16,7 @@ on:
   pull_request:
     branches:
       - main
+      - 'release/**'
     paths-ignore:
       - '.gitignore'
       - '*.md'
@@ -103,6 +105,13 @@ jobs:
           java-version: ${{ matrix.java_version }}
           distribution: 'temurin'
           cache: 'maven'
+
+      - name: Authenticate to Google Cloud
+        # Required for Google modules (e.g., langchain4j-vertex-ai)
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
 
       - name: Setup JBang
         # Required for MCP module
