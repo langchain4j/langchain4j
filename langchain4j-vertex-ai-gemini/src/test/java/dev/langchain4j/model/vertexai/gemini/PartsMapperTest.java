@@ -5,25 +5,40 @@ import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ImageContent;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class PartsMapperIT {
+class PartsMapperTest {
 
-    private static final String IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/3/3f/JPEG_example_flower.jpg?20170304154031";
+    @TempDir
+    static Path tempDir;
+
+    private static String imageUrl;
+
+    @BeforeAll
+    static void setUp() throws IOException {
+        Path imagePath = tempDir.resolve("test-image.jpg");
+        Files.write(imagePath, new byte[]{1, 2, 3});
+        imageUrl = imagePath.toUri().toString();
+    }
 
     @Test
     void should_detect_mime_type_automatically() {
 
         // given
-        ImageContent imageContent = ImageContent.from(IMAGE_URL);
+        ImageContent imageContent = ImageContent.from(imageUrl);
 
         // when
         Part part = PartsMapper.map(imageContent);
@@ -38,7 +53,7 @@ class PartsMapperIT {
         // given
         String mimeType = "image/png";
         Image image = Image.builder()
-                .url(IMAGE_URL)
+                .url(imageUrl)
                 .mimeType(mimeType)
                 .build();
         ImageContent imageContent = ImageContent.from(image);

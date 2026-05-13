@@ -674,6 +674,26 @@ TokenStream tokenStream = novelCreator.writeStory("dragons and wizards", "young 
 
 the streaming responses of the first two agents are internally fully consumed before the invocation of the subsequent agents can start, and only the streaming response of the last `StyleEditor` agent is propagated as the streaming response of the whole `novelCreator` agent.
 
+## Dynamic chat model selection
+
+By default, an agent is bound to a single `ChatModel` at build time. However, there are scenarios where you may want to dynamically select which model to use at each invocation based on the current state of the agentic system. For example, you might want to use a cheaper, faster model for routine work and switch to a more capable one when quality thresholds demand it.
+
+The `chatModel` method on `AgentBuilder` has an overload that accepts a `Function<AgenticScope, ChatModel>`:
+
+```java
+StoryEditor storyEditor = AgenticServices.agentBuilder(StoryEditor.class)
+        .chatModel(scope -> {
+            CritiqueResult critique = (CritiqueResult) scope.readState("critique");
+            return critique != null && critique.score() > 7.8 ? enhancedModel() : baseModel();
+        })
+        .outputKey("story")
+        .build();
+```
+
+The function receives the current `AgenticScope` and returns the `ChatModel` to use for the current invocation. In this example, a `StoryEditor` agent uses `baseModel()` by default, when the story to be edited has a critique score below 7.8 and there is still a lot to improve. It switches to `enhancedModel()` when the score exceeds that threshold and a better model could be necessary for the final refinements. The function is evaluated before every invocation, so the model can change across different invocations of the same agent.
+
+The same dynamic selection is also possible for the `streamingChatModel` method.
+
 ## Error handling
 
 In a complex agentic system, many things can go wrong, such as an agent failing to produce a result, an external tool not being available, or an unexpected error occurring during the execution of an agent.
@@ -858,14 +878,14 @@ so it will reveal the nested sequence of agents invocations necessary to generat
 
 ```
 AgentInvocation{agent=Sequential, startTime=2026-03-18T17:27:28.099439515, finishTime=2026-03-18T17:27:38.683498783, duration=10584 ms, tokens=0, inputs={topic=dragons and wiz..., style=comedy}, output=In a realm wher...}
-|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.13.1287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
+|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.11.7287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
 |=> AgentInvocation{agent=reviewLoop, startTime=2026-03-18T17:27:31.035952285, finishTime=2026-03-18T17:27:38.683438433, duration=7647 ms, tokens=0, inputs={score=0.8, topic=dragons and wiz..., style=comedy, story=In a realm wher...}, output=null}
     |=> AgentInvocation{agent=scoreStyle, iteration=0, startTime=2026-03-18T17:27:31.036155107, finishTime=2026-03-18T17:27:31.671478699, duration=635 ms, tokens=152, inputs={style=comedy, story=In a realm wher...}, output=0.2}
     |=> AgentInvocation{agent=editStory, iteration=0, startTime=2026-03-18T17:27:31.671711250, finishTime=2026-03-18T17:27:38.182881941, duration=6511 ms, tokens=491, inputs={style=comedy, story=In a realm wher...}, output=In a realm wher...}
     |=> AgentInvocation{agent=scoreStyle, iteration=1, startTime=2026-03-18T17:27:38.183021641, finishTime=2026-03-18T17:27:38.683085876, duration=500 ms, tokens=439, inputs={style=comedy, story=In a realm wher...}, output=0.8}
 ```
 
-Finally, using the static `generateReport` method esposed by `HtmlReportGenerator` class, it is also possible to generate a visual HTML report of the data collected by the `AgentMonitor` for both the topology of the agentic system and the recorded executions. For instance, generating this report for the former execution: 
+Finally, using the static `generateReport` method exposed by `HtmlReportGenerator` class, it is also possible to generate a visual HTML report of the data collected by the `AgentMonitor` for both the topology of the agentic system and the recorded executions. For instance, generating this report for the former execution: 
 
 ```java
 HtmlReportGenerator.generateReport(monitor, Path.of("review-loop.html"));
@@ -874,6 +894,20 @@ HtmlReportGenerator.generateReport(monitor, Path.of("review-loop.html"));
 will produce a report file `review-loop.html` in the current working directory similar to this:
 
 ![](/img/agent-monitor.png)
+
+It is also possible to generate the topology and execution sections independently. To generate only the topology of the agentic system, without any execution data:
+
+```java
+HtmlReportGenerator.generateTopology(styledWriter, Path.of("topology.html"));
+```
+
+Conversely, to generate only the execution history recorded by the monitor, without the topology section:
+
+```java
+HtmlReportGenerator.generateExecution(monitor, Path.of("execution.html"));
+```
+
+This last method also supports filtering by memory id, for instance `HtmlReportGenerator.generateExecution(monitor, memoryId, path)`, while all methods have overloads that return the HTML as a `String` instead of writing to a file.
 
 Another alternative to manually creating an `AgentMonitor` and registering it as a listener, is making your agent service interface to extend the `MonitoredAgent` one. When doing so, the builder automatically creates and registers an `AgentMonitor` as a listener, and this monitor becomes accessible directly from the agent instance via the `agentMonitor()` method.
 
@@ -969,12 +1003,12 @@ In a very similar way, annotating other `static` methods in the agent interface,
 
 | Annotation Name               | Description                                                                                                                                                   |
 |-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `@ChatModelSupplier`          | Returns the `ChatModel` to be used by this agent.                                                                                                             |
-| `@StreamingChatModelSupplier` | Returns the `StreamingChatModel` to be used by this agent.                                                                                                             |
+| `@ChatModelSupplier`          | Returns the `ChatModel` to be used by this agent. It could be both a fixed model, if the method has no argument, or a function of the `AgenticScope`.         |
+| `@StreamingChatModelSupplier` | Returns the `StreamingChatModel` to be used by this agent. It could be both a fixed model, if the method has no argument, or a function of the `AgenticScope` |
 | `@ChatMemorySupplier`         | Returns the `ChatMemory` to be used by this agent.                                                                                                            |
 | `@ChatMemoryProviderSupplier` | Returns the `ChatMemoryProvider` to be used by this agent.<br/>This method requires as argument an `Object` to be used as the memoryId of the created memory. |
 | `@ContentRetrieverSupplier`   | Returns the `ContentRetriever` to be used by this agent.                                                                                                      |
-| `@AgentListenerSupplier`      | Returns the `AgentListener` to be used by this agent.                                                                                                      |
+| `@AgentListenerSupplier`      | Returns the `AgentListener` to be used by this agent.                                                                                                         |
 | `@RetrievalAugmentorSupplier` | Returns the `RetrievalAugmentor` to be used by this agent.                                                                                                    |
 | `@ToolsSupplier`              | Returns the tool or set of tools to be used by this agent.<br/> It can return either a single `Object` or a `Object[]`                                        |
 | `@ToolProviderSupplier`       | Returns the `ToolProvider` to be used by this agent.                                                                                                          |
@@ -1888,6 +1922,176 @@ Based on the provided references, here are some key points about stochastic grav
 8. **Template Banks and Simulations:**
    - Template banks like those developed by Ajith et al. are crucial for matching observed signals with theoretical predictions.
 ```
+
+### Voting agentic pattern
+
+The agentic patterns discussed up to this point all orchestrate agents that do different things — they split work, sequence tasks, or route decisions. However, there are cases where you want multiple agents to tackle the same problem independently, and then aggregate their answers to produce a more robust result. This is the voting (or council) pattern: run all sub-agents in parallel on the same input, collect their outputs as votes, and reconcile them through a pluggable aggregation strategy.
+
+This pattern is especially useful for classification, content moderation, risk assessment, and any decision where consensus across diverse approaches is more reliable than a single agent's judgment. By having agents with different prompts, models, or perspectives analyze the same input, you reduce the chance that a single agent's bias or error propagates to the final result.
+
+The `VotingPlanner` dispatches all sub-agents in parallel, waits for all of them to complete, and aggregates their outputs using a `VotingStrategy`:
+
+```java
+public class VotingPlanner implements Planner {
+
+    private final VotingStrategy strategy;
+
+    private List<AgentInstance> subagents;
+    private int completedCount;
+    private final List<Object> votes = new ArrayList<>();
+
+    public VotingPlanner() {
+        this(VotingStrategy.majority());
+    }
+
+    public VotingPlanner(VotingStrategy strategy) {
+        this.strategy = strategy;
+    }
+
+    @Override
+    public void init(InitPlanningContext initPlanningContext) {
+        this.subagents = initPlanningContext.subagents();
+    }
+
+    @Override
+    public Action firstAction(PlanningContext planningContext) {
+        if (subagents.isEmpty()) {
+            return done();
+        }
+        return call(subagents);
+    }
+
+    @Override
+    public Action nextAction(PlanningContext planningContext) {
+        votes.add(planningContext.previousAgentInvocation().output());
+        completedCount++;
+
+        if (completedCount < subagents.size()) {
+            return noOp();
+        }
+
+        return done(strategy.aggregate(votes));
+    }
+
+    @Override
+    public AgenticSystemTopology topology() {
+        return AgenticSystemTopology.STAR;
+    }
+}
+```
+
+The `firstAction` method dispatches all sub-agents at once. Since the topology is STAR, the framework executes them in parallel and calls `nextAction` once per agent completion. Each call collects the completed agent's output as a vote. When all agents have voted, the planner aggregates the results through the `VotingStrategy` and signals completion.
+
+The `VotingStrategy` is a functional interface with a single method and three built-in static factory methods:
+
+```java
+@FunctionalInterface
+public interface VotingStrategy {
+
+    Object aggregate(Collection<Object> votes);
+
+    static VotingStrategy majority() { ... }  // most common value wins
+    static VotingStrategy average() { ... }   // mean of numeric values
+    static VotingStrategy highest() { ... }   // max by natural ordering
+}
+```
+
+- `majority()` groups votes by equality and returns the most common value — ideal for classification tasks where agents return categorical labels.
+- `average()` computes the arithmetic mean of numeric votes — useful for scoring tasks where agents return confidence values or ratings.
+- `highest()` picks the maximum value by natural ordering — suitable when you want the most optimistic or highest-confidence assessment.
+
+Users can also provide a custom strategy via a lambda expression, for example to implement weighted voting, confidence-based filtering, or quorum rules.
+
+To give a practical example of how this works, let's build a voting-based sentiment classifier that uses three independent agents with different prompts to classify customer feedback. Each agent is instructed to return exactly one word: POSITIVE, NEGATIVE, or NEUTRAL.
+
+```java
+public interface SentimentClassifier1 {
+
+    @UserMessage("""
+            Classify the sentiment of the following text.
+            Reply with exactly one word: POSITIVE, NEGATIVE, or NEUTRAL.
+            The text is: "{{text}}"
+            """)
+    @Agent("Classify the sentiment of a given text")
+    String classify(@V("text") String text);
+}
+
+public interface SentimentClassifier2 {
+
+    @UserMessage("""
+            You are a sentiment analysis expert.
+            Analyze the emotional tone of the following text and classify it.
+            Reply with exactly one word: POSITIVE, NEGATIVE, or NEUTRAL.
+            The text is: "{{text}}"
+            """)
+    @Agent("Analyze the emotional tone of a given text")
+    String classify(@V("text") String text);
+}
+
+public interface SentimentClassifier3 {
+
+    @UserMessage("""
+            You are a customer feedback analyst.
+            Determine whether the following feedback is positive, negative, or neutral.
+            Reply with exactly one word: POSITIVE, NEGATIVE, or NEUTRAL.
+            The text is: "{{text}}"
+            """)
+    @Agent("Determine the sentiment of customer feedback")
+    String classify(@V("text") String text);
+}
+```
+
+Each classifier approaches the same task from a slightly different angle: one is generic, one is an expert analyst, and one is specialized in customer feedback. These three agents can then be combined into a voting-based agentic system:
+
+```java
+SentimentClassifier1 c1 = AgenticServices.agentBuilder(SentimentClassifier1.class)
+        .chatModel(baseModel())
+        .outputKey("vote1")
+        .build();
+
+SentimentClassifier2 c2 = AgenticServices.agentBuilder(SentimentClassifier2.class)
+        .chatModel(baseModel())
+        .outputKey("vote2")
+        .build();
+
+SentimentClassifier3 c3 = AgenticServices.agentBuilder(SentimentClassifier3.class)
+        .chatModel(baseModel())
+        .outputKey("vote3")
+        .build();
+
+SentimentVoter voter = AgenticServices.plannerBuilder(SentimentVoter.class)
+        .subAgents(c1, c2, c3)
+        .outputKey("classification")
+        .planner(VotingPlanner::new)
+        .build();
+
+ResultWithAgenticScope<String> result = voter.classify(
+        "I absolutely love this product! It exceeded all my expectations.");
+```
+
+With this configuration the three classifiers are invoked in parallel on the same text. Each writes its classification to its own output key (`vote1`, `vote2`, `vote3`), and the `VotingPlanner` collects all three results. Since the default constructor uses `VotingStrategy.majority()`, the most common classification wins. For the clearly positive text above, all three agents will likely return `POSITIVE`, yielding a unanimous result. But even in ambiguous cases where one agent disagrees, the majority vote ensures a robust final classification.
+
+To use a different aggregation strategy, simply pass it to the `VotingPlanner` constructor:
+
+```java
+.planner(() -> new VotingPlanner(VotingStrategy.average()))
+```
+
+or provide a completely custom strategy:
+
+```java
+.planner(() -> new VotingPlanner(votes ->
+        votes.stream()
+                .map(Object::toString)
+                .map(String::toUpperCase)
+                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()))
+                .entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse(null)))
+```
+
+This custom strategy normalizes all votes to uppercase before counting, handling minor formatting differences between agents (e.g. "Positive" vs "POSITIVE").
 
 ## Non-AI agents
 

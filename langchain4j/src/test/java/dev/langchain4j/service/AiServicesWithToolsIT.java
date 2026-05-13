@@ -21,6 +21,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -55,7 +57,6 @@ import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
-
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -70,7 +71,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -660,7 +660,7 @@ class AiServicesWithToolsIT {
         assistant.chat(userMessage);
 
         // then
-        verify(stringArrayProcessor).processStrings(new String[]{"cat", "dog"});
+        verify(stringArrayProcessor).processStrings(new String[] {"cat", "dog"});
         verifyNoMoreInteractions(stringArrayProcessor);
 
         List<ChatMessage> messages = chatMemory.messages();
@@ -912,8 +912,8 @@ class AiServicesWithToolsIT {
                 .build();
 
         assertThat(assertThrows(
-                IllegalConfigurationException.class,
-                () -> assistant.chat("Apply the function xyz on the number 2027")))
+                        IllegalConfigurationException.class,
+                        () -> assistant.chat("Apply the function xyz on the number 2027")))
                 .hasMessageContaining("xyz");
     }
 
@@ -1136,7 +1136,7 @@ class AiServicesWithToolsIT {
                             public ToolExecutionResult executeWithContext(
                                     ToolExecutionRequest request, InvocationContext context) {
                                 assertThat((boolean)
-                                        context.invocationParameters().get(includeToolsKey))
+                                                context.invocationParameters().get(includeToolsKey))
                                         .isEqualTo(true);
                                 Map<String, Object> arguments = toMap(request.arguments());
                                 assertThat(arguments).containsExactly(entry("number", 2027));
@@ -1189,8 +1189,7 @@ class AiServicesWithToolsIT {
 
     private static Map<String, Object> toMap(String arguments) {
         try {
-            return new ObjectMapper().readValue(arguments, new TypeReference<>() {
-            });
+            return new ObjectMapper().readValue(arguments, new TypeReference<>() {});
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -1317,20 +1316,20 @@ class AiServicesWithToolsIT {
             ChatModel chatModel) {
 
         // given
-        int maxSequentialToolsInvocations = 1; // only one sequential tool call allowed, the test makes 3
+        int maxToolCallingRoundTrips = 1; // only one round trip allowed, the test makes 3
 
         AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
                 .chatModel(chatModel)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
                 .tools(new TransactionService())
-                .maxSequentialToolsInvocations(maxSequentialToolsInvocations)
+                .maxToolCallingRoundTrips(maxToolCallingRoundTrips)
                 .build();
 
         String userMessage = "What are the amounts of transactions T001 and T002?";
 
         assertThatExceptionOfType(RuntimeException.class)
                 .isThrownBy(() -> assistant.chat(userMessage))
-                .withMessage("Something is wrong, exceeded 1 sequential tool invocations");
+                .withMessage("Something is wrong, exceeded 1 tool calling round trips (maxToolCallingRoundTrips)");
     }
 
     @ParameterizedTest
@@ -1340,8 +1339,7 @@ class AiServicesWithToolsIT {
 
         LocalDate now = LocalDate.of(2025, 2, 24);
 
-        record ToolResult(LocalDate localDate) {
-        }
+        record ToolResult(LocalDate localDate) {}
 
         class Tools {
 
@@ -1415,12 +1413,11 @@ class AiServicesWithToolsIT {
 
     interface RouterAgent {
 
-        @dev.langchain4j.service.UserMessage(
-                """
+        @dev.langchain4j.service.UserMessage("""
                         Analyze the following user request and categorize it as 'legal', 'medical' or 'technical',
                         then forward the request as it is to the corresponding expert provided as a tool.
                         Finally return the answer that you received from the expert without any modification.
-                        
+
                         The user request is: '{{it}}'.
                         """)
         String askToExpert(String request);
@@ -1428,8 +1425,7 @@ class AiServicesWithToolsIT {
 
     interface MedicalExpert {
 
-        @dev.langchain4j.service.UserMessage(
-                """
+        @dev.langchain4j.service.UserMessage("""
                         You are a medical expert.
                         Analyze the following user request under a medical point of view and provide the best possible answer.
                         The user request is {{it}}.
@@ -1440,8 +1436,7 @@ class AiServicesWithToolsIT {
 
     interface LegalExpert {
 
-        @dev.langchain4j.service.UserMessage(
-                """
+        @dev.langchain4j.service.UserMessage("""
                         You are a legal expert.
                         Analyze the following user request under a legal point of view and provide the best possible answer.
                         The user request is {{it}}.
@@ -1452,8 +1447,7 @@ class AiServicesWithToolsIT {
 
     interface TechnicalExpert {
 
-        @dev.langchain4j.service.UserMessage(
-                """
+        @dev.langchain4j.service.UserMessage("""
                         You are a technical expert.
                         Analyze the following user request under a technical point of view and provide the best possible answer.
                         The user request is {{it}}.
@@ -1502,8 +1496,7 @@ class AiServicesWithToolsIT {
 
         LocalDate now = LocalDate.of(2025, 2, 24);
 
-        record ToolResult(LocalDate localDate) {
-        }
+        record ToolResult(LocalDate localDate) {}
 
         class Tools {
 
@@ -1541,8 +1534,7 @@ class AiServicesWithToolsIT {
 
         LocalDate now = LocalDate.of(2025, 2, 24);
 
-        record ToolResult(LocalDate localDate) {
-        }
+        record ToolResult(LocalDate localDate) {}
 
         class Tools {
 
@@ -1659,8 +1651,7 @@ class AiServicesWithToolsIT {
                         .name("getWeather")
                         .arguments("{\"city\":\"London\"}")
                         .build()),
-                AiMessage.from("It is sunny in London")
-        );
+                AiMessage.from("It is sunny in London"));
         ChatModel spyChatModel = spy(chatModel);
 
         interface SimpleAssistant {
@@ -1681,10 +1672,11 @@ class AiServicesWithToolsIT {
         verify(spyStaticProvider, times(1)).provideTools(any());
         verify(spyDynamicProvider, times(2)).provideTools(any());
 
-        verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
-                request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getWeather"))
-                        && request.toolSpecifications().stream().anyMatch(t -> t.name().equals("getTime"))
-        ));
+        verify(spyChatModel, times(2))
+                .chat(argThat((ChatRequest request) -> request.toolSpecifications().stream()
+                                .anyMatch(t -> t.name().equals("getWeather"))
+                        && request.toolSpecifications().stream()
+                                .anyMatch(t -> t.name().equals("getTime"))));
     }
 
     @Test
@@ -1699,14 +1691,18 @@ class AiServicesWithToolsIT {
                 int call = callCount.incrementAndGet();
                 ToolProviderResult.Builder builder = ToolProviderResult.builder();
                 builder.add(
-                        ToolSpecification.builder().name("getWeather").description("Gets the weather").build(),
-                        (req, memoryId) -> "sunny"
-                );
+                        ToolSpecification.builder()
+                                .name("getWeather")
+                                .description("Gets the weather")
+                                .build(),
+                        (req, memoryId) -> "sunny");
                 if (call >= 2) {
                     builder.add(
-                            ToolSpecification.builder().name("getTime").description("Gets the time").build(),
-                            (req, memoryId) -> "12:00"
-                    );
+                            ToolSpecification.builder()
+                                    .name("getTime")
+                                    .description("Gets the time")
+                                    .build(),
+                            (req, memoryId) -> "12:00");
                 }
                 return builder.build();
             }
@@ -1723,8 +1719,7 @@ class AiServicesWithToolsIT {
                         .name("getWeather")
                         .arguments("{}")
                         .build()),
-                AiMessage.from("It is sunny and the time is 12:00")
-        );
+                AiMessage.from("It is sunny and the time is 12:00"));
         ChatModel spyChatModel = spy(chatModel);
 
         interface SimpleAssistant {
@@ -1744,15 +1739,13 @@ class AiServicesWithToolsIT {
 
         InOrder inOrder = inOrder(spyChatModel);
 
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                containsTool(request, "getWeather")
-                        && !containsTool(request, "getTime")
-        ));
+        inOrder.verify(spyChatModel)
+                .chat(argThat((ChatRequest request) ->
+                        containsTool(request, "getWeather") && !containsTool(request, "getTime")));
 
-        inOrder.verify(spyChatModel).chat(argThat((ChatRequest request) ->
-                containsTool(request, "getWeather")
-                        && containsTool(request, "getTime")
-        ));
+        inOrder.verify(spyChatModel)
+                .chat(argThat((ChatRequest request) ->
+                        containsTool(request, "getWeather") && containsTool(request, "getTime")));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }
@@ -1769,15 +1762,19 @@ class AiServicesWithToolsIT {
                 int call = callCount.incrementAndGet();
                 ToolProviderResult.Builder builder = ToolProviderResult.builder();
                 builder.add(
-                        ToolSpecification.builder().name("getWeather").description("Gets the weather").build(),
-                        (req, memoryId) -> "sunny"
-                );
+                        ToolSpecification.builder()
+                                .name("getWeather")
+                                .description("Gets the weather")
+                                .build(),
+                        (req, memoryId) -> "sunny");
                 if (call == 1) {
                     // Only returned on first call
                     builder.add(
-                            ToolSpecification.builder().name("getTime").description("Gets the time").build(),
-                            (req, memoryId) -> "12:00"
-                    );
+                            ToolSpecification.builder()
+                                    .name("getTime")
+                                    .description("Gets the time")
+                                    .build(),
+                            (req, memoryId) -> "12:00");
                 }
                 return builder.build();
             }
@@ -1794,8 +1791,7 @@ class AiServicesWithToolsIT {
                         .name("getWeather")
                         .arguments("{}")
                         .build()),
-                AiMessage.from("It is sunny and the time is 12:00")
-        );
+                AiMessage.from("It is sunny and the time is 12:00"));
         ChatModel spyChatModel = spy(chatModel);
 
         interface SimpleAssistant {
@@ -1813,10 +1809,9 @@ class AiServicesWithToolsIT {
         // then
         assertThat(answer).contains("sunny");
 
-        verify(spyChatModel, times(2)).chat(argThat((ChatRequest request) ->
-                containsTool(request, "getWeather")
-                        && containsTool(request, "getTime")
-        ));
+        verify(spyChatModel, times(2))
+                .chat(argThat((ChatRequest request) ->
+                        containsTool(request, "getWeather") && containsTool(request, "getTime")));
 
         verifyNoMoreInteractionsFor(spyChatModel);
     }
@@ -1841,8 +1836,7 @@ class AiServicesWithToolsIT {
                         .name("doSomething")
                         .arguments("{}")
                         .build()),
-                AiMessage.from("OK, got null")
-        ));
+                AiMessage.from("OK, got null")));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -1876,10 +1870,7 @@ class AiServicesWithToolsIT {
 
             @Tool("Takes a photo")
             Object takePhoto() {
-                return Image.builder()
-                        .base64Data("iVBOR")
-                        .mimeType("image/png")
-                        .build();
+                return Image.builder().base64Data("iVBOR").mimeType("image/png").build();
             }
         }
 
@@ -1891,8 +1882,7 @@ class AiServicesWithToolsIT {
                         .name("takePhoto")
                         .arguments("{}")
                         .build()),
-                AiMessage.from("I see a cat")
-        ));
+                AiMessage.from("I see a cat")));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -1941,8 +1931,7 @@ class AiServicesWithToolsIT {
                         .name("takePhoto")
                         .arguments("{}")
                         .build()),
-                AiMessage.from("No photo available")
-        ));
+                AiMessage.from("No photo available")));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -1989,8 +1978,7 @@ class AiServicesWithToolsIT {
                         .name("takePhoto")
                         .arguments("{}")
                         .build()),
-                AiMessage.from("Sorry, the camera is broken")
-        ));
+                AiMessage.from("Sorry, the camera is broken")));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -2017,5 +2005,126 @@ class AiServicesWithToolsIT {
                     && toolResult.text().contains("Camera is broken")
                     && Boolean.TRUE.equals(toolResult.isError());
         }));
+    }
+
+    sealed interface Animal permits Dog, Cat {}
+
+    record Dog(String name, String breed) implements Animal {}
+
+    record Cat(String name, boolean indoor) implements Animal {}
+
+    @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "kind")
+    @JsonSubTypes({
+        @JsonSubTypes.Type(value = Square.class, name = "square"),
+        @JsonSubTypes.Type(value = Circle.class, name = "circle")
+    })
+    interface Shape {}
+
+    static class Square implements Shape {
+        double side;
+
+        Square() {}
+    }
+
+    static class Circle implements Shape {
+        double radius;
+
+        Circle() {}
+    }
+
+    record Owner(String name, Animal pet) {}
+
+    static class AnimalRegistry {
+
+        @Tool("registers a single animal")
+        void registerAnimal(Animal animal) {}
+
+        @Tool("registers a batch of animals at once")
+        void registerAnimals(List<Animal> animals) {}
+
+        @Tool("registers an owner with their pet")
+        void registerOwner(Owner owner) {}
+
+        @Tool("registers a shape preference")
+        void registerShape(Shape shape) {}
+    }
+
+    interface RegistryAssistant {
+        Result<String> chat(String userMessage);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_call_tool_with_polymorphic_sealed_argument(ChatModel chatModel) {
+
+        AnimalRegistry registry = spy(new AnimalRegistry());
+
+        RegistryAssistant assistant = AiServices.builder(RegistryAssistant.class)
+                .chatModel(chatModel)
+                .tools(registry)
+                .build();
+
+        assistant.chat("Please register a Labrador dog named Rex.");
+
+        verify(registry)
+                .registerAnimal(argThat(animal -> animal instanceof Dog dog
+                        && dog.name().equalsIgnoreCase("Rex")
+                        && dog.breed().toLowerCase().contains("labrador")));
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_call_tool_with_list_of_polymorphic_arguments(ChatModel chatModel) {
+
+        AnimalRegistry registry = spy(new AnimalRegistry());
+
+        RegistryAssistant assistant = AiServices.builder(RegistryAssistant.class)
+                .chatModel(chatModel)
+                .tools(registry)
+                .build();
+
+        assistant.chat("Register a batch of two animals in a single call using the registerAnimals tool "
+                + "(do NOT use registerAnimal): a Labrador dog named Rex, and an indoor cat named Whiskers.");
+
+        verify(registry)
+                .registerAnimals(argThat(animals -> animals.size() == 2
+                        && animals.stream().anyMatch(Dog.class::isInstance)
+                        && animals.stream().anyMatch(Cat.class::isInstance)));
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_call_tool_with_pojo_containing_nested_polymorphic_field(ChatModel chatModel) {
+
+        AnimalRegistry registry = spy(new AnimalRegistry());
+
+        RegistryAssistant assistant = AiServices.builder(RegistryAssistant.class)
+                .chatModel(chatModel)
+                .tools(registry)
+                .build();
+
+        assistant.chat("Please register Alice as the owner of her Labrador dog named Rex.");
+
+        verify(registry)
+                .registerOwner(argThat(owner -> owner.name().equalsIgnoreCase("Alice")
+                        && owner.pet() instanceof Dog dog
+                        && dog.name().equalsIgnoreCase("Rex")
+                        && dog.breed().toLowerCase().contains("labrador")));
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_call_tool_with_jackson_annotated_polymorphic_argument(ChatModel chatModel) {
+
+        AnimalRegistry registry = spy(new AnimalRegistry());
+
+        RegistryAssistant assistant = AiServices.builder(RegistryAssistant.class)
+                .chatModel(chatModel)
+                .tools(registry)
+                .build();
+
+        assistant.chat("Please register a circle shape with radius 4.");
+
+        verify(registry).registerShape(argThat(shape -> shape instanceof Circle circle && circle.radius == 4.0));
     }
 }

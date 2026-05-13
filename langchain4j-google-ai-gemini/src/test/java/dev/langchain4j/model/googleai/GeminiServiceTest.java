@@ -602,7 +602,15 @@ class GeminiServiceTest {
 
     private static GeminiService createService(MockHttpClient mockHttpClient, String baseUrl, Duration timeout) {
         return new GeminiService(
-                new MockHttpClientBuilder(mockHttpClient), TEST_API_KEY, baseUrl, false, false, false, null, timeout);
+                new MockHttpClientBuilder(mockHttpClient),
+                TEST_API_KEY,
+                baseUrl,
+                false,
+                false,
+                false,
+                null,
+                timeout,
+                null);
     }
 
     private static GeminiGenerateContentResponse createGenerateContentResponse(String text) {

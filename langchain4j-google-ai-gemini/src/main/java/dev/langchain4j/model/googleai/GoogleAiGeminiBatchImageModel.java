@@ -135,7 +135,8 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
                 getOrDefault(builder.logRequests, false),
                 getOrDefault(builder.logResponses, false),
                 builder.logger,
-                builder.timeout);
+                builder.timeout,
+                null);
     }
 
     /**

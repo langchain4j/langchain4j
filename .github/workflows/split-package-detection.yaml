@@ -2,9 +2,9 @@ name: Split Package Detection
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, 'release/**' ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, 'release/**' ]
   # Optional: Run manually from the Actions tab
   workflow_dispatch:
 

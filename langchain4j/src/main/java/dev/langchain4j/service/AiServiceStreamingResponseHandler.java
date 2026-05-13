@@ -5,9 +5,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
 import static dev.langchain4j.service.tool.ToolService.refreshDynamicProviders;
 
-import dev.langchain4j.service.tool.ToolService;
-import dev.langchain4j.service.tool.search.ToolSearchService;
-
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -43,7 +40,9 @@ import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.service.tool.ToolServiceContext;
+import dev.langchain4j.service.tool.search.ToolSearchService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -100,7 +99,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final List<String> responseBuffer = new ArrayList<>();
     private final boolean hasOutputGuardrails;
 
-    private int sequentialToolsInvocationsLeft;
+    private int toolCallingRoundTripsLeft;
 
     private record ToolRequestResult(ToolExecutionRequest request, ToolExecutionResult result) {}
 
@@ -123,7 +122,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             ChatMemory temporaryMemory,
             TokenUsage tokenUsage,
             ToolServiceContext toolServiceContext,
-            int sequentialToolsInvocationsLeft,
+            int toolCallingRoundTripsLeft,
             ToolArgumentsErrorHandler toolArgumentsErrorHandler,
             ToolExecutionErrorHandler toolExecutionErrorHandler,
             Executor toolExecutor,
@@ -159,7 +158,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
         this.hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
 
-        this.sequentialToolsInvocationsLeft = sequentialToolsInvocationsLeft;
+        this.toolCallingRoundTripsLeft = toolCallingRoundTripsLeft;
     }
 
     @Override
@@ -284,10 +283,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
         if (aiMessage.hasToolExecutionRequests()) {
 
-            if (sequentialToolsInvocationsLeft-- == 0) {
+            if (toolCallingRoundTripsLeft-- == 0) {
                 throw runtime(
-                        "Something is wrong, exceeded %s sequential tool invocations",
-                        context.toolService.maxSequentialToolsInvocations());
+                        "Something is wrong, exceeded %s tool calling round trips (maxToolCallingRoundTrips)",
+                        context.toolService.maxToolCallingRoundTrips());
             }
 
             if (intermediateResponseHandler != null) {
@@ -310,7 +309,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                                 toResultMessage(toolRequest, toolResult);
                         addToMemory(toolExecutionResultMessage);
                         anyToolErrored = anyToolErrored || toolResult.isError();
-                        returnBehaviors.add(context.toolService.returnBehavior(toolRequest.name()));
+                        returnBehaviors.add(toolServiceContext.returnBehavior(toolRequest.name()));
                     } catch (ExecutionException e) {
                         if (e.getCause() instanceof RuntimeException re) {
                             throw re;
@@ -328,11 +327,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     toolResults.add(toolResult);
                     ToolRequestResult toolRequestResult = new ToolRequestResult(toolRequest, toolResult);
                     fireToolExecutedEvent(toolRequestResult);
-                    ToolExecutionResultMessage toolExecutionResultMessage =
-                            toResultMessage(toolRequest, toolResult);
+                    ToolExecutionResultMessage toolExecutionResultMessage = toResultMessage(toolRequest, toolResult);
                     addToMemory(toolExecutionResultMessage);
                     anyToolErrored = anyToolErrored || toolResult.isError();
-                    returnBehaviors.add(context.toolService.returnBehavior(toolRequest.name()));
+                    returnBehaviors.add(toolServiceContext.returnBehavior(toolRequest.name()));
                 }
             }
 
@@ -348,11 +346,12 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
             List<ChatMessage> messages = messagesToSend(invocationContext.chatMemoryId());
 
-            ToolServiceContext updatedToolContext = refreshDynamicProviders(toolServiceContext, messages, invocationContext);
+            ToolServiceContext updatedToolContext =
+                    refreshDynamicProviders(toolServiceContext, messages, invocationContext);
             updatedToolContext = ToolSearchService.addFoundTools(updatedToolContext, toolResults);
 
-            ChatRequestParameters parameters = chatRequestParameters(invocationContext.methodArguments(),
-                    updatedToolContext.effectiveTools());
+            ChatRequestParameters parameters =
+                    chatRequestParameters(invocationContext.methodArguments(), updatedToolContext.effectiveTools());
 
             ChatRequest nextChatRequest = context.chatRequestTransformer.apply(
                     ChatRequest.builder()
@@ -380,7 +379,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     temporaryMemory,
                     TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage()),
                     updatedToolContext,
-                    sequentialToolsInvocationsLeft,
+                    toolCallingRoundTripsLeft,
                     toolArgumentsErrorHandler,
                     toolExecutionErrorHandler,
                     toolExecutor,

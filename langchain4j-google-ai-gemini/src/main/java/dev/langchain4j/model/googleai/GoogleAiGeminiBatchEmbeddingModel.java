@@ -60,7 +60,8 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
                         getOrDefault(builder.logRequests, false),
                         getOrDefault(builder.logResponses, false),
                         builder.logger,
-                        builder.timeout));
+                        builder.timeout,
+                        null));
     }
 
     GoogleAiGeminiBatchEmbeddingModel(Builder builder, final GeminiService geminiService) {

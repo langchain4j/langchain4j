@@ -369,6 +369,8 @@ Methods annotated with `@Tool` can accept any number of parameters of various ty
 - Object types: `String`, `Integer`, `Double`, etc
 - Custom POJOs (can contain nested POJOs)
 - `enum`s
+- Polymorphic types (sealed interfaces/classes or types annotated with Jackson
+  `@JsonSubTypes` / `@JsonTypeInfo`) — see [Polymorphic Tool Parameters](#polymorphic-tool-parameters)
 - `List<T>`/`Set<T>` where `T` is one of the above-mentioned types
 - `Map<K,V>` (you need to manually specify the types of `K` and `V` in the parameter description with `@P`)
 
@@ -402,27 +404,20 @@ void getTemperature(
 #### Required and Optional
 
 By default, all tool method parameters are considered **_required_**.
-This means that the LLM will have to produce a value for such a parameter.
+This means the parameter is listed in the JSON schema's `required` array sent to the LLM,
+instructing it to produce a value.
 A parameter can be made optional by annotating it with `@P(required = false)`:
 ```java
 @Tool
-void getTemperature(String location, @P("Unit of temperature", required = false) Unit unit) {
+String getTemperature(String location, @P(required = false) Unit unit) {
     ...
 }
 ```
 
-#### Alternative: Using `Optional<T>` for Optional Parameters
-
-Instead of annotating parameters with `@P(required = false)`, you simply declare the parameter as `Optional<T>`.
-Any parameter of type `Optional<T>` will be treated as optional automatically, even without specify `required = false` in the `@P` annotation.
-
-**Example:**
+Alternatively, you can declare the parameter as `Optional<T>`:
 ```java
 @Tool
-void getTemperature(
-    @P("Temperature value") double value,
-    @P("Unit of temperature") Optional<String> unit
-) {
+String getTemperature(String location, Optional<Unit> unit) {
     ...
 }
 ```
@@ -442,6 +437,154 @@ void add(User user) {
 Please note that when used with [structured outputs](/tutorials/structured-outputs),
 all fields and sub-fields are considered **_optional_** by default.
 :::
+
+:::caution Required is advisory: the LLM can still omit arguments
+The `required` flag controls the JSON schema sent to the LLM (required parameters are listed
+in the schema's `required` array). The LLM is expected to honor this, but in practice it can
+disregard the schema and omit an argument anyway.
+
+In LangChain4j 1.x, this is detected only for **primitive** parameters (`int`, `long`, `boolean`, …) — a
+missing primitive triggers the `ToolArgumentsErrorHandler` (see [Error Handling](#handling-tool-arguments-errors)
+below). **Missing object parameters are not validated**: `null` is passed to the
+`@Tool`-annotated method even though the schema marked the parameter as required.
+
+We are planning to remove this asymmetry in LangChain4j 2.0 so that all required arguments are
+validated uniformly. If this planned change would affect your use case, please
+[open an issue](https://github.com/langchain4j/langchain4j/issues) so we can hear your feedback before it lands.
+
+If you want a real fallback instead of `null` (or instead of an error for primitive parameters), use
+[`@P(defaultValue = ...)`](#default-parameter-values).
+:::
+
+#### Default Parameter Values
+
+`@P(defaultValue = "...")` declares a value that LangChain4j substitutes when the LLM
+omits the argument. It's the simplest way to make a parameter optional and supply a
+sensible fallback that your tool method receives.
+
+```java
+enum SortBy { RELEVANCE, DATE, RATING }
+
+@Tool
+List<Article> searchArticles(
+    String query,
+    @P(defaultValue = "10") int limit,
+    @P(defaultValue = "[\"en\"]") List<String> languages,
+    @P(defaultValue = "RELEVANCE") SortBy sortBy
+) {
+    // When the LLM omits them:
+    //   'limit'     -> 10
+    //   'languages' -> ["en"]
+    //   'sortBy'    -> SortBy.RELEVANCE
+}
+```
+
+**Setting `defaultValue` implies optional in the JSON schema** — the parameter is *not*
+listed in the schema's `required` array, regardless of `@P(required)`. The LLM is told
+it may omit the argument; if it does, LangChain4j fills in the default before invoking
+your method.
+
+**Supported types:**
+
+| Type                         | Format                   | Example                                  |
+|------------------------------|--------------------------|------------------------------------------|
+| `String`                     | used verbatim            | `defaultValue = "USD"`                   |
+| Primitive / boxed primitive  | type-specific conversion | `"10"`, `"3.14"`, `"true"`               |
+| `enum`                       | enum constant name       | `defaultValue = "EUR"`                   |
+| `UUID`                       | `UUID.fromString`        | `"550e8400-e29b-41d4-a716-446655440000"` |
+| `BigDecimal`, `BigInteger`   | numeric literal          | `"1.5"`, `"100"`                         |
+| `List<T>` / `Set<T>` / array | JSON array               | `"[\"a\",\"b\"]"`, `"[1,2,3]"`           |
+| `Map<K,V>`                   | JSON object              | `"{\"a\":1,\"b\":2}"`                    |
+| POJOs (including nested)     | JSON object              | `"{\"name\":\"Klaus\",\"age\":42}"`      |
+
+The default value string is parsed at AI Service registration time. If it cannot be
+converted into the parameter's type, AI Service construction fails immediately with
+`IllegalConfigurationException`, naming the offending parameter — typos are caught at
+startup rather than on the first LLM call.
+
+**Defaults only apply to absence, not to wrong values.** If the LLM provides an argument
+that fails type coercion (e.g. `"banana"` for an `int`), the coercion error propagates as
+usual — the default is *not* used as a fallback.
+
+**Defaults are re-parsed on every invocation,** so a tool that mutates a defaulted
+`List`/`Map`/POJO does not contaminate later calls:
+
+```java
+@Tool
+void process(@P(defaultValue = "[\"a\",\"b\"]") List<String> tags) {
+    tags.add("processed"); // safe — next invocation still receives ["a","b"]
+}
+```
+
+**Restrictions** (rejected with `IllegalConfigurationException` at registration time):
+
+- `defaultValue` cannot be combined with `Optional<T>` — `Optional` already encodes
+  "absent"; pick one mechanism.
+- `defaultValue` cannot be set on LangChain4j-injected parameters (`@ToolMemoryId`,
+  `InvocationContext`, etc.) — they don't come from the LLM.
+
+#### Polymorphic Tool Parameters
+
+A tool parameter can be a polymorphic type — a base type whose concrete subtype is decided
+by the LLM at call time. Sealed interfaces and sealed classes work without annotations;
+plain abstract classes and interfaces must declare their subtypes with Jackson's
+`@JsonSubTypes`.
+The schema sent to the LLM contains an `anyOf` over the permitted subtypes, each with a
+discriminator property (defaulting to `"type"`) so the LLM can communicate which concrete
+type it produced; LangChain4j deserializes the LLM's argument into the right subtype
+before invoking your tool method.
+
+This works for the polymorphic type as a parameter, for `List<T>` / `Set<T>` of polymorphic
+types, and for polymorphic types nested inside another POJO parameter.
+
+**Sealed interfaces and classes — no annotations needed:**
+
+```java
+sealed interface Animal permits Dog, Cat {}
+
+record Dog(String name, String breed) implements Animal {}
+
+record Cat(String name, boolean indoor) implements Animal {}
+
+class AnimalRegistry {
+
+    @Tool("Registers a single animal")
+    void registerAnimal(Animal animal) { /* dispatched to Dog or Cat */ }
+
+    @Tool("Registers a batch of animals")
+    void registerAnimals(List<Animal> animals) { /* mixed Dog / Cat */ }
+
+    @Tool("Registers an owner with their pet")
+    void registerOwner(Owner owner) { /* Owner.pet is dispatched */ }
+}
+
+record Owner(String name, Animal pet) {}
+```
+
+**Jackson `@JsonSubTypes` / `@JsonTypeInfo`** are also supported and let you decouple wire
+names from Java class names:
+
+```java
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "kind")
+@JsonSubTypes({
+    @JsonSubTypes.Type(value = Square.class, name = "square"),
+    @JsonSubTypes.Type(value = Circle.class, name = "circle")
+})
+interface Shape {}
+
+class ShapeRegistry {
+
+    @Tool("Registers a shape")
+    void registerShape(Shape shape) { /* dispatched to Square or Circle */ }
+}
+```
+
+The set of supported `@JsonTypeInfo` options, the discriminator-name resolution order,
+`defaultImpl` behavior, the `visible` flag, and field-collision detection are described in
+detail in [Polymorphic Types](/tutorials/structured-outputs#polymorphic-types) under
+Structured Outputs — they apply identically to tool parameters.
+
+#### Recursive Parameters
 
 Recursive parameters (e.g., a `Person` class having a `Set<Person> children` field)
 are currently supported only by OpenAI.
@@ -1301,8 +1444,20 @@ AssistantHallucinatedTool assistant = AiServices.builder(AssistantHallucinatedTo
 
 #### Handling Tool Arguments Errors
 
-By default, when something is wrong with tool arguments (e.g., the LLM generates an invalid JSON),
-the AI Service will not be able to execute the tool, so it will fail with an exception.
+By default, when something is wrong with tool arguments (e.g., the LLM generates an invalid JSON
+or omits a required parameter), the AI Service will not be able to execute the tool, so it will
+fail with an exception.
+
+:::caution Recommended: feed argument errors back to the LLM
+The current default (throw) is rarely what you want.
+Argument errors usually come from the LLM, and LLMs can typically self-correct when given a clear
+error message. Configure a `ToolArgumentsErrorHandler` that returns the error text so the LLM can
+retry with corrected arguments.
+
+We are planning to change the default to this behaviour in LangChain4j 2.0. If this planned change
+would affect your use case, please [open an issue](https://github.com/langchain4j/langchain4j/issues)
+so we can hear your feedback before it lands.
+:::
 
 You can customize this behaviour by configuring a `ToolArgumentsErrorHandler` on the AI Service:
 
@@ -1320,7 +1475,17 @@ Currently, there are two ways to handle errors inside the `ToolArgumentsErrorHan
 - Return a text message (e.g., an error description) that will be sent back to the LLM,
   allowing it to respond appropriately (for example, by correcting the error and retrying).
 
-Here is an example of the first approach:
+**Recommended (let the LLM retry):**
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(tools)
+        .toolArgumentsErrorHandler((error, errorContext) -> ToolErrorHandlerResult.text(error.getMessage()))
+        .build();
+```
+
+**Strict (stop the flow on any argument error):**
 
 ```java
 Assistant assistant = AiServices.builder(Assistant.class)
@@ -1336,21 +1501,27 @@ try {
 }
 ```
 
-Here is an example of the second approach:
-
-```java
-Assistant assistant = AiServices.builder(Assistant.class)
-        .chatModel(chatModel)
-        .tools(tools)
-        .toolArgumentsErrorHandler((error, errorContext) -> ToolErrorHandlerResult.text("Something is wrong with tool arguments: " + error.getMessage()))
-        .build();
-```
-
 #### Handling Tool Execution Errors
 
 By default, when a method annotated with `@Tool` throws an `Exception`,
 the message of the `Exception` (`e.getMessage()`) will be sent to the LLM as the result of tool's execution.
 This allows the LLM to correct its mistake and retry, if it considers it necessary.
+
+:::warning Recommended: do not send raw exception messages to the LLM in production
+The current default sends the raw exception message back to the LLM. In production this can leak
+internal application data: stack traces, file paths, credentials embedded in error strings,
+downstream API responses, PII from error messages, etc.
+Once fed to the LLM, this content can flow into responses, chat history, observability pipelines,
+and the LLM provider's logs.
+
+Configure a `ToolExecutionErrorHandler` that returns either a generic message or a curated/sanitized
+description of the failure, and rely on logs and observability events for the underlying detail.
+
+We are planning to change the default to "Throw an exception and abort AI Service invocation" in
+LangChain4j 2.0. If this planned change would affect your use case, please
+[open an issue](https://github.com/langchain4j/langchain4j/issues) so we can hear your feedback
+before it lands.
+:::
 
 You can customize this behaviour by configuring a `ToolExecutionErrorHandler` on the AI Service:
 
@@ -1358,7 +1529,7 @@ You can customize this behaviour by configuring a `ToolExecutionErrorHandler` on
 Assistant assistant = AiServices.builder(Assistant.class)
         .chatModel(chatModel)
         .tools(tools)
-        .toolExecutionErrorHandler((error, errorContext) -> ToolErrorHandlerResult.text("Something is wrong with tool execution: " + error.getMessage()))
+        .toolExecutionErrorHandler((error, errorContext) -> ToolErrorHandlerResult.text("Tool execution failed."))
         .build();
 ```
 
