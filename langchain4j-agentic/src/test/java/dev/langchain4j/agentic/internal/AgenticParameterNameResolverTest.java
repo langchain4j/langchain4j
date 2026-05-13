@@ -46,7 +46,8 @@ class AgenticParameterNameResolverTest {
                     .chatModel(model)
                     .build();
 
-            String response = (String) compiledAiService.type()
+            String response = (String) compiledAiService
+                    .type()
                     .getMethod("chat", String.class, String.class)
                     .invoke(aiService, "hello", "value-from-v");
 
@@ -67,7 +68,8 @@ class AgenticParameterNameResolverTest {
                     .systemMessageProvider(memoryId -> "Use {{xx}}.")
                     .build();
 
-            String response = (String) compiledAiService.type()
+            String response = (String) compiledAiService
+                    .type()
                     .getMethod("chatWithProvider", String.class, String.class)
                     .invoke(aiService, "hello", "value-from-v");
 
@@ -101,10 +103,10 @@ class AgenticParameterNameResolverTest {
 
         assertThat(result).isZero();
 
-        URLClassLoader classLoader =
-                new URLClassLoader(new URL[] {tempDir.toUri().toURL()}, AgenticParameterNameResolverTest.class.getClassLoader());
-        Class<?> type = Class.forName(
-                "dev.langchain4j.agentic.internal.generated.CompiledTestAiService", true, classLoader);
+        URLClassLoader classLoader = new URLClassLoader(
+                new URL[] {tempDir.toUri().toURL()}, AgenticParameterNameResolverTest.class.getClassLoader());
+        Class<?> type =
+                Class.forName("dev.langchain4j.agentic.internal.generated.CompiledTestAiService", true, classLoader);
         return new CompiledAiService(type, classLoader);
     }
 
@@ -116,7 +118,11 @@ class AgenticParameterNameResolverTest {
 
     private static String aiServicesClassPath() {
         try {
-            return new File(AiServices.class.getProtectionDomain().getCodeSource().getLocation().toURI())
+            return new File(AiServices.class
+                            .getProtectionDomain()
+                            .getCodeSource()
+                            .getLocation()
+                            .toURI())
                     .getAbsolutePath();
         } catch (Exception e) {
             throw new IllegalStateException("Unable to resolve AiServices classpath", e);

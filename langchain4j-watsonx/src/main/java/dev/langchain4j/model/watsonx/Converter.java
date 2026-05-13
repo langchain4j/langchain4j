@@ -209,7 +209,9 @@ class Converter {
                             case AUTO -> Detail.AUTO;
                             case HIGH -> Detail.HIGH;
                             case LOW -> Detail.LOW;
-                            default -> throw new UnsupportedFeatureException("Unsupported detail level: " + imageContent.detailLevel());
+                            default ->
+                                throw new UnsupportedFeatureException(
+                                        "Unsupported detail level: " + imageContent.detailLevel());
                         };
                 yield ImageContent.of(mimeType, base64Data, detailLevel);
             }
@@ -223,8 +225,7 @@ class Converter {
     private static ToolMessage toToolMessage(ToolExecutionResultMessage toolExecutionResultMessage) {
         if (!toolExecutionResultMessage.hasSingleText()) {
             throw new UnsupportedFeatureException(
-                    "watsonx does not support non-text content in tool results. "
-                            + "Only text content is supported.");
+                    "watsonx does not support non-text content in tool results. " + "Only text content is supported.");
         }
         return ToolMessage.of(toolExecutionResultMessage.text(), toolExecutionResultMessage.id());
     }

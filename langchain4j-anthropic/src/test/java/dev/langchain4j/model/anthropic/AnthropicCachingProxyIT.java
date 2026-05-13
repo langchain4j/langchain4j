@@ -1,15 +1,15 @@
 package dev.langchain4j.model.anthropic;
 
+import static dev.langchain4j.internal.Utils.randomString;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import static dev.langchain4j.internal.Utils.randomString;
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
-import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
 class AnthropicCachingProxyIT {
@@ -35,7 +35,8 @@ class AnthropicCachingProxyIT {
         ChatResponse nonCachedResponse2 = nonCachingModel.chat(nonCachingRequest);
 
         // then
-        assertThat(nonCachedResponse1.metadata().id()).isNotEqualTo(nonCachedResponse2.metadata().id());
+        assertThat(nonCachedResponse1.metadata().id())
+                .isNotEqualTo(nonCachedResponse2.metadata().id());
 
         // given
         AnthropicChatModel cachingModel = AnthropicChatModel.builder()
@@ -56,7 +57,8 @@ class AnthropicCachingProxyIT {
         ChatResponse cachedResponse2 = cachingModel.chat(cachingRequest);
 
         // then
-        assertThat(cachedResponse1.metadata().id()).isEqualTo(cachedResponse2.metadata().id());
+        assertThat(cachedResponse1.metadata().id())
+                .isEqualTo(cachedResponse2.metadata().id());
     }
 
     @Test
@@ -74,7 +76,6 @@ class AnthropicCachingProxyIT {
                 .messages(UserMessage.from(randomString(10)))
                 .build();
 
-
         // when
         TestStreamingChatResponseHandler handler1 = new TestStreamingChatResponseHandler();
         nonCachingModel.chat(nonCachingRequest, handler1);
@@ -85,7 +86,8 @@ class AnthropicCachingProxyIT {
         ChatResponse nonCachedResponse2 = handler2.get();
 
         // then
-        assertThat(nonCachedResponse1.metadata().id()).isNotEqualTo(nonCachedResponse2.metadata().id());
+        assertThat(nonCachedResponse1.metadata().id())
+                .isNotEqualTo(nonCachedResponse2.metadata().id());
 
         // given
         AnthropicStreamingChatModel cachingModel = AnthropicStreamingChatModel.builder()
@@ -111,6 +113,7 @@ class AnthropicCachingProxyIT {
         ChatResponse cachedResponse2 = handler4.get();
 
         // then
-        assertThat(cachedResponse1.metadata().id()).isEqualTo(cachedResponse2.metadata().id());
+        assertThat(cachedResponse1.metadata().id())
+                .isEqualTo(cachedResponse2.metadata().id());
     }
 }

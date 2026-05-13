@@ -19,11 +19,10 @@ import dev.langchain4j.service.V;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderResult;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
@@ -91,15 +90,15 @@ public class SingleAgentIT {
         @Override
         public void beforeAgentInvocation(AgentRequest request) {
             BEFORE_AGENT_INVOKED.set(true);
-            System.out.println(tag + " beforeAgentInvocation agent=" + request.agent().name()
-                    + " inputs=" + request.inputs());
+            System.out.println(
+                    tag + " beforeAgentInvocation agent=" + request.agent().name() + " inputs=" + request.inputs());
         }
 
         @Override
         public void afterAgentInvocation(AgentResponse response) {
             AFTER_AGENT_INVOKED.set(true);
-            System.out.println(tag + " afterAgentInvocation agent=" + response.agent().name()
-                    + " output=" + response.output());
+            System.out.println(
+                    tag + " afterAgentInvocation agent=" + response.agent().name() + " output=" + response.output());
         }
 
         @Override

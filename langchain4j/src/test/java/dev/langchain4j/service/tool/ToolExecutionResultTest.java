@@ -3,10 +3,10 @@ package dev.langchain4j.service.tool;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.image.Image;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -81,10 +81,10 @@ class ToolExecutionResultTest {
     @Test
     void should_fail_when_resultText_and_resultTextSupplier_both_set() {
         assertThatThrownBy(() -> ToolExecutionResult.builder()
-                .result(new Object())
-                .resultText("direct text")
-                .resultTextSupplier(() -> "lazy result")
-                .build())
+                        .result(new Object())
+                        .resultText("direct text")
+                        .resultTextSupplier(() -> "lazy result")
+                        .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("mutually exclusive");
     }
@@ -92,10 +92,10 @@ class ToolExecutionResultTest {
     @Test
     void should_fail_when_resultTextSupplier_and_resultText_both_set() {
         assertThatThrownBy(() -> ToolExecutionResult.builder()
-                .result(new Object())
-                .resultTextSupplier(() -> "lazy result")
-                .resultText("direct text")
-                .build())
+                        .result(new Object())
+                        .resultTextSupplier(() -> "lazy result")
+                        .resultText("direct text")
+                        .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("mutually exclusive");
     }
@@ -258,8 +258,8 @@ class ToolExecutionResultTest {
         // given
         List<Content> contents = List.of(
                 TextContent.from("description"),
-                ImageContent.from(Image.builder().base64Data("abc").mimeType("image/png").build())
-        );
+                ImageContent.from(
+                        Image.builder().base64Data("abc").mimeType("image/png").build()));
 
         // when
         ToolExecutionResult toolExecutionResult = ToolExecutionResult.builder()
@@ -282,7 +282,8 @@ class ToolExecutionResultTest {
         // then
         assertThat(toolExecutionResult.resultContents()).hasSize(1);
         assertThat(toolExecutionResult.resultContents().get(0)).isInstanceOf(TextContent.class);
-        assertThat(((TextContent) toolExecutionResult.resultContents().get(0)).text()).isEqualTo("hello");
+        assertThat(((TextContent) toolExecutionResult.resultContents().get(0)).text())
+                .isEqualTo("hello");
     }
 
     @Test
@@ -295,7 +296,8 @@ class ToolExecutionResultTest {
 
         // then
         assertThat(toolExecutionResult.resultContents()).hasSize(1);
-        assertThat(((TextContent) toolExecutionResult.resultContents().get(0)).text()).isEqualTo("lazy");
+        assertThat(((TextContent) toolExecutionResult.resultContents().get(0)).text())
+                .isEqualTo("lazy");
         assertThat(toolExecutionResult.resultText()).isEqualTo("lazy");
     }
 
@@ -316,8 +318,8 @@ class ToolExecutionResultTest {
         // given
         List<Content> contents = List.of(
                 TextContent.from("first"),
-                ImageContent.from(Image.builder().base64Data("abc").mimeType("image/png").build())
-        );
+                ImageContent.from(
+                        Image.builder().base64Data("abc").mimeType("image/png").build()));
 
         ToolExecutionResult toolExecutionResult = ToolExecutionResult.builder()
                 .result(new Object())
@@ -333,10 +335,7 @@ class ToolExecutionResultTest {
     @Test
     void should_fail_resultText_when_resultContents_has_multiple_text() {
         // given
-        List<Content> contents = List.of(
-                TextContent.from("first"),
-                TextContent.from("second")
-        );
+        List<Content> contents = List.of(TextContent.from("first"), TextContent.from("second"));
 
         ToolExecutionResult toolExecutionResult = ToolExecutionResult.builder()
                 .result(new Object())
@@ -352,10 +351,10 @@ class ToolExecutionResultTest {
     @Test
     void should_fail_when_resultText_and_resultContents_both_set() {
         assertThatThrownBy(() -> ToolExecutionResult.builder()
-                .result(new Object())
-                .resultText("from text")
-                .resultContents(List.of(TextContent.from("from contents")))
-                .build())
+                        .result(new Object())
+                        .resultText("from text")
+                        .resultContents(List.of(TextContent.from("from contents")))
+                        .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("mutually exclusive");
     }
@@ -363,10 +362,10 @@ class ToolExecutionResultTest {
     @Test
     void should_fail_when_resultContents_and_resultText_both_set() {
         assertThatThrownBy(() -> ToolExecutionResult.builder()
-                .result(new Object())
-                .resultContents(List.of(TextContent.from("from contents")))
-                .resultText("from text")
-                .build())
+                        .result(new Object())
+                        .resultContents(List.of(TextContent.from("from contents")))
+                        .resultText("from text")
+                        .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("mutually exclusive");
     }
@@ -374,10 +373,10 @@ class ToolExecutionResultTest {
     @Test
     void should_fail_when_resultContents_and_resultTextSupplier_both_set() {
         assertThatThrownBy(() -> ToolExecutionResult.builder()
-                .result(new Object())
-                .resultContents(List.of(TextContent.from("from contents")))
-                .resultTextSupplier(() -> "from supplier")
-                .build())
+                        .result(new Object())
+                        .resultContents(List.of(TextContent.from("from contents")))
+                        .resultTextSupplier(() -> "from supplier")
+                        .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("mutually exclusive");
     }
@@ -385,10 +384,10 @@ class ToolExecutionResultTest {
     @Test
     void should_fail_when_resultTextSupplier_and_resultContents_both_set() {
         assertThatThrownBy(() -> ToolExecutionResult.builder()
-                .result(new Object())
-                .resultTextSupplier(() -> "from supplier")
-                .resultContents(List.of(TextContent.from("from contents")))
-                .build())
+                        .result(new Object())
+                        .resultTextSupplier(() -> "from supplier")
+                        .resultContents(List.of(TextContent.from("from contents")))
+                        .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("mutually exclusive");
     }

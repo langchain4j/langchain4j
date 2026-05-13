@@ -9,7 +9,6 @@ import dev.langchain4j.agentic.patterns.voting.classifier.ClassifierAgents.Senti
 import dev.langchain4j.agentic.patterns.voting.classifier.ClassifierAgents.SentimentClassifier2;
 import dev.langchain4j.agentic.patterns.voting.classifier.ClassifierAgents.SentimentClassifier3;
 import dev.langchain4j.agentic.patterns.voting.classifier.ClassifierAgents.SentimentVoter;
-import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 

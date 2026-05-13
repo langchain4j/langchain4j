@@ -1,14 +1,13 @@
 package dev.langchain4j.model.anthropic.common;
 
+import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+
 import dev.langchain4j.model.anthropic.AnthropicChatModel;
 import dev.langchain4j.model.anthropic.AnthropicChatModelName;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithJsonSchemaIT;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
 import java.util.List;
-
-import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
 public class AnthropicAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT {
@@ -32,7 +31,6 @@ public class AnthropicAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJso
                         .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
                         .logRequests(false)
                         .logRequests(true)
-                        .build()
-        );
+                        .build());
     }
 }

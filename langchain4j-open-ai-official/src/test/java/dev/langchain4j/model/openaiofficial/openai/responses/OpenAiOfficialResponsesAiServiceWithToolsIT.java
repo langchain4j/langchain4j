@@ -6,21 +6,15 @@ import dev.langchain4j.model.chat.StreamingChatModelAdapter;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
 import java.util.List;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiOfficialResponsesAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
 
     @Override
     protected List<ChatModel> models() {
-        return List.of(
-                syncModel(true),
-                syncModel(false),
-                streamingModel(true),
-                streamingModel(false)
-        );
+        return List.of(syncModel(true), syncModel(false), streamingModel(true), streamingModel(false));
     }
 
     private static ChatModel syncModel(boolean strictTools) {

@@ -1,11 +1,9 @@
 package dev.langchain4j.model.workersai;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -13,8 +11,9 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Base64;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "WORKERS_AI_API_KEY", matches = ".*")
 @EnabledIfEnvironmentVariable(named = "WORKERS_AI_ACCOUNT_ID", matches = ".*")
@@ -41,21 +40,21 @@ class WorkersAiImageModelIT {
     @Test
     void should_generate_an_image_as_file() {
         String homeDirectory = System.getProperty("user.home");
-        Response<File> image = imageModel.generate("Draw me a squirrel",
-                System.getProperty("user.home") + "/langchain4j-squirrel.png");
+        Response<File> image = imageModel.generate(
+                "Draw me a squirrel", System.getProperty("user.home") + "/langchain4j-squirrel.png");
         assertThat(image.content()).exists();
     }
 
     @Test
     void should_edit_source_image() throws Exception {
-        Image sourceImage  = imageModel
-                .convertAsImage(
-                        getImageFromUrl("https://pub-1fb693cb11cc46b2b2f656f51e015a2c.r2.dev/dog.png"));
-        Image maskImage = imageModel
-                .convertAsImage(
-                        getImageFromUrl( "https://pub-1fb693cb11cc46b2b2f656f51e015a2c.r2.dev/dog.png"));
-        Response<Image> image = imageModel.edit(sourceImage, maskImage, "Face of a yellow cat, high resolution, sitting on a park bench");
-        saveOutputToFile(Base64.getDecoder().decode(image.content().base64Data()),
+        Image sourceImage = imageModel.convertAsImage(
+                getImageFromUrl("https://pub-1fb693cb11cc46b2b2f656f51e015a2c.r2.dev/dog.png"));
+        Image maskImage = imageModel.convertAsImage(
+                getImageFromUrl("https://pub-1fb693cb11cc46b2b2f656f51e015a2c.r2.dev/dog.png"));
+        Response<Image> image = imageModel.edit(
+                sourceImage, maskImage, "Face of a yellow cat, high resolution, sitting on a park bench");
+        saveOutputToFile(
+                Base64.getDecoder().decode(image.content().base64Data()),
                 System.getProperty("user.home") + "/Downloads/yellow_cat_on_park_bench.png");
     }
 
@@ -66,7 +65,7 @@ class WorkersAiImageModelIT {
         connection.setDoInput(true);
         connection.connect();
         try (InputStream inputStream = connection.getInputStream();
-             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
+                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
             byte[] buffer = new byte[1024];
             int bytesRead;
             while ((bytesRead = inputStream.read(buffer)) != -1) {
@@ -81,5 +80,4 @@ class WorkersAiImageModelIT {
             fileOutputStream.write(image);
         }
     }
-
 }

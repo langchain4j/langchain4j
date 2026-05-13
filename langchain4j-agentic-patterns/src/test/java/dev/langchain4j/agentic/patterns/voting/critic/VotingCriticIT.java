@@ -15,8 +15,6 @@ import dev.langchain4j.agentic.patterns.voting.critic.CriticAgents.ScoredStory;
 import dev.langchain4j.agentic.patterns.voting.critic.CriticAgents.StoryEditor;
 import dev.langchain4j.agentic.patterns.voting.critic.CriticAgents.StoryEvaluator;
 import dev.langchain4j.agentic.patterns.voting.critic.CriticAgents.StyleCritic;
-import dev.langchain4j.agentic.observability.HtmlReportGenerator;
-import java.nio.file.Path;
 import java.util.Collection;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
@@ -27,18 +25,16 @@ public class VotingCriticIT {
 
     static VotingStrategy critiquesAggregator() {
         return votes -> {
-            Collection<CritiqueResult> critiques = votes.stream()
-                    .map(v -> (CritiqueResult) v)
-                    .toList();
+            Collection<CritiqueResult> critiques =
+                    votes.stream().map(v -> (CritiqueResult) v).toList();
 
             double averageScore = critiques.stream()
                     .mapToDouble(CritiqueResult::score)
                     .average()
                     .orElse(0.0);
 
-            String allSuggestions = critiques.stream()
-                    .map(CritiqueResult::suggestions)
-                    .collect(Collectors.joining("; "));
+            String allSuggestions =
+                    critiques.stream().map(CritiqueResult::suggestions).collect(Collectors.joining("; "));
 
             return new CritiqueResult(averageScore, allSuggestions);
         };
@@ -113,7 +109,7 @@ public class VotingCriticIT {
         System.out.println("Average score: " + result.score());
         System.out.println("Last suggestions: " + result.suggestions());
 
-//        HtmlReportGenerator.generateReport(evaluator.agentMonitor(),
-//                Path.of("src", "test", "resources", "voting-critic-report.html"));
+        //        HtmlReportGenerator.generateReport(evaluator.agentMonitor(),
+        //                Path.of("src", "test", "resources", "voting-critic-report.html"));
     }
 }

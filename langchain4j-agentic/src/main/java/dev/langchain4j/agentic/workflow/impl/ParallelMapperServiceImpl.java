@@ -18,8 +18,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Executor;
 
-public class ParallelMapperServiceImpl<T>
-        extends AbstractServiceBuilder<T, ParallelMapperService<T>>
+public class ParallelMapperServiceImpl<T> extends AbstractServiceBuilder<T, ParallelMapperService<T>>
         implements ParallelMapperService<T> {
 
     public static final String SERVICE_TYPE = "ParallelMapper";
@@ -40,7 +39,8 @@ public class ParallelMapperServiceImpl<T>
     @Override
     public T build() {
         boolean isArrayResult = isArrayResult();
-        Class<? extends Object[]> arrayclass = isArrayResult ? (Class<? extends Object[]>) agenticMethod.getReturnType() : null;
+        Class<? extends Object[]> arrayclass =
+                isArrayResult ? (Class<? extends Object[]>) agenticMethod.getReturnType() : null;
         return build(() -> new ParallelMapperPlanner(itemsProvider(), isArrayResult, arrayclass));
     }
 
@@ -56,19 +56,19 @@ public class ParallelMapperServiceImpl<T>
         AgentArgument itemsArgument = null;
         List<AgentArgument> agentArguments = argumentsFromMethod(agenticMethod);
         for (AgentArgument agentArgument : agentArguments) {
-            if (Collection.class.isAssignableFrom(agentArgument.rawType()) || agentArgument.rawType().isArray()) {
+            if (Collection.class.isAssignableFrom(agentArgument.rawType())
+                    || agentArgument.rawType().isArray()) {
                 if (itemsArgument != null) {
-                    throw new AgenticSystemConfigurationException(
-                            "Multiple collection arguments found in class " + agentServiceClass.getName() +
-                                    ", please disambiguate specifying the itemsProvider.");
+                    throw new AgenticSystemConfigurationException("Multiple collection arguments found in class "
+                            + agentServiceClass.getName() + ", please disambiguate specifying the itemsProvider.");
                 }
                 itemsArgument = agentArgument;
             }
         }
 
         if (itemsArgument == null) {
-            throw new AgenticSystemConfigurationException(
-                    "Class " + agentServiceClass.getName() + " doesn't have a collection argument on which to iterate.");
+            throw new AgenticSystemConfigurationException("Class " + agentServiceClass.getName()
+                    + " doesn't have a collection argument on which to iterate.");
         }
         return itemsArgument.name();
     }
@@ -94,11 +94,7 @@ public class ParallelMapperServiceImpl<T>
 
     public static <T> ParallelMapperServiceImpl<T> builder(Class<T> agentServiceClass) {
         return new ParallelMapperServiceImpl<>(
-                agentServiceClass,
-                validateAgentClass(
-                        agentServiceClass,
-                        false,
-                        ParallelMapperAgent.class));
+                agentServiceClass, validateAgentClass(agentServiceClass, false, ParallelMapperAgent.class));
     }
 
     @Override
@@ -111,10 +107,10 @@ public class ParallelMapperServiceImpl<T>
         buildAgentFeatures(agentServiceClass, this);
 
         selectMethod(
-                agentServiceClass,
-                method -> method.isAnnotationPresent(ParallelExecutor.class)
-                        && Executor.class.isAssignableFrom(method.getReturnType())
-                        && method.getParameterCount() == 0)
+                        agentServiceClass,
+                        method -> method.isAnnotationPresent(ParallelExecutor.class)
+                                && Executor.class.isAssignableFrom(method.getReturnType())
+                                && method.getParameterCount() == 0)
                 .map(method -> {
                     try {
                         return (Executor) method.invoke(null);

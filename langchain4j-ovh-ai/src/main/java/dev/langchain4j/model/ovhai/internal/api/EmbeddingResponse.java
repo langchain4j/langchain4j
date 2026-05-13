@@ -13,8 +13,7 @@ public class EmbeddingResponse {
         this.embeddings = embeddings;
     }
 
-    public EmbeddingResponse() {
-    }
+    public EmbeddingResponse() {}
 
     public static EmbeddingResponseBuilder builder() {
         return new EmbeddingResponseBuilder();
@@ -59,8 +58,7 @@ public class EmbeddingResponse {
     public static class EmbeddingResponseBuilder {
         private List<float[]> embeddings;
 
-        EmbeddingResponseBuilder() {
-        }
+        EmbeddingResponseBuilder() {}
 
         public EmbeddingResponseBuilder embeddings(List<float[]> embeddings) {
             this.embeddings = embeddings;

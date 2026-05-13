@@ -4,6 +4,7 @@ import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.MockHttpClient;
@@ -20,7 +21,6 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingException;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
 import dev.langchain4j.model.anthropic.internal.api.MessageTokenCountResponse;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
@@ -420,26 +420,30 @@ class DefaultAnthropicClientTest {
             List<ServerSentEvent> events = List.of(
                     createMessageStartEvent(),
                     // Tool call 1 starts (content block index=1)
-                    new ServerSentEvent("content_block_start",
+                    new ServerSentEvent(
+                            "content_block_start",
                             "{\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"tool_use\",\"id\":\"tool_1\",\"name\":\"get_weather\"}}"),
-                    new ServerSentEvent("content_block_delta",
+                    new ServerSentEvent(
+                            "content_block_delta",
                             "{\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"city\\\"\"}}"),
                     // Tool call 2 starts BEFORE tool call 1 stops (content block index=2)
-                    new ServerSentEvent("content_block_start",
+                    new ServerSentEvent(
+                            "content_block_start",
                             "{\"type\":\"content_block_start\",\"index\":2,\"content_block\":{\"type\":\"tool_use\",\"id\":\"tool_2\",\"name\":\"get_time\"}}"),
-                    new ServerSentEvent("content_block_delta",
+                    new ServerSentEvent(
+                            "content_block_delta",
                             "{\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"zone\\\"\"}}"),
                     // More deltas for both
-                    new ServerSentEvent("content_block_delta",
+                    new ServerSentEvent(
+                            "content_block_delta",
                             "{\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\": \\\"Paris\\\"}\"}}"),
-                    new ServerSentEvent("content_block_delta",
+                    new ServerSentEvent(
+                            "content_block_delta",
                             "{\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\": \\\"UTC\\\"}\"}}"),
                     // Tool call 1 stops
-                    new ServerSentEvent("content_block_stop",
-                            "{\"type\":\"content_block_stop\",\"index\":1}"),
+                    new ServerSentEvent("content_block_stop", "{\"type\":\"content_block_stop\",\"index\":1}"),
                     // Tool call 2 stops
-                    new ServerSentEvent("content_block_stop",
-                            "{\"type\":\"content_block_stop\",\"index\":2}"),
+                    new ServerSentEvent("content_block_stop", "{\"type\":\"content_block_stop\",\"index\":2}"),
                     createMessageDeltaWithToolUse(),
                     createMessageStopEvent());
             MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(events);
@@ -491,8 +495,7 @@ class DefaultAnthropicClientTest {
             assertThat(secondComplete.toolExecutionRequest().arguments()).isEqualTo("{\"zone\": \"UTC\"}");
 
             // Verify the final response also contains both tool execution requests
-            List<ToolExecutionRequest> toolRequests =
-                    response.aiMessage().toolExecutionRequests();
+            List<ToolExecutionRequest> toolRequests = response.aiMessage().toolExecutionRequests();
             assertThat(toolRequests).hasSize(2);
             assertThat(toolRequests.get(0).name()).isEqualTo("get_weather");
             assertThat(toolRequests.get(1).name()).isEqualTo("get_time");
@@ -606,7 +609,8 @@ class DefaultAnthropicClientTest {
     }
 
     private static ServerSentEvent createMessageDeltaWithToolUse() {
-        return new ServerSentEvent("message_delta",
+        return new ServerSentEvent(
+                "message_delta",
                 "{\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\"},\"usage\":{\"output_tokens\":50}}");
     }
 

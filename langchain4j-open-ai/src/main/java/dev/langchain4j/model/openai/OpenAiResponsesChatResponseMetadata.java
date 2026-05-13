@@ -1,14 +1,13 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.Utils.copy;
+
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.util.List;
 import java.util.Objects;
-
-import static dev.langchain4j.internal.Utils.copy;
 
 public class OpenAiResponsesChatResponseMetadata extends ChatResponseMetadata {
 
@@ -89,12 +88,7 @@ public class OpenAiResponsesChatResponseMetadata extends ChatResponseMetadata {
     @Override
     public int hashCode() {
         return Objects.hash(
-                super.hashCode(),
-                createdAt,
-                completedAt,
-                serviceTier,
-                rawHttpResponse,
-                rawServerSentEvents);
+                super.hashCode(), createdAt, completedAt, serviceTier, rawHttpResponse, rawServerSentEvents);
     }
 
     @Override

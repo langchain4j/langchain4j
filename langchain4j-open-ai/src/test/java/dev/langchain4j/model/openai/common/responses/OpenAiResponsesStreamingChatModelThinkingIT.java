@@ -1,5 +1,15 @@
 package dev.langchain4j.model.openai.common.responses;
 
+import static java.util.List.of;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -16,21 +26,10 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiResponsesStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiTokenUsage;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
-
-import java.util.List;
-
-import static java.util.List.of;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiResponsesStreamingChatModelThinkingIT {
@@ -134,7 +133,8 @@ class OpenAiResponsesStreamingChatModelThinkingIT {
         // given
         List<String> include = List.of("reasoning.encrypted_content");
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
 
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -173,7 +173,8 @@ class OpenAiResponsesStreamingChatModelThinkingIT {
                 .messages(
                         userMessage,
                         aiMessage1,
-                        ToolExecutionResultMessage.from(aiMessage1.toolExecutionRequests().get(0), "sunny, 22°C"))
+                        ToolExecutionResultMessage.from(
+                                aiMessage1.toolExecutionRequests().get(0), "sunny, 22°C"))
                 .parameters(ChatRequestParameters.builder()
                         .toolSpecifications(WEATHER_TOOL)
                         .build())
@@ -190,9 +191,7 @@ class OpenAiResponsesStreamingChatModelThinkingIT {
         // verify encrypted_content was sent back in turn 2
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(2);
-        assertThat(httpRequests.get(1).body())
-                .contains("encrypted_content")
-                .contains(encryptedContent1);
+        assertThat(httpRequests.get(1).body()).contains("encrypted_content").contains(encryptedContent1);
     }
 
     @Test
@@ -201,7 +200,8 @@ class OpenAiResponsesStreamingChatModelThinkingIT {
         // given
         List<String> include = List.of("reasoning.encrypted_content");
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
 
         StreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -240,8 +240,10 @@ class OpenAiResponsesStreamingChatModelThinkingIT {
                 .messages(
                         userMessage,
                         aiMessage1,
-                        ToolExecutionResultMessage.from(aiMessage1.toolExecutionRequests().get(0), "sunny, 22°C"),
-                        ToolExecutionResultMessage.from(aiMessage1.toolExecutionRequests().get(1), "14:35"))
+                        ToolExecutionResultMessage.from(
+                                aiMessage1.toolExecutionRequests().get(0), "sunny, 22°C"),
+                        ToolExecutionResultMessage.from(
+                                aiMessage1.toolExecutionRequests().get(1), "14:35"))
                 .parameters(ChatRequestParameters.builder()
                         .toolSpecifications(WEATHER_TOOL, TIME_TOOL)
                         .build())
@@ -256,8 +258,6 @@ class OpenAiResponsesStreamingChatModelThinkingIT {
         // verify encrypted_content was sent back in turn 2
         List<HttpRequest> httpRequests = spyingHttpClient.requests();
         assertThat(httpRequests).hasSize(2);
-        assertThat(httpRequests.get(1).body())
-                .contains("encrypted_content")
-                .contains(encryptedContent1);
+        assertThat(httpRequests.get(1).body()).contains("encrypted_content").contains(encryptedContent1);
     }
 }

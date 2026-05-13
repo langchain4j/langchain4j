@@ -13,14 +13,6 @@ import static dev.langchain4j.agentic.internal.AgentUtil.nonAiAgentInvoker;
 import static dev.langchain4j.agentic.internal.AgentUtil.nonAiAgentToExecutor;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.ServiceLoader;
-import java.util.function.Consumer;
-import java.util.stream.Stream;
 import dev.langchain4j.agentic.agent.AgentBuilder;
 import dev.langchain4j.agentic.agent.UntypedAgentBuilder;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
@@ -59,6 +51,14 @@ import dev.langchain4j.agentic.workflow.SequentialAgentService;
 import dev.langchain4j.agentic.workflow.WorkflowAgentsBuilder;
 import dev.langchain4j.agentic.workflow.impl.WorkflowAgentsBuilderImpl;
 import dev.langchain4j.model.chat.ChatModel;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.ServiceLoader;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 /**
  * Provides static factory methods to create and configure various types of agent services.
@@ -370,8 +370,7 @@ public class AgenticServices {
             return buildParallelAgent(agentServiceClass, parallelMethod.get(), chatModel, agentConfigurator);
         }
 
-        Optional<Method> parallelMapperMethod =
-                getAnnotatedMethodOnClass(agentServiceClass, ParallelMapperAgent.class);
+        Optional<Method> parallelMapperMethod = getAnnotatedMethodOnClass(agentServiceClass, ParallelMapperAgent.class);
         if (parallelMapperMethod.isPresent()) {
             return buildParallelMapperAgent(
                     agentServiceClass, parallelMapperMethod.get(), chatModel, agentConfigurator);
@@ -392,11 +391,7 @@ public class AgenticServices {
     }
 
     private static void buildAgentSpecs(
-            Method agentMethod,
-            String name,
-            String description,
-            String outputKey,
-            AgenticService<?, ?> builder) {
+            Method agentMethod, String name, String description, String outputKey, AgenticService<?, ?> builder) {
         if (!isNullOrBlank(name)) {
             builder.name(name);
         } else {
@@ -571,7 +566,9 @@ public class AgenticServices {
     }
 
     private static AgentExecutor createSubagent(
-            Class<?> subgentClass, ChatModel chatModel, Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+            Class<?> subgentClass,
+            ChatModel chatModel,
+            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
         AgentExecutor agentExecutor = createBuiltInAgentExecutor(subgentClass, chatModel, agentConfigurator);
         if (agentExecutor != null) {
             return agentExecutor;
@@ -623,12 +620,11 @@ public class AgenticServices {
             return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
         }
 
-        Optional<Method> parallelMapperMethod =
-                getAnnotatedMethodOnClass(agentServiceClass, ParallelMapperAgent.class);
+        Optional<Method> parallelMapperMethod = getAnnotatedMethodOnClass(agentServiceClass, ParallelMapperAgent.class);
         if (parallelMapperMethod.isPresent()) {
             Method method = parallelMapperMethod.get();
-            InternalAgent agent = (InternalAgent)
-                    buildParallelMapperAgent(agentServiceClass, method, chatModel, agentConfigurator);
+            InternalAgent agent =
+                    (InternalAgent) buildParallelMapperAgent(agentServiceClass, method, chatModel, agentConfigurator);
             return new AgentExecutor(AgentInvoker.fromMethod(agent, method), agent);
         }
 
@@ -671,9 +667,11 @@ public class AgenticServices {
                 if (agenticMethod.getParameterCount() == 0) {
                     return agentToExecutor(new AgentAction(() -> invokeStatic(agenticMethod)));
                 }
-                return nonAiAgentToExecutor(new AgenticScopeFunction<>(scope -> invokeStatic(
-                        agenticMethod,
-                        agentInvocationArguments(scope, agenticMethod).positionalArgs())), agenticMethod);
+                return nonAiAgentToExecutor(
+                        new AgenticScopeFunction<>(scope -> invokeStatic(
+                                agenticMethod,
+                                agentInvocationArguments(scope, agenticMethod).positionalArgs())),
+                        agenticMethod);
             }
         }
 
@@ -701,14 +699,17 @@ public class AgenticServices {
     private static AgentExecutor createMcpClientAgent(Class<?> agentServiceClass, Method mcpMethod) {
         var mcpAgent = mcpMethod.getAnnotation(McpClientAgent.class);
 
-        Object mcpClient = selectMethod(agentServiceClass,
-                method -> method.isAnnotationPresent(McpClientSupplier.class)
-                        && method.getParameterCount() == 0)
+        Object mcpClient = selectMethod(
+                        agentServiceClass,
+                        method ->
+                                method.isAnnotationPresent(McpClientSupplier.class) && method.getParameterCount() == 0)
                 .map(method -> invokeStatic(method))
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "An MCP client agent requires a method annotated with @McpClientSupplier that returns the McpClient instance."));
+                .orElseThrow(
+                        () -> new IllegalArgumentException(
+                                "An MCP client agent requires a method annotated with @McpClientSupplier that returns the McpClient instance."));
 
-        var mcpClientBuilder = McpService.get().mcpBuilder(mcpClient, agentServiceClass)
+        var mcpClientBuilder = McpService.get()
+                .mcpBuilder(mcpClient, agentServiceClass)
                 .toolName(mcpAgent.toolName())
                 .inputKeys(Stream.of(mcpMethod.getParameters())
                         .map(AgentInvoker::parameterName)

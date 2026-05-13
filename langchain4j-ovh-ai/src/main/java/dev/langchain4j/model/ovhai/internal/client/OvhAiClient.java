@@ -4,8 +4,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.spi.ServiceHelper;
-import org.slf4j.Logger;
 import java.time.Duration;
+import org.slf4j.Logger;
 
 /**
  * @deprecated Do not use anymore, use {@code langchain4j-open-ai} module instead
@@ -40,7 +40,10 @@ public abstract class OvhAiClient {
         }
 
         public B apiKey(String apiKey) {
-            ensureNotBlank(apiKey, "%s", "OVHcloud API key must be defined. It can be generated here: https://endpoints.ai.cloud.ovh.net/");
+            ensureNotBlank(
+                    apiKey,
+                    "%s",
+                    "OVHcloud API key must be defined. It can be generated here: https://endpoints.ai.cloud.ovh.net/");
             this.apiKey = apiKey;
             return (B) this;
         }

@@ -54,8 +54,8 @@ class ListenerRegistrarFactorySPITest {
                         .build();
 
                 assertThatCode(() -> supervisor.invoke("test question"))
-                        .as("Before the fix, a shared SPI registrar caused NPE in AgentInvocationHandler " +
-                            "because managedParameters() was null when PlannerAgent fired events")
+                        .as("Before the fix, a shared SPI registrar caused NPE in AgentInvocationHandler "
+                                + "because managedParameters() was null when PlannerAgent fired events")
                         .doesNotThrowAnyException();
             } finally {
                 Thread.currentThread().setContextClassLoader(originalCL);
@@ -99,16 +99,17 @@ class ListenerRegistrarFactorySPITest {
                 "dev.langchain4j.agentic.internal.generated.TestListenerRegistrarFactory",
                 StandardCharsets.UTF_8);
 
-        URLClassLoader classLoader = new URLClassLoader(
-                new URL[] {tempDir.toUri().toURL()}, ListenerRegistrarFactorySPITest.class.getClassLoader()) {
-            @Override
-            public Enumeration<URL> getResources(String name) throws IOException {
-                if (name.equals(SPI_SERVICE_FILE)) {
-                    return findResources(name);
-                }
-                return super.getResources(name);
-            }
-        };
+        URLClassLoader classLoader =
+                new URLClassLoader(
+                        new URL[] {tempDir.toUri().toURL()}, ListenerRegistrarFactorySPITest.class.getClassLoader()) {
+                    @Override
+                    public Enumeration<URL> getResources(String name) throws IOException {
+                        if (name.equals(SPI_SERVICE_FILE)) {
+                            return findResources(name);
+                        }
+                        return super.getResources(name);
+                    }
+                };
         return new CompiledFactory(classLoader);
     }
 
@@ -183,16 +184,15 @@ class ListenerRegistrarFactorySPITest {
         @Override
         public ChatResponse doChat(ChatRequest chatRequest) {
             callCount++;
-            String response = switch (callCount) {
-                case 1 -> """
+            String response =
+                    switch (callCount) {
+                        case 1 -> """
                         {"agentName":"answer","arguments":{"request":"test question"}}""";
-                case 2 -> "stub expert answer";
-                default -> """
+                        case 2 -> "stub expert answer";
+                        default -> """
                         {"agentName":"done","arguments":{"response":"final answer"}}""";
-            };
-            return ChatResponse.builder()
-                    .aiMessage(AiMessage.from(response))
-                    .build();
+                    };
+            return ChatResponse.builder().aiMessage(AiMessage.from(response)).build();
         }
     }
 }

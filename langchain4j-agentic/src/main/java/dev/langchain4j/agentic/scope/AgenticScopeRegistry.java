@@ -1,15 +1,13 @@
 package dev.langchain4j.agentic.scope;
 
-import dev.langchain4j.Internal;
-import dev.langchain4j.agentic.observability.AgentListener;
-import org.jspecify.annotations.NonNull;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
-import java.util.Set;
-
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgenticScopeDestroyed;
 import static dev.langchain4j.agentic.scope.DefaultAgenticScope.ephemeralAgenticScope;
+
+import dev.langchain4j.Internal;
+import dev.langchain4j.agentic.observability.AgentListener;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Singleton registry for managing AgenticScope instances.
@@ -47,13 +45,15 @@ public class AgenticScopeRegistry {
                     .map(loaded -> {
                         inMemoryAgenticScope.put(key, loaded);
                         return loaded;
-                    }).orElse(null);
+                    })
+                    .orElse(null);
         }
         return agenticScope;
     }
 
     public DefaultAgenticScope create(Object memoryId) {
-        DefaultAgenticScope agenticScope = new DefaultAgenticScope(memoryId, hasStore() ? DefaultAgenticScope.Kind.PERSISTENT : DefaultAgenticScope.Kind.REGISTERED);
+        DefaultAgenticScope agenticScope = new DefaultAgenticScope(
+                memoryId, hasStore() ? DefaultAgenticScope.Kind.PERSISTENT : DefaultAgenticScope.Kind.REGISTERED);
         register(agenticScope);
         return agenticScope;
     }

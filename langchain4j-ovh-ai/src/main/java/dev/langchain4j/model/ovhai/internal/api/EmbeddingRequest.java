@@ -1,7 +1,6 @@
 package dev.langchain4j.model.ovhai.internal.api;
 
 import com.fasterxml.jackson.annotation.JsonValue;
-
 import java.util.List;
 
 /**
@@ -16,8 +15,7 @@ public class EmbeddingRequest {
         this.input = input;
     }
 
-    public EmbeddingRequest() {
-    }
+    public EmbeddingRequest() {}
 
     public static EmbeddingRequestBuilder builder() {
         return new EmbeddingRequestBuilder();
@@ -61,8 +59,7 @@ public class EmbeddingRequest {
     public static class EmbeddingRequestBuilder {
         private List<String> input;
 
-        EmbeddingRequestBuilder() {
-        }
+        EmbeddingRequestBuilder() {}
 
         public EmbeddingRequestBuilder input(List<String> input) {
             this.input = input;

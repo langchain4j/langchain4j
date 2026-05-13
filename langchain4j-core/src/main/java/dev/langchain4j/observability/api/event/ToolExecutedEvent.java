@@ -6,7 +6,6 @@ import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.observability.event.DefaultToolExecutedEvent;
-
 import java.util.List;
 
 /**

@@ -1,5 +1,7 @@
 package dev.langchain4j.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -16,14 +18,11 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.RetrievalAugmentor;
-import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 /**
  * Verifies how RAG-augmented user messages are stored in chat memory depending on
@@ -43,12 +42,10 @@ class AiServicesRagChatMemoryBehaviorTest {
 
     static class LookupTool {
 
-        private static final ToolExecutionRequest TOOL_CALL = ToolExecutionRequest.builder()
-                .name("lookup")
-                .arguments("""
+        private static final ToolExecutionRequest TOOL_CALL =
+                ToolExecutionRequest.builder().name("lookup").arguments("""
                         {"arg0":"hello"}
-                        """)
-                .build();
+                        """).build();
 
         @Tool
         String lookup(String question) {
@@ -171,8 +168,8 @@ class AiServicesRagChatMemoryBehaviorTest {
     void should_replay_augmented_message_on_second_model_call_when_tool_loop_runs_and_storage_is_disabled() {
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
-                AiMessage.from(LookupTool.TOOL_CALL), AiMessage.from("answer"));
+        ChatModelMock chatModel =
+                ChatModelMock.thatAlwaysResponds(AiMessage.from(LookupTool.TOOL_CALL), AiMessage.from("answer"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -195,8 +192,8 @@ class AiServicesRagChatMemoryBehaviorTest {
     void should_keep_replaying_augmented_message_on_second_model_call_when_storage_is_enabled() {
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
-                AiMessage.from(LookupTool.TOOL_CALL), AiMessage.from("answer"));
+        ChatModelMock chatModel =
+                ChatModelMock.thatAlwaysResponds(AiMessage.from(LookupTool.TOOL_CALL), AiMessage.from("answer"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -218,8 +215,8 @@ class AiServicesRagChatMemoryBehaviorTest {
     void should_keep_original_message_in_memory_after_tool_loop_when_storage_is_disabled() {
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
-                AiMessage.from(LookupTool.TOOL_CALL), AiMessage.from("answer"));
+        ChatModelMock chatModel =
+                ChatModelMock.thatAlwaysResponds(AiMessage.from(LookupTool.TOOL_CALL), AiMessage.from("answer"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)

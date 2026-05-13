@@ -1,25 +1,5 @@
 package dev.langchain4j.skills;
 
-import dev.langchain4j.Experimental;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.service.tool.AiServiceTool;
-import dev.langchain4j.service.tool.ToolExecutor;
-import dev.langchain4j.service.tool.ToolProvider;
-import dev.langchain4j.service.tool.ToolProviderResult;
-
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.service.tool.ToolProviderRequest;
-
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
 import static dev.langchain4j.agent.tool.ToolSpecification.METADATA_SEARCH_BEHAVIOR;
 import static dev.langchain4j.internal.Utils.copy;
@@ -27,6 +7,24 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.skills.ActivateSkillToolExecutor.ACTIVATED_SKILL_ATTRIBUTE;
 import static java.util.Arrays.asList;
+
+import dev.langchain4j.Experimental;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.service.tool.AiServiceTool;
+import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.service.tool.ToolProviderRequest;
+import dev.langchain4j.service.tool.ToolProviderResult;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Configures and exposes a set of {@link Skill}s to an LLM.
@@ -115,7 +113,9 @@ public class Skills {
 
         Map<ToolSpecification, ToolExecutor> skillManagementTools = new HashMap<>();
 
-        ActivateSkillToolConfig asc = getOrDefault(builder.activateSkillToolConfig, ActivateSkillToolConfig.builder().build());
+        ActivateSkillToolConfig asc = getOrDefault(
+                builder.activateSkillToolConfig,
+                ActivateSkillToolConfig.builder().build());
 
         ToolSpecification activateSkillTool = ToolSpecification.builder()
                 .name(asc.name)
@@ -129,16 +129,20 @@ public class Skills {
 
         skillManagementTools.put(activateSkillTool, new ActivateSkillToolExecutor(asc, skillsByName));
 
-        boolean hasResources = skills.stream().anyMatch(skill -> !skill.resources().isEmpty());
+        boolean hasResources =
+                skills.stream().anyMatch(skill -> !skill.resources().isEmpty());
         if (hasResources) {
-            ReadResourceToolConfig rrc = getOrDefault(builder.readResourceToolConfig, ReadResourceToolConfig.builder().build());
+            ReadResourceToolConfig rrc = getOrDefault(
+                    builder.readResourceToolConfig,
+                    ReadResourceToolConfig.builder().build());
 
             ToolSpecification readResourceTool = ToolSpecification.builder()
                     .name(rrc.name)
                     .description(rrc.description)
                     .parameters(JsonObjectSchema.builder()
                             .addStringProperty(rrc.skillNameParameterName, rrc.skillNameParameterDescription)
-                            .addStringProperty(rrc.relativePathParameterName, resolveRelativePathParameterDescription(rrc))
+                            .addStringProperty(
+                                    rrc.relativePathParameterName, resolveRelativePathParameterDescription(rrc))
                             .required(rrc.skillNameParameterName, rrc.relativePathParameterName)
                             .build())
                     .addMetadata(METADATA_SEARCH_BEHAVIOR, ALWAYS_VISIBLE)
@@ -147,7 +151,8 @@ public class Skills {
             skillManagementTools.put(readResourceTool, new ReadResourceToolExecutor(rrc, skillsByName));
         }
 
-        ToolProviderResult skillManagementResult = ToolProviderResult.builder().addAll(skillManagementTools).build();
+        ToolProviderResult skillManagementResult =
+                ToolProviderResult.builder().addAll(skillManagementTools).build();
 
         Map<String, List<ToolProvider>> skillScopedProviders = new LinkedHashMap<>();
         for (Map.Entry<String, Skill> entry : skillsByName.entrySet()) {
@@ -173,8 +178,7 @@ public class Skills {
 
                 // Two activated skills may expose the same tool; dedupe by ToolSpecification (last wins).
                 Map<ToolSpecification, AiServiceTool> toolsBySpec = new LinkedHashMap<>();
-                skillManagementResult.aiServiceTools()
-                        .forEach(tool -> toolsBySpec.put(tool.toolSpecification(), tool));
+                skillManagementResult.aiServiceTools().forEach(tool -> toolsBySpec.put(tool.toolSpecification(), tool));
 
                 for (String skillName : activatedSkillNames) {
                     List<ToolProvider> delegates = skillScopedProviders.get(skillName);
@@ -182,16 +186,15 @@ public class Skills {
                         for (ToolProvider delegate : delegates) {
                             ToolProviderResult delegateResult = delegate.provideTools(request);
                             if (delegateResult != null) {
-                                delegateResult.aiServiceTools()
+                                delegateResult
+                                        .aiServiceTools()
                                         .forEach(tool -> toolsBySpec.put(tool.toolSpecification(), tool));
                             }
                         }
                     }
                 }
 
-                return ToolProviderResult.builder()
-                        .addAll(toolsBySpec.values())
-                        .build();
+                return ToolProviderResult.builder().addAll(toolsBySpec.values()).build();
             }
 
             @Override
@@ -245,8 +248,7 @@ public class Skills {
         if (input == null) {
             return null;
         }
-        return input
-                .replace("&", "&amp;") // must be first
+        return input.replace("&", "&amp;") // must be first
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;")

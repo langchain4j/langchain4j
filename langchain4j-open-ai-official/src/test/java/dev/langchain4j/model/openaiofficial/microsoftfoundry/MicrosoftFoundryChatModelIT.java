@@ -99,7 +99,8 @@ class MicrosoftFoundryChatModelIT extends AbstractChatModelIT {
     @EnabledIf("supportsMultipleImageInputsAsBase64EncodedStrings")
     protected void should_accept_multiple_images_as_base64_encoded_strings(ChatModel model) {}
 
-    @Disabled("Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.")
+    @Disabled(
+            "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.")
     @Override
     protected void should_respect_maxOutputTokens_in_default_model_parameters() {}
 

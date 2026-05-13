@@ -2,7 +2,6 @@ package dev.langchain4j.model.openai;
 
 import static dev.langchain4j.internal.Utils.repeat;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_5_MINI;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static java.util.Map.entry;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -133,57 +132,39 @@ class OpenAiStreamingChatModelIT {
         String tenSpaces = repeat(" ", 10);
 
         MockHttpClient mockHttpClient = new MockHttpClient(List.of(
-                new ServerSentEvent(
-                        null,
-                        """
+                new ServerSentEvent(null, """
                                 {"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"gpt-5-mini",\
                                 "choices":[{"index":0,"delta":{"role":"assistant","content":null,\
                                 "tool_calls":[{"index":0,"id":"call_h7RLhFE8hDHmFLGqKR4QiXLn","type":"function",\
                                 "function":{"name":"append_to_file","arguments":""}}]},"finish_reason":null}]}"""),
-                new ServerSentEvent(
-                        null,
-                        """
+                new ServerSentEvent(null, """
                                 {"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"gpt-5-mini",\
                                 "choices":[{"index":0,"delta":{"tool_calls":[{"index":0,\
                                 "function":{"arguments":"{\\""}}]},"finish_reason":null}]}"""),
-                new ServerSentEvent(
-                        null,
-                        """
+                new ServerSentEvent(null, """
                                 {"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"gpt-5-mini",\
                                 "choices":[{"index":0,"delta":{"tool_calls":[{"index":0,\
                                 "function":{"arguments":"text"}}]},"finish_reason":null}]}"""),
-                new ServerSentEvent(
-                        null,
-                        """
+                new ServerSentEvent(null, """
                                 {"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"gpt-5-mini",\
                                 "choices":[{"index":0,"delta":{"tool_calls":[{"index":0,\
                                 "function":{"arguments":"\\":\\""}}]},"finish_reason":null}]}"""),
-                new ServerSentEvent(
-                        null,
-                        """
+                new ServerSentEvent(null, """
                                 {"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"gpt-5-mini",\
                                 "choices":[{"index":0,"delta":{"tool_calls":[{"index":0,\
                                 "function":{"arguments":"    "}}]},"finish_reason":null}]}"""),
-                new ServerSentEvent(
-                        null,
-                        """
+                new ServerSentEvent(null, """
                                 {"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"gpt-5-mini",\
                                 "choices":[{"index":0,"delta":{"tool_calls":[{"index":0,\
                                 "function":{"arguments":"     "}}]},"finish_reason":null}]}"""),
-                new ServerSentEvent(
-                        null,
-                        """
+                new ServerSentEvent(null, """
                                 {"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"gpt-5-mini",\
                                 "choices":[{"index":0,"delta":{"tool_calls":[{"index":0,\
                                 "function":{"arguments":" \\"}"}}]},"finish_reason":null}]}"""),
-                new ServerSentEvent(
-                        null,
-                        """
+                new ServerSentEvent(null, """
                                 {"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"gpt-5-mini",\
                                 "choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}"""),
-                new ServerSentEvent(
-                        null,
-                        """
+                new ServerSentEvent(null, """
                                 {"id":"chatcmpl-1","object":"chat.completion.chunk","created":1,"model":"gpt-5-mini",\
                                 "choices":[],"usage":{"prompt_tokens":128,"completion_tokens":88,"total_tokens":216}}"""),
                 new ServerSentEvent(null, "[DONE]")));
@@ -215,7 +196,8 @@ class OpenAiStreamingChatModelIT {
         AiMessage aiMessage = handler.get().aiMessage();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        ToolExecutionRequest toolExecutionRequest =
+                aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo("append_to_file");
 
         Map<String, Object> argumentsMap = new ObjectMapper().readValue(toolExecutionRequest.arguments(), Map.class);
@@ -298,13 +280,13 @@ class OpenAiStreamingChatModelIT {
         // given
         String city = "Munich";
 
-        Map<String, Object> customParameters = Map.of("web_search_options", Map.of("user_location", new LinkedHashMap() {
+        Map<String, Object> customParameters =
+                Map.of("web_search_options", Map.of("user_location", new LinkedHashMap() {
                     {
                         put("type", "approximate");
                         put("approximate", Map.of("city", city));
                     }
-                }
-        ));
+                }));
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("Where can I buy good coffee?"))
@@ -319,15 +301,26 @@ class OpenAiStreamingChatModelIT {
                 .build();
 
         List<ServerSentEvent> events = List.of(
-                new ServerSentEvent(null, "{\"id\":\"chatcmpl-C9nlEVdwuKXDiM5yuGpixoJZCj4v5\",\"object\":\"chat.completion.chunk\",\"created\":1756452268,\"model\":\"gpt-4.1-nano-2025-04-14\",\"service_tier\":\"default\",\"system_fingerprint\":\"fp_e91a518ddb\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"\",\"refusal\":null},\"logprobs\":null,\"finish_reason\":null}],\"usage\":null,\"obfuscation\":\"QK00Z4Pe\"}"),
-                new ServerSentEvent(null, "{\"id\":\"chatcmpl-C9nlEVdwuKXDiM5yuGpixoJZCj4v5\",\"object\":\"chat.completion.chunk\",\"created\":1756452268,\"model\":\"gpt-4.1-nano-2025-04-14\",\"service_tier\":\"default\",\"system_fingerprint\":\"fp_e91a518ddb\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"The\"},\"logprobs\":null,\"finish_reason\":null}],\"usage\":null,\"obfuscation\":\"R9qgEHA\"}"),
-                new ServerSentEvent(null, "{\"id\":\"chatcmpl-C9nlEVdwuKXDiM5yuGpixoJZCj4v5\",\"object\":\"chat.completion.chunk\",\"created\":1756452268,\"model\":\"gpt-4.1-nano-2025-04-14\",\"service_tier\":\"default\",\"system_fingerprint\":\"fp_e91a518ddb\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\" capital\"},\"logprobs\":null,\"finish_reason\":null}],\"usage\":null,\"obfuscation\":\"qL\"}"),
-                new ServerSentEvent(null, "{\"id\":\"chatcmpl-C9nlEVdwuKXDiM5yuGpixoJZCj4v5\",\"object\":\"chat.completion.chunk\",\"created\":1756452268,\"model\":\"gpt-4.1-nano-2025-04-14\",\"service_tier\":\"default\",\"system_fingerprint\":\"fp_e91a518ddb\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\" of\"},\"logprobs\":null,\"finish_reason\":null}],\"usage\":null,\"obfuscation\":\"45ArDuR\"}"),
+                new ServerSentEvent(
+                        null,
+                        "{\"id\":\"chatcmpl-C9nlEVdwuKXDiM5yuGpixoJZCj4v5\",\"object\":\"chat.completion.chunk\",\"created\":1756452268,\"model\":\"gpt-4.1-nano-2025-04-14\",\"service_tier\":\"default\",\"system_fingerprint\":\"fp_e91a518ddb\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"\",\"refusal\":null},\"logprobs\":null,\"finish_reason\":null}],\"usage\":null,\"obfuscation\":\"QK00Z4Pe\"}"),
+                new ServerSentEvent(
+                        null,
+                        "{\"id\":\"chatcmpl-C9nlEVdwuKXDiM5yuGpixoJZCj4v5\",\"object\":\"chat.completion.chunk\",\"created\":1756452268,\"model\":\"gpt-4.1-nano-2025-04-14\",\"service_tier\":\"default\",\"system_fingerprint\":\"fp_e91a518ddb\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"The\"},\"logprobs\":null,\"finish_reason\":null}],\"usage\":null,\"obfuscation\":\"R9qgEHA\"}"),
+                new ServerSentEvent(
+                        null,
+                        "{\"id\":\"chatcmpl-C9nlEVdwuKXDiM5yuGpixoJZCj4v5\",\"object\":\"chat.completion.chunk\",\"created\":1756452268,\"model\":\"gpt-4.1-nano-2025-04-14\",\"service_tier\":\"default\",\"system_fingerprint\":\"fp_e91a518ddb\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\" capital\"},\"logprobs\":null,\"finish_reason\":null}],\"usage\":null,\"obfuscation\":\"qL\"}"),
+                new ServerSentEvent(
+                        null,
+                        "{\"id\":\"chatcmpl-C9nlEVdwuKXDiM5yuGpixoJZCj4v5\",\"object\":\"chat.completion.chunk\",\"created\":1756452268,\"model\":\"gpt-4.1-nano-2025-04-14\",\"service_tier\":\"default\",\"system_fingerprint\":\"fp_e91a518ddb\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\" of\"},\"logprobs\":null,\"finish_reason\":null}],\"usage\":null,\"obfuscation\":\"45ArDuR\"}"),
                 // skipped the rest, it does not matter
-                new ServerSentEvent(null, "{\"id\":\"chatcmpl-C9nlEVdwuKXDiM5yuGpixoJZCj4v5\",\"object\":\"chat.completion.chunk\",\"created\":1756452268,\"model\":\"gpt-4.1-nano-2025-04-14\",\"service_tier\":\"default\",\"system_fingerprint\":\"fp_e91a518ddb\",\"choices\":[{\"index\":0,\"delta\":{},\"logprobs\":null,\"finish_reason\":\"stop\"}],\"usage\":null,\"obfuscation\":\"X0dZ\"}"),
-                new ServerSentEvent(null, "{\"id\":\"chatcmpl-C9nlEVdwuKXDiM5yuGpixoJZCj4v5\",\"object\":\"chat.completion.chunk\",\"created\":1756452268,\"model\":\"gpt-4.1-nano-2025-04-14\",\"service_tier\":\"default\",\"system_fingerprint\":\"fp_e91a518ddb\",\"choices\":[],\"usage\":{\"prompt_tokens\":14,\"completion_tokens\":7,\"total_tokens\":21,\"prompt_tokens_details\":{\"cached_tokens\":0,\"audio_tokens\":0},\"completion_tokens_details\":{\"reasoning_tokens\":0,\"audio_tokens\":0,\"accepted_prediction_tokens\":0,\"rejected_prediction_tokens\":0}},\"obfuscation\":\"Rg6J79CMc7\"}"),
-                new ServerSentEvent(null, "[DONE]")
-        );
+                new ServerSentEvent(
+                        null,
+                        "{\"id\":\"chatcmpl-C9nlEVdwuKXDiM5yuGpixoJZCj4v5\",\"object\":\"chat.completion.chunk\",\"created\":1756452268,\"model\":\"gpt-4.1-nano-2025-04-14\",\"service_tier\":\"default\",\"system_fingerprint\":\"fp_e91a518ddb\",\"choices\":[{\"index\":0,\"delta\":{},\"logprobs\":null,\"finish_reason\":\"stop\"}],\"usage\":null,\"obfuscation\":\"X0dZ\"}"),
+                new ServerSentEvent(
+                        null,
+                        "{\"id\":\"chatcmpl-C9nlEVdwuKXDiM5yuGpixoJZCj4v5\",\"object\":\"chat.completion.chunk\",\"created\":1756452268,\"model\":\"gpt-4.1-nano-2025-04-14\",\"service_tier\":\"default\",\"system_fingerprint\":\"fp_e91a518ddb\",\"choices\":[],\"usage\":{\"prompt_tokens\":14,\"completion_tokens\":7,\"total_tokens\":21,\"prompt_tokens_details\":{\"cached_tokens\":0,\"audio_tokens\":0},\"completion_tokens_details\":{\"reasoning_tokens\":0,\"audio_tokens\":0,\"accepted_prediction_tokens\":0,\"rejected_prediction_tokens\":0}},\"obfuscation\":\"Rg6J79CMc7\"}"),
+                new ServerSentEvent(null, "[DONE]"));
 
         MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(response, events);
 

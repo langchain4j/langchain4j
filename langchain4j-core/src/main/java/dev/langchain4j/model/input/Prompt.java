@@ -5,6 +5,7 @@ import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.quoted;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -37,7 +38,7 @@ public class Prompt {
      * @param text the text of the prompt.
      */
     public Prompt(String text) {
-        this(List.of(TextContent.from(text)));
+        this(List.of(TextContent.from(ensureNotBlank(text, "text"))));
     }
 
     /**

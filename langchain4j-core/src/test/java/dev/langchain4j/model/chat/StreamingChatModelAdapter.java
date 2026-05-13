@@ -1,16 +1,15 @@
 package dev.langchain4j.model.chat;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
-
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Adapts a {@link StreamingChatModel} to the {@link ChatModel} interface

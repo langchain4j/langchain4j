@@ -1,5 +1,12 @@
 package dev.langchain4j.service.output;
 
+import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonObjectOrReferenceSchemaFrom;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.polymorphicSchemaFrom;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.referenceIfRecursive;
+import static dev.langchain4j.internal.JsonSchemaElementUtils.wrapPolymorphic;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.internal.JsonSchemaElementUtils.VisitedClassMetadata;
 import dev.langchain4j.internal.PolymorphicTypes;
@@ -7,19 +14,11 @@ import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
-
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
-
-import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonObjectOrReferenceSchemaFrom;
-import static dev.langchain4j.internal.JsonSchemaElementUtils.polymorphicSchemaFrom;
-import static dev.langchain4j.internal.JsonSchemaElementUtils.referenceIfRecursive;
-import static dev.langchain4j.internal.JsonSchemaElementUtils.wrapPolymorphic;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
 
 @Internal
 abstract class PojoCollectionOutputParser<T, CT extends Collection<T>> implements OutputParser<CT> {
@@ -52,7 +51,8 @@ abstract class PojoCollectionOutputParser<T, CT extends Collection<T>> implement
         JsonSchemaElement itemSchema = polymorphic
                 ? referenceIfRecursive(polymorphicSchemaFrom(type, null, false, visited), type, visited)
                 : jsonObjectOrReferenceSchemaFrom(type, null, false, visited, true);
-        JsonArraySchema valuesArray = JsonArraySchema.builder().items(itemSchema).build();
+        JsonArraySchema valuesArray =
+                JsonArraySchema.builder().items(itemSchema).build();
         JsonObjectSchema rootElement = polymorphic
                 ? wrapPolymorphic("values", valuesArray, visited)
                 : JsonObjectSchema.builder()

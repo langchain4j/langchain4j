@@ -66,15 +66,13 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
-    protected void should_accept_single_image_as_base64_encoded_string(StreamingChatModel model) {
-    }
+    protected void should_accept_single_image_as_base64_encoded_string(StreamingChatModel model) {}
 
     @Disabled("TODO fix: RateLimit Status code 429")
     @Override
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
-    protected void should_accept_multiple_images_as_base64_encoded_strings(StreamingChatModel model) {
-    }
+    protected void should_accept_multiple_images_as_base64_encoded_strings(StreamingChatModel model) {}
 
     @Override
     @Disabled
@@ -138,7 +136,8 @@ class AzureOpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     @Disabled("Setting 'max_tokens' and 'max_completion_tokens' at the same time is not supported.")
-    protected void should_respect_common_parameters_wrapped_in_integration_specific_class_in_chat_request(StreamingChatModel model) {}
+    protected void should_respect_common_parameters_wrapped_in_integration_specific_class_in_chat_request(
+            StreamingChatModel model) {}
 
     @Override
     @Disabled("Setting 'max_tokens' and 'max_completion_tokens' at the same time is not supported.")

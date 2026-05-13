@@ -15,7 +15,6 @@ import static dev.langchain4j.service.AiServicesIT.IssueCategory.OVERALL_EXPERIE
 import static dev.langchain4j.service.AiServicesIT.IssueCategory.SERVICE_ISSUE;
 import static dev.langchain4j.service.AiServicesIT.Sentiment.POSITIVE;
 import static java.time.Month.JULY;
-import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.data.MapEntry.entry;
@@ -484,7 +483,10 @@ public class AiServicesIT {
     static record Recipe(
             String title,
             String description,
-            @Description("each step should be described in 4 words, steps should rhyme") String[] steps,
+
+            @Description("each step should be described in 4 words, steps should rhyme")
+            String[] steps,
+
             Integer preparationTimeMinutes) {}
 
     interface Chef {
@@ -987,9 +989,9 @@ public class AiServicesIT {
                             return chatRequest; // No transformation needed
                         }
                         List<ChatMessage> messages = chatRequest.messages().stream()
-                                .map(message -> message == userMessage ?
-                                        dev.langchain4j.data.message.UserMessage.from(transformedMessage) :
-                                        message)
+                                .map(message -> message == userMessage
+                                        ? dev.langchain4j.data.message.UserMessage.from(transformedMessage)
+                                        : message)
                                 .toList();
                         return ChatRequest.builder()
                                 .messages(messages)
@@ -1049,9 +1051,8 @@ public class AiServicesIT {
                 .chatModel(modelWithReasoningEffort)
                 .build();
 
-        OpenAiChatRequestParameters openAiParams = OpenAiChatRequestParameters.builder()
-                .reasoningEffort("low")
-                .build();
+        OpenAiChatRequestParameters openAiParams =
+                OpenAiChatRequestParameters.builder().reasoningEffort("low").build();
 
         Response<AiMessage> response = assistant.chat("Hello, I'm passing custom parameters!", openAiParams);
 
@@ -1059,7 +1060,8 @@ public class AiServicesIT {
         ChatRequest actualRequest = chatRequestCaptor.getValue();
 
         assertThat(actualRequest.parameters()).isInstanceOf(OpenAiChatRequestParameters.class);
-        assertThat(((OpenAiChatRequestParameters)actualRequest.parameters()).reasoningEffort()).isEqualTo("low");
+        assertThat(((OpenAiChatRequestParameters) actualRequest.parameters()).reasoningEffort())
+                .isEqualTo("low");
 
         assertThat(response.content()).isNotNull();
     }

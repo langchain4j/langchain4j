@@ -1,13 +1,12 @@
 package dev.langchain4j.skills;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class FileSystemSkillLoaderTest {
 
@@ -34,13 +33,13 @@ class FileSystemSkillLoaderTest {
 
         assertThat(skill.name()).isEqualTo("using-process-tool");
         assertThat(skill.description()).isEqualTo("Describes how to correctly use 'process' tool");
-        assertThat(skill.content()).contains(
-                "When user asks you to use the 'process' tool",
-                "call the 'generate' tool",
-                "call the 'process' tool with 3 arguments",
-                "references/17.md",
-                "references/25.md"
-        );
+        assertThat(skill.content())
+                .contains(
+                        "When user asks you to use the 'process' tool",
+                        "call the 'generate' tool",
+                        "call the 'process' tool with 3 arguments",
+                        "references/17.md",
+                        "references/25.md");
     }
 
     @Test
@@ -102,7 +101,8 @@ class FileSystemSkillLoaderTest {
 
     private Path toPath(String resourcePath) {
         try {
-            return Paths.get(getClass().getClassLoader().getResource(resourcePath).toURI());
+            return Paths.get(
+                    getClass().getClassLoader().getResource(resourcePath).toURI());
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }

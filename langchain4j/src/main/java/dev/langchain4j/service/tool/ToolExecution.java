@@ -1,16 +1,16 @@
 package dev.langchain4j.service.tool;
 
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Objects;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.invocation.InvocationContext;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * Represents the execution of a tool, including the request and the result.
@@ -131,12 +131,11 @@ public class ToolExecution {
 
     @Override
     public String toString() {
-        return "ToolExecution{" +
-                "request=" + request +
-                ", result=" + result +
-                ", startTime=" + startTime +
-                ", finishTime=" + finishTime +
-                '}';
+        return "ToolExecution{" + "request="
+                + request + ", result="
+                + result + ", startTime="
+                + startTime + ", finishTime="
+                + finishTime + '}';
     }
 
     public static Builder builder() {
@@ -151,8 +150,7 @@ public class ToolExecution {
         private LocalDateTime finishTime;
         private InvocationContext invocationContext;
 
-        private Builder() {
-        }
+        private Builder() {}
 
         public Builder request(ToolExecutionRequest request) {
             this.request = request;
@@ -184,9 +182,7 @@ public class ToolExecution {
          */
         @Deprecated(since = "1.5.0")
         public Builder result(String result) {
-            this.result = ToolExecutionResult.builder()
-                    .resultText(result)
-                    .build();
+            this.result = ToolExecutionResult.builder().resultText(result).build();
             return this;
         }
 

@@ -15,8 +15,6 @@ import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithJsonSchemaIT;
 import java.util.List;
 import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
 
 class OllamaAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT {
 
