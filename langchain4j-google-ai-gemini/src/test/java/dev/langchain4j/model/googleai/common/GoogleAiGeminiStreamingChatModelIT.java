@@ -119,7 +119,7 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected void sleepIfNeeded() {
         try {
-            sleep();
+            afterEach();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }

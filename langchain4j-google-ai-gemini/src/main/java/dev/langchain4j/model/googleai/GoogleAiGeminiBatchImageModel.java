@@ -8,8 +8,11 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.model.batch.*;
+import dev.langchain4j.model.batch.BatchError;
+import dev.langchain4j.model.batch.BatchPage;
 import dev.langchain4j.model.batch.BatchPagination;
+import dev.langchain4j.model.batch.BatchRequest;
+import dev.langchain4j.model.batch.BatchResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart;
@@ -59,24 +62,24 @@ import org.slf4j.Logger;
  *     .aspectRatio("16:9")
  *     .build();
  *
- * // Create batch with image generation prompts
+ * // Submit batch of image generation prompts
  * List<String> prompts = List.of(
  *     "A serene mountain landscape at sunset",
  *     "A futuristic cityscape at night"
  * );
  *
- * BatchResponse<List<Response<Image>>> responses = model.createBatch(prompts);
+ * BatchResponse<Response<Image>> response = model.submit(new BatchRequest<>(prompts));
  *
  * // Poll for completion
- * String batchId = responses.batchId();
- * BatchResponse<List<Response<Image>>> result;
+ * String batchId = response.batchId();
+ * BatchResponse<Response<Image>> result;
  * do {
  *     Thread.sleep(5000);
- *     result = model.retrieveBatchResults(batchId);
- * } while (result.isIncomplete());
+ *     result = model.retrieve(batchId);
+ * } while (result.isInProgress());
  *
  * // Process results
- * if (result.isSuccess()) {
+ * if (result.hasSucceeded()) {
  *     for (Response<Image> imageResponse : result.responses()) {
  *         Image image = imageResponse.content();
  *         // Save or process the generated image
@@ -142,24 +145,32 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
     /**
      * {@inheritDoc}
      *
-     * <p>Creates and enqueues a batch of image generation requests using default display name and priority.</p>
+     * <p>Creates and enqueues a batch of image generation requests using default display name and
+     * priority. To set a custom display name or priority, pass a {@link GeminiBatchRequest} (it will
+     * resolve to {@link #submit(GeminiBatchRequest)}).</p>
      *
      * @param request the list of text prompts describing images to generate
      * @return a {@link BatchResponse} representing the initial state of the batch operation
      */
     @Override
     public BatchResponse<Response<Image>> submit(BatchRequest<String> request) {
-        if (request instanceof GeminiBatchRequest<String> batchRequest) {
-            return batchProcessor.createBatch(
-                    batchRequest.displayName(),
-                    batchRequest.priority(),
-                    batchRequest.requests(),
-                    modelName,
-                    BATCH_GENERATE_CONTENT);
+        return batchProcessor.createBatch(null, null, request.requests(), modelName, BATCH_GENERATE_CONTENT);
+    }
 
-        } else {
-            return batchProcessor.createBatch(null, null, request.requests(), modelName, BATCH_GENERATE_CONTENT);
-        }
+    /**
+     * Creates and enqueues a batch of image generation requests, with Gemini-specific options such
+     * as display name and priority.
+     *
+     * @param request a {@link GeminiBatchRequest} carrying the prompts and optional metadata
+     * @return a {@link BatchResponse} representing the initial state of the batch operation
+     */
+    public BatchResponse<Response<@NonNull Image>> submit(GeminiBatchRequest<String> request) {
+        return batchProcessor.createBatch(
+                request.displayName(),
+                request.priority(),
+                request.requests(),
+                modelName,
+                BATCH_GENERATE_CONTENT);
     }
 
     /**

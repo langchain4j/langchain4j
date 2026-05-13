@@ -226,18 +226,20 @@ List<String> prompts = List.of(
 );
 
 // Submit batch
-BatchResponse<?> response = batchModel.createBatchInline(prompts, "image-batch");
-BatchName batchId = getBatchName(response);
+BatchResponse<Response<Image>> response = batchModel.submit(GeminiBatchRequest.from(
+    prompts, "image-batch"));
+String batchId = response.batchId();
 
 // Poll for completion
-do {
+while (response.isInProgress()) {
     Thread.sleep(10000);
-    response = batchModel.retrieveBatchResults(batchId);
-} while (response instanceof BatchIncomplete);
+    response = batchModel.retrieve(batchId);
+}
 
 // Process results
-if (response instanceof BatchSuccess<?> success) {
-    for (Image image : success.images()) {
+if (response.hasSucceeded()) {
+    for (Response<Image> imageResponse : response.responses()) {
+        Image image = imageResponse.content();
         byte[] imageBytes = Base64.getDecoder().decode(image.base64Data());
         // Save or process each image
     }

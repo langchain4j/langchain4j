@@ -76,24 +76,32 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
     /**
      * {@inheritDoc}
      *
-     * <p>Creates and enqueues a batch of embedding requests using default display name and priority.</p>
+     * <p>Creates and enqueues a batch of embedding requests using default display name and priority.
+     * To set a custom display name or priority, pass a {@link GeminiBatchRequest} (it will resolve
+     * to {@link #submit(GeminiBatchRequest)}).</p>
      *
      * @param request the list of {@link TextSegment}s to generate embeddings for
      * @return a {@link BatchResponse} representing the initial state of the batch operation
      */
     @Override
     public BatchResponse<Embedding> submit(BatchRequest<TextSegment> request) {
-        if (request instanceof GeminiBatchRequest<TextSegment> batchRequest) {
-            return batchProcessor.createBatch(
-                    batchRequest.displayName(),
-                    batchRequest.priority(),
-                    batchRequest.requests(),
-                    modelName,
-                    ASYNC_BATCH_EMBED_CONTENT);
+        return batchProcessor.createBatch(null, null, request.requests(), modelName, ASYNC_BATCH_EMBED_CONTENT);
+    }
 
-        } else {
-            return batchProcessor.createBatch(null, null, request.requests(), modelName, ASYNC_BATCH_EMBED_CONTENT);
-        }
+    /**
+     * Creates and enqueues a batch of embedding requests, with Gemini-specific options such as
+     * display name and priority.
+     *
+     * @param request a {@link GeminiBatchRequest} carrying the text segments and optional metadata
+     * @return a {@link BatchResponse} representing the initial state of the batch operation
+     */
+    public BatchResponse<Embedding> submit(GeminiBatchRequest<TextSegment> request) {
+        return batchProcessor.createBatch(
+                request.displayName(),
+                request.priority(),
+                request.requests(),
+                modelName,
+                ASYNC_BATCH_EMBED_CONTENT);
     }
 
     /**

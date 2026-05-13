@@ -59,7 +59,8 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
      * {@inheritDoc}
      *
      * <p>Creates and enqueues a batch of content generation requests for asynchronous processing
-     * using default display name and priority.</p>
+     * using default display name and priority. To set a custom display name or priority, pass a
+     * {@link GeminiBatchRequest} (it will resolve to {@link #submit(GeminiBatchRequest)}).</p>
      *
      * @param request a list of chat requests to be processed in the batch; all requests must
      *                use the same model
@@ -68,17 +69,23 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
      */
     @Override
     public BatchResponse<ChatResponse> submit(BatchRequest<ChatRequest> request) {
-        if (request instanceof GeminiBatchRequest<ChatRequest> batchRequest) {
-            return batchProcessor.createBatch(
-                    batchRequest.displayName(),
-                    batchRequest.priority(),
-                    batchRequest.requests(),
-                    modelName,
-                    BATCH_GENERATE_CONTENT);
+        return batchProcessor.createBatch(null, null, request.requests(), modelName, BATCH_GENERATE_CONTENT);
+    }
 
-        } else {
-            return batchProcessor.createBatch(null, null, request.requests(), modelName, BATCH_GENERATE_CONTENT);
-        }
+    /**
+     * Creates and enqueues a batch of content generation requests for asynchronous processing,
+     * with Gemini-specific options such as display name and priority.
+     *
+     * @param request a {@link GeminiBatchRequest} carrying the chat requests and optional metadata
+     * @return a {@link BatchResponse} representing the initial state of the batch operation
+     */
+    public BatchResponse<ChatResponse> submit(GeminiBatchRequest<ChatRequest> request) {
+        return batchProcessor.createBatch(
+                request.displayName(),
+                request.priority(),
+                request.requests(),
+                modelName,
+                BATCH_GENERATE_CONTENT);
     }
 
     /**
