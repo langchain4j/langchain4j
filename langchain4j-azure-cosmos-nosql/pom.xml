@@ -18,9 +18,14 @@
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-bom</artifactId>
-                <version>4.1.130.Final</version>
+                <version>4.1.132.Final</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-core</artifactId>
+                <version>1.58.0</version>
             </dependency>
             <dependency>
                 <groupId>com.azure</groupId>
@@ -30,12 +35,17 @@
             <dependency>
                 <groupId>io.projectreactor</groupId>
                 <artifactId>reactor-core</artifactId>
-                <version>3.7.14</version>
+                <version>3.7.17</version>
             </dependency>
             <dependency>
                 <groupId>io.projectreactor.netty</groupId>
                 <artifactId>reactor-netty-http</artifactId>
-                <version>1.2.10</version>
+                <version>1.2.16</version>
+            </dependency>
+            <dependency>
+                <groupId>org.hdrhistogram</groupId>
+                <artifactId>HdrHistogram</artifactId>
+                <version>2.2.2</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
