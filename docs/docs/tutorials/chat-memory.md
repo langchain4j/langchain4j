@@ -48,6 +48,94 @@ Currently, LangChain4j offers 2 out-of-the-box implementations:
   Messages are indivisible. If a message doesn't fit, it is evicted completely.
   `TokenWindowChatMemory` requires a `TokenCountEstimator` to count the tokens in each `ChatMessage`.
 
+## Compacting memory
+
+As an alternative to eviction, `CompactingChatMemory` uses a `ChatModel` to **summarize** older
+messages instead of discarding them. This preserves the context of the entire conversation in a
+compact form, reducing both token usage and cost while keeping important information available
+to the LLM.
+
+Every time a `UserMessage` is added, a background compaction task is triggered.
+The compaction sends older messages to a (typically smaller/cheaper) `ChatModel`, which produces
+a summarized `UserMessage` that replaces them. A `SystemMessage`, if present, is always preserved as-is and is never included in the summarization.
+
+Basic usage:
+
+```java
+ChatMemory memory = CompactingChatMemory.builder()
+        .chatModel(compactingModel) // model used for summarization
+        .build();
+```
+
+`CompactingChatMemory` provides several knobs to fine-tune its behavior.
+
+### Retaining recent messages
+
+By default, all conversation messages are summarized. Use `retainLastMessages` to keep the
+last N messages intact and only summarize older ones. This gives the LLM full detail about the
+most recent turns while still compacting the rest:
+
+```java
+CompactingChatMemory.builder()
+        .chatModel(compactingModel)
+        .retainLastMessages(4)
+        .build();
+```
+
+### Token-based compaction threshold
+
+Instead of compacting on every user message, you can compact only when the total token count
+of conversation messages exceeds a threshold. This requires a `TokenCountEstimator`. When
+compaction triggers, as many recent messages as fit within the token limit are retained, and
+the rest are summarized:
+
+```java
+CompactingChatMemory.builder()
+        .chatModel(compactingModel)
+        .maxTokens(4000)
+        .tokenCountEstimator(tokenCountEstimator)
+        .build();
+```
+
+### Compaction interval
+
+By default, compaction runs every time a `UserMessage` is added. Use `compactionInterval` to
+run compaction only every N-th user message, reducing the number of summarization calls:
+
+```java
+CompactingChatMemory.builder()
+        .chatModel(compactingModel)
+        .compactionInterval(3) // compact every 3rd user message
+        .build();
+```
+
+### Tool message handling
+
+By default, tool call/result message pairs are included in the summarization like any other
+messages. Set `compactToolMessages(false)` to preserve `AiMessage`s containing
+`ToolExecutionRequest`s and their corresponding `ToolExecutionResultMessage`s as-is:
+
+```java
+CompactingChatMemory.builder()
+        .chatModel(compactingModel)
+        .compactToolMessages(false)
+        .build();
+```
+
+### Custom compaction prompt
+
+The prompt sent to the summarization model can be customized:
+
+```java
+CompactingChatMemory.builder()
+        .chatModel(compactingModel)
+        .compactionPrompt("Create a bullet-point summary of the conversation from the user's perspective.")
+        .build();
+```
+
+`CompactingChatMemory` also supports a custom `ChatMemoryStore` for persistence, and a custom
+`ExecutorService` for the background compaction thread.
+
 ## Persistence
 
 By default, `ChatMemory` implementations store `ChatMessage`s in memory.
