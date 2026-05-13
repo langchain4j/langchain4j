@@ -221,6 +221,11 @@ class Converter {
     }
 
     private static ToolMessage toToolMessage(ToolExecutionResultMessage toolExecutionResultMessage) {
+        if (!toolExecutionResultMessage.hasSingleText()) {
+            throw new UnsupportedFeatureException(
+                    "watsonx does not support non-text content in tool results. "
+                            + "Only text content is supported.");
+        }
         return ToolMessage.of(toolExecutionResultMessage.text(), toolExecutionResultMessage.id());
     }
 }

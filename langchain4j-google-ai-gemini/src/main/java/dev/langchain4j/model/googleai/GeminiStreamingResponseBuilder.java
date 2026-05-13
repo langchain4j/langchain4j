@@ -59,7 +59,12 @@ class GeminiStreamingResponseBuilder {
             return new TextAndTools(Optional.empty(), Optional.empty(), List.of());
         }
 
-        GeminiCandidate firstCandidate = partialResponse.candidates().get(0);
+        List<GeminiCandidate> candidates = partialResponse.candidates();
+        if (candidates == null || candidates.isEmpty()) {
+            return new TextAndTools(Optional.empty(), Optional.empty(), List.of());
+        }
+
+        GeminiCandidate firstCandidate = candidates.get(0);
 
         updateId(partialResponse);
         updateModelName(partialResponse);
@@ -112,10 +117,13 @@ class GeminiStreamingResponseBuilder {
 
     private void updateTokenUsage(GeminiUsageMetadata usageMetadata) {
         if (usageMetadata != null) {
-            TokenUsage tokenUsage = new TokenUsage(
-                    usageMetadata.promptTokenCount(),
-                    usageMetadata.candidatesTokenCount(),
-                    usageMetadata.totalTokenCount());
+            TokenUsage tokenUsage = GoogleAiGeminiTokenUsage.builder()
+                    .inputTokenCount(usageMetadata.promptTokenCount())
+                    .outputTokenCount(usageMetadata.candidatesTokenCount())
+                    .totalTokenCount(usageMetadata.totalTokenCount())
+                    .cachedContentTokenCount(usageMetadata.cachedContentTokenCount())
+                    .thoughtsTokenCount(usageMetadata.thoughtsTokenCount())
+                    .build();
             this.tokenUsage.set(tokenUsage);
         }
     }

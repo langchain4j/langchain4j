@@ -28,14 +28,12 @@ class GoogleAiGeminiChatModelErrorsTest {
 
     private static final MockGemini MOCK = new MockGemini();
 
-    public static final Duration TIMEOUT = Duration.ofSeconds(3);
     public static final String MODEL_NAME = "gemini-2.0-flash";
 
     final ChatModel model = GoogleAiGeminiChatModel.builder()
             .apiKey("dummy-api-key")
             .modelName(MODEL_NAME)
             .baseUrl(MOCK.baseUrl())
-            .timeout(TIMEOUT)
             .maxRetries(0)
             .build();
 
@@ -95,7 +93,7 @@ class GoogleAiGeminiChatModelErrorsTest {
                     req.path("/models/%s:generateContent".formatted(MODEL_NAME));
                 })
                 .respondsError(res -> {
-                    res.delayMillis(TIMEOUT.multipliedBy(2).toMillis());
+                    res.delayMillis(1000);
                     res.setHttpStatus(HttpStatusCode.Companion.getNoContent());
                     res.setBody("");
                 });

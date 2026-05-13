@@ -7,6 +7,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import java.util.HashMap;
 import java.util.Map;
+import software.amazon.awssdk.services.bedrockruntime.model.CacheTTL;
 
 public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
 
@@ -15,6 +16,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
 
     private final Map<String, Object> additionalModelRequestFields;
     private final BedrockCachePointPlacement cachePointPlacement;
+    private final CacheTTL cacheTtl;
     private final BedrockGuardrailConfiguration bedrockGuardrailConfiguration;
     private final BedrockServiceTier serviceTier;
 
@@ -22,6 +24,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
         super(builder);
         this.additionalModelRequestFields = copy(builder.additionalModelRequestFields);
         this.cachePointPlacement = builder.cachePointPlacement;
+        this.cacheTtl = builder.cacheTtl;
         this.bedrockGuardrailConfiguration = builder.bedrockGuardrailConfiguration;
         this.serviceTier = builder.serviceTier;
     }
@@ -54,6 +57,10 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
         return cachePointPlacement;
     }
 
+    public CacheTTL cacheTtl() {
+        return cacheTtl;
+    }
+
     public BedrockGuardrailConfiguration bedrockGuardrailConfiguration() {
         return bedrockGuardrailConfiguration;
     }
@@ -66,6 +73,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
 
         private Map<String, Object> additionalModelRequestFields;
         private BedrockCachePointPlacement cachePointPlacement;
+        private CacheTTL cacheTtl;
         private BedrockGuardrailConfiguration bedrockGuardrailConfiguration;
         private BedrockServiceTier serviceTier;
 
@@ -83,6 +91,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
                 }
                 this.cachePointPlacement =
                         getOrDefault(bedrockRequestParameters.cachePointPlacement, cachePointPlacement);
+                this.cacheTtl = getOrDefault(bedrockRequestParameters.cacheTtl, cacheTtl);
                 this.bedrockGuardrailConfiguration = getOrDefault(
                         bedrockRequestParameters.bedrockGuardrailConfiguration, bedrockGuardrailConfiguration);
                 this.serviceTier = getOrDefault(bedrockRequestParameters.serviceTier, serviceTier);
@@ -124,7 +133,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
         /**
          * Enables prompt caching and sets where to place the cache point in the conversation.
          * Cache points mark where to cache content for reuse across API calls.
-         * The cache has a 5-minute TTL which resets on each cache hit.
+         * The cache has a 5-minute TTL by default which resets on each cache hit.
          * Supported models include Claude 3.5 Sonnet, Claude 3.5 Haiku, Amazon Nova, etc.
          * This can reduce latency by up to 85% and costs by up to 90% for cached prompts.
          *
@@ -134,6 +143,20 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
          */
         public Builder promptCaching(BedrockCachePointPlacement placement) {
             this.cachePointPlacement = placement;
+            return this;
+        }
+
+        /**
+         * Enables prompt caching with a specific TTL and cache point placement.
+         *
+         * @param placement where to place the cache point (null disables caching)
+         * @param ttl       the cache TTL (null uses the default 5-minute TTL)
+         * @return this builder
+         * @see <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html">AWS Bedrock Prompt Caching</a>
+         */
+        public Builder promptCaching(BedrockCachePointPlacement placement, CacheTTL ttl) {
+            this.cachePointPlacement = placement;
+            this.cacheTtl = ttl;
             return this;
         }
 

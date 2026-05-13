@@ -202,7 +202,7 @@ public class WatsonxTokenCountEstimatorTest {
         when(mockTokenizationService.tokenize(any(), isNull()))
                 .thenReturn(new TokenizationResponse("model-id", new Result(1, null)));
 
-        when(mockTokenizationService.asyncTokenize(any()))
+        when(mockTokenizationService.tokenizeAsync(any()))
                 .thenReturn(
                         CompletableFuture.completedFuture(new TokenizationResponse("model-id", new Result(1, null))));
 

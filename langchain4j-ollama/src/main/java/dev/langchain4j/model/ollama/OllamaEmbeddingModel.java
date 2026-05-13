@@ -2,6 +2,7 @@ package dev.langchain4j.model.ollama;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZeroIfNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -26,6 +27,7 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final OllamaClient client;
     private final String modelName;
     private final Integer maxRetries;
+    private final Integer dimensions;
 
     public OllamaEmbeddingModel(OllamaEmbeddingModelBuilder builder) {
         this.client = OllamaClient.builder()
@@ -38,6 +40,7 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .build();
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
+        this.dimensions = ensureGreaterThanZeroIfNotNull(builder.dimensions, "dimensions");
     }
 
     public static OllamaEmbeddingModelBuilder builder() {
@@ -51,8 +54,11 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
         List<String> input = textSegments.stream().map(TextSegment::text).collect(Collectors.toList());
 
-        EmbeddingRequest request =
-                EmbeddingRequest.builder().model(modelName).input(input).build();
+        EmbeddingRequest request = EmbeddingRequest.builder()
+                .model(modelName)
+                .input(input)
+                .dimensions(dimensions)
+                .build();
         EmbeddingResponse response = withRetryMappingExceptions(() -> client.embed(request), maxRetries);
         List<Embedding> embeddings =
                 response.getEmbeddings().stream().map(Embedding::from).collect(Collectors.toList());
@@ -65,6 +71,11 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
         return this.modelName;
     }
 
+    @Override
+    protected Integer knownDimension() {
+        return dimensions;
+    }
+
     public static class OllamaEmbeddingModelBuilder {
 
         private HttpClientBuilder httpClientBuilder;
@@ -75,6 +86,7 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private Supplier<Map<String, String>> customHeadersSupplier;
+        private Integer dimensions;
 
         public OllamaEmbeddingModelBuilder() {
             // This is public so it can be extended
@@ -136,6 +148,20 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
          */
         public OllamaEmbeddingModelBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
             this.customHeadersSupplier = customHeadersSupplier;
+            return this;
+        }
+
+        /**
+         * Sets the number of dimensions for the generated embeddings.
+         * <p>
+         * If provided, the embedding vector will be truncated or projected
+         * to the specified size by the Ollama embedding model.
+         *
+         * @param dimensions the embedding dimension size, must be positive
+         * @return builder
+         */
+        public OllamaEmbeddingModelBuilder dimensions(Integer dimensions) {
+            this.dimensions = dimensions;
             return this;
         }
 

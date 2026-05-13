@@ -13,6 +13,7 @@ import dev.langchain4j.agentic.Agents.FoodExpert;
 import dev.langchain4j.agentic.Agents.LegalExpert;
 import dev.langchain4j.agentic.Agents.MedicalExpert;
 import dev.langchain4j.agentic.Agents.MovieExpert;
+import dev.langchain4j.agentic.Agents.OptionalAudienceEditor;
 import dev.langchain4j.agentic.Agents.RequestCategory;
 import dev.langchain4j.agentic.Agents.StyleEditor;
 import dev.langchain4j.agentic.Agents.StyleScorer;
@@ -72,6 +73,7 @@ import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -111,6 +113,25 @@ public class DeclarativeAgentIT {
 
         String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
         assertThat(story).isNotBlank();
+    }
+
+    public interface StoryCreatorWithOptionalAudience {
+
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = {CreativeWriter.class, OptionalAudienceEditor.class, StyleEditor.class})
+        String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
+    }
+
+    @Test
+    void declarative_optional_sequence_tests() {
+        StoryCreatorWithOptionalAudience storyCreator = AgenticServices.createAgenticSystem(StoryCreatorWithOptionalAudience.class, baseModel());
+
+        String story = storyCreator.write("dragons and wizards", "fantasy", null);
+        assertThat(story).isNotBlank();
+
+        assertThat(assertThrows(MissingArgumentException.class, () -> storyCreator.write("dragons and wizards", null, "young adults")))
+                .hasMessageContaining("style");
     }
 
     public interface PlannerBasedStoryCreator {
@@ -916,12 +937,21 @@ public class DeclarativeAgentIT {
 
     public interface BatchHoroscopeAgent extends AgentInstance {
 
-        @ParallelMapperAgent(subAgent = PersonAstrologyAgent.class)
-        List<String> generateHoroscopes(@V("persons") List<Person> persons);
+        @ParallelMapperAgent(subAgent = PersonAstrologyAgent.class, outputKey = "horoscopes")
+        Map<String, String> generateHoroscopes(@V("persons") List<Person> persons);
 
         @ParallelExecutor
         static Executor executor() {
             return Executors.newFixedThreadPool(3);
+        }
+
+        @Output
+        static Map<String, String> output(@V("persons") List<Person> persons, @V("horoscopes") List<String> horoscopes) {
+            Map<String, String> output = new HashMap<>();
+            for (int i = 0; i < persons.size(); i++) {
+                output.put(persons.get(i).name(), horoscopes.get(i));
+            }
+            return output;
         }
     }
 
@@ -940,8 +970,10 @@ public class DeclarativeAgentIT {
         List<Person> persons =
                 List.of(new Person("Mario", "aries"), new Person("Luigi", "pisces"), new Person("Peach", "leo"));
 
-        List<String> horoscopes = agent.generateHoroscopes(persons);
-        assertThat(horoscopes).hasSize(3).allSatisfy(horoscope -> assertThat(horoscope).isNotBlank());
+        Map<String, String> horoscopes = agent.generateHoroscopes(persons);
+        assertThat(horoscopes).hasSize(3)
+                .containsKey("Mario").containsKey("Luigi").containsKey("Peach")
+                .allSatisfy((name, horoscope) -> assertThat(horoscope).isNotBlank());
     }
 
     public interface BatchHoroscopeAgentWith2Lists extends AgentInstance {

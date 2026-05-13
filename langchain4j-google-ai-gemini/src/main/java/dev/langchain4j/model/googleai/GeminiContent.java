@@ -3,11 +3,14 @@ package dev.langchain4j.model.googleai;
 import static dev.langchain4j.internal.Utils.mutableCopy;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import java.util.Map;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-record GeminiContent(List<GeminiPart> parts, String role) {
+record GeminiContent(
+        @JsonProperty("parts") List<GeminiPart> parts,
+        @JsonProperty("role") String role) {
 
     GeminiContent {
         parts = mutableCopy(parts);
@@ -19,16 +22,16 @@ record GeminiContent(List<GeminiPart> parts, String role) {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record GeminiPart(
-            String text,
-            GeminiBlob inlineData,
-            GeminiFunctionCall functionCall,
-            GeminiFunctionResponse functionResponse,
-            GeminiFileData fileData,
-            GeminiExecutableCode executableCode,
-            GeminiCodeExecutionResult codeExecutionResult,
-            Boolean thought,
-            String thoughtSignature,
-            GeminiMediaResolution mediaResolution) {
+            @JsonProperty("text") String text,
+            @JsonProperty("inlineData") GeminiBlob inlineData,
+            @JsonProperty("functionCall") GeminiFunctionCall functionCall,
+            @JsonProperty("functionResponse") GeminiFunctionResponse functionResponse,
+            @JsonProperty("fileData") GeminiFileData fileData,
+            @JsonProperty("executableCode") GeminiExecutableCode executableCode,
+            @JsonProperty("codeExecutionResult") GeminiCodeExecutionResult codeExecutionResult,
+            @JsonProperty("thought") Boolean thought,
+            @JsonProperty("thoughtSignature") String thoughtSignature,
+            @JsonProperty("mediaResolution") GeminiMediaResolution mediaResolution) {
 
         static GeminiPart ofText(String text) {
             return GeminiPart.builder().text(text).build();
@@ -122,19 +125,29 @@ record GeminiContent(List<GeminiPart> parts, String role) {
         }
 
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record GeminiBlob(String mimeType, String data) {}
+        record GeminiBlob(
+                @JsonProperty("mimeType") String mimeType,
+                @JsonProperty("data") String data) {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record GeminiFunctionCall(String name, Map<String, Object> args) {}
+        record GeminiFunctionCall(
+                @JsonProperty("name") String name,
+                @JsonProperty("args") Map<String, Object> args) {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record GeminiFunctionResponse(String name, Map<String, String> response) {}
+        record GeminiFunctionResponse(
+                @JsonProperty("name") String name,
+                @JsonProperty("response") Map<String, String> response) {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record GeminiFileData(String mimeType, String fileUri) {}
+        record GeminiFileData(
+                @JsonProperty("mimeType") String mimeType,
+                @JsonProperty("fileUri") String fileUri) {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record GeminiExecutableCode(GeminiLanguage programmingLanguage, String code) {
+        record GeminiExecutableCode(
+                @JsonProperty("programmingLanguage") GeminiLanguage programmingLanguage,
+                @JsonProperty("code") String code) {
             enum GeminiLanguage {
                 PYTHON,
                 LANGUAGE_UNSPECIFIED;
@@ -153,7 +166,9 @@ record GeminiContent(List<GeminiPart> parts, String role) {
         }
 
         @JsonIgnoreProperties(ignoreUnknown = true)
-        record GeminiCodeExecutionResult(GeminiOutcome outcome, String output) {
+        record GeminiCodeExecutionResult(
+                @JsonProperty("outcome") GeminiOutcome outcome,
+                @JsonProperty("output") String output) {
             // TODO how to deal with the non-OK outcomes?
             enum GeminiOutcome {
                 OUTCOME_UNSPECIFIED,

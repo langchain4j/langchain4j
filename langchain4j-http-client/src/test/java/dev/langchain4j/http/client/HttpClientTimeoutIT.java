@@ -83,7 +83,7 @@ public abstract class HttpClientTimeoutIT {
             // when-then
             assertThatThrownBy(() -> client.execute(request))
                     .isExactlyInstanceOf(TimeoutException.class)
-                    .hasRootCauseExactlyInstanceOf(expectedReadTimeoutRootCauseExceptionType())
+                    .satisfies(this::assertCause)
                     .hasMessageContainingAll(readSyncMessageKeywords());
         }
     }
@@ -144,7 +144,7 @@ public abstract class HttpClientTimeoutIT {
 
             assertThat(streamingResult.throwable())
                     .isExactlyInstanceOf(TimeoutException.class)
-                    .hasRootCauseExactlyInstanceOf(expectedReadTimeoutRootCauseExceptionType())
+                    .satisfies(this::assertCause)
                     .hasMessageContainingAll(readAsyncMessageKeywords());
 
             assertThat(streamingResult.threads()).hasSize(1);
@@ -153,5 +153,9 @@ public abstract class HttpClientTimeoutIT {
             verify(spyListener, times(1)).onError(any());
             verifyNoMoreInteractions(spyListener);
         }
+    }
+
+    protected void assertCause(Throwable throwable) {
+        assertThat(throwable).hasRootCauseExactlyInstanceOf(expectedReadTimeoutRootCauseExceptionType());
     }
 }

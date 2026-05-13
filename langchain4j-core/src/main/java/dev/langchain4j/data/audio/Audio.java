@@ -3,6 +3,7 @@ package dev.langchain4j.data.audio;
 import static dev.langchain4j.internal.Utils.quoted;
 
 import java.net.URI;
+import java.util.Arrays;
 import java.util.Objects;
 
 /**
@@ -94,14 +95,16 @@ public class Audio {
         if (o == null || getClass() != o.getClass()) return false;
         Audio that = (Audio) o;
         return Objects.equals(this.url, that.url)
-                && Objects.equals(this.binaryData, that.binaryData)
+                && Arrays.equals(this.binaryData, that.binaryData)
                 && Objects.equals(this.base64Data, that.base64Data)
                 && Objects.equals(this.mimeType, that.mimeType);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(url, binaryData, base64Data, mimeType);
+        int result = Objects.hash(url, base64Data, mimeType);
+        result = 31 * result + Arrays.hashCode(binaryData);
+        return result;
     }
 
     @Override

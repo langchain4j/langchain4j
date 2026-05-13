@@ -8,6 +8,10 @@ import retrofit2.http.POST;
 
 import java.util.List;
 
+/**
+ * @deprecated Do not use anymore, use {@code langchain4j-open-ai} module instead
+ */
+@Deprecated(forRemoval = true, since = "1.14.0")
 public interface OvhAiApi {
 
   @POST("api/batch_text2vec")

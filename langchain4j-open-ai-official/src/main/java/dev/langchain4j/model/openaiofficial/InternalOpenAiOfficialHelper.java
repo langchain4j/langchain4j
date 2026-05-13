@@ -2,6 +2,7 @@ package dev.langchain4j.model.openaiofficial;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.chat.request.ResponseFormat.JSON;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.TEXT;
@@ -39,12 +40,12 @@ import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -52,10 +53,7 @@ import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.model.output.Response;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -117,6 +115,11 @@ class InternalOpenAiOfficialHelper {
         }
 
         if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+            if (!toolExecutionResultMessage.hasSingleText()) {
+                throw new UnsupportedFeatureException(
+                        "OpenAI Chat Completions API does not support non-text content in tool results. "
+                                + "Only text content is supported.");
+            }
             return ChatCompletionMessageParam.ofTool(ChatCompletionToolMessageParam.builder()
                     .toolCallId(toolExecutionResultMessage.id())
                     .content(toolExecutionResultMessage.text())
@@ -162,6 +165,24 @@ class InternalOpenAiOfficialHelper {
                                 .build()
                                 .inputAudio())
                         .build()));
+            } else if (content instanceof PdfFileContent pdfFileContent) {
+                if (pdfFileContent.pdfFile().url() != null) {
+                    throw new UnsupportedFeatureException(
+                            "OpenAI Official Chat Completions API does not support URL-based PDF inputs. "
+                                    + "Provide PDF content as base64 data instead.");
+                }
+
+                String fileData = String.format(
+                        "data:%s;base64,%s",
+                        pdfFileContent.pdfFile().mimeType(),
+                        pdfFileContent.pdfFile().base64Data());
+
+                parts.add(ChatCompletionContentPart.ofFile(ChatCompletionContentPart.File.builder()
+                        .file(ChatCompletionContentPart.File.FileObject.builder()
+                                .fileData(fileData)
+                                .filename("pdf_file")
+                                .build())
+                        .build()));
             } else {
                 throw illegalArgument("Unknown content type: " + content);
             }
@@ -176,13 +197,14 @@ class InternalOpenAiOfficialHelper {
     }
 
     private static ChatCompletionTool toTool(ToolSpecification toolSpecification, boolean strict) {
+        boolean effectiveStrict = isEffectivelyStrict(toolSpecification, strict);
 
         FunctionDefinition.Builder functionDefinitionBuilder = FunctionDefinition.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description() != null ? toolSpecification.description() : "")
-                .parameters(toOpenAiParameters(toolSpecification, strict));
+                .parameters(toOpenAiParameters(toolSpecification, effectiveStrict));
 
-        if (strict) {
+        if (effectiveStrict) {
             functionDefinitionBuilder.strict(true);
         }
 
@@ -378,33 +400,6 @@ class InternalOpenAiOfficialHelper {
             case AUTO -> ChatCompletionToolChoiceOption.ofAuto(ChatCompletionToolChoiceOption.Auto.AUTO);
             case REQUIRED -> ChatCompletionToolChoiceOption.ofAuto(ChatCompletionToolChoiceOption.Auto.REQUIRED);
             case NONE -> ChatCompletionToolChoiceOption.ofAuto(ChatCompletionToolChoiceOption.Auto.NONE);
-        };
-    }
-
-    static Response<AiMessage> convertResponse(ChatResponse chatResponse) {
-        return Response.from(
-                chatResponse.aiMessage(),
-                chatResponse.metadata().tokenUsage(),
-                chatResponse.metadata().finishReason());
-    }
-
-    static StreamingChatResponseHandler convertHandler(StreamingResponseHandler<AiMessage> handler) {
-        return new StreamingChatResponseHandler() {
-
-            @Override
-            public void onPartialResponse(String partialResponse) {
-                handler.onNext(partialResponse);
-            }
-
-            @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-                handler.onComplete(convertResponse(completeResponse));
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                handler.onError(error);
-            }
         };
     }
 

@@ -4,20 +4,20 @@ sidebar_position: 17
 
 # OVHcloud AI Endpoints
 
-- [OVHclous AI Endpoints Documentation](https://labs.ovhcloud.com/en/ai-endpoints/)
-- OVHcloud AI Endpoints API Reference:
-  - [bge-base-en-v1.5](https://bge-base-en-v1-5.endpoints.kepler.ai.cloud.ovh.net/doc)
-  - [multilingual-e5-base](https://multilingual-e5-base.endpoints.kepler.ai.cloud.ovh.net/doc)
+- [OVHclous AI Endpoints Documentation](https://www.ovhcloud.com/en/public-cloud/ai-endpoints/)
+- [OVHcloud AI Endpoints API Reference](https://www.ovhcloud.com/en/public-cloud/ai-endpoints/catalog/)
 
 ## Project setup
+
+OVHcloud AI Endpoints models are compatible with the OpenAI API, so you can use the same code as for OpenAI models, just changing the base URL and the API key.
 
 ### Maven Dependency
 
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-ovh-ai</artifactId>
-    <version>1.12.2-beta22</version>
+    <artifactId>langchain4j-open-ai</artifactId>
+    <version>1.13.0</version>
 </dependency>
 ```
 
@@ -32,7 +32,7 @@ Don't forget set your API key as an environment variable.
 export OVHAI_AI_API_KEY=your-api-key #For Unix OS based
 SET OVHAI_AI_API_KEY=your-api-key #For Windows OS
 ```
-More details on how to get your OVHcloud AI API key can be found [here](https://endpoints.ai.cloud.ovh.net/)
+More details on how to get your OVHcloud AI API key can be found [here](https://help.ovhcloud.com/csm/en-public-cloud-ai-endpoints-getting-started?id=kb_article_view&sysparm_article=KB0065403)
 
 ## Embedding
 The OVHcloud AI Embeddings model allows you to embed sentences, and using it in your application is simple. We provide a simple example to get you started with OVHcloud AI Embeddings model integration.
@@ -53,9 +53,12 @@ import java.util.List;
 public class OvhAiEmbeddingSimpleExample {
 
     public static void main(String[] args) {
-        EmbeddingModel embeddingModel = OvhAiEmbeddingModel.builder()
-                .apiKey(System.getenv("OVH_AI_API_KEY"))
-                .baseUrl("https://multilingual-e5-base.endpoints.kepler.ai.cloud.ovh.net")
+        EmbeddingModel model = OpenAiEmbeddingModel.builder()
+                .baseUrl("https://oai.endpoints.kepler.ai.cloud.ovh.net/v1")
+                .apiKey(System.getenv("OVHAI_AI_API_KEY"))
+                .modelName("Qwen3-Embedding-8B")
+                .logRequests(true)
+                .logResponses(false) // embeddings are huge in logs
                 .build();
 
         // For simplicity, this example uses an in-memory store, but you can choose any external compatible store for production environments.
@@ -97,7 +100,7 @@ Question: What is your favourite sport?
 Response: I like football.
 ```
 
-Of course, you can combine OVHCloud  Embeddings with RAG (Retrieval-Augmented Generation) techniques.
+Of course, you can combine OVHCloud Embeddings with RAG (Retrieval-Augmented Generation) techniques.
 
 In [RAG](/tutorials/rag) you will learn how to use RAG techniques for ingestion, retrieval and Advanced Retrieval with LangChain4j.
 

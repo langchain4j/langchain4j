@@ -33,7 +33,7 @@ class WorkersAiImageModelIT {
 
     @Test
     void should_generate_an_image_as_binary() {
-        Response<Image> image = imageModel.generate("Draw me a squirrel");;
+        Response<Image> image = imageModel.generate("Draw me a squirrel");
         assertThat(image.content()).isNotNull();
         assertThat(image.content().base64Data()).isNotNull();
     }
@@ -42,7 +42,7 @@ class WorkersAiImageModelIT {
     void should_generate_an_image_as_file() {
         String homeDirectory = System.getProperty("user.home");
         Response<File> image = imageModel.generate("Draw me a squirrel",
-                System.getProperty("user.home") + "/langchain4j-squirrel.png");;
+                System.getProperty("user.home") + "/langchain4j-squirrel.png");
         assertThat(image.content()).exists();
     }
 
