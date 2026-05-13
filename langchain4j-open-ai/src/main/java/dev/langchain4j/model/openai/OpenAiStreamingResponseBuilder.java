@@ -164,10 +164,6 @@ public class OpenAiStreamingResponseBuilder {
 
         if (delta.toolCalls() != null) {
             for (ToolCall toolCall : delta.toolCalls()) {
-                // Skip end-of-tool-calls sentinel frames that carry no meaningful data
-                // (observed with deepseek-v4-flash on the OpenAI-compatible streaming API:
-                // a trailing chunk with empty id, no function.name and null function.arguments
-                // is emitted after all real tool_calls have streamed).
                 if (isSentinel(toolCall)) {
                     continue;
                 }
