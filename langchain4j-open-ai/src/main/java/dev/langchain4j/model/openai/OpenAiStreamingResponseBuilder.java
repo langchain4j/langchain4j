@@ -164,6 +164,14 @@ public class OpenAiStreamingResponseBuilder {
 
         if (delta.toolCalls() != null) {
             for (ToolCall toolCall : delta.toolCalls()) {
+                // Skip end-of-tool-calls sentinel frames that carry no meaningful data
+                // (observed with deepseek-v4-flash on the OpenAI-compatible streaming API:
+                // a trailing chunk with empty id, no function.name and null function.arguments
+                // is emitted after all real tool_calls have streamed).
+                if (isSentinel(toolCall)) {
+                    continue;
+                }
+
                 int toolCallIndex = toolCall.index() != null ? toolCall.index() : fallbackToolCallIndex.get();
 
                 ToolExecutionRequestBuilder builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
@@ -291,6 +299,17 @@ public class OpenAiStreamingResponseBuilder {
                 .rawHttpResponse(rawHttpResponse.get())
                 .rawServerSentEvents(new ArrayList<>(rawServerSentEvents))
                 .build();
+    }
+
+    private static boolean isSentinel(ToolCall toolCall) {
+        boolean hasId = !isNullOrBlank(toolCall.id());
+        FunctionCall functionCall = toolCall.function();
+        if (functionCall == null) {
+            return !hasId;
+        }
+        boolean hasName = !isNullOrBlank(functionCall.name());
+        boolean hasArguments = functionCall.arguments() != null;
+        return !hasId && !hasName && !hasArguments;
     }
 
     private static class ToolExecutionRequestBuilder {
