@@ -13,7 +13,7 @@
     <name>LangChain4j :: Document Parser :: Docling</name>
 
     <properties>
-        <docling.version>0.5.1</docling.version>
+        <docling.version>0.5.2</docling.version>
     </properties>
 
     <dependencyManagement>
