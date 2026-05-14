@@ -14,7 +14,7 @@
     <description>Common functionality for other langchain4j-embeddings-xxx modules</description>
 
     <properties>
-        <ai.djl.version>0.31.1</ai.djl.version>
+        <ai.djl.version>0.36.0</ai.djl.version>
     </properties>
 
     <dependencies>
