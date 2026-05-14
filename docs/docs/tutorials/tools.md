@@ -1536,7 +1536,7 @@ Assistant assistant = AiServices.builder(Assistant.class)
 As with the `ToolArgumentsErrorHandler`, there are two ways to handle errors in `ToolExecutionErrorHandler`:
 throw an exception or return a text message.
 
-### Transactional Tool Execution
+### Compensating Tool Actions
 
 When an AI Service uses multiple tools to accomplish a task, a failure in one tool
 can leave the system in an inconsistent state — some tools have already executed
@@ -1544,7 +1544,7 @@ successfully while others have not. For example, in a bank transfer the LLM migh
 credit the recipient's account first and then fail to withdraw from the sender's
 account due to insufficient funds, leaving the recipient with extra money.
 
-To handle this, you can mark an AI Service as **transactional**. When enabled,
+To handle this, you can enable **compensation on tool errors**. When enabled,
 if any tool execution fails, all previously successful tool calls that declare a
 compensating action are automatically undone in reverse order.
 
@@ -1609,15 +1609,15 @@ class BankAccountService {
 }
 ```
 
-#### Enabling Transactional Mode
+#### Enabling Compensation
 
-Call `.transactional()` when building the AI Service:
+Call `.compensateOnToolErrors(true)` when building the AI Service:
 
 ```java
 Assistant assistant = AiServices.builder(Assistant.class)
         .chatModel(model)
         .tools(new BankAccountService())
-        .transactional()
+        .compensateOnToolErrors(true)
         .build();
 ```
 
@@ -1630,7 +1630,7 @@ was rolled back due to failure of tool 'withdraw'"_, and the failed tool gets it
 normal error message. This keeps the `ChatMemory` consistent and lets the LLM
 decide what to do next — retry, inform the user, or take a different approach.
 
-Without `.transactional()`, the error is sent back to the LLM as usual and no
+Without `.compensateOnToolErrors(true)`, the error is sent back to the LLM as usual and no
 compensation occurs — even if `@CompensateFor` annotations are present.
 
 #### Validation
@@ -1661,7 +1661,7 @@ execution is configured to run in parallel via `.executeToolsConcurrently()`.
 :::
 
 :::note
-Transactional tool execution is currently marked as experimental and may evolve
+Compensating tool actions are currently marked as experimental and may evolve
 in future releases.
 :::
 

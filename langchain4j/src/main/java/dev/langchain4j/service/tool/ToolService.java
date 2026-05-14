@@ -86,7 +86,7 @@ public class ToolService {
     private final Map<String, ReturnBehavior> returnBehaviors = new HashMap<>();
     private final Map<String, BiConsumer<ToolExecution, InvocationContext>> compensatingExecutors = new HashMap<>();
     private final Set<ToolProvider> toolProviders = new LinkedHashSet<>();
-    private boolean transactional;
+    private boolean compensateOnToolErrors;
     private Executor executor;
     private int maxToolCallingRoundTrips = 100;
     private ToolArgumentsErrorHandler argumentsErrorHandler;
@@ -256,8 +256,8 @@ public class ToolService {
         return result;
     }
 
-    public void transactional(boolean transactional) {
-        this.transactional = transactional;
+    public void compensateOnToolErrors(boolean compensateOnToolErrors) {
+        this.compensateOnToolErrors = compensateOnToolErrors;
     }
 
     static Map<String, BiConsumer<ToolExecution, InvocationContext>> findCompensatingActions(
@@ -478,7 +478,7 @@ public class ToolService {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
-        List<ToolExecution> compensableExecutions = transactional ? new ArrayList<>() : null;
+        List<ToolExecution> compensableExecutions = compensateOnToolErrors ? new ArrayList<>() : null;
 
         int roundTripsLeft = maxToolCallingRoundTrips;
         while (true) {
@@ -524,7 +524,7 @@ public class ToolService {
 
                 fireToolExecutedEvent(invocationContext, request, toolExecution, context.eventListenerRegistrar);
 
-                if (!result.isError() && transactional && compensatingExecutors.containsKey(request.name())) {
+                if (!result.isError() && compensateOnToolErrors && compensatingExecutors.containsKey(request.name())) {
                     compensableExecutions.add(toolExecution);
                 }
 
@@ -535,7 +535,7 @@ public class ToolService {
                 returnBehaviors.add(toolServiceContext.returnBehavior(request.name()));
             }
 
-            if (transactional && anyToolErrored) {
+            if (compensateOnToolErrors && anyToolErrored) {
                 rollback(compensableExecutions, invocationContext);
                 for (int i = 0; i < toolExecutionRequests.size(); i++) {
                     ToolExecutionRequest request = toolExecutionRequests.get(i);

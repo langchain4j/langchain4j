@@ -2193,7 +2193,7 @@ class AiServicesWithToolsIT {
         BankAssistant assistant = AiServices.builder(BankAssistant.class)
                 .chatModel(chatModel)
                 .tools(bankService)
-                .transactional()
+                .compensateOnToolErrors(true)
                 .build();
 
         // when
@@ -2257,12 +2257,12 @@ class AiServicesWithToolsIT {
     void should_rollback_with_tool_execution_parameter() {
 
         // given
-        class TransactionalBankService {
+        class CompensatingBankService {
 
             final Map<String, Double> accounts = new HashMap<>();
             final List<String> reversedTransactionIds = new ArrayList<>();
 
-            TransactionalBankService() {
+            CompensatingBankService() {
                 accounts.put("Mario", 50.0);
                 accounts.put("Dmytro", 100.0);
             }
@@ -2291,7 +2291,7 @@ class AiServicesWithToolsIT {
             }
         }
 
-        TransactionalBankService bankService = new TransactionalBankService();
+        CompensatingBankService bankService = new CompensatingBankService();
 
         ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
@@ -2313,7 +2313,7 @@ class AiServicesWithToolsIT {
         BankAssistant assistant = AiServices.builder(BankAssistant.class)
                 .chatModel(chatModel)
                 .tools(bankService)
-                .transactional()
+                .compensateOnToolErrors(true)
                 .build();
 
         // when
@@ -2404,7 +2404,7 @@ class AiServicesWithToolsIT {
         TravelAssistant assistant = AiServices.builder(TravelAssistant.class)
                 .chatModel(chatModel)
                 .tools(travelService)
-                .transactional()
+                .compensateOnToolErrors(true)
                 .build();
 
         // when
@@ -2440,7 +2440,7 @@ class AiServicesWithToolsIT {
         TravelAssistant assistant = AiServices.builder(TravelAssistant.class)
                 .chatModel(chatModel)
                 .tools(travelService)
-                .transactional()
+                .compensateOnToolErrors(true)
                 .build();
 
         // when
@@ -2476,7 +2476,7 @@ class AiServicesWithToolsIT {
         TravelAssistant assistant = AiServices.builder(TravelAssistant.class)
                 .chatModel(chatModel)
                 .tools(travelService)
-                .transactional()
+                .compensateOnToolErrors(true)
                 .build();
 
         // when
@@ -2515,7 +2515,7 @@ class AiServicesWithToolsIT {
                 .chatModel(chatModel)
                 .tools(travelService)
                 .chatMemory(chatMemory)
-                .transactional()
+                .compensateOnToolErrors(true)
                 .build();
 
         // when
