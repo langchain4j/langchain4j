@@ -1,5 +1,7 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.util.Collections.emptyList;
 
@@ -51,20 +53,19 @@ public class GoogleGenAiChatModel implements ChatModel {
 
     private GoogleGenAiChatModel(Builder builder) {
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
-        this.maxRetries = builder.maxRetries == null ? 3 : builder.maxRetries;
-        this.logRequests = builder.logRequests != null && builder.logRequests;
-        this.logResponses = builder.logResponses != null && builder.logResponses;
-        this.listeners = builder.listeners == null ? emptyList() : new ArrayList<>(builder.listeners);
-        this.googleSearchEnabled = builder.googleSearch != null && builder.googleSearch;
-        this.googleMapsEnabled = builder.googleMaps != null && builder.googleMaps;
-        this.urlContextEnabled = builder.urlContext != null && builder.urlContext;
-        this.allowedFunctionNames = builder.allowedFunctionNames;
+        this.maxRetries = getOrDefault(builder.maxRetries, 3);
+        this.logRequests = getOrDefault(builder.logRequests, false);
+        this.logResponses = getOrDefault(builder.logResponses, false);
+        this.listeners = copy(builder.listeners);
+        this.googleSearchEnabled = getOrDefault(builder.googleSearch, false);
+        this.googleMapsEnabled = getOrDefault(builder.googleMaps, false);
+        this.urlContextEnabled = getOrDefault(builder.urlContext, false);
+        this.allowedFunctionNames = copy(builder.allowedFunctionNames);
         this.responseSchema = builder.responseSchema;
         this.responseMimeType = builder.responseMimeType;
         this.thinkingBudget = builder.thinkingBudget;
         this.seed = builder.seed;
-        this.safetySettings =
-                builder.safetySettings != null ? new ArrayList<>(builder.safetySettings) : new ArrayList<>();
+        this.safetySettings = copy(builder.safetySettings);
         this.generateContentConfig = builder.generateContentConfig;
 
         this.client = builder.client != null
@@ -76,17 +77,20 @@ public class GoogleGenAiChatModel implements ChatModel {
                         builder.location,
                         builder.timeout);
 
-        if (builder.defaultRequestParameters != null) {
-            this.defaultRequestParameters = builder.defaultRequestParameters;
-        } else {
-            this.defaultRequestParameters = DefaultChatRequestParameters.builder()
-                    .temperature(builder.temperature)
-                    .maxOutputTokens(builder.maxOutputTokens)
-                    .topP(builder.topP)
-                    .topK(builder.topK)
-                    .stopSequences(builder.stopSequences)
-                    .build();
-        }
+        ChatRequestParameters commonParameters = builder.defaultRequestParameters != null 
+                ? builder.defaultRequestParameters 
+                : DefaultChatRequestParameters.builder().build();
+
+        this.defaultRequestParameters = DefaultChatRequestParameters.builder()
+                .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
+                .maxOutputTokens(getOrDefault(builder.maxOutputTokens, commonParameters.maxOutputTokens()))
+                .topP(getOrDefault(builder.topP, commonParameters.topP()))
+                .topK(getOrDefault(builder.topK, commonParameters.topK()))
+                .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
+                .toolSpecifications(commonParameters.toolSpecifications())
+                .toolChoice(commonParameters.toolChoice())
+                .responseFormat(commonParameters.responseFormat())
+                .build();
     }
 
     @Override

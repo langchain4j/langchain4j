@@ -1,0 +1,27 @@
+package dev.langchain4j.model.google.genai;
+
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.service.common.AbstractStreamingAiServiceIT;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import java.util.List;
+
+@EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".+")
+class GoogleGenAiStreamingAiServiceIT extends AbstractStreamingAiServiceIT {
+
+    @Override
+    protected List<StreamingChatModel> models() {
+        return List.of(GoogleGenAiStreamingChatModel.builder()
+                .apiKey(System.getenv("GEMINI_API_KEY"))
+                .modelName("gemini-2.5-flash")
+                .logRequests(true)
+                .logResponses(true)
+                .build());
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel model) {
+        return GoogleGenAiChatResponseMetadata.class;
+    }
+}
