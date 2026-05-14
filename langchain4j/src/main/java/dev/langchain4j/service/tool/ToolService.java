@@ -13,7 +13,7 @@ import static dev.langchain4j.service.IllegalConfigurationException.illegalConfi
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.ReturnBehavior;
-import dev.langchain4j.agent.tool.ReverseTool;
+import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -84,7 +84,7 @@ public class ToolService {
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
     private final Map<String, ReturnBehavior> returnBehaviors = new HashMap<>();
-    private final Map<String, BiConsumer<ToolExecution, InvocationContext>> reverseToolExecutors = new HashMap<>();
+    private final Map<String, BiConsumer<ToolExecution, InvocationContext>> compensatingExecutors = new HashMap<>();
     private final Set<ToolProvider> toolProviders = new LinkedHashSet<>();
     private boolean transactional;
     private Executor executor;
@@ -134,7 +134,7 @@ public class ToolService {
         for (Object objectWithTools : objectsWithTools) {
             List<AiServiceTool> tools = findTools(objectWithTools);
             addTools(tools, this.toolExecutors, this.toolSpecifications, this.returnBehaviors);
-            this.reverseToolExecutors.putAll(findReverseTools(objectWithTools, this.toolExecutors));
+            this.compensatingExecutors.putAll(findCompensatingActions(objectWithTools, this.toolExecutors));
         }
     }
 
@@ -260,37 +260,37 @@ public class ToolService {
         this.transactional = transactional;
     }
 
-    static Map<String, BiConsumer<ToolExecution, InvocationContext>> findReverseTools(
+    static Map<String, BiConsumer<ToolExecution, InvocationContext>> findCompensatingActions(
             Object objectWithTools, Map<String, ToolExecutor> toolExecutors) {
-        Map<String, BiConsumer<ToolExecution, InvocationContext>> reverseExecutors = new HashMap<>();
+        Map<String, BiConsumer<ToolExecution, InvocationContext>> compensatingActions = new HashMap<>();
         for (Method method : objectWithTools.getClass().getDeclaredMethods()) {
-            ReverseTool reverseTool = method.getAnnotation(ReverseTool.class);
-            if (reverseTool != null) {
-                String toolName = reverseTool.value();
+            CompensateFor compensateFor = method.getAnnotation(CompensateFor.class);
+            if (compensateFor != null) {
+                String toolName = compensateFor.value();
                 ToolExecutor toolExecutor = toolExecutors.get(toolName);
                 if (!(toolExecutor instanceof DefaultToolExecutor)) {
                     throw illegalConfiguration(
-                            "@ReverseTool(\"%s\") on method '%s.%s' references a non-existent tool",
+                            "@CompensateFor(\"%s\") on method '%s.%s' references a non-existent tool",
                             toolName, objectWithTools.getClass().getName(), method.getName());
                 }
                 Method toolMethod = ((DefaultToolExecutor) toolExecutor).originalMethod();
-                Class<?>[] reverseParams = method.getParameterTypes();
-                boolean acceptsToolExecution = reverseParams.length == 1
-                        && reverseParams[0] == ToolExecution.class;
+                Class<?>[] compensatingParams = method.getParameterTypes();
+                boolean acceptsToolExecution = compensatingParams.length == 1
+                        && compensatingParams[0] == ToolExecution.class;
                 if (!acceptsToolExecution
-                        && !Arrays.equals(toolMethod.getParameterTypes(), reverseParams)) {
+                        && !Arrays.equals(toolMethod.getParameterTypes(), compensatingParams)) {
                     throw illegalConfiguration(
-                            "@ReverseTool(\"%s\") on method '%s.%s' must have the same parameter types as tool '%s'"
+                            "@CompensateFor(\"%s\") on method '%s.%s' must have the same parameter types as tool '%s'"
                                     + " or a single %s parameter",
                             toolName, objectWithTools.getClass().getName(), method.getName(),
                             toolName, ToolExecution.class.getSimpleName());
                 }
                 if (acceptsToolExecution) {
-                    Method reverseMethod = method;
-                    reverseExecutors.put(toolName, (toolExecution, ctx) -> {
+                    Method compensatingMethod = method;
+                    compensatingActions.put(toolName, (toolExecution, ctx) -> {
                         try {
-                            reverseMethod.setAccessible(true);
-                            reverseMethod.invoke(objectWithTools, toolExecution);
+                            compensatingMethod.setAccessible(true);
+                            compensatingMethod.invoke(objectWithTools, toolExecution);
                         } catch (Exception e) {
                             throw new RuntimeException(e);
                         }
@@ -301,12 +301,12 @@ public class ToolService {
                             .originalMethod(toolMethod)
                             .methodToInvoke(method)
                             .build();
-                    reverseExecutors.put(toolName, (toolExecution, ctx) ->
+                    compensatingActions.put(toolName, (toolExecution, ctx) ->
                             executor.executeWithContext(toolExecution.request(), ctx));
                 }
             }
         }
-        return reverseExecutors;
+        return compensatingActions;
     }
 
     /**
@@ -478,7 +478,7 @@ public class ToolService {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
-        List<ToolExecution> successfulReversibleExecutions = transactional ? new ArrayList<>() : null;
+        List<ToolExecution> compensableExecutions = transactional ? new ArrayList<>() : null;
 
         int roundTripsLeft = maxToolCallingRoundTrips;
         while (true) {
@@ -524,8 +524,8 @@ public class ToolService {
 
                 fireToolExecutedEvent(invocationContext, request, toolExecution, context.eventListenerRegistrar);
 
-                if (!result.isError() && transactional && reverseToolExecutors.containsKey(request.name())) {
-                    successfulReversibleExecutions.add(toolExecution);
+                if (!result.isError() && transactional && compensatingExecutors.containsKey(request.name())) {
+                    compensableExecutions.add(toolExecution);
                 }
 
                 if (result.isError() && failedToolName == null) {
@@ -536,11 +536,11 @@ public class ToolService {
             }
 
             if (transactional && anyToolErrored) {
-                rollback(successfulReversibleExecutions, invocationContext);
+                rollback(compensableExecutions, invocationContext);
                 for (int i = 0; i < toolExecutionRequests.size(); i++) {
                     ToolExecutionRequest request = toolExecutionRequests.get(i);
                     if (!toolResults.get(request).isError()
-                            && reverseToolExecutors.containsKey(request.name())) {
+                            && compensatingExecutors.containsKey(request.name())) {
                         resultMessages.set(i, ToolExecutionResultMessage.toolExecutionResultMessage(
                                 request.id(), request.name(),
                                 "Tool '" + request.name() + "' was executed successfully"
@@ -610,15 +610,15 @@ public class ToolService {
                 .build();
     }
 
-    private void rollback(List<ToolExecution> successfulReversibleExecutions, InvocationContext invocationContext) {
-        for (int i = successfulReversibleExecutions.size() - 1; i >= 0; i--) {
-            ToolExecution toolExecution = successfulReversibleExecutions.get(i);
+    private void rollback(List<ToolExecution> compensableExecutions, InvocationContext invocationContext) {
+        for (int i = compensableExecutions.size() - 1; i >= 0; i--) {
+            ToolExecution toolExecution = compensableExecutions.get(i);
             String toolName = toolExecution.request().name();
-            BiConsumer<ToolExecution, InvocationContext> reverseExecutor = reverseToolExecutors.get(toolName);
+            BiConsumer<ToolExecution, InvocationContext> compensatingAction = compensatingExecutors.get(toolName);
             try {
-                reverseExecutor.accept(toolExecution, invocationContext);
+                compensatingAction.accept(toolExecution, invocationContext);
             } catch (Exception e) {
-                log.warn("Failed to rollback tool '{}': {}", toolName, e.getMessage(), e);
+                log.warn("Compensating action failed for tool '{}': {}", toolName, e.getMessage(), e);
             }
         }
     }

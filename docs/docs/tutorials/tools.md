@@ -1546,18 +1546,18 @@ account due to insufficient funds, leaving the recipient with extra money.
 
 To handle this, you can mark an AI Service as **transactional**. When enabled,
 if any tool execution fails, all previously successful tool calls that declare a
-reverse action are automatically rolled back in reverse order.
+compensating action are automatically undone in reverse order.
 
-#### Declaring Reverse Actions with `@ReverseTool`
+#### Declaring Compensating Actions with `@CompensateFor`
 
-Use the `@ReverseTool` annotation on a method to declare it as the compensating
-action for a `@Tool`. The `value` must match the name of the tool it reverses
+Use the `@CompensateFor` annotation on a method to declare it as the compensating
+action for a `@Tool`. The `value` must match the name of the tool it compensates for
 (either the `@Tool` method name or its `@Tool(name = ...)` attribute).
-The reverse method must either have the same parameter types as the tool it reverses,
+The compensating method must either have the same parameter types as the tool,
 or accept a single `ToolExecution` parameter.
 
-**Option 1: Same parameter types** — the reverse method receives the same arguments
-that were passed to the original tool:
+**Option 1: Same parameter types** — the compensating method receives the same
+arguments that were passed to the original tool:
 
 ```java
 class BankAccountService {
@@ -1567,7 +1567,7 @@ class BankAccountService {
         accounts.merge(name, amount, Double::sum);
     }
 
-    @ReverseTool("credit")
+    @CompensateFor("credit")
     void uncredit(String name, double amount) {
         accounts.merge(name, -amount, Double::sum);
     }
@@ -1580,14 +1580,14 @@ class BankAccountService {
         accounts.merge(name, -amount, Double::sum);
     }
 
-    @ReverseTool("withdraw")
+    @CompensateFor("withdraw")
     void unwithdraw(String name, double amount) {
         accounts.merge(name, amount, Double::sum);
     }
 }
 ```
 
-**Option 2: `ToolExecution` parameter** — the reverse method receives the full
+**Option 2: `ToolExecution` parameter** — the compensating method receives the full
 `ToolExecution`, giving access to both the original arguments and the tool's
 **return value**. This is useful when undoing an action requires information
 produced by the original execution (e.g. a transaction ID):
@@ -1601,7 +1601,7 @@ class BankAccountService {
         return createTransactionRecord(name, amount); // e.g. "TX-42"
     }
 
-    @ReverseTool("credit")
+    @CompensateFor("credit")
     void uncredit(ToolExecution toolExecution) {
         String transactionId = toolExecution.result(); // "TX-42"
         reverseTransaction(transactionId);
@@ -1631,13 +1631,13 @@ normal error message. This keeps the `ChatMemory` consistent and lets the LLM
 decide what to do next — retry, inform the user, or take a different approach.
 
 Without `.transactional()`, the error is sent back to the LLM as usual and no
-rollback occurs — even if `@ReverseTool` annotations are present.
+compensation occurs — even if `@CompensateFor` annotations are present.
 
 #### Validation
 
-At AI Service build time, each `@ReverseTool` is validated:
+At AI Service build time, each `@CompensateFor` is validated:
 - The referenced tool must exist (by name) on the same object.
-- The reverse method must have exactly the same parameter types as the tool,
+- The compensating method must have exactly the same parameter types as the tool,
   or accept a single `ToolExecution` parameter.
 
 If either check fails, an `IllegalConfigurationException` is thrown immediately,
@@ -1646,13 +1646,18 @@ so misconfigurations are caught at startup rather than at runtime.
 #### Notes and Limitations
 
 :::note
-Rollback is best-effort: if a reverse action itself throws an exception, it is
-logged at WARN level and the remaining reverse actions continue to execute.
+Compensation is best-effort: if a compensating action itself throws an exception, it is
+logged at WARN level and the remaining compensating actions continue to execute.
 :::
 
 :::note
-`@ReverseTool` methods are not exposed to the LLM — they are internal rollback
+`@CompensateFor` methods are not exposed to the LLM — they are internal compensation
 infrastructure and do not appear in tool specifications.
+:::
+
+:::note
+Compensating actions always run sequentially in reverse order, even when tool
+execution is configured to run in parallel via `.executeToolsConcurrently()`.
 :::
 
 :::note

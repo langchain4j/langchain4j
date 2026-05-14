@@ -28,7 +28,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.LoggingChatModelListener;
 import dev.langchain4j.agent.tool.P;
-import dev.langchain4j.agent.tool.ReverseTool;
+import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -2145,7 +2145,7 @@ class AiServicesWithToolsIT {
             accounts.merge(name, amount, Double::sum);
         }
 
-        @ReverseTool("credit")
+        @CompensateFor("credit")
         void uncredit(String name, double amount) {
             accounts.merge(name, -amount, Double::sum);
         }
@@ -2159,7 +2159,7 @@ class AiServicesWithToolsIT {
             accounts.merge(name, -amount, Double::sum);
         }
 
-        @ReverseTool("withdraw")
+        @CompensateFor("withdraw")
         void unwithdraw(String name, double amount) {
             accounts.merge(name, amount, Double::sum);
         }
@@ -2274,7 +2274,7 @@ class AiServicesWithToolsIT {
                 return "TX-42";
             }
 
-            @ReverseTool("credit")
+            @CompensateFor("credit")
             void uncredit(ToolExecution toolExecution) {
                 reversedTransactionIds.add(toolExecution.result());
                 Map<String, Object> args = Json.fromJson(toolExecution.request().arguments(), Map.class);
@@ -2347,7 +2347,7 @@ class AiServicesWithToolsIT {
             return "FL-123";
         }
 
-        @ReverseTool("bookFlight")
+        @CompensateFor("bookFlight")
         void cancelFlight(ToolExecution toolExecution) {
             executionLog.add("cancelFlight:" + toolExecution.result());
         }
@@ -2361,7 +2361,7 @@ class AiServicesWithToolsIT {
             return "HT-456";
         }
 
-        @ReverseTool("bookHotel")
+        @CompensateFor("bookHotel")
         void cancelHotel(ToolExecution toolExecution) {
             executionLog.add("cancelHotel:" + toolExecution.result());
         }
@@ -2375,7 +2375,7 @@ class AiServicesWithToolsIT {
             return "CR-789";
         }
 
-        @ReverseTool("rentCar")
+        @CompensateFor("rentCar")
         void cancelCar(ToolExecution toolExecution) {
             executionLog.add("cancelCar:" + toolExecution.result());
         }
@@ -2550,7 +2550,7 @@ class AiServicesWithToolsIT {
     }
 
     @Test
-    void should_throw_when_reverse_tool_has_wrong_signature() {
+    void should_throw_when_compensating_action_has_wrong_signature() {
 
         class MisconfiguredService {
 
@@ -2558,7 +2558,7 @@ class AiServicesWithToolsIT {
             void credit(String name, double amount) {
             }
 
-            @ReverseTool("credit")
+            @CompensateFor("credit")
             void uncredit(String name) {
             }
         }
@@ -2568,7 +2568,7 @@ class AiServicesWithToolsIT {
                         .chatModel(ChatModelMock.thatAlwaysResponds("ok"))
                         .tools(new MisconfiguredService())
                         .build())
-                .withMessageContaining("@ReverseTool(\"credit\")")
+                .withMessageContaining("@CompensateFor(\"credit\")")
                 .withMessageContaining("same parameter types");
     }
 }
