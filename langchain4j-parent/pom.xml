@@ -60,7 +60,7 @@
         <junit.version>6.0.3</junit.version>
         <kotest.version>5.9.1</kotest.version>
         <kotlin.version>1.9.25</kotlin.version>
-        <kotlinx-coroutines.version>1.8.1</kotlinx-coroutines.version>
+        <kotlinx-coroutines.version>1.11.0</kotlinx-coroutines.version>
         <log4j.version>2.24.3</log4j.version>
         <logback.version>1.5.32</logback.version>
         <mockito-kotlin.version>5.4.0</mockito-kotlin.version>
