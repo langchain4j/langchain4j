@@ -171,7 +171,8 @@ class GoogleGenAiChatModelTest {
         assertThat(builder.enableGoogleSearch(true)).isSameAs(builder);
         assertThat(builder.enableGoogleMaps(true)).isSameAs(builder);
         assertThat(builder.enableUrlContext(true)).isSameAs(builder);
-        assertThat(builder.generateContentConfig(GenerateContentConfig.builder().build())).isSameAs(builder);
+        assertThat(builder.generateContentConfig(GenerateContentConfig.builder().build()))
+                .isSameAs(builder);
         assertThat(builder.logRequests(true)).isSameAs(builder);
         assertThat(builder.logResponses(true)).isSameAs(builder);
         assertThat(builder.safetySettings(List.of())).isSameAs(builder);
@@ -183,10 +184,8 @@ class GoogleGenAiChatModelTest {
 
     @Test
     void should_build_with_generate_content_config() {
-        GenerateContentConfig config = GenerateContentConfig.builder()
-                .temperature(0.5f)
-                .topP(0.9f)
-                .build();
+        GenerateContentConfig config =
+                GenerateContentConfig.builder().temperature(0.5f).topP(0.9f).build();
 
         GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
                 .apiKey("test-key")

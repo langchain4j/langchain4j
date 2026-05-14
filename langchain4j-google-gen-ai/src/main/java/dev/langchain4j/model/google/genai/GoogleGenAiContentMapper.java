@@ -254,10 +254,7 @@ class GoogleGenAiContentMapper {
                 .rawResponse(response)
                 .build();
 
-        return ChatResponse.builder()
-                .aiMessage(aiMessage)
-                .metadata(metadata)
-                .build();
+        return ChatResponse.builder().aiMessage(aiMessage).metadata(metadata).build();
     }
 
     private static List<Part> toParts(UserMessage userMessage) {

@@ -26,8 +26,7 @@ public class GoogleGenAiChatResponseMetadata extends ChatResponseMetadata {
 
     @Override
     public Builder toBuilder() {
-        return ((Builder) super.toBuilder(builder()))
-                .rawResponse(rawResponse);
+        return ((Builder) super.toBuilder(builder())).rawResponse(rawResponse);
     }
 
     @Override

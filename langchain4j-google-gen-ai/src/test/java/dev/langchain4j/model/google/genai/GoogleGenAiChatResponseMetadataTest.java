@@ -68,7 +68,8 @@ class GoogleGenAiChatResponseMetadataTest {
                 .rawResponse(rawResponse)
                 .build();
 
-        GoogleGenAiChatResponseMetadata rebuilt = (GoogleGenAiChatResponseMetadata) metadata.toBuilder().build();
+        GoogleGenAiChatResponseMetadata rebuilt =
+                (GoogleGenAiChatResponseMetadata) metadata.toBuilder().build();
 
         assertThat(rebuilt.id()).isEqualTo("test-id");
         assertThat(rebuilt.rawResponse()).isSameAs(rawResponse);
@@ -95,13 +96,11 @@ class GoogleGenAiChatResponseMetadataTest {
 
     @Test
     void should_not_equal_different_metadata() {
-        GoogleGenAiChatResponseMetadata metadata1 = GoogleGenAiChatResponseMetadata.builder()
-                .id("id-1")
-                .build();
+        GoogleGenAiChatResponseMetadata metadata1 =
+                GoogleGenAiChatResponseMetadata.builder().id("id-1").build();
 
-        GoogleGenAiChatResponseMetadata metadata2 = GoogleGenAiChatResponseMetadata.builder()
-                .id("id-2")
-                .build();
+        GoogleGenAiChatResponseMetadata metadata2 =
+                GoogleGenAiChatResponseMetadata.builder().id("id-2").build();
 
         assertThat(metadata1).isNotEqualTo(metadata2);
     }

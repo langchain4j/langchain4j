@@ -3,13 +3,11 @@ package dev.langchain4j.model.google.genai;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.util.Collections.emptyList;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
 import com.google.genai.types.Content;
 import com.google.genai.types.GenerateContentConfig;
-import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.Schema;
 import com.google.genai.types.ToolConfig;
@@ -22,7 +20,6 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.slf4j.Logger;
@@ -77,8 +74,8 @@ public class GoogleGenAiChatModel implements ChatModel {
                         builder.location,
                         builder.timeout);
 
-        ChatRequestParameters commonParameters = builder.defaultRequestParameters != null 
-                ? builder.defaultRequestParameters 
+        ChatRequestParameters commonParameters = builder.defaultRequestParameters != null
+                ? builder.defaultRequestParameters
                 : DefaultChatRequestParameters.builder().build();
 
         this.defaultRequestParameters = DefaultChatRequestParameters.builder()

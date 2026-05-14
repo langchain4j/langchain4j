@@ -12,12 +12,13 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".+")
 class GoogleGenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
-    static final GoogleGenAiStreamingChatModel GOOGLE_GEN_AI_STREAMING_CHAT_MODEL = GoogleGenAiStreamingChatModel.builder()
-            .apiKey(System.getenv("GEMINI_API_KEY"))
-            .modelName("gemini-2.5-flash")
-            .logRequests(true)
-            .logResponses(true)
-            .build();
+    static final GoogleGenAiStreamingChatModel GOOGLE_GEN_AI_STREAMING_CHAT_MODEL =
+            GoogleGenAiStreamingChatModel.builder()
+                    .apiKey(System.getenv("GEMINI_API_KEY"))
+                    .modelName("gemini-2.5-flash")
+                    .logRequests(true)
+                    .logResponses(true)
+                    .build();
 
     @Override
     protected List<StreamingChatModel> models() {

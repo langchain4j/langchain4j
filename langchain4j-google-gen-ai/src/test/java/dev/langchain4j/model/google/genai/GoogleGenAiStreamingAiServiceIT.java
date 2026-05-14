@@ -1,11 +1,10 @@
 package dev.langchain4j.model.google.genai;
 
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.service.common.AbstractStreamingAiServiceIT;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.service.common.AbstractStreamingAiServiceIT;
 import java.util.List;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".+")
 class GoogleGenAiStreamingAiServiceIT extends AbstractStreamingAiServiceIT {

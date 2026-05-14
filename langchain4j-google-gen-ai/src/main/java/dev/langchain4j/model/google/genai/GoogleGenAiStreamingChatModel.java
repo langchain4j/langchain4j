@@ -3,7 +3,6 @@ package dev.langchain4j.model.google.genai;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.util.Collections.emptyList;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
@@ -86,8 +85,8 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                         builder.location,
                         builder.timeout);
 
-        ChatRequestParameters commonParameters = builder.defaultRequestParameters != null 
-                ? builder.defaultRequestParameters 
+        ChatRequestParameters commonParameters = builder.defaultRequestParameters != null
+                ? builder.defaultRequestParameters
                 : DefaultChatRequestParameters.builder().build();
 
         this.defaultRequestParameters = DefaultChatRequestParameters.builder()

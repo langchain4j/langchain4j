@@ -10,10 +10,10 @@ import com.google.genai.types.GoogleMaps;
 import com.google.genai.types.GoogleSearch;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.Schema;
-import com.google.genai.types.UrlContext;
 import com.google.genai.types.ThinkingConfig;
 import com.google.genai.types.Tool;
 import com.google.genai.types.ToolConfig;
+import com.google.genai.types.UrlContext;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -84,7 +84,13 @@ class GoogleGenAiConfigBuilder {
         }
 
         // Tools
-        buildTools(configBuilder, parameters, googleSearchEnabled, googleMapsEnabled, urlContextEnabled, allowedFunctionNames);
+        buildTools(
+                configBuilder,
+                parameters,
+                googleSearchEnabled,
+                googleMapsEnabled,
+                urlContextEnabled,
+                allowedFunctionNames);
 
         return configBuilder.build();
     }
@@ -115,13 +121,16 @@ class GoogleGenAiConfigBuilder {
         }
 
         if (googleSearchEnabled) {
-            requestTools.add(Tool.builder().googleSearch(GoogleSearch.builder().build()).build());
+            requestTools.add(
+                    Tool.builder().googleSearch(GoogleSearch.builder().build()).build());
         }
         if (googleMapsEnabled) {
-            requestTools.add(Tool.builder().googleMaps(GoogleMaps.builder().build()).build());
+            requestTools.add(
+                    Tool.builder().googleMaps(GoogleMaps.builder().build()).build());
         }
         if (urlContextEnabled) {
-            requestTools.add(Tool.builder().urlContext(UrlContext.builder().build()).build());
+            requestTools.add(
+                    Tool.builder().urlContext(UrlContext.builder().build()).build());
         }
 
         if (!requestTools.isEmpty()) {
