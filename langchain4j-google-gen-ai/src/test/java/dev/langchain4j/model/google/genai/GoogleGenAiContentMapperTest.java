@@ -236,7 +236,7 @@ class GoogleGenAiContentMapperTest {
                 .candidates(Collections.emptyList())
                 .build();
 
-        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response);
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
 
         assertThat(result.aiMessage().text()).isEqualTo("Empty response");
         assertThat(result.finishReason()).isEqualTo(FinishReason.OTHER);
@@ -258,7 +258,7 @@ class GoogleGenAiContentMapperTest {
                         .build())
                 .build();
 
-        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response);
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
 
         assertThat(result.aiMessage().text()).isEqualTo("Hello!");
         assertThat(result.finishReason()).isEqualTo(FinishReason.STOP);
@@ -281,7 +281,7 @@ class GoogleGenAiContentMapperTest {
                         .build())
                 .build();
 
-        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response);
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
 
         assertThat(result.metadata()).isInstanceOf(GoogleGenAiChatResponseMetadata.class);
         GoogleGenAiChatResponseMetadata metadata = (GoogleGenAiChatResponseMetadata) result.metadata();
@@ -309,7 +309,7 @@ class GoogleGenAiContentMapperTest {
                         .build()))
                 .build();
 
-        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response);
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
 
         assertThat(result.aiMessage().toolExecutionRequests()).hasSize(1);
         assertThat(result.aiMessage().toolExecutionRequests().get(0).name()).isEqualTo("getWeather");
@@ -338,7 +338,7 @@ class GoogleGenAiContentMapperTest {
                         .build()))
                 .build();
 
-        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response);
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
 
         assertThat(result.aiMessage().text()).isEqualTo("Let me check the weather.");
         assertThat(result.aiMessage().toolExecutionRequests()).hasSize(1);
@@ -350,7 +350,7 @@ class GoogleGenAiContentMapperTest {
                 .candidates(List.of(Candidate.builder().build()))
                 .build();
 
-        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response);
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
 
         assertThat(result.aiMessage().text()).isEmpty();
         assertThat(result.finishReason()).isEqualTo(FinishReason.STOP);
@@ -367,7 +367,7 @@ class GoogleGenAiContentMapperTest {
                         .build()))
                 .build();
 
-        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response);
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
 
         assertThat(result.tokenUsage().inputTokenCount()).isEqualTo(0);
         assertThat(result.tokenUsage().outputTokenCount()).isEqualTo(0);
@@ -451,7 +451,7 @@ class GoogleGenAiContentMapperTest {
 
         assertThatThrownBy(() -> GoogleGenAiContentMapper.toContent(message))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Failed to read data from");
+                .hasMessageContaining("nonexistent/file.png");
     }
 
     // --- multimodal content with explicit mimeType ---

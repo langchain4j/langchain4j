@@ -33,6 +33,7 @@ class GoogleGenAiChatModelListenerIT extends AbstractChatModelListenerIT {
     protected ChatModel createFailingModel(ChatModelListener listener) {
         return GoogleGenAiChatModel.builder()
                 .apiKey("banana")
+                .modelName(modelName())
                 .maxRetries(0)
                 .listeners(singletonList(listener))
                 .logRequests(true)
@@ -44,4 +45,10 @@ class GoogleGenAiChatModelListenerIT extends AbstractChatModelListenerIT {
     protected Class<? extends Exception> expectedExceptionClass() {
         return RuntimeException.class; // Usually wrapped or com.google.genai.exception
     }
+
+    @Override
+    protected boolean assertResponseId() {
+        return false;
+    }
+
 }

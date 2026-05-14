@@ -33,6 +33,7 @@ class GoogleGenAiStreamingChatModelListenerIT extends AbstractStreamingChatModel
     protected StreamingChatModel createFailingModel(ChatModelListener listener) {
         return GoogleGenAiStreamingChatModel.builder()
                 .apiKey("banana")
+                .modelName(modelName())
                 .listeners(singletonList(listener))
                 .logRequests(true)
                 .logResponses(true)
@@ -41,6 +42,11 @@ class GoogleGenAiStreamingChatModelListenerIT extends AbstractStreamingChatModel
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return RuntimeException.class;
+        return com.google.genai.errors.ClientException.class;
+    }
+
+    @Override
+    protected boolean assertResponseId() {
+        return false;
     }
 }

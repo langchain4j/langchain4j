@@ -79,6 +79,7 @@ public class GoogleGenAiChatModel implements ChatModel {
                 : DefaultChatRequestParameters.builder().build();
 
         this.defaultRequestParameters = DefaultChatRequestParameters.builder()
+                .modelName(this.modelName)
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .maxOutputTokens(getOrDefault(builder.maxOutputTokens, commonParameters.maxOutputTokens()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
@@ -93,6 +94,7 @@ public class GoogleGenAiChatModel implements ChatModel {
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
         ChatRequestParameters parameters = chatRequest.parameters();
+        String resolvedModelName = getOrDefault(parameters.modelName(), this.modelName);
 
         Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(chatRequest.messages());
         List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages());
@@ -101,6 +103,7 @@ public class GoogleGenAiChatModel implements ChatModel {
                 ? generateContentConfig
                 : GoogleGenAiConfigBuilder.buildConfig(
                         parameters,
+                        defaultRequestParameters,
                         systemInstruction,
                         safetySettings,
                         responseSchema,
@@ -115,13 +118,13 @@ public class GoogleGenAiChatModel implements ChatModel {
         if (logRequests)
             log.info(
                     "Google Request: model={}, msgCount={}",
-                    modelName,
+                    resolvedModelName,
                     chatRequest.messages().size());
 
         var result = GoogleGenAiRetryHelper.executeWithRetry(
-                () -> client.models.generateContent(modelName, contents, config), maxRetries, log);
+                () -> client.models.generateContent(resolvedModelName, contents, config), maxRetries, log);
 
-        ChatResponse chatResponse = GoogleGenAiContentMapper.toChatResponse(result);
+        ChatResponse chatResponse = GoogleGenAiContentMapper.toChatResponse(result, resolvedModelName);
 
         if (logResponses) log.info("Google Response: tokens={}", chatResponse.tokenUsage());
 

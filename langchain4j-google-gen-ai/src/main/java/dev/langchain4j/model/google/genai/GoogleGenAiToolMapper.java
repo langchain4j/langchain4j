@@ -50,7 +50,7 @@ public class GoogleGenAiToolMapper {
         return fdBuilder.build();
     }
 
-    private static Schema convertToGoogleSchema(JsonSchemaElement element) {
+    static Schema convertToGoogleSchema(JsonSchemaElement element) {
         if (element == null) {
             return null;
         }

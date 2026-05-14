@@ -151,7 +151,7 @@ class GoogleGenAiContentMapper {
                     Map<String, Object> args = new HashMap<>();
                     if (req.arguments() != null && !req.arguments().isEmpty()) {
                         try {
-                            args = OBJECT_MAPPER.readValue(req.arguments(), new TypeReference<>() {});
+                            args = OBJECT_MAPPER.readValue(req.arguments(), new TypeReference<Map<String, Object>>() {});
                         } catch (Exception e) {
                             log.warn(
                                     "Failed to parse tool execution request arguments {}: {}",
@@ -169,10 +169,15 @@ class GoogleGenAiContentMapper {
             }
             return Content.builder().role(MODEL_ROLE).parts(parts).build();
 
-        } else if (message instanceof ToolExecutionResultMessage) {
-            ToolExecutionResultMessage toolMsg = (ToolExecutionResultMessage) message;
+        } else if (message instanceof ToolExecutionResultMessage toolMsg) {
+            String toolResult;
+            try {
+                toolResult = toolMsg.text();
+            } catch (IllegalStateException e) {
+                throw new dev.langchain4j.exception.UnsupportedFeatureException("Google Gen AI currently does not support non-text content in tool execution results");
+            }
             Map<String, Object> responseMap = new HashMap<>();
-            responseMap.put("result", toolMsg.text());
+            responseMap.put("result", toolResult);
 
             return Content.builder()
                     .role(FUNCTION_ROLE)
@@ -187,14 +192,17 @@ class GoogleGenAiContentMapper {
         throw new IllegalArgumentException("Unknown message type: " + message.type());
     }
 
-    static ChatResponse toChatResponse(GenerateContentResponse response) {
+    static ChatResponse toChatResponse(GenerateContentResponse response, String modelName) {
         List<Candidate> candidates = response.candidates().orElse(Collections.emptyList());
 
         if (candidates.isEmpty()) {
             return ChatResponse.builder()
                     .aiMessage(AiMessage.from("Empty response"))
-                    .tokenUsage(new TokenUsage(0, 0))
-                    .finishReason(FinishReason.OTHER)
+                    .metadata(GoogleGenAiChatResponseMetadata.builder()
+                            .modelName(modelName)
+                            .tokenUsage(new TokenUsage(0, 0))
+                            .finishReason(FinishReason.OTHER)
+                            .build())
                     .build();
         }
 
@@ -248,9 +256,12 @@ class GoogleGenAiContentMapper {
                                 : 0))
                 .orElse(new TokenUsage(0, 0));
 
+        FinishReason finishReason = !toolRequests.isEmpty() ? FinishReason.TOOL_EXECUTION : FinishReason.STOP;
+
         GoogleGenAiChatResponseMetadata metadata = GoogleGenAiChatResponseMetadata.builder()
+                .modelName(modelName)
                 .tokenUsage(usage)
-                .finishReason(FinishReason.STOP)
+                .finishReason(finishReason)
                 .rawResponse(response)
                 .build();
 
@@ -289,7 +300,7 @@ class GoogleGenAiContentMapper {
             if (url.getScheme().equals("gs")) {
                 return fromMimeTypeAndData(effectiveMimeType, url);
             } else {
-                return fromMimeTypeAndData(effectiveMimeType, readBytes(url));
+                return fromMimeTypeAndData(effectiveMimeType, dev.langchain4j.internal.Utils.readBytes(url.toString()));
             }
         } else if (binaryData != null) {
             return fromMimeTypeAndData(mimeType, binaryData);
@@ -318,19 +329,6 @@ class GoogleGenAiContentMapper {
         return Part.fromUri(uri.toString(), mimeType);
     }
 
-    private static byte[] readBytes(URI uri) {
-        try (InputStream inputStream = Files.newInputStream(Paths.get(uri))) {
-            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-            int nRead;
-            byte[] data = new byte[1024];
-            while ((nRead = inputStream.read(data, 0, data.length)) != -1) {
-                buffer.write(data, 0, nRead);
-            }
-            return buffer.toByteArray();
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to read data from " + uri, e);
-        }
-    }
 
     private GoogleGenAiContentMapper() {}
 }

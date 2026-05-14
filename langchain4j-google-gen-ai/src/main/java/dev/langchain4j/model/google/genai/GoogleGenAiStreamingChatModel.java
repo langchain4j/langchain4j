@@ -90,6 +90,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 : DefaultChatRequestParameters.builder().build();
 
         this.defaultRequestParameters = DefaultChatRequestParameters.builder()
+                .modelName(this.modelName)
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .maxOutputTokens(getOrDefault(builder.maxOutputTokens, commonParameters.maxOutputTokens()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
@@ -106,6 +107,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         ChatRequestParameters parameters = chatRequest.parameters();
+        String resolvedModelName = getOrDefault(parameters.modelName(), this.modelName);
 
         Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(chatRequest.messages());
         List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages());
@@ -114,6 +116,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 ? generateContentConfig
                 : GoogleGenAiConfigBuilder.buildConfig(
                         parameters,
+                        defaultRequestParameters,
                         systemInstruction,
                         safetySettings,
                         responseSchema,
@@ -128,14 +131,14 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         if (logRequests) {
             log.info(
                     "Google Streaming Request: model={}, msgCount={}",
-                    modelName,
+                    resolvedModelName,
                     chatRequest.messages().size());
         }
 
         executor.execute(() -> {
             try {
                 ResponseStream<GenerateContentResponse> stream =
-                        client.models.generateContentStream(modelName, contents, config);
+                        client.models.generateContentStream(resolvedModelName, contents, config);
 
                 StringBuilder textBuilder = new StringBuilder();
                 List<ToolExecutionRequest> toolRequests = new ArrayList<>();
@@ -147,7 +150,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
 
                 for (GenerateContentResponse chunk : stream) {
                     lastChunk = chunk;
-                    ChatResponse partialResponse = GoogleGenAiContentMapper.toChatResponse(chunk);
+                    ChatResponse partialResponse = GoogleGenAiContentMapper.toChatResponse(chunk, resolvedModelName);
                     AiMessage aiMessage = partialResponse.aiMessage();
 
                     if (aiMessage.text() != null && !aiMessage.text().isEmpty()) {
@@ -182,8 +185,9 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 }
 
                 GoogleGenAiChatResponseMetadata metadata = GoogleGenAiChatResponseMetadata.builder()
+                        .modelName(resolvedModelName)
                         .tokenUsage(tokenUsage)
-                        .finishReason(finishReason != null ? finishReason : FinishReason.STOP)
+                        .finishReason(!toolRequests.isEmpty() ? FinishReason.TOOL_EXECUTION : (finishReason != null ? finishReason : FinishReason.STOP))
                         .rawResponse(lastChunk)
                         .build();
 

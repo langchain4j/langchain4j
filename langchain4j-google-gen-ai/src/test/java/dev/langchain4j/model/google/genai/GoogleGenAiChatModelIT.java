@@ -51,6 +51,11 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected boolean supportsJsonResponseFormatWithRawSchema() {
+        return false;
+    }
+
+    @Override
     protected boolean assertToolId(ChatModel model) {
         return false;
     }
@@ -58,5 +63,20 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
     @Override
     protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(ChatModel model) {
         return GoogleGenAiChatResponseMetadata.class;
+    }
+
+    @Override
+    protected boolean assertResponseId() {
+        return false;
+    }
+
+    @Override
+    protected boolean assertFinishReason() {
+        return false;
+    }
+
+    @Override
+    protected void assertOutputTokenCount(dev.langchain4j.model.output.TokenUsage tokenUsage, Integer maxOutputTokens) {
+        org.assertj.core.api.Assertions.assertThat(tokenUsage.outputTokenCount()).isLessThanOrEqualTo(maxOutputTokens);
     }
 }

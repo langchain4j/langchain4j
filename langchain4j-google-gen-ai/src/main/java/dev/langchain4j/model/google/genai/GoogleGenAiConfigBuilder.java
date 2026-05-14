@@ -16,6 +16,7 @@ import com.google.genai.types.ToolConfig;
 import com.google.genai.types.UrlContext;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import java.util.ArrayList;
@@ -25,6 +26,7 @@ class GoogleGenAiConfigBuilder {
 
     static GenerateContentConfig buildConfig(
             ChatRequestParameters parameters,
+            ChatRequestParameters defaultParameters,
             Content systemInstruction,
             List<SafetySetting> safetySettings,
             Schema responseSchema,
@@ -39,12 +41,20 @@ class GoogleGenAiConfigBuilder {
         GenerateContentConfig.Builder configBuilder = GenerateContentConfig.builder();
 
         // Generation parameters
-        if (parameters.temperature() != null)
-            configBuilder.temperature(parameters.temperature().floatValue());
-        if (parameters.topP() != null) configBuilder.topP(parameters.topP().floatValue());
-        if (parameters.topK() != null) configBuilder.topK(parameters.topK().floatValue());
-        if (parameters.maxOutputTokens() != null) configBuilder.maxOutputTokens(parameters.maxOutputTokens());
-        if (parameters.stopSequences() != null) configBuilder.stopSequences(parameters.stopSequences());
+        Double temperature = dev.langchain4j.internal.Utils.getOrDefault(parameters.temperature(), defaultParameters.temperature());
+        if (temperature != null) configBuilder.temperature(temperature.floatValue());
+        
+        Double topP = dev.langchain4j.internal.Utils.getOrDefault(parameters.topP(), defaultParameters.topP());
+        if (topP != null) configBuilder.topP(topP.floatValue());
+        
+        Integer topK = dev.langchain4j.internal.Utils.getOrDefault(parameters.topK(), defaultParameters.topK());
+        if (topK != null) configBuilder.topK(topK.floatValue());
+        
+        Integer maxOutputTokens = dev.langchain4j.internal.Utils.getOrDefault(parameters.maxOutputTokens(), defaultParameters.maxOutputTokens());
+        if (maxOutputTokens != null) configBuilder.maxOutputTokens(maxOutputTokens);
+        
+        List<String> stopSequences = dev.langchain4j.internal.Utils.getOrDefault(parameters.stopSequences(), defaultParameters.stopSequences());
+        if (stopSequences != null) configBuilder.stopSequences(stopSequences);
 
         // Safety settings
         if (safetySettings != null && !safetySettings.isEmpty()) {
@@ -61,9 +71,14 @@ class GoogleGenAiConfigBuilder {
             configBuilder.responseMimeType("application/json");
         }
 
-        if (parameters.responseFormat() != null) {
-            if (parameters.responseFormat().type() == ResponseFormatType.JSON) {
+        ResponseFormat responseFormat = dev.langchain4j.internal.Utils.getOrDefault(parameters.responseFormat(), defaultParameters.responseFormat());
+        if (responseFormat != null) {
+            if (responseFormat.type() == ResponseFormatType.JSON) {
                 configBuilder.responseMimeType("application/json");
+                if (responseFormat.jsonSchema() != null) {
+                    com.google.genai.types.Schema googleSchema = GoogleGenAiToolMapper.convertToGoogleSchema(responseFormat.jsonSchema().rootElement());
+                    configBuilder.responseSchema(googleSchema);
+                }
             }
         }
 
@@ -87,6 +102,7 @@ class GoogleGenAiConfigBuilder {
         buildTools(
                 configBuilder,
                 parameters,
+                defaultParameters,
                 googleSearchEnabled,
                 googleMapsEnabled,
                 urlContextEnabled,
@@ -98,12 +114,13 @@ class GoogleGenAiConfigBuilder {
     private static void buildTools(
             GenerateContentConfig.Builder configBuilder,
             ChatRequestParameters parameters,
+            ChatRequestParameters defaultParameters,
             boolean googleSearchEnabled,
             boolean googleMapsEnabled,
             boolean urlContextEnabled,
             List<String> allowedFunctionNames) {
 
-        List<ToolSpecification> toolSpecs = parameters.toolSpecifications();
+        List<ToolSpecification> toolSpecs = dev.langchain4j.internal.Utils.getOrDefault(parameters.toolSpecifications(), defaultParameters.toolSpecifications());
 
         List<Tool> requestTools = new ArrayList<>();
         List<FunctionDeclaration> functionDeclarations = new ArrayList<>();
@@ -140,9 +157,10 @@ class GoogleGenAiConfigBuilder {
         if (!isNullOrEmpty(toolSpecs)) {
             FunctionCallingConfig.Builder funcConfig = FunctionCallingConfig.builder();
 
-            if (parameters.toolChoice() == ToolChoice.REQUIRED) {
+            ToolChoice toolChoice = dev.langchain4j.internal.Utils.getOrDefault(parameters.toolChoice(), defaultParameters.toolChoice());
+            if (toolChoice == ToolChoice.REQUIRED) {
                 funcConfig.mode("ANY");
-            } else if (parameters.toolChoice() == ToolChoice.NONE) {
+            } else if (toolChoice == ToolChoice.NONE) {
                 funcConfig.mode("NONE");
             } else {
                 funcConfig.mode("AUTO");
