@@ -13,8 +13,18 @@
     <name>LangChain4j :: Document Parser :: Apache POI</name>
 
     <properties>
-        <apache.poi.version>5.4.0</apache.poi.version>
+        <apache.poi.version>5.5.1</apache.poi.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>commons-codec</groupId>
+                <artifactId>commons-codec</artifactId>
+                <version>1.20.0</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
 
