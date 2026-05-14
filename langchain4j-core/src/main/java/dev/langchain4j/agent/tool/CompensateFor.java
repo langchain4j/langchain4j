@@ -10,11 +10,15 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
  * Marks a method as the compensating action for a {@link Tool}.
- * When an AI Service is configured as transactional, if any tool execution fails,
- * all previously executed tools' compensating actions are called in reverse order
- * to undo their effects.
+ * When compensation is enabled via {@code .compensateOnToolErrors(true)}, if any tool
+ * execution fails, all previously executed tools' compensating actions are called in
+ * reverse order to undo their effects.
  * The annotated method must have the same parameter types as the tool it compensates for,
  * or accept a single {@code ToolExecution} parameter.
+ * <p>
+ * Only {@link Tool @Tool}-annotated methods support compensating actions. Programmatically
+ * or dynamically defined tools (e.g. MCP tools, tools registered via {@code ToolSpecification})
+ * are not supported.
  *
  * @since 1.15.0
  */

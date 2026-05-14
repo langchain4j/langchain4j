@@ -1661,6 +1661,12 @@ execution is configured to run in parallel via `.executeToolsConcurrently()`.
 :::
 
 :::note
+`@CompensateFor` only works with `@Tool`-annotated methods. Programmatically or
+dynamically defined tools (e.g. MCP tools, tools registered via `ToolSpecification`)
+are not supported.
+:::
+
+:::note
 Compensating tool actions are currently marked as experimental and may evolve
 in future releases.
 :::

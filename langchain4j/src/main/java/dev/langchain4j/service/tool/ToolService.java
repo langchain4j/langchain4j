@@ -268,10 +268,16 @@ public class ToolService {
             if (compensateFor != null) {
                 String toolName = compensateFor.value();
                 ToolExecutor toolExecutor = toolExecutors.get(toolName);
+                if (toolExecutor == null) {
+                    throw illegalConfiguration(
+                            "@CompensateFor(\"%s\") on method '%s.%s' references tool '%s' which does not exist",
+                            toolName, objectWithTools.getClass().getName(), method.getName(), toolName);
+                }
                 if (!(toolExecutor instanceof DefaultToolExecutor)) {
                     throw illegalConfiguration(
-                            "@CompensateFor(\"%s\") on method '%s.%s' references a non-existent tool",
-                            toolName, objectWithTools.getClass().getName(), method.getName());
+                            "@CompensateFor(\"%s\") on method '%s.%s' references tool '%s' which is not a @Tool-annotated method."
+                                    + " Only @Tool-annotated methods support compensating actions",
+                            toolName, objectWithTools.getClass().getName(), method.getName(), toolName);
                 }
                 Method toolMethod = ((DefaultToolExecutor) toolExecutor).originalMethod();
                 Class<?>[] compensatingParams = method.getParameterTypes();
