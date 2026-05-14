@@ -13,7 +13,7 @@
     <name>LangChain4j :: Document Parser :: Markdown</name>
 
     <properties>
-        <commonmark.version>0.26.0</commonmark.version>
+        <commonmark.version>0.28.0</commonmark.version>
     </properties>
 
     <dependencies>
