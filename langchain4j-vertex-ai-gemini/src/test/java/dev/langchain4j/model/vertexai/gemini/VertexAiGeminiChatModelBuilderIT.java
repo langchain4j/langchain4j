@@ -10,7 +10,9 @@ import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")
 class VertexAiGeminiChatModelBuilderIT {
 
     @Test

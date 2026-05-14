@@ -19,6 +19,7 @@ class CompletionResponse {
     private Boolean done;
     private Integer promptEvalCount;
     private Integer evalCount;
+    private String error;
 
     CompletionResponse() {}
 
@@ -29,7 +30,8 @@ class CompletionResponse {
             String image,
             Boolean done,
             Integer promptEvalCount,
-            Integer evalCount) {
+            Integer evalCount,
+            String error) {
         this.model = model;
         this.createdAt = createdAt;
         this.response = response;
@@ -37,6 +39,7 @@ class CompletionResponse {
         this.done = done;
         this.promptEvalCount = promptEvalCount;
         this.evalCount = evalCount;
+        this.error = error;
     }
 
     public String getModel() {
@@ -95,6 +98,14 @@ class CompletionResponse {
         this.evalCount = evalCount;
     }
 
+    public String getError() {
+        return error;
+    }
+
+    public void setError(String error) {
+        this.error = error;
+    }
+
     static class Builder {
 
         private String model;
@@ -104,6 +115,7 @@ class CompletionResponse {
         private Boolean done;
         private Integer promptEvalCount;
         private Integer evalCount;
+        private String error;
 
         Builder model(String model) {
             this.model = model;
@@ -140,8 +152,13 @@ class CompletionResponse {
             return this;
         }
 
+        Builder error(String error) {
+            this.error = error;
+            return this;
+        }
+
         CompletionResponse build() {
-            return new CompletionResponse(model, createdAt, response, image, done, promptEvalCount, evalCount);
+            return new CompletionResponse(model, createdAt, response, image, done, promptEvalCount, evalCount, error);
         }
     }
 }

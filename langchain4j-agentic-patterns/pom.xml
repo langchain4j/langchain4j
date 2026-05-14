@@ -14,8 +14,8 @@
     <name>LangChain4j :: Agentic Framework :: Agentic Patterns</name>
 
     <properties>
-        <jsoup.version>1.18.3</jsoup.version>
-        <pdfbox.version>3.0.5</pdfbox.version>
+        <jsoup.version>1.22.2</jsoup.version>
+        <pdfbox.version>3.0.7</pdfbox.version>
     </properties>
 
     <developers>
