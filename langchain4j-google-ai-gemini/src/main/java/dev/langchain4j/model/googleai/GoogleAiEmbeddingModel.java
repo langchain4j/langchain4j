@@ -40,7 +40,8 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 getOrDefault(builder.logRequests, false),
                 getOrDefault(builder.logResponses, false),
                 builder.logger,
-                builder.timeout);
+                builder.timeout,
+                null);
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.taskType = builder.taskType;

@@ -35,6 +35,7 @@ class AzureOpenAiResponsibleAiIT {
             .build();
 
     @Test
+    @Disabled("cannot trigger violence filter reliably")
     void chat_message_should_trigger_content_filter_for_violence() {
 
         assertThatThrownBy(() -> model.chat(PROMPT_CONTAINING_VIOLENCE))

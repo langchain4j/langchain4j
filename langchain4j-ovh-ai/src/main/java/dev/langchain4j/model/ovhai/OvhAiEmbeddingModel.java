@@ -17,9 +17,9 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.stream.Collectors.toList;
 
 /**
- * Represents an OVHcloud embedding model. See models documentation here:
- * https://endpoints.ai.cloud.ovh.net/
+ * @deprecated use {@code OpenAiEmbeddingModel} from {@code langchain4j-open-ai} module instead
  */
+@Deprecated(forRemoval = true, since = "1.14.0")
 public class OvhAiEmbeddingModel implements EmbeddingModel {
 
     private final DefaultOvhAiClient client;

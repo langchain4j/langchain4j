@@ -14,6 +14,7 @@ class OpenAiOfficialChatModelListenerIT extends AbstractChatModelListenerIT {
     @Override
     protected ChatModel createModel(ChatModelListener listener) {
         return OpenAiOfficialChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName())
                 .temperature(temperature())

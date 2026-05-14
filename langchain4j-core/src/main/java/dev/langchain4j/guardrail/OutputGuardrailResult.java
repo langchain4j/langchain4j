@@ -85,7 +85,7 @@ public final class OutputGuardrailResult implements GuardrailResult<OutputGuardr
     }
 
     /**
-     * Produces a non-fatal failure
+     * Produces a successful result with specific success text and result object
      *
      * @param successfulText
      *            The text of the successful result.
@@ -110,7 +110,7 @@ public final class OutputGuardrailResult implements GuardrailResult<OutputGuardr
     }
 
     /**
-     * Produces a non-fatal failure
+     * Produces a successful result with specific AiMessage and result object
      *
      * @param successfulAiMessage
      *            The AiMessage successful result.

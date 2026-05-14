@@ -74,6 +74,11 @@ public abstract class AbstractAgentInvoker implements AgentInvoker, InternalAgen
     }
 
     @Override
+    public boolean optional() {
+        return agent.optional();
+    }
+
+    @Override
     public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) throws MissingArgumentException {
         return AgentUtil.agentInvocationArguments(agenticScope, arguments());
     }

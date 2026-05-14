@@ -3,6 +3,9 @@ package dev.langchain4j.mcp.protocol;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.langchain4j.Internal;
 
+/**
+ * Corresponds to the {@code JSONRPCMessage} type from the MCP schema.
+ */
 @Internal
 public class McpJsonRpcMessage {
 

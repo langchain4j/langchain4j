@@ -4,6 +4,7 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.util.Objects;
@@ -38,9 +39,20 @@ public class AnthropicModelInfo {
      */
     public String type;
 
+    /**
+     * Maximum number of input tokens the model can accept.
+     */
+    public Integer maxInputTokens;
+
+    /**
+     * Maximum number of output tokens the model can generate.
+     */
+    @JsonProperty("max_tokens")
+    public Integer maxOutputTokens;
+
     @Override
     public int hashCode() {
-        return Objects.hash(id, createdAt, displayName, type);
+        return Objects.hash(id, createdAt, displayName, type, maxInputTokens, maxOutputTokens);
     }
 
     @Override
@@ -51,7 +63,9 @@ public class AnthropicModelInfo {
         return Objects.equals(id, that.id)
                 && Objects.equals(createdAt, that.createdAt)
                 && Objects.equals(displayName, that.displayName)
-                && Objects.equals(type, that.type);
+                && Objects.equals(type, that.type)
+                && Objects.equals(maxInputTokens, that.maxInputTokens)
+                && Objects.equals(maxOutputTokens, that.maxOutputTokens);
     }
 
     @Override
@@ -60,6 +74,8 @@ public class AnthropicModelInfo {
                 + id + '\'' + ", createdAt='"
                 + createdAt + '\'' + ", displayName='"
                 + displayName + '\'' + ", type='"
-                + type + '\'' + '}';
+                + type + '\'' + ", maxInputTokens="
+                + maxInputTokens + ", maxOutputTokens="
+                + maxOutputTokens + '}';
     }
 }

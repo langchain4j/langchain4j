@@ -126,6 +126,23 @@ class PartsAndContentsMapperTest {
     }
 
     @Test
+    void fromMessageToGContent_userMessageWithTextAndImageContent() {
+        String base64Image =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
+        UserMessage msg = new UserMessage(List.of(
+                new dev.langchain4j.data.message.TextContent("describe this image"),
+                ImageContent.from(base64Image, "image/png", ImageContent.DetailLevel.AUTO)));
+
+        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(msg), null, false);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).role()).isEqualTo("user");
+        assertThat(result.get(0).parts()).hasSize(2);
+        assertThat(result.get(0).parts().get(0).text()).isEqualTo("describe this image");
+        assertThat(result.get(0).parts().get(1).inlineData().mimeType()).isEqualTo("image/png");
+    }
+
+    @Test
     void fromMessageToGContent_emptyMessageListReturnsEmpty() {
         List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(), null, false);
         assertThat(result).isEmpty();

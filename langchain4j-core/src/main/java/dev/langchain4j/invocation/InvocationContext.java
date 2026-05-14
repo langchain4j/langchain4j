@@ -1,5 +1,6 @@
 package dev.langchain4j.invocation;
 
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -39,6 +40,17 @@ public interface InvocationContext {
      * The arguments passed into the AI Service method
      */
     List<Object> methodArguments();
+
+    /**
+     * The {@link UserMessage} to be sent to the LLM.
+     * This is the message after all transformations (RAG augmentation,
+     * content injection, input guardrails, output format instructions).
+     *
+     * @since 1.13.0
+     */
+    default UserMessage userMessage() {
+        return null;
+    }
 
     /**
      * The chat memory id parameter of the method
@@ -88,6 +100,7 @@ public interface InvocationContext {
         private String interfaceName;
         private String methodName;
         private List<@NonNull Object> methodArguments = new ArrayList<>();
+        private UserMessage userMessage;
         private Object chatMemoryId;
         private InvocationParameters invocationParameters;
         private Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters;
@@ -100,6 +113,7 @@ public interface InvocationContext {
             interfaceName(invocationContext.interfaceName());
             methodName(invocationContext.methodName());
             methodArguments(invocationContext.methodArguments());
+            userMessage(invocationContext.userMessage());
             chatMemoryId(invocationContext.chatMemoryId());
             invocationParameters(invocationContext.invocationParameters());
             managedParameters(invocationContext.managedParameters());
@@ -151,6 +165,14 @@ public interface InvocationContext {
                 this.methodArguments.add(methodArgument);
             }
 
+            return this;
+        }
+
+        /**
+         * Sets the final user message that was sent to the LLM.
+         */
+        public Builder userMessage(UserMessage userMessage) {
+            this.userMessage = userMessage;
             return this;
         }
 
@@ -216,6 +238,10 @@ public interface InvocationContext {
 
         public List<@NonNull Object> methodArguments() {
             return methodArguments;
+        }
+
+        public UserMessage userMessage() {
+            return userMessage;
         }
 
         public Object chatMemoryId() {

@@ -1,12 +1,20 @@
 package dev.langchain4j.agentic;
 
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agentic.observability.AgentMonitor;
+import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.service.MemoryId;
+import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.TokenStream;
+import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
 import org.junit.jupiter.api.Test;
 
 import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.streamingBaseModel;
+import static dev.langchain4j.agentic.observability.HtmlReportGenerator.generateReport;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -26,6 +34,8 @@ import dev.langchain4j.agentic.StreamingAgents.StreamingTechnicalExpert;
 import dev.langchain4j.agentic.StreamingAgents.StreamingStoryCreator;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -306,5 +316,105 @@ public class StreamingIT {
 
         assertThat(story).isNotBlank();
         assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
+    }
+
+    @Test
+    void streaming_sequence_with_tools_tests() {
+        GenerateSearchAgent generateSearchAgent = AgenticServices.agentBuilder(GenerateSearchAgent.class)
+                .tools(new ArticleSearchTool())
+                .chatModel(baseModel())
+                .build();
+
+        ArticleSearchAgent articleSearchAgent = AgenticServices.agentBuilder(ArticleSearchAgent.class)
+                .tools(new ArticleSearchTool())
+                .streamingChatModel(streamingBaseModel())
+                .build();
+
+        ChatAgent agent = AgenticServices.sequenceBuilder(ChatAgent.class)
+                .subAgents(generateSearchAgent, articleSearchAgent)
+                .build();
+
+        TokenStream tokenStream = agent.chat("asd", "testing article search");
+        StringBuilder answerBuilder = new StringBuilder();
+        ChatResponse response = waitCompleteResponse(tokenStream, answerBuilder);
+        String story = answerBuilder.toString();
+
+        assertThat(story).isNotBlank();
+        assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
+
+        AgentMonitor monitor = agent.agentMonitor();
+        assertThat(monitor).isNotNull();
+//        generateReport(monitor, Path.of("src", "test", "resources", "streaming-agents-exection.html"));
+    }
+
+    public record ArticleSearchDto(String keyword, Long authorId, String authorName, Long categoryId,
+                                   String categoryName, List<Long> tagIds, String startTime, String endTime,
+                                   Integer pageNum, Integer pageSize) {
+    }
+
+    public interface ArticleSearchAgent {
+        @UserMessage("""
+            # Role
+            You are a search execution agent. Your sole task is to execute a search using the provided parameters and
+            format the results.
+            
+            # Workflow
+            1. **Input**: Receive `searchParameters` from the previous step.
+            2. **Action**: **Directly** call the `searchArticle` tool using the provided `searchParameters` exactly as
+               they are. **Do not modify, rewrite, or optimize the parameters.**
+            3. **Output**: Once results are returned, generate a user-friendly response in **Chinese** following these rules:
+                - Format as a numbered Markdown list.
+                - Make titles clickable links: `[Title](https://example.com/article/{id})`.
+                - Include a brief summary below each title.
+                - If no results found, output: "> No articles found matching your query."
+                - Do not include JSON, code blocks, or extra explanations. Only output the formatted Markdown.
+            
+            The search parameters are: {{searchParameters}}
+            """)
+        @Agent(name = "searchArticle", outputKey = "result")
+        TokenStream searchArticle(@V("searchParameters") ArticleSearchDto searchParameters);
+    }
+
+    public interface ChatAgent extends MonitoredAgent {
+        @UserMessage("{{message}}")
+        @Agent(name = "start", outputKey = "result")
+        TokenStream chat(@MemoryId String memoryId, @V("message") String message);
+    }
+
+    public interface GenerateSearchAgent {
+
+        @SystemMessage("""
+            Based on the user input, generate a structured query parameter object in valid JSON format.
+            
+            Strictly follow these rules:
+            - Only include the fields I have defined; do not add any extra fields.
+            - For optional fields that are uncertain or not mentioned, set their value to null.
+            - Do not include comments, explanations, markdown, or any text outside the JSON.
+            - Output must be valid JSON and nothing else.
+            
+            """)
+        @UserMessage("{{message}}")
+        @Agent(name = "generateSearchDto", outputKey = "searchParameters")
+        ArticleSearchDto generateSearchDto(@V("message") String message);
+
+    }
+
+    public class ArticleSearchTool {
+
+        @Tool(name = "searchArticle", value = "Search for articles")
+        public List<String> searchArticle(ArticleSearchDto articleSearchDto) {
+            return List.of();
+        }
+
+
+        @Tool(name = "listAllCategory", value = "List all article categories")
+        public List<String> listAllCategory() {
+            return List.of("categoryName: test, id:1");
+        }
+
+        @Tool(name = "listAllTag", value = "List all article tags")
+        public List<String> listAllTag() {
+            return List.of("tag1", "tag2", "tag3");
+        }
     }
 }

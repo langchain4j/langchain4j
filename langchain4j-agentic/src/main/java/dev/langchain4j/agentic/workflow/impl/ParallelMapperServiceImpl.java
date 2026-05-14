@@ -81,7 +81,7 @@ public class ParallelMapperServiceImpl<T>
         if (returnType.isArray()) {
             return true;
         }
-        if (Collection.class.isAssignableFrom(returnType)) {
+        if (Collection.class.isAssignableFrom(returnType) || output != null) {
             return false;
         }
         throw new AgenticSystemConfigurationException(

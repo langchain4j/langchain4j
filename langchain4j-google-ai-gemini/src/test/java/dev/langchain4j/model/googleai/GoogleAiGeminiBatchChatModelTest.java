@@ -41,7 +41,6 @@ import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandid
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
 import dev.langchain4j.model.googleai.jsonl.JsonLinesWriters;
 import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.model.output.TokenUsage;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -1026,8 +1025,7 @@ class GoogleAiGeminiBatchChatModelTest {
     @Nested
     class BatchChatSerialization {
 
-        private static final String PENDING_RESPONSE =
-                """
+        private static final String PENDING_RESPONSE = """
                         {
                           "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac",
                           "metadata": {
@@ -1046,8 +1044,7 @@ class GoogleAiGeminiBatchChatModelTest {
                         }
                         """;
 
-        private static final String SUCCEEDED_RESPONSE =
-                """
+        private static final String SUCCEEDED_RESPONSE = """
                         {
                           "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac",
                           "metadata": {
@@ -1147,8 +1144,7 @@ class GoogleAiGeminiBatchChatModelTest {
                         }
                         """;
 
-        private String ERROR_RESPONSE =
-                """
+        private String ERROR_RESPONSE = """
                 {
                   "name": "batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac",
                   "metadata": {
@@ -1395,7 +1391,11 @@ class GoogleAiGeminiBatchChatModelTest {
                 .metadata(GoogleAiGeminiChatResponseMetadata.builder()
                         .id("response-id-" + content.hashCode())
                         .modelName(MODEL_NAME)
-                        .tokenUsage(new TokenUsage(10, 5, 15))
+                        .tokenUsage(GoogleAiGeminiTokenUsage.builder()
+                                .inputTokenCount(10)
+                                .outputTokenCount(5)
+                                .totalTokenCount(15)
+                                .build())
                         .finishReason(FinishReason.STOP)
                         .build())
                 .build();
