@@ -1,0 +1,15 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "ignore": true,
+          "code": "java.class.externalClassExposedInAPI",
+          "justification": "Google Gen AI SDK types and Langchain4j Core types are intentionally exposed on the public API of this module."
+        }
+      ]
+    }
+  }
+]
