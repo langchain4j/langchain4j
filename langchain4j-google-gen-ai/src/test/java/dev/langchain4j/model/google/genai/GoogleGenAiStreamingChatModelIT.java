@@ -61,14 +61,10 @@ class GoogleGenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
         // Disabled: GoogleGenAiStreamingChatModel ignores tools instead of throwing an exception
     }
 
-
-
     @Override
     protected boolean supportsStreamingCancellation() {
         return false; // cancellation not implemented in GoogleGenAiStreamingChatModel yet
     }
-
-
 
     @Override
     protected boolean supportsJsonResponseFormatWithRawSchema() {
@@ -97,7 +93,8 @@ class GoogleGenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected void assertOutputTokenCount(dev.langchain4j.model.output.TokenUsage tokenUsage, Integer maxOutputTokens) {
-        org.assertj.core.api.Assertions.assertThat(tokenUsage.outputTokenCount()).isLessThanOrEqualTo(maxOutputTokens);
+        org.assertj.core.api.Assertions.assertThat(tokenUsage.outputTokenCount())
+                .isLessThanOrEqualTo(maxOutputTokens);
     }
 
     @Override

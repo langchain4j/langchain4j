@@ -32,12 +32,7 @@ import dev.langchain4j.data.video.Video;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
@@ -151,7 +146,8 @@ class GoogleGenAiContentMapper {
                     Map<String, Object> args = new HashMap<>();
                     if (req.arguments() != null && !req.arguments().isEmpty()) {
                         try {
-                            args = OBJECT_MAPPER.readValue(req.arguments(), new TypeReference<Map<String, Object>>() {});
+                            args = OBJECT_MAPPER.readValue(
+                                    req.arguments(), new TypeReference<Map<String, Object>>() {});
                         } catch (Exception e) {
                             log.warn(
                                     "Failed to parse tool execution request arguments {}: {}",
@@ -174,7 +170,8 @@ class GoogleGenAiContentMapper {
             try {
                 toolResult = toolMsg.text();
             } catch (IllegalStateException e) {
-                throw new dev.langchain4j.exception.UnsupportedFeatureException("Google Gen AI currently does not support non-text content in tool execution results");
+                throw new dev.langchain4j.exception.UnsupportedFeatureException(
+                        "Google Gen AI currently does not support non-text content in tool execution results");
             }
             Map<String, Object> responseMap = new HashMap<>();
             responseMap.put("result", toolResult);
@@ -328,7 +325,6 @@ class GoogleGenAiContentMapper {
     static Part fromMimeTypeAndData(String mimeType, URI uri) {
         return Part.fromUri(uri.toString(), mimeType);
     }
-
 
     private GoogleGenAiContentMapper() {}
 }

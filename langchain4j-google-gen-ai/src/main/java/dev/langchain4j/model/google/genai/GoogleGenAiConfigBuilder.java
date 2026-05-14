@@ -41,19 +41,22 @@ class GoogleGenAiConfigBuilder {
         GenerateContentConfig.Builder configBuilder = GenerateContentConfig.builder();
 
         // Generation parameters
-        Double temperature = dev.langchain4j.internal.Utils.getOrDefault(parameters.temperature(), defaultParameters.temperature());
+        Double temperature =
+                dev.langchain4j.internal.Utils.getOrDefault(parameters.temperature(), defaultParameters.temperature());
         if (temperature != null) configBuilder.temperature(temperature.floatValue());
-        
+
         Double topP = dev.langchain4j.internal.Utils.getOrDefault(parameters.topP(), defaultParameters.topP());
         if (topP != null) configBuilder.topP(topP.floatValue());
-        
+
         Integer topK = dev.langchain4j.internal.Utils.getOrDefault(parameters.topK(), defaultParameters.topK());
         if (topK != null) configBuilder.topK(topK.floatValue());
-        
-        Integer maxOutputTokens = dev.langchain4j.internal.Utils.getOrDefault(parameters.maxOutputTokens(), defaultParameters.maxOutputTokens());
+
+        Integer maxOutputTokens = dev.langchain4j.internal.Utils.getOrDefault(
+                parameters.maxOutputTokens(), defaultParameters.maxOutputTokens());
         if (maxOutputTokens != null) configBuilder.maxOutputTokens(maxOutputTokens);
-        
-        List<String> stopSequences = dev.langchain4j.internal.Utils.getOrDefault(parameters.stopSequences(), defaultParameters.stopSequences());
+
+        List<String> stopSequences = dev.langchain4j.internal.Utils.getOrDefault(
+                parameters.stopSequences(), defaultParameters.stopSequences());
         if (stopSequences != null) configBuilder.stopSequences(stopSequences);
 
         // Safety settings
@@ -71,12 +74,14 @@ class GoogleGenAiConfigBuilder {
             configBuilder.responseMimeType("application/json");
         }
 
-        ResponseFormat responseFormat = dev.langchain4j.internal.Utils.getOrDefault(parameters.responseFormat(), defaultParameters.responseFormat());
+        ResponseFormat responseFormat = dev.langchain4j.internal.Utils.getOrDefault(
+                parameters.responseFormat(), defaultParameters.responseFormat());
         if (responseFormat != null) {
             if (responseFormat.type() == ResponseFormatType.JSON) {
                 configBuilder.responseMimeType("application/json");
                 if (responseFormat.jsonSchema() != null) {
-                    com.google.genai.types.Schema googleSchema = GoogleGenAiToolMapper.convertToGoogleSchema(responseFormat.jsonSchema().rootElement());
+                    com.google.genai.types.Schema googleSchema = GoogleGenAiToolMapper.convertToGoogleSchema(
+                            responseFormat.jsonSchema().rootElement());
                     configBuilder.responseSchema(googleSchema);
                 }
             }
@@ -120,7 +125,8 @@ class GoogleGenAiConfigBuilder {
             boolean urlContextEnabled,
             List<String> allowedFunctionNames) {
 
-        List<ToolSpecification> toolSpecs = dev.langchain4j.internal.Utils.getOrDefault(parameters.toolSpecifications(), defaultParameters.toolSpecifications());
+        List<ToolSpecification> toolSpecs = dev.langchain4j.internal.Utils.getOrDefault(
+                parameters.toolSpecifications(), defaultParameters.toolSpecifications());
 
         List<Tool> requestTools = new ArrayList<>();
         List<FunctionDeclaration> functionDeclarations = new ArrayList<>();
@@ -157,7 +163,8 @@ class GoogleGenAiConfigBuilder {
         if (!isNullOrEmpty(toolSpecs)) {
             FunctionCallingConfig.Builder funcConfig = FunctionCallingConfig.builder();
 
-            ToolChoice toolChoice = dev.langchain4j.internal.Utils.getOrDefault(parameters.toolChoice(), defaultParameters.toolChoice());
+            ToolChoice toolChoice = dev.langchain4j.internal.Utils.getOrDefault(
+                    parameters.toolChoice(), defaultParameters.toolChoice());
             if (toolChoice == ToolChoice.REQUIRED) {
                 funcConfig.mode("ANY");
             } else if (toolChoice == ToolChoice.NONE) {

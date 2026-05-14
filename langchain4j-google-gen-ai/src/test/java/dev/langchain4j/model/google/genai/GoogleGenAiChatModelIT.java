@@ -77,6 +77,7 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected void assertOutputTokenCount(dev.langchain4j.model.output.TokenUsage tokenUsage, Integer maxOutputTokens) {
-        org.assertj.core.api.Assertions.assertThat(tokenUsage.outputTokenCount()).isLessThanOrEqualTo(maxOutputTokens);
+        org.assertj.core.api.Assertions.assertThat(tokenUsage.outputTokenCount())
+                .isLessThanOrEqualTo(maxOutputTokens);
     }
 }

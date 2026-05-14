@@ -50,5 +50,4 @@ class GoogleGenAiChatModelListenerIT extends AbstractChatModelListenerIT {
     protected boolean assertResponseId() {
         return false;
     }
-
 }

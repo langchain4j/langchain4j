@@ -187,7 +187,10 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 GoogleGenAiChatResponseMetadata metadata = GoogleGenAiChatResponseMetadata.builder()
                         .modelName(resolvedModelName)
                         .tokenUsage(tokenUsage)
-                        .finishReason(!toolRequests.isEmpty() ? FinishReason.TOOL_EXECUTION : (finishReason != null ? finishReason : FinishReason.STOP))
+                        .finishReason(
+                                !toolRequests.isEmpty()
+                                        ? FinishReason.TOOL_EXECUTION
+                                        : (finishReason != null ? finishReason : FinishReason.STOP))
                         .rawResponse(lastChunk)
                         .build();
 
