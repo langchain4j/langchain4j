@@ -5,7 +5,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.ServerToolExecution;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,42 +30,22 @@ class StreamingChatModelTest implements WithAssertions {
     public static final class CollectorResponseHandler implements StreamingChatResponseHandler {
 
         private final List<ChatResponse> responses = new ArrayList<>();
-        private final List<ServerToolExecution> beforeServerToolExecutions = new ArrayList<>();
-        private final List<ServerToolExecution> serverToolExecutionProgressEvents = new ArrayList<>();
-        private final List<ServerToolExecution> serverToolExecutedEvents = new ArrayList<>();
+        private final List<Object> rawEvents = new ArrayList<>();
 
         public List<ChatResponse> responses() {
             return responses;
         }
 
-        public List<ServerToolExecution> beforeServerToolExecutions() {
-            return beforeServerToolExecutions;
-        }
-
-        public List<ServerToolExecution> serverToolExecutionProgressEvents() {
-            return serverToolExecutionProgressEvents;
-        }
-
-        public List<ServerToolExecution> serverToolExecutedEvents() {
-            return serverToolExecutedEvents;
+        public List<Object> rawEvents() {
+            return rawEvents;
         }
 
         @Override
         public void onPartialResponse(String partialResponse) {}
 
         @Override
-        public void beforeServerToolExecution(ServerToolExecution serverToolExecution) {
-            beforeServerToolExecutions.add(serverToolExecution);
-        }
-
-        @Override
-        public void onServerToolExecutionProgress(ServerToolExecution serverToolExecution) {
-            serverToolExecutionProgressEvents.add(serverToolExecution);
-        }
-
-        @Override
-        public void onServerToolExecuted(ServerToolExecution serverToolExecution) {
-            serverToolExecutedEvents.add(serverToolExecution);
+        public void onRawEvent(Object rawEvent) {
+            rawEvents.add(rawEvent);
         }
 
         @Override
@@ -111,26 +90,13 @@ class StreamingChatModelTest implements WithAssertions {
     }
 
     @Test
-    void should_forward_server_tool_execution_callbacks() {
-        ServerToolExecution started = ServerToolExecution.builder()
-                .id("tool_1")
-                .type("provider.tool.started")
-                .build();
-        ServerToolExecution progress = ServerToolExecution.builder()
-                .id("tool_1")
-                .type("provider.tool.progress")
-                .build();
-        ServerToolExecution completed = ServerToolExecution.builder()
-                .id("tool_1")
-                .type("provider.tool.completed")
-                .build();
+    void should_forward_raw_event_callback() {
+        Object rawEvent = "provider.raw.event";
 
         StreamingChatModel model = new StreamingChatModel() {
             @Override
             public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-                handler.beforeServerToolExecution(started);
-                handler.onServerToolExecutionProgress(progress);
-                handler.onServerToolExecuted(completed);
+                handler.onRawEvent(rawEvent);
                 handler.onCompleteResponse(
                         ChatResponse.builder().aiMessage(new AiMessage("done")).build());
             }
@@ -139,8 +105,6 @@ class StreamingChatModelTest implements WithAssertions {
         CollectorResponseHandler handler = new CollectorResponseHandler();
         model.chat("search", handler);
 
-        assertThat(handler.beforeServerToolExecutions()).containsExactly(started);
-        assertThat(handler.serverToolExecutionProgressEvents()).containsExactly(progress);
-        assertThat(handler.serverToolExecutedEvents()).containsExactly(completed);
+        assertThat(handler.rawEvents()).containsExactly(rawEvent);
     }
 }

@@ -21,7 +21,6 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
-import dev.langchain4j.model.chat.response.ServerToolExecution;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.BeforeToolExecution;
@@ -61,7 +60,7 @@ class AiServiceTokenStreamTest {
     static Consumer<Throwable> DUMMY_ERROR_HANDLER = (error) -> {};
     static Consumer<ChatResponse> DUMMY_CHAT_RESPONSE_HANDLER = (chatResponse) -> {};
     static Consumer<BeforeToolExecution> DUMMY_BEFORE_TOOL_EXECUTION_HANDLER = (beforeToolExecution) -> {};
-    static Consumer<ServerToolExecution> DUMMY_SERVER_TOOL_EXECUTION_HANDLER = (serverToolExecution) -> {};
+    static Consumer<Object> DUMMY_RAW_EVENT_HANDLER = (rawEvent) -> {};
 
     List<ChatMessage> messages = new ArrayList<>();
 
@@ -149,83 +148,32 @@ class AiServiceTokenStreamTest {
     }
 
     @Test
-    void start_beforeServerToolExecutionInvoked_shouldNotThrowException() {
-        tokenStream
-                .beforeServerToolExecution(DUMMY_SERVER_TOOL_EXECUTION_HANDLER)
-                .ignoreErrors();
+    void start_onRawEventInvoked_shouldNotThrowException() {
+        tokenStream.onRawEvent(DUMMY_RAW_EVENT_HANDLER).ignoreErrors();
 
         assertThatNoException().isThrownBy(() -> tokenStream.start());
     }
 
     @Test
-    void start_beforeServerToolExecutionInvokedMultipleTimes_shouldThrowException() {
+    void start_onRawEventInvokedMultipleTimes_shouldThrowException() {
         tokenStream
-                .beforeServerToolExecution(DUMMY_SERVER_TOOL_EXECUTION_HANDLER)
-                .beforeServerToolExecution(DUMMY_SERVER_TOOL_EXECUTION_HANDLER)
+                .onRawEvent(DUMMY_RAW_EVENT_HANDLER)
+                .onRawEvent(DUMMY_RAW_EVENT_HANDLER)
                 .ignoreErrors();
 
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("beforeServerToolExecution can be invoked on TokenStream at most 1 time");
+                .hasMessage("onRawEvent can be invoked on TokenStream at most 1 time");
     }
 
     @Test
-    void start_onServerToolExecutionProgressInvoked_shouldNotThrowException() {
-        tokenStream
-                .onServerToolExecutionProgress(DUMMY_SERVER_TOOL_EXECUTION_HANDLER)
-                .ignoreErrors();
-
-        assertThatNoException().isThrownBy(() -> tokenStream.start());
-    }
-
-    @Test
-    void start_onServerToolExecutionProgressInvokedMultipleTimes_shouldThrowException() {
-        tokenStream
-                .onServerToolExecutionProgress(DUMMY_SERVER_TOOL_EXECUTION_HANDLER)
-                .onServerToolExecutionProgress(DUMMY_SERVER_TOOL_EXECUTION_HANDLER)
-                .ignoreErrors();
-
-        assertThatThrownBy(() -> tokenStream.start())
-                .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("onServerToolExecutionProgress can be invoked on TokenStream at most 1 time");
-    }
-
-    @Test
-    void start_onServerToolExecutedInvoked_shouldNotThrowException() {
-        tokenStream.onServerToolExecuted(DUMMY_SERVER_TOOL_EXECUTION_HANDLER).ignoreErrors();
-
-        assertThatNoException().isThrownBy(() -> tokenStream.start());
-    }
-
-    @Test
-    void start_onServerToolExecutedInvokedMultipleTimes_shouldThrowException() {
-        tokenStream
-                .onServerToolExecuted(DUMMY_SERVER_TOOL_EXECUTION_HANDLER)
-                .onServerToolExecuted(DUMMY_SERVER_TOOL_EXECUTION_HANDLER)
-                .ignoreErrors();
-
-        assertThatThrownBy(() -> tokenStream.start())
-                .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("onServerToolExecuted can be invoked on TokenStream at most 1 time");
-    }
-
-    @Test
-    void start_shouldForwardServerToolExecutionCallbacks() {
+    void start_shouldForwardRawEventCallbacks() {
         StreamingChatModel streamingModel = mock(StreamingChatModel.class);
         tokenStream = setupAiServiceTokenStream(streamingModel);
-        List<ServerToolExecution> beforeEvents = new ArrayList<>();
-        List<ServerToolExecution> progressEvents = new ArrayList<>();
-        List<ServerToolExecution> completedEvents = new ArrayList<>();
+        List<Object> rawEvents = new ArrayList<>();
+        Object rawEvent = "raw.event";
 
-        ServerToolExecution started = serverToolExecution("in_progress");
-        ServerToolExecution searching = serverToolExecution("searching");
-        ServerToolExecution completed = serverToolExecution("completed");
-
-        tokenStream
-                .beforeServerToolExecution(beforeEvents::add)
-                .onServerToolExecutionProgress(progressEvents::add)
-                .onServerToolExecuted(completedEvents::add)
-                .ignoreErrors();
+        tokenStream.onRawEvent(rawEvents::add).ignoreErrors();
 
         tokenStream.start();
 
@@ -234,13 +182,9 @@ class AiServiceTokenStreamTest {
         verify(streamingModel).chat(any(ChatRequest.class), handlerCaptor.capture());
         StreamingChatResponseHandler handler = handlerCaptor.getValue();
 
-        handler.beforeServerToolExecution(started);
-        handler.onServerToolExecutionProgress(searching);
-        handler.onServerToolExecuted(completed);
+        handler.onRawEvent(rawEvent);
 
-        assertThat(beforeEvents).containsExactly(started);
-        assertThat(progressEvents).containsExactly(searching);
-        assertThat(completedEvents).containsExactly(completed);
+        assertThat(rawEvents).containsExactly(rawEvent);
     }
 
     @Test
@@ -384,9 +328,5 @@ class AiServiceTokenStreamTest {
                 })
                 .toolExecutionErrorHandler((e, c) -> ToolErrorHandlerResult.text(e.getMessage()))
                 .build());
-    }
-
-    private static ServerToolExecution serverToolExecution(String type) {
-        return ServerToolExecution.builder().id("ws_123").type(type).build();
     }
 }

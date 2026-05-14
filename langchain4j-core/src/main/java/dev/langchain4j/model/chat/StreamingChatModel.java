@@ -20,7 +20,6 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
-import dev.langchain4j.model.chat.response.ServerToolExecution;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.List;
 import java.util.Map;
@@ -102,18 +101,8 @@ public interface StreamingChatModel {
             }
 
             @Override
-            public void beforeServerToolExecution(ServerToolExecution serverToolExecution) {
-                handler.beforeServerToolExecution(serverToolExecution);
-            }
-
-            @Override
-            public void onServerToolExecutionProgress(ServerToolExecution serverToolExecution) {
-                handler.onServerToolExecutionProgress(serverToolExecution);
-            }
-
-            @Override
-            public void onServerToolExecuted(ServerToolExecution serverToolExecution) {
-                handler.onServerToolExecuted(serverToolExecution);
+            public void onRawEvent(Object rawEvent) {
+                handler.onRawEvent(rawEvent);
             }
 
             @Override

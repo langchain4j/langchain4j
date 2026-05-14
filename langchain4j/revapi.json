@@ -13,11 +13,6 @@
           "code": "java.annotation.removed",
           "new": "class dev.langchain4j.service.tool.AiServiceTool",
           "justification": "@Internal removed intentionally: AiServiceTool is now part of the public API and can be constructed and passed to AiServices directly by users (e.g. via AiServices.tools(List<AiServiceTool>))."
-        },
-        {
-          "code": "java.class.externalClassExposedInAPI",
-          "new": "missing-class dev.langchain4j.model.chat.response.ServerToolExecution",
-          "justification": "TokenStream intentionally exposes the new server tool lifecycle callback type from langchain4j-core, consistent with existing TokenStream callbacks that expose core streaming response types."
         }
       ]
     }

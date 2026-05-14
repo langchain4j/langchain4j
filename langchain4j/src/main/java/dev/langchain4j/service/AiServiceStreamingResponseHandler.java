@@ -27,7 +27,6 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
-import dev.langchain4j.model.chat.response.ServerToolExecution;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
@@ -81,9 +80,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final Consumer<PartialToolCall> partialToolCallHandler;
     private final BiConsumer<PartialToolCall, PartialToolCallContext> partialToolCallWithContextHandler;
     private final Consumer<BeforeToolExecution> beforeToolExecutionHandler;
-    private final Consumer<ServerToolExecution> beforeServerToolExecutionHandler;
-    private final Consumer<ServerToolExecution> serverToolExecutionProgressHandler;
-    private final Consumer<ServerToolExecution> serverToolExecutedHandler;
+    private final Consumer<Object> rawEventHandler;
     private final Consumer<ToolExecution> toolExecutionHandler;
     private final Consumer<ChatResponse> intermediateResponseHandler;
     private final Consumer<ChatResponse> completeResponseHandler;
@@ -119,9 +116,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             Consumer<PartialToolCall> partialToolCallHandler,
             BiConsumer<PartialToolCall, PartialToolCallContext> partialToolCallWithContextHandler,
             Consumer<BeforeToolExecution> beforeToolExecutionHandler,
-            Consumer<ServerToolExecution> beforeServerToolExecutionHandler,
-            Consumer<ServerToolExecution> serverToolExecutionProgressHandler,
-            Consumer<ServerToolExecution> serverToolExecutedHandler,
+            Consumer<Object> rawEventHandler,
             Consumer<ToolExecution> toolExecutionHandler,
             Consumer<ChatResponse> intermediateResponseHandler,
             Consumer<ChatResponse> completeResponseHandler,
@@ -150,9 +145,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.intermediateResponseHandler = intermediateResponseHandler;
         this.completeResponseHandler = completeResponseHandler;
         this.beforeToolExecutionHandler = beforeToolExecutionHandler;
-        this.beforeServerToolExecutionHandler = beforeServerToolExecutionHandler;
-        this.serverToolExecutionProgressHandler = serverToolExecutionProgressHandler;
-        this.serverToolExecutedHandler = serverToolExecutedHandler;
+        this.rawEventHandler = rawEventHandler;
         this.toolExecutionHandler = toolExecutionHandler;
         this.errorHandler = errorHandler;
 
@@ -249,23 +242,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     @Override
-    public void beforeServerToolExecution(ServerToolExecution serverToolExecution) {
-        if (beforeServerToolExecutionHandler != null) {
-            beforeServerToolExecutionHandler.accept(serverToolExecution);
-        }
-    }
-
-    @Override
-    public void onServerToolExecutionProgress(ServerToolExecution serverToolExecution) {
-        if (serverToolExecutionProgressHandler != null) {
-            serverToolExecutionProgressHandler.accept(serverToolExecution);
-        }
-    }
-
-    @Override
-    public void onServerToolExecuted(ServerToolExecution serverToolExecution) {
-        if (serverToolExecutedHandler != null) {
-            serverToolExecutedHandler.accept(serverToolExecution);
+    public void onRawEvent(Object rawEvent) {
+        if (rawEventHandler != null) {
+            rawEventHandler.accept(rawEvent);
         }
     }
 
@@ -403,9 +382,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     partialToolCallHandler,
                     partialToolCallWithContextHandler,
                     beforeToolExecutionHandler,
-                    beforeServerToolExecutionHandler,
-                    serverToolExecutionProgressHandler,
-                    serverToolExecutedHandler,
+                    rawEventHandler,
                     toolExecutionHandler,
                     intermediateResponseHandler,
                     completeResponseHandler,

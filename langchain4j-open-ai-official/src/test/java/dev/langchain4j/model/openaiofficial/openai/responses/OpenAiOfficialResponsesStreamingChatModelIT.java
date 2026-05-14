@@ -1,17 +1,11 @@
 package dev.langchain4j.model.openaiofficial.openai.responses;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.atLeast;
-
-import com.openai.core.JsonValue;
-import com.openai.core.ObjectMappers;
 import com.openai.models.ChatModel;
-import com.openai.models.responses.NamespaceTool;
+import com.openai.core.ObjectMappers;
+import com.openai.core.JsonValue;
 import com.openai.models.responses.Response;
 import com.openai.models.responses.ResponseOutputItem;
+import com.openai.models.responses.NamespaceTool;
 import com.openai.models.responses.Tool;
 import com.openai.models.responses.ToolSearchTool;
 import com.openai.models.responses.WebSearchTool;
@@ -24,11 +18,10 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ToolChoice;
-import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
-import dev.langchain4j.model.chat.response.ServerToolExecution;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialChatRequestParameters;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatRequestParameters;
@@ -37,16 +30,19 @@ import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChat
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
+
+import java.util.List;
+
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.atLeast;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatModelIT {
@@ -89,8 +85,7 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     @Override
     protected ChatRequestParameters saveTokens(ChatRequestParameters parameters) {
         return parameters.overrideWith(ChatRequestParameters.builder()
-                .maxOutputTokens(MAX_OUTPUT_TOKENS_MIN_VALUE)
-                .build());
+                .maxOutputTokens(MAX_OUTPUT_TOKENS_MIN_VALUE).build());
     }
 
     @Override
@@ -122,53 +117,56 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
-        io.verify(handler, atLeast(1))
-                .onPartialToolCall(
-                        argThat(toolCall -> toolCall.index() == 0
-                                && toolCall.id().equals(id)
-                                && toolCall.name().equals("getWeather")
-                                && !toolCall.partialArguments().isBlank()),
-                        any());
-        io.verify(handler).onCompleteToolCall(argThat(toolCall -> {
-            ToolExecutionRequest request = toolCall.toolExecutionRequest();
-            return toolCall.index() == 0
-                    && request.id().equals(id)
-                    && request.name().equals("getWeather")
-                    && request.arguments().replace(" ", "").equals("{\"city\":\"Munich\"}");
-        }));
+        io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
+                toolCall.index() == 0
+                        && toolCall.id().equals(id)
+                        && toolCall.name().equals("getWeather")
+                        && !toolCall.partialArguments().isBlank()
+        ), any());
+        io.verify(handler).onCompleteToolCall(argThat(toolCall ->
+                {
+                    ToolExecutionRequest request = toolCall.toolExecutionRequest();
+                    return toolCall.index() == 0
+                            && request.id().equals(id)
+                            && request.name().equals("getWeather")
+                            && request.arguments().replace(" ", "").equals("{\"city\":\"Munich\"}");
+                }
+        ));
     }
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
-        io.verify(handler, atLeast(1))
-                .onPartialToolCall(
-                        argThat(toolCall -> toolCall.index() == 0
-                                && toolCall.id().equals(id1)
-                                && toolCall.name().equals("getWeather")
-                                && !toolCall.partialArguments().isBlank()),
-                        any());
-        io.verify(handler).onCompleteToolCall(argThat(toolCall -> {
-            ToolExecutionRequest request = toolCall.toolExecutionRequest();
-            return toolCall.index() == 0
-                    && request.id().equals(id1)
-                    && request.name().equals("getWeather")
-                    && request.arguments().replace(" ", "").equals("{\"city\":\"Munich\"}");
-        }));
+        io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
+                toolCall.index() == 0
+                        && toolCall.id().equals(id1)
+                        && toolCall.name().equals("getWeather")
+                        && !toolCall.partialArguments().isBlank()
+        ), any());
+        io.verify(handler).onCompleteToolCall(argThat(toolCall ->
+                {
+                    ToolExecutionRequest request = toolCall.toolExecutionRequest();
+                    return toolCall.index() == 0
+                            && request.id().equals(id1)
+                            && request.name().equals("getWeather")
+                            && request.arguments().replace(" ", "").equals("{\"city\":\"Munich\"}");
+                }
+        ));
 
-        io.verify(handler, atLeast(1))
-                .onPartialToolCall(
-                        argThat(toolCall -> toolCall.index() == 1
-                                && toolCall.id().equals(id2)
-                                && toolCall.name().equals("getTime")
-                                && !toolCall.partialArguments().isBlank()),
-                        any());
-        io.verify(handler).onCompleteToolCall(argThat(toolCall -> {
-            ToolExecutionRequest request = toolCall.toolExecutionRequest();
-            return toolCall.index() == 1
-                    && request.id().equals(id2)
-                    && request.name().equals("getTime")
-                    && request.arguments().replace(" ", "").equals("{\"country\":\"France\"}");
-        }));
+        io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
+                toolCall.index() == 1
+                        && toolCall.id().equals(id2)
+                        && toolCall.name().equals("getTime")
+                        && !toolCall.partialArguments().isBlank()
+        ), any());
+        io.verify(handler).onCompleteToolCall(argThat(toolCall ->
+                {
+                    ToolExecutionRequest request = toolCall.toolExecutionRequest();
+                    return toolCall.index() == 1
+                            && request.id().equals(id2)
+                            && request.name().equals("getTime")
+                            && request.arguments().replace(" ", "").equals("{\"country\":\"France\"}");
+                }
+        ));
     }
 
     @Override
@@ -210,44 +208,10 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     }
 
     @Test
-    void should_emit_real_web_search_server_tool_lifecycle_events() throws Exception {
-        StreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName(GPT_5_4)
-                .serverTools(Tool.ofWebSearch(WebSearchTool.builder()
-                        .type(WebSearchTool.Type.of("web_search"))
-                        .filters(WebSearchTool.Filters.builder()
-                                .allowedDomains(List.of("developers.openai.com"))
-                                .build())
-                        .build()))
-                .defaultRequestParameters(OpenAiOfficialResponsesChatRequestParameters.builder()
-                        .toolChoice(ToolChoice.REQUIRED)
-                        .build())
-                .build();
-
-        RecordingServerToolHandler handler = new RecordingServerToolHandler();
-        model.chat(
-                "Use web search on the OpenAI developer docs and answer with one short sentence about the web search tool.",
-                handler);
-
-        ChatResponse response = handler.await();
-
-        assertThat(response.aiMessage().text()).isNotBlank();
-        assertThat(handler.started).isNotEmpty();
-        assertThat(handler.completed).isNotEmpty();
-        assertThat(handler.started)
-                .extracting(ServerToolExecution::type)
-                .contains("response.web_search_call.in_progress");
-        assertThat(handler.completed)
-                .extracting(ServerToolExecution::type)
-                .contains("response.web_search_call.completed");
-    }
-
-    @Test
     void should_execute_real_tool_search_with_namespace_and_deferred_function_loading() {
-        Tool toolSearch = Tool.ofSearch(
-                ToolSearchTool.builder().type(JsonValue.from("tool_search")).build());
+        Tool toolSearch = Tool.ofSearch(ToolSearchTool.builder()
+                .type(JsonValue.from("tool_search"))
+                .build());
 
         Tool namespace = Tool.ofNamespace(NamespaceTool.builder()
                 .type(JsonValue.from("namespace"))
@@ -258,28 +222,20 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                         .name("get_customer_profile")
                         .description("Fetch a customer profile by customer ID.")
                         .parameters(JsonValue.from(Map.of(
-                                "type",
-                                "object",
-                                "properties",
-                                Map.of("customer_id", Map.of("type", "string")),
-                                "required",
-                                List.of("customer_id"),
-                                "additionalProperties",
-                                false)))
+                                "type", "object",
+                                "properties", Map.of("customer_id", Map.of("type", "string")),
+                                "required", List.of("customer_id"),
+                                "additionalProperties", false)))
                         .build()))
                 .addTool(NamespaceTool.Tool.ofFunction(NamespaceTool.Tool.Function.builder()
                         .type(JsonValue.from("function"))
                         .name("list_open_orders")
                         .description("List open orders for a customer ID.")
                         .parameters(JsonValue.from(Map.of(
-                                "type",
-                                "object",
-                                "properties",
-                                Map.of("customer_id", Map.of("type", "string")),
-                                "required",
-                                List.of("customer_id"),
-                                "additionalProperties",
-                                false)))
+                                "type", "object",
+                                "properties", Map.of("customer_id", Map.of("type", "string")),
+                                "required", List.of("customer_id"),
+                                "additionalProperties", false)))
                         .putAdditionalProperty("defer_loading", JsonValue.from(true))
                         .build()))
                 .build());
@@ -314,13 +270,12 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
         assertThat(toolSearchOutput).containsEntry("type", "tool_search_output");
         assertThat(toolSearchOutput.get("tools")).isInstanceOf(List.class);
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> dynamicallyLoadedTools = ((List<?>) toolSearchOutput.get("tools"))
-                .stream()
-                        .map(item -> {
-                            assertThat(item).isInstanceOf(Map.class);
-                            return (Map<String, Object>) item;
-                        })
-                        .toList();
+        List<Map<String, Object>> dynamicallyLoadedTools = ((List<?>) toolSearchOutput.get("tools")).stream()
+                .map(item -> {
+                    assertThat(item).isInstanceOf(Map.class);
+                    return (Map<String, Object>) item;
+                })
+                .toList();
         assertThat(dynamicallyLoadedTools)
                 .extracting(tool -> String.valueOf(tool.get("name")))
                 .contains("crm");
@@ -345,18 +300,20 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
     private static Map<String, Object> rawItem(ResponseOutputItem item) {
         return item._json()
                 .map(json -> json.convert(new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {}))
-                .orElseGet(() -> ObjectMappers.jsonMapper()
-                        .convertValue(
-                                item, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {}));
+                .orElseGet(() -> ObjectMappers.jsonMapper().convertValue(
+                        item,
+                        new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {}));
     }
 
     @Disabled("gpt-5.4-mini cannot do it properly")
     @Override
-    protected void should_respect_JSON_response_format_with_schema(StreamingChatModel model) {}
+    protected void should_respect_JSON_response_format_with_schema(StreamingChatModel model) {
+    }
 
     @Disabled("gpt-5.4-mini cannot do it properly")
     @Override
-    protected void should_respect_JsonRawSchema_responseFormat(StreamingChatModel model) {}
+    protected void should_respect_JsonRawSchema_responseFormat(StreamingChatModel model) {
+    }
 
     @Test
     void should_accept_pdf_file_content_as_public_url() {
@@ -368,53 +325,16 @@ class OpenAiOfficialResponsesStreamingChatModelIT extends AbstractStreamingChatM
                 .build();
 
         UserMessage userMessage = UserMessage.builder()
-                .addContent(TextContent.from("What city appears in the attached PDF? Return only the city name."))
-                .addContent(PdfFileContent.from(
-                        PdfFile.builder().url("https://orimi.com/pdf-test.pdf").build()))
+                .addContent(TextContent.from(
+                        "What city appears in the attached PDF? Return only the city name."))
+                .addContent(PdfFileContent.from(PdfFile.builder()
+                        .url("https://orimi.com/pdf-test.pdf")
+                        .build()))
                 .build();
 
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
         model.chat(List.of(userMessage), handler);
 
         assertThat(handler.get().aiMessage().text()).containsIgnoringCase("Whitehorse");
-    }
-
-    private static class RecordingServerToolHandler implements StreamingChatResponseHandler {
-
-        private final List<ServerToolExecution> started = new CopyOnWriteArrayList<>();
-        private final List<ServerToolExecution> completed = new CopyOnWriteArrayList<>();
-        private final CountDownLatch done = new CountDownLatch(1);
-        private final AtomicReference<ChatResponse> response = new AtomicReference<>();
-        private final AtomicReference<Throwable> error = new AtomicReference<>();
-
-        @Override
-        public void beforeServerToolExecution(ServerToolExecution serverToolExecution) {
-            started.add(serverToolExecution);
-        }
-
-        @Override
-        public void onServerToolExecuted(ServerToolExecution serverToolExecution) {
-            completed.add(serverToolExecution);
-        }
-
-        @Override
-        public void onCompleteResponse(ChatResponse completeResponse) {
-            response.set(completeResponse);
-            done.countDown();
-        }
-
-        @Override
-        public void onError(Throwable error) {
-            this.error.set(error);
-            done.countDown();
-        }
-
-        private ChatResponse await() throws Exception {
-            assertThat(done.await(60, TimeUnit.SECONDS)).isTrue();
-            if (error.get() != null) {
-                throw new AssertionError("Streaming failed", error.get());
-            }
-            return response.get();
-        }
     }
 }

@@ -167,28 +167,16 @@ public interface StreamingChatResponseHandler {
     default void onCompleteToolCall(CompleteToolCall completeToolCall) {}
 
     /**
-     * Invoked when a provider-hosted tool execution is about to start.
+     * Invoked when a provider emits a raw streaming event.
+     * <p>
+     * The event type depends on the provider implementation. Implementations using the
+     * {@code dev.langchain4j.http.client.HttpClient} abstraction typically expose
+     * {@code ServerSentEvent}; other implementations can expose provider-specific event objects.
      *
-     * @param serverToolExecution A hosted tool execution lifecycle event.
+     * @param rawEvent A raw provider streaming event.
      */
     @Experimental
-    default void beforeServerToolExecution(ServerToolExecution serverToolExecution) {}
-
-    /**
-     * Invoked when a provider-hosted tool execution reports progress.
-     *
-     * @param serverToolExecution A hosted tool execution lifecycle event.
-     */
-    @Experimental
-    default void onServerToolExecutionProgress(ServerToolExecution serverToolExecution) {}
-
-    /**
-     * Invoked when a provider-hosted tool execution has completed.
-     *
-     * @param serverToolExecution A hosted tool execution lifecycle event.
-     */
-    @Experimental
-    default void onServerToolExecuted(ServerToolExecution serverToolExecution) {}
+    default void onRawEvent(Object rawEvent) {}
 
     /**
      * Invoked when the model has finished streaming a response.

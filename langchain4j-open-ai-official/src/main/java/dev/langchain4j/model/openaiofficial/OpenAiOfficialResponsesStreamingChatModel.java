@@ -1,11 +1,9 @@
 package dev.langchain4j.model.openaiofficial;
 
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.beforeServerToolExecution;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onServerToolExecuted;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onServerToolExecutionProgress;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.copy;
@@ -57,9 +55,6 @@ import com.openai.models.responses.ResponseReasoningTextDeltaEvent;
 import com.openai.models.responses.ResponseStreamEvent;
 import com.openai.models.responses.ResponseTextConfig;
 import com.openai.models.responses.ResponseTextDeltaEvent;
-import com.openai.models.responses.ResponseWebSearchCallCompletedEvent;
-import com.openai.models.responses.ResponseWebSearchCallInProgressEvent;
-import com.openai.models.responses.ResponseWebSearchCallSearchingEvent;
 import com.openai.models.responses.Tool;
 import com.openai.models.responses.ToolChoiceOptions;
 import dev.langchain4j.Experimental;
@@ -95,7 +90,6 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
-import dev.langchain4j.model.chat.response.ServerToolExecution;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.FinishReason;
@@ -1091,6 +1085,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             }
 
             try {
+                onRawEvent(handler, event);
+
                 if (event.isCreated()) {
                     handleCreated(event.asCreated());
                 } else if (event.isOutputTextDelta()) {
@@ -1105,12 +1101,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                     handleFunctionCallArgumentsDelta(event.asFunctionCallArgumentsDelta());
                 } else if (event.isFunctionCallArgumentsDone()) {
                     handleFunctionCallArgumentsDone(event.asFunctionCallArgumentsDone());
-                } else if (event.isWebSearchCallInProgress()) {
-                    handleWebSearchCallInProgress(event.asWebSearchCallInProgress());
-                } else if (event.isWebSearchCallSearching()) {
-                    handleWebSearchCallSearching(event.asWebSearchCallSearching());
-                } else if (event.isWebSearchCallCompleted()) {
-                    handleWebSearchCallCompleted(event.asWebSearchCallCompleted());
                 } else if (event.isOutputItemDone()) {
                     handleOutputItemDone(event.asOutputItemDone());
                 } else if (event.isCompleted()) {
@@ -1127,29 +1117,6 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
-        }
-
-        private void handleWebSearchCallInProgress(ResponseWebSearchCallInProgressEvent event) {
-            beforeServerToolExecution(
-                    handler, serverToolExecution(event.itemId(), event._type().convert(String.class), event));
-        }
-
-        private void handleWebSearchCallSearching(ResponseWebSearchCallSearchingEvent event) {
-            onServerToolExecutionProgress(
-                    handler, serverToolExecution(event.itemId(), event._type().convert(String.class), event));
-        }
-
-        private void handleWebSearchCallCompleted(ResponseWebSearchCallCompletedEvent event) {
-            onServerToolExecuted(
-                    handler, serverToolExecution(event.itemId(), event._type().convert(String.class), event));
-        }
-
-        private ServerToolExecution serverToolExecution(String id, String type, Object rawEvent) {
-            return ServerToolExecution.builder()
-                    .id(id)
-                    .type(type)
-                    .rawEvent(rawEvent)
-                    .build();
         }
 
         private void handleCreated(ResponseCreatedEvent event) {
