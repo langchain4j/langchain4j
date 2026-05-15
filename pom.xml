@@ -254,6 +254,7 @@
                 <jdk>25</jdk>
             </activation>
             <modules>
+                <module>langchain4j-deliverance</module>
                 <module>langchain4j-gpu-llama3</module>
             </modules>
         </profile>
