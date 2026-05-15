@@ -156,7 +156,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 new OpenAiStreamingResponseBuilder(returnThinking, accumulateToolCallId);
         ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
 
-        client.chatCompletion(openAiRequest)
+        client.chatCompletion(openAiRequest, parameters.timeout())
                 .onRawPartialResponse(parsedAndRawResponse -> {
                     openAiResponseBuilder.append(parsedAndRawResponse);
                     handle(parsedAndRawResponse, toolCallBuilder, handler);
