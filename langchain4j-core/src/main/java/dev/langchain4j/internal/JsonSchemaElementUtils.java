@@ -33,6 +33,9 @@ import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -54,6 +57,7 @@ public class JsonSchemaElementUtils {
         if (isJsonString(clazz)) {
             return JsonStringSchema.builder()
                     .description(Optional.ofNullable(fieldDescription).orElse(descriptionFrom(clazz)))
+                    .format(formatFrom(clazz))
                     .build();
         }
 
@@ -323,6 +327,22 @@ public class JsonSchemaElementUtils {
         return String.join(" ", description.value());
     }
 
+    private static String formatFrom(Class<?> type) {
+        if (type == UUID.class) {
+            return "uuid";
+        }
+        if (type == LocalDate.class) {
+            return "date";
+        }
+        if (type == LocalTime.class) {
+            return "time";
+        }
+        if (type == Duration.class) {
+            return "duration";
+        }
+        return null;
+    }
+
     /**
      * Returns the single type argument of a {@code Collection<E>}-shaped type, preserving its full
      * generic shape so callers can recurse into nested generics like {@code List<List<X>>} or {@code List<Foo<Bar>>}.
@@ -479,6 +499,9 @@ public class JsonSchemaElementUtils {
             if (jsonStringSchema.description() != null) {
                 map.put("description", jsonStringSchema.description());
             }
+            if (jsonStringSchema.format() != null) {
+                map.put("format", jsonStringSchema.format());
+            }
             return map;
         } else if (jsonSchemaElement instanceof JsonIntegerSchema jsonIntegerSchema) {
             Map<String, Object> map = new LinkedHashMap<>();
@@ -569,7 +592,10 @@ public class JsonSchemaElementUtils {
                 || type == char.class
                 || type == Character.class
                 || CharSequence.class.isAssignableFrom(type)
-                || type == UUID.class;
+                || type == UUID.class
+                || type == LocalDate.class
+                || type == LocalTime.class
+                || type == Duration.class;
     }
 
     static boolean isJsonArray(Class<?> type) {
