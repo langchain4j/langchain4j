@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Map;
+import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
 class ModerationResponseTest {
@@ -34,23 +35,27 @@ class ModerationResponseTest {
         // then
         assertThat(response.moderation()).isEqualTo(moderation);
         assertThat(response.metadata()).isEmpty();
+        assertThat(response.typedMetadata()).isNull();
     }
 
     @Test
     void should_create_response_with_all_fields() {
         // given
         Moderation moderation = Moderation.flagged("bad content");
-        Map<String, Object> metadata = Map.of("key", "value");
+        Map<String, Object> metadata = Map.of("provider", "test");
+        ModerationResponseMetadata typedMetadata = new TestModerationResponseMetadata("typed");
 
         // when
         ModerationResponse response = ModerationResponse.builder()
                 .moderation(moderation)
                 .metadata(metadata)
+                .typedMetadata(typedMetadata)
                 .build();
 
         // then
         assertThat(response.moderation()).isEqualTo(moderation);
-        assertThat(response.metadata()).containsEntry("key", "value");
+        assertThat(response.metadata()).isEqualTo(metadata);
+        assertThat(response.typedMetadata()).isEqualTo(typedMetadata);
     }
 
     @Test
@@ -98,6 +103,16 @@ class ModerationResponseTest {
         assertThat(response1).isEqualTo(response2);
         assertThat(response1.hashCode()).isEqualTo(response2.hashCode());
         assertThat(response1).isNotEqualTo(response3);
+
+        ModerationResponse response4 = response1.toBuilder()
+                .typedMetadata(new TestModerationResponseMetadata("typed"))
+                .build();
+        assertThat(response1).isEqualTo(response4);
+        assertThat(response1.hashCode()).isEqualTo(response4.hashCode());
+
+        ModerationResponse response5 =
+                response1.toBuilder().metadata(Map.of("provider", "test")).build();
+        assertThat(response1).isNotEqualTo(response5);
     }
 
     @Test
@@ -105,8 +120,13 @@ class ModerationResponseTest {
         // given
         Moderation original = Moderation.notFlagged();
         Moderation updated = Moderation.flagged("bad");
-        ModerationResponse originalResponse =
-                ModerationResponse.builder().moderation(original).build();
+        Map<String, Object> metadata = Map.of("provider", "test");
+        ModerationResponseMetadata typedMetadata = new TestModerationResponseMetadata("typed");
+        ModerationResponse originalResponse = ModerationResponse.builder()
+                .moderation(original)
+                .metadata(metadata)
+                .typedMetadata(typedMetadata)
+                .build();
 
         // when
         ModerationResponse copy =
@@ -115,21 +135,29 @@ class ModerationResponseTest {
         // then
         assertThat(originalResponse.moderation()).isEqualTo(original);
         assertThat(copy.moderation()).isEqualTo(updated);
+        assertThat(copy.metadata()).isEqualTo(metadata);
+        assertThat(copy.typedMetadata()).isEqualTo(typedMetadata);
     }
 
-    @Test
-    void should_create_response_with_metadata() {
-        // given
-        Moderation moderation = Moderation.notFlagged();
-        Map<String, Object> metadata = Map.of("key", "value");
+    private static class TestModerationResponseMetadata implements ModerationResponseMetadata {
 
-        // when
-        ModerationResponse response = ModerationResponse.builder()
-                .moderation(moderation)
-                .metadata(metadata)
-                .build();
+        private final String value;
 
-        // then
-        assertThat(response.metadata()).containsEntry("key", "value");
+        TestModerationResponseMetadata(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            TestModerationResponseMetadata that = (TestModerationResponseMetadata) o;
+            return Objects.equals(value, that.value);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(value);
+        }
     }
 }
