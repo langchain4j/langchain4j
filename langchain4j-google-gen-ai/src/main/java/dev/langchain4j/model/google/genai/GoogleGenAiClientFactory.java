@@ -11,6 +11,8 @@ class GoogleGenAiClientFactory {
             String apiKey, GoogleCredentials googleCredentials, String projectId, String location, Duration timeout) {
 
         HttpOptions.Builder httpOptions = HttpOptions.builder();
+        httpOptions.headers(java.util.Collections.singletonMap("User-Agent", "LangChain4j"));
+
         if (timeout != null) {
             httpOptions.timeout((int) timeout.toMillis());
         }
