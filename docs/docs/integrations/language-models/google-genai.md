@@ -4,7 +4,7 @@ sidebar_position: 8
 
 # Google Gen AI (Experimental)
 
-https://github.com/googleapis/google-genai-java
+https://github.com/googleapis/java-genai
 
 > [!WARNING]  
 > This integration is currently marked as **Experimental**. The API and implementation are subject to change in future releases.
