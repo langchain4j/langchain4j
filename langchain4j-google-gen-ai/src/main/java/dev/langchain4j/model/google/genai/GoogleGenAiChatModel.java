@@ -11,7 +11,7 @@ import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.Schema;
 import com.google.genai.types.ToolConfig;
-import dev.langchain4j.agent.tool.Experimental;
+import dev.langchain4j.Experimental;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
