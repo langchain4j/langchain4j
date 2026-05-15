@@ -18,6 +18,7 @@ https://github.com/googleapis/google-genai-java
 - [GoogleGenAiChatModel](#googlegenAichatmodel)
     - [Configuring](#configuring)
 - [GoogleGenAiStreamingChatModel](#googlegenaistreamingchatmodel)
+    - [Executor](#executor)
 - [Tools](#tools)
 - [JSON Schema / Structured Outputs](#json-schema--structured-outputs)
 
@@ -26,8 +27,8 @@ https://github.com/googleapis/google-genai-java
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-google-gen-ai</artifactId>
-    <version>1.0.0-SNAPSHOT</version> <!-- Replace with the current version -->
+    <artifactId>langchain4j-google-genai</artifactId>
+    <version>1.15.0-beta25</version>
 </dependency>
 ```
 
@@ -139,6 +140,24 @@ gemini.chat("Tell me a joke about Java", new StreamingChatResponseHandler() {
 futureResponse.join();
 ```
 
+### Executor
+
+The Google Gen AI SDK exposes streaming as a **blocking** `ResponseStream` iterator: each chunk is delivered by a blocking `next()` call. `GoogleGenAiStreamingChatModel` therefore needs an `ExecutorService` to drive that iteration off the caller's thread.
+
+If you don't pass one, a shared default from `DefaultExecutorProvider` is used (lazily initialized, uses virtual threads when available). This works out of the box but is **not recommended for production**: the default executor is unbounded, JVM-wide, and not tied to your application lifecycle — so it offers no back-pressure, no graceful shutdown, and no visibility in your metrics.
+
+You should almost always supply your own executor — for example, your framework's managed task executor (Spring `TaskExecutor`, Quarkus `ManagedExecutor`, ...), a virtual-thread executor you own, or a bounded pool tuned to your concurrency budget:
+
+```java
+ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // or your framework's executor
+
+StreamingChatModel gemini = GoogleGenAiStreamingChatModel.builder()
+    .apiKey(System.getenv("GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash")
+    .executor(executor)
+    .build();
+```
+
 ## Tools
 
 Tools (aka Function Calling) are supported. You can define them using LangChain4j's `AiServices`:
@@ -173,7 +192,7 @@ String response = weatherAssistant.chat("What is the weather forecast for Tokyo?
 
 ## JSON Schema / Structured Outputs
 
-The `langchain4j-google-gen-ai` integration maps LangChain4j JSON schemas (`ResponseFormat.jsonSchema()`) directly into the `ResponseSchema` of the official Google Gen AI SDK. This allows natively extracting strongly-typed Java records!
+The `langchain4j-google-genai` integration maps LangChain4j JSON schemas (`ResponseFormat.jsonSchema()`) directly into the `ResponseSchema` of the official Google Gen AI SDK. This allows natively extracting strongly-typed Java records!
 
 ```java
 record WeatherForecast(

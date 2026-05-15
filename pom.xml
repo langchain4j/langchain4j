@@ -29,7 +29,6 @@
         <module>http-clients/langchain4j-http-client-okhttp</module>
 
         <!-- model providers -->
-        <module>langchain4j-google-gen-ai</module>
         <module>langchain4j-anthropic</module>
         <module>langchain4j-azure-open-ai</module>
         <module>langchain4j-bedrock</module>
@@ -46,6 +45,7 @@
         <module>langchain4j-open-ai-official</module>
         <module>langchain4j-github-models</module>
         <module>langchain4j-google-ai-gemini</module>
+        <module>langchain4j-google-genai</module>
         <module>langchain4j-vertex-ai</module>
         <module>langchain4j-vertex-ai-gemini</module>
         <module>langchain4j-vertex-ai-anthropic</module>
@@ -145,7 +145,6 @@
         <!-- internal -->
         <module>internal/langchain4j-internal-test-retry</module>
         <module>internal/langchain4j-docu-chatbot-updater</module>
-
     </modules>
 
     <properties>
