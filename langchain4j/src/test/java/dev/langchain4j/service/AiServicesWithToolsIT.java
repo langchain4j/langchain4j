@@ -28,6 +28,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.LoggingChatModelListener;
 import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -65,6 +66,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
@@ -2126,5 +2128,447 @@ class AiServicesWithToolsIT {
         assistant.chat("Please register a circle shape with radius 4.");
 
         verify(registry).registerShape(argThat(shape -> shape instanceof Circle circle && circle.radius == 4.0));
+    }
+
+    static class BankAccountService {
+
+        final Map<String, Double> accounts = new HashMap<>();
+
+        BankAccountService() {
+            accounts.put("Mario", 50.0);
+            accounts.put("Dmytro", 100.0);
+        }
+
+        @Tool("credits money to a bank account")
+        void credit(@P(name = "name", description = "account holder name") String name,
+                    @P(name = "amount", description = "amount to credit") double amount) {
+            accounts.merge(name, amount, Double::sum);
+        }
+
+        @CompensateFor("credit")
+        void uncredit(String name, double amount) {
+            accounts.merge(name, -amount, Double::sum);
+        }
+
+        @Tool("withdraws money from a bank account")
+        void withdraw(@P(name = "name", description = "account holder name") String name,
+                      @P(name = "amount", description = "amount to withdraw") double amount) {
+            if (accounts.getOrDefault(name, 0.0) < amount) {
+                throw new RuntimeException("Insufficient funds in " + name + "'s account");
+            }
+            accounts.merge(name, -amount, Double::sum);
+        }
+
+        @CompensateFor("withdraw")
+        void unwithdraw(String name, double amount) {
+            accounts.merge(name, amount, Double::sum);
+        }
+    }
+
+    @Test
+    void should_rollback_tool_executions_on_failure_when_transactional() {
+
+        // given
+        BankAccountService bankService = spy(new BankAccountService());
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                // First LLM response: credit Dmytro's account
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("credit")
+                        .arguments("{\"name\": \"Dmytro\", \"amount\": 100.0}")
+                        .build()),
+                // Second LLM response: withdraw from Mario's account (will fail - insufficient funds)
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("2")
+                        .name("withdraw")
+                        .arguments("{\"name\": \"Mario\", \"amount\": 100.0}")
+                        .build()),
+                AiMessage.from("Transfer complete"));
+
+        interface BankAssistant {
+            String chat(String userMessage);
+        }
+
+        BankAssistant assistant = AiServices.builder(BankAssistant.class)
+                .chatModel(chatModel)
+                .tools(bankService)
+                .compensateOnToolErrors(true)
+                .build();
+
+        // when
+        String response = assistant.chat("Transfer 100 dollars from Mario's account to Dmytro's account");
+
+        // then - the credit to Dmytro should have been rolled back via uncredit
+        verify(bankService).credit("Dmytro", 100.0);
+        verify(bankService).withdraw("Mario", 100.0);
+        verify(bankService).uncredit("Dmytro", 100.0);
+
+        // account balances should be back to their original state
+        assertThat(bankService.accounts.get("Mario")).isEqualTo(50.0);
+        assertThat(bankService.accounts.get("Dmytro")).isEqualTo(100.0);
+
+        // LLM received rollback info and responded
+        assertThat(response).isEqualTo("Transfer complete");
+    }
+
+    @Test
+    void should_not_rollback_tool_executions_on_failure_when_not_transactional() {
+
+        // given
+        BankAccountService bankService = spy(new BankAccountService());
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("credit")
+                        .arguments("{\"name\": \"Dmytro\", \"amount\": 100.0}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("2")
+                        .name("withdraw")
+                        .arguments("{\"name\": \"Mario\", \"amount\": 100.0}")
+                        .build()),
+                AiMessage.from("Transfer failed, Mario has insufficient funds"));
+
+        interface BankAssistant {
+            String chat(String userMessage);
+        }
+
+        BankAssistant assistant = AiServices.builder(BankAssistant.class)
+                .chatModel(chatModel)
+                .tools(bankService)
+                .build();
+
+        // when
+        assistant.chat("Transfer 100 dollars from Mario's account to Dmytro's account");
+
+        // then - no rollback: uncredit should never be called
+        verify(bankService).credit("Dmytro", 100.0);
+        verify(bankService).withdraw("Mario", 100.0);
+        verify(bankService, times(0)).uncredit("Dmytro", 100.0);
+
+        // Dmytro's balance stays at 200 (credit was not reversed)
+        assertThat(bankService.accounts.get("Mario")).isEqualTo(50.0);
+        assertThat(bankService.accounts.get("Dmytro")).isEqualTo(200.0);
+    }
+
+    @Test
+    void should_rollback_with_tool_execution_parameter() {
+
+        // given
+        class CompensatingBankService {
+
+            final Map<String, Double> accounts = new HashMap<>();
+            final List<String> reversedTransactionIds = new ArrayList<>();
+
+            CompensatingBankService() {
+                accounts.put("Mario", 50.0);
+                accounts.put("Dmytro", 100.0);
+            }
+
+            @Tool("credits money to a bank account")
+            String credit(@P(name = "name", description = "account holder name") String name,
+                          @P(name = "amount", description = "amount to credit") double amount) {
+                accounts.merge(name, amount, Double::sum);
+                return "TX-42";
+            }
+
+            @CompensateFor("credit")
+            void uncredit(ToolExecution toolExecution) {
+                reversedTransactionIds.add(toolExecution.result());
+                Map<String, Object> args = Json.fromJson(toolExecution.request().arguments(), Map.class);
+                accounts.merge((String) args.get("name"), -((Number) args.get("amount")).doubleValue(), Double::sum);
+            }
+
+            @Tool("withdraws money from a bank account")
+            void withdraw(@P(name = "name", description = "account holder name") String name,
+                          @P(name = "amount", description = "amount to withdraw") double amount) {
+                if (accounts.getOrDefault(name, 0.0) < amount) {
+                    throw new RuntimeException("Insufficient funds in " + name + "'s account");
+                }
+                accounts.merge(name, -amount, Double::sum);
+            }
+        }
+
+        CompensatingBankService bankService = new CompensatingBankService();
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("credit")
+                        .arguments("{\"name\": \"Dmytro\", \"amount\": 100.0}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("2")
+                        .name("withdraw")
+                        .arguments("{\"name\": \"Mario\", \"amount\": 100.0}")
+                        .build()),
+                AiMessage.from("Transfer complete"));
+
+        interface BankAssistant {
+            String chat(String userMessage);
+        }
+
+        BankAssistant assistant = AiServices.builder(BankAssistant.class)
+                .chatModel(chatModel)
+                .tools(bankService)
+                .compensateOnToolErrors(true)
+                .build();
+
+        // when
+        String response = assistant.chat("Transfer 100 dollars from Mario's account to Dmytro's account");
+
+        // then - the reverse method received the ToolExecution with the original result
+        assertThat(bankService.reversedTransactionIds).containsExactly("TX-42");
+
+        // balances should be restored
+        assertThat(bankService.accounts.get("Mario")).isEqualTo(50.0);
+        assertThat(bankService.accounts.get("Dmytro")).isEqualTo(100.0);
+
+        assertThat(response).isEqualTo("Transfer complete");
+    }
+
+    static class TravelBookingService {
+
+        final List<String> executionLog = new ArrayList<>();
+        final Set<String> failingTools;
+
+        TravelBookingService(String... failingTools) {
+            this.failingTools = Set.of(failingTools);
+        }
+
+        @Tool("books a flight")
+        String bookFlight(@P(name = "destination", description = "destination city") String destination) {
+            if (failingTools.contains("bookFlight")) {
+                throw new RuntimeException("No flights available to " + destination);
+            }
+            executionLog.add("bookFlight");
+            return "FL-123";
+        }
+
+        @CompensateFor("bookFlight")
+        void cancelFlight(ToolExecution toolExecution) {
+            executionLog.add("cancelFlight:" + toolExecution.result());
+        }
+
+        @Tool("books a hotel")
+        String bookHotel(@P(name = "destination", description = "destination city") String destination) {
+            if (failingTools.contains("bookHotel")) {
+                throw new RuntimeException("No hotels available in " + destination);
+            }
+            executionLog.add("bookHotel");
+            return "HT-456";
+        }
+
+        @CompensateFor("bookHotel")
+        void cancelHotel(ToolExecution toolExecution) {
+            executionLog.add("cancelHotel:" + toolExecution.result());
+        }
+
+        @Tool("rents a car")
+        String rentCar(@P(name = "destination", description = "destination city") String destination) {
+            if (failingTools.contains("rentCar")) {
+                throw new RuntimeException("No cars available in " + destination);
+            }
+            executionLog.add("rentCar");
+            return "CR-789";
+        }
+
+        @CompensateFor("rentCar")
+        void cancelCar(ToolExecution toolExecution) {
+            executionLog.add("cancelCar:" + toolExecution.result());
+        }
+    }
+
+    @Test
+    void should_rollback_in_reverse_order_when_last_tool_fails() {
+
+        // given
+        TravelBookingService travelService = new TravelBookingService("rentCar");
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(
+                        ToolExecutionRequest.builder().id("1").name("bookFlight")
+                                .arguments("{\"destination\": \"Paris\"}").build(),
+                        ToolExecutionRequest.builder().id("2").name("bookHotel")
+                                .arguments("{\"destination\": \"Paris\"}").build(),
+                        ToolExecutionRequest.builder().id("3").name("rentCar")
+                                .arguments("{\"destination\": \"Paris\"}").build()),
+                AiMessage.from("Trip booked"));
+
+        interface TravelAssistant {
+            String chat(String userMessage);
+        }
+
+        TravelAssistant assistant = AiServices.builder(TravelAssistant.class)
+                .chatModel(chatModel)
+                .tools(travelService)
+                .compensateOnToolErrors(true)
+                .build();
+
+        // when
+        String response = assistant.chat("Book a trip to Paris");
+
+        // then - rollback in reverse: cancelHotel before cancelFlight
+        assertThat(travelService.executionLog).containsExactly(
+                "bookFlight", "bookHotel",
+                "cancelHotel:HT-456", "cancelFlight:FL-123");
+        assertThat(response).isEqualTo("Trip booked");
+    }
+
+    @Test
+    void should_rollback_when_middle_tool_fails() {
+
+        // given
+        TravelBookingService travelService = new TravelBookingService("bookHotel");
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(
+                        ToolExecutionRequest.builder().id("1").name("bookFlight")
+                                .arguments("{\"destination\": \"Rome\"}").build(),
+                        ToolExecutionRequest.builder().id("2").name("bookHotel")
+                                .arguments("{\"destination\": \"Rome\"}").build(),
+                        ToolExecutionRequest.builder().id("3").name("rentCar")
+                                .arguments("{\"destination\": \"Rome\"}").build()),
+                AiMessage.from("Trip booked"));
+
+        interface TravelAssistant {
+            String chat(String userMessage);
+        }
+
+        TravelAssistant assistant = AiServices.builder(TravelAssistant.class)
+                .chatModel(chatModel)
+                .tools(travelService)
+                .compensateOnToolErrors(true)
+                .build();
+
+        // when
+        String response = assistant.chat("Book a trip to Rome");
+
+        // then - flight and car succeeded, hotel failed, rollback in reverse: cancelCar then cancelFlight
+        assertThat(travelService.executionLog).containsExactly(
+                "bookFlight", "rentCar",
+                "cancelCar:CR-789", "cancelFlight:FL-123");
+        assertThat(response).isEqualTo("Trip booked");
+    }
+
+    @Test
+    void should_rollback_when_first_tool_fails() {
+
+        // given
+        TravelBookingService travelService = new TravelBookingService("bookFlight");
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(
+                        ToolExecutionRequest.builder().id("1").name("bookFlight")
+                                .arguments("{\"destination\": \"Tokyo\"}").build(),
+                        ToolExecutionRequest.builder().id("2").name("bookHotel")
+                                .arguments("{\"destination\": \"Tokyo\"}").build(),
+                        ToolExecutionRequest.builder().id("3").name("rentCar")
+                                .arguments("{\"destination\": \"Tokyo\"}").build()),
+                AiMessage.from("Trip booked"));
+
+        interface TravelAssistant {
+            String chat(String userMessage);
+        }
+
+        TravelAssistant assistant = AiServices.builder(TravelAssistant.class)
+                .chatModel(chatModel)
+                .tools(travelService)
+                .compensateOnToolErrors(true)
+                .build();
+
+        // when
+        String response = assistant.chat("Book a trip to Tokyo");
+
+        // then - hotel and car succeeded, flight failed, rollback in reverse: cancelCar then cancelHotel
+        assertThat(travelService.executionLog).containsExactly(
+                "bookHotel", "rentCar",
+                "cancelCar:CR-789", "cancelHotel:HT-456");
+        assertThat(response).isEqualTo("Trip booked");
+    }
+
+    @Test
+    void should_inform_llm_about_rolled_back_tools() {
+
+        // given
+        TravelBookingService travelService = new TravelBookingService("bookHotel");
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(20);
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(
+                        ToolExecutionRequest.builder().id("1").name("bookFlight")
+                                .arguments("{\"destination\": \"Berlin\"}").build(),
+                        ToolExecutionRequest.builder().id("2").name("bookHotel")
+                                .arguments("{\"destination\": \"Berlin\"}").build(),
+                        ToolExecutionRequest.builder().id("3").name("rentCar")
+                                .arguments("{\"destination\": \"Berlin\"}").build()),
+                AiMessage.from("Sorry, I could not complete the booking because no hotels are available in Berlin."));
+
+        interface TravelAssistant {
+            String chat(String userMessage);
+        }
+
+        TravelAssistant assistant = AiServices.builder(TravelAssistant.class)
+                .chatModel(chatModel)
+                .tools(travelService)
+                .chatMemory(chatMemory)
+                .compensateOnToolErrors(true)
+                .build();
+
+        // when
+        String response = assistant.chat("Book a trip to Berlin");
+
+        // then - LLM responded with rollback-aware message
+        assertThat(response).contains("could not complete the booking");
+
+        // verify ChatMemory contains proper tool result messages
+        List<ToolExecutionResultMessage> toolResultMessages = chatMemory.messages().stream()
+                .filter(m -> m instanceof ToolExecutionResultMessage)
+                .map(m -> (ToolExecutionResultMessage) m)
+                .toList();
+
+        assertThat(toolResultMessages).hasSize(3);
+
+        // bookFlight succeeded but was rolled back
+        assertThat(toolResultMessages.get(0).text())
+                .contains("bookFlight")
+                .contains("rolled back")
+                .contains("bookHotel");
+
+        // bookHotel failed — normal error message
+        assertThat(toolResultMessages.get(1).text())
+                .contains("No hotels available");
+
+        // rentCar succeeded but was rolled back
+        assertThat(toolResultMessages.get(2).text())
+                .contains("rentCar")
+                .contains("rolled back")
+                .contains("bookHotel");
+    }
+
+    @Test
+    void should_throw_when_compensating_action_has_wrong_signature() {
+
+        class MisconfiguredService {
+
+            @Tool("credits money to a bank account")
+            void credit(String name, double amount) {
+            }
+
+            @CompensateFor("credit")
+            void uncredit(String name) {
+            }
+        }
+
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() -> AiServices.builder(Assistant.class)
+                        .chatModel(ChatModelMock.thatAlwaysResponds("ok"))
+                        .tools(new MisconfiguredService())
+                        .build())
+                .withMessageContaining("@CompensateFor(\"credit\")")
+                .withMessageContaining("same parameter types");
     }
 }

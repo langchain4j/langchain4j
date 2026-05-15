@@ -65,6 +65,10 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.propagateToolExecutionExceptions = false;
     }
 
+    public Method originalMethod() {
+        return originalMethod;
+    }
+
     private Method findMethod(Object object, ToolExecutionRequest toolExecutionRequest) {
         String requestedMethodName = toolExecutionRequest.name();
 
