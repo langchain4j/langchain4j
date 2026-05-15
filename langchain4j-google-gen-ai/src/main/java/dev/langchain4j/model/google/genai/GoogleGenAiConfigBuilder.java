@@ -1,5 +1,6 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import com.google.genai.types.Content;
@@ -42,20 +43,20 @@ class GoogleGenAiConfigBuilder {
 
         // Generation parameters
         Double temperature =
-                dev.langchain4j.internal.Utils.getOrDefault(parameters.temperature(), defaultParameters.temperature());
+                getOrDefault(parameters.temperature(), defaultParameters.temperature());
         if (temperature != null) configBuilder.temperature(temperature.floatValue());
 
-        Double topP = dev.langchain4j.internal.Utils.getOrDefault(parameters.topP(), defaultParameters.topP());
+        Double topP = getOrDefault(parameters.topP(), defaultParameters.topP());
         if (topP != null) configBuilder.topP(topP.floatValue());
 
-        Integer topK = dev.langchain4j.internal.Utils.getOrDefault(parameters.topK(), defaultParameters.topK());
+        Integer topK = getOrDefault(parameters.topK(), defaultParameters.topK());
         if (topK != null) configBuilder.topK(topK.floatValue());
 
-        Integer maxOutputTokens = dev.langchain4j.internal.Utils.getOrDefault(
+        Integer maxOutputTokens = getOrDefault(
                 parameters.maxOutputTokens(), defaultParameters.maxOutputTokens());
         if (maxOutputTokens != null) configBuilder.maxOutputTokens(maxOutputTokens);
 
-        List<String> stopSequences = dev.langchain4j.internal.Utils.getOrDefault(
+        List<String> stopSequences = getOrDefault(
                 parameters.stopSequences(), defaultParameters.stopSequences());
         if (stopSequences != null) configBuilder.stopSequences(stopSequences);
 
@@ -74,7 +75,7 @@ class GoogleGenAiConfigBuilder {
             configBuilder.responseMimeType("application/json");
         }
 
-        ResponseFormat responseFormat = dev.langchain4j.internal.Utils.getOrDefault(
+        ResponseFormat responseFormat = getOrDefault(
                 parameters.responseFormat(), defaultParameters.responseFormat());
         if (responseFormat != null) {
             if (responseFormat.type() == ResponseFormatType.JSON) {
@@ -125,7 +126,7 @@ class GoogleGenAiConfigBuilder {
             boolean urlContextEnabled,
             List<String> allowedFunctionNames) {
 
-        List<ToolSpecification> toolSpecs = dev.langchain4j.internal.Utils.getOrDefault(
+        List<ToolSpecification> toolSpecs = getOrDefault(
                 parameters.toolSpecifications(), defaultParameters.toolSpecifications());
 
         List<Tool> requestTools = new ArrayList<>();
@@ -163,7 +164,7 @@ class GoogleGenAiConfigBuilder {
         if (!isNullOrEmpty(toolSpecs)) {
             FunctionCallingConfig.Builder funcConfig = FunctionCallingConfig.builder();
 
-            ToolChoice toolChoice = dev.langchain4j.internal.Utils.getOrDefault(
+            ToolChoice toolChoice = getOrDefault(
                     parameters.toolChoice(), defaultParameters.toolChoice());
             if (toolChoice == ToolChoice.REQUIRED) {
                 funcConfig.mode("ANY");
