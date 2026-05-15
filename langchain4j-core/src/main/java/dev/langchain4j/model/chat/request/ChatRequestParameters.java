@@ -26,6 +26,8 @@ public interface ChatRequestParameters {
 
     Integer maxOutputTokens();
 
+    Integer maxCompletionTokens();
+
     List<String> stopSequences();
 
     List<ToolSpecification> toolSpecifications();
