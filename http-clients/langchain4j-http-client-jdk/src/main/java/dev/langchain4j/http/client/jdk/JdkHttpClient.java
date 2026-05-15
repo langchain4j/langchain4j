@@ -6,10 +6,11 @@ import static java.util.stream.Collectors.joining;
 
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
+import dev.langchain4j.http.client.FormDataFile;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
-import dev.langchain4j.http.client.FormDataFile;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import java.io.BufferedReader;
@@ -23,6 +24,7 @@ import java.net.http.HttpResponse.BodyHandlers;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class JdkHttpClient implements HttpClient {
 
@@ -58,7 +60,7 @@ public class JdkHttpClient implements HttpClient {
         } catch (HttpTimeoutException e) {
             throw new TimeoutException(e);
         } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();  
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -78,13 +80,41 @@ public class JdkHttpClient implements HttpClient {
                     }
 
                     SuccessfulHttpResponse response = fromJdkResponse(jdkResponse, null);
-                    ignoringExceptions(() -> listener.onOpen(response));
+
+                    AtomicBoolean completed = new AtomicBoolean(false);
+                    ServerSentEventListener guardedListener = new ServerSentEventListener() {
+
+                        @Override
+                        public void onOpen(SuccessfulHttpResponse r) {
+                            listener.onOpen(r);
+                        }
+
+                        @Override
+                        public void onEvent(ServerSentEvent event) {
+                            listener.onEvent(event);
+                        }
+
+                        @Override
+                        public void onClose() {
+                            if (completed.compareAndSet(false, true)) {
+                                listener.onClose();
+                            }
+                        }
+
+                        @Override
+                        public void onError(Throwable t) {
+                            if (completed.compareAndSet(false, true)) {
+                                listener.onError(t);
+                            }
+                        }
+                    };
+                    ignoringExceptions(() -> guardedListener.onOpen(response));
 
                     try (InputStream inputStream = jdkResponse.body()) {
-                        parser.parse(inputStream, listener);
-                        ignoringExceptions(listener::onClose);
+                        parser.parse(inputStream, guardedListener);
+                        ignoringExceptions(guardedListener::onClose);
                     } catch (IOException e) {
-                        throw new RuntimeException(e);
+                        ignoringExceptions(() -> guardedListener.onError(e));
                     }
                 })
                 .exceptionally(throwable -> {
