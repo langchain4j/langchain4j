@@ -13,6 +13,7 @@ import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.Schema;
 import com.google.genai.types.ToolConfig;
+import dev.langchain4j.agent.tool.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.ModelProvider;
@@ -36,6 +37,7 @@ import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Experimental
 public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
 
     private static final Logger log = LoggerFactory.getLogger(GoogleGenAiStreamingChatModel.class);

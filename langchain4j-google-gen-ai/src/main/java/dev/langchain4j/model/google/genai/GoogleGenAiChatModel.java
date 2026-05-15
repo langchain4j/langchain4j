@@ -11,6 +11,7 @@ import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.Schema;
 import com.google.genai.types.ToolConfig;
+import dev.langchain4j.agent.tool.Experimental;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
@@ -25,6 +26,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Experimental
 public class GoogleGenAiChatModel implements ChatModel {
 
     private static final Logger log = LoggerFactory.getLogger(GoogleGenAiChatModel.class);
