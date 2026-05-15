@@ -190,6 +190,8 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
         BedrockCachePointPlacement cachePointPlacement = parameters.cachePointPlacement();
         CacheTTL cacheTtl = parameters.cacheTtl();
         BedrockGuardrailConfiguration bedrockGuardrailConfiguration = parameters.bedrockGuardrailConfiguration();
+        BedrockGuardContentPlacement guardContentPlacement =
+                bedrockGuardrailConfiguration == null ? null : bedrockGuardrailConfiguration.guardContentPlacement();
         BedrockServiceTier bedrockServiceTier = parameters.serviceTier();
 
         // Validate total cache points don't exceed AWS limit
@@ -201,7 +203,8 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                 .modelId(chatRequest.modelName())
                 .inferenceConfig(inferenceConfigFrom(chatRequest.parameters()))
                 .system(extractSystemMessages(chatRequest.messages(), cachePointPlacement, cacheTtl))
-                .messages(extractRegularMessages(chatRequest.messages(), cachePointPlacement, cacheTtl))
+                .messages(extractRegularMessages(
+                        chatRequest.messages(), cachePointPlacement, cacheTtl, guardContentPlacement))
                 .toolConfig(extractToolConfigurationFrom(chatRequest, cachePointPlacement, cacheTtl))
                 .additionalModelRequestFields(additionalRequestModelFieldsFrom(chatRequest.parameters()))
                 .guardrailConfig(guardrailStreamConfigFrom(bedrockGuardrailConfiguration))
