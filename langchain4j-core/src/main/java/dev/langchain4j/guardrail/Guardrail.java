@@ -19,4 +19,30 @@ public interface Guardrail<P extends GuardrailRequest, R extends GuardrailResult
      * @return The result of the validation
      */
     R validate(P request);
+
+    /**
+     * Returns the logical name of this guardrail, used for observability and reporting.
+     *
+     * <p>The default implementation returns the simple class name of the guardrail. Decorator or
+     * adapter implementations should override this method to return the name of the underlying
+     * guardrail they wrap, so that observability systems (e.g. {@code GuardrailExecutedEvent})
+     * correctly identify the logical guardrail rather than the wrapper.
+     *
+     * <p>Example:
+     * <pre>{@code
+     * public class PromptInjectionGuardrailAdapter implements InputGuardrail {
+     *     private final PromptInjectionGuardrail delegate;
+     *
+     *     @Override
+     *     public String name() {
+     *         return delegate.name();
+     *     }
+     * }
+     * }</pre>
+     *
+     * @return the logical name of this guardrail; never {@code null}
+     */
+    default String name() {
+        return getClass().getSimpleName();
+    }
 }
