@@ -39,12 +39,15 @@ Get an API key for free here: https://ai.google.dev/gemini-api/docs/api-key.
 
 Check the list of [available models](https://ai.google.dev/gemini-api/docs/models/gemini) in the documentation.
 
+* `gemini-3.1-pro-preview`
+* `gemini-3.1-flash-lite`
 * `gemini-3-pro-preview`
+* `gemini-3-flash-preview`
 * `gemini-2.5-pro`
 * `gemini-2.5-flash`
 * `gemini-2.5-flash-lite`
-* `gemini-2.0-flash`
-* `gemini-2.0-flash-lite`
+
+(See the [official documentation](https://ai.google.dev/gemini-api/docs/models) for the full list of specialized preview models like `-image`, `-tts`, and `-live`).
 
 ## GoogleGenAiChatModel
 
