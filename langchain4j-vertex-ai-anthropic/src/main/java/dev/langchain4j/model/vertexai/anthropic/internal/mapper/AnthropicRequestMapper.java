@@ -39,6 +39,33 @@ public class AnthropicRequestMapper {
             Integer topK,
             List<String> stopSequences,
             Boolean enablePromptCaching) {
+
+        return toRequest(
+                model,
+                messages,
+                toolSpecs,
+                toolChoice,
+                maxTokens,
+                temperature,
+                topP,
+                topK,
+                stopSequences,
+                enablePromptCaching,
+                null);
+    }
+
+    public static AnthropicRequest toRequest(
+            String model,
+            List<ChatMessage> messages,
+            List<ToolSpecification> toolSpecs,
+            ToolChoice toolChoice,
+            Integer maxTokens,
+            Double temperature,
+            Double topP,
+            Integer topK,
+            List<String> stopSequences,
+            Boolean enablePromptCaching,
+            Integer thinkingBudgetTokens) {
         if (model == null || model.trim().isEmpty()) {
             throw new IllegalArgumentException("model cannot be null or empty");
         }
@@ -73,6 +100,13 @@ public class AnthropicRequestMapper {
             request.toolChoice = toAnthropicToolChoice(toolChoice);
         }
         request.anthropicVersion = Constants.ANTHROPIC_VERSION;
+
+        if (thinkingBudgetTokens != null && thinkingBudgetTokens > 0) {
+            request.thinking = new AnthropicRequest.AnthropicThinking(thinkingBudgetTokens);
+
+            // Anthropic API constraint: temperature must be 1.0 when thinking is enabled
+            request.temperature = 1.0;
+        }
 
         return request;
     }
