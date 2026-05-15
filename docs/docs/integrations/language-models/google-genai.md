@@ -8,7 +8,7 @@ https://github.com/googleapis/java-genai
 
 > [!WARNING]  
 > This integration is currently marked as **Experimental**. The API and implementation are subject to change in future releases.
-> It uses the new official Google Gen AI SDK for Java (`com.google.genai:google-gen-ai`).
+> It uses the new official Google Gen AI SDK for Java (`com.google.genai:google-genai`).
 
 ## Table of Contents
 
