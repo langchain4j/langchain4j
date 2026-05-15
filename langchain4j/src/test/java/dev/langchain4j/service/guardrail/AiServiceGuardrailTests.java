@@ -1,5 +1,10 @@
 package dev.langchain4j.service.guardrail;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessageType;
@@ -12,6 +17,7 @@ import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
+import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -20,16 +26,13 @@ import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.service.AiServices;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 class AiServiceGuardrailTests {
     private static final ImageContent IMAGE_CONTENT = ImageContent.from(
@@ -163,7 +166,8 @@ class AiServiceGuardrailTests {
 
         assistant.chat("Original prompt");
 
-        UserMessage userMessage = (UserMessage) chatModelMock.request().messages().get(0);
+        UserMessage userMessage =
+                (UserMessage) chatModelMock.request().messages().get(0);
         assertThat(userMessage.contents()).containsExactly(TextContent.from("Rewritten prompt"));
         assertThat(userMessage.hasSingleText()).isTrue();
     }
@@ -361,6 +365,163 @@ class AiServiceGuardrailTests {
             return failure(
                     responseFromLLM.text() + " failure from " + getClass().getSimpleName());
         }
+    }
+
+    @Test
+    void output_guardrail_reprompt_should_execute_tool_loop_before_revalidating() {
+        // Scenario: guardrail reprompts on "bad response"; reprompted LLM responds with a tool call
+        // instead of text; tool executes; final LLM response passes the guardrail.
+        // Before the fix, the tool-only AiMessage (text == null) was handed directly to the guardrail.
+        var toolCallCount = new AtomicInteger(0);
+
+        var toolCallResponse = AiMessage.from(ToolExecutionRequest.builder()
+                .id("call-1")
+                .name("verify")
+                .arguments("{}")
+                .build());
+
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from("bad response"), // triggers reprompt
+                toolCallResponse, // reprompted LLM picks a tool
+                AiMessage.from("good response")); // final text after tool execution
+
+        var tools = new Object() {
+            @Tool("verify something")
+            public String verify() {
+                toolCallCount.incrementAndGet();
+                return "verified";
+            }
+        };
+
+        OutputGuardrail repromptOnBad = new OutputGuardrail() {
+            @Override
+            public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+                if ("bad response".equals(responseFromLLM.text())) {
+                    return reprompt("Invalid response", "Please try again using the verify tool");
+                }
+                return success();
+            }
+        };
+
+        interface RepromptAssistant {
+            String chat(String message);
+        }
+
+        RepromptAssistant assistant = AiServices.builder(RepromptAssistant.class)
+                .chatModel(model)
+                .tools(tools)
+                .outputGuardrails(repromptOnBad)
+                .build();
+
+        String result = assistant.chat("Hello");
+
+        assertThat(toolCallCount.get()).isEqualTo(1);
+        assertThat(result).isEqualTo("good response");
+    }
+
+    @Test
+    void output_guardrail_multi_reprompt_with_tool_loop_should_work() {
+        var toolCallCount = new AtomicInteger(0);
+        var repromptCount = new AtomicInteger(0);
+
+        var toolCallResponse = AiMessage.from(ToolExecutionRequest.builder()
+                .id("call-1")
+                .name("verify")
+                .arguments("{}")
+                .build());
+
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from("bad response"), // triggers first reprompt
+                toolCallResponse, // reprompted LLM picks a tool
+                AiMessage.from("still bad"), // after tool execution, guardrail fails again
+                AiMessage.from("good response")); // second reprompt → passes
+
+        var tools = new Object() {
+            @Tool("verify something")
+            public String verify() {
+                toolCallCount.incrementAndGet();
+                return "verified";
+            }
+        };
+
+        OutputGuardrail repromptOnBad = new OutputGuardrail() {
+            @Override
+            public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+                String text = responseFromLLM.text();
+                if (text != null && text.contains("bad")) {
+                    repromptCount.incrementAndGet();
+                    return reprompt("Invalid response", "Please try again");
+                }
+                return success();
+            }
+        };
+
+        interface RepromptAssistant {
+            String chat(String message);
+        }
+
+        RepromptAssistant assistant = AiServices.builder(RepromptAssistant.class)
+                .chatModel(model)
+                .tools(tools)
+                .outputGuardrails(repromptOnBad)
+                .outputGuardrailsConfig(
+                        OutputGuardrailsConfig.builder().maxRetries(3).build())
+                .build();
+
+        String result = assistant.chat("Hello");
+
+        assertThat(result).isEqualTo("good response");
+        assertThat(toolCallCount.get()).isEqualTo(1);
+        assertThat(repromptCount.get()).isEqualTo(2);
+    }
+
+    @Test
+    void output_guardrail_reprompt_with_failing_tool_should_send_error_to_llm() {
+        var toolCallCount = new AtomicInteger(0);
+
+        var toolCallResponse = AiMessage.from(ToolExecutionRequest.builder()
+                .id("call-1")
+                .name("verify")
+                .arguments("{}")
+                .build());
+
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from("bad response"), // triggers reprompt
+                toolCallResponse, // reprompted LLM picks a tool
+                AiMessage.from("recovered")); // LLM recovers after receiving tool error
+
+        var tools = new Object() {
+            @Tool("verify something")
+            public String verify() {
+                toolCallCount.incrementAndGet();
+                throw new RuntimeException("tool failed intentionally");
+            }
+        };
+
+        OutputGuardrail repromptOnBad = new OutputGuardrail() {
+            @Override
+            public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+                if ("bad response".equals(responseFromLLM.text())) {
+                    return reprompt("Invalid response", "Please try again using the verify tool");
+                }
+                return success();
+            }
+        };
+
+        interface RepromptAssistant {
+            String chat(String message);
+        }
+
+        RepromptAssistant assistant = AiServices.builder(RepromptAssistant.class)
+                .chatModel(model)
+                .tools(tools)
+                .outputGuardrails(repromptOnBad)
+                .build();
+
+        String result = assistant.chat("Hello");
+
+        assertThat(result).isEqualTo("recovered");
+        assertThat(toolCallCount.get()).isEqualTo(1);
     }
 
     public static class MyChatModel implements ChatModel {
