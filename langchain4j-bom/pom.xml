@@ -203,7 +203,13 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-vertex-ai-anthropic</artifactId>
-                <version>1.15.0-beta25-SNAPSHOT</version>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-google-genai</artifactId>
+                <version>${langchain4j.beta.version}</version>
             </dependency>
 
             <dependency>
