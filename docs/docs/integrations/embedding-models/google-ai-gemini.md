@@ -162,12 +162,15 @@ List<TextSegment> segments = List.of(
     TextSegment.from("Third document to embed")
 );
 
-// Submit the batch
-BatchResponse<Embedding> response = batchModel.createBatchInline(
-    "Document Embeddings Batch",  // display name
-    0L,                            // priority (optional, defaults to 0)
-    segments
-);
+// Submit the batch (generic API)
+BatchResponse<Embedding> response = batchModel.submit(new BatchRequest<>(segments));
+
+// Or, to set a Gemini-specific display name and priority, use GeminiBatchRequest:
+BatchResponse<Embedding> response = batchModel.submit(GeminiBatchRequest.from(
+    segments,
+    "Document Embeddings Batch", // display name
+    0L                           // priority (optional, defaults to 0)
+));
 ```
 
 **File-based batch creation:**
@@ -192,35 +195,27 @@ while (uploadedFile.isProcessing()) {
 }
 
 // Create batch from file
-BatchResponse<Embedding> response = batchModel.createBatchFromFile(
-    "My Embedding Batch Job",
-    uploadedFile
-);
+BatchResponse<Embedding> response = batchModel.submit("My Embedding Batch Job", uploadedFile);
 ```
 
 ### Handling Batch Responses
 
-The `BatchResponse` is a sealed interface with three possible states:
+A `BatchResponse` exposes the current `state()` together with `responses()` and `errors()`. Use the
+convenience predicates `isInProgress()`, `hasSucceeded()`, and `hasFailed()` to branch:
 
 ```java
-BatchResponse<Embedding> response = batchModel.createBatchInline("My Batch", null, segments);
+BatchResponse<Embedding> response = batchModel.submit(new BatchRequest<>(segments));
 
-switch (response) {
-    case BatchIncomplete incomplete -> {
-        System.out.println("Batch is " + incomplete.state());
-        System.out.println("Batch name: " + incomplete.batchName().value());
+if (response.isInProgress()) {
+    System.out.println("Batch is " + response.state());
+    System.out.println("Batch ID: " + response.batchId());
+} else if (response.hasSucceeded()) {
+    System.out.println("Batch completed successfully!");
+    for (Embedding embedding : response.responses()) {
+        System.out.println("Embedding dimensions: " + embedding.dimension());
     }
-    case BatchSuccess success -> {
-        System.out.println("Batch completed successfully!");
-        for (Embedding embedding : success.responses()) {
-            System.out.println("Embedding dimensions: " + embedding.dimension());
-        }
-    }
-    case BatchError error -> {
-        System.err.println("Batch failed: " + error.message());
-        System.err.println("Error code: " + error.code());
-        System.err.println("State: " + error.state());
-    }
+} else {
+    System.err.println("Batch " + response.state() + ": " + response.errors());
 }
 ```
 
@@ -229,32 +224,20 @@ switch (response) {
 Since batch processing is asynchronous, you need to poll for results:
 
 ```java
-BatchResponse<Embedding> initialResponse = batchModel.createBatchInline(
-    "My Batch",
-    null,
-    segments
-);
+BatchResponse<Embedding> result = batchModel.submit(new BatchRequest<>(segments));
+String batchId = result.batchId();
 
-// Extract the batch name for polling
-BatchName batchName = switch (initialResponse) {
-    case BatchIncomplete incomplete -> incomplete.batchName();
-    case BatchSuccess success -> success.batchName();
-    case BatchError error -> throw new RuntimeException("Batch creation failed");
-};
-
-// Poll until completion
-BatchResponse<Embedding> result;
-do {
+while (result.isInProgress()) {
     Thread.sleep(5000); // Wait 5 seconds between polls
-    result = batchModel.retrieveBatchResults(batchName);
-} while (result instanceof BatchIncomplete);
+    result = batchModel.retrieve(batchId);
+}
 
 // Process final result
-if (result instanceof BatchSuccess success) {
-    List<Embedding> embeddings = success.responses();
+if (result.hasSucceeded()) {
+    List<Embedding> embeddings = result.responses();
     System.out.println("Generated " + embeddings.size() + " embeddings");
-} else if (result instanceof BatchError error) {
-    System.err.println("Batch failed: " + error.message());
+} else {
+    System.err.println("Batch did not succeed: " + result.state());
 }
 ```
 
@@ -263,10 +246,10 @@ if (result instanceof BatchSuccess success) {
 **Cancel a batch job:**
 
 ```java
-BatchName batchName = // ... obtained from createBatchInline or createBatchFromFile
+String batchId = // ... obtained from submit(...)
 
 try {
-    batchModel.cancelBatchJob(batchName);
+    batchModel.cancel(batchId);
     System.out.println("Batch cancelled successfully");
 } catch (HttpException e) {
     System.err.println("Failed to cancel batch: " + e.getMessage());
@@ -276,7 +259,7 @@ try {
 **Delete a batch job:**
 
 ```java
-batchModel.deleteBatchJob(batchName);
+batchModel.deleteBatchJob(batchId);
 System.out.println("Batch deleted successfully");
 ```
 
@@ -284,15 +267,15 @@ System.out.println("Batch deleted successfully");
 
 ```java
 // List first page of batch jobs
-BatchList<Embedding> batchList = batchModel.listBatchJobs(10, null);
+BatchPage<Embedding> page = batchModel.list(new BatchPagination(10, null));
 
-for (BatchResponse<Embedding> batch : batchList.batches()) {
+for (BatchResponse<Embedding> batch : page.batches()) {
     System.out.println("Batch: " + batch);
 }
 
 // Get next page if available
-if (batchList.nextPageToken() != null) {
-    BatchList<Embedding> nextPage = batchModel.listBatchJobs(10, batchList.nextPageToken());
+if (page.nextPageToken() != null) {
+    BatchPage<Embedding> nextPage = batchModel.list(new BatchPagination(10, page.nextPageToken()));
 }
 ```
 
@@ -322,10 +305,7 @@ GeminiFiles filesApi = GeminiFiles.builder()
 GeminiFile uploadedFile = filesApi.uploadFile(batchFile, "Batch Embedding Requests");
 
 // Create batch from file
-BatchResponse<Embedding> response = batchModel.createBatchFromFile(
-    "File-Based Embedding Batch",
-    uploadedFile
-);
+BatchResponse<Embedding> response = batchModel.submit("File-Based Embedding Batch", uploadedFile);
 ```
 
 ### Using Metadata with Batch Embeddings
@@ -351,11 +331,8 @@ List<TextSegment> segments = List.of(
     )
 );
 
-BatchResponse<Embedding> response = batchModel.createBatchInline(
-    "Documents with Titles",
-    null,
-    segments
-);
+BatchResponse<Embedding> response = batchModel.submit(GeminiBatchRequest.from(
+    segments, "Documents with Titles"));
 ```
 
 ### Configuration
@@ -403,49 +380,35 @@ for (int i = 0; i < 500; i++) {
 }
 
 // Submit batch
-BatchResponse<Embedding> response = batchModel.createBatchInline(
-    "Large Document Collection",
-    0L,
-    segments
-);
-
-// Get batch name
-BatchName batchName = switch (response) {
-    case BatchIncomplete incomplete -> incomplete.batchName();
-    case BatchSuccess success -> success.batchName();
-    case BatchError error -> throw new RuntimeException("Failed: " + error.message());
-};
+BatchResponse<Embedding> result = batchModel.submit(GeminiBatchRequest.from(
+    segments, "Large Document Collection", 0L));
+String batchId = result.batchId();
 
 // Poll for completion
-BatchResponse<Embedding> finalResult;
 int attempts = 0;
 int maxAttempts = 720; // 1 hour with 5-second intervals
-
-do {
+while (result.isInProgress()) {
     if (attempts++ >= maxAttempts) {
         throw new RuntimeException("Batch processing timeout");
     }
     Thread.sleep(5000);
-    finalResult = batchModel.retrieveBatchResults(batchName);
-    
-    if (finalResult instanceof BatchIncomplete incomplete) {
-        System.out.println("Status: " + incomplete.state());
-    }
-} while (finalResult instanceof BatchIncomplete);
+    result = batchModel.retrieve(batchId);
+    System.out.println("Status: " + result.state());
+}
 
 // Process results
-if (finalResult instanceof BatchSuccess success) {
-    List<Embedding> embeddings = success.responses();
+if (result.hasSucceeded()) {
+    List<Embedding> embeddings = result.responses();
     System.out.println("Generated " + embeddings.size() + " embeddings");
-    
+
     // Store embeddings in your vector database
     for (int i = 0; i < embeddings.size(); i++) {
         Embedding embedding = embeddings.get(i);
         System.out.println("Embedding " + i + " has " + embedding.dimension() + " dimensions");
         // vectorStore.add(embedding, segments.get(i));
     }
-} else if (finalResult instanceof BatchError error) {
-    System.err.println("Batch failed: " + error.message());
+} else {
+    System.err.println("Batch did not succeed: " + result.state());
 }
 ```
 
