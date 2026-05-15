@@ -4,6 +4,7 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
 import com.google.genai.types.HttpOptions;
 import java.time.Duration;
+import java.util.Map;
 
 class GoogleGenAiClientFactory {
 
@@ -11,7 +12,7 @@ class GoogleGenAiClientFactory {
             String apiKey, GoogleCredentials googleCredentials, String projectId, String location, Duration timeout) {
 
         HttpOptions.Builder httpOptions = HttpOptions.builder();
-        httpOptions.headers(java.util.Collections.singletonMap("User-Agent", "LangChain4j"));
+        httpOptions.headers(Map.of("User-Agent", "LangChain4j"));
 
         if (timeout != null) {
             httpOptions.timeout((int) timeout.toMillis());
