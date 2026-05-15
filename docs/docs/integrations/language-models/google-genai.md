@@ -56,7 +56,7 @@ The usual `chat(...)` methods are available:
 
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
-    .apiKey(System.getenv("GEMINI_API_KEY"))
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
     .modelName("gemini-2.5-flash")
     .build();
 
@@ -67,7 +67,7 @@ As well as the `ChatResponse chat(ChatRequest req)` method:
 
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
-    .apiKey(System.getenv("GEMINI_API_KEY"))
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
     .modelName("gemini-2.5-flash")
     .build();
 
@@ -83,7 +83,7 @@ String response = chatResponse.aiMessage().text();
 
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
-    .apiKey(System.getenv("GEMINI_API_KEY"))
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
     // or .googleCredentials(...)
     .projectId(...)
     .location(...)
@@ -94,14 +94,15 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
     .seed(42)
     .maxOutputTokens(8192)
     .timeout(Duration.ofSeconds(60))
+    .maxRetries(2)
     .stopSequences(List.of(...))
     .safetySettings(List.of(...))
+    .responseFormat(ResponseFormat.JSON)
     .enableGoogleSearch(true)
     .enableGoogleMaps(true)
     .enableUrlContext(true)
+    .allowedFunctionNames(List.of("getWeather"))
     .thinkingBudget(250)
-    .logRequests(true)
-    .logResponses(true)
     .listeners(...)
     .build();
 ```
@@ -113,7 +114,7 @@ The response must be handled by a `StreamingChatResponseHandler`.
 
 ```java
 StreamingChatModel gemini = GoogleGenAiStreamingChatModel.builder()
-        .apiKey(System.getenv("GEMINI_API_KEY"))
+        .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
         .modelName("gemini-2.5-flash")
         .build();
 
@@ -152,7 +153,7 @@ You should almost always supply your own executor — for example, your framewor
 ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // or your framework's executor
 
 StreamingChatModel gemini = GoogleGenAiStreamingChatModel.builder()
-    .apiKey(System.getenv("GEMINI_API_KEY"))
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
     .modelName("gemini-2.5-flash")
     .executor(executor)
     .build();
@@ -177,7 +178,7 @@ interface WeatherAssistant {
 WeatherForecastService weatherForecastService = new WeatherForecastService();
 
 ChatModel gemini = GoogleGenAiChatModel.builder()
-    .apiKey(System.getenv("GEMINI_API_KEY"))
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
     .modelName("gemini-2.5-flash")
     .temperature(0.0)
     .build();
@@ -206,7 +207,7 @@ interface WeatherForecastAssistant {
 }
 
 ChatModel gemini = GoogleGenAiChatModel.builder()
-    .apiKey(System.getenv("GEMINI_API_KEY"))
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
     .modelName("gemini-2.5-flash")
     .build();
 
