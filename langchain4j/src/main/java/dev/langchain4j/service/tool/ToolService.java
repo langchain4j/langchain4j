@@ -15,12 +15,12 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.InvocationContext;
@@ -78,6 +78,10 @@ public class ToolService {
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
     private final Map<String, ReturnBehavior> returnBehaviors = new HashMap<>();
     private final Set<ToolProvider> toolProviders = new LinkedHashSet<>();
+    private final List<Object> objectsWithTools = new ArrayList<>();
+    private int registeredObjectsWithToolsCount;
+    private boolean includeInheritedFields;
+    private boolean respectJsonIgnoreAnnotations;
     private Executor executor;
     private int maxToolCallingRoundTrips = 100;
     private ToolArgumentsErrorHandler argumentsErrorHandler;
@@ -109,6 +113,30 @@ public class ToolService {
         }
     }
 
+    public void addObjectsWithTools(Collection<Object> objectsWithTools) {
+        this.objectsWithTools.addAll(objectsWithTools);
+    }
+
+    public void includeInheritedFields(boolean includeInheritedFields) {
+        this.includeInheritedFields = includeInheritedFields;
+    }
+
+    public void respectJsonIgnoreAnnotations(boolean respectJsonIgnoreAnnotations) {
+        this.respectJsonIgnoreAnnotations = respectJsonIgnoreAnnotations;
+    }
+
+    public void registerObjectsWithTools() {
+        if (registeredObjectsWithToolsCount == objectsWithTools.size()) {
+            return;
+        }
+
+        tools(
+                objectsWithTools.subList(registeredObjectsWithToolsCount, objectsWithTools.size()),
+                includeInheritedFields,
+                respectJsonIgnoreAnnotations);
+        registeredObjectsWithToolsCount = objectsWithTools.size();
+    }
+
     public void tools(Map<ToolSpecification, ToolExecutor> tools) {
         tools.forEach((toolSpecification, toolExecutor) -> {
             toolSpecifications.add(toolSpecification);
@@ -122,8 +150,18 @@ public class ToolService {
     }
 
     public void tools(Collection<Object> objectsWithTools) {
+        tools(objectsWithTools, false, false);
+    }
+
+    public void tools(Collection<Object> objectsWithTools, boolean includeInheritedFields) {
+        tools(objectsWithTools, includeInheritedFields, false);
+    }
+
+    public void tools(
+            Collection<Object> objectsWithTools, boolean includeInheritedFields, boolean respectJsonIgnoreAnnotations) {
         for (Object objectWithTools : objectsWithTools) {
-            List<AiServiceTool> tools = findTools(objectWithTools);
+            List<AiServiceTool> tools =
+                    findTools(objectWithTools, includeInheritedFields, respectJsonIgnoreAnnotations);
             addTools(tools, this.toolExecutors, this.toolSpecifications, this.returnBehaviors);
         }
     }
@@ -162,9 +200,7 @@ public class ToolService {
                 throw illegalConfiguration(
                         "Parameter '%s' of tool '%s.%s' has @P(defaultValue = ...) and is Optional<T>. "
                                 + "Optional<T> already represents \"absent\"; use one mechanism or the other.",
-                        parameter.getName(),
-                        toolMethod.getDeclaringClass().getName(),
-                        toolMethod.getName());
+                        parameter.getName(), toolMethod.getDeclaringClass().getName(), toolMethod.getName());
             }
 
             if (parameter.isAnnotationPresent(ToolMemoryId.class)
@@ -174,9 +210,7 @@ public class ToolService {
                 throw illegalConfiguration(
                         "Parameter '%s' of tool '%s.%s' has @P(defaultValue = ...) but is a framework-injected parameter; "
                                 + "default values are not supported on framework-injected parameters.",
-                        parameter.getName(),
-                        toolMethod.getDeclaringClass().getName(),
-                        toolMethod.getName());
+                        parameter.getName(), toolMethod.getDeclaringClass().getName(), toolMethod.getName());
             }
 
             try {
@@ -215,6 +249,15 @@ public class ToolService {
      * @since 1.13.0
      */
     public static List<AiServiceTool> findTools(Object objectWithTools) {
+        return findTools(objectWithTools, false, false);
+    }
+
+    public static List<AiServiceTool> findTools(Object objectWithTools, boolean includeInheritedFields) {
+        return findTools(objectWithTools, includeInheritedFields, false);
+    }
+
+    public static List<AiServiceTool> findTools(
+            Object objectWithTools, boolean includeInheritedFields, boolean respectJsonIgnoreAnnotations) {
         if (objectWithTools instanceof Class) {
             throw illegalConfiguration("Tool '%s' must be an object, not a class", objectWithTools);
         }
@@ -232,7 +275,8 @@ public class ToolService {
                 Method toolMethod = annotatedMethod.get();
                 validateToolParameters(toolMethod);
                 result.add(AiServiceTool.builder()
-                        .toolSpecification(toolSpecificationFrom(toolMethod))
+                        .toolSpecification(
+                                toolSpecificationFrom(toolMethod, includeInheritedFields, respectJsonIgnoreAnnotations))
                         .toolExecutor(createToolExecutor(objectWithTools, toolMethod))
                         .returnBehavior(toolMethod.getAnnotation(Tool.class).returnBehavior())
                         .build());
@@ -335,6 +379,7 @@ public class ToolService {
 
     public ToolServiceContext createContext(
             InvocationContext invocationContext, UserMessage userMessage, List<ChatMessage> messages) {
+        registerObjectsWithTools();
         ToolServiceContext context = createContextFromStaticToolsAndProviders(invocationContext, userMessage, messages);
         if (toolSearchService != null) {
             context = toolSearchService.adjust(context, messages, invocationContext);
@@ -420,7 +465,9 @@ public class ToolService {
         while (true) {
 
             if (roundTripsLeft-- == 0) {
-                throw runtime("Something is wrong, exceeded %s tool calling round trips (maxToolCallingRoundTrips)", maxToolCallingRoundTrips);
+                throw runtime(
+                        "Something is wrong, exceeded %s tool calling round trips (maxToolCallingRoundTrips)",
+                        maxToolCallingRoundTrips);
             }
 
             AiMessage aiMessage = chatResponse.aiMessage();

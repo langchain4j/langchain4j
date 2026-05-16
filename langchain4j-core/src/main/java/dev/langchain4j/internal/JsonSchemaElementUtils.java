@@ -9,6 +9,7 @@ import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static java.lang.reflect.Modifier.isStatic;
 import static java.util.Arrays.stream;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import dev.langchain4j.Internal;
@@ -42,7 +43,24 @@ public class JsonSchemaElementUtils {
     private static final String DEFAULT_UUID_DESCRIPTION = "String in a UUID format";
 
     public static JsonSchemaElement jsonSchemaElementFrom(Class<?> clazz) {
-        return jsonSchemaElementFrom(clazz, clazz, null, false, new LinkedHashMap<>());
+        return jsonSchemaElementFrom(clazz, clazz, null, false, new LinkedHashMap<>(), SchemaGenerationOptions.DEFAULT);
+    }
+
+    @Internal
+    public static JsonSchemaElement jsonSchemaElementFrom(Class<?> clazz, boolean includeInheritedFields) {
+        return jsonSchemaElementFrom(clazz, includeInheritedFields, false);
+    }
+
+    @Internal
+    public static JsonSchemaElement jsonSchemaElementFrom(
+            Class<?> clazz, boolean includeInheritedFields, boolean respectJsonIgnoreAnnotations) {
+        return jsonSchemaElementFrom(
+                clazz,
+                clazz,
+                null,
+                false,
+                new LinkedHashMap<>(),
+                SchemaGenerationOptions.from(includeInheritedFields, respectJsonIgnoreAnnotations));
     }
 
     public static JsonSchemaElement jsonSchemaElementFrom(
@@ -51,6 +69,47 @@ public class JsonSchemaElementUtils {
             String fieldDescription,
             boolean areSubFieldsRequiredByDefault,
             Map<Class<?>, VisitedClassMetadata> visited) {
+        return jsonSchemaElementFrom(
+                clazz, type, fieldDescription, areSubFieldsRequiredByDefault, visited, SchemaGenerationOptions.DEFAULT);
+    }
+
+    @Internal
+    public static JsonSchemaElement jsonSchemaElementFrom(
+            Class<?> clazz,
+            Type type,
+            String fieldDescription,
+            boolean areSubFieldsRequiredByDefault,
+            Map<Class<?>, VisitedClassMetadata> visited,
+            boolean includeInheritedFields) {
+        return jsonSchemaElementFrom(
+                clazz, type, fieldDescription, areSubFieldsRequiredByDefault, visited, includeInheritedFields, false);
+    }
+
+    @Internal
+    public static JsonSchemaElement jsonSchemaElementFrom(
+            Class<?> clazz,
+            Type type,
+            String fieldDescription,
+            boolean areSubFieldsRequiredByDefault,
+            Map<Class<?>, VisitedClassMetadata> visited,
+            boolean includeInheritedFields,
+            boolean respectJsonIgnoreAnnotations) {
+        return jsonSchemaElementFrom(
+                clazz,
+                type,
+                fieldDescription,
+                areSubFieldsRequiredByDefault,
+                visited,
+                SchemaGenerationOptions.from(includeInheritedFields, respectJsonIgnoreAnnotations));
+    }
+
+    private static JsonSchemaElement jsonSchemaElementFrom(
+            Class<?> clazz,
+            Type type,
+            String fieldDescription,
+            boolean areSubFieldsRequiredByDefault,
+            Map<Class<?>, VisitedClassMetadata> visited,
+            SchemaGenerationOptions schemaOptions) {
         if (isJsonString(clazz)) {
             return JsonStringSchema.builder()
                     .description(Optional.ofNullable(fieldDescription).orElse(descriptionFrom(clazz)))
@@ -81,7 +140,12 @@ public class JsonSchemaElementUtils {
         if (clazz.isArray()) {
             return JsonArraySchema.builder()
                     .items(jsonSchemaElementFrom(
-                            clazz.getComponentType(), null, null, areSubFieldsRequiredByDefault, visited))
+                            clazz.getComponentType(),
+                            null,
+                            null,
+                            areSubFieldsRequiredByDefault,
+                            visited,
+                            schemaOptions))
                     .description(fieldDescription)
                     .build();
         }
@@ -90,16 +154,23 @@ public class JsonSchemaElementUtils {
             Type elementType = collectionElementType(type);
             return JsonArraySchema.builder()
                     .items(jsonSchemaElementFrom(
-                            rawClassOf(elementType), elementType, null, areSubFieldsRequiredByDefault, visited))
+                            rawClassOf(elementType),
+                            elementType,
+                            null,
+                            areSubFieldsRequiredByDefault,
+                            visited,
+                            schemaOptions))
                     .description(fieldDescription)
                     .build();
         }
 
         if (isPolymorphic(clazz)) {
-            return polymorphicSchemaFrom(clazz, fieldDescription, areSubFieldsRequiredByDefault, visited);
+            return polymorphicSchemaFrom(
+                    clazz, fieldDescription, areSubFieldsRequiredByDefault, visited, schemaOptions);
         }
 
-        return jsonObjectOrReferenceSchemaFrom(clazz, fieldDescription, areSubFieldsRequiredByDefault, visited, false);
+        return jsonObjectOrReferenceSchemaFrom(
+                clazz, fieldDescription, areSubFieldsRequiredByDefault, visited, false, schemaOptions);
     }
 
     public static JsonSchemaElement polymorphicSchemaFrom(
@@ -107,6 +178,16 @@ public class JsonSchemaElementUtils {
             String description,
             boolean areSubFieldsRequiredByDefault,
             Map<Class<?>, VisitedClassMetadata> visited) {
+        return polymorphicSchemaFrom(
+                baseType, description, areSubFieldsRequiredByDefault, visited, SchemaGenerationOptions.DEFAULT);
+    }
+
+    private static JsonSchemaElement polymorphicSchemaFrom(
+            Class<?> baseType,
+            String description,
+            boolean areSubFieldsRequiredByDefault,
+            Map<Class<?>, VisitedClassMetadata> visited,
+            SchemaGenerationOptions schemaOptions) {
         verifyJsonTypeInfoIsSupported(baseType);
 
         if (visited.containsKey(baseType)) {
@@ -123,8 +204,8 @@ public class JsonSchemaElementUtils {
         String discriminatorProperty = discriminatorPropertyName(baseType);
         List<JsonSchemaElement> options = new ArrayList<>();
         for (Class<?> subtype : findConcreteSubtypes(baseType)) {
-            JsonSchemaElement subtypeSchema =
-                    jsonObjectOrReferenceSchemaFrom(subtype, null, areSubFieldsRequiredByDefault, visited, false);
+            JsonSchemaElement subtypeSchema = jsonObjectOrReferenceSchemaFrom(
+                    subtype, null, areSubFieldsRequiredByDefault, visited, false, schemaOptions);
             JsonSchemaElement withDiscriminator =
                     addDiscriminator(subtypeSchema, baseType, subtype, discriminatorProperty);
             options.add(withDiscriminator);
@@ -237,6 +318,22 @@ public class JsonSchemaElementUtils {
             boolean areSubFieldsRequiredByDefault,
             Map<Class<?>, VisitedClassMetadata> visited,
             boolean setDefinitions) {
+        return jsonObjectOrReferenceSchemaFrom(
+                type,
+                description,
+                areSubFieldsRequiredByDefault,
+                visited,
+                setDefinitions,
+                SchemaGenerationOptions.DEFAULT);
+    }
+
+    private static JsonSchemaElement jsonObjectOrReferenceSchemaFrom(
+            Class<?> type,
+            String description,
+            boolean areSubFieldsRequiredByDefault,
+            Map<Class<?>, VisitedClassMetadata> visited,
+            boolean setDefinitions,
+            SchemaGenerationOptions schemaOptions) {
         if (visited.containsKey(type) && isCustomClass(type)) {
             VisitedClassMetadata visitedClassMetadata = visited.get(type);
             JsonSchemaElement jsonSchemaElement = visitedClassMetadata.jsonSchemaElement;
@@ -260,9 +357,12 @@ public class JsonSchemaElementUtils {
 
         Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
         List<String> required = new ArrayList<>();
-        for (Field field : type.getDeclaredFields()) {
+        for (Field field : schemaOptions.collectFields(type)) {
             String fieldName = field.getName();
-            if (isStatic(field.getModifiers()) || fieldName.equals("__$hits$__") || fieldName.startsWith("this$")) {
+            if (isStatic(field.getModifiers())
+                    || schemaOptions.isIgnored(field)
+                    || fieldName.equals("__$hits$__")
+                    || fieldName.startsWith("this$")) {
                 continue;
             }
             if (isRequired(field, areSubFieldsRequiredByDefault)) {
@@ -270,7 +370,12 @@ public class JsonSchemaElementUtils {
             }
             String fieldDescription = descriptionFrom(field);
             JsonSchemaElement jsonSchemaElement = jsonSchemaElementFrom(
-                    field.getType(), field.getGenericType(), fieldDescription, areSubFieldsRequiredByDefault, visited);
+                    field.getType(),
+                    field.getGenericType(),
+                    fieldDescription,
+                    areSubFieldsRequiredByDefault,
+                    visited,
+                    schemaOptions);
             properties.put(fieldName, jsonSchemaElement);
         }
 
@@ -294,6 +399,59 @@ public class JsonSchemaElementUtils {
         }
 
         return builder.build();
+    }
+
+    private record SchemaGenerationOptions(boolean includeInheritedFields, boolean respectJsonIgnoreAnnotations) {
+
+        private static final SchemaGenerationOptions DEFAULT = new SchemaGenerationOptions(false, false);
+
+        private static SchemaGenerationOptions from(
+                boolean includeInheritedFields, boolean respectJsonIgnoreAnnotations) {
+            return includeInheritedFields || respectJsonIgnoreAnnotations
+                    ? new SchemaGenerationOptions(includeInheritedFields, respectJsonIgnoreAnnotations)
+                    : DEFAULT;
+        }
+
+        /**
+         * Collects fields from the given class. When inherited fields are enabled, walks the
+         * superclass chain from root to leaf. Child fields shadow same-name parent fields.
+         */
+        private Collection<Field> collectFields(Class<?> type) {
+            if (!includeInheritedFields) {
+                return List.of(type.getDeclaredFields());
+            }
+            LinkedHashMap<String, Field> fieldMap = new LinkedHashMap<>();
+            List<Class<?>> hierarchy = new ArrayList<>();
+            for (Class<?> c = type; c != null && c != Object.class; c = c.getSuperclass()) {
+                hierarchy.add(c);
+            }
+            Collections.reverse(hierarchy);
+            for (Class<?> c : hierarchy) {
+                for (Field field : c.getDeclaredFields()) {
+                    if (isAlwaysSkipped(field)) {
+                        continue;
+                    }
+                    fieldMap.put(field.getName(), field);
+                }
+            }
+            return fieldMap.values();
+        }
+
+        private boolean isIgnored(Field field) {
+            if (!respectJsonIgnoreAnnotations) {
+                return false;
+            }
+            JsonIgnore jsonIgnore = field.getAnnotation(JsonIgnore.class);
+            return jsonIgnore != null && jsonIgnore.value();
+        }
+
+        private static boolean isAlwaysSkipped(Field field) {
+            String fieldName = field.getName();
+            return isStatic(field.getModifiers())
+                    || field.isSynthetic()
+                    || fieldName.equals("__$hits$__")
+                    || fieldName.startsWith("this$");
+        }
     }
 
     private static boolean isRequired(Field field, boolean defaultValue) {

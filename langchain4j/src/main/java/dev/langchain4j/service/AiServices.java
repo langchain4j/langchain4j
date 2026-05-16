@@ -475,7 +475,40 @@ public abstract class AiServices<T> {
      * @see Tool
      */
     public AiServices<T> tools(Collection<Object> objectsWithTools) {
-        context.toolService.tools(objectsWithTools);
+        context.toolService.addObjectsWithTools(objectsWithTools);
+        return this;
+    }
+
+    /**
+     * When enabled, tool parameter schemas will include fields inherited from superclasses.
+     * Default is {@code false}; only fields declared directly on the parameter class are included.
+     *
+     * <p>Example usage:
+     * <pre>{@code
+     * AiServices.builder(Assistant.class)
+     *     .chatModel(model)
+     *     .includeInheritedFields(true)
+     *     .tools(new MyTool())
+     *     .build();
+     * }</pre>
+     *
+     * @param includeInheritedFields whether to include inherited fields in tool parameter schemas
+     * @return builder
+     */
+    public AiServices<T> includeInheritedFields(boolean includeInheritedFields) {
+        context.toolService.includeInheritedFields(includeInheritedFields);
+        return this;
+    }
+
+    /**
+     * When enabled, tool parameter schemas will not include fields annotated with {@code @JsonIgnore}.
+     * Default is {@code false}, preserving the current schema generation behavior.
+     *
+     * @param respectJsonIgnoreAnnotations whether to respect {@code @JsonIgnore} on tool parameter fields
+     * @return builder
+     */
+    public AiServices<T> respectJsonIgnoreAnnotations(boolean respectJsonIgnoreAnnotations) {
+        context.toolService.respectJsonIgnoreAnnotations(respectJsonIgnoreAnnotations);
         return this;
     }
 
