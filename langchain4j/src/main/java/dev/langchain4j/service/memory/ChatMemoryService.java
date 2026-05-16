@@ -29,17 +29,14 @@ public class ChatMemoryService {
     }
 
     public ChatMemory getOrCreateChatMemory(Object memoryId) {
-        if (memoryId == DEFAULT) {
-            if (defaultChatMemory == null) {
-                defaultChatMemory = chatMemoryProvider.get(DEFAULT);
-            }
-            return defaultChatMemory;
+        if (chatMemoryProvider != null) {
+            return chatMemories.computeIfAbsent(memoryId, chatMemoryProvider::get);
         }
-        return chatMemories.computeIfAbsent(memoryId, chatMemoryProvider::get);
+        return defaultChatMemory;
     }
 
     public ChatMemory getChatMemory(Object memoryId) {
-        return memoryId == DEFAULT ? defaultChatMemory : chatMemories.get(memoryId);
+        return chatMemoryProvider != null ? chatMemories.get(memoryId) : defaultChatMemory;
     }
 
     public ChatMemory evictChatMemory(Object memoryId) {
