@@ -3,6 +3,7 @@ package dev.langchain4j.model.openaiofficial;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.copy;
@@ -1084,6 +1085,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             }
 
             try {
+                onRawEvent(handler, event);
+
                 if (event.isCreated()) {
                     handleCreated(event.asCreated());
                 } else if (event.isOutputTextDelta()) {

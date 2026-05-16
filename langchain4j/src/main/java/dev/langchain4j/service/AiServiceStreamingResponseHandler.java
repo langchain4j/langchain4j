@@ -80,6 +80,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final Consumer<PartialToolCall> partialToolCallHandler;
     private final BiConsumer<PartialToolCall, PartialToolCallContext> partialToolCallWithContextHandler;
     private final Consumer<BeforeToolExecution> beforeToolExecutionHandler;
+    private final Consumer<Object> rawEventHandler;
     private final Consumer<ToolExecution> toolExecutionHandler;
     private final Consumer<ChatResponse> intermediateResponseHandler;
     private final Consumer<ChatResponse> completeResponseHandler;
@@ -115,6 +116,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             Consumer<PartialToolCall> partialToolCallHandler,
             BiConsumer<PartialToolCall, PartialToolCallContext> partialToolCallWithContextHandler,
             Consumer<BeforeToolExecution> beforeToolExecutionHandler,
+            Consumer<Object> rawEventHandler,
             Consumer<ToolExecution> toolExecutionHandler,
             Consumer<ChatResponse> intermediateResponseHandler,
             Consumer<ChatResponse> completeResponseHandler,
@@ -143,6 +145,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.intermediateResponseHandler = intermediateResponseHandler;
         this.completeResponseHandler = completeResponseHandler;
         this.beforeToolExecutionHandler = beforeToolExecutionHandler;
+        this.rawEventHandler = rawEventHandler;
         this.toolExecutionHandler = toolExecutionHandler;
         this.errorHandler = errorHandler;
 
@@ -235,6 +238,13 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     },
                     toolExecutor);
             toolExecutionFutures.add(future);
+        }
+    }
+
+    @Override
+    public void onRawEvent(Object rawEvent) {
+        if (rawEventHandler != null) {
+            rawEventHandler.accept(rawEvent);
         }
     }
 
@@ -372,6 +382,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     partialToolCallHandler,
                     partialToolCallWithContextHandler,
                     beforeToolExecutionHandler,
+                    rawEventHandler,
                     toolExecutionHandler,
                     intermediateResponseHandler,
                     completeResponseHandler,
