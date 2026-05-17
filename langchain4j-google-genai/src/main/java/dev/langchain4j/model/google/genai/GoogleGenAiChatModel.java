@@ -21,7 +21,9 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Experimental
@@ -39,6 +41,8 @@ public class GoogleGenAiChatModel implements ChatModel {
     private final boolean googleMapsEnabled;
     private final boolean urlContextEnabled;
     private final List<String> allowedFunctionNames;
+    private final String vertexSearchDatastore;
+    private final Map<String, String> labels;
 
     private GoogleGenAiChatModel(Builder builder) {
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
@@ -50,6 +54,8 @@ public class GoogleGenAiChatModel implements ChatModel {
         this.thinkingBudget = builder.thinkingBudget;
         this.seed = builder.seed;
         this.safetySettings = copy(builder.safetySettings);
+        this.vertexSearchDatastore = builder.vertexSearchDatastore;
+        this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
 
         this.client = builder.client != null
                 ? builder.client
@@ -58,7 +64,9 @@ public class GoogleGenAiChatModel implements ChatModel {
                         builder.googleCredentials,
                         builder.projectId,
                         builder.location,
-                        builder.timeout);
+                        builder.timeout,
+                        builder.customHeaders,
+                        builder.apiEndpoint);
 
         ChatRequestParameters commonParameters =
                 getOrDefault(builder.defaultRequestParameters, DefaultChatRequestParameters.EMPTY);
@@ -90,7 +98,9 @@ public class GoogleGenAiChatModel implements ChatModel {
                 googleSearchEnabled,
                 googleMapsEnabled,
                 urlContextEnabled,
-                allowedFunctionNames);
+                allowedFunctionNames,
+                vertexSearchDatastore,
+                labels);
 
         var result = withRetryMappingExceptions(
                 () -> client.models.generateContent(chatRequest.modelName(), contents, config), maxRetries);
@@ -147,6 +157,10 @@ public class GoogleGenAiChatModel implements ChatModel {
         private List<String> allowedFunctionNames;
         private List<ChatModelListener> listeners;
         private ChatRequestParameters defaultRequestParameters;
+        private String vertexSearchDatastore;
+        private Map<String, String> labels;
+        private String apiEndpoint;
+        private Map<String, String> customHeaders;
 
         public Builder client(Client client) {
             this.client = client;
@@ -260,6 +274,26 @@ public class GoogleGenAiChatModel implements ChatModel {
 
         public Builder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
             this.defaultRequestParameters = defaultRequestParameters;
+            return this;
+        }
+
+        public Builder vertexSearchDatastore(String vertexSearchDatastore) {
+            this.vertexSearchDatastore = vertexSearchDatastore;
+            return this;
+        }
+
+        public Builder labels(Map<String, String> labels) {
+            this.labels = labels;
+            return this;
+        }
+
+        public Builder apiEndpoint(String apiEndpoint) {
+            this.apiEndpoint = apiEndpoint;
+            return this;
+        }
+
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
             return this;
         }
 

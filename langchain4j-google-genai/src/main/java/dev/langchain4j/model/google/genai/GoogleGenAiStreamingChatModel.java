@@ -30,7 +30,9 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
@@ -48,6 +50,8 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
     private final boolean googleMapsEnabled;
     private final boolean urlContextEnabled;
     private final List<String> allowedFunctionNames;
+    private final String vertexSearchDatastore;
+    private final Map<String, String> labels;
 
     private final ExecutorService executor;
 
@@ -60,6 +64,8 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         this.thinkingBudget = builder.thinkingBudget;
         this.seed = builder.seed;
         this.safetySettings = copy(builder.safetySettings);
+        this.vertexSearchDatastore = builder.vertexSearchDatastore;
+        this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
 
         this.client = builder.client != null
                 ? builder.client
@@ -68,7 +74,9 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                         builder.googleCredentials,
                         builder.projectId,
                         builder.location,
-                        builder.timeout);
+                        builder.timeout,
+                        builder.customHeaders,
+                        builder.apiEndpoint);
 
         ChatRequestParameters commonParameters =
                 getOrDefault(builder.defaultRequestParameters, DefaultChatRequestParameters.EMPTY);
@@ -104,7 +112,9 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 googleSearchEnabled,
                 googleMapsEnabled,
                 urlContextEnabled,
-                allowedFunctionNames);
+                allowedFunctionNames,
+                vertexSearchDatastore,
+                labels);
 
         executor.execute(() -> {
             try {
@@ -226,6 +236,10 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         private List<ChatModelListener> listeners;
         private ExecutorService executor;
         private ChatRequestParameters defaultRequestParameters;
+        private String vertexSearchDatastore;
+        private Map<String, String> labels;
+        private String apiEndpoint;
+        private Map<String, String> customHeaders;
 
         public Builder client(Client client) {
             this.client = client;
@@ -348,6 +362,26 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
 
         public Builder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
             this.defaultRequestParameters = defaultRequestParameters;
+            return this;
+        }
+
+        public Builder vertexSearchDatastore(String vertexSearchDatastore) {
+            this.vertexSearchDatastore = vertexSearchDatastore;
+            return this;
+        }
+
+        public Builder labels(Map<String, String> labels) {
+            this.labels = labels;
+            return this;
+        }
+
+        public Builder apiEndpoint(String apiEndpoint) {
+            this.apiEndpoint = apiEndpoint;
+            return this;
+        }
+
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
             return this;
         }
 

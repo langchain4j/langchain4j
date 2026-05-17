@@ -2,6 +2,7 @@ package dev.langchain4j.model.google.genai;
 
 import static java.util.Collections.singletonList;
 
+import com.google.genai.errors.ClientException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -39,7 +40,7 @@ class GoogleGenAiChatModelListenerIT extends AbstractChatModelListenerIT {
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return com.google.genai.errors.ClientException.class;
+        return ClientException.class;
     }
 
     @Override
