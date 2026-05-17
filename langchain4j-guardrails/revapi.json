@@ -1,0 +1,25 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.guardrail.GuardrailRequestParams",
+          "justification": "GuardrailRequestParams is a langchain4j-core type intentionally exposed by canary token guardrails for invocation-scoped state propagation; revapi cannot resolve it because checkDependencies=false"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.guardrail.InputGuardrailRequest",
+          "justification": "InputGuardrailRequest is a langchain4j-core type required by the InputGuardrail SPI implemented here; revapi cannot resolve it because checkDependencies=false"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.guardrail.OutputGuardrailRequest",
+          "justification": "OutputGuardrailRequest is a langchain4j-core type required by the OutputGuardrail SPI implemented here; revapi cannot resolve it because checkDependencies=false"
+        }
+      ]
+    }
+  }
+]
