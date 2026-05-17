@@ -1,13 +1,12 @@
 package dev.langchain4j.http.client.jdk;
 
-import dev.langchain4j.http.client.FormDataFile;
-import org.junit.jupiter.api.Test;
-
-import java.io.ByteArrayOutputStream;
-import java.util.List;
-
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import dev.langchain4j.http.client.FormDataFile;
+import java.io.ByteArrayOutputStream;
+import java.util.List;
+import org.junit.jupiter.api.Test;
 
 class MultipartBodyPublisherTest {
 
@@ -20,11 +19,10 @@ class MultipartBodyPublisherTest {
 
         String body = bodyAsString(publisher.parts());
 
-        String expected =
-                """
+        String expected = """
                         ------LangChain4j
                         Content-Disposition: form-data; name="field1"
-                        
+
                         value1
                         ------LangChain4j--
                         """;
@@ -43,12 +41,11 @@ class MultipartBodyPublisherTest {
 
         String body = bodyAsString(publisher.parts());
 
-        String expected =
-                """
+        String expected = """
                         ------LangChain4j
                         Content-Disposition: form-data; name="file"; filename="test.txt"
                         Content-Type: text/plain
-                        
+
                         hello
                         ------LangChain4j--
                         """;
@@ -68,17 +65,41 @@ class MultipartBodyPublisherTest {
 
         String body = bodyAsString(publisher.parts());
 
-        String expected =
-                """
+        String expected = """
                         ------LangChain4j
                         Content-Disposition: form-data; name="field1"
-                        
+
                         value1
                         ------LangChain4j
                         Content-Disposition: form-data; name="file"; filename="test.txt"
                         Content-Type: text/plain
-                        
+
                         hello
+                        ------LangChain4j--
+                        """;
+
+        assertEquals(normalize(expected), body);
+    }
+
+    @Test
+    void should_build_body_with_repeated_form_fields() {
+        MultipartBodyPublisher publisher = new MultipartBodyPublisher();
+
+        publisher.addField("timestamp_granularities[]", "word");
+        publisher.addField("timestamp_granularities[]", "segment");
+        publisher.build();
+
+        String body = bodyAsString(publisher.parts());
+
+        String expected = """
+                        ------LangChain4j
+                        Content-Disposition: form-data; name="timestamp_granularities[]"
+
+                        word
+                        ------LangChain4j
+                        Content-Disposition: form-data; name="timestamp_granularities[]"
+
+                        segment
                         ------LangChain4j--
                         """;
 
