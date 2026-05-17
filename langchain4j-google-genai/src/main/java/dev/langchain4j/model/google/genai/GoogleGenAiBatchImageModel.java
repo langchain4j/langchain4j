@@ -58,7 +58,7 @@ public final class GoogleGenAiBatchImageModel {
         this.aspectRatio = builder.aspectRatio;
         this.imageSize = builder.imageSize;
         this.personGeneration = builder.personGeneration;
-        this.labels = builder.labels != null ? new java.util.HashMap<>(builder.labels) : null;
+        this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
 
         this.client = builder.client != null
                 ? builder.client

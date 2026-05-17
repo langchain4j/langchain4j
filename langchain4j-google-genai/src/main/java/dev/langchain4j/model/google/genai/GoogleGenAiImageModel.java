@@ -19,6 +19,8 @@ import com.google.genai.types.Part;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.Tool;
 import dev.langchain4j.Experimental;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.Response;
@@ -169,8 +171,7 @@ public class GoogleGenAiImageModel implements ImageModel {
         return Part.fromBytes(imageBytes, mimeType);
     }
 
-    private static final com.fasterxml.jackson.databind.ObjectMapper OBJECT_MAPPER =
-            new com.fasterxml.jackson.databind.ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private Response<Image> toResponse(GenerateContentResponse response) {
         if (response.parts() == null || response.parts().isEmpty()) {
@@ -184,7 +185,7 @@ public class GoogleGenAiImageModel implements ImageModel {
                 GroundingMetadata gm = candidate.groundingMetadata().get();
                 try {
                     Map<String, Object> groundingMap = OBJECT_MAPPER.readValue(
-                            gm.toJson(), new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+                            gm.toJson(), new TypeReference<Map<String, Object>>() {});
                     metadata.put("groundingMetadata", groundingMap);
                 } catch (Exception e) {
                     throw new RuntimeException("Failed to parse grounding metadata", e);
