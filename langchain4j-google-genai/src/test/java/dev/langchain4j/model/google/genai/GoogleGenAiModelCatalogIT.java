@@ -14,8 +14,9 @@ class GoogleGenAiModelCatalogIT {
 
     @Test
     void test_list_models() {
-        GoogleGenAiModelCatalog catalog =
-                GoogleGenAiModelCatalog.builder().apiKey(GOOGLE_AI_GEMINI_API_KEY).build();
+        GoogleGenAiModelCatalog catalog = GoogleGenAiModelCatalog.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .build();
 
         List<ModelDescription> models = catalog.listModels();
         assertThat(models).isNotEmpty();
