@@ -19,8 +19,17 @@ https://github.com/googleapis/java-genai
     - [Configuring](#configuring)
 - [GoogleGenAiStreamingChatModel](#googlegenaistreamingchatmodel)
     - [Executor](#executor)
+- [GoogleGenAiEmbeddingModel](#googlegenaiembeddingmodel)
+- [GoogleGenAiImageModel](#googlegenaiimagemodel)
+- [Batch API](#batch-api)
 - [Tools](#tools)
 - [JSON Schema / Structured Outputs](#json-schema--structured-outputs)
+- [Grounding Metadata](#grounding-metadata)
+- [Custom Labels](#custom-labels)
+- [File API](#file-api)
+- [Multimodality (Audio, Video, PDF)](#multimodality-audio-video-pdf)
+- [Token Count Estimator](#token-count-estimator)
+- [Model Catalog](#model-catalog)
 
 ## Maven Dependency
 
@@ -224,3 +233,180 @@ WeatherForecast forecast = forecastAssistant.extract("""
 
 > [!NOTE]  
 > The Google Gen AI API has some restrictions on advanced JSON schema features (such as `anyOf` / polymorphic typing). Simple POJOs, lists, and nested objects are fully supported.
+
+## GoogleGenAiEmbeddingModel
+
+The `GoogleGenAiEmbeddingModel` allows you to generate embeddings for text segments using models like `gemini-embedding-2`.
+
+```java
+EmbeddingModel embeddingModel = GoogleGenAiEmbeddingModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-embedding-2")
+    .outputDimensionality(768)
+    .taskType(GoogleGenAiEmbeddingModel.TaskTypeEnum.RETRIEVAL_DOCUMENT)
+    .build();
+
+Response<Embedding> response = embeddingModel.embed("Hello world!");
+```
+
+## GoogleGenAiImageModel
+
+The `GoogleGenAiImageModel` allows you to generate images from text prompts. It supports custom configuration like aspect ratios, image sizes, and person generation policies.
+
+```java
+ImageModel imageModel = GoogleGenAiImageModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-3.1-flash-image-preview")
+    .aspectRatio("16:9")
+    .build();
+
+Response<Image> response = imageModel.generate("A futuristic city at sunset");
+```
+
+## Batch API
+
+The Google Gen AI integration provides support for the Batch API, allowing you to run operations asynchronously in the background. The following batch models are supported:
+- `GoogleGenAiBatchChatModel`
+- `GoogleGenAiBatchEmbeddingModel`
+- `GoogleGenAiBatchImageModel`
+
+You can create batch jobs inline or from an uploaded file on Google Cloud. 
+
+```java
+GoogleGenAiBatchChatModel batchChatModel = GoogleGenAiBatchChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash")
+    .build();
+
+BatchResponse<ChatResponse> batchResponse = batchChatModel.createBatchInline(
+    "My Batch Job",
+    null,
+    List.of(
+        ChatRequest.builder().messages(UserMessage.from("What is 2+2?")).build(),
+        ChatRequest.builder().messages(UserMessage.from("What is the capital of France?")).build()
+    )
+);
+
+System.out.println("Batch Job ID: " + batchResponse.name().value());
+```
+
+You can then retrieve the status and results of the job using `batchChatModel.retrieveBatchResults(batchResponse.name())`.
+
+## Grounding Metadata
+
+If you enable Google Search grounding or use a Vertex AI Search datastore, the Google Gen AI chat model exposes the native `GroundingMetadata` directly in the `ChatResponse`. You can retrieve it through the response metadata.
+
+```java
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash")
+    .enableGoogleSearch(true)
+    .build();
+
+ChatResponse response = gemini.chat(ChatRequest.builder()
+    .messages(UserMessage.from("Who won the super bowl in 2024?"))
+    .build());
+
+GoogleGenAiChatResponseMetadata metadata = 
+    (GoogleGenAiChatResponseMetadata) response.metadata();
+
+if (metadata.groundingMetadata() != null) {
+    System.out.println("Search Queries: " + 
+        metadata.groundingMetadata().webSearchQueries());
+}
+```
+
+## Custom Labels
+
+You can apply custom key-value labels to your Google Gen AI requests, which can be useful for billing, metrics, and tracking purposes. Custom labels are supported by:
+- `GoogleGenAiChatModel`
+- `GoogleGenAiStreamingChatModel`
+- `GoogleGenAiBatchChatModel`
+- `GoogleGenAiImageModel`
+- `GoogleGenAiBatchImageModel`
+
+```java
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash")
+    .labels(Map.of("environment", "production", "team", "backend"))
+    .build();
+```
+
+## File API
+
+The Google Gen AI integration provides the `GoogleGenAiFiles` utility to upload and manage files on Google's servers. This is particularly useful for passing large multimodal inputs (like long videos, audio files, or extensive PDFs) that might exceed standard request limits.
+
+```java
+GoogleGenAiFiles fileApi = GoogleGenAiFiles.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .build();
+
+String uploadedFileUri = fileApi.uploadFile(
+    Paths.get("path/to/my-video.mp4"), 
+    "video/mp4", 
+    "My Video Demo"
+);
+
+// You can now use this URI in your chat requests
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash")
+    .build();
+
+ChatResponse response = gemini.chat(ChatRequest.builder()
+    .messages(UserMessage.from(
+        VideoContent.from(uploadedFileUri, "video/mp4"),
+        TextContent.from("What happens in this video?")
+    ))
+    .build());
+```
+
+## Multimodality (Audio, Video, PDF)
+
+The integration fully supports LangChain4j's multimodal content types. The underlying `GoogleGenAiContentMapper` automatically converts them into the appropriate Gemini `Part` objects.
+
+```java
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash")
+    .build();
+
+ChatResponse response = gemini.chat(ChatRequest.builder()
+    .messages(UserMessage.from(
+        AudioContent.from("https://example.com/audio.mp3"),
+        PdfFileContent.from("https://example.com/document.pdf"),
+        TextContent.from("Summarize the document and the audio recording.")
+    ))
+    .build());
+```
+
+## Token Count Estimator
+
+You can accurately estimate the number of tokens in your prompts and messages using the `GoogleGenAiTokenCountEstimator`, which uses the official SDK's counting endpoints.
+
+```java
+TokenCountEstimator estimator = GoogleGenAiTokenCountEstimator.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash")
+    .build();
+
+int tokenCount = estimator.estimateTokenCount("How many tokens is this sentence?");
+System.out.println("Tokens: " + tokenCount);
+```
+
+## Model Catalog
+
+You can query the list of available Gemini models programmatically using the `GoogleGenAiModelCatalog`. This is helpful for discovering model capabilities, context windows, and supported methods dynamically.
+
+```java
+GoogleGenAiModelCatalog catalog = GoogleGenAiModelCatalog.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .build();
+
+List<Model> availableModels = catalog.listModels();
+availableModels.forEach(model -> {
+    System.out.println("Model Name: " + model.name());
+    System.out.println("Supported Generation Methods: " + model.supportedGenerationMethods());
+});
+```

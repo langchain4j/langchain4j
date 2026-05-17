@@ -20,7 +20,7 @@ class GoogleGenAiStreamingChatModelTest {
     void should_build_with_api_key_and_model_name() {
         GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
                 .apiKey("test-key")
-                .modelName("gemini-2.0-flash")
+                .modelName("gemini-3.1-flash-lite")
                 .build();
 
         assertThat(model).isNotNull();
@@ -33,7 +33,7 @@ class GoogleGenAiStreamingChatModelTest {
 
         GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
                 .client(client)
-                .modelName("gemini-2.0-flash")
+                .modelName("gemini-3.1-flash-lite")
                 .build();
 
         assertThat(model).isNotNull();
@@ -43,7 +43,7 @@ class GoogleGenAiStreamingChatModelTest {
     void should_set_default_request_parameters() {
         GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
                 .apiKey("test-key")
-                .modelName("gemini-2.0-flash")
+                .modelName("gemini-3.1-flash-lite")
                 .temperature(0.7)
                 .topP(0.9)
                 .topK(40)
@@ -62,7 +62,7 @@ class GoogleGenAiStreamingChatModelTest {
     void should_return_empty_listeners_by_default() {
         GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
                 .apiKey("test-key")
-                .modelName("gemini-2.0-flash")
+                .modelName("gemini-3.1-flash-lite")
                 .build();
 
         assertThat(model.listeners()).isEmpty();
@@ -74,7 +74,7 @@ class GoogleGenAiStreamingChatModelTest {
 
         GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
                 .apiKey("test-key")
-                .modelName("gemini-2.0-flash")
+                .modelName("gemini-3.1-flash-lite")
                 .listeners(List.of(listener))
                 .build();
 
@@ -85,7 +85,7 @@ class GoogleGenAiStreamingChatModelTest {
     void should_always_advertise_json_schema_capability() {
         GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
                 .apiKey("test-key")
-                .modelName("gemini-2.0-flash")
+                .modelName("gemini-3.1-flash-lite")
                 .build();
 
         assertThat(model.supportedCapabilities()).containsExactly(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
@@ -97,7 +97,7 @@ class GoogleGenAiStreamingChatModelTest {
 
         GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
                 .client(client)
-                .modelName("gemini-2.0-flash")
+                .modelName("gemini-3.1-flash-lite")
                 .temperature(0.5)
                 .topP(0.8)
                 .topK(30)
@@ -123,7 +123,7 @@ class GoogleGenAiStreamingChatModelTest {
     void should_build_with_null_optional_fields() {
         GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
                 .apiKey("test-key")
-                .modelName("gemini-2.0-flash")
+                .modelName("gemini-3.1-flash-lite")
                 .listeners(null)
                 .safetySettings(null)
                 .executor(null)
