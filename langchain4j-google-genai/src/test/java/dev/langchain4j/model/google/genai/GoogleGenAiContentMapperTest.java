@@ -459,4 +459,32 @@ class GoogleGenAiContentMapperTest {
         assertThat(result.parts().get()).hasSize(2);
         assertThat(result.parts().get().get(0).text().get()).isEqualTo("Describe this image");
     }
+
+    @Test
+    void should_map_finish_reason() {
+        assertThat(GoogleGenAiContentMapper.mapFinishReason(
+                        new com.google.genai.types.FinishReason(com.google.genai.types.FinishReason.Known.STOP)))
+                .isEqualTo(FinishReason.STOP);
+
+        assertThat(GoogleGenAiContentMapper.mapFinishReason(
+                        new com.google.genai.types.FinishReason(com.google.genai.types.FinishReason.Known.MAX_TOKENS)))
+                .isEqualTo(FinishReason.LENGTH);
+
+        assertThat(GoogleGenAiContentMapper.mapFinishReason(new com.google.genai.types.FinishReason(
+                        com.google.genai.types.FinishReason.Known.IMAGE_RECITATION)))
+                .isEqualTo(FinishReason.CONTENT_FILTER);
+
+        assertThat(GoogleGenAiContentMapper.mapFinishReason(
+                        new com.google.genai.types.FinishReason(com.google.genai.types.FinishReason.Known.SAFETY)))
+                .isEqualTo(FinishReason.CONTENT_FILTER);
+
+        assertThat(GoogleGenAiContentMapper.mapFinishReason(
+                        new com.google.genai.types.FinishReason(com.google.genai.types.FinishReason.Known.OTHER)))
+                .isEqualTo(FinishReason.OTHER);
+    }
+
+    @Test
+    void should_map_null_finish_reason_to_other() {
+        assertThat(GoogleGenAiContentMapper.mapFinishReason(null)).isEqualTo(FinishReason.OTHER);
+    }
 }

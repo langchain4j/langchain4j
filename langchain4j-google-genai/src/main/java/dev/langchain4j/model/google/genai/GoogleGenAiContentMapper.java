@@ -241,7 +241,10 @@ class GoogleGenAiContentMapper {
                                 : 0))
                 .orElse(new TokenUsage(0, 0));
 
-        FinishReason finishReason = !toolRequests.isEmpty() ? FinishReason.TOOL_EXECUTION : FinishReason.STOP;
+        FinishReason finishReason = candidate
+                .finishReason()
+                .map(GoogleGenAiContentMapper::mapFinishReason)
+                .orElseGet(() -> !toolRequests.isEmpty() ? FinishReason.TOOL_EXECUTION : FinishReason.STOP);
 
         GoogleGenAiChatResponseMetadata metadata = GoogleGenAiChatResponseMetadata.builder()
                 .modelName(modelName)
@@ -313,6 +316,35 @@ class GoogleGenAiContentMapper {
 
     static Part fromMimeTypeAndData(String mimeType, URI uri) {
         return Part.fromUri(uri.toString(), mimeType);
+    }
+
+    static FinishReason mapFinishReason(com.google.genai.types.FinishReason finishReason) {
+        if (finishReason == null) {
+            return FinishReason.OTHER;
+        }
+
+        com.google.genai.types.FinishReason.Known known = finishReason.knownEnum();
+        if (known == null) {
+            return FinishReason.OTHER;
+        }
+
+        switch (known) {
+            case STOP:
+                return FinishReason.STOP;
+            case MAX_TOKENS:
+                return FinishReason.LENGTH;
+            case SAFETY:
+            case RECITATION:
+            case BLOCKLIST:
+            case PROHIBITED_CONTENT:
+            case SPII:
+            case IMAGE_SAFETY:
+            case IMAGE_PROHIBITED_CONTENT:
+            case IMAGE_RECITATION:
+                return FinishReason.CONTENT_FILTER;
+            default:
+                return FinishReason.OTHER;
+        }
     }
 
     private GoogleGenAiContentMapper() {}
