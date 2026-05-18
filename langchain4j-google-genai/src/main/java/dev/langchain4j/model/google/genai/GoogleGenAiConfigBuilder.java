@@ -38,7 +38,8 @@ class GoogleGenAiConfigBuilder {
             boolean urlContextEnabled,
             List<String> allowedFunctionNames,
             String vertexSearchDatastore,
-            Map<String, String> labels) {
+            Map<String, String> labels,
+            String cachedContent) {
 
         GenerateContentConfig.Builder configBuilder = GenerateContentConfig.builder();
 
@@ -87,6 +88,10 @@ class GoogleGenAiConfigBuilder {
 
         if (labels != null) {
             configBuilder.labels(labels);
+        }
+
+        if (cachedContent != null && !cachedContent.trim().isEmpty()) {
+            configBuilder.cachedContent(cachedContent);
         }
 
         buildTools(

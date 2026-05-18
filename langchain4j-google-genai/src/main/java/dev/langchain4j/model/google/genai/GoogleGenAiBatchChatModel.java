@@ -55,6 +55,7 @@ public final class GoogleGenAiBatchChatModel {
     private final List<String> allowedFunctionNames;
     private final String vertexSearchDatastore;
     private final Map<String, String> labels;
+    private final String cachedContent;
     private final ChatRequestParameters defaultRequestParameters;
 
     private GoogleGenAiBatchChatModel(Builder builder) {
@@ -69,6 +70,7 @@ public final class GoogleGenAiBatchChatModel {
                 builder.allowedFunctionNames != null ? new ArrayList<>(builder.allowedFunctionNames) : null;
         this.vertexSearchDatastore = builder.vertexSearchDatastore;
         this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
+        this.cachedContent = builder.cachedContent;
         this.defaultRequestParameters = builder.defaultRequestParameters;
 
         this.client = builder.client != null
@@ -185,7 +187,8 @@ public final class GoogleGenAiBatchChatModel {
                 urlContextEnabled,
                 allowedFunctionNames,
                 vertexSearchDatastore,
-                labels);
+                labels,
+                cachedContent);
 
         return InlinedRequest.builder().contents(contents).config(config).build();
     }
@@ -266,6 +269,7 @@ public final class GoogleGenAiBatchChatModel {
         private Map<String, String> labels;
         private String apiEndpoint;
         private Map<String, String> customHeaders;
+        private String cachedContent;
 
         public Builder client(Client client) {
             this.client = client;
@@ -359,6 +363,11 @@ public final class GoogleGenAiBatchChatModel {
 
         public Builder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
+            return this;
+        }
+
+        public Builder cachedContent(String cachedContent) {
+            this.cachedContent = cachedContent;
             return this;
         }
 

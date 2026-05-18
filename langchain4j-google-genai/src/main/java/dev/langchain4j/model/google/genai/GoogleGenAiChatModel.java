@@ -43,6 +43,7 @@ public class GoogleGenAiChatModel implements ChatModel {
     private final List<String> allowedFunctionNames;
     private final String vertexSearchDatastore;
     private final Map<String, String> labels;
+    private final String cachedContent;
 
     private GoogleGenAiChatModel(Builder builder) {
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
@@ -56,6 +57,7 @@ public class GoogleGenAiChatModel implements ChatModel {
         this.safetySettings = copy(builder.safetySettings);
         this.vertexSearchDatastore = builder.vertexSearchDatastore;
         this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
+        this.cachedContent = builder.cachedContent;
 
         this.client = builder.client != null
                 ? builder.client
@@ -100,7 +102,8 @@ public class GoogleGenAiChatModel implements ChatModel {
                 urlContextEnabled,
                 allowedFunctionNames,
                 vertexSearchDatastore,
-                labels);
+                labels,
+                cachedContent);
 
         var result = withRetryMappingExceptions(
                 () -> client.models.generateContent(chatRequest.modelName(), contents, config), maxRetries);
@@ -161,6 +164,7 @@ public class GoogleGenAiChatModel implements ChatModel {
         private Map<String, String> labels;
         private String apiEndpoint;
         private Map<String, String> customHeaders;
+        private String cachedContent;
 
         public Builder client(Client client) {
             this.client = client;
@@ -294,6 +298,11 @@ public class GoogleGenAiChatModel implements ChatModel {
 
         public Builder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
+            return this;
+        }
+
+        public Builder cachedContent(String cachedContent) {
+            this.cachedContent = cachedContent;
             return this;
         }
 
