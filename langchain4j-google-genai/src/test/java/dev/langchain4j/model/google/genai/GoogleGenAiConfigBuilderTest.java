@@ -14,6 +14,7 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -89,6 +90,28 @@ class GoogleGenAiConfigBuilderTest {
                 parameters, null, null, null, null, false, false, false, null, null, null);
 
         assertThat(config.responseMimeType().get()).isEqualTo("application/json");
+        assertThat(config.responseSchema().isPresent()).isFalse();
+    }
+
+    @Test
+    void should_set_json_schema_from_response_format() {
+        ChatRequestParameters parameters = DefaultChatRequestParameters.builder()
+                .responseFormat(ResponseFormat.builder()
+                        .type(ResponseFormatType.JSON)
+                        .jsonSchema(JsonSchema.builder()
+                                .rootElement(JsonObjectSchema.builder()
+                                        .addStringProperty("name")
+                                        .build())
+                                .build())
+                        .build())
+                .build();
+
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters, null, null, null, null, false, false, false, null, null, null);
+
+        assertThat(config.responseMimeType().get()).isEqualTo("application/json");
+        assertThat(config.responseSchema().isPresent()).isTrue();
+        assertThat(config.responseSchema().get().type().get().toString()).contains("OBJECT");
     }
 
     @Test
