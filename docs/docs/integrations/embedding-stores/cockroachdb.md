@@ -255,9 +255,13 @@ configuration is required.
 - Hybrid (vector + full-text) query execution is not implemented yet. The
   tsvector column and GIN index can be created via `createTsvectorColumn`
   for use by application code or a future release.
-- The Python `langchain-cockroachdb` LangGraph checkpointer
-  (`CockroachDBSaver`) has no LangChain4j equivalent yet because
-  LangChain4j does not ship a LangGraph counterpart.
+- The Python `langchain-cockroachdb` library also ships a LangGraph
+  checkpointer (`CockroachDBSaver` and `AsyncCockroachDBSaver`). The
+  Java equivalent lives in the third-party [langgraph4j](https://github.com/langgraph4j/langgraph4j)
+  project as `langgraph4j-cockroachdb-saver`. langgraph4j's checkpoint
+  contract has no async API, so only the sync `CockroachDBSaver` is
+  provided; callers on JDK 21 or later can invoke it from a virtual
+  thread for non-blocking concurrency.
 
 ## Examples
 
