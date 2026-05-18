@@ -1,10 +1,11 @@
 package dev.langchain4j.service.memory;
 
+import static dev.langchain4j.service.memory.ChatMemoryService.DEFAULT;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -13,9 +14,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-
-import static dev.langchain4j.service.memory.ChatMemoryService.DEFAULT;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class ChatMemoryServiceConcurrencyTest {
 
@@ -25,9 +24,8 @@ class ChatMemoryServiceConcurrencyTest {
 
         ChatMemoryProvider provider = memoryId -> {
             slowDownProvider();
-            ChatMemory memory = MessageWindowChatMemory.builder()
-                    .maxMessages(10)
-                    .build();
+            ChatMemory memory =
+                    MessageWindowChatMemory.builder().maxMessages(10).build();
             createdMemories.add(memory);
             return memory;
         };
