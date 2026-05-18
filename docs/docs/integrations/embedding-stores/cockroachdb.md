@@ -142,7 +142,6 @@ CockroachDbEngine engine = CockroachDbEngine.fromConnectionString(
 | `password` | Password for database authentication | `""` (empty) | Optional |
 | `schema` | Database schema name | `public` | Optional |
 | `sslMode` | SSL mode (`disable`, `require`, `verify-full`, etc.) | `disable` | Optional |
-| `applicationName` | Application name reported to CockroachDB | `langchain4j-cockroachdb` | Optional |
 | `maxPoolSize` | Maximum number of connections in the pool | `10` | Optional |
 | `minPoolSize` | Minimum idle connections in the pool | `5` | Optional |
 | `connectionTimeoutMs` | Connection timeout in milliseconds | `10000` | Optional |
