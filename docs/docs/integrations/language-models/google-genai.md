@@ -27,6 +27,8 @@ https://github.com/googleapis/java-genai
 - [Grounding Metadata](#grounding-metadata)
 - [Custom Labels](#custom-labels)
 - [File API](#file-api)
+- [Cached Content Support](#cached-content-support)
+- [Thinking Models (Gemini 3.0+)](#thinking-models-gemini-30)
 - [Multimodality (Audio, Video, PDF)](#multimodality-audio-video-pdf)
 - [Token Count Estimator](#token-count-estimator)
 - [Model Catalog](#model-catalog)
@@ -233,6 +235,44 @@ WeatherForecast forecast = forecastAssistant.extract("""
 
 > [!NOTE]  
 > The Google Gen AI API has some restrictions on advanced JSON schema features (such as `anyOf` / polymorphic typing). Simple POJOs, lists, and nested objects are fully supported.
+
+## Cached Content Support
+
+When working with very large context windows (like massive system prompts, large documents, or extensive codebases) that are reused across multiple requests, you can significantly reduce costs and latency by caching the content. 
+
+Once you have created the cached content using the official Google Gen AI SDK or API, you can easily pass the unique cache identifier to the LangChain4j chat model builders:
+
+```java
+// Pass your cached content URI here
+String cachedContentUri = "projects/123456/locations/us-central1/cachedContents/my-cached-content-789";
+
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-pro")
+    .cachedContent(cachedContentUri)
+    .build();
+
+// The model will automatically use the cached context!
+String response = gemini.chat("Summarize the cached document in 3 bullet points.");
+```
+
+This feature is available on `GoogleGenAiChatModel`, `GoogleGenAiStreamingChatModel`, and `GoogleGenAiBatchChatModel`.
+
+## Thinking Models (Gemini 3.0+)
+
+Gemini 3.0 models (like `gemini-3.0-pro` and `gemini-3.0-flash`) support advanced reasoning (thinking) capabilities. 
+You can enable this by specifying a `thinkingBudget` (in tokens) during model configuration:
+
+```java
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-3.0-pro")
+    .thinkingBudget(1024)
+    .build();
+```
+
+> [!TIP]
+> The LangChain4j `google-genai` integration seamlessly manages the complex state required for multi-turn tool execution with thinking models. It automatically persists and injects the necessary hidden `thought_signature` tokens across conversation turns, ensuring robust and uninterrupted agentic workflows!
 
 ## GoogleGenAiEmbeddingModel
 
