@@ -81,6 +81,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -221,12 +222,20 @@ class InternalAzureOpenAiHelper {
     }
 
     static OpenAIServiceVersion getOpenAIServiceVersion(String serviceVersion) {
+        if (serviceVersion == null || serviceVersion.isEmpty()) {
+            return OpenAIServiceVersion.getLatest();
+        }
         for (OpenAIServiceVersion version : OpenAIServiceVersion.values()) {
             if (version.getVersion().equals(serviceVersion)) {
                 return version;
             }
         }
-        return OpenAIServiceVersion.getLatest();
+        List<String> supportedVersions = Arrays.stream(OpenAIServiceVersion.values())
+                .map(OpenAIServiceVersion::getVersion)
+                .collect(toList());
+        throw new IllegalArgumentException("Unsupported Azure OpenAI service version: '" + serviceVersion
+                + "'. Supported versions are: " + supportedVersions
+                + ". Leave serviceVersion null or empty to use the latest version.");
     }
 
     static List<ChatRequestMessage> toOpenAiMessages(List<ChatMessage> messages) {
@@ -242,9 +251,8 @@ class InternalAzureOpenAiHelper {
             return chatRequestAssistantMessage;
         } else if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
             if (!toolExecutionResultMessage.hasSingleText()) {
-                throw new UnsupportedFeatureException(
-                        "Azure OpenAI does not support non-text content in tool results. "
-                                + "Only text content is supported.");
+                throw new UnsupportedFeatureException("Azure OpenAI does not support non-text content in tool results. "
+                        + "Only text content is supported.");
             }
             return new ChatRequestToolMessage(toolExecutionResultMessage.text(), toolExecutionResultMessage.id());
         } else if (message instanceof SystemMessage systemMessage) {
