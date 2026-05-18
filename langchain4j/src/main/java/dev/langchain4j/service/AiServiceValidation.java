@@ -6,7 +6,6 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -15,8 +14,6 @@ import static dev.langchain4j.service.IllegalConfigurationException.illegalConfi
 import static java.lang.reflect.Modifier.isStatic;
 
 class AiServiceValidation {
-
-    private static final Set<Method> VALID_METHODS = new HashSet<>();
 
     private AiServiceValidation() { }
 
@@ -70,12 +67,11 @@ class AiServiceValidation {
                 }
             }
         }
+
+        validateParameters(serviceClass, method);
     }
 
     static void validateParameters(Class<?> serviceClass, Method method) {
-        if (!VALID_METHODS.add(method)) {
-            return;
-        }
 
         Parameter[] parameters = method.getParameters();
         if (parameters == null || parameters.length < 2) {

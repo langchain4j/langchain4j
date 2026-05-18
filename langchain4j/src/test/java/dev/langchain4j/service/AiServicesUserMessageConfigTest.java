@@ -131,23 +131,33 @@ class AiServicesUserMessageConfigTest {
 
         String illegalChat2(@V("country") String country);
 
-        String illegalChat3(String userMessage, String country);
-
-        String illegalChat4(@UserMessage String userMessage, String country);
-
         @UserMessage
         String illegalChat5();
 
         @UserMessage("Hello")
         String illegalChat6(@UserMessage String userMessage);
 
-        String illegalChat7(String userMessage, InvocationParameters invocationParameters);
-
-        String illegalChat8(@UserMessage String userMessage, InvocationParameters ip1, InvocationParameters ip2);
-
-        String illegalChat9(@UserMessage String userMessage, ChatRequestParameters cp1, ChatRequestParameters cp2);
-
         // TODO more tests with @UserName, @V, @MemoryId
+    }
+
+    interface IllegalAiService3 {
+        String illegalChat3(String userMessage, String country);
+    }
+
+    interface IllegalAiService4 {
+        String illegalChat4(@UserMessage String userMessage, String country);
+    }
+
+    interface IllegalAiService7 {
+        String illegalChat7(String userMessage, InvocationParameters invocationParameters);
+    }
+
+    interface IllegalAiService8 {
+        String illegalChat8(@UserMessage String userMessage, InvocationParameters ip1, InvocationParameters ip2);
+    }
+
+    interface IllegalAiService9 {
+        String illegalChat9(@UserMessage String userMessage, ChatRequestParameters cp1, ChatRequestParameters cp2);
     }
 
     class MyObject {
@@ -721,30 +731,22 @@ class AiServicesUserMessageConfigTest {
     @Test
     void illegal_user_message_configuration_3() {
 
-        // given
-        AiService aiService =
-                AiServices.builder(AiService.class).chatModel(chatModel).build();
-
         // when-then
-        assertThatThrownBy(() -> aiService.illegalChat3("What is the capital of {{it}}?", "Germany"))
+        assertThatThrownBy(() -> AiServices.builder(IllegalAiService3.class).chatModel(chatModel).build())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage(
-                        "The parameter 'arg0' in the method 'illegalChat3' of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$AiService"
+                        "The parameter 'arg0' in the method 'illegalChat3' of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$IllegalAiService3"
                                 + VALIDATION_ERROR_MESSAGE_SUFFIX);
     }
 
     @Test
     void illegal_user_message_configuration_4() {
 
-        // given
-        AiService aiService =
-                AiServices.builder(AiService.class).chatModel(chatModel).build();
-
         // when-then
-        assertThatThrownBy(() -> aiService.illegalChat4("What is the capital of {{it}}?", "Germany"))
+        assertThatThrownBy(() -> AiServices.builder(IllegalAiService4.class).chatModel(chatModel).build())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage(
-                        "The parameter 'arg1' in the method 'illegalChat4' of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$AiService"
+                        "The parameter 'arg1' in the method 'illegalChat4' of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$IllegalAiService4"
                                 + VALIDATION_ERROR_MESSAGE_SUFFIX);
     }
 
@@ -778,47 +780,30 @@ class AiServicesUserMessageConfigTest {
     @Test
     void illegal_user_message_configuration_7() {
 
-        // given
-        AiService aiService =
-                AiServices.builder(AiService.class).chatModel(chatModel).build();
-
         // when-then
-        assertThatThrownBy(() -> aiService.illegalChat7("Hello", new InvocationParameters()))
+        assertThatThrownBy(() -> AiServices.builder(IllegalAiService7.class).chatModel(chatModel).build())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("The parameter 'arg0' in the method 'illegalChat7' of the class "
-                        + AiService.class.getName() + VALIDATION_ERROR_MESSAGE_SUFFIX);
+                        + IllegalAiService7.class.getName() + VALIDATION_ERROR_MESSAGE_SUFFIX);
     }
 
     @Test
     void illegal_user_message_configuration_8() {
 
-        // given
-        AiService aiService =
-                AiServices.builder(AiService.class).chatModel(chatModel).build();
-
-        InvocationParameters invocationParameters = new InvocationParameters();
-
         // when-then
-        assertThatThrownBy(() -> aiService.illegalChat8("Hello", invocationParameters, invocationParameters))
+        assertThatThrownBy(() -> AiServices.builder(IllegalAiService8.class).chatModel(chatModel).build())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("The method 'illegalChat8' of the class " + AiService.class.getName()
+                .hasMessage("The method 'illegalChat8' of the class " + IllegalAiService8.class.getName()
                         + " has more than one parameter of type " + InvocationParameters.class.getName());
     }
 
     @Test
     void illegal_user_message_configuration_9() {
 
-        // given
-        AiService aiService =
-                AiServices.builder(AiService.class).chatModel(chatModel).build();
-
-        ChatRequestParameters chatRequestParameters =
-                ChatRequestParameters.builder().build();
-
         // when-then
-        assertThatThrownBy(() -> aiService.illegalChat9("Hello", chatRequestParameters, chatRequestParameters))
+        assertThatThrownBy(() -> AiServices.builder(IllegalAiService9.class).chatModel(chatModel).build())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("The method 'illegalChat9' of the class " + AiService.class.getName()
+                .hasMessage("The method 'illegalChat9' of the class " + IllegalAiService9.class.getName()
                         + " has more than one parameter of type " + ChatRequestParameters.class.getName());
     }
 }
