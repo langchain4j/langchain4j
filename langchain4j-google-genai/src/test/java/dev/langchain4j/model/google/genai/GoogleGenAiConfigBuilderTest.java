@@ -131,7 +131,18 @@ class GoogleGenAiConfigBuilderTest {
                 DefaultChatRequestParameters.builder().build();
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, null, null, null, false, false, false, null, null, null, "projects/123/locations/us-central1/cachedContents/456");
+                parameters,
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
+                false,
+                null,
+                null,
+                null,
+                "projects/123/locations/us-central1/cachedContents/456");
 
         assertThat(config.cachedContent().isPresent()).isTrue();
         assertThat(config.cachedContent().get()).isEqualTo("projects/123/locations/us-central1/cachedContents/456");
@@ -384,7 +395,8 @@ class GoogleGenAiConfigBuilderTest {
                 false,
                 null,
                 "projects/123/locations/global/collections/default_collection/dataStores/my-datastore",
-                null, null);
+                null,
+                null);
 
         assertThat(config.tools().get()).hasSize(1);
         assertThat(config.tools().get().get(0).retrieval().isPresent()).isTrue();
