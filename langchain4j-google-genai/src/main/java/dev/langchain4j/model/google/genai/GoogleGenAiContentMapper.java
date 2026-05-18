@@ -37,6 +37,7 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 class GoogleGenAiContentMapper {
@@ -143,12 +144,23 @@ class GoogleGenAiContentMapper {
                             throw new RuntimeException(e);
                         }
                     }
-                    parts.add(Part.builder()
-                            .functionCall(FunctionCall.builder()
-                                    .name(req.name())
-                                    .args(args)
-                                    .build())
-                            .build());
+                    FunctionCall.Builder fcBuilder =
+                            FunctionCall.builder().name(req.name()).args(args);
+
+                    if (req.id() != null) {
+                        fcBuilder.id(req.id());
+                    }
+
+                    Part.Builder partBuilder = Part.builder().functionCall(fcBuilder.build());
+
+                    if (req.id() != null) {
+                        String sigBase64 = aiMsg.attribute("thought_signature_" + req.id(), String.class);
+                        if (sigBase64 != null) {
+                            partBuilder.thoughtSignature(Base64.getDecoder().decode(sigBase64));
+                        }
+                    }
+
+                    parts.add(partBuilder.build());
                 }
             }
             return Content.builder().role(MODEL_ROLE).parts(parts).build();
@@ -196,6 +208,7 @@ class GoogleGenAiContentMapper {
 
         StringBuilder textBuilder = new StringBuilder();
         List<ToolExecutionRequest> toolRequests = new ArrayList<>();
+        Map<String, Object> attributes = new HashMap<>();
 
         if (content != null) {
             List<Part> parts = content.parts().orElse(List.of());
@@ -212,8 +225,16 @@ class GoogleGenAiContentMapper {
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
+                    String id = fc.id().orElseGet(() -> UUID.randomUUID().toString());
+
+                    if (part.thoughtSignature().isPresent()) {
+                        byte[] sig = part.thoughtSignature().get();
+                        attributes.put(
+                                "thought_signature_" + id, Base64.getEncoder().encodeToString(sig));
+                    }
 
                     toolRequests.add(ToolExecutionRequest.builder()
+                            .id(id)
                             .name(fnName)
                             .arguments(jsonArgs)
                             .build());
@@ -222,14 +243,21 @@ class GoogleGenAiContentMapper {
         }
 
         String text = textBuilder.toString();
-        AiMessage aiMessage;
+        AiMessage.Builder aiMessageBuilder = AiMessage.builder();
+
         if (!toolRequests.isEmpty() && !isNullOrEmpty(text)) {
-            aiMessage = new AiMessage(text, toolRequests);
+            aiMessageBuilder.text(text);
+            aiMessageBuilder.toolExecutionRequests(toolRequests);
         } else if (!toolRequests.isEmpty()) {
-            aiMessage = AiMessage.from(toolRequests);
+            aiMessageBuilder.toolExecutionRequests(toolRequests);
         } else {
-            aiMessage = AiMessage.from(text);
+            aiMessageBuilder.text(text);
         }
+
+        if (!attributes.isEmpty()) {
+            aiMessageBuilder.attributes(attributes);
+        }
+        AiMessage aiMessage = aiMessageBuilder.build();
 
         TokenUsage usage = response.usageMetadata()
                 .map(meta -> new TokenUsage(
