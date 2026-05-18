@@ -37,10 +37,12 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 @Execution(ExecutionMode.CONCURRENT)
 class InternalAzureOpenAiHelperTest {
 
+    private static final String SERVICE_VERSION = "2024-02-01";
+
     @Test
     void setupOpenAIClientShouldReturnClientWithCorrectConfiguration() {
         String endpoint = "test-endpoint";
-        String serviceVersion = "2024-02-01";
+        String serviceVersion = SERVICE_VERSION;
         String apiKey = "test-api-key";
         Duration timeout = Duration.ofSeconds(30);
         Integer maxRetries = 5;
@@ -65,7 +67,7 @@ class InternalAzureOpenAiHelperTest {
     @Test
     void setupOpenAIAsyncClientShouldReturnClientWithCorrectConfiguration() {
         String endpoint = "test-endpoint";
-        String serviceVersion = "2024-02-01";
+        String serviceVersion = SERVICE_VERSION;
         String apiKey = "test-api-key";
         Duration timeout = Duration.ofSeconds(30);
         Integer maxRetries = 5;
@@ -117,6 +119,14 @@ class InternalAzureOpenAiHelperTest {
     @Test
     void getOpenAIServiceVersionShouldReturnLatestVersionIfEmpty() {
         OpenAIServiceVersion version = InternalAzureOpenAiHelper.getOpenAIServiceVersion("");
+
+        assertThat(version.getVersion())
+                .isEqualTo(OpenAIServiceVersion.getLatest().getVersion());
+    }
+
+    @Test
+    void getOpenAIServiceVersionShouldReturnLatestVersionIfBlank() {
+        OpenAIServiceVersion version = InternalAzureOpenAiHelper.getOpenAIServiceVersion("   ");
 
         assertThat(version.getVersion())
                 .isEqualTo(OpenAIServiceVersion.getLatest().getVersion());
