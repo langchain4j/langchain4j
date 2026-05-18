@@ -190,14 +190,29 @@ class GoogleGenAiContentMapperTest {
     }
 
     @Test
-    void should_convert_tool_execution_result_message() {
-        ToolExecutionResultMessage message = ToolExecutionResultMessage.from("call-1", "getWeather", "Sunny, 25C");
+    void should_convert_parallel_tool_execution_result_messages() {
+        List<ChatMessage> messages = List.of(
+                ToolExecutionResultMessage.from("call-1", "getWeather", "Sunny, 25C"),
+                ToolExecutionResultMessage.from("call-2", "getWeather", "Rainy, 15C"));
 
-        Content result = GoogleGenAiContentMapper.toContent(message);
+        List<Content> results = GoogleGenAiContentMapper.toContents(messages);
 
-        assertThat(result.role().get()).isEqualTo("function");
-        assertThat(result.parts().get().get(0).functionResponse().get().name().get())
-                .isEqualTo("getWeather");
+        assertThat(results).hasSize(1);
+        Content result = results.get(0);
+        assertThat(result.role().get()).isEqualTo("user");
+
+        List<Part> parts = result.parts().get();
+        assertThat(parts).hasSize(2);
+
+        assertThat(parts.get(0).functionResponse().get().name().get()).isEqualTo("getWeather");
+        assertThat(parts.get(0).functionResponse().get().response().get().get("result"))
+                .isEqualTo("Sunny, 25C");
+        assertThat(parts.get(0).functionResponse().get().id().get()).isEqualTo("call-1");
+
+        assertThat(parts.get(1).functionResponse().get().name().get()).isEqualTo("getWeather");
+        assertThat(parts.get(1).functionResponse().get().response().get().get("result"))
+                .isEqualTo("Rainy, 15C");
+        assertThat(parts.get(1).functionResponse().get().id().get()).isEqualTo("call-2");
     }
 
     @Test

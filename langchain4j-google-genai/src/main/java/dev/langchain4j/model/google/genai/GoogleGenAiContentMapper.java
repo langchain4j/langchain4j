@@ -28,6 +28,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.video.Video;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
@@ -119,10 +120,54 @@ class GoogleGenAiContentMapper {
     }
 
     static List<Content> toContents(List<ChatMessage> messages) {
-        return messages.stream()
-                .filter(m -> !(m instanceof SystemMessage))
-                .map(GoogleGenAiContentMapper::toContent)
-                .collect(Collectors.toList());
+        List<Content> contents = new ArrayList<>();
+        List<Part> currentFunctionParts = new ArrayList<>();
+
+        for (ChatMessage message : messages) {
+            if (message instanceof SystemMessage) {
+                continue;
+            }
+
+            if (message instanceof ToolExecutionResultMessage toolMsg) {
+                String toolResult;
+                try {
+                    toolResult = toolMsg.text();
+                } catch (IllegalStateException e) {
+                    throw new UnsupportedFeatureException(
+                            "Google Gen AI currently does not support non-text content in tool execution results");
+                }
+                Map<String, Object> responseMap = new HashMap<>();
+                responseMap.put("result", toolResult);
+
+                FunctionResponse.Builder funcRespBuilder =
+                        FunctionResponse.builder().name(toolMsg.toolName()).response(responseMap);
+
+                if (toolMsg.id() != null) {
+                    funcRespBuilder.id(toolMsg.id());
+                }
+
+                currentFunctionParts.add(
+                        Part.builder().functionResponse(funcRespBuilder.build()).build());
+            } else {
+                if (!currentFunctionParts.isEmpty()) {
+                    contents.add(Content.builder()
+                            .role(USER_ROLE)
+                            .parts(currentFunctionParts)
+                            .build());
+                    currentFunctionParts = new ArrayList<>();
+                }
+                contents.add(toContent(message));
+            }
+        }
+
+        if (!currentFunctionParts.isEmpty()) {
+            contents.add(Content.builder()
+                    .role(USER_ROLE)
+                    .parts(currentFunctionParts)
+                    .build());
+        }
+
+        return contents;
     }
 
     static Content toContent(ChatMessage message) {
@@ -164,27 +209,6 @@ class GoogleGenAiContentMapper {
                 }
             }
             return Content.builder().role(MODEL_ROLE).parts(parts).build();
-
-        } else if (message instanceof ToolExecutionResultMessage toolMsg) {
-            String toolResult;
-            try {
-                toolResult = toolMsg.text();
-            } catch (IllegalStateException e) {
-                throw new dev.langchain4j.exception.UnsupportedFeatureException(
-                        "Google Gen AI currently does not support non-text content in tool execution results");
-            }
-            Map<String, Object> responseMap = new HashMap<>();
-            responseMap.put("result", toolResult);
-
-            return Content.builder()
-                    .role(FUNCTION_ROLE)
-                    .parts(Part.builder()
-                            .functionResponse(FunctionResponse.builder()
-                                    .name(toolMsg.toolName())
-                                    .response(responseMap)
-                                    .build())
-                            .build())
-                    .build();
         }
         throw new IllegalArgumentException("Unknown message type: " + message.type());
     }

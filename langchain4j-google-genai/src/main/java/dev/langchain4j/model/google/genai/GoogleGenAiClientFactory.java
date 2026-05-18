@@ -37,9 +37,13 @@ class GoogleGenAiClientFactory {
 
         Client.Builder clientBuilder = Client.builder().httpOptions(httpOptions.build());
 
-        if (googleCredentials != null) {
-            clientBuilder.credentials(googleCredentials);
+        boolean isVertex = googleCredentials != null || (projectId != null && location != null);
+
+        if (isVertex) {
             clientBuilder.vertexAI(true);
+            if (googleCredentials != null) {
+                clientBuilder.credentials(googleCredentials);
+            }
             if (projectId != null) clientBuilder.project(projectId);
             if (location != null) clientBuilder.location(location);
         } else if (apiKey != null) {
