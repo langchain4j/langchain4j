@@ -113,7 +113,7 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
     .enableGoogleMaps(true)
     .enableUrlContext(true)
     .allowedFunctionNames(List.of("getWeather"))
-    .thinkingBudget(250)
+    .thinkingLevel("LOW")
     .listeners(...)
     .build();
 ```
@@ -261,15 +261,18 @@ This feature is available on `GoogleGenAiChatModel`, `GoogleGenAiStreamingChatMo
 ## Thinking Models (Gemini 3.0+)
 
 Gemini 3.0 models (like `gemini-3.0-pro` and `gemini-3.0-flash`) support advanced reasoning (thinking) capabilities. 
-You can enable this by specifying a `thinkingBudget` (in tokens) during model configuration:
+You can enable this by specifying a `thinkingLevel` during model configuration. The supported values are `"MINIMAL"`, `"LOW"`, `"MEDIUM"`, and `"HIGH"`:
 
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
     .modelName("gemini-3.0-pro")
-    .thinkingBudget(1024)
+    .thinkingLevel("MEDIUM")
     .build();
 ```
+
+> [!NOTE]
+> Previously, thinking was configured using a token-based `thinkingBudget`. The `thinkingBudget` parameter is now considered legacy, though still supported. You cannot specify both `thinkingLevel` and `thinkingBudget` at the same time.
 
 > [!TIP]
 > The LangChain4j `google-genai` integration seamlessly manages the complex state required for multi-turn tool execution with thinking models. It automatically persists and injects the necessary hidden `thought_signature` tokens across conversation turns, ensuring robust and uninterrupted agentic workflows!
