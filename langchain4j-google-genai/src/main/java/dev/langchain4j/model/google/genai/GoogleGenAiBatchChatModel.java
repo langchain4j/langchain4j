@@ -48,6 +48,7 @@ public final class GoogleGenAiBatchChatModel {
     // Configuration parameters reused from the chat model builder
     private final List<SafetySetting> safetySettings;
     private final Integer thinkingBudget;
+    private final String thinkingLevel;
     private final Integer seed;
     private final boolean googleSearchEnabled;
     private final boolean googleMapsEnabled;
@@ -62,6 +63,7 @@ public final class GoogleGenAiBatchChatModel {
         this.modelName = builder.modelName;
         this.safetySettings = builder.safetySettings != null ? new ArrayList<>(builder.safetySettings) : null;
         this.thinkingBudget = builder.thinkingBudget;
+        this.thinkingLevel = builder.thinkingLevel;
         this.seed = builder.seed;
         this.googleSearchEnabled = builder.googleSearch != null ? builder.googleSearch : false;
         this.googleMapsEnabled = builder.googleMaps != null ? builder.googleMaps : false;
@@ -181,6 +183,7 @@ public final class GoogleGenAiBatchChatModel {
                 systemInstruction,
                 safetySettings,
                 thinkingBudget,
+                thinkingLevel,
                 seed,
                 googleSearchEnabled,
                 googleMapsEnabled,
@@ -258,6 +261,7 @@ public final class GoogleGenAiBatchChatModel {
         private String modelName;
         private Duration timeout;
         private Integer thinkingBudget;
+        private String thinkingLevel;
         private Integer seed;
         private Boolean googleSearch;
         private Boolean googleMaps;
@@ -306,8 +310,21 @@ public final class GoogleGenAiBatchChatModel {
             return this;
         }
 
+        /**
+         * The thinking budget to use. This is a legacy parameter. For Gemini 3.x models, use {@link #thinkingLevel(String)} instead.
+         */
         public Builder thinkingBudget(Integer thinkingBudget) {
             this.thinkingBudget = thinkingBudget;
+            return this;
+        }
+
+        /**
+         * The thinking level to use. This is the recommended parameter for Gemini 3.x models.
+         * Allowed values are {@code "MINIMAL"}, {@code "LOW"}, {@code "MEDIUM"}, {@code "HIGH"}.
+         * Note that this cannot be used together with {@link #thinkingBudget(Integer)}.
+         */
+        public Builder thinkingLevel(String thinkingLevel) {
+            this.thinkingLevel = thinkingLevel;
             return this;
         }
 

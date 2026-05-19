@@ -12,6 +12,7 @@ import com.google.genai.types.Retrieval;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.Schema;
 import com.google.genai.types.ThinkingConfig;
+import com.google.genai.types.ThinkingLevel;
 import com.google.genai.types.Tool;
 import com.google.genai.types.ToolConfig;
 import com.google.genai.types.UrlContext;
@@ -32,6 +33,7 @@ class GoogleGenAiConfigBuilder {
             Content systemInstruction,
             List<SafetySetting> safetySettings,
             Integer thinkingBudget,
+            String thinkingLevel,
             Integer seed,
             boolean googleSearchEnabled,
             boolean googleMapsEnabled,
@@ -73,9 +75,19 @@ class GoogleGenAiConfigBuilder {
             }
         }
 
-        if (thinkingBudget != null) {
-            configBuilder.thinkingConfig(
-                    ThinkingConfig.builder().thinkingBudget(thinkingBudget).build());
+        if (thinkingBudget != null && thinkingLevel != null) {
+            throw new IllegalArgumentException("Cannot use both thinkingBudget and thinkingLevel at the same time");
+        }
+
+        if (thinkingBudget != null || thinkingLevel != null) {
+            ThinkingConfig.Builder thinkingBuilder = ThinkingConfig.builder();
+            if (thinkingBudget != null) {
+                thinkingBuilder.thinkingBudget(thinkingBudget);
+            }
+            if (thinkingLevel != null) {
+                thinkingBuilder.thinkingLevel(ThinkingLevel.builder().level(thinkingLevel).build());
+            }
+            configBuilder.thinkingConfig(thinkingBuilder.build());
         }
 
         if (seed != null) {
