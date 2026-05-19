@@ -2,7 +2,7 @@ package dev.langchain4j.agentic.declarative;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.agentic.AgenticServices.DeclarativeAgentCreationContext;
+import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.AgenticServices.DefaultDeclarativeAgentCreationContext;
 import dev.langchain4j.agentic.agent.AgentBuilder;
 import dev.langchain4j.agentic.agent.ErrorContext;
@@ -25,7 +25,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -40,14 +39,14 @@ public class DeclarativeUtil {
     private DeclarativeUtil() { }
 
     public static void configureAgent(Class<?> agentType, AgentBuilder<?, ?> agentBuilder) {
-        configureAgent(agentType, null, true, agentBuilder, ctx -> { });
+        configureAgent(agentType, null, true, agentBuilder, AgenticServices.AgentConfigurator.empty());
     }
 
-    public static void configureAgent(Class<?> agentType, ChatModel chatModel, AgentBuilder<?, ?> agentBuilder, Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+    public static void configureAgent(Class<?> agentType, ChatModel chatModel, AgentBuilder<?, ?> agentBuilder, AgenticServices.AgentConfigurator agentConfigurator) {
         configureAgent(agentType, chatModel, false, agentBuilder, agentConfigurator);
     }
 
-    private static void configureAgent(Class<?> agentType, ChatModel chatModel, boolean allowNullChatModel, AgentBuilder<?, ?> agentBuilder, Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+    private static void configureAgent(Class<?> agentType, ChatModel chatModel, boolean allowNullChatModel, AgentBuilder<?, ?> agentBuilder, AgenticServices.AgentConfigurator agentConfigurator) {
         getAnnotatedMethodOnClass(agentType, ToolsSupplier.class)
                 .ifPresent(method -> {
                     checkArguments(method);
@@ -141,7 +140,7 @@ public class DeclarativeUtil {
                     agentBuilder.listener(invokeStatic(listenerMethod));
                 });
 
-        agentConfigurator.accept(new DefaultDeclarativeAgentCreationContext(agentType, agentBuilder));
+        agentConfigurator.configurator().accept(new DefaultDeclarativeAgentCreationContext(agentType, agentBuilder));
     }
 
     public static void checkArguments(Method method, Class<?>... expected) {
