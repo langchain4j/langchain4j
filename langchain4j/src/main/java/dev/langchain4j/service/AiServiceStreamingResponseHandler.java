@@ -47,7 +47,9 @@ import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.search.ToolSearchService;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +59,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
@@ -108,6 +111,13 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final boolean hasOutputGuardrails;
 
     private int sequentialToolsInvocationsLeft;
+
+    private final Object toolExecutionBufferLock = new Object();
+    private final ReentrantLock toolExecutionDeliveryLock = new ReentrantLock();
+    private final Deque<ToolExecution> bufferedToolExecutions = new ArrayDeque<>();
+    private boolean intermediateResponseEmitted = false;
+    private boolean drainingToolExecutions = false;
+    private boolean terminated = false;
 
     private record ToolRequestResult(ToolExecutionRequest request, ToolExecutionResult result) {}
 
@@ -295,7 +305,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     @Override
     public void onCompleteToolCall(CompleteToolCall completeToolCall) {
-        if (context.toolService.maxToolCallsPerResponse() == 0 && toolExecutor != null) {
+        if (shouldScheduleToolsEagerly()) {
             ToolExecutionRequest toolRequest = completeToolCall.toolExecutionRequest();
             CompletableFuture<ToolRequestResult> future = new CompletableFuture<>();
             toolExecutionFutures.add(future);
@@ -313,6 +323,139 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             } catch (Throwable t) {
                 future.completeExceptionally(t);
             }
+        }
+    }
+
+    private boolean shouldScheduleToolsEagerly() {
+        // Stream-level beforeToolExecution can veto the tool body, so keep it on the
+        // post-intermediate dispatch path where its delivery order is observable.
+        return context.toolService.maxToolCallsPerResponse() == 0
+                && toolExecutor != null
+                && beforeToolExecutionHandler == null;
+    }
+
+    private ToolExecutionResult execute(ToolExecutionRequest toolRequest) {
+        Consumer<ToolExecution> externalAfter =
+                toolExecutionHandler == null ? null : this::emitToolExecution;
+        return context.toolService.executeTool(
+                invocationContext, toolExecutors, toolRequest, beforeToolExecutionHandler, externalAfter);
+    }
+
+    private void emitToolExecution(ToolExecution toolExecution) {
+        synchronized (toolExecutionBufferLock) {
+            if (terminated) {
+                return;
+            }
+            if (!intermediateResponseEmitted || drainingToolExecutions) {
+                bufferedToolExecutions.add(toolExecution);
+                return;
+            }
+        }
+
+        toolExecutionDeliveryLock.lock();
+        try {
+            synchronized (toolExecutionBufferLock) {
+                if (terminated) {
+                    return;
+                }
+                if (!intermediateResponseEmitted || drainingToolExecutions) {
+                    bufferedToolExecutions.add(toolExecution);
+                    return;
+                }
+            }
+            toolExecutionHandler.accept(toolExecution);
+        } finally {
+            toolExecutionDeliveryLock.unlock();
+        }
+    }
+
+    private Throwable drainBufferedToolExecutions() {
+        if (toolExecutionHandler == null) {
+            markIntermediateResponseEmitted();
+            return null;
+        }
+
+        toolExecutionDeliveryLock.lock();
+        try {
+            synchronized (toolExecutionBufferLock) {
+                if (terminated) {
+                    bufferedToolExecutions.clear();
+                    return null;
+                }
+                intermediateResponseEmitted = true;
+                drainingToolExecutions = true;
+            }
+
+            return drainToolExecutionQueue();
+        } finally {
+            synchronized (toolExecutionBufferLock) {
+                drainingToolExecutions = false;
+            }
+            toolExecutionDeliveryLock.unlock();
+        }
+    }
+
+    private boolean terminateAndDrainVisibleToolExecutions() {
+        toolExecutionDeliveryLock.lock();
+        try {
+            synchronized (toolExecutionBufferLock) {
+                if (terminated) {
+                    bufferedToolExecutions.clear();
+                    return false;
+                }
+                terminated = true;
+                if (!intermediateResponseEmitted) {
+                    bufferedToolExecutions.clear();
+                    return true;
+                }
+                drainingToolExecutions = true;
+            }
+
+            Throwable callbackError = drainToolExecutionQueue();
+            if (callbackError != null) {
+                LOG.error("onToolExecuted callback threw while handling a stream error", callbackError);
+            }
+            return true;
+        } finally {
+            synchronized (toolExecutionBufferLock) {
+                drainingToolExecutions = false;
+            }
+            toolExecutionDeliveryLock.unlock();
+        }
+    }
+
+    private Throwable drainToolExecutionQueue() {
+        Throwable captured = null;
+        while (true) {
+            ToolExecution next;
+            synchronized (toolExecutionBufferLock) {
+                next = bufferedToolExecutions.poll();
+                if (next == null) {
+                    drainingToolExecutions = false;
+                    return captured;
+                }
+            }
+            try {
+                toolExecutionHandler.accept(next);
+            } catch (Throwable t) {
+                if (captured == null) {
+                    captured = t;
+                } else {
+                    captured.addSuppressed(t);
+                }
+            }
+        }
+    }
+
+    private void markIntermediateResponseEmitted() {
+        synchronized (toolExecutionBufferLock) {
+            intermediateResponseEmitted = true;
+        }
+    }
+
+    private boolean isTerminated() {
+        synchronized (toolExecutionBufferLock) {
+            return terminated;
         }
     }
 
@@ -354,6 +497,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private void handleStreamingError(Throwable error) {
+        cancelPendingToolCalls(null);
+        if (!terminateAndDrainVisibleToolExecutions()) {
+            return;
+        }
         if (errorHandler != null) {
             try {
                 fireErrorReceived(error);
@@ -376,9 +523,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         if (aiMessage.hasToolExecutionRequests()) {
 
             if (sequentialToolsInvocationsLeft-- == 0) {
-                throw runtime(
+                handleStreamingError(runtime(
                         "Something is wrong, exceeded %s sequential tool invocations",
-                        context.toolService.maxSequentialToolsInvocations());
+                        context.toolService.maxSequentialToolsInvocations()));
+                return;
             }
 
             List<ToolExecutionRequest> toolRequests = aiMessage.toolExecutionRequests();
@@ -392,6 +540,15 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 intermediateResponseHandler.accept(chatResponse);
             }
 
+            Throwable callbackError = drainBufferedToolExecutions();
+            if (callbackError != null) {
+                handleStreamingError(callbackError);
+                return;
+            }
+            if (isTerminated()) {
+                return;
+            }
+
             streamingDispatchHook.dispatch(() -> {
                 try {
                     runToolBatchAndContinue(chatResponse, aiMessage, toolRequests);
@@ -401,6 +558,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 return null;
             });
         } else {
+            if (isTerminated()) {
+                return;
+            }
+
             ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
 
             if (completeResponseHandler != null) {
@@ -442,9 +603,11 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
         Map<ToolExecutionRequest, ToolExecutionResult> results;
         int maxToolCallsPerResponse = context.toolService.maxToolCallsPerResponse();
-        if (maxToolCallsPerResponse == 0 && toolExecutor != null) {
+        if (shouldScheduleToolsEagerly()) {
             results = gatherScheduledToolResults();
         } else {
+            boolean useExecutorForSingleTool =
+                    maxToolCallsPerResponse > 0 || (toolExecutor != null && beforeToolExecutionHandler != null);
             results = ToolBatchDispatcher.dispatch(
                     ToolBatchDispatcher.Request.builder()
                             .toolRequests(toolRequests)
@@ -460,7 +623,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                             .executionErrorHandler(toolExecutionErrorHandler)
                             .hallucinationStrategy(context.toolService.hallucinatedToolNameStrategy())
                             .maxToolCallsPerResponse(0)
-                            .useExecutorForSingleTool(maxToolCallsPerResponse > 0)
+                            .useExecutorForSingleTool(useExecutorForSingleTool)
                             .build());
         }
 
@@ -591,11 +754,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         }
     }
 
-    private ToolExecutionResult execute(ToolExecutionRequest toolRequest) {
-        return context.toolService.executeTool(
-                invocationContext, toolExecutors, toolRequest, beforeToolExecutionHandler, toolExecutionHandler);
-    }
-
     private static <T> Consumer<T> combine(Consumer<T> first, Consumer<T> second) {
         if (first != null && second != null) {
             return first.andThen(second);
@@ -646,6 +804,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     @Override
     public void onError(Throwable error) {
+        cancelPendingToolCalls(null);
+        if (!terminateAndDrainVisibleToolExecutions()) {
+            return;
+        }
         if (errorHandler != null) {
             try {
                 fireErrorReceived(error);

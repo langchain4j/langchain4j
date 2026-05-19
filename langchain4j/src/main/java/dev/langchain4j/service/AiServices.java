@@ -799,11 +799,15 @@ public abstract class AiServices<T> {
      * {@link Executor} is configured via {@link #executeToolsConcurrently()} or
      * {@link #executeToolsConcurrently(Executor)}, streaming tools are scheduled eagerly from
      * {@link StreamingChatResponseHandler#onCompleteToolCall(CompleteToolCall)} before this hook is
-     * invoked. In that mode, the hook wraps result gathering, memory writes, and follow-up
-     * streaming inference, but it cannot move already-scheduled tool execution onto a different
-     * thread. When no per-tool executor is configured, or when {@code maxToolCallsPerResponse} is
-     * greater than {@code 0}, the hook wraps deferred batch dispatch from the
-     * {@code onCompleteResponse} path. The hook runs once per batch in either mode.
+     * invoked, unless the {@link TokenStream} has a stream-level
+     * {@link TokenStream#beforeToolExecution(Consumer)} callback. That stream callback can veto the
+     * tool body, so its tools are dispatched after the intermediate response instead of eagerly. In
+     * eager mode, the hook wraps result gathering, memory writes, and follow-up streaming inference,
+     * but it cannot move already-scheduled tool execution onto a different thread. When no per-tool
+     * executor is configured, when {@code maxToolCallsPerResponse} is greater than {@code 0}, or
+     * when a stream-level {@code beforeToolExecution} callback is present, the hook wraps deferred
+     * batch dispatch from the {@code onCompleteResponse} path. The hook runs once per batch in
+     * either mode.
      *
      * @param hook the integration hook. If {@code null}, the default {@link StreamingToolDispatchHook#INLINE}
      *             is used.
@@ -818,6 +822,10 @@ public abstract class AiServices<T> {
 
     /**
      * Configures a callback to be invoked before each tool execution.
+     * <p>
+     * This is an execution lifecycle callback. In streaming mode with eager tool execution, it is
+     * invoked when the tool actually starts and can therefore run before
+     * {@link TokenStream#onIntermediateResponse(Consumer)} is delivered.
      *
      * @param beforeToolExecution A {@link Consumer} that accepts a {@link BeforeToolExecution}
      *                            representing the tool execution request about to be executed.
@@ -831,6 +839,12 @@ public abstract class AiServices<T> {
 
     /**
      * Configures a callback to be invoked after each tool execution.
+     * <p>
+     * This is an execution lifecycle callback. In streaming mode with eager tool execution, it is
+     * invoked when the tool actually finishes and can therefore run before
+     * {@link TokenStream#onIntermediateResponse(Consumer)} is delivered. This differs from
+     * {@link TokenStream#onToolExecuted(Consumer)}, which is stream-delivered after the
+     * intermediate response.
      *
      * @param afterToolExecution A {@link Consumer} that accepts a {@link ToolExecution}
      *                           containing the tool execution request that was executed and its result.

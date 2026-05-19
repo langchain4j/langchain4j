@@ -151,6 +151,11 @@ public interface TokenStream {
 
     /**
      * The provided consumer will be invoked right before a tool is executed.
+     * <p>
+     * In streaming mode this callback is ordered after {@link #onIntermediateResponse(Consumer)}
+     * for the response that requested the tool. Since this callback can throw and veto the tool
+     * body, registering it disables eager tool execution before the intermediate response is
+     * delivered.
      *
      * @param beforeToolExecutionHandler lambda that consumes {@link BeforeToolExecution}
      * @return token stream instance used to configure or start stream processing
@@ -163,7 +168,9 @@ public interface TokenStream {
     /**
      * The provided consumer will be invoked right after a tool is executed.
      * <p>
-     * The invocation happens after the tool method has finished and before any other tool is executed.
+     * In streaming mode, when tools are executed eagerly before an intermediate response is
+     * delivered, this callback is still delivered after
+     * {@link #onIntermediateResponse(Consumer)} for the response that requested the tool.
      *
      * @param toolExecuteHandler lambda that consumes {@link ToolExecution}
      * @return token stream instance used to configure or start stream processing
