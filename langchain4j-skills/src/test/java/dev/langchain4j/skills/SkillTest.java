@@ -12,6 +12,8 @@ import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import org.junit.jupiter.api.Test;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -702,6 +704,92 @@ class SkillTest {
 
         // then
         assertThat(withProvider.toolProviders()).hasSize(1);
+
+        Skills skills = Skills.from(withProvider);
+        assertThat(skills.toolProvider().isDynamic()).isTrue();
+
+        // after activation
+        ToolProviderRequest activatedRequest = requestWithMessages(List.of(
+                UserMessage.from("do stuff"),
+                skillActivatedMessage("my-skill")
+        ));
+        ToolProviderResult result = skills.toolProvider().provideTools(activatedRequest);
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "dynamic_tool");
+    }
+
+    @Test
+    void defaultFileSystemSkill_toBuilder_should_copy_all_fields() {
+
+        // given
+        Path basePath = Paths.get("/tmp/skills/my-skill");
+        DefaultFileSystemSkill original = DefaultFileSystemSkill.builder()
+                .name("my-skill")
+                .description("My skill")
+                .content("Some content")
+                .basePath(basePath)
+                .build();
+
+        // when
+        DefaultFileSystemSkill copy = original.toBuilder().build();
+
+        // then
+        assertThat(copy.name()).isEqualTo("my-skill");
+        assertThat(copy.description()).isEqualTo("My skill");
+        assertThat(copy.content()).isEqualTo("Some content");
+        assertThat(copy.basePath()).isEqualTo(basePath);
+        assertThat(copy).isEqualTo(original);
+    }
+
+    @Test
+    void defaultFileSystemSkill_toBuilder_should_allow_adding_tools_to_filesystem_loaded_skill() {
+
+        // given - simulate a filesystem-loaded skill (no tools)
+        Path basePath = Paths.get("/tmp/skills/my-skill");
+        DefaultFileSystemSkill original = DefaultFileSystemSkill.builder()
+                .name("my-skill")
+                .description("My skill")
+                .content("Use sayHello")
+                .basePath(basePath)
+                .build();
+
+        assertThat(original.toolProviders()).isEmpty();
+
+        // when - add tools via toBuilder
+        DefaultFileSystemSkill withTools = original.toBuilder()
+                .tools(new MyTools())
+                .build();
+
+        // then
+        assertThat(withTools.name()).isEqualTo("my-skill");
+        assertThat(withTools.basePath()).isEqualTo(basePath);
+        assertThat(withTools.toolProviders()).hasSize(1);
+    }
+
+    @Test
+    void defaultFileSystemSkill_toBuilder_should_allow_adding_tool_provider_to_filesystem_loaded_skill() {
+
+        // given - simulate a filesystem-loaded skill (no tools)
+        Path basePath = Paths.get("/tmp/skills/my-skill");
+        DefaultFileSystemSkill original = DefaultFileSystemSkill.builder()
+                .name("my-skill")
+                .description("My skill")
+                .content("Use dynamic_tool")
+                .basePath(basePath)
+                .build();
+
+        ToolProvider mcpProvider = request -> ToolProviderResult.builder()
+                .add(ToolSpecification.builder().name("dynamic_tool").description("dynamic").build(),
+                        (req, memoryId) -> "result")
+                .build();
+
+        // when
+        DefaultFileSystemSkill withProvider = original.toBuilder()
+                .toolProviders(mcpProvider)
+                .build();
+
+        // then
+        assertThat(withProvider.toolProviders()).hasSize(1);
+        assertThat(withProvider.basePath()).isEqualTo(basePath);
 
         Skills skills = Skills.from(withProvider);
         assertThat(skills.toolProvider().isDynamic()).isTrue();
