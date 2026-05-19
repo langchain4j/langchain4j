@@ -85,7 +85,7 @@ class GoogleGenAiConfigBuilder {
                 thinkingBuilder.thinkingBudget(thinkingBudget);
             }
             if (thinkingLevel != null) {
-                thinkingBuilder.thinkingLevel(ThinkingLevel.builder().level(thinkingLevel).build());
+                thinkingBuilder.thinkingLevel(new ThinkingLevel(thinkingLevel));
             }
             configBuilder.thinkingConfig(thinkingBuilder.build());
         }
