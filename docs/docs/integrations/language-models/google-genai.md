@@ -43,9 +43,27 @@ https://github.com/googleapis/java-genai
 </dependency>
 ```
 
-## API Key
+## Authentication
+
+You can authenticate with the Gemini models using either an API key or Google Cloud Vertex AI credentials.
+
+### Gemini Developer API (API Key)
 
 Get an API key for free here: https://ai.google.dev/gemini-api/docs/api-key.
+You can provide it to the builder using `.apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))`.
+
+### Google Cloud Vertex AI
+
+If you are using Vertex AI, you can authenticate using Google Credentials along with your project ID and location. The integration will automatically use Application Default Credentials (ADC) if available, or you can explicitly provide them:
+
+```java
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    // .googleCredentials(...) // Optional: explicitly provide credentials
+    .projectId("your-google-cloud-project-id")
+    .location("us-central1")
+    .modelName("gemini-2.5-flash")
+    .build();
+```
 
 ## Models available
 
