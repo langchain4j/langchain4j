@@ -112,11 +112,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private int sequentialToolsInvocationsLeft;
 
-    private final Object toolExecutionBufferLock = new Object();
-    private final ReentrantLock toolExecutionDeliveryLock = new ReentrantLock();
+    private final ReentrantLock toolExecutionLock = new ReentrantLock();
     private final Deque<ToolExecution> bufferedToolExecutions = new ArrayDeque<>();
     private boolean intermediateResponseEmitted = false;
-    private boolean drainingToolExecutions = false;
     private boolean terminated = false;
 
     private record ToolRequestResult(ToolExecutionRequest request, ToolExecutionResult result) {}
@@ -342,73 +340,50 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private void emitToolExecution(ToolExecution toolExecution) {
-        synchronized (toolExecutionBufferLock) {
+        toolExecutionLock.lock();
+        try {
             if (terminated) {
                 return;
             }
-            if (!intermediateResponseEmitted || drainingToolExecutions) {
+            if (!intermediateResponseEmitted) {
                 bufferedToolExecutions.add(toolExecution);
                 return;
             }
-        }
 
-        toolExecutionDeliveryLock.lock();
-        try {
-            synchronized (toolExecutionBufferLock) {
-                if (terminated) {
-                    return;
-                }
-                if (!intermediateResponseEmitted || drainingToolExecutions) {
-                    bufferedToolExecutions.add(toolExecution);
-                    return;
-                }
-            }
             toolExecutionHandler.accept(toolExecution);
         } finally {
-            toolExecutionDeliveryLock.unlock();
+            toolExecutionLock.unlock();
         }
     }
 
     private Throwable drainBufferedToolExecutions() {
-        if (toolExecutionHandler == null) {
-            markIntermediateResponseEmitted();
-            return null;
-        }
-
-        toolExecutionDeliveryLock.lock();
+        toolExecutionLock.lock();
         try {
-            synchronized (toolExecutionBufferLock) {
-                if (terminated) {
-                    bufferedToolExecutions.clear();
-                    return null;
-                }
-                intermediateResponseEmitted = true;
-                drainingToolExecutions = true;
+            if (terminated) {
+                bufferedToolExecutions.clear();
+                return null;
             }
-
+            intermediateResponseEmitted = true;
+            if (toolExecutionHandler == null) {
+                return null;
+            }
             return drainToolExecutionQueue();
         } finally {
-            synchronized (toolExecutionBufferLock) {
-                drainingToolExecutions = false;
-            }
-            toolExecutionDeliveryLock.unlock();
+            toolExecutionLock.unlock();
         }
     }
 
     private boolean terminateAndDrainVisibleToolExecutions() {
-        toolExecutionDeliveryLock.lock();
+        toolExecutionLock.lock();
         try {
-            synchronized (toolExecutionBufferLock) {
-                if (terminated) {
-                    bufferedToolExecutions.clear();
-                    return false;
-                }
-                terminated = true;
-                if (!intermediateResponseEmitted) {
-                    bufferedToolExecutions.clear();
-                    return true;
-                }
-                drainingToolExecutions = true;
+            if (terminated) {
+                bufferedToolExecutions.clear();
+                return false;
+            }
+            terminated = true;
+            if (!intermediateResponseEmitted || toolExecutionHandler == null) {
+                bufferedToolExecutions.clear();
+                return true;
             }
 
             Throwable callbackError = drainToolExecutionQueue();
@@ -417,23 +392,16 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             }
             return true;
         } finally {
-            synchronized (toolExecutionBufferLock) {
-                drainingToolExecutions = false;
-            }
-            toolExecutionDeliveryLock.unlock();
+            toolExecutionLock.unlock();
         }
     }
 
     private Throwable drainToolExecutionQueue() {
         Throwable captured = null;
         while (true) {
-            ToolExecution next;
-            synchronized (toolExecutionBufferLock) {
-                next = bufferedToolExecutions.poll();
-                if (next == null) {
-                    drainingToolExecutions = false;
-                    return captured;
-                }
+            ToolExecution next = bufferedToolExecutions.poll();
+            if (next == null) {
+                return captured;
             }
             try {
                 toolExecutionHandler.accept(next);
@@ -447,15 +415,12 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         }
     }
 
-    private void markIntermediateResponseEmitted() {
-        synchronized (toolExecutionBufferLock) {
-            intermediateResponseEmitted = true;
-        }
-    }
-
     private boolean isTerminated() {
-        synchronized (toolExecutionBufferLock) {
+        toolExecutionLock.lock();
+        try {
             return terminated;
+        } finally {
+            toolExecutionLock.unlock();
         }
     }
 
@@ -606,8 +571,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         if (shouldScheduleToolsEagerly()) {
             results = gatherScheduledToolResults();
         } else {
-            boolean useExecutorForSingleTool =
-                    maxToolCallsPerResponse > 0 || (toolExecutor != null && beforeToolExecutionHandler != null);
             results = ToolBatchDispatcher.dispatch(
                     ToolBatchDispatcher.Request.builder()
                             .toolRequests(toolRequests)
@@ -623,7 +586,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                             .executionErrorHandler(toolExecutionErrorHandler)
                             .hallucinationStrategy(context.toolService.hallucinatedToolNameStrategy())
                             .maxToolCallsPerResponse(0)
-                            .useExecutorForSingleTool(useExecutorForSingleTool)
+                            .useExecutorForSingleTool(shouldUseExecutorForDeferredSingleTool(
+                                    maxToolCallsPerResponse))
                             .build());
         }
 
@@ -717,6 +681,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         fireRequestIssuedEvent(nextChatRequest);
         StreamingChatModel modelToUse = streamingChatModel != null ? streamingChatModel : context.streamingChatModel;
         modelToUse.chat(nextChatRequest, handler);
+    }
+
+    private boolean shouldUseExecutorForDeferredSingleTool(int maxToolCallsPerResponse) {
+        return maxToolCallsPerResponse > 0 || (toolExecutor != null && beforeToolExecutionHandler != null);
     }
 
     private Map<ToolExecutionRequest, ToolExecutionResult> gatherScheduledToolResults() {

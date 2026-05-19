@@ -168,9 +168,8 @@ public interface TokenStream {
     /**
      * The provided consumer will be invoked right after a tool is executed.
      * <p>
-     * In streaming mode, when tools are executed eagerly before an intermediate response is
-     * delivered, this callback is still delivered after
-     * {@link #onIntermediateResponse(Consumer)} for the response that requested the tool.
+     * In streaming mode, this callback is delivered after {@link #onIntermediateResponse(Consumer)}
+     * for the response that requested the tool.
      *
      * @param toolExecuteHandler lambda that consumes {@link ToolExecution}
      * @return token stream instance used to configure or start stream processing
