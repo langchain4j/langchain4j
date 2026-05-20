@@ -10,6 +10,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.TokenStream;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -28,6 +29,7 @@ import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.Outcom
 import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.ToolStep.err;
 import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.ToolStep.ok;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 /**
@@ -254,5 +256,13 @@ class ReturnBehaviorCombinationsTest {
             case IMMEDIATE_IF_LAST -> "immediate_if_last";
         };
         return prefix + (step.errors() ? "_err" : "_ok");
+    }
+
+    @Test
+    void shouldReturnImmediately_empty_list_should_not_crash() {
+        assertThatNoException().isThrownBy(() ->
+                ToolService.shouldReturnImmediately(false, List.of()));
+        assertThat(ToolService.shouldReturnImmediately(false, List.of())).isFalse();
+        assertThat(ToolService.shouldReturnImmediately(true, List.of())).isFalse();
     }
 }
