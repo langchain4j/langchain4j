@@ -69,6 +69,59 @@ class AnthropicMapperTest {
         assertThat(anthropicMessages).containsExactlyElementsOf(expectedAnthropicMessages);
     }
 
+    @Test
+    void should_fallback_to_empty_input_when_replaying_malformed_tool_arguments() {
+        // given
+        String malformedArguments = "{\"value\":\"bad \"quote\"\"}";
+        List<ChatMessage> messages = asList(
+                UserMessage.from("Please update the scene"),
+                AiMessage.from(
+                        ToolExecutionRequest.builder()
+                                .id("call_00")
+                                .name("updateScene")
+                                .arguments("{\"sceneId\":\"scene_30\"}")
+                                .build(),
+                        ToolExecutionRequest.builder()
+                                .id("call_01")
+                                .name("updateScene")
+                                .arguments(malformedArguments)
+                                .build()),
+                ToolExecutionResultMessage.from("call_00", "updateScene", "updated"),
+                ToolExecutionResultMessage.builder()
+                        .id("call_01")
+                        .toolName("updateScene")
+                        .text("Something is wrong with tool arguments")
+                        .isError(true)
+                        .build());
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(messages);
+
+        // then
+        assertThat(anthropicMessages)
+                .containsExactly(
+                        new AnthropicMessage(USER, singletonList(new AnthropicTextContent("Please update the scene"))),
+                        new AnthropicMessage(
+                                ASSISTANT,
+                                asList(
+                                        AnthropicToolUseContent.builder()
+                                                .id("call_00")
+                                                .name("updateScene")
+                                                .input(mapOf(entry("sceneId", "scene_30")))
+                                                .build(),
+                                        AnthropicToolUseContent.builder()
+                                                .id("call_01")
+                                                .name("updateScene")
+                                                .input(emptyMap())
+                                                .build())),
+                        new AnthropicMessage(
+                                USER,
+                                asList(
+                                        new AnthropicToolResultContent("call_00", "updated", null),
+                                        new AnthropicToolResultContent(
+                                                "call_01", "Something is wrong with tool arguments", true))));
+    }
+
     static Stream<Arguments> test_toAnthropicMessages() {
         return Stream.of(
                 Arguments.of(

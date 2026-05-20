@@ -230,7 +230,11 @@ public class AnthropicMapper {
             return Map.of();
         }
 
-        return fromJson(arguments, Map.class);
+        try {
+            return fromJson(arguments, Map.class);
+        } catch (Exception e) {
+            return Map.of();
+        }
     }
 
     public static List<AnthropicTextContent> toAnthropicSystemPrompt(
