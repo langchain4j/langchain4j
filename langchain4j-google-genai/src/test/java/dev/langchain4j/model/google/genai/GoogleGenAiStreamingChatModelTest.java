@@ -1,17 +1,36 @@
 package dev.langchain4j.model.google.genai;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.google.genai.Client;
+import com.google.genai.Models;
+import com.google.genai.ResponseStream;
+import com.google.genai.types.Candidate;
+import com.google.genai.types.Content;
+import com.google.genai.types.FunctionCall;
+import com.google.genai.types.GenerateContentResponse;
+import com.google.genai.types.Part;
 import com.google.genai.types.SafetySetting;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import java.lang.reflect.Field;
 import java.time.Duration;
+import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 
 class GoogleGenAiStreamingChatModelTest {
@@ -164,5 +183,75 @@ class GoogleGenAiStreamingChatModelTest {
         assertThat(builder.googleCredentials(null)).isSameAs(builder);
         assertThat(builder.projectId("project")).isSameAs(builder);
         assertThat(builder.location("us-central1")).isSameAs(builder);
+    }
+
+    @Test
+    void should_accumulate_attributes_from_streaming_chunks() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+
+        when(models.generateContentStream(any(String.class), any(List.class), any()))
+                .thenReturn(stream);
+
+        // Create a mock chunk with a function call and thought signature
+        Map<String, Object> args = new HashMap<>();
+        args.put("location", "Paris");
+
+        FunctionCall functionCall = FunctionCall.builder()
+                .name("get_weather")
+                .id("call_123")
+                .args(args)
+                .build();
+
+        Part part = Part.builder()
+                .functionCall(functionCall)
+                .thoughtSignature("signature-data".getBytes())
+                .build();
+
+        Content content = Content.builder().role("model").parts(List.of(part)).build();
+
+        Candidate candidate = Candidate.builder().content(content).build();
+
+        GenerateContentResponse chunk =
+                GenerateContentResponse.builder().candidates(List.of(candidate)).build();
+
+        when(stream.iterator()).thenReturn(List.of(chunk).iterator());
+
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.5-flash")
+                .build();
+
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+
+        model.chat(List.of(UserMessage.from("What's the weather in Paris?")), new StreamingChatResponseHandler() {
+            @Override
+            public void onPartialResponse(String partialResponse) {}
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                future.complete(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                future.completeExceptionally(error);
+            }
+        });
+
+        ChatResponse response = future.get(5, TimeUnit.SECONDS);
+        AiMessage aiMessage = response.aiMessage();
+
+        assertThat(aiMessage.hasToolExecutionRequests()).isTrue();
+        assertThat(aiMessage.attributes()).isNotEmpty();
+        String encodedSig = Base64.getEncoder().encodeToString("signature-data".getBytes());
+        assertThat(aiMessage.attribute("thought_signature_call_123", String.class))
+                .isEqualTo(encodedSig);
     }
 }
