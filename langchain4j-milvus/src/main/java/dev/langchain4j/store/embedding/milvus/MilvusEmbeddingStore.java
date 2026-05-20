@@ -49,9 +49,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Represents an <a href="https://milvus.io/">Milvus</a> index as an embedding store.
+ * Represents an <a href="https://milvus.io/">Milvus</a> index as an embedding
+ * store.
  * <br>
- * Supports both local and <a href="https://zilliz.com/">managed</a> Milvus instances.
+ * Supports both local and <a href="https://zilliz.com/">managed</a> Milvus
+ * instances.
  * <br>
  * Supports storing {@link Metadata} and filtering by it using a {@link Filter}
  * (provided inside an {@link EmbeddingSearchRequest}).
@@ -273,6 +275,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                 collectionName,
                 fieldDefinition,
                 consistencyLevel,
+                metricType,
                 retrieveEmbeddingsOnSearch);
 
         List<EmbeddingMatch<TextSegment>> result = matches.stream()
@@ -306,14 +309,24 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     /**
      * Removes a single embedding from the store by ID.
-     * <p>CAUTION</p>
+     * <p>
+     * CAUTION
+     * </p>
      * <ul>
-     *     <li>Deleted entities can still be retrieved immediately after the deletion if the consistency level is set lower than {@code Strong}</li>
-     *     <li>Entities deleted beyond the pre-specified span of time for Time Travel cannot be retrieved again.</li>
-     *     <li>Frequent deletion operations will impact the system performance.</li>
-     *     <li>Before deleting entities by comlpex boolean expressions, make sure the collection has been loaded.</li>
-     *     <li>Deleting entities by complex boolean expressions is not an atomic operation. Therefore, if it fails halfway through, some data may still be deleted.</li>
-     *     <li>Deleting entities by complex boolean expressions is supported only when the consistency is set to Bounded. For details, <a href="https://milvus.io/docs/v2.3.x/consistency.md#Consistency-levels">see Consistency</a></li>
+     * <li>Deleted entities can still be retrieved immediately after the deletion if
+     * the consistency level is set lower than {@code Strong}</li>
+     * <li>Entities deleted beyond the pre-specified span of time for Time Travel
+     * cannot be retrieved again.</li>
+     * <li>Frequent deletion operations will impact the system performance.</li>
+     * <li>Before deleting entities by comlpex boolean expressions, make sure the
+     * collection has been loaded.</li>
+     * <li>Deleting entities by complex boolean expressions is not an atomic
+     * operation. Therefore, if it fails halfway through, some data may still be
+     * deleted.</li>
+     * <li>Deleting entities by complex boolean expressions is supported only when
+     * the consistency is set to Bounded. For details,
+     * <a href="https://milvus.io/docs/v2.3.x/consistency.md#Consistency-levels">see
+     * Consistency</a></li>
      * </ul>
      *
      * @param ids A collection of unique IDs of the embeddings to be removed.
@@ -329,18 +342,30 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     /**
-     * Removes all embeddings that match the specified {@link Filter} from the store.
-     * <p>CAUTION</p>
+     * Removes all embeddings that match the specified {@link Filter} from the
+     * store.
+     * <p>
+     * CAUTION
+     * </p>
      * <ul>
-     *     <li>Deleted entities can still be retrieved immediately after the deletion if the consistency level is set lower than {@code Strong}</li>
-     *     <li>Entities deleted beyond the pre-specified span of time for Time Travel cannot be retrieved again.</li>
-     *     <li>Frequent deletion operations will impact the system performance.</li>
-     *     <li>Before deleting entities by comlpex boolean expressions, make sure the collection has been loaded.</li>
-     *     <li>Deleting entities by complex boolean expressions is not an atomic operation. Therefore, if it fails halfway through, some data may still be deleted.</li>
-     *     <li>Deleting entities by complex boolean expressions is supported only when the consistency is set to Bounded. For details, <a href="https://milvus.io/docs/v2.3.x/consistency.md#Consistency-levels">see Consistency</a></li>
+     * <li>Deleted entities can still be retrieved immediately after the deletion if
+     * the consistency level is set lower than {@code Strong}</li>
+     * <li>Entities deleted beyond the pre-specified span of time for Time Travel
+     * cannot be retrieved again.</li>
+     * <li>Frequent deletion operations will impact the system performance.</li>
+     * <li>Before deleting entities by comlpex boolean expressions, make sure the
+     * collection has been loaded.</li>
+     * <li>Deleting entities by complex boolean expressions is not an atomic
+     * operation. Therefore, if it fails halfway through, some data may still be
+     * deleted.</li>
+     * <li>Deleting entities by complex boolean expressions is supported only when
+     * the consistency is set to Bounded. For details,
+     * <a href="https://milvus.io/docs/v2.3.x/consistency.md#Consistency-levels">see
+     * Consistency</a></li>
      * </ul>
      *
-     * @param filter The filter to be applied to the {@link Metadata} of the {@link TextSegment} during removal.
+     * @param filter The filter to be applied to the {@link Metadata} of the
+     *               {@link TextSegment} during removal.
      *               Only embeddings whose {@code TextSegment}'s {@code Metadata}
      *               match the {@code Filter} will be removed.
      * @since Milvus version 2.3.x
@@ -354,14 +379,24 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     /**
      * Removes all embeddings from the store.
-     * <p>CAUTION</p>
+     * <p>
+     * CAUTION
+     * </p>
      * <ul>
-     *     <li>Deleted entities can still be retrieved immediately after the deletion if the consistency level is set lower than {@code Strong}</li>
-     *     <li>Entities deleted beyond the pre-specified span of time for Time Travel cannot be retrieved again.</li>
-     *     <li>Frequent deletion operations will impact the system performance.</li>
-     *     <li>Before deleting entities by comlpex boolean expressions, make sure the collection has been loaded.</li>
-     *     <li>Deleting entities by complex boolean expressions is not an atomic operation. Therefore, if it fails halfway through, some data may still be deleted.</li>
-     *     <li>Deleting entities by complex boolean expressions is supported only when the consistency is set to Bounded. For details, <a href="https://milvus.io/docs/v2.3.x/consistency.md#Consistency-levels">see Consistency</a></li>
+     * <li>Deleted entities can still be retrieved immediately after the deletion if
+     * the consistency level is set lower than {@code Strong}</li>
+     * <li>Entities deleted beyond the pre-specified span of time for Time Travel
+     * cannot be retrieved again.</li>
+     * <li>Frequent deletion operations will impact the system performance.</li>
+     * <li>Before deleting entities by comlpex boolean expressions, make sure the
+     * collection has been loaded.</li>
+     * <li>Deleting entities by complex boolean expressions is not an atomic
+     * operation. Therefore, if it fails halfway through, some data may still be
+     * deleted.</li>
+     * <li>Deleting entities by complex boolean expressions is supported only when
+     * the consistency is set to Bounded. For details,
+     * <a href="https://milvus.io/docs/v2.3.x/consistency.md#Consistency-levels">see
+     * Consistency</a></li>
      * </ul>
      *
      * @since Milvus version 2.3.x
@@ -422,7 +457,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         /**
          * @param collectionName The name of the Milvus collection.
-         *                       If there is no such collection yet, it will be created automatically.
+         *                       If there is no such collection yet, it will be created
+         *                       automatically.
          *                       Default value: "default".
          * @return builder
          */
@@ -462,7 +498,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param uri The URI of the managed Milvus instance. (e.g. "https://xxx.api.gcp-us-west1.zillizcloud.com")
+         * @param uri The URI of the managed Milvus instance. (e.g.
+         *            "https://xxx.api.gcp-us-west1.zillizcloud.com")
          * @return builder
          */
         public Builder uri(String uri) {
@@ -480,7 +517,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param username The username. See details <a href="https://milvus.io/docs/authenticate.md">here</a>.
+         * @param username The username. See details
+         *                 <a href="https://milvus.io/docs/authenticate.md">here</a>.
          * @return builder
          */
         public Builder username(String username) {
@@ -489,7 +527,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param password The password. See details <a href="https://milvus.io/docs/authenticate.md">here</a>.
+         * @param password The password. See details
+         *                 <a href="https://milvus.io/docs/authenticate.md">here</a>.
          * @return builder
          */
         public Builder password(String password) {
@@ -508,11 +547,15 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param retrieveEmbeddingsOnSearch During a similarity search in Milvus (when calling search()),
+         * @param retrieveEmbeddingsOnSearch During a similarity search in Milvus (when
+         *                                   calling search()),
          *                                   the embedding itself is not retrieved.
-         *                                   To retrieve the embedding, an additional query is required.
-         *                                   Setting this parameter to "true" will ensure that embedding is retrieved.
-         *                                   Be aware that this will impact the performance of the search.
+         *                                   To retrieve the embedding, an additional
+         *                                   query is required.
+         *                                   Setting this parameter to "true" will
+         *                                   ensure that embedding is retrieved.
+         *                                   Be aware that this will impact the
+         *                                   performance of the search.
          *                                   Default value: false.
          * @return builder
          */
@@ -526,7 +569,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
          *                          ({@code add(...)} or {@code addAll(...)} methods).
          *                          Default value: false.
          *                          More info can be found
-         *                          <a href="https://milvus.io/api-reference/pymilvus/v2.4.x/ORM/Collection/flush.md">here</a>.
+         *                          <a href=
+         *                          "https://milvus.io/api-reference/pymilvus/v2.4.x/ORM/Collection/flush.md">here</a>.
          * @return builder
          */
         public Builder autoFlushOnInsert(Boolean autoFlushOnInsert) {
@@ -536,7 +580,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         /**
          * @param databaseName Milvus name of database.
-         *                     Default value: null. In this case default Milvus database name will be used.
+         *                     Default value: null. In this case default Milvus database
+         *                     name will be used.
          * @return builder
          */
         public Builder databaseName(String databaseName) {
@@ -545,7 +590,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param idFieldName the name of the field where the ID of the {@link Embedding} is stored.
+         * @param idFieldName the name of the field where the ID of the
+         *                    {@link Embedding} is stored.
          *                    Default value: "id".
          * @return builder
          */
@@ -555,7 +601,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param textFieldName the name of the field where the text of the {@link TextSegment} is stored.
+         * @param textFieldName the name of the field where the text of the
+         *                      {@link TextSegment} is stored.
          *                      Default value: "text".
          * @return builder
          */
@@ -565,7 +612,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param metadataFieldName the name of the field where the {@link Metadata} of the {@link TextSegment} is stored.
+         * @param metadataFieldName the name of the field where the {@link Metadata} of
+         *                          the {@link TextSegment} is stored.
          *                          Default value: "metadata".
          * @return builder
          */
@@ -575,7 +623,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param vectorFieldName the name of the field where the {@link Embedding} is stored.
+         * @param vectorFieldName the name of the field where the {@link Embedding} is
+         *                        stored.
          *                        Default value: "vector".
          * @return builder
          */
