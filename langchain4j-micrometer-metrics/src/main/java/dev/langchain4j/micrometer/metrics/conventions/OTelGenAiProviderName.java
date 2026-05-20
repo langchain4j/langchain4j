@@ -16,6 +16,7 @@ public enum OTelGenAiProviderName {
     AZURE_OPEN_AI(ModelProvider.AZURE_OPEN_AI, "azure.ai.openai"),
     GITHUB_MODELS(ModelProvider.GITHUB_MODELS, "github"),
     GOOGLE_AI_GEMINI(ModelProvider.GOOGLE_AI_GEMINI, "gcp.gemini"),
+    GOOGLE_GENAI(ModelProvider.GOOGLE_GENAI, "gcp.gen_ai"),
     GOOGLE_VERTEX_AI_GEMINI(ModelProvider.GOOGLE_VERTEX_AI_GEMINI, "gcp.vertex_ai"),
     GOOGLE_VERTEX_AI_ANTHROPIC(ModelProvider.GOOGLE_VERTEX_AI_ANTHROPIC, "gcp.vertex_ai"),
     MICROSOFT_FOUNDRY(ModelProvider.MICROSOFT_FOUNDRY, "azure.ai.inference"),

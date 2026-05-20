@@ -59,6 +59,22 @@
           "old": "method void dev.langchain4j.agentic.workflow.HumanInTheLoop::<init>(java.lang.String, java.lang.String, boolean, java.util.function.Function<dev.langchain4j.agentic.scope.AgenticScope, ?>, dev.langchain4j.agentic.observability.AgentListener)",
           "new": "method void dev.langchain4j.agentic.workflow.HumanInTheLoop::<init>(java.lang.String, java.lang.String, boolean, java.util.function.Function<dev.langchain4j.agentic.scope.AgenticScope, ?>, dev.langchain4j.agentic.observability.AgentListener, java.util.List<dev.langchain4j.agentic.planner.AgentArgument>)",
           "justification": "The HumanInTheLoop is always supposed to be instantiated through the builder, so the constructor is not meant to be used directly and can be considered as a private API."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.parameterTypeChanged",
+          "old": "parameter <T> T dev.langchain4j.agentic.AgenticServices::createAgenticSystem(java.lang.Class<T>, ===java.util.function.Consumer<dev.langchain4j.agentic.AgenticServices.DeclarativeAgentCreationContext<?>>===)",
+          "new": "parameter <T> T dev.langchain4j.agentic.AgenticServices::createAgenticSystem(java.lang.Class<T>, ===dev.langchain4j.agentic.AgenticServices.AgentConfigurator===)",
+          "parameterIndex": "1",
+          "justification": "Not a breaking change, this method is only used by the Quarkus extension"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.parameterTypeChanged",
+          "old": "parameter <T> T dev.langchain4j.agentic.AgenticServices::createAgenticSystem(java.lang.Class<T>, dev.langchain4j.model.chat.ChatModel, ===java.util.function.Consumer<dev.langchain4j.agentic.AgenticServices.DeclarativeAgentCreationContext<?>>===)",
+          "new": "parameter <T> T dev.langchain4j.agentic.AgenticServices::createAgenticSystem(java.lang.Class<T>, dev.langchain4j.model.chat.ChatModel, ===dev.langchain4j.agentic.AgenticServices.AgentConfigurator===)",
+          "parameterIndex": "2",
+          "justification": "Not a breaking change, this method is only used by the Quarkus extension"
         }
       ]
     }
