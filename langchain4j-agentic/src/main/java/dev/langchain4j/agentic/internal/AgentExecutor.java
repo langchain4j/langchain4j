@@ -11,11 +11,11 @@ import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.service.TokenStream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements AgentInstance, InternalAgent {
 
@@ -38,7 +38,10 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     }
 
     private Object handleAgentFailure(
-            AgentInvocationException e, DefaultAgenticScope agenticScope, Object invokedAgent, PlannerExecutor planner) {
+            AgentInvocationException e,
+            DefaultAgenticScope agenticScope,
+            Object invokedAgent,
+            PlannerExecutor planner) {
         ErrorRecoveryResult recoveryResult = agenticScope.handleError(agentInvoker.name(), e);
         return switch (recoveryResult.type()) {
             case THROW_EXCEPTION -> throw e;
@@ -47,29 +50,40 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
         };
     }
 
-    private Object internalExecute(DefaultAgenticScope agenticScope, Object invokedAgent, PlannerExecutor planner, boolean async) {
+    private Object internalExecute(
+            DefaultAgenticScope agenticScope, Object invokedAgent, PlannerExecutor planner, boolean async) {
         try {
             AgentInvocationArguments args = null;
             try {
                 args = agentInvoker.toInvocationArguments(agenticScope);
             } catch (MissingArgumentException e) {
                 if (optional()) {
-                    LOG.info("Skipping optional agent '{}' because of missing argument '{}'", agentInvoker.name(), e.argumentName());
-                    Object response = agenticScope.readState(agentInvoker.outputKey());
+                    LOG.info(
+                            "Skipping optional agent '{}' because of missing argument '{}'",
+                            agentInvoker.name(),
+                            e.argumentName());
+                    Object response = AgenticScopeOutput.read(agenticScope, agentInvoker.outputKey(), null);
                     if (planner != null) {
-                        planner.onSubagentInvoked(new AgentInvocation(type(), name(), agentId(), Map.of(), response));
+                        planner.onSubagentInvoked(new AgentInvocation(
+                                type(), name(), agentId(), Map.of(), AgenticScopeOutput.persistentOutput(response)));
                     }
                     return response;
                 }
                 throw e;
             }
 
-            Object response = agentResponse(agenticScope, invokedAgent, planner, args, async);
+            boolean propagateStreaming = planner != null && planner.propagateStreaming();
+            Object response = agentResponse(agenticScope, invokedAgent, planner, args, async, propagateStreaming);
             String outputKey = agentInvoker.outputKey();
-            if (outputKey != null && !outputKey.isBlank()) {
-                agenticScope.writeState(outputKey, response);
-            }
-            AgentInvocation agentInvocation = new AgentInvocation(type(), name(), agentId(), args.namedArgs(), response);
+            boolean runtimeStreamingOutput =
+                    async && propagateStreaming && AgentUtil.rawType(outputType()) == TokenStream.class;
+            AgenticScopeOutput.write(agenticScope, outputKey, response, runtimeStreamingOutput);
+            AgentInvocation agentInvocation = new AgentInvocation(
+                    type(),
+                    name(),
+                    agentId(),
+                    args.namedArgs(),
+                    AgenticScopeOutput.invocationOutput(response, runtimeStreamingOutput));
             agenticScope.registerAgentInvocation(agentInvocation, invokedAgent);
             if (planner != null) {
                 planner.onSubagentInvoked(agentInvocation);
@@ -80,11 +94,21 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
         }
     }
 
-    private Object agentResponse(DefaultAgenticScope agenticScope, Object invokedAgent, PlannerExecutor planner, AgentInvocationArguments args, boolean async) {
+    private Object agentResponse(
+            DefaultAgenticScope agenticScope,
+            Object invokedAgent,
+            PlannerExecutor planner,
+            AgentInvocationArguments args,
+            boolean async,
+            boolean propagateStreaming) {
         if (async) {
             return new AsyncResponse<>(() -> {
                 try {
-                    return agentInvoker.invoke(agenticScope, invokedAgent, args);
+                    return wrapStreamingResponse(
+                            agentInvoker.invoke(agenticScope, invokedAgent, args),
+                            planner != null,
+                            propagateStreaming,
+                            true);
                 } catch (AgentInvocationException e) {
                     return handleAgentFailure(e, agenticScope, invokedAgent, planner);
                 }
@@ -92,8 +116,17 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
         }
 
         Object response = agentInvoker.invoke(agenticScope, invokedAgent, args);
-        if (planner != null && response instanceof TokenStream tokenStream) {
-            return planner.propagateStreaming() ? tokenStream : new StreamingResponse(tokenStream);
+        return wrapStreamingResponse(response, planner != null, propagateStreaming, false);
+    }
+
+    private Object wrapStreamingResponse(
+            Object response, boolean inPlanner, boolean propagateStreaming, boolean async) {
+        if (inPlanner && response instanceof TokenStream tokenStream) {
+            if (propagateStreaming) {
+                return tokenStream;
+            }
+            StreamingResponse streamingResponse = new StreamingResponse(tokenStream);
+            return async ? streamingResponse.blockingGet() : streamingResponse;
         }
         return response;
     }

@@ -18,6 +18,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -143,7 +144,7 @@ public class DefaultAgenticScope implements AgenticScope {
     private Object readStateBlocking(String key, Object state) {
         if (state instanceof DelayedResponse asyncResponse) {
             state = asyncResponse.blockingGet();
-            writeState(key, state);
+            writeState(key, state instanceof TokenStream ? null : state);
         }
         return state;
     }
@@ -168,7 +169,7 @@ public class DefaultAgenticScope implements AgenticScope {
 
     public void rootCallEnded(AgenticScopeRegistry registry, AgentListener agentListener) {
         // ensure that all pending async operations are completed before ending the root call
-        state.replaceAll(this::readStateBlocking);
+        List.copyOf(state.keySet()).forEach(this::readState);
 
         if (kind == Kind.EPHEMERAL) {
             // Ephemeral agenticScope are for single-use and can be evicted immediately
