@@ -42,58 +42,61 @@ public class DeclarativeUtil {
         configureAgent(agentType, null, true, agentBuilder, AgenticServices.AgentConfigurator.empty());
     }
 
-    public static void configureAgent(Class<?> agentType, ChatModel chatModel, AgentBuilder<?, ?> agentBuilder, AgenticServices.AgentConfigurator agentConfigurator) {
+    public static void configureAgent(
+            Class<?> agentType,
+            ChatModel chatModel,
+            AgentBuilder<?, ?> agentBuilder,
+            AgenticServices.AgentConfigurator agentConfigurator) {
         configureAgent(agentType, chatModel, false, agentBuilder, agentConfigurator);
     }
 
-    private static void configureAgent(Class<?> agentType, ChatModel chatModel, boolean allowNullChatModel, AgentBuilder<?, ?> agentBuilder, AgenticServices.AgentConfigurator agentConfigurator) {
-        getAnnotatedMethodOnClass(agentType, ToolsSupplier.class)
-                .ifPresent(method -> {
-                    checkArguments(method);
-                    Object tools = invokeStatic(method);
-                    if (tools instanceof Map) {
-                        agentBuilder.tools((Map<ToolSpecification, ToolExecutor>) tools);
-                    } else if (tools.getClass().isArray()) {
-                        agentBuilder.tools((Object[]) tools);
-                    } else {
-                        agentBuilder.tools(tools);
-                    }
-                });
+    private static void configureAgent(
+            Class<?> agentType,
+            ChatModel chatModel,
+            boolean allowNullChatModel,
+            AgentBuilder<?, ?> agentBuilder,
+            AgenticServices.AgentConfigurator agentConfigurator) {
+        getAnnotatedMethodOnClass(agentType, ToolsSupplier.class).ifPresent(method -> {
+            checkArguments(method);
+            Object tools = invokeStatic(method);
+            if (tools instanceof Map) {
+                agentBuilder.tools((Map<ToolSpecification, ToolExecutor>) tools);
+            } else if (tools.getClass().isArray()) {
+                agentBuilder.tools((Object[]) tools);
+            } else {
+                agentBuilder.tools(tools);
+            }
+        });
 
-        getAnnotatedMethodOnClass(agentType, ToolProviderSupplier.class)
-                .ifPresent(method -> {
-                    checkArguments(method);
-                    checkReturnType(method, ToolProvider.class);
-                    agentBuilder.toolProvider(invokeStatic(method));
-                });
+        getAnnotatedMethodOnClass(agentType, ToolProviderSupplier.class).ifPresent(method -> {
+            checkArguments(method);
+            checkReturnType(method, ToolProvider.class);
+            agentBuilder.toolProvider(invokeStatic(method));
+        });
 
-        getAnnotatedMethodOnClass(agentType, ContentRetrieverSupplier.class)
-                .ifPresent(method -> {
-                    checkArguments(method);
-                    checkReturnType(method, ContentRetriever.class);
-                    agentBuilder.contentRetriever(invokeStatic(method));
-                });
+        getAnnotatedMethodOnClass(agentType, ContentRetrieverSupplier.class).ifPresent(method -> {
+            checkArguments(method);
+            checkReturnType(method, ContentRetriever.class);
+            agentBuilder.contentRetriever(invokeStatic(method));
+        });
 
-        getAnnotatedMethodOnClass(agentType, RetrievalAugmentorSupplier.class)
-                .ifPresent(method -> {
-                    checkArguments(method);
-                    checkReturnType(method, RetrievalAugmentor.class);
-                    agentBuilder.retrievalAugmentor(invokeStatic(method));
-                });
+        getAnnotatedMethodOnClass(agentType, RetrievalAugmentorSupplier.class).ifPresent(method -> {
+            checkArguments(method);
+            checkReturnType(method, RetrievalAugmentor.class);
+            agentBuilder.retrievalAugmentor(invokeStatic(method));
+        });
 
-        getAnnotatedMethodOnClass(agentType, ChatMemoryProviderSupplier.class)
-                .ifPresent(method -> {
-                    checkArguments(method, Object.class);
-                    checkReturnType(method, ChatMemory.class);
-                    agentBuilder.chatMemoryProvider(memoryId -> invokeStatic(method, memoryId));
-                });
+        getAnnotatedMethodOnClass(agentType, ChatMemoryProviderSupplier.class).ifPresent(method -> {
+            checkArguments(method, Object.class);
+            checkReturnType(method, ChatMemory.class);
+            agentBuilder.chatMemoryProvider(memoryId -> invokeStatic(method, memoryId));
+        });
 
-        getAnnotatedMethodOnClass(agentType, ChatMemorySupplier.class)
-                .ifPresent(method -> {
-                    checkArguments(method);
-                    checkReturnType(method, ChatMemory.class);
-                    agentBuilder.chatMemory(invokeStatic(method));
-                });
+        getAnnotatedMethodOnClass(agentType, ChatMemorySupplier.class).ifPresent(method -> {
+            checkArguments(method);
+            checkReturnType(method, ChatMemory.class);
+            agentBuilder.chatMemory(invokeStatic(method));
+        });
 
         getAnnotatedMethodOnClass(agentType, ChatModelSupplier.class)
                 .ifPresentOrElse(

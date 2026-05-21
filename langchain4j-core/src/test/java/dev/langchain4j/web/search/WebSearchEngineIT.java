@@ -1,10 +1,9 @@
 package dev.langchain4j.web.search;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 /**
  * A minimum set of tests that each implementation of {@link WebSearchEngine} must pass.
