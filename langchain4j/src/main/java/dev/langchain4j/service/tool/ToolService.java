@@ -15,12 +15,12 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.InvocationContext;
@@ -113,6 +113,9 @@ public class ToolService {
         tools.forEach((toolSpecification, toolExecutor) -> {
             toolSpecifications.add(toolSpecification);
             toolExecutors.put(toolSpecification.name(), toolExecutor);
+            if (toolSpecification.returnBehavior() != null) {
+                returnBehaviors.put(toolSpecification.name(), toolSpecification.returnBehavior());
+            }
         });
     }
 
@@ -162,9 +165,7 @@ public class ToolService {
                 throw illegalConfiguration(
                         "Parameter '%s' of tool '%s.%s' has @P(defaultValue = ...) and is Optional<T>. "
                                 + "Optional<T> already represents \"absent\"; use one mechanism or the other.",
-                        parameter.getName(),
-                        toolMethod.getDeclaringClass().getName(),
-                        toolMethod.getName());
+                        parameter.getName(), toolMethod.getDeclaringClass().getName(), toolMethod.getName());
             }
 
             if (parameter.isAnnotationPresent(ToolMemoryId.class)
@@ -174,9 +175,7 @@ public class ToolService {
                 throw illegalConfiguration(
                         "Parameter '%s' of tool '%s.%s' has @P(defaultValue = ...) but is a framework-injected parameter; "
                                 + "default values are not supported on framework-injected parameters.",
-                        parameter.getName(),
-                        toolMethod.getDeclaringClass().getName(),
-                        toolMethod.getName());
+                        parameter.getName(), toolMethod.getDeclaringClass().getName(), toolMethod.getName());
             }
 
             try {
@@ -420,7 +419,9 @@ public class ToolService {
         while (true) {
 
             if (roundTripsLeft-- == 0) {
-                throw runtime("Something is wrong, exceeded %s tool calling round trips (maxToolCallingRoundTrips)", maxToolCallingRoundTrips);
+                throw runtime(
+                        "Something is wrong, exceeded %s tool calling round trips (maxToolCallingRoundTrips)",
+                        maxToolCallingRoundTrips);
             }
 
             AiMessage aiMessage = chatResponse.aiMessage();
@@ -524,6 +525,9 @@ public class ToolService {
     public static boolean shouldReturnImmediately(boolean anyToolErrored, List<ReturnBehavior> returnBehaviors) {
         if (anyToolErrored) {
             return false; // if any tool call failed, LLM should receive an error so that it can attempt to fix it
+        }
+        if (returnBehaviors.isEmpty()) {
+            return false;
         }
         if (returnBehaviors.get(returnBehaviors.size() - 1) == IMMEDIATE_IF_LAST) {
             return true;
