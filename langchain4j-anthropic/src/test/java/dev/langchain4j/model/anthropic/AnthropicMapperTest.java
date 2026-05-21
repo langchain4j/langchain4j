@@ -33,6 +33,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicImageContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicMessageContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicPdfContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTextContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
@@ -40,6 +41,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import java.net.URI;
 import java.util.AbstractMap;
@@ -272,9 +274,7 @@ class AnthropicMapperTest {
         Map<String, Object> map = toAnthropicSchema(jsonSchemaElement);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map))
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
                         {
                           "type": "object",
                           "properties": {
@@ -285,6 +285,47 @@ class AnthropicMapperTest {
                           },
                           "required": ["name", "email", "plan_interest", "demo_requested"],
                           "additionalProperties": false
+                        }
+                       """);
+    }
+
+    @Test
+    void test_toAnthropicSchema_with_definitions() throws JsonProcessingException {
+
+        // given
+        String reference = "Person";
+        JsonSchemaElement personSchema = JsonObjectSchema.builder()
+                .addStringProperty("name")
+                .required("name")
+                .build();
+        JsonSchemaElement rootSchema = JsonObjectSchema.builder()
+                .addProperty(
+                        "person",
+                        JsonReferenceSchema.builder().reference(reference).build())
+                .required("person")
+                .definitions(Map.of(reference, personSchema))
+                .build();
+
+        // when
+        Map<String, Object> map = toAnthropicSchema(rootSchema);
+
+        // then
+        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
+                        {
+                          "type": "object",
+                          "properties": {
+                              "person": { "$ref": "#/$defs/Person" }
+                          },
+                          "required": ["person"],
+                          "additionalProperties": false,
+                          "$defs": {
+                              "Person": {
+                                  "type": "object",
+                                  "properties": { "name": { "type": "string" } },
+                                  "required": ["name"],
+                                  "additionalProperties": false
+                              }
+                          }
                         }
                        """);
     }
@@ -305,9 +346,7 @@ class AnthropicMapperTest {
         Map<String, Object> map = toAnthropicSchema(bookRecord);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map))
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
                         {
                           "type": "object",
                           "properties": {
@@ -356,6 +395,68 @@ class AnthropicMapperTest {
     }
 
     @Test
+    void per_tool_strict_true_should_override_model_level_null() {
+        // given
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("strict_tool")
+                .description("description")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("param")
+                        .required("param")
+                        .build())
+                .strict(true)
+                .build();
+
+        // when - model-level strictTools is null
+        AnthropicTool tool = toAnthropicTool(toolSpec, AnthropicCacheType.NO_CACHE, Set.of(), null);
+
+        // then
+        assertThat(tool.strict).isTrue();
+        assertThat(tool.inputSchema.additionalProperties).isFalse();
+    }
+
+    @Test
+    void per_tool_strict_false_should_override_model_level_true() {
+        // given
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("non_strict_tool")
+                .description("description")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("param")
+                        .required("param")
+                        .build())
+                .strict(false)
+                .build();
+
+        // when - model-level strictTools is true
+        AnthropicTool tool = toAnthropicTool(toolSpec, AnthropicCacheType.NO_CACHE, Set.of(), true);
+
+        // then
+        assertThat(tool.strict).isNull();
+        assertThat(tool.inputSchema.additionalProperties).isNull();
+    }
+
+    @Test
+    void per_tool_strict_null_should_fall_back_to_model_level() {
+        // given
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("default_tool")
+                .description("description")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("param")
+                        .required("param")
+                        .build())
+                .build();
+
+        // when - model-level strictTools is true
+        AnthropicTool tool = toAnthropicTool(toolSpec, AnthropicCacheType.NO_CACHE, Set.of(), true);
+
+        // then - falls back to model-level
+        assertThat(tool.strict).isTrue();
+        assertThat(tool.inputSchema.additionalProperties).isFalse();
+    }
+
+    @Test
     void should_retain_keys() {
         assertThat(retainKeys(Map.of(), Set.of())).isEqualTo(Map.of());
         assertThat(retainKeys(Map.of("one", "one"), Set.of("one"))).isEqualTo(Map.of("one", "one"));
@@ -367,17 +468,19 @@ class AnthropicMapperTest {
     @Test
     void should_extract_server_tool_results_when_enabled() {
         // given
-        AnthropicContent textContent = new AnthropicContent();
-        textContent.type = "text";
-        textContent.text = "Here are the search results";
+        AnthropicContent textContent = AnthropicContent.builder()
+                .type("text")
+                .text("Here are the search results")
+                .build();
 
-        AnthropicContent webSearchResult = new AnthropicContent();
-        webSearchResult.type = "web_search_tool_result";
-        webSearchResult.toolUseId = "srvtoolu_123";
-        webSearchResult.content = List.of(Map.of(
-                "type", "web_search_result",
-                "url", "https://example.com",
-                "title", "Example"));
+        AnthropicContent webSearchResult = AnthropicContent.builder()
+                .type("web_search_tool_result")
+                .toolUseId("srvtoolu_123")
+                .content(List.of(Map.of(
+                        "type", "web_search_result",
+                        "url", "https://example.com",
+                        "title", "Example")))
+                .build();
 
         List<AnthropicContent> contents = List.of(textContent, webSearchResult);
 
@@ -397,16 +500,72 @@ class AnthropicMapperTest {
     @Test
     void should_not_extract_server_tool_results_when_disabled() {
         // given
-        AnthropicContent webSearchResult = new AnthropicContent();
-        webSearchResult.type = "web_search_tool_result";
-        webSearchResult.toolUseId = "srvtoolu_123";
-        webSearchResult.content = List.of(Map.of("url", "https://example.com"));
+        AnthropicContent webSearchResult = AnthropicContent.builder()
+                .type("web_search_tool_result")
+                .toolUseId("srvtoolu_123")
+                .content(List.of(Map.of("url", "https://example.com")))
+                .build();
 
         // when
         AiMessage aiMessage = toAiMessage(List.of(webSearchResult), false, false);
 
         // then
         assertThat(aiMessage.attributes()).doesNotContainKey(SERVER_TOOL_RESULTS_KEY);
+    }
+
+    @Test
+    void should_map_user_message_with_cache_control_metadata() {
+        // Given
+        UserMessage userMessage = UserMessage.from("Hello cached world");
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // When
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // Then
+        assertThat(anthropicMessages).hasSize(1);
+        AnthropicMessage message = anthropicMessages.get(0);
+
+        assertThat(message.content).hasSize(1);
+
+        AnthropicMessageContent content = message.content.get(0);
+
+        assertThat(content).isInstanceOf(AnthropicTextContent.class);
+
+        AnthropicTextContent textContent = (AnthropicTextContent) content;
+
+        assertThat(textContent.text).isEqualTo("Hello cached world");
+
+        assertThat(textContent.cacheControl).isNotNull();
+        assertThat(textContent.cacheControl).extracting("type").isEqualTo("ephemeral");
+    }
+
+    @Test
+    void should_only_apply_cache_control_to_last_item_when_multiple_items_present() {
+        // Given
+        UserMessage userMessage = UserMessage.from(TextContent.from("First item"), TextContent.from("Second item"));
+        userMessage.attributes().put("cache_control", "ephemeral");
+
+        // When
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(userMessage));
+
+        // Then
+        assertThat(anthropicMessages).hasSize(1);
+        AnthropicMessage message = anthropicMessages.get(0);
+        assertThat(message.content).hasSize(2);
+
+        // First item should NOT have cache control
+        AnthropicTextContent first = (AnthropicTextContent) message.content.get(0);
+        assertThat(first.text).isEqualTo("First item");
+        assertThat(first.cacheControl).isNull();
+
+        // Second (last) item SHOULD have cache control
+        AnthropicTextContent second = (AnthropicTextContent) message.content.get(1);
+        assertThat(second.text).isEqualTo("Second item");
+
+        // FIX: Use extracting("type") to access the internal class field safely
+        assertThat(second.cacheControl).isNotNull();
+        assertThat(second.cacheControl).extracting("type").isEqualTo("ephemeral");
     }
 
     @SafeVarargs

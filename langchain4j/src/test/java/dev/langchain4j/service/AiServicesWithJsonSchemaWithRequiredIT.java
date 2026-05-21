@@ -2,7 +2,6 @@ package dev.langchain4j.service;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;

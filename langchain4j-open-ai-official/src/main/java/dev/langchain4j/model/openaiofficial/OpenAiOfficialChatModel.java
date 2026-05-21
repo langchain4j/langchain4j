@@ -37,10 +37,10 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
                     builder.baseUrl,
                     builder.apiKey,
                     builder.credential,
-                    builder.azureDeploymentName,
+                    builder.microsoftFoundryDeploymentName,
                     builder.azureOpenAIServiceVersion,
                     builder.organizationId,
-                    builder.isAzure,
+                    builder.isMicrosoftFoundry,
                     builder.isGitHubModels,
                     builder.defaultRequestParameters,
                     builder.modelName,
@@ -82,7 +82,8 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
                         chatRequest, parameters, strictTools, strictJsonSchema)
                 .build();
 
-        if (modelProvider.equals(ModelProvider.AZURE_OPEN_AI) || modelProvider.equals(ModelProvider.GITHUB_MODELS)) {
+        if (modelProvider.equals(ModelProvider.MICROSOFT_FOUNDRY)
+                || modelProvider.equals(ModelProvider.GITHUB_MODELS)) {
             if (!parameters.modelName().equals(this.modelName)) {
                 // The model name can't be changed in Microsoft Foundry, where it's part of the URL.
                 throw new UnsupportedFeatureException("Modifying the modelName is not supported");
@@ -137,10 +138,10 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
         private String baseUrl;
         private String apiKey;
         private Credential credential;
-        private String azureDeploymentName;
+        private String microsoftFoundryDeploymentName;
         private AzureOpenAIServiceVersion azureOpenAIServiceVersion;
         private String organizationId;
-        private boolean isAzure;
+        private boolean isMicrosoftFoundry;
         private boolean isGitHubModels;
         private OpenAIClient openAIClient;
 
@@ -211,8 +212,17 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
             return this;
         }
 
+        /**
+         * @deprecated Use {@link #microsoftFoundryDeploymentName(String)} instead
+         */
+        @Deprecated
         public Builder azureDeploymentName(String azureDeploymentName) {
-            this.azureDeploymentName = azureDeploymentName;
+            this.microsoftFoundryDeploymentName = azureDeploymentName;
+            return this;
+        }
+
+        public Builder microsoftFoundryDeploymentName(String microsoftFoundryDeploymentName) {
+            this.microsoftFoundryDeploymentName = microsoftFoundryDeploymentName;
             return this;
         }
 
@@ -231,8 +241,17 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
             return this;
         }
 
+        /**
+         * @deprecated Use {@link #isMicrosoftFoundry(boolean)} instead
+         */
+        @Deprecated
         public Builder isAzure(boolean isAzure) {
-            this.isAzure = isAzure;
+            this.isMicrosoftFoundry = isAzure;
+            return this;
+        }
+
+        public Builder isMicrosoftFoundry(boolean isMicrosoftFoundry) {
+            this.isMicrosoftFoundry = isMicrosoftFoundry;
             return this;
         }
 

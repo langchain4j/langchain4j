@@ -1,25 +1,14 @@
 package dev.langchain4j.mcp.protocol;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.langchain4j.Internal;
 
+/**
+ * Corresponds to the {@code InitializeRequest} type from the MCP schema.
+ */
 @Internal
-public class McpInitializeRequest extends McpJsonRpcMessage {
+public class McpInitializeRequest extends McpClientRequest {
 
-    @JsonInclude
-    public final McpClientMethod method = McpClientMethod.INITIALIZE;
-
-    private McpInitializeParams params;
-
-    public McpInitializeRequest(final Long id) {
-        super(id);
-    }
-
-    public McpInitializeParams getParams() {
-        return params;
-    }
-
-    public void setParams(final McpInitializeParams params) {
-        this.params = params;
+    public McpInitializeRequest(Long id) {
+        super(id, McpClientMethod.INITIALIZE);
     }
 }

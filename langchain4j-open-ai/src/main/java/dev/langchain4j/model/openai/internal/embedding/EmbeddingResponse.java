@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import dev.langchain4j.model.openai.internal.shared.Usage;
 
 import java.util.List;
@@ -52,12 +53,14 @@ public final class EmbeddingResponse {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof EmbeddingResponse
                 && equalTo((EmbeddingResponse) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(EmbeddingResponse another) {
         return Objects.equals(model, another.model)
                 && Objects.equals(data, another.data)
@@ -65,6 +68,7 @@ public final class EmbeddingResponse {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(model);
@@ -74,6 +78,7 @@ public final class EmbeddingResponse {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "EmbeddingResponse{"
                 + "model=" + model

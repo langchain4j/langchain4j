@@ -6,10 +6,11 @@ import static java.util.Collections.singletonMap;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.invocation.InvocationContext;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -17,6 +18,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.assertj.core.api.WithAssertions;
@@ -115,11 +117,10 @@ class DefaultToolExecutorTest implements WithAssertions {
         arguments.put("arg19", new HashSet<>(asList(ExampleEnum.A, ExampleEnum.B)));
         arguments.put("arg20", singletonMap("A", 1.0));
 
-        InvocationContext invocationContext = InvocationContext.builder()
-                .chatMemoryId(memoryId)
-                .build();
+        InvocationContext invocationContext =
+                InvocationContext.builder().chatMemoryId(memoryId).build();
 
-        Object[] args = DefaultToolExecutor.prepareArguments(method, arguments, invocationContext);
+        Object[] args = DefaultToolExecutor.prepareArguments(method, "example", arguments, invocationContext);
 
         assertThat(args)
                 .containsExactly(
@@ -150,7 +151,7 @@ class DefaultToolExecutorTest implements WithAssertions {
             as.put("arg1", "abc");
 
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> DefaultToolExecutor.prepareArguments(method, as, invocationContext))
+                    .isThrownBy(() -> DefaultToolExecutor.prepareArguments(method, "example", as, invocationContext))
                     .withMessage("Argument \"arg1\" is not convertable to int, got java.lang.String: <abc>")
                     .withNoCause();
         }
@@ -289,6 +290,49 @@ class DefaultToolExecutorTest implements WithAssertions {
         public int addOne(int num) {
             return num + 1;
         }
+    }
+
+    private static class ThrowingTool {
+
+        @Tool
+        public String throwsWithMessage() {
+            throw new IllegalStateException("something went wrong");
+        }
+
+        @Tool
+        public String throwsWithoutMessage() {
+            throw new NullPointerException();
+        }
+    }
+
+    @Test
+    void tool_exception_with_message_is_returned_as_error() throws NoSuchMethodException {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("throwsWithMessage")
+                .arguments("{}")
+                .build();
+
+        DefaultToolExecutor executor =
+                new DefaultToolExecutor(new ThrowingTool(), ThrowingTool.class.getDeclaredMethod("throwsWithMessage"));
+
+        String result = executor.execute(request, "DEFAULT");
+        assertThat(result).isEqualTo("something went wrong");
+    }
+
+    @Test
+    void tool_exception_without_message_falls_back_to_class_name() throws NoSuchMethodException {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("throwsWithoutMessage")
+                .arguments("{}")
+                .build();
+
+        DefaultToolExecutor executor = new DefaultToolExecutor(
+                new ThrowingTool(), ThrowingTool.class.getDeclaredMethod("throwsWithoutMessage"));
+
+        String result = executor.execute(request, "DEFAULT");
+        assertThat(result).isEqualTo(NullPointerException.class.getName());
     }
 
     @Test
@@ -448,9 +492,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor2 = new DefaultToolExecutor(new PersonTool(), request2);
         String result2 = toolExecutor2.execute(request2, "DEFAULT");
-        assertThat(result2)
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(result2).isEqualToIgnoringWhitespace("""
                 [
                   {
                     "name": "Klaus",
@@ -469,9 +511,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor3 = new DefaultToolExecutor(new PersonTool(), request3);
         String result3 = toolExecutor3.execute(request3, "DEFAULT");
-        assertThat(result3)
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(result3).isEqualToIgnoringWhitespace("""
                 [
                   {
                     "name": "Peter",
@@ -491,9 +531,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor4 = new DefaultToolExecutor(new PersonTool(), request4);
         String result4 = toolExecutor4.execute(request4, "DEFAULT");
-        assertThat(result4)
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(result4).isEqualToIgnoringWhitespace("""
                 {
                   "p1": {
                     "name": "Klaus",
@@ -512,9 +550,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor5 = new DefaultToolExecutor(new PersonTool(), request5);
         String result5 = toolExecutor5.execute(request5, "DEFAULT");
-        assertThat(result5)
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(result5).isEqualToIgnoringWhitespace("""
                 [
                   {
                     "name": "Klaus",
@@ -533,19 +569,17 @@ class DefaultToolExecutorTest implements WithAssertions {
         // given
         String arguments = "{ invalid JSON }";
 
-        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
-                .name("tool")
-                .arguments(arguments)
-                .build();
+        ToolExecutionRequest toolRequest =
+                ToolExecutionRequest.builder().name("tool").arguments(arguments).build();
 
         class Tools {
 
             @Tool
-            void tool(String s) {
-            }
+            void tool(String s) {}
         }
 
-        ToolExecutor toolExecutor = new DefaultToolExecutor(new Tools(), Tools.class.getDeclaredMethod("tool", String.class));
+        ToolExecutor toolExecutor =
+                new DefaultToolExecutor(new Tools(), Tools.class.getDeclaredMethod("tool", String.class));
 
         // when-then
         assertThatThrownBy(() -> toolExecutor.execute(toolRequest, "default"))
@@ -570,10 +604,8 @@ class DefaultToolExecutorTest implements WithAssertions {
 
         ToolExecutor toolExecutor = new DefaultToolExecutor(new Tools(), Tools.class.getDeclaredMethod("tool"));
 
-        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
-                .name("tool")
-                .arguments("{}")
-                .build();
+        ToolExecutionRequest toolRequest =
+                ToolExecutionRequest.builder().name("tool").arguments("{}").build();
 
         // when
         String toolResult = toolExecutor.execute(toolRequest, "default");
@@ -588,5 +620,93 @@ class DefaultToolExecutorTest implements WithAssertions {
         assertThat(toolExecutionResult.isError()).isTrue();
         assertThat(toolExecutionResult.result()).isNull();
         assertThat(toolExecutionResult.resultText()).isEqualTo(errorMessage);
+    }
+
+    @Test
+    void should_prepare_arguments_with_optional_parameter_provided() throws Exception {
+
+        // given
+        class ToolWithOptional {
+            public void tool(String name, Optional<Integer> age) {}
+        }
+
+        Method method = ToolWithOptional.class.getMethod("tool", String.class, Optional.class);
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("arg0", "Klaus");
+        arguments.put("arg1", 42.0);
+
+        InvocationContext context = InvocationContext.builder().build();
+
+        // when
+        Object[] args = DefaultToolExecutor.prepareArguments(method, "tool", arguments, context);
+
+        // then
+        assertThat(args).hasSize(2);
+        assertThat(args[0]).isEqualTo("Klaus");
+        assertThat(args[1]).isInstanceOf(Optional.class);
+        assertThat(((Optional<Integer>) args[1]).get()).isEqualTo(42);
+    }
+
+    @Test
+    void should_prepare_arguments_with_optional_parameter_not_provided() throws Exception {
+
+        // given
+        class ToolWithOptional {
+            public void tool(String name, Optional<Integer> age) {}
+        }
+
+        Method method = ToolWithOptional.class.getMethod("tool", String.class, Optional.class);
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("arg0", "Klaus");
+
+        InvocationContext context = InvocationContext.builder().build();
+
+        // when
+        Object[] args = DefaultToolExecutor.prepareArguments(method, "tool", arguments, context);
+
+        // then
+        assertThat(args).hasSize(2);
+        assertThat(args[0]).isEqualTo("Klaus");
+        assertThat(args[1]).isInstanceOf(Optional.class);
+        assertThat((Optional<?>) args[1]).isEmpty();
+    }
+
+    @SuppressWarnings("unused")
+    public void primitiveTool(String filePath, int startLine, int endLine) {}
+
+    @Test
+    void should_throw_when_required_primitive_is_missing() throws Exception {
+        Method method = getClass().getMethod("primitiveTool", String.class, int.class, int.class);
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("arg0", "/tmp/foo.txt");
+
+        InvocationContext context = InvocationContext.builder().build();
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> DefaultToolExecutor.prepareArguments(method, "primitiveTool", arguments, context))
+                .withMessageContaining("Required parameter")
+                .withMessageContaining("arg1")
+                .withMessageContaining("primitiveTool");
+    }
+
+    @Test
+    void should_wrap_missing_required_primitive_into_ToolArgumentsException_when_configured() throws Exception {
+        Method method = getClass().getMethod("primitiveTool", String.class, int.class, int.class);
+        DefaultToolExecutor executor = DefaultToolExecutor.builder()
+                .object(this)
+                .originalMethod(method)
+                .methodToInvoke(method)
+                .wrapToolArgumentsExceptions(true)
+                .build();
+
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("primitiveTool")
+                .arguments("{ \"arg0\": \"/tmp/foo.txt\" }")
+                .build();
+
+        assertThatExceptionOfType(ToolArgumentsException.class)
+                .isThrownBy(() -> executor.execute(request, "DEFAULT"))
+                .withCauseInstanceOf(IllegalArgumentException.class);
     }
 }

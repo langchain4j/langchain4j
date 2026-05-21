@@ -1,7 +1,6 @@
 package dev.langchain4j.model.github;
 
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;

@@ -1,15 +1,19 @@
 package dev.langchain4j.mcp.protocol;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.langchain4j.Internal;
 
+/**
+ * Corresponds to the {@code ListResourcesRequest} type from the MCP schema.
+ */
 @Internal
-public class McpListResourcesRequest extends McpJsonRpcMessage {
+public class McpListResourcesRequest extends McpClientRequest {
 
-    @JsonInclude
-    public final McpClientMethod method = McpClientMethod.RESOURCES_LIST;
-
-    public McpListResourcesRequest(final Long id) {
-        super(id);
+    public McpListResourcesRequest(Long id, String cursor) {
+        super(id, McpClientMethod.RESOURCES_LIST);
+        if (cursor != null) {
+            McpListResourcesParams p = new McpListResourcesParams();
+            p.setCursor(cursor);
+            setParams(p);
+        }
     }
 }

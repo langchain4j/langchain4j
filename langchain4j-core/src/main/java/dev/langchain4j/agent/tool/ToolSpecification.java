@@ -1,15 +1,16 @@
 package dev.langchain4j.agent.tool;
 
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.mutableCopy;
 import static dev.langchain4j.internal.Utils.quoted;
+
+import dev.langchain4j.Experimental;
+import dev.langchain4j.internal.ToolSpecificationJsonUtils;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * Describes a tool that language model can execute.
@@ -18,10 +19,14 @@ import static dev.langchain4j.internal.Utils.quoted;
  */
 public class ToolSpecification {
 
+    public static final String METADATA_SEARCH_BEHAVIOR = "searchBehavior";
+
     private final String name;
     private final String description;
     private final JsonObjectSchema parameters;
     private final Map<String, Object> metadata;
+    private final Boolean strict;
+    private final ReturnBehavior returnBehavior;
 
     /**
      * Creates a {@link ToolSpecification} from a {@link Builder}.
@@ -33,6 +38,8 @@ public class ToolSpecification {
         this.description = builder.description;
         this.parameters = builder.parameters;
         this.metadata = copy(builder.metadata);
+        this.strict = builder.strict;
+        this.returnBehavior = builder.returnBehavior;
     }
 
     /**
@@ -72,18 +79,48 @@ public class ToolSpecification {
         return metadata;
     }
 
+    /**
+     * Returns whether this tool should use strict schema enforcement.
+     * <p>
+     * When {@code true}, the LLM provider will validate tool calls against this tool's schema server-side.
+     * When {@code false}, strict enforcement is explicitly disabled for this tool.
+     * When {@code null} (default), the model-level strict setting is used.
+     * <p>
+     * NOTE: Currently, per-tool strict is supported by the {@code langchain4j-anthropic}
+     * and {@code langchain4j-open-ai} modules.
+     *
+     * @return {@code true} to enable strict enforcement, {@code false} to disable, or {@code null} to use the model default.
+     */
+    public Boolean strict() {
+        return strict;
+    }
+
+    /**
+     * Returns the {@link ReturnBehavior} for this tool, or {@code null} if not set.
+     * <p>
+     * When {@code null}, the AI Service default ({@link ReturnBehavior#TO_LLM}) is used.
+     * This field is not sent to the LLM provider — it controls client-side behavior only.
+     *
+     * @since 1.16.0
+     */
+    @Experimental
+    public ReturnBehavior returnBehavior() {
+        return returnBehavior;
+    }
+
     @Override
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof ToolSpecification ts
-                && equalTo(ts);
+        return another instanceof ToolSpecification ts && equalTo(ts);
     }
 
     private boolean equalTo(ToolSpecification another) {
         return Objects.equals(name, another.name)
                 && Objects.equals(description, another.description)
                 && Objects.equals(parameters, another.parameters)
-                && Objects.equals(metadata, another.metadata);
+                && Objects.equals(metadata, another.metadata)
+                && Objects.equals(strict, another.strict)
+                && returnBehavior == another.returnBehavior;
     }
 
     @Override
@@ -93,6 +130,8 @@ public class ToolSpecification {
         h += (h << 5) + Objects.hashCode(description);
         h += (h << 5) + Objects.hashCode(parameters);
         h += (h << 5) + Objects.hashCode(metadata);
+        h += (h << 5) + Objects.hashCode(strict);
+        h += (h << 5) + Objects.hashCode(returnBehavior);
         return h;
     }
 
@@ -103,7 +142,30 @@ public class ToolSpecification {
                 + ", description = " + quoted(description)
                 + ", parameters = " + parameters
                 + ", metadata = " + metadata
+                + ", strict = " + strict
+                + ", returnBehavior = " + returnBehavior
                 + " }";
+    }
+
+    /**
+     * Serializes this {@link ToolSpecification} to a JSON string.
+     *
+     * @return a JSON string representing this tool specification.
+     * @see #fromJson(String)
+     */
+    public String toJson() {
+        return ToolSpecificationJsonUtils.toJson(this);
+    }
+
+    /**
+     * Deserializes a {@link ToolSpecification} from a JSON string.
+     *
+     * @param json the JSON string to deserialize.
+     * @return the deserialized {@link ToolSpecification}.
+     * @see #toJson()
+     */
+    public static ToolSpecification fromJson(String json) {
+        return ToolSpecificationJsonUtils.fromJson(json);
     }
 
     public Builder toBuilder() {
@@ -111,7 +173,9 @@ public class ToolSpecification {
                 .name(name)
                 .description(description)
                 .parameters(parameters)
-                .metadata(mutableCopy(metadata));
+                .metadata(mutableCopy(metadata))
+                .strict(strict)
+                .returnBehavior(returnBehavior);
     }
 
     /**
@@ -132,6 +196,8 @@ public class ToolSpecification {
         private String description;
         private JsonObjectSchema parameters;
         private Map<String, Object> metadata;
+        private Boolean strict;
+        private ReturnBehavior returnBehavior;
 
         /**
          * Creates a {@link Builder}.
@@ -189,6 +255,40 @@ public class ToolSpecification {
          */
         public Builder addMetadata(String key, Object value) {
             this.metadata.put(key, value);
+            return this;
+        }
+
+        /**
+         * Sets whether this tool should use strict schema enforcement.
+         * <p>
+         * When {@code true}, the LLM provider will validate tool calls against this tool's schema server-side.
+         * When {@code false}, strict enforcement is explicitly disabled for this tool.
+         * When {@code null} (default), the model-level strict setting is used.
+         *
+         * @param strict whether to enable strict enforcement for this tool
+         * @return {@code this}
+         */
+        public Builder strict(Boolean strict) {
+            this.strict = strict;
+            return this;
+        }
+
+        /**
+         * Sets the {@link ReturnBehavior} for this tool.
+         * <p>
+         * When set, this value is used by the AI Service to determine whether to return
+         * tool results immediately to the caller or send them back to the LLM for further processing.
+         * This field is not sent to the LLM provider — it controls client-side behavior only.
+         * <p>
+         * When {@code null} (default), the AI Service default ({@link ReturnBehavior#TO_LLM}) is used.
+         *
+         * @param returnBehavior the return behavior for this tool
+         * @return {@code this}
+         * @since 1.16.0
+         */
+        @Experimental
+        public Builder returnBehavior(ReturnBehavior returnBehavior) {
+            this.returnBehavior = returnBehavior;
             return this;
         }
 

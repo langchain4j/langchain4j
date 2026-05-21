@@ -17,6 +17,7 @@ import java.util.List;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.data.Percentage.withPercentage;
 
 class OnnxScoringModelIT {
@@ -26,6 +27,9 @@ class OnnxScoringModelIT {
 
     private static ScoringModel model;
 
+    private static Path modelPath;
+    private static Path tokenizerPath;
+
     @BeforeAll
     static void initModel() throws IOException {
 
@@ -34,15 +38,19 @@ class OnnxScoringModelIT {
         // System.setProperty("https.proxyPort","7890" );
 
         URL modelUrl = new URL("https://huggingface.co/Xenova/ms-marco-MiniLM-L-6-v2/resolve/main/onnx/model_quantized.onnx?download=true");
-        Path modelPath = tempDir.resolve("model_quantized.onnx");
+        modelPath = tempDir.resolve("model_quantized.onnx");
         Files.copy(modelUrl.openStream(), modelPath, REPLACE_EXISTING);
 
         URL tokenizerUrl = new URL("https://huggingface.co/Xenova/ms-marco-MiniLM-L-6-v2/resolve/main/tokenizer.json?download=true");
-        Path tokenizerPath = tempDir.resolve("tokenizer.json");
+        tokenizerPath = tempDir.resolve("tokenizer.json");
         Files.copy(tokenizerUrl.openStream(), tokenizerPath, REPLACE_EXISTING);
 
         // To check the modelMaxLength parameter, refer to the model configuration file at  https://huggingface.co/Xenova/ms-marco-MiniLM-L-6-v2/resolve/main/tokenizer_config.json
         model = new OnnxScoringModel(modelPath.toString(), new OrtSession.SessionOptions(), tokenizerPath.toString(), 512, false);
+    }
+
+    private OnnxScoringModel createModel() {
+        return new OnnxScoringModel(modelPath.toString(), new OrtSession.SessionOptions(), tokenizerPath.toString(), 512, false);
     }
 
     @Test
@@ -67,5 +75,38 @@ class OnnxScoringModelIT {
         assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(0);
 
         assertThat(response.finishReason()).isNull();
+    }
+
+    @Test
+    void should_implement_autocloseable() {
+        assertThat(model).isInstanceOf(AutoCloseable.class);
+    }
+
+    @Test
+    void should_close_without_exception() {
+        OnnxScoringModel closeable = createModel();
+        assertThatNoException().isThrownBy(closeable::close);
+    }
+
+    @Test
+    void should_be_usable_with_try_with_resources() {
+        List<TextSegment> segments = new ArrayList<>();
+        segments.add(TextSegment.from("Berlin has a population of 3,520,031 registered inhabitants in an area of 891.82 square kilometers."));
+
+        try (OnnxScoringModel m = createModel()) {
+            Response<List<Double>> response = m.scoreAll(segments, "How many people live in Berlin?");
+
+            assertThat(response.content()).hasSize(1);
+            assertThat(response.content().get(0)).isCloseTo(8.663132667541504, withPercentage(1));
+        }
+    }
+
+    @Test
+    void should_allow_calling_close_multiple_times() {
+        OnnxScoringModel closeable = createModel();
+        assertThatNoException().isThrownBy(() -> {
+            closeable.close();
+            closeable.close();
+        });
     }
 }

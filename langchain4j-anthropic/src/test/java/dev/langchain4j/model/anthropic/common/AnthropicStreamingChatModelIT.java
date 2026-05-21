@@ -1,12 +1,13 @@
 package dev.langchain4j.model.anthropic.common;
 
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_5_HAIKU_20241022;
+import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
-import static java.lang.System.getenv;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeast;
 
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.model.anthropic.AnthropicChatResponseMetadata;
 import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
@@ -17,8 +18,9 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
+
+import java.util.Base64;
 import java.util.List;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -29,15 +31,17 @@ import org.mockito.InOrder;
 class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     static final StreamingChatModel ANTHROPIC_STREAMING_CHAT_MODEL = AnthropicStreamingChatModel.builder()
-            .apiKey(getenv("ANTHROPIC_API_KEY"))
-            .modelName(CLAUDE_3_5_HAIKU_20241022)
+            .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
+            .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+            .modelName(CLAUDE_HAIKU_4_5_20251001)
             .temperature(0.0)
             .logRequests(false) // images are huge in logs
             .logResponses(true)
             .build();
 
     static final StreamingChatModel ANTHROPIC_STREAMING_SCHEMA_MODEL = AnthropicStreamingChatModel.builder()
-            .apiKey(getenv("ANTHROPIC_API_KEY"))
+            .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
+            .apiKey(System.getenv("ANTHROPIC_API_KEY"))
             .modelName(CLAUDE_HAIKU_4_5_20251001)
             .beta("structured-outputs-2025-11-13")
             .temperature(0.0)
@@ -53,12 +57,13 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected StreamingChatModel createModelWith(ChatRequestParameters parameters) {
         var anthropicChatModelBuilder = AnthropicStreamingChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .maxTokens(parameters.maxOutputTokens())
                 .logRequests(true)
                 .logResponses(true);
         if (parameters.modelName() == null) {
-            anthropicChatModelBuilder.modelName(CLAUDE_3_5_HAIKU_20241022);
+            anthropicChatModelBuilder.modelName(CLAUDE_HAIKU_4_5_20251001);
         } else {
             anthropicChatModelBuilder.modelName(parameters.modelName());
         }
@@ -96,8 +101,9 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {
         return AnthropicStreamingChatModel.builder()
-                .apiKey(getenv("ANTHROPIC_API_KEY"))
-                .modelName(CLAUDE_3_5_HAIKU_20241022)
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .listeners(List.of(listener))
                 .build();
     }
@@ -157,5 +163,33 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
         // Claude Sonnet 4.5, Opus 4.1/4.5, and Haiku 4.5 when the
         // 'structured-outputs-2025-11-13' beta header is enabled.
         super.should_respect_JsonRawSchema_responseFormat(model);
+    }
+
+    @Override
+    protected String catImageUrl() {
+        return "https://images.all-free-download.com/images/graphicwebp/cat_hangover_relax_213869.webp";
+    }
+
+    @Override
+    protected ImageContent catImageContentBase64() {
+        String base64Data = Base64.getEncoder().encodeToString(readBytes(catImageUrl()));
+        return ImageContent.from(base64Data, "image/webp");
+    }
+
+    @Override
+    protected String diceImageUrl() {
+        return "https://images.all-free-download.com/images/graphicwebp/double_six_dice_196084.webp";
+    }
+
+    @Override
+    protected ImageContent diceImageContentBase64() {
+        String base64Data = Base64.getEncoder().encodeToString(readBytes(diceImageUrl()));
+        return ImageContent.from(base64Data, "image/webp");
+    }
+
+    @Override
+    protected void assertOutputTokenCount(TokenUsage tokenUsage, Integer maxOutputTokens) {
+        // Sometimes Anthropic produces one token less than expected (e.g., 4 instead of 5)
+        assertThat(tokenUsage.outputTokenCount()).isBetween(maxOutputTokens - 1, maxOutputTokens);
     }
 }

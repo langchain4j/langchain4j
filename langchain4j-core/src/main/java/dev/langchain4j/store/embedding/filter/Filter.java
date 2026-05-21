@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.filter;
 
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.comparison.ContainsString;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
@@ -39,6 +40,7 @@ import dev.langchain4j.store.embedding.filter.logical.Or;
  * @see Not
  * @see Or
  */
+@JacocoIgnoreCoverageGenerated
 public interface Filter {
 
     /**

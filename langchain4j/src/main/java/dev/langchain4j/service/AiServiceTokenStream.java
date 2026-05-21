@@ -28,9 +28,8 @@ import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
-import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolServiceContext;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -40,8 +39,7 @@ public class AiServiceTokenStream implements TokenStream {
 
     private final List<ChatMessage> messages;
 
-    private final List<ToolSpecification> toolSpecifications;
-    private final Map<String, ToolExecutor> toolExecutors;
+    private final ToolServiceContext toolServiceContext;
     private final ToolArgumentsErrorHandler toolArgumentsErrorHandler;
     private final ToolExecutionErrorHandler toolExecutionErrorHandler;
     private final Executor toolExecutor;
@@ -87,8 +85,7 @@ public class AiServiceTokenStream implements TokenStream {
     public AiServiceTokenStream(AiServiceTokenStreamParameters parameters) {
         ensureNotNull(parameters, "parameters");
         this.messages = copy(ensureNotEmpty(parameters.messages(), "messages"));
-        this.toolSpecifications = copy(parameters.toolSpecifications());
-        this.toolExecutors = copy(parameters.toolExecutors());
+        this.toolServiceContext = parameters.toolServiceContext();
         this.toolArgumentsErrorHandler = parameters.toolArgumentsErrorHandler();
         this.toolExecutionErrorHandler = parameters.toolExecutionErrorHandler();
         this.toolExecutor = parameters.toolExecutor();
@@ -195,10 +192,13 @@ public class AiServiceTokenStream implements TokenStream {
     public void start() {
         validateConfiguration();
 
+        List<ToolSpecification> effectiveTools =
+                toolServiceContext != null ? toolServiceContext.effectiveTools() : null;
+
         ChatRequest chatRequest = context.chatRequestTransformer.apply(
                 ChatRequest.builder()
                         .messages(messages)
-                        .parameters(chatRequestParameters(invocationContext.methodArguments(), toolSpecifications))
+                        .parameters(chatRequestParameters(invocationContext.methodArguments(), effectiveTools))
                         .build(),
                 invocationContext.chatMemoryId());
 
@@ -227,9 +227,8 @@ public class AiServiceTokenStream implements TokenStream {
                 errorHandler,
                 initTemporaryMemory(context, messages),
                 new TokenUsage(),
-                toolSpecifications,
-                toolExecutors,
-                context.toolService.maxSequentialToolsInvocations(),
+                toolServiceContext,
+                context.toolService.maxToolCallingRoundTrips(),
                 toolArgumentsErrorHandler,
                 toolExecutionErrorHandler,
                 toolExecutor,

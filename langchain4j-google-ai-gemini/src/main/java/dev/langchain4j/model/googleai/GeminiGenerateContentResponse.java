@@ -1,14 +1,23 @@
 package dev.langchain4j.model.googleai;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 record GeminiGenerateContentResponse(
-        String responseId, String modelVersion, List<GeminiCandidate> candidates, GeminiUsageMetadata usageMetadata) {
+        @JsonProperty("responseId") String responseId,
+        @JsonProperty("modelVersion") String modelVersion,
+        @JsonProperty("candidates") List<GeminiCandidate> candidates,
+        @JsonProperty("usageMetadata") GeminiUsageMetadata usageMetadata,
+        @JsonProperty("groundingMetadata") GroundingMetadata groundingMetadata) {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record GeminiCandidate(GeminiContent content, GeminiFinishReason finishReason) {
+    record GeminiCandidate(
+            @JsonProperty("content") GeminiContent content,
+            @JsonProperty("finishReason") GeminiFinishReason finishReason,
+            @JsonProperty("urlContextMetadata") GeminiUrlContextMetadata urlContextMetadata,
+            @JsonProperty("groundingMetadata") GroundingMetadata groundingMetadata) {
         enum GeminiFinishReason {
             FINISH_REASON_UNSPECIFIED,
             STOP,
@@ -25,7 +34,29 @@ record GeminiGenerateContentResponse(
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record GeminiUsageMetadata(Integer promptTokenCount, Integer candidatesTokenCount, Integer totalTokenCount) {
+    record GeminiUrlContextMetadata(
+            @JsonProperty("urlMetadata") List<GeminiUrlMetadata> urlMetadata) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record GeminiUrlMetadata(
+            @JsonProperty("retrievedUrl") String retrievedUrl,
+            @JsonProperty("urlRetrievalStatus") GeminiUrlRetrievalStatus urlRetrievalStatus) {}
+
+    enum GeminiUrlRetrievalStatus {
+        URL_RETRIEVAL_STATUS_UNSPECIFIED,
+        URL_RETRIEVAL_STATUS_SUCCESS,
+        URL_RETRIEVAL_STATUS_ERROR,
+        URL_RETRIEVAL_STATUS_PAYWALL,
+        URL_RETRIEVAL_STATUS_UNSAFE
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record GeminiUsageMetadata(
+            @JsonProperty("promptTokenCount") Integer promptTokenCount,
+            @JsonProperty("candidatesTokenCount") Integer candidatesTokenCount,
+            @JsonProperty("totalTokenCount") Integer totalTokenCount,
+            @JsonProperty("cachedContentTokenCount") Integer cachedContentTokenCount,
+            @JsonProperty("thoughtsTokenCount") Integer thoughtsTokenCount) {
 
         public static Builder builder() {
             return new Builder();
@@ -35,6 +66,8 @@ record GeminiGenerateContentResponse(
             private Integer promptTokenCount;
             private Integer candidatesTokenCount;
             private Integer totalTokenCount;
+            private Integer cachedContentTokenCount;
+            private Integer thoughtsTokenCount;
 
             private Builder() {}
 
@@ -53,8 +86,23 @@ record GeminiGenerateContentResponse(
                 return this;
             }
 
+            Builder cachedContentTokenCount(Integer cachedContentTokenCount) {
+                this.cachedContentTokenCount = cachedContentTokenCount;
+                return this;
+            }
+
+            Builder thoughtsTokenCount(Integer thoughtsTokenCount) {
+                this.thoughtsTokenCount = thoughtsTokenCount;
+                return this;
+            }
+
             GeminiUsageMetadata build() {
-                return new GeminiUsageMetadata(promptTokenCount, candidatesTokenCount, totalTokenCount);
+                return new GeminiUsageMetadata(
+                        promptTokenCount,
+                        candidatesTokenCount,
+                        totalTokenCount,
+                        cachedContentTokenCount,
+                        thoughtsTokenCount);
             }
         }
     }

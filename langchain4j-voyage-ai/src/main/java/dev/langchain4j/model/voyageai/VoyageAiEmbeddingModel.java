@@ -14,12 +14,13 @@ import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
+import org.slf4j.Logger;
 
 /**
  * An implementation of an {@link EmbeddingModel} that uses
@@ -64,7 +65,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
-                .customHeaders(customHeaders)
+                .customHeaders(() -> customHeaders)
                 .build();
     }
 
@@ -84,7 +85,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .logger(builder.logger)
-                .customHeaders(builder.customHeaders)
+                .customHeaders(builder.customHeadersSupplier)
                 .build();
     }
 
@@ -151,7 +152,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     public static class Builder {
 
         private HttpClientBuilder httpClientBuilder;
-        private Map<String, String> customHeaders;
+        private Supplier<Map<String, String>> customHeadersSupplier;
         private String baseUrl;
         private Duration timeout;
         private Integer maxRetries;
@@ -170,8 +171,21 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
+        /**
+         * Sets custom HTTP headers.
+         */
         public Builder customHeaders(Map<String, String> customHeaders) {
-            this.customHeaders = customHeaders;
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets a supplier for custom HTTP headers.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         */
+        public Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 

@@ -1,17 +1,18 @@
 package dev.langchain4j.model.googleai.common;
 
+import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.catalog.AbstractModelCatalogIT;
 import dev.langchain4j.model.catalog.ModelCatalog;
 import dev.langchain4j.model.catalog.ModelDescription;
 import dev.langchain4j.model.googleai.GoogleAiGeminiModelCatalog;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
 import java.util.List;
 
-import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleAiGeminiModelCatalogIT extends AbstractModelCatalogIT {
@@ -46,5 +47,13 @@ class GoogleAiGeminiModelCatalogIT extends AbstractModelCatalogIT {
 
         assertThat(models).isNotEmpty();
         assertThat(models).anyMatch(m -> m.maxOutputTokens() != null && m.maxOutputTokens() > 0);
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }

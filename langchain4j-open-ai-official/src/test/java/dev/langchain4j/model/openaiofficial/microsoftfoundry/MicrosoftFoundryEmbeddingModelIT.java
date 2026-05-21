@@ -15,7 +15,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "MICROSOFT_FOUNDRY_API_KEY", matches = ".+")
 class MicrosoftFoundryEmbeddingModelIT {
 
     protected List<dev.langchain4j.model.embedding.EmbeddingModel> models() {
@@ -73,8 +73,8 @@ class MicrosoftFoundryEmbeddingModelIT {
         int totalSegmentsToEmbed = 50;
 
         EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
-                .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .baseUrl(System.getenv("MICROSOFT_FOUNDRY_ENDPOINT"))
+                .apiKey(System.getenv("MICROSOFT_FOUNDRY_API_KEY"))
                 .modelName(EMBEDDING_MODEL_NAME)
                 .maxSegmentsPerBatch(maxSegmentsPerBatch)
                 .build();
@@ -108,8 +108,8 @@ class MicrosoftFoundryEmbeddingModelIT {
         int dimension = 42;
 
         EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
-                .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .baseUrl(System.getenv("MICROSOFT_FOUNDRY_ENDPOINT"))
+                .apiKey(System.getenv("MICROSOFT_FOUNDRY_API_KEY"))
                 .modelName(EMBEDDING_MODEL_NAME)
                 .dimensions(dimension)
                 .build();

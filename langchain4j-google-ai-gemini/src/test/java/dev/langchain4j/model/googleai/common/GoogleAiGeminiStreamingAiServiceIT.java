@@ -1,24 +1,45 @@
 package dev.langchain4j.model.googleai.common;
 
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.googleai.GoogleAiGeminiChatResponseMetadata;
 import dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel;
+import dev.langchain4j.model.googleai.GoogleAiGeminiTokenUsage;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.common.AbstractStreamingAiServiceIT;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
 import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 class GoogleAiGeminiStreamingAiServiceIT extends AbstractStreamingAiServiceIT {
 
     @Override
     protected List<StreamingChatModel> models() {
-        return List.of(
-                GoogleAiGeminiStreamingChatModel.builder()
-                        .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-                        .modelName("gemini-2.5-flash-lite")
-                        .logRequests(true)
-                        .logResponses(true)
-                        .build()
-        );
+        return List.of(GoogleAiGeminiStreamingChatModel.builder()
+                .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+                .modelName("gemini-2.5-flash-lite")
+                .logRequests(true)
+                .logResponses(true)
+                .build());
+    }
+
+    @Override
+    protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel model) {
+        return GoogleAiGeminiChatResponseMetadata.class;
+    }
+
+    @Override
+    protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel model) {
+        return GoogleAiGeminiTokenUsage.class;
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }

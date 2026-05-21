@@ -3,6 +3,7 @@ package dev.langchain4j.model.watsonx;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -12,7 +13,7 @@ import com.ibm.watsonx.ai.core.Json;
 import com.ibm.watsonx.ai.core.auth.ibmcloud.IBMCloudAuthenticator;
 import com.ibm.watsonx.ai.core.provider.HttpClientProvider;
 import com.ibm.watsonx.ai.rerank.RerankParameters;
-import com.ibm.watsonx.ai.rerank.RerankRequest;
+import com.ibm.watsonx.ai.rerank.RerankPayload;
 import com.ibm.watsonx.ai.rerank.RerankResponse;
 import com.ibm.watsonx.ai.rerank.RerankResponse.RerankInputResult;
 import com.ibm.watsonx.ai.rerank.RerankResponse.RerankResult;
@@ -60,6 +61,7 @@ public class WatsonxScoringModelTest {
         when(mockRerankServiceBuilder.authenticator(any())).thenReturn(mockRerankServiceBuilder);
         when(mockRerankServiceBuilder.apiKey(any())).thenReturn(mockRerankServiceBuilder);
         when(mockRerankServiceBuilder.httpClient(any())).thenReturn(mockRerankServiceBuilder);
+        when(mockRerankServiceBuilder.verifySsl(anyBoolean())).thenReturn(mockRerankServiceBuilder);
         when(mockRerankServiceBuilder.build()).thenReturn(mockRerankService);
     }
 
@@ -86,7 +88,7 @@ public class WatsonxScoringModelTest {
                 .thenReturn(mockHttpResponse);
 
         try (MockedStatic<HttpClientProvider> httpClientProvider = mockStatic(HttpClientProvider.class)) {
-            httpClientProvider.when(HttpClientProvider::httpClient).thenReturn(mockHttpClient);
+            httpClientProvider.when(() -> HttpClientProvider.httpClient(true)).thenReturn(mockHttpClient);
 
             var scoringModel = WatsonxScoringModel.builder()
                     .baseUrl(CloudRegion.FRANKFURT)
@@ -103,7 +105,7 @@ public class WatsonxScoringModelTest {
 
             scoringModel.scoreAll(List.of(TextSegment.from("test1"), TextSegment.from("test2")), "query");
 
-            var rerankRequest = Json.fromJson(HttpUtils.bodyPublisherToString(mockHttpRequest), RerankRequest.class);
+            var rerankRequest = Json.fromJson(HttpUtils.bodyPublisherToString(mockHttpRequest), RerankPayload.class);
             assertEquals("model-name", rerankRequest.modelId());
             assertEquals("project-id", rerankRequest.projectId());
             assertEquals("space-id", rerankRequest.spaceId());

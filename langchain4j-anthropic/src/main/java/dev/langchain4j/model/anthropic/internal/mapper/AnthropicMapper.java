@@ -2,6 +2,7 @@ package dev.langchain4j.model.anthropic.internal.mapper;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -18,7 +19,6 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -53,6 +53,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
@@ -75,6 +76,7 @@ public class AnthropicMapper {
             "redacted_thinking"; // do not change, will break backward compatibility!
     public static final String SERVER_TOOL_RESULTS_KEY =
             "server_tool_results"; // do not change, will break backward compatibility!
+    public static final String CACHE_CONTROL = "cache_control";
 
     public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages) {
         return toAnthropicMessages(messages, false);
@@ -87,8 +89,8 @@ public class AnthropicMapper {
 
         for (ChatMessage message : messages) {
 
-            if (message instanceof ToolExecutionResultMessage) {
-                toolContents.add(toAnthropicToolResultContent((ToolExecutionResultMessage) message));
+            if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+                toolContents.add(toAnthropicToolResultContent(toolExecutionResultMessage));
             } else if (message instanceof SystemMessage) {
                 // ignore, it is handled in the "toAnthropicSystemPrompt" method
             } else {
@@ -97,8 +99,8 @@ public class AnthropicMapper {
                     toolContents = new ArrayList<>();
                 }
 
-                if (message instanceof UserMessage) {
-                    List<AnthropicMessageContent> contents = toAnthropicMessageContents((UserMessage) message);
+                if (message instanceof UserMessage userMessage) {
+                    List<AnthropicMessageContent> contents = toAnthropicMessageContents(userMessage);
                     anthropicMessages.add(new AnthropicMessage(USER, contents));
                 } else if (message instanceof AiMessage aiMessage) {
                     List<AnthropicMessageContent> contents = toAnthropicMessageContents(aiMessage, sendThinking);
@@ -115,34 +117,78 @@ public class AnthropicMapper {
     }
 
     private static AnthropicToolResultContent toAnthropicToolResultContent(ToolExecutionResultMessage message) {
-        return new AnthropicToolResultContent(message.id(), message.text(), null); // TODO propagate isError
+        if (message.hasSingleText()) {
+            return new AnthropicToolResultContent(
+                    message.id(), message.text(), Boolean.TRUE.equals(message.isError()) ? true : null);
+        }
+        List<AnthropicMessageContent> contentBlocks = new ArrayList<>();
+        for (dev.langchain4j.data.message.Content content : message.contents()) {
+            if (content instanceof TextContent textContent) {
+                contentBlocks.add(new AnthropicTextContent(textContent.text()));
+            } else if (content instanceof ImageContent imageContent) {
+                Image image = imageContent.image();
+                if (image.url() != null) {
+                    contentBlocks.add(AnthropicImageContent.fromUrl(image.url().toString()));
+                } else {
+                    contentBlocks.add(AnthropicImageContent.fromBase64(
+                            ensureNotBlank(image.mimeType(), "mimeType"),
+                            ensureNotBlank(image.base64Data(), "base64Data")));
+                }
+            } else {
+                throw illegalArgument("Unsupported content type in tool result: " + content.type());
+            }
+        }
+        return new AnthropicToolResultContent(
+                message.id(), contentBlocks, Boolean.TRUE.equals(message.isError()) ? true : null);
     }
 
     private static List<AnthropicMessageContent> toAnthropicMessageContents(UserMessage message) {
-        return message.contents().stream()
-                .map(content -> {
-                    if (content instanceof TextContent textContent) {
-                        return new AnthropicTextContent(textContent.text());
-                    } else if (content instanceof ImageContent imageContent) {
-                        Image image = imageContent.image();
-                        if (image.url() != null) {
-                            return AnthropicImageContent.fromUrl(image.url().toString());
-                        }
-                        return AnthropicImageContent.fromBase64(
-                                ensureNotBlank(image.mimeType(), "mimeType"),
-                                ensureNotBlank(image.base64Data(), "base64Data"));
-                    } else if (content instanceof PdfFileContent pdfFileContent) {
-                        PdfFile pdfFile = pdfFileContent.pdfFile();
-                        if (pdfFile.url() != null) {
-                            return AnthropicPdfContent.fromUrl(pdfFile.url().toString());
-                        }
-                        return AnthropicPdfContent.fromBase64(
-                                pdfFile.mimeType(), ensureNotBlank(pdfFile.base64Data(), "base64Data"));
-                    } else {
-                        throw illegalArgument("Unknown content type: " + content);
-                    }
-                })
-                .collect(toList());
+        boolean shouldCache = message.attributes() != null
+                && "ephemeral".equals(message.attributes().get(CACHE_CONTROL));
+
+        List<dev.langchain4j.data.message.Content> contents = message.contents();
+        List<AnthropicMessageContent> anthropicContents = new ArrayList<>();
+
+        for (int i = 0; i < contents.size(); i++) {
+            dev.langchain4j.data.message.Content content = contents.get(i);
+            // Anthropic Prompt Caching is prefix-based. When a user marks a UserMessage for caching,
+            // we apply the cache_control to the last content item to ensure the cache checkpoint
+            // includes the entire message content up to that point.
+
+            boolean isLastItem = (i == contents.size() - 1);
+            boolean applyCache = shouldCache && isLastItem;
+
+            if (content instanceof TextContent textContent) {
+                if (applyCache) {
+                    anthropicContents.add(
+                            new AnthropicTextContent(textContent.text(), AnthropicCacheType.EPHEMERAL.cacheControl()));
+                } else {
+                    anthropicContents.add(new AnthropicTextContent(textContent.text()));
+                }
+            } else if (content instanceof ImageContent imageContent) {
+                Image image = imageContent.image();
+                if (image.url() != null) {
+                    anthropicContents.add(
+                            AnthropicImageContent.fromUrl(image.url().toString()));
+                } else {
+                    anthropicContents.add(AnthropicImageContent.fromBase64(
+                            ensureNotBlank(image.mimeType(), "mimeType"),
+                            ensureNotBlank(image.base64Data(), "base64Data")));
+                }
+            } else if (content instanceof PdfFileContent pdfFileContent) {
+                PdfFile pdfFile = pdfFileContent.pdfFile();
+                if (pdfFile.url() != null) {
+                    anthropicContents.add(
+                            AnthropicPdfContent.fromUrl(pdfFile.url().toString()));
+                } else {
+                    anthropicContents.add(AnthropicPdfContent.fromBase64(
+                            pdfFile.mimeType(), ensureNotBlank(pdfFile.base64Data(), "base64Data")));
+                }
+            } else {
+                throw illegalArgument("Unknown content type: " + content);
+            }
+        }
+        return anthropicContents;
     }
 
     private static List<AnthropicMessageContent> toAnthropicMessageContents(AiMessage message, boolean sendThinking) {
@@ -190,9 +236,9 @@ public class AnthropicMapper {
     public static List<AnthropicTextContent> toAnthropicSystemPrompt(
             List<ChatMessage> messages, AnthropicCacheType cacheType) {
         List<SystemMessage> systemMessages = messages.stream()
-                .filter(message -> message instanceof SystemMessage)
-                .map(message -> (SystemMessage) message)
-                .collect(toList());
+                .filter(SystemMessage.class::isInstance)
+                .map(SystemMessage.class::cast)
+                .toList();
 
         SystemMessage lastSystemMessage =
                 systemMessages.isEmpty() ? null : systemMessages.get(systemMessages.size() - 1);
@@ -204,7 +250,7 @@ public class AnthropicMapper {
                     }
                     return new AnthropicTextContent(message.text());
                 })
-                .collect(toList());
+                .toList();
     }
 
     public static AiMessage toAiMessage(List<AnthropicContent> contents) {
@@ -240,9 +286,9 @@ public class AnthropicMapper {
             }
 
             List<String> redactedThinkings = contents.stream()
-                    .filter(content -> "redacted_thinking".equals(content.type))
+                    .filter(content -> REDACTED_THINKING_KEY.equals(content.type))
                     .map(content -> content.data)
-                    .collect(toList());
+                    .toList();
             if (!redactedThinkings.isEmpty()) {
                 attributes.put(REDACTED_THINKING_KEY, redactedThinkings);
             }
@@ -256,7 +302,7 @@ public class AnthropicMapper {
                             .toolUseId(content.toolUseId)
                             .content(content.content)
                             .build())
-                    .collect(toList());
+                    .toList();
             if (!serverToolResults.isEmpty()) {
                 attributes.put(SERVER_TOOL_RESULTS_KEY, serverToolResults);
             }
@@ -269,7 +315,7 @@ public class AnthropicMapper {
                         .name(content.name)
                         .arguments(toJson(content.input))
                         .build())
-                .collect(toList());
+                .toList();
 
         return AiMessage.builder()
                 .text(isNullOrEmpty(text) ? null : text)
@@ -349,7 +395,7 @@ public class AnthropicMapper {
                     return toAnthropicTool(
                             toolSpecification, AnthropicCacheType.NO_CACHE, toolMetadataKeysToSend, strictTools);
                 })
-                .collect(toList());
+                .toList();
     }
 
     public static AnthropicTool toAnthropicTool(
@@ -364,8 +410,7 @@ public class AnthropicMapper {
             Boolean strictTools) {
         JsonObjectSchema parameters = toolSpecification.parameters();
 
-        // prevent NPE during unboxing
-        boolean strict = Boolean.TRUE.equals(strictTools);
+        boolean strict = isEffectivelyStrict(toolSpecification, Boolean.TRUE.equals(strictTools));
 
         AnthropicTool.Builder toolBuilder = AnthropicTool.builder()
                 .name(toolSpecification.name())
@@ -458,10 +503,24 @@ public class AnthropicMapper {
 
             return map;
         }
+        if (schemaElement instanceof JsonAnyOfSchema anyOfSchema) {
+            Map<String, Object> map = new LinkedHashMap<>();
+
+            if (anyOfSchema.description() != null) {
+                map.put("description", anyOfSchema.description());
+            }
+
+            List<Map<String, Object>> anyOf = anyOfSchema.anyOf().stream()
+                    .map(AnthropicMapper::toAnthropicSchema)
+                    .toList();
+            map.put("anyOf", anyOf);
+
+            return map;
+        }
 
         // Run with strict=false to avoid unsupported features, like union types in enum schemas
         // https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-schema-limitations
-        return toMap(schemaElement);
+        return toMap(schemaElement, false);
     }
 
     private static Map<String, Map<String, Object>> mapDefs(Map<String, JsonSchemaElement> defs) {

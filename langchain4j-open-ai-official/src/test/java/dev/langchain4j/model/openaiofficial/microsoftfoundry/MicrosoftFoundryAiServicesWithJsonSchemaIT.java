@@ -7,7 +7,7 @@ import dev.langchain4j.service.common.AbstractAiServiceWithJsonSchemaIT;
 import java.util.List;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "MICROSOFT_FOUNDRY_API_KEY", matches = ".+")
 class MicrosoftFoundryAiServicesWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT {
 
     @Override

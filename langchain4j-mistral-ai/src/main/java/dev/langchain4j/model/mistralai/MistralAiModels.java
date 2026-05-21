@@ -10,9 +10,11 @@ import dev.langchain4j.model.mistralai.internal.api.MistralAiModelResponse;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiModelsBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import org.slf4j.Logger;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
+import org.slf4j.Logger;
 
 /**
  * Represents a collection of Mistral AI models.
@@ -25,6 +27,7 @@ public class MistralAiModels {
     private final MistralAiClient client;
     private final Integer maxRetries;
 
+    @SuppressWarnings({"unchecked"})
     public MistralAiModels(MistralAiModelsBuilder builder) {
         this.client = MistralAiClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
@@ -34,6 +37,7 @@ public class MistralAiModels {
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
                 .logger(builder.logger)
+                .customHeaders(builder.customHeadersSupplier)
                 .build();
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
@@ -69,6 +73,7 @@ public class MistralAiModels {
         private Boolean logResponses;
         private Logger logger;
         private Integer maxRetries;
+        private Supplier<Map<String, String>> customHeadersSupplier;
 
         public MistralAiModelsBuilder() {}
 
@@ -137,6 +142,11 @@ public class MistralAiModels {
          */
         public MistralAiModelsBuilder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public MistralAiModelsBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 

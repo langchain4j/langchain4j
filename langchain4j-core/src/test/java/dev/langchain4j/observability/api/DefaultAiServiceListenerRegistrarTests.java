@@ -1,7 +1,14 @@
 package dev.langchain4j.observability.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -35,11 +42,6 @@ import dev.langchain4j.observability.api.listener.AiServiceStartedListener;
 import dev.langchain4j.observability.api.listener.InputGuardrailExecutedListener;
 import dev.langchain4j.observability.api.listener.OutputGuardrailExecutedListener;
 import dev.langchain4j.observability.api.listener.ToolExecutedEventListener;
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 class DefaultAiServiceListenerRegistrarTests {
@@ -164,6 +166,33 @@ class DefaultAiServiceListenerRegistrarTests {
                     new TestToolExecutedListener()))
             .flatMap(List::stream)
             .toList();
+
+    @Test
+    void registrarEatsThrownExceptionsDuringFiring() {
+        // From https://github.com/langchain4j/langchain4j/issues/4499
+        var registrar = AiServiceListenerRegistrar.newInstance();
+
+        registrar.register((AiServiceStartedListener) event -> {
+            throw new RuntimeException("Some error");
+        });
+
+        assertThatNoException()
+                .isThrownBy(() -> registrar.fireEvent(INVOCATION_STARTED_EVENT));
+    }
+
+    @Test
+    void registrarDoesntEatThrownExceptionsDuringFiring() {
+        // From https://github.com/langchain4j/langchain4j/issues/4499
+        var registrar = AiServiceListenerRegistrar.newInstance(true);
+
+        registrar.register((AiServiceStartedListener) event -> {
+            throw new RuntimeException("Some error");
+        });
+
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> registrar.fireEvent(INVOCATION_STARTED_EVENT))
+                .withMessage("Some error");
+    }
 
     @Test
     void hasCorrectListeners() {

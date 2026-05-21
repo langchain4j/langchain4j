@@ -42,15 +42,29 @@ public @interface Tool {
 
     /**
      * Return behavior of the tool.
-     * - If {@link ReturnBehavior#TO_LLM} is used (default), the value returned by the tool is sent back to the LLM for further processing.
-     * - If {@link ReturnBehavior#IMMEDIATE} is used, returns immediately to the caller the value returned by the tool without
-     * allowing the LLM to further processing it. Immediate return is only allowed on AI services returning {@code dev.langchain4j.service.Result},
-     * while a {@code RuntimeException} will be thrown attempting to use a tool with immediate return with an AI service having a different return type.
+     * See {@link ReturnBehavior}'s javadoc for more details.
      *
      * @return return behavior of the tool.
      */
     @Experimental
     ReturnBehavior returnBehavior() default ReturnBehavior.TO_LLM;
+
+    /**
+     * Specifies how this tool participates in tool search.
+     * <p>
+     * This setting controls whether the tool is searchable via {@code ToolSearchStrategy}
+     * or always visible to the LLM.
+     * <p>
+     * By default, tools are {@link SearchBehavior#SEARCHABLE}, meaning they
+     * become visible to the LLM only after being found by the configured {@code ToolSearchStrategy}.
+     * <p>
+     * NOTE: This setting has effect only when a {@code ToolSearchStrategy} is configured for the AI Service.
+     *
+     * @return search behavior of the tool.
+     * @since 1.12.0
+     */
+    @Experimental
+    SearchBehavior searchBehavior() default SearchBehavior.SEARCHABLE;
 
     /**
      * A valid JSON string that contains LLM-provider-specific tool metadata entries.

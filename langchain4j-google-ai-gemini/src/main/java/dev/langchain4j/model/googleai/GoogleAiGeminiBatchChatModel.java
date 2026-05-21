@@ -13,9 +13,11 @@ import dev.langchain4j.model.googleai.BatchRequestResponse.BatchIncomplete;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchList;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchName;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse;
+import dev.langchain4j.model.googleai.GeminiBatchProcessor.ExtractedBatchResults;
 import dev.langchain4j.model.googleai.GeminiFiles.GeminiFile;
 import dev.langchain4j.model.googleai.jsonl.JsonLinesWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -246,15 +248,26 @@ public final class GoogleAiGeminiBatchChatModel {
         }
 
         @Override
-        public List<ChatResponse> extractResponses(BatchCreateResponse<GeminiGenerateContentResponse> response) {
+        public ExtractedBatchResults<ChatResponse> extractResults(
+                BatchCreateResponse<GeminiGenerateContentResponse> response) {
             if (response == null || response.inlinedResponses() == null) {
-                return List.of();
+                return new ExtractedBatchResults<>(List.of(), List.of());
             }
-            return response.inlinedResponses().inlinedResponses().stream()
-                    .map(wrapper -> Json.convertValue(wrapper, responseWrapperType))
-                    .map(BatchCreateResponse.InlinedResponseWrapper::response)
-                    .map(chatModel::processResponse)
-                    .toList();
+
+            List<ChatResponse> responses = new ArrayList<>();
+            List<BatchRequestResponse.Operation.Status> errors = new ArrayList<>();
+
+            for (Object wrapper : response.inlinedResponses().inlinedResponses()) {
+                var typed = Json.convertValue(wrapper, responseWrapperType);
+                if (typed.response() != null) {
+                    responses.add(chatModel.processResponse(typed.response()));
+                }
+                if (typed.error() != null) {
+                    errors.add(typed.error());
+                }
+            }
+
+            return new ExtractedBatchResults<>(responses, errors);
         }
     }
 }

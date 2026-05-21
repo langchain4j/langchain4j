@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.data.message.AiMessage.GENERATED_IMAGES_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.image.Image;
@@ -27,7 +28,7 @@ class GeneratedImageHelperTest {
 
         AiMessage message = AiMessage.builder()
                 .text("Here are the generated images")
-                .attributes(Map.of(PartsAndContentsMapper.GENERATED_IMAGES_KEY, List.of(image1, image2)))
+                .attributes(Map.of(GENERATED_IMAGES_KEY, List.of(image1, image2)))
                 .build();
 
         // when

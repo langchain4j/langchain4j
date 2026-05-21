@@ -8,7 +8,6 @@ import dev.langchain4j.agentic.planner.PlanningContext;
 import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.locks.ReentrantLock;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,8 +24,6 @@ public class CustomPlannerIT {
         private int cursor = 0;
         private int onGoingRequests = 1;
 
-        private final ReentrantLock lock = new ReentrantLock();
-
         private final List<Integer> invocations;
 
         public ParallelInPairsPlanner(List<Integer> invocations) {
@@ -40,24 +37,21 @@ public class CustomPlannerIT {
 
         @Override
         public Action nextAction(PlanningContext planningContext) {
-            lock.lock();
-            try {
-                if (--onGoingRequests == 0) {
-                    int missingRequests = agents.size() - cursor;
-                    int requestsToMake = Math.min(2, missingRequests);
-                    if (requestsToMake == 0) {
-                        return done();
-                    }
-                    onGoingRequests = requestsToMake;
-                    List<AgentInstance> toCall = agents.subList(cursor, cursor + requestsToMake);
-                    cursor += requestsToMake;
-                    invocations.add(requestsToMake);
-                    return call(toCall);
+            // No lock needed here: PlannerLoop.onSubagentInvoked serializes
+            // calls to nextAction() via its own ReentrantLock.
+            if (--onGoingRequests == 0) {
+                int missingRequests = agents.size() - cursor;
+                int requestsToMake = Math.min(2, missingRequests);
+                if (requestsToMake == 0) {
+                    return done();
                 }
-                return noOp();
-            } finally {
-                lock.unlock();
+                onGoingRequests = requestsToMake;
+                List<AgentInstance> toCall = agents.subList(cursor, cursor + requestsToMake);
+                cursor += requestsToMake;
+                invocations.add(requestsToMake);
+                return call(toCall);
             }
+            return noOp();
         }
     }
 

@@ -32,8 +32,8 @@ thus capturing deeper semantic meanings.
 - Hybrid. Combining multiple search methods (e.g., full-text + vector) usually improves the effectiveness of the search.
 
 Currently, this page focuses mostly on vector search.
-Full-text and hybrid search are currently supported only by Azure AI Search integration,
-see `AzureAiSearchContentRetriever` for more details.
+Full-text and hybrid search are currently supported only by Azure AI Search integration and Elasticsearch,
+see `AzureAiSearchContentRetriever` and `ElasticsearchContentRetriever` for more details.
 We plan to expand the RAG toolbox to include full-text and hybrid search in the near future.
 
 
@@ -105,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.10.0-beta18</version>
+    <version>1.15.0-beta25</version>
 </dependency>
 ```
 
@@ -284,6 +284,8 @@ To parse each of these formats, there's a `DocumentParser` interface with severa
 (e.g. DOC, DOCX, PPT, PPTX, XLS, XLSX, etc.)
 - `ApacheTikaDocumentParser` from the `langchain4j-document-parser-apache-tika` module,
 which can automatically detect and parse almost all existing file formats
+- `DoclingDocumentParser` from the `langchain4j-document-parser-docling` module, 
+  which uses [Docling Java](https://docling-project.github.io/docling-java/current/) and [Docling](https://docling.ai) to process documents.
 - `MarkdownDocumentParser` from the `langchain4j-document-parser-markdown` module,
   which can parse files in markdown format
 - `YamlDocumentParser` from the `langchain4j-document-parser-yaml` module,
@@ -787,6 +789,8 @@ Some known approaches to improve retrieval include:
 
 More details can be found [here](https://blog.langchain.dev/query-transformations/).
 
+LangChain4j also has an optional community [Prompt Repetition](/integrations/prompt-repetition/) module that provides `RepeatingQueryTransformer`. It repeats the retrieval query before content retrieval and should be used to transform the query itself, not the final augmented prompt sent to the model.
+
 #### Default Query Transformer
 `DefaultQueryTransformer` is the default implementation used in `DefaultRetrievalAugmentor`.
 It does not make any modifications to the `Query`, it just passes it through.
@@ -908,6 +912,13 @@ Please refer to the `AzureAiSearchContentRetriever` Javadoc for more information
 It converts natural language queries into Neo4j Cypher queries
 and retrieves relevant information by running these queries in Neo4j.
 It can be found in the `langchain4j-community-neo4j-retriever` module.
+
+#### Elasticsearch Content Retriever
+`ElasticsearchContentRetriever` is an integration with
+[Elasticsearch](https://www.elastic.co/elasticsearch).
+It supports full-text, vector, and hybrid search.
+It can be found in the `langchain4j-elasticsearch` module.
+Please refer to the `ElasticsearchContentRetriever` Javadoc for more information.
 
 ### Query Router
 `QueryRouter` is responsible for routing `Query` to the appropriate `ContentRetriever`(s).

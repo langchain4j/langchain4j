@@ -256,6 +256,7 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
             return this;
         }
 
+        @Override
         public WatsonxChatRequestParameters build() {
             return new WatsonxChatRequestParameters(this);
         }

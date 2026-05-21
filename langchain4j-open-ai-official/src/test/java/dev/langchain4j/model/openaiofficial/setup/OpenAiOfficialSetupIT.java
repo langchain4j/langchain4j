@@ -21,10 +21,10 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 public class OpenAiOfficialSetupIT {
 
     @Test
-    void detectModelProvider_returnsAzureOpenAI_whenAzureFlagIsTrue() {
+    void detectModelProvider_returnsMicrosoftFoundry_whenMicrosoftFoundryFlagIsTrue() {
         ModelProvider result = OpenAiOfficialSetup.detectModelProvider(true, false, null, null, null);
 
-        assertEquals(ModelProvider.AZURE_OPEN_AI, result);
+        assertEquals(ModelProvider.MICROSOFT_FOUNDRY, result);
     }
 
     @Test
@@ -35,11 +35,11 @@ public class OpenAiOfficialSetupIT {
     }
 
     @Test
-    void detectModelProvider_returnsAzureOpenAI_whenBaseUrlMatchesAzure() {
+    void detectModelProvider_returnsMicrosoftFoundry_whenBaseUrlMatchesAzure() {
         ModelProvider result =
                 OpenAiOfficialSetup.detectModelProvider(false, false, "https://example.openai.azure.com", null, null);
 
-        assertEquals(ModelProvider.AZURE_OPEN_AI, result);
+        assertEquals(ModelProvider.MICROSOFT_FOUNDRY, result);
     }
 
     @Test
@@ -114,12 +114,20 @@ public class OpenAiOfficialSetupIT {
     }
 
     @Test
+    void calculateBaseUrl_returnsCorrectMicrosoftFoundryUrl_whenMicrosoftFoundryEndpointProvided() {
+        String endpoint = "https://xxx.openai.azure.com/openai/v1/";
+        String result = OpenAiOfficialSetup.calculateBaseUrl(endpoint, ModelProvider.MICROSOFT_FOUNDRY, "test", null);
+
+        assertEquals("https://xxx.openai.azure.com/openai/v1", result);
+    }
+
+    @Test
     void should_not_append_api_version_to_baseUrl_when_azureOpenAIServiceVersion_is_set() {
         // Given: Microsoft Foundry configuration with service version
         String baseUrl = "https://test.openai.azure.com";
         String modelName = CHAT_MODEL_NAME.asString();
         String azureDeploymentName = null;
-        ModelProvider modelProvider = ModelProvider.AZURE_OPEN_AI;
+        ModelProvider modelProvider = ModelProvider.MICROSOFT_FOUNDRY;
 
         // When: Calculate base URL
         String calculatedUrl =
@@ -137,7 +145,7 @@ public class OpenAiOfficialSetupIT {
         String baseUrl = "https://test.openai.azure.com";
         String modelName = CHAT_MODEL_NAME.asString();
         String azureDeploymentName = "my-deployment";
-        ModelProvider modelProvider = ModelProvider.AZURE_OPEN_AI;
+        ModelProvider modelProvider = ModelProvider.MICROSOFT_FOUNDRY;
 
         // When: Calculate base URL
         String calculatedUrl =
@@ -155,7 +163,7 @@ public class OpenAiOfficialSetupIT {
         String baseUrl = "https://test.openai.azure.com/";
         String modelName = CHAT_MODEL_NAME.asString();
         String azureDeploymentName = null;
-        ModelProvider modelProvider = ModelProvider.AZURE_OPEN_AI;
+        ModelProvider modelProvider = ModelProvider.MICROSOFT_FOUNDRY;
 
         // When: Calculate base URL
         String calculatedUrl =
@@ -169,7 +177,7 @@ public class OpenAiOfficialSetupIT {
     }
 
     @Test
-    void should_detect_azure_openai_when_azureOpenAIServiceVersion_is_set() {
+    void should_detect_microsoft_foundry_when_azureOpenAIServiceVersion_is_set() {
         // Given: Configuration with only azureOpenAIServiceVersion set
         boolean isAzure = false;
         boolean isGitHubModels = false;
@@ -182,11 +190,11 @@ public class OpenAiOfficialSetupIT {
                 isAzure, isGitHubModels, baseUrl, azureDeploymentName, azureOpenAIServiceVersion);
 
         // Then: Should detect Microsoft Foundry
-        assertThat(modelProvider).isEqualTo(ModelProvider.AZURE_OPEN_AI);
+        assertThat(modelProvider).isEqualTo(ModelProvider.MICROSOFT_FOUNDRY);
     }
 
     @Test
-    void should_detect_azure_openai_from_baseUrl() {
+    void should_detect_microsoft_foundry_from_baseUrl() {
         // Given: Microsoft Foundry base URLs
         String[] azureUrls = {
             "https://test.openai.azure.com",
@@ -202,17 +210,17 @@ public class OpenAiOfficialSetupIT {
             // Then: Should detect Microsoft Foundry
             assertThat(modelProvider)
                     .as("Should detect Microsoft Foundry from URL: " + azureUrl)
-                    .isEqualTo(ModelProvider.AZURE_OPEN_AI);
+                    .isEqualTo(ModelProvider.MICROSOFT_FOUNDRY);
         }
     }
 
     @Test
-    @EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
+    @EnabledIfEnvironmentVariable(named = "MICROSOFT_FOUNDRY_API_KEY", matches = ".+")
     void should_work_with_explicit_azureOpenAIServiceVersion() {
         // Given: Create a chat model with explicit azureOpenAIServiceVersion
         ChatModel model = OpenAiOfficialChatModel.builder()
-                .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .baseUrl(System.getenv("MICROSOFT_FOUNDRY_ENDPOINT"))
+                .apiKey(System.getenv("MICROSOFT_FOUNDRY_API_KEY"))
                 .modelName(CHAT_MODEL_NAME)
                 .azureOpenAIServiceVersion(AzureOpenAIServiceVersion.getV2024_10_21())
                 .build();
@@ -230,14 +238,14 @@ public class OpenAiOfficialSetupIT {
     }
 
     @Test
-    @EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
-    void should_work_with_explicit_azureOpenAIServiceVersion_and_azureDeploymentName() {
+    @EnabledIfEnvironmentVariable(named = "MICROSOFT_FOUNDRY_API_KEY", matches = ".+")
+    void should_work_with_explicit_azureOpenAIServiceVersion_and_microsoftFoundryDeploymentName() {
         // Given: Create a chat model with both azureOpenAIServiceVersion and azureDeploymentName
         ChatModel model = OpenAiOfficialChatModel.builder()
-                .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .baseUrl(System.getenv("MICROSOFT_FOUNDRY_ENDPOINT"))
+                .apiKey(System.getenv("MICROSOFT_FOUNDRY_API_KEY"))
                 .modelName(CHAT_MODEL_NAME)
-                .azureDeploymentName(CHAT_MODEL_NAME.toString())
+                .microsoftFoundryDeploymentName(CHAT_MODEL_NAME.toString())
                 .azureOpenAIServiceVersion(AzureOpenAIServiceVersion.getV2024_10_21())
                 .build();
 
@@ -253,14 +261,14 @@ public class OpenAiOfficialSetupIT {
     }
 
     @Test
-    @EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_KEY", matches = ".+")
+    @EnabledIfEnvironmentVariable(named = "MICROSOFT_FOUNDRY_API_KEY", matches = ".+")
     void should_work_with_isAzure_flag_and_azureOpenAIServiceVersion() {
         // Given: Create a chat model with isAzure flag explicitly set
         ChatModel model = OpenAiOfficialChatModel.builder()
-                .baseUrl(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .baseUrl(System.getenv("MICROSOFT_FOUNDRY_ENDPOINT"))
+                .apiKey(System.getenv("MICROSOFT_FOUNDRY_API_KEY"))
                 .modelName(CHAT_MODEL_NAME)
-                .isAzure(true)
+                .isMicrosoftFoundry(true)
                 .azureOpenAIServiceVersion(AzureOpenAIServiceVersion.getV2024_10_21())
                 .build();
 

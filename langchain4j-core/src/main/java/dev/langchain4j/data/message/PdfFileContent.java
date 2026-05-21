@@ -3,9 +3,11 @@ package dev.langchain4j.data.message;
 import dev.langchain4j.data.pdf.PdfFile;
 
 import java.net.URI;
+import java.nio.file.Path;
 import java.util.Objects;
 
 import static dev.langchain4j.data.message.ContentType.PDF;
+import static dev.langchain4j.internal.ContentUtil.extractBase64Content;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -118,6 +120,27 @@ public class PdfFileContent implements Content {
      */
     public static PdfFileContent from(String base64Data, String mimeType) {
         return new PdfFileContent(base64Data, mimeType);
+    }
+
+    /**
+     * Create a new {@link PdfFileContent} from the file at the given path.
+     *
+     * @param pdfFilePath the path to the PDF file.
+     * @return the new {@link PdfFileContent}.
+     */
+    public static PdfFileContent from(Path pdfFilePath) {
+        return from(pdfFilePath, PdfFile.DEFAULT_MIME_TYPE);
+    }
+
+    /**
+     * Create a new {@link PdfFileContent} from the file at the given path.
+     *
+     * @param pdfFilePath the path to the PDF file.
+     * @param mimeType   the mime type of the PDF.
+     * @return the new {@link PdfFileContent}.
+     */
+    public static PdfFileContent from(Path pdfFilePath, String mimeType) {
+        return from(extractBase64Content(pdfFilePath), mimeType);
     }
 
     /**

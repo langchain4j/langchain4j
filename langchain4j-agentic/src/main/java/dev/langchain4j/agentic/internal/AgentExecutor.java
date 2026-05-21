@@ -2,10 +2,12 @@ package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
+import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
+import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.service.TokenStream;
@@ -13,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.lang.reflect.Type;
 import java.util.List;
+import java.util.Map;
 
 public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements AgentInstance, InternalAgent {
 
@@ -46,7 +49,21 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
 
     private Object internalExecute(DefaultAgenticScope agenticScope, Object invokedAgent, PlannerExecutor planner, boolean async) {
         try {
-            AgentInvocationArguments args = agentInvoker.toInvocationArguments(agenticScope);
+            AgentInvocationArguments args = null;
+            try {
+                args = agentInvoker.toInvocationArguments(agenticScope);
+            } catch (MissingArgumentException e) {
+                if (optional()) {
+                    LOG.info("Skipping optional agent '{}' because of missing argument '{}'", agentInvoker.name(), e.argumentName());
+                    Object response = agenticScope.readState(agentInvoker.outputKey());
+                    if (planner != null) {
+                        planner.onSubagentInvoked(new AgentInvocation(type(), name(), agentId(), Map.of(), response));
+                    }
+                    return response;
+                }
+                throw e;
+            }
+
             Object response = agentResponse(agenticScope, invokedAgent, planner, args, async);
             String outputKey = agentInvoker.outputKey();
             if (outputKey != null && !outputKey.isBlank()) {
@@ -84,6 +101,11 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     @Override
     public Class<?> type() {
         return agentInvoker.type();
+    }
+
+    @Override
+    public Class<? extends Planner> plannerType() {
+        return agentInvoker.plannerType();
     }
 
     @Override
@@ -127,6 +149,11 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     }
 
     @Override
+    public boolean optional() {
+        return agentInvoker.optional();
+    }
+
+    @Override
     public AgenticSystemTopology topology() {
         return agentInvoker.topology();
     }
@@ -142,6 +169,11 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     }
 
     @Override
+    public void registerInheritedParentListener(AgentListener parentListener) {
+        agentInvoker.registerInheritedParentListener(parentListener);
+    }
+
+    @Override
     public void appendId(final String idSuffix) {
         agentInvoker.appendId(idSuffix);
     }
@@ -149,6 +181,11 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     @Override
     public AgentListener listener() {
         return agentInvoker.listener();
+    }
+
+    @Override
+    public <T extends AgentInstance> T as(Class<T> agentInstanceClass) {
+        return agentInvoker.as(agentInstanceClass);
     }
 
     void setParent(InternalAgent parent, int index) {

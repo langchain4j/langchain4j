@@ -114,12 +114,12 @@ class GoogleCustomWebSearchUtilsTest {
     }
 
     @Test
-    void createUriSafely_withSeverelyInvalidUri_returnsEmptyUri() {
-        String invalidUri = "ht[tp://invalid uri with spaces and [brackets] and {braces}";
+    void createUriSafely_withSeverelyInvalidUri_returnsNull() {
+        String invalidUri = "ht[tp://example.com with spaces and [brackets] and {braces}";
 
         URI result = GoogleCustomWebSearchUtils.createUriSafely(invalidUri);
 
-        assertThat(result.toString()).isEmpty();
+        assertThat(result).isNull();
     }
 
     @Test

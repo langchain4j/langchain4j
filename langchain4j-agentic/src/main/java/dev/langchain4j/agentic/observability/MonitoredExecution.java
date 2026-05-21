@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.observability;
 
+import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.util.Collection;
 import java.util.Map;
@@ -29,6 +30,18 @@ public class MonitoredExecution {
             throw new IllegalStateException("No ongoing parent invocation found for agent ID: " + agentRequest.agent().parent().agentId());
         }
         AgentInvocation newInvocation = new AgentInvocation(agentRequest);
+
+        if (parentInvocation.agent().topology() == AgenticSystemTopology.LOOP) {
+            String agentId = agentRequest.agentId();
+            int count = 0;
+            for (AgentInvocation existing : parentInvocation.nestedInvocations()) {
+                if (agentId.equals(existing.agent().agentId())) {
+                    count++;
+                }
+            }
+            newInvocation.setIterationIndex(count);
+        }
+
         parentInvocation.addNestedInvocation(newInvocation);
         ongoingInvocations.put(agentRequest.agentId(), newInvocation);
     }
@@ -43,6 +56,14 @@ public class MonitoredExecution {
 
     void onAgentInvocationError(AgentInvocationError agentInvocationError) {
         this.agentInvocationError = agentInvocationError;
+    }
+
+    void afterToolExecution(AfterAgentToolExecution afterToolExecution) {
+        String agentId = afterToolExecution.agentInstance().agentId();
+        AgentInvocation invocation = ongoingInvocations.get(agentId);
+        if (invocation != null) {
+            invocation.addToolExecution(afterToolExecution.toolExecution());
+        }
     }
 
     public Collection<AgentInvocation> ongoingInvocations() {
@@ -63,6 +84,13 @@ public class MonitoredExecution {
 
     public AgentInvocation topLevelInvocations() {
         return topLevelInvocations;
+    }
+
+    /**
+     * Returns the memory ID that identifies the session this execution belongs to.
+     */
+    public Object memoryId() {
+        return agenticScope().memoryId();
     }
 
     public AgenticScope agenticScope() {

@@ -3,6 +3,7 @@ package dev.langchain4j.model.openai;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ModelProvider.OPEN_AI;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
@@ -10,6 +11,7 @@ import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGE
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.aiMessageFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.finishReasonFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.fromOpenAiResponseFormat;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.logProbsFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiChatRequest;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.validate;
@@ -18,6 +20,7 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
@@ -114,6 +117,8 @@ public class OpenAiChatModel implements ChatModel {
                 .metadata(getOrDefault(builder.metadata, openAiParameters.metadata()))
                 .serviceTier(getOrDefault(builder.serviceTier, openAiParameters.serviceTier()))
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, openAiParameters.reasoningEffort()))
+                .logprobs(getOrDefault(builder.logprobs, openAiParameters.logprobs()))
+                .topLogprobs(getOrDefault(builder.topLogprobs, openAiParameters.topLogprobs()))
                 .customParameters(getOrDefault(builder.customParameters, openAiParameters.customParameters()))
                 .build();
         this.responseFormatString = builder.responseFormatString;
@@ -155,6 +160,10 @@ public class OpenAiChatModel implements ChatModel {
 
         ChatCompletionResponse openAiResponse = parsedAndRawResponse.parsedResponse();
 
+        if (isNullOrEmpty(openAiResponse.choices())) {
+            throw new InternalServerException("Chat completion failed: no choices returned in response");
+        }
+
         OpenAiChatResponseMetadata responseMetadata = OpenAiChatResponseMetadata.builder()
                 .id(openAiResponse.id())
                 .modelName(openAiResponse.model())
@@ -164,6 +173,7 @@ public class OpenAiChatModel implements ChatModel {
                 .serviceTier(openAiResponse.serviceTier())
                 .systemFingerprint(openAiResponse.systemFingerprint())
                 .rawHttpResponse(parsedAndRawResponse.rawHttpResponse())
+                .logProbs(logProbsFrom(openAiResponse.choices().get(0).logprobs()))
                 .build();
 
         return ChatResponse.builder()
@@ -222,6 +232,8 @@ public class OpenAiChatModel implements ChatModel {
         private Boolean returnThinking;
         private Boolean sendThinking;
         private String thinkingFieldName;
+        private Boolean logprobs;
+        private Integer topLogprobs;
         private Duration timeout;
         private Integer maxRetries;
         private Boolean logRequests;
@@ -448,6 +460,16 @@ public class OpenAiChatModel implements ChatModel {
             return this;
         }
 
+        public OpenAiChatModelBuilder logprobs(Boolean logprobs) {
+            this.logprobs = logprobs;
+            return this;
+        }
+
+        public OpenAiChatModelBuilder topLogprobs(Integer topLogprobs) {
+            this.topLogprobs = topLogprobs;
+            return this;
+        }
+
         public OpenAiChatModelBuilder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
@@ -514,6 +536,10 @@ public class OpenAiChatModel implements ChatModel {
         public OpenAiChatModelBuilder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return this;
+        }
+
+        public OpenAiChatModelBuilder listeners(ChatModelListener... listeners) {
+            return listeners(asList(listeners));
         }
 
         public OpenAiChatModel build() {

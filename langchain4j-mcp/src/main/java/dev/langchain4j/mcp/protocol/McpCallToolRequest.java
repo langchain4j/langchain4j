@@ -1,28 +1,25 @@
 package dev.langchain4j.mcp.protocol;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.Internal;
-import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Corresponds to the {@code CallToolRequest} type from the MCP schema.
+ */
 @Internal
-public class McpCallToolRequest extends McpJsonRpcMessage {
+public class McpCallToolRequest extends McpClientRequest {
 
-    @JsonInclude
-    public final McpClientMethod method = McpClientMethod.TOOLS_CALL;
-
-    @JsonInclude
-    private Map<String, Object> params;
-
-    public McpCallToolRequest(final Long id, String toolName, ObjectNode arguments) {
-        super(id);
-        this.params = new HashMap<>();
-        this.params.put("name", toolName);
-        this.params.put("arguments", arguments);
+    public McpCallToolRequest(Long id, String toolName, ObjectNode arguments) {
+        this(id, toolName, arguments, null);
     }
 
-    public Map<String, Object> getParams() {
-        return params;
+    public McpCallToolRequest(Long id, String toolName, ObjectNode arguments, String progressToken) {
+        super(id, McpClientMethod.TOOLS_CALL);
+        McpCallToolParams params = new McpCallToolParams(toolName, arguments);
+        if (progressToken != null) {
+            params.setMeta(Map.of("progressToken", progressToken));
+        }
+        setParams(params);
     }
 }

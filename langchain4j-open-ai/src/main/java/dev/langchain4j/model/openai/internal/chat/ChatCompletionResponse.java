@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import dev.langchain4j.model.openai.internal.shared.Usage;
 
 import java.util.List;
@@ -80,12 +81,14 @@ public final class ChatCompletionResponse {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof ChatCompletionResponse
                 && equalTo((ChatCompletionResponse) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(ChatCompletionResponse another) {
         return Objects.equals(id, another.id)
                 && Objects.equals(created, another.created)
@@ -97,6 +100,7 @@ public final class ChatCompletionResponse {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(id);
@@ -110,6 +114,7 @@ public final class ChatCompletionResponse {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "ChatCompletionResponse{"
                 + "id=" + id

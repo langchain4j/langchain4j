@@ -22,7 +22,7 @@ class MistralAiModelsIT {
 
         // then
         assertThat(response.content().size()).isGreaterThan(0);
-        assertThat(response.content()).extracting("id").contains(MistralAiChatModelName.OPEN_MISTRAL_7B.toString());
+        assertThat(response.content()).extracting("id").contains("mistral-large-latest");
         assertThat(response.content()).extracting("object").contains("model");
         assertThat(response.content()).extracting("permission").isNotNull();
     }

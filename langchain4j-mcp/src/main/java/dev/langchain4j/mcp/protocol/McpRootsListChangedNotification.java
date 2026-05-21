@@ -1,15 +1,14 @@
 package dev.langchain4j.mcp.protocol;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.langchain4j.Internal;
 
+/**
+ * Corresponds to the {@code RootsListChangedNotification} type from the MCP schema.
+ */
 @Internal
-public class McpRootsListChangedNotification extends McpJsonRpcMessage {
-
-    @JsonInclude
-    public final McpClientMethod method = McpClientMethod.NOTIFICATION_ROOTS_LIST_CHANGED;
+public class McpRootsListChangedNotification extends McpClientNotification {
 
     public McpRootsListChangedNotification() {
-        super(null);
+        super(McpClientMethod.NOTIFICATION_ROOTS_LIST_CHANGED);
     }
 }

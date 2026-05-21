@@ -4,11 +4,13 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
 import java.util.Objects;
 import dev.langchain4j.Experimental;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 /**
  * @since 1.8.0
  */
 @Experimental
+@JacocoIgnoreCoverageGenerated
 public class PartialResponse {
 
     private final String text;

@@ -5,19 +5,27 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.googleai.GeminiResponseModality.IMAGE;
+import static java.util.Collections.singletonList;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiBlob;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiFileData;
+import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiTool;
+import dev.langchain4j.model.googleai.GeminiGenerateContentRequest.GeminiTool.GeminiGoogleSearchRetrieval;
 import dev.langchain4j.model.googleai.GeminiGenerationConfig.GeminiImageConfig;
 import dev.langchain4j.model.image.ImageModel;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 
@@ -85,9 +93,9 @@ public class GoogleAiGeminiImageModel implements ImageModel {
     private final GeminiService geminiService;
     private final Integer maxRetries;
     private final List<GeminiSafetySetting> safetySettings;
+    private final List<GeminiTool> tools;
 
     private GoogleAiGeminiImageModel(GoogleAiGeminiImageModelBuilder builder) {
-        ensureNotBlank(builder.apiKey, "apiKey");
 
         this.geminiService = new GeminiService(
                 builder.httpClientBuilder,
@@ -97,12 +105,19 @@ public class GoogleAiGeminiImageModel implements ImageModel {
                 getOrDefault(builder.logRequests, false),
                 getOrDefault(builder.logResponses, false),
                 builder.logger,
-                builder.timeout);
+                builder.timeout,
+                null);
 
         this.modelName = ensureNotNull(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.responseModalities = List.of(IMAGE); // TEXT is not supported as an output modality.
         this.safetySettings = builder.safetySettings;
+
+        if (getOrDefault(builder.useGoogleSearchGrounding, false)) {
+            this.tools = singletonList(new GeminiTool(null, null, new GeminiGoogleSearchRetrieval(), null, null));
+        } else {
+            this.tools = null;
+        }
 
         // Build imageConfig if aspectRatio or imageSize is set
         if (builder.aspectRatio != null || builder.imageSize != null) {
@@ -148,7 +163,7 @@ public class GoogleAiGeminiImageModel implements ImageModel {
         var request = createGenerateRequest(prompt);
         var response = withRetryMappingExceptions(() -> geminiService.generateContent(modelName, request), maxRetries);
 
-        return Response.from(extractImage(response));
+        return toResponse(response);
     }
 
     /**
@@ -179,7 +194,7 @@ public class GoogleAiGeminiImageModel implements ImageModel {
         var request = createEditRequest(prompt, image, null);
         var response = withRetryMappingExceptions(() -> geminiService.generateContent(modelName, request), maxRetries);
 
-        return Response.from(extractImage(response));
+        return toResponse(response);
     }
 
     /**
@@ -205,17 +220,47 @@ public class GoogleAiGeminiImageModel implements ImageModel {
         var request = createEditRequest(prompt, image, mask);
         var response = withRetryMappingExceptions(() -> geminiService.generateContent(modelName, request), maxRetries);
 
-        return Response.from(extractImage(response));
+        return toResponse(response);
+    }
+
+    private Response<Image> toResponse(GeminiGenerateContentResponse response) {
+        Image image = extractImage(response);
+
+        TokenUsage tokenUsage = null;
+        if (response.usageMetadata() != null) {
+            tokenUsage = GoogleAiGeminiTokenUsage.builder()
+                    .inputTokenCount(response.usageMetadata().promptTokenCount())
+                    .outputTokenCount(response.usageMetadata().candidatesTokenCount())
+                    .totalTokenCount(response.usageMetadata().totalTokenCount())
+                    .cachedContentTokenCount(response.usageMetadata().cachedContentTokenCount())
+                    .thoughtsTokenCount(response.usageMetadata().thoughtsTokenCount())
+                    .build();
+        }
+
+        FinishReason finishReason = null;
+        if (response.candidates().get(0).finishReason() != null) {
+            finishReason = FinishReasonMapper.fromGFinishReasonToFinishReason(
+                    response.candidates().get(0).finishReason());
+        }
+
+        Map<String, Object> metadata = new HashMap<>();
+        GroundingMetadata groundingMetadata = response.groundingMetadata();
+        if (groundingMetadata == null && !response.candidates().isEmpty()) {
+            groundingMetadata = response.candidates().get(0).groundingMetadata();
+        }
+
+        if (groundingMetadata != null) {
+            Map<String, Object> groundingMetadataMap = Json.convertValue(groundingMetadata, new TypeReference<>() {});
+            metadata.put("groundingMetadata", groundingMetadataMap);
+        }
+
+        return Response.from(image, tokenUsage, finishReason, metadata);
     }
 
     private GeminiGenerateContentRequest createGenerateRequest(String prompt) {
         var content = new GeminiContent(List.of(GeminiPart.ofText(prompt)), GeminiRole.USER.toString());
 
-        return GeminiGenerateContentRequest.builder()
-                .contents(List.of(content))
-                .generationConfig(createGenerationConfig())
-                .safetySettings(safetySettings)
-                .build();
+        return createGenerateContentRequest(content);
     }
 
     private GeminiGenerateContentRequest createEditRequest(String prompt, Image image, Image mask) {
@@ -234,10 +279,15 @@ public class GoogleAiGeminiImageModel implements ImageModel {
 
         var content = new GeminiContent(parts, GeminiRole.USER.toString());
 
+        return createGenerateContentRequest(content);
+    }
+
+    private GeminiGenerateContentRequest createGenerateContentRequest(GeminiContent content) {
         return GeminiGenerateContentRequest.builder()
                 .contents(List.of(content))
                 .generationConfig(createGenerationConfig())
                 .safetySettings(safetySettings)
+                .tools(tools)
                 .build();
     }
 
@@ -292,6 +342,7 @@ public class GoogleAiGeminiImageModel implements ImageModel {
     /**
      * Builder for constructing {@link GoogleAiGeminiImageModel} instances.
      */
+    @SuppressWarnings("unused")
     public static class GoogleAiGeminiImageModelBuilder {
         private HttpClientBuilder httpClientBuilder;
         private String apiKey;
@@ -306,6 +357,7 @@ public class GoogleAiGeminiImageModel implements ImageModel {
         private Boolean logResponses;
         private Logger logger;
         private List<GeminiSafetySetting> safetySettings;
+        private Boolean useGoogleSearchGrounding;
 
         private GoogleAiGeminiImageModelBuilder() {}
 
@@ -463,6 +515,17 @@ public class GoogleAiGeminiImageModel implements ImageModel {
          */
         public GoogleAiGeminiImageModelBuilder safetySettings(List<GeminiSafetySetting> safetySettings) {
             this.safetySettings = safetySettings;
+            return this;
+        }
+
+        /**
+         * Enables or disables Google Search grounding.
+         *
+         * @param useGoogleSearchGrounding true to enable Google Search grounding
+         * @return this builder
+         */
+        public GoogleAiGeminiImageModelBuilder useGoogleSearchGrounding(Boolean useGoogleSearchGrounding) {
+            this.useGoogleSearchGrounding = useGoogleSearchGrounding;
             return this;
         }
 

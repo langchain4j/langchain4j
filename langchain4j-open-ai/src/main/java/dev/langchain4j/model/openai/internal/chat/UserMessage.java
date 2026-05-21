@@ -11,6 +11,8 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -47,11 +49,13 @@ public final class UserMessage implements Message {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof UserMessage && equalTo((UserMessage) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(UserMessage another) {
         return Objects.equals(role, another.role)
                 && Objects.equals(content, another.content)
@@ -59,6 +63,7 @@ public final class UserMessage implements Message {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(role);
@@ -68,6 +73,7 @@ public final class UserMessage implements Message {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "UserMessage{" + "role=" + role + ", content=" + content + ", name=" + name + "}";
     }

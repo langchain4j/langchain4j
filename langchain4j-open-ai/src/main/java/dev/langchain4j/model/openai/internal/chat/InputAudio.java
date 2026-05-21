@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 import java.util.Objects;
 
@@ -29,18 +30,21 @@ public class InputAudio {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof InputAudio
                 && equalTo((InputAudio) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(InputAudio another) {
         return Objects.equals(data, another.data)
                 && Objects.equals(format, another.format);
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(data);
@@ -49,6 +53,7 @@ public class InputAudio {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "InputAudio{" +
                 "data=" + data +

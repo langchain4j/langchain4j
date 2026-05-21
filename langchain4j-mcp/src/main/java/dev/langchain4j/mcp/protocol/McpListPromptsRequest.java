@@ -1,15 +1,19 @@
 package dev.langchain4j.mcp.protocol;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.langchain4j.Internal;
 
+/**
+ * Corresponds to the {@code ListPromptsRequest} type from the MCP schema.
+ */
 @Internal
-public class McpListPromptsRequest extends McpJsonRpcMessage {
+public class McpListPromptsRequest extends McpClientRequest {
 
-    @JsonInclude
-    public final McpClientMethod method = McpClientMethod.PROMPTS_LIST;
-
-    public McpListPromptsRequest(Long id) {
-        super(id);
+    public McpListPromptsRequest(Long id, String cursor) {
+        super(id, McpClientMethod.PROMPTS_LIST);
+        if (cursor != null) {
+            McpListPromptsParams p = new McpListPromptsParams();
+            p.setCursor(cursor);
+            setParams(p);
+        }
     }
 }

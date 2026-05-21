@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 import java.util.Objects;
 
@@ -76,12 +77,14 @@ public final class CategoryScores {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof CategoryScores
                 && equalTo((CategoryScores) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(CategoryScores another) {
         return Objects.equals(hate, another.hate)
                 && Objects.equals(hateThreatening, another.hateThreatening)
@@ -93,6 +96,7 @@ public final class CategoryScores {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(hate);
@@ -106,6 +110,7 @@ public final class CategoryScores {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "CategoryScores{"
                 + "hate=" + hate

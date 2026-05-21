@@ -34,7 +34,7 @@ public class ChatModelMock implements ChatModel {
     private final String staticResponse;
     private final RuntimeException exception;
     private final Function<ChatRequest, AiMessage> aiMessageGenerator;
-    private final List<List<ChatMessage>> requests = synchronizedList(new ArrayList<>());
+    private final List<ChatRequest> requests = synchronizedList(new ArrayList<>());
 
     private static final RetryUtils.RetryPolicy DEFAULT_NO_RETRY_POLICY =
             retryPolicyBuilder().maxRetries(0).build();
@@ -65,7 +65,7 @@ public class ChatModelMock implements ChatModel {
 
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
-        requests.add(new ArrayList<>(chatRequest.messages()));
+        requests.add(chatRequest);
 
         if (exception != null) {
             throw exception;
@@ -88,7 +88,7 @@ public class ChatModelMock implements ChatModel {
             throw runtime("Expected exactly 1 request, got: " + requests.size());
         }
 
-        List<ChatMessage> messages = requests.get(0);
+        List<ChatMessage> messages = requests.get(0).messages();
         if (messages.size() != 1) {
             throw runtime("Expected exactly 1 message, got: " + messages.size());
         }
@@ -101,8 +101,24 @@ public class ChatModelMock implements ChatModel {
         }
     }
 
+    /**
+     * @deprecated use {@link #requests()} instead
+     */
+    @Deprecated(since = "1.12.0")
     public List<List<ChatMessage>> getRequests() {
+        return requests.stream().map(ChatRequest::messages).toList();
+    }
+
+    public List<ChatRequest> requests() {
         return requests;
+    }
+
+    public ChatRequest request() {
+        if (requests.size() == 1) {
+            return requests.get(0);
+        } else {
+            throw runtime("Expected exactly 1 chat request, got: " + requests.size());
+        }
     }
 
     public static ChatModelMock thatAlwaysResponds(String response) {
@@ -116,6 +132,10 @@ public class ChatModelMock implements ChatModel {
     public static ChatModelMock thatAlwaysResponds(AiMessage... aiMessages) {
         Queue<AiMessage> queue = new ConcurrentLinkedQueue<>(asList(aiMessages));
         return new ChatModelMock(ignored -> queue.poll());
+    }
+
+    public static ChatModelMock thatResponds(Function<ChatRequest, AiMessage> aiMessageGenerator) {
+        return new ChatModelMock(aiMessageGenerator);
     }
 
     public static ChatModelMock thatAlwaysThrowsException() {

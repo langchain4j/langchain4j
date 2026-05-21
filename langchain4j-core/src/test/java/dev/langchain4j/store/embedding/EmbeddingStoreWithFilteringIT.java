@@ -9,7 +9,6 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
-import static org.assertj.core.data.Percentage.withPercentage;
 
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -61,6 +60,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
         EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embeddingModel().embed("matching").content())
+                .query("matching")
                 .filter(metadataFilter)
                 .maxResults(100)
                 .build();
@@ -72,7 +72,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
         // then
         assertThat(matches).hasSameSizeAs(matchingMetadatas);
         matches.forEach(match -> assertThat(match.embedded().text()).isEqualTo("matching"));
-        matches.forEach(match -> assertThat(match.score()).isCloseTo(1, withPercentage(0.01)));
+        matches.forEach(match -> assertScore(match, 1));
     }
 
     protected static Stream<Arguments> should_filter_by_metadata() {
@@ -1153,6 +1153,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
         EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embeddingModel().embed("matching").content())
+                .query("matching")
                 .filter(metadataFilter)
                 .maxResults(100)
                 .build();
@@ -1164,7 +1165,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
         // then
         assertThat(matches).hasSameSizeAs(matchingMetadatas);
         matches.forEach(match -> assertThat(match.embedded().text()).isEqualTo("matching"));
-        matches.forEach(match -> assertThat(match.score()).isCloseTo(1, withPercentage(0.01)));
+        matches.forEach(match -> assertScore(match, 1));
     }
 
     protected static Stream<Arguments> should_filter_by_metadata_not() {
@@ -1470,6 +1471,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
         Filter metadataFilter = metadataKey("key").containsString("value");
         EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embeddingModel().embed("matching").content())
+                .query("matching")
                 .filter(metadataFilter)
                 .maxResults(100)
                 .build();

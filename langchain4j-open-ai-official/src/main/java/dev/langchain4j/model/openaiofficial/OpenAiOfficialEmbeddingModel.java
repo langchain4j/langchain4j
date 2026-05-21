@@ -41,10 +41,10 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
                     builder.baseUrl,
                     builder.apiKey,
                     builder.credential,
-                    builder.azureDeploymentName,
+                    builder.microsoftFoundryDeploymentName,
                     builder.azureOpenAIServiceVersion,
                     builder.organizationId,
-                    builder.isAzure,
+                    builder.isMicrosoftFoundry,
                     builder.isGitHubModels,
                     builder.modelName,
                     builder.timeout,
@@ -142,10 +142,10 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
         private String baseUrl;
         private String apiKey;
         private Credential credential;
-        private String azureDeploymentName;
+        private String microsoftFoundryDeploymentName;
         private AzureOpenAIServiceVersion azureOpenAIServiceVersion;
         private String organizationId;
-        private boolean isAzure;
+        private boolean isMicrosoftFoundry;
         private boolean isGitHubModels;
         private OpenAIClient openAIClient;
         private String modelName;
@@ -172,8 +172,17 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
+        /**
+         * @deprecated Use {@link #microsoftFoundryDeploymentName(String)} instead
+         */
+        @Deprecated
         public Builder azureDeploymentName(String azureDeploymentName) {
-            this.azureDeploymentName = azureDeploymentName;
+            this.microsoftFoundryDeploymentName = azureDeploymentName;
+            return this;
+        }
+
+        public Builder microsoftFoundryDeploymentName(String microsoftFoundryDeploymentName) {
+            this.microsoftFoundryDeploymentName = microsoftFoundryDeploymentName;
             return this;
         }
 
@@ -187,8 +196,17 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
+        /**
+         * @deprecated Use {@link #isMicrosoftFoundry(boolean)} instead
+         */
+        @Deprecated
         public Builder isAzure(boolean isAzure) {
-            this.isAzure = isAzure;
+            this.isMicrosoftFoundry = isAzure;
+            return this;
+        }
+
+        public Builder isMicrosoftFoundry(boolean isMicrosoftFoundry) {
+            this.isMicrosoftFoundry = isMicrosoftFoundry;
             return this;
         }
 

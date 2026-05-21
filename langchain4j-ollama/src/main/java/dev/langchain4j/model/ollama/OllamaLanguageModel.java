@@ -16,6 +16,7 @@ import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * <a href="https://github.com/jmorganca/ollama/blob/main/docs/api.md">Ollama API reference</a>
@@ -37,7 +38,7 @@ public class OllamaLanguageModel implements LanguageModel {
                 .timeout(builder.timeout)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
-                .customHeaders(builder.customHeaders)
+                .customHeaders(builder.customHeadersSupplier)
                 .build();
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.options = Options.builder()
@@ -96,7 +97,7 @@ public class OllamaLanguageModel implements LanguageModel {
         private Integer maxRetries;
         private Boolean logRequests;
         private Boolean logResponses;
-        private Map<String, String> customHeaders;
+        private Supplier<Map<String, String>> customHeadersSupplier;
 
         public OllamaLanguageModelBuilder() {
             // This is public so it can be extended
@@ -188,8 +189,21 @@ public class OllamaLanguageModel implements LanguageModel {
             return this;
         }
 
+        /**
+         * Sets custom HTTP headers.
+         */
         public OllamaLanguageModelBuilder customHeaders(Map<String, String> customHeaders) {
-            this.customHeaders = customHeaders;
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets a supplier for custom HTTP headers.
+         * The supplier is called before each request, allowing dynamic header values.
+         * For example, this is useful for OAuth2 tokens that expire and need refreshing.
+         */
+        public OllamaLanguageModelBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 

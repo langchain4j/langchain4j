@@ -1,5 +1,9 @@
 package dev.langchain4j.model.openai.internal.chat;
 
+import static java.util.Arrays.asList;
+import static java.util.Collections.unmodifiableList;
+import static java.util.Collections.unmodifiableMap;
+
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -9,16 +13,12 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import dev.langchain4j.model.openai.internal.shared.StreamOptions;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-
-import static java.util.Arrays.asList;
-import static java.util.Collections.unmodifiableList;
-import static java.util.Collections.unmodifiableMap;
 
 @JsonDeserialize(builder = ChatCompletionRequest.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
@@ -27,56 +27,87 @@ public final class ChatCompletionRequest {
 
     @JsonProperty
     private final String model;
+
     @JsonProperty
     private final List<Message> messages;
+
     @JsonProperty
     private final Double temperature;
+
     @JsonProperty
     private final Double topP;
+
     @JsonProperty
     private final Integer n;
+
     @JsonProperty
     private final Boolean stream;
+
     @JsonProperty
     private final StreamOptions streamOptions;
+
     @JsonProperty
     private final List<String> stop;
+
     @JsonProperty
     private final Integer maxTokens;
+
     @JsonProperty
     private final Integer maxCompletionTokens;
+
     @JsonProperty
     private final Double presencePenalty;
+
     @JsonProperty
     private final Double frequencyPenalty;
+
     @JsonProperty
     private final Map<String, Integer> logitBias;
+
     @JsonProperty
     private final String user;
+
     @JsonProperty
     private final ResponseFormat responseFormat;
+
     @JsonProperty
     private final Integer seed;
+
     @JsonProperty
     private final List<Tool> tools;
+
     @JsonProperty
     private final Object toolChoice;
+
     @JsonProperty
     private final Boolean parallelToolCalls;
+
     @JsonProperty
     private final Boolean store;
+
     @JsonProperty
     private final Map<String, String> metadata;
+
     @JsonProperty
     private final String reasoningEffort;
+
     @JsonProperty
     private final String serviceTier;
+
+    @JsonProperty
+    private final Boolean logprobs;
+
+    @JsonProperty
+    private final Integer topLogprobs;
+
     @JsonProperty
     @Deprecated
     private final List<Function> functions;
+
     @JsonProperty
     @Deprecated
     private final FunctionCall functionCall;
+
     private final Map<String, Object> customParameters;
 
     public ChatCompletionRequest(Builder builder) {
@@ -103,6 +134,8 @@ public final class ChatCompletionRequest {
         this.metadata = builder.metadata;
         this.reasoningEffort = builder.reasoningEffort;
         this.serviceTier = builder.serviceTier;
+        this.logprobs = builder.logprobs;
+        this.topLogprobs = builder.topLogprobs;
         this.functions = builder.functions;
         this.functionCall = builder.functionCall;
         this.customParameters = builder.customParameters;
@@ -200,6 +233,14 @@ public final class ChatCompletionRequest {
         return serviceTier;
     }
 
+    public Boolean logprobs() {
+        return logprobs;
+    }
+
+    public Integer topLogprobs() {
+        return topLogprobs;
+    }
+
     @Deprecated
     public List<Function> functions() {
         return functions;
@@ -216,12 +257,13 @@ public final class ChatCompletionRequest {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof ChatCompletionRequest
-                && equalTo((ChatCompletionRequest) another);
+        return another instanceof ChatCompletionRequest && equalTo((ChatCompletionRequest) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(ChatCompletionRequest another) {
         return Objects.equals(model, another.model)
                 && Objects.equals(messages, another.messages)
@@ -246,12 +288,15 @@ public final class ChatCompletionRequest {
                 && Objects.equals(metadata, another.metadata)
                 && Objects.equals(reasoningEffort, another.reasoningEffort)
                 && Objects.equals(serviceTier, another.serviceTier)
+                && Objects.equals(logprobs, another.logprobs)
+                && Objects.equals(topLogprobs, another.topLogprobs)
                 && Objects.equals(functions, another.functions)
                 && Objects.equals(functionCall, another.functionCall)
                 && Objects.equals(customParameters, another.customParameters);
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(model);
@@ -277,6 +322,8 @@ public final class ChatCompletionRequest {
         h += (h << 5) + Objects.hashCode(metadata);
         h += (h << 5) + Objects.hashCode(reasoningEffort);
         h += (h << 5) + Objects.hashCode(serviceTier);
+        h += (h << 5) + Objects.hashCode(logprobs);
+        h += (h << 5) + Objects.hashCode(topLogprobs);
         h += (h << 5) + Objects.hashCode(functions);
         h += (h << 5) + Objects.hashCode(functionCall);
         h += (h << 5) + Objects.hashCode(customParameters);
@@ -284,6 +331,7 @@ public final class ChatCompletionRequest {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "ChatCompletionRequest{"
                 + "model=" + model
@@ -309,6 +357,8 @@ public final class ChatCompletionRequest {
                 + ", metadata=" + metadata
                 + ", reasoningEffort=" + reasoningEffort
                 + ", serviceTier=" + serviceTier
+                + ", logprobs=" + logprobs
+                + ", topLogprobs=" + topLogprobs
                 + ", functions=" + functions
                 + ", functionCall=" + functionCall
                 + ", customParameters=" + customParameters
@@ -347,10 +397,15 @@ public final class ChatCompletionRequest {
         private Map<String, String> metadata;
         private String reasoningEffort;
         private String serviceTier;
+        private Boolean logprobs;
+        private Integer topLogprobs;
+
         @Deprecated
         private List<Function> functions;
+
         @Deprecated
         private FunctionCall functionCall;
+
         private Map<String, Object> customParameters;
 
         public Builder from(ChatCompletionRequest instance) {
@@ -377,6 +432,8 @@ public final class ChatCompletionRequest {
             metadata(instance.metadata);
             reasoningEffort(instance.reasoningEffort);
             serviceTier(instance.serviceTier);
+            logprobs(instance.logprobs);
+            topLogprobs(instance.topLogprobs);
             functions(instance.functions);
             functionCall(instance.functionCall);
             customParameters(instance.customParameters);
@@ -503,9 +560,8 @@ public final class ChatCompletionRequest {
 
         public Builder responseFormat(ResponseFormatType responseFormatType) {
             if (responseFormatType != null) {
-                responseFormat = ResponseFormat.builder()
-                        .type(responseFormatType)
-                        .build();
+                responseFormat =
+                        ResponseFormat.builder().type(responseFormatType).build();
             }
             return this;
         }
@@ -574,6 +630,16 @@ public final class ChatCompletionRequest {
             return this;
         }
 
+        public Builder logprobs(Boolean logprobs) {
+            this.logprobs = logprobs;
+            return this;
+        }
+
+        public Builder topLogprobs(Integer topLogprobs) {
+            this.topLogprobs = topLogprobs;
+            return this;
+        }
+
         @Deprecated
         public Builder functions(Function... functions) {
             return functions(asList(functions));
@@ -591,9 +657,7 @@ public final class ChatCompletionRequest {
         @Deprecated
         public Builder functionCall(String functionName) {
             if (functionName != null) {
-                this.functionCall = FunctionCall.builder()
-                        .name(functionName)
-                        .build();
+                this.functionCall = FunctionCall.builder().name(functionName).build();
             }
             return this;
         }

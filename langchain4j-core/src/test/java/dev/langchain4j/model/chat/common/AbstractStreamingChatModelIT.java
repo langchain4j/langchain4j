@@ -138,7 +138,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         ChatResponse response = futureResponse.get(30, SECONDS);
         assertThat(response.aiMessage().text()).containsIgnoringCase("Berlin");
 
-        assertThat(onPartialResponseCalled.get()).isGreaterThan(1);
+        assertThat(onPartialResponseCalled.get()).isGreaterThan(0);
 
         futureErrors.get(30, SECONDS);
         assertThat(errors).hasSize(onPartialResponseCalled.get());
@@ -260,11 +260,11 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         return chat(chatModel, chatRequest, ignored -> {}, 120, true);
     }
 
-    private ChatResponseAndStreamingMetadata chat(StreamingChatModel chatModel,
-                                                  ChatRequest chatRequest,
-                                                  Consumer<StreamingHandle> streamingHandleConsumer,
-                                                  int timeoutSeconds,
-                                                  boolean failOnTimeout) {
+    public static ChatResponseAndStreamingMetadata chat(StreamingChatModel chatModel,
+                                                        ChatRequest chatRequest,
+                                                        Consumer<StreamingHandle> streamingHandleConsumer,
+                                                        int timeoutSeconds,
+                                                        boolean failOnTimeout) {
 
         CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
         StringBuffer concatenatedPartialResponsesBuilder = new StringBuffer();

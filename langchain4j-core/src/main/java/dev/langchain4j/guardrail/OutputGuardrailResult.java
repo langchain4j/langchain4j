@@ -3,6 +3,7 @@ package dev.langchain4j.guardrail;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.Collections;
 import java.util.List;
@@ -84,7 +85,7 @@ public final class OutputGuardrailResult implements GuardrailResult<OutputGuardr
     }
 
     /**
-     * Produces a non-fatal failure
+     * Produces a successful result with specific success text and result object
      *
      * @param successfulText
      *            The text of the successful result.
@@ -109,7 +110,7 @@ public final class OutputGuardrailResult implements GuardrailResult<OutputGuardr
     }
 
     /**
-     * Produces a non-fatal failure
+     * Produces a successful result with specific AiMessage and result object
      *
      * @param successfulAiMessage
      *            The AiMessage successful result.
@@ -172,11 +173,13 @@ public final class OutputGuardrailResult implements GuardrailResult<OutputGuardr
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return asString();
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
@@ -188,6 +191,7 @@ public final class OutputGuardrailResult implements GuardrailResult<OutputGuardr
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         return Objects.hash(result, successfulAiMessage, successfulResult, failures);
     }

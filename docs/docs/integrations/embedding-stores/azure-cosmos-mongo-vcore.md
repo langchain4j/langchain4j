@@ -17,7 +17,7 @@ You can use Azure CosmosDB Mongo vCore with LangChain4j in plain Java or Spring 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-cosmos-mongo-vcore</artifactId>
-    <version>1.10.0-beta18</version>
+    <version>1.15.0-beta25</version>
 </dependency>
 ```
 

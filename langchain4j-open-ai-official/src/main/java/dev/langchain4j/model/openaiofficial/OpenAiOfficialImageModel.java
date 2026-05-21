@@ -36,10 +36,10 @@ public class OpenAiOfficialImageModel implements ImageModel {
                     builder.baseUrl,
                     builder.apiKey,
                     builder.credential,
-                    builder.azureDeploymentName,
+                    builder.microsoftFoundryDeploymentName,
                     builder.azureOpenAIServiceVersion,
                     builder.organizationId,
-                    builder.isAzure,
+                    builder.isMicrosoftFoundry,
                     builder.isGitHubModels,
                     builder.modelName,
                     builder.timeout,
@@ -69,7 +69,7 @@ public class OpenAiOfficialImageModel implements ImageModel {
 
         ImagesResponse response = client.images().generate(imageGenerateParams, requestOptions());
 
-        if (response.data().isEmpty() && response.data().get().isEmpty()) {
+        if (response.data().isEmpty() || response.data().get().isEmpty()) {
             throw new IllegalArgumentException("Image generation failed: no image returned");
         }
         return Response.from(fromOpenAiImage(response.data().get().get(0)));
@@ -149,10 +149,10 @@ public class OpenAiOfficialImageModel implements ImageModel {
         private String baseUrl;
         private String apiKey;
         private Credential credential;
-        private String azureDeploymentName;
+        private String microsoftFoundryDeploymentName;
         private AzureOpenAIServiceVersion azureOpenAIServiceVersion;
         private String organizationId;
-        private boolean isAzure;
+        private boolean isMicrosoftFoundry;
         private boolean isGitHubModels;
         private OpenAIClient openAIClient;
         private String modelName;
@@ -181,8 +181,17 @@ public class OpenAiOfficialImageModel implements ImageModel {
             return this;
         }
 
+        /**
+         * @deprecated Use {@link #microsoftFoundryDeploymentName(String)} instead
+         */
+        @Deprecated
         public Builder azureDeploymentName(String azureDeploymentName) {
-            this.azureDeploymentName = azureDeploymentName;
+            this.microsoftFoundryDeploymentName = azureDeploymentName;
+            return this;
+        }
+
+        public Builder microsoftFoundryDeploymentName(String microsoftFoundryDeploymentName) {
+            this.microsoftFoundryDeploymentName = microsoftFoundryDeploymentName;
             return this;
         }
 
@@ -196,8 +205,17 @@ public class OpenAiOfficialImageModel implements ImageModel {
             return this;
         }
 
+        /**
+         * @deprecated Use {@link #isMicrosoftFoundry(boolean)} instead
+         */
+        @Deprecated
         public Builder isAzure(boolean isAzure) {
-            this.isAzure = isAzure;
+            this.isMicrosoftFoundry = isAzure;
+            return this;
+        }
+
+        public Builder isMicrosoftFoundry(boolean isMicrosoftFoundry) {
+            this.isMicrosoftFoundry = isMicrosoftFoundry;
             return this;
         }
 

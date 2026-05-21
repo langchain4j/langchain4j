@@ -24,14 +24,14 @@ import org.mockito.InOrder;
 
 class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructure {
 
-    private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
-
     @Test
     void should_think_and_return_thinking() {
 
         // given
         boolean think = true;
         boolean returnThinking = true;
+
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
         StreamingChatModel model = OllamaStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))

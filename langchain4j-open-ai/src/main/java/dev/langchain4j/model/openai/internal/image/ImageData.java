@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 import java.net.URI;
 import java.util.Objects;
@@ -46,6 +47,7 @@ public class ImageData {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         if (another == null || getClass() != another.getClass()) return false;
@@ -58,11 +60,13 @@ public class ImageData {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         return Objects.hash(url, b64Json, revisedPrompt);
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return (
                 "ImageData{" +

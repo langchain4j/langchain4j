@@ -11,13 +11,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static dev.langchain4j.service.AiServicesUserMessageConfigTest.VALIDATION_ERROR_MESSAGE_SUFFIX;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class AiServicesSystemAndUserMessageConfigsTest {
@@ -27,32 +25,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
     @AfterEach
     void afterEach() {
-        try {
-            verify(model, atLeastOnce()).doChat(any());
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).defaultRequestParameters();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).supportedCapabilities();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).listeners();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).provider();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        verifyNoMoreInteractions(model);
+        verifyNoMoreInteractionsFor(model);
     }
 
     interface AiService {
@@ -136,6 +109,9 @@ class AiServicesSystemAndUserMessageConfigsTest {
         // with systemMessageProvider
         @SystemMessage("This message should take precedence over the one provided by systemMessageProvider")
         String chat21(String userMessage);
+
+        // with system and user message
+        String chat22();
 
         // illegal
 
@@ -348,6 +324,25 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
+    void fixed_system_message_configuration_11() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(model)
+                .systemMessage("Given a name of a country, answer with a name of it's capital")
+                .build();
+
+        // when-then
+        assertThat(aiService.chat11("Country: Germany")).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
+    }
+
+    @Test
     void system_message_configuration_12() {
 
         // given
@@ -537,6 +532,26 @@ class AiServicesSystemAndUserMessageConfigsTest {
                                 systemMessage(
                                         "This message should take precedence over the one provided by systemMessageProvider"),
                                 userMessage("What is the capital of Germany?"))
+                        .build());
+    }
+
+    @Test
+    void fixed_system_and_user_message_configuration_22() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(model)
+                .systemMessage("Given a name of a country, answer with a name of it's capital")
+                .userMessage("Country: Germany")
+                .build();
+
+        // when-then
+        assertThat(aiService.chat22()).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
                         .build());
     }
 

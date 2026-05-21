@@ -39,21 +39,19 @@ class AnthropicStreamingChatModelThinkingIT {
 
     private static final int THINKING_BUDGET_TOKENS = 1024;
 
-    private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
-
     @ParameterizedTest
-    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
-            "CLAUDE_3_5_HAIKU_20241022",
-            "CLAUDE_3_HAIKU_20240307",
-    })
+    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {"CLAUDE_OPUS_4_7"})
     void should_return_and_send_thinking(AnthropicChatModelName modelName) {
 
         // given
         boolean returnThinking = true;
         // sendThinking = true by default
 
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
 
@@ -122,18 +120,18 @@ class AnthropicStreamingChatModelThinkingIT {
 
 
     @ParameterizedTest
-    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
-            "CLAUDE_3_5_HAIKU_20241022",
-            "CLAUDE_3_HAIKU_20240307",
-    })
+    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {"CLAUDE_OPUS_4_7"})
     void should_return_and_NOT_send_thinking(AnthropicChatModelName modelName) {
 
         // given
         boolean returnThinking = true;
         boolean sendThinking = false;
 
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
 
@@ -199,10 +197,7 @@ class AnthropicStreamingChatModelThinkingIT {
     }
 
     @ParameterizedTest
-    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {
-            "CLAUDE_3_5_HAIKU_20241022",
-            "CLAUDE_3_HAIKU_20240307",
-    })
+    @EnumSource(value = AnthropicChatModelName.class, mode = EXCLUDE, names = {"CLAUDE_OPUS_4_7"})
     void should_return_and_send_thinking_with_tools(AnthropicChatModelName modelName) {
 
         // given
@@ -217,8 +212,11 @@ class AnthropicStreamingChatModelThinkingIT {
                         .build())
                 .build();
 
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
 
@@ -362,8 +360,11 @@ class AnthropicStreamingChatModelThinkingIT {
                         .build())
                 .build();
 
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
 
                 .beta(beta)
@@ -518,6 +519,7 @@ class AnthropicStreamingChatModelThinkingIT {
 
         // given
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_SONNET_4_5_20250929)
 

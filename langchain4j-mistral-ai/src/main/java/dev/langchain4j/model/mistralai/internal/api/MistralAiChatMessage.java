@@ -130,6 +130,7 @@ public class MistralAiChatMessage {
             return content(List.of(content));
         }
 
+        @JsonDeserialize(using = MistralAiMessageContentDeserializer.class)
         public MistralAiChatMessageBuilder content(List<MistralAiMessageContent> content) {
             this.content = content;
             return this;

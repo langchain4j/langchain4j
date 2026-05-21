@@ -12,8 +12,9 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicFormat;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMetadata;
-import dev.langchain4j.model.anthropic.internal.api.AnthropicOutputFormat;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicOutputConfig;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicThinking;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -76,7 +77,7 @@ class InternalAnthropicHelper {
                 .topP(chatRequest.topP())
                 .topK(chatRequest.topK())
                 .thinking(thinking)
-                .outputFormat(toAnthropicOutputFormat(chatRequest.responseFormat()))
+                .outputConfig(toAnthropicOutputConfig(chatRequest.responseFormat()))
                 .customParameters(customParameters);
 
         List<AnthropicTool> tools = new ArrayList<>();
@@ -102,11 +103,13 @@ class InternalAnthropicHelper {
         return requestBuilder.build();
     }
 
-    public static AnthropicOutputFormat toAnthropicOutputFormat(ResponseFormat responseFormat) {
+    public static AnthropicOutputConfig toAnthropicOutputConfig(ResponseFormat responseFormat) {
         if (responseFormat == null || responseFormat.type() == TEXT || responseFormat.jsonSchema() == null) {
             return null;
         }
 
-        return AnthropicOutputFormat.fromJsonSchema(responseFormat.jsonSchema());
+        return AnthropicOutputConfig.builder()
+                .format(AnthropicFormat.fromJsonSchema(responseFormat.jsonSchema()))
+                .build();
     }
 }

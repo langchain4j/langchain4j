@@ -1,7 +1,10 @@
 package dev.langchain4j.model.googleai.common;
 
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.googleai.GoogleAiGeminiTokenUsage;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.common.AbstractAiServiceIT;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
@@ -17,7 +20,20 @@ class GoogleAiGeminiAiServiceIT extends AbstractAiServiceIT {
     }
 
     @Override
+    protected Class<? extends TokenUsage> tokenUsageType(ChatModel chatModel) {
+        return GoogleAiGeminiTokenUsage.class;
+    }
+
+    @Override
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
         return false; // Gemini does not support tools and response format simultaneously
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }

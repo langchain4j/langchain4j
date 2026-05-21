@@ -19,6 +19,8 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.FunctionCall;
 import com.google.cloud.vertexai.api.FunctionCallingConfig;
+import com.google.cloud.vertexai.api.GenerateContentRequest;
+import com.google.cloud.vertexai.api.GenerateContentResponse;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.api.Schema;
 import com.google.cloud.vertexai.api.Tool;
@@ -87,6 +89,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
     private final List<ChatModelListener> listeners;
 
     private final Executor executor;
+
+    private final Map<String, String> labels;
 
     public VertexAiGeminiStreamingChatModel(VertexAiGeminiStreamingChatModelBuilder builder) {
         ensureNotBlank(builder.modelName, "modelName");
@@ -194,6 +198,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.logResponses = getOrDefault(builder.logResponses, false);
         this.listeners = copy(builder.listeners);
         this.executor = getOrDefault(builder.executor, VertexAiGeminiStreamingChatModel::createDefaultExecutor);
+        this.labels = copy(builder.labels);
     }
 
     /**
@@ -322,6 +327,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
 
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.executor = getOrDefault(executor, VertexAiGeminiStreamingChatModel::createDefaultExecutor);
+        this.labels = Collections.emptyMap();
     }
 
     public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel, GenerationConfig generationConfig) {
@@ -341,6 +347,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.logResponses = false;
         this.listeners = Collections.emptyList();
         this.executor = VertexAiGeminiStreamingChatModel.createDefaultExecutor();
+        this.labels = Collections.emptyMap();
     }
 
     public VertexAiGeminiStreamingChatModel(
@@ -361,6 +368,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.logResponses = false;
         this.listeners = Collections.emptyList();
         this.executor = getOrDefault(executor, VertexAiGeminiStreamingChatModel::createDefaultExecutor);
+        this.labels = Collections.emptyMap();
     }
 
     private static ExecutorService createDefaultExecutor() {
@@ -450,31 +458,39 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
 
         executor.execute(() -> {
             try {
-                finalModel.generateContentStream(instructionAndContent.contents).stream()
-                        .forEach(partialResponse -> {
-                            if (streamingHandle.isCancelled()) {
-                                return;
-                            }
+                Iterable<GenerateContentResponse> responseStream;
+                if (labels.isEmpty()) {
+                    responseStream = finalModel.generateContentStream(instructionAndContent.contents);
+                } else {
+                    GenerateContentRequest request = VertexAiGeminiChatModel.buildGenerateContentRequest(
+                            finalModel, vertexAI, instructionAndContent.contents, labels);
+                    responseStream = vertexAI.getPredictionServiceClient()
+                            .streamGenerateContentCallable()
+                            .call(request);
+                }
+                responseStream.forEach(partialResponse -> {
+                    if (streamingHandle.isCancelled()) {
+                        return;
+                    }
 
-                            if (partialResponse.getCandidatesCount() > 0) {
-                                StreamingChatResponseBuilder.TextAndFunctions textAndFunctions =
-                                        responseBuilder.append(partialResponse);
+                    if (partialResponse.getCandidatesCount() > 0) {
+                        StreamingChatResponseBuilder.TextAndFunctions textAndFunctions =
+                                responseBuilder.append(partialResponse);
 
-                                String text = textAndFunctions.text();
-                                if (isNotNullOrEmpty(text)) {
-                                    onPartialResponse(handler, text, streamingHandle);
-                                }
+                        String text = textAndFunctions.text();
+                        if (isNotNullOrEmpty(text)) {
+                            onPartialResponse(handler, text, streamingHandle);
+                        }
 
-                                for (FunctionCall functionCall : textAndFunctions.functionCalls()) {
-                                    final int index = toolIndex.get();
-                                    ToolExecutionRequest toolExecutionRequest = fromFunctionCall(index, functionCall);
-                                    CompleteToolCall completeToolCall =
-                                            new CompleteToolCall(index, toolExecutionRequest);
-                                    onCompleteToolCall(handler, completeToolCall);
-                                    toolIndex.incrementAndGet();
-                                }
-                            }
-                        });
+                        for (FunctionCall functionCall : textAndFunctions.functionCalls()) {
+                            final int index = toolIndex.get();
+                            ToolExecutionRequest toolExecutionRequest = fromFunctionCall(index, functionCall);
+                            CompleteToolCall completeToolCall = new CompleteToolCall(index, toolExecutionRequest);
+                            onCompleteToolCall(handler, completeToolCall);
+                            toolIndex.incrementAndGet();
+                        }
+                    }
+                });
 
                 if (streamingHandle.isCancelled()) {
                     return;
@@ -534,6 +550,11 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         return this.vertexAI;
     }
 
+    @VisibleForTesting
+    Map<String, String> labels() {
+        return this.labels;
+    }
+
     @Override
     public void close() {
         if (this.vertexAI != null) {
@@ -585,6 +606,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         private Map<String, String> customHeaders;
         private GoogleCredentials credentials;
         private String apiEndpoint;
+        private Map<String, String> labels;
 
         public VertexAiGeminiStreamingChatModelBuilder() {
             // This is public so it can be extended
@@ -711,6 +733,28 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
          */
         public VertexAiGeminiStreamingChatModelBuilder credentials(GoogleCredentials credentials) {
             this.credentials = credentials;
+            return this;
+        }
+
+        /**
+         * Sets billing/reporting labels that will be attached to every request the model issues.
+         *
+         * <p>Vertex AI's {@code generateContent} request body has a top-level {@code labels} map
+         * intended for billing and reporting only. The labels surface in Cloud Billing reports
+         * (Group by → Labels) and in Cloud Logging audit entries when Data Access audit logs are
+         * enabled, allowing per-tenant cost attribution and request filtering.
+         *
+         * <p>Per the
+         * <a href="https://cloud.google.com/vertex-ai/generative-ai/docs/reference/rest/v1/projects.locations.endpoints/generateContent#request-body">official
+         * spec</a>: keys must start with a letter; keys and values may use lowercase letters,
+         * digits, underscores, and dashes (international characters are allowed); each is at most
+         * 63 Unicode code points; up to 64 labels per request.
+         *
+         * @param labels a map of label keys and their corresponding values
+         * @return the updated instance of {@code VertexAiGeminiStreamingChatModelBuilder}
+         */
+        public VertexAiGeminiStreamingChatModelBuilder labels(Map<String, String> labels) {
+            this.labels = labels;
             return this;
         }
 

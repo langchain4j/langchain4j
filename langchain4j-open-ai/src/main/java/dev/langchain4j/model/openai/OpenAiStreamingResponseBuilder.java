@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -47,6 +48,7 @@ public class OpenAiStreamingResponseBuilder {
 
     private final Map<Integer, ToolExecutionRequestBuilder> indexToToolExecutionRequestBuilder =
             new ConcurrentHashMap<>();
+    private final AtomicInteger fallbackToolCallIndex = new AtomicInteger(0);
 
     private final AtomicReference<String> id = new AtomicReference<>();
     private final AtomicReference<Long> created = new AtomicReference<>();
@@ -59,13 +61,19 @@ public class OpenAiStreamingResponseBuilder {
     private final Queue<ServerSentEvent> rawServerSentEvents = new ConcurrentLinkedQueue<>();
 
     private final boolean returnThinking;
+    private final boolean accumulateToolCallId;
 
     public OpenAiStreamingResponseBuilder() {
-        this(false);
+        this(false, true);
     }
 
     public OpenAiStreamingResponseBuilder(boolean returnThinking) {
+        this(returnThinking, true);
+    }
+
+    public OpenAiStreamingResponseBuilder(boolean returnThinking, boolean accumulateToolCallId) {
         this.returnThinking = returnThinking;
+        this.accumulateToolCallId = accumulateToolCallId;
         if (returnThinking) {
             this.reasoningContentBuilder = new StringBuffer();
         } else {
@@ -154,22 +162,43 @@ public class OpenAiStreamingResponseBuilder {
             }
         }
 
-        if (delta.toolCalls() != null && !delta.toolCalls().isEmpty()) {
-            ToolCall toolCall = delta.toolCalls().get(0);
+        if (delta.toolCalls() != null) {
+            for (ToolCall toolCall : delta.toolCalls()) {
+                if (isSentinel(toolCall)) {
+                    continue;
+                }
 
-            ToolExecutionRequestBuilder builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
-                    toolCall.index(), idx -> new ToolExecutionRequestBuilder());
+                int toolCallIndex = toolCall.index() != null ? toolCall.index() : fallbackToolCallIndex.get();
 
-            if (toolCall.id() != null) {
-                builder.idBuilder.append(toolCall.id());
-            }
+                ToolExecutionRequestBuilder builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
+                        toolCallIndex, idx -> new ToolExecutionRequestBuilder());
 
-            FunctionCall functionCall = toolCall.function();
-            if (functionCall.name() != null) {
-                builder.nameBuilder.append(functionCall.name());
-            }
-            if (functionCall.arguments() != null) {
-                builder.argumentsBuilder.append(functionCall.arguments());
+                // When index is null and a different tool call id appears, increment the fallback index
+                if (toolCall.index() == null
+                        && toolCall.id() != null
+                        && !builder.idBuilder.isEmpty()
+                        && !builder.idBuilder.toString().equals(toolCall.id())) {
+                    toolCallIndex = fallbackToolCallIndex.incrementAndGet();
+                    builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
+                            toolCallIndex, idx -> new ToolExecutionRequestBuilder());
+                }
+
+                if (toolCall.id() != null) {
+                    if (accumulateToolCallId) {
+                        builder.idBuilder.append(toolCall.id());
+                    } else {
+                        builder.idBuilder.setLength(0);
+                        builder.idBuilder.append(toolCall.id());
+                    }
+                }
+
+                FunctionCall functionCall = toolCall.function();
+                if (functionCall.name() != null) {
+                    builder.nameBuilder.append(functionCall.name());
+                }
+                if (functionCall.arguments() != null) {
+                    builder.argumentsBuilder.append(functionCall.arguments());
+                }
             }
         }
     }
@@ -266,6 +295,17 @@ public class OpenAiStreamingResponseBuilder {
                 .rawHttpResponse(rawHttpResponse.get())
                 .rawServerSentEvents(new ArrayList<>(rawServerSentEvents))
                 .build();
+    }
+
+    private static boolean isSentinel(ToolCall toolCall) {
+        boolean hasId = !isNullOrBlank(toolCall.id());
+        FunctionCall functionCall = toolCall.function();
+        if (functionCall == null) {
+            return !hasId;
+        }
+        boolean hasName = !isNullOrBlank(functionCall.name());
+        boolean hasArguments = functionCall.arguments() != null;
+        return !hasId && !hasName && !hasArguments;
     }
 
     private static class ToolExecutionRequestBuilder {

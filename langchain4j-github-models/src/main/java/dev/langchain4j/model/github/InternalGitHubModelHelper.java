@@ -67,6 +67,7 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -206,6 +207,11 @@ class InternalGitHubModelHelper {
             return chatRequestAssistantMessage;
         } else if (message instanceof ToolExecutionResultMessage) {
             ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
+            if (!toolExecutionResultMessage.hasSingleText()) {
+                throw new UnsupportedFeatureException(
+                        "GitHub Models does not support non-text content in tool results. "
+                                + "Only text content is supported.");
+            }
             ChatRequestToolMessage chatRequestToolMessage = new ChatRequestToolMessage(toolExecutionResultMessage.id());
             chatRequestToolMessage.setContent(toolExecutionResultMessage.text());
             return chatRequestToolMessage;

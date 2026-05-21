@@ -17,14 +17,14 @@ import org.junit.jupiter.api.Test;
 
 class OllamaChatModelThinkingIT extends AbstractOllamaThinkingModelInfrastructure {
 
-    private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
-
     @Test
     void should_think_and_return_thinking() {
 
         // given
         boolean think = true;
         boolean returnThinking = true;
+
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
         ChatModel model = OllamaChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))

@@ -1,18 +1,17 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
+
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.catalog.ModelCatalog;
 import dev.langchain4j.model.catalog.ModelDescription;
 import dev.langchain4j.model.catalog.ModelType;
-import org.slf4j.Logger;
-
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
+import org.slf4j.Logger;
 
 /**
  * Google AI Gemini implementation of {@link ModelCatalog}.
@@ -41,7 +40,8 @@ public class GoogleAiGeminiModelCatalog implements ModelCatalog {
                 builder.logRequests,
                 builder.logResponses,
                 builder.logger,
-                builder.timeout);
+                builder.timeout,
+                null);
     }
 
     public static Builder builder() {

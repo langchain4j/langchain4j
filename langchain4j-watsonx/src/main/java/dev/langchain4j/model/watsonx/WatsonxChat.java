@@ -7,7 +7,6 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static java.util.Arrays.asList;
 import static java.util.Objects.nonNull;
 
-import com.ibm.watsonx.ai.CloudRegion;
 import com.ibm.watsonx.ai.chat.ChatService;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.Thinking;
@@ -103,10 +102,11 @@ abstract class WatsonxChat {
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
                 .httpClient(builder.httpClient)
+                .verifySsl(builder.verifySsl)
                 .build();
     }
 
-    void validateThinkingIsAllowedForGraniteModel(
+    final void validateThinkingIsAllowedForGraniteModel(
             String modelName, List<ChatMessage> messages, List<ToolSpecification> tools) throws LangChain4jException {
 
         if (!"ibm/granite-3-3-8b-instruct".equals(modelName)) return;
@@ -121,7 +121,7 @@ abstract class WatsonxChat {
                     "The thinking/reasoning cannot be activated when a system message is present");
     }
 
-    void validate(ChatRequestParameters parameters) {
+    final void validate(ChatRequestParameters parameters) {
         if (nonNull(parameters.topK()))
             throw new UnsupportedFeatureException("'topK' parameter is not supported by watsonx.ai");
     }
@@ -153,22 +153,8 @@ abstract class WatsonxChat {
         private Double lengthPenalty;
         private Thinking thinking;
 
-        public T baseUrl(CloudRegion cloudRegion) {
-            return (T) super.baseUrl(cloudRegion.getMlEndpoint());
-        }
-
         public T modelName(String modelName) {
             this.modelName = modelName;
-            return (T) this;
-        }
-
-        public T projectId(String projectId) {
-            this.projectId = projectId;
-            return (T) this;
-        }
-
-        public T spaceId(String spaceId) {
-            this.spaceId = spaceId;
             return (T) this;
         }
 

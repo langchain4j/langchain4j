@@ -3,13 +3,17 @@ package dev.langchain4j.agentic.supervisor;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.planner.Action;
+import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.ChatMemoryAccessProvider;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
+import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -94,9 +98,34 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     private static String toCard(AgentInstance agent) {
         List<String> agentArguments = agent.arguments().stream()
                 .filter(a -> !a.name().equals("@MemoryId"))
-                .map(a -> a.name() + ": " + a.rawType().getSimpleName())
+                .map(SupervisorPlanner::argumentDescription)
                 .toList();
         return "{'" + agent.agentId() + "', '" + agent.description() + "', " + agentArguments + "}";
+    }
+
+    private static String argumentDescription(AgentArgument arg) {
+        return argumentDescription(arg.rawType(), arg.name());
+    }
+
+    private static String argumentDescription(Class<?> type, String name) {
+        if (name == null) {
+            return "";
+        }
+
+        if (type.isPrimitive() || type.isEnum() || type == String.class ||
+                type == Boolean.class || Number.class.isAssignableFrom(type)) {
+            return name + ": " + type.getSimpleName();
+        }
+
+        String fieldsDescription = type.isRecord() ?
+                Stream.of(type.getDeclaredConstructors()[0].getParameters())
+                        .map(p -> argumentDescription(p.getType(), ParameterNameResolver.name(p)))
+                        .collect(Collectors.joining(", ")) :
+                Stream.of(type.getDeclaredFields())
+                        .map(f -> argumentDescription(f.getType(), f.getName()))
+                        .collect(Collectors.joining(", "));
+
+        return name + ": {" + fieldsDescription + "}";
     }
 
     private Action nextSubagent(AgenticScope agenticScope, String lastResponse) {
@@ -104,23 +133,45 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
                 ? SUPERVISOR_CONTEXT_PREFIX + "'" + agenticScope.readState(SUPERVISOR_CONTEXT_KEY, "") + "'."
                 : "";
 
-        AgentInvocation agentInvocation = planner(agenticScope).plan(agenticScope.memoryId(), agentsList, request, lastResponse, supervisorContext);
+        AgentInvocation agentInvocation = withAgenticScope(agenticScope,
+                () -> planner(agenticScope).plan(agenticScope.memoryId(), agentsList, request, lastResponse, supervisorContext));
         LOG.info("Agent Invocation: {}", agentInvocation);
 
         if (agentInvocation.getAgentName().equalsIgnoreCase("done")) {
             return doneAction(agenticScope, lastResponse, agentInvocation);
         }
 
-        String agentName = agentInvocation.getAgentName();
-        AgentInstance agent = agents.get(agentName);
-        if (agent == null) {
-            throw new IllegalStateException("No agent found with name: " + agentName);
-        }
+        AgentInstance agent = findAgentByName(agentInvocation.getAgentName());
 
         agentInvocation.getArguments().entrySet().stream()
                 .filter(entry -> writeArgumentToScope(agenticScope, agent, entry.getKey(), entry.getValue()))
                 .forEach(entry -> agenticScope.writeState(entry.getKey(), entry.getValue()));
         return call(agent);
+    }
+
+    private static <T> T withAgenticScope(AgenticScope agenticScope, Supplier<T> supplier) {
+        LangChain4jManaged.setCurrent(Map.of(AgenticScope.class, agenticScope));
+        try {
+            return supplier.get();
+        } finally {
+            LangChain4jManaged.removeCurrent();
+        }
+    }
+
+    private AgentInstance findAgentByName(String agentName) {
+        AgentInstance agent = agents.get(agentName);
+        if (agent == null) {
+            List<AgentInstance> candidateAgents = agents.values().stream()
+                    .filter(a -> a.name().equals(agentName))
+                    .toList();
+            if (candidateAgents.size() == 1) {
+                agent = candidateAgents.get(0);
+            }
+        }
+        if (agent == null) {
+            throw new IllegalStateException("No agent found with name: " + agentName);
+        }
+        return agent;
     }
 
     private boolean writeArgumentToScope(AgenticScope agenticScope, AgentInstance agent, String key, Object value) {
@@ -130,10 +181,8 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
                     .findFirst().map(AgentArgument::rawType).orElse(null);
             if (argType != null) {
                 Object existingValue = agenticScope.readState(key);
-                if (argType.isAssignableFrom(existingValue.getClass()) && !(value.getClass().isAssignableFrom(argType))) {
-                    // avoid overwriting a structured state with an unstructured argument generated from supervisor's LLM response
-                    return false;
-                }
+                // avoid overwriting a structured state with an unstructured argument generated from supervisor's LLM response
+                return !argType.isAssignableFrom(existingValue.getClass()) || argType.isAssignableFrom(value.getClass());
             }
         }
         return true;
@@ -164,7 +213,8 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
             case LAST -> lastResponse;
             case SUMMARY -> doneResponse;
             case SCORED -> {
-                ResponseScore score = responseAgent.scoreResponses(request, lastResponse, doneResponse);
+                ResponseScore score = withAgenticScope(agenticScope,
+                        () -> responseAgent.scoreResponses(request, lastResponse, doneResponse));
                 LOG.info("Response scores: {}", score);
                 yield score.getScore2() > score.getScore1() ? doneResponse : lastResponse;
             }
@@ -202,6 +252,19 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
 
     private String agentId() {
         return outputKey + "@Supervisor";
+    }
+
+    @Override
+    public Map<String, Object> executionState() {
+        return Map.of("loopCount", loopCount);
+    }
+
+    @Override
+    public void restoreExecutionState(Map<String, Object> state) {
+        Object savedLoopCount = state.get("loopCount");
+        if (savedLoopCount instanceof Number n) {
+            this.loopCount = n.intValue();
+        }
     }
 
     @Override

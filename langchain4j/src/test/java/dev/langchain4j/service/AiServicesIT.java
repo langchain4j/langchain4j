@@ -1,8 +1,8 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.MockitoUtils.ignoreInteractions;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.O3_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.data.MapEntry.entry;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -30,10 +30,12 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.ModerationModel;
+import dev.langchain4j.model.moderation.ModerationRequest;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiModerationModel;
@@ -91,32 +93,14 @@ public class AiServicesIT {
         verifyNoMoreInteractions(moderationModel);
     }
 
+    // TODO rename verifyNoMoreImportantInteractions
     public static void verifyNoMoreInteractionsFor(ChatModel model) {
-        try {
-            verify(model, atLeastOnce()).doChat(any());
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).defaultRequestParameters();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).supportedCapabilities();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).listeners();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
-        try {
-            verify(model, atLeastOnce()).provider();
-        } catch (Throwable ignored) {
-            // don't care if it was called or not
-        }
+        ignoreInteractions(model).doChat(any());
+        ignoreInteractions(model).defaultRequestParameters();
+        ignoreInteractions(model).supportedCapabilities();
+        ignoreInteractions(model).listeners();
+        ignoreInteractions(model).provider();
+        ignoreInteractions(model).chat(any(ChatRequest.class), any(ChatRequestOptions.class));
         verifyNoMoreInteractions(model);
     }
 
@@ -851,7 +835,13 @@ public class AiServicesIT {
                 });
 
         verify(chatModel).chat(chatRequest(message));
-        verify(moderationModel).moderate(singletonList(userMessage(message)));
+
+        verify(moderationModel).doModerate(argThat(req -> req.texts().equals(List.of(message))));
+        ignoreInteractions(moderationModel).moderate(any(List.class));
+        ignoreInteractions(moderationModel).moderate(any(ModerationRequest.class));
+        ignoreInteractions(moderationModel).modelName();
+        ignoreInteractions(moderationModel).provider();
+        ignoreInteractions(moderationModel).listeners();
     }
 
     @Test
@@ -869,7 +859,13 @@ public class AiServicesIT {
         assertThat(response).isNotBlank();
 
         verify(chatModel).chat(chatRequest(message));
-        verify(moderationModel).moderate(singletonList(userMessage(message)));
+
+        verify(moderationModel).doModerate(argThat(req -> req.texts().equals(List.of(message))));
+        ignoreInteractions(moderationModel).moderate(any(List.class));
+        ignoreInteractions(moderationModel).moderate(any(ModerationRequest.class));
+        ignoreInteractions(moderationModel).modelName();
+        ignoreInteractions(moderationModel).provider();
+        ignoreInteractions(moderationModel).listeners();
     }
 
     interface AssistantReturningResult {

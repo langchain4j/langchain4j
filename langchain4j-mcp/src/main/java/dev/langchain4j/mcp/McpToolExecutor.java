@@ -31,19 +31,22 @@ public class McpToolExecutor implements ToolExecutor {
 
     @Override
     public String execute(ToolExecutionRequest executionRequest, Object memoryId) {
-        return mcpClient.executeTool(sanitizeToolName(executionRequest)).resultText();
+        InvocationContext invocationContext =
+                InvocationContext.builder().chatMemoryId(memoryId).build();
+        return mcpClient
+                .executeTool(sanitizeToolName(executionRequest), invocationContext)
+                .resultText();
     }
 
     @Override
-    public ToolExecutionResult executeWithContext(ToolExecutionRequest executionRequest, InvocationContext context) {
-        return mcpClient.executeTool(sanitizeToolName(executionRequest));
+    public ToolExecutionResult executeWithContext(
+            ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
+        return mcpClient.executeTool(sanitizeToolName(executionRequest), invocationContext);
     }
 
     private ToolExecutionRequest sanitizeToolName(ToolExecutionRequest executionRequest) {
         if (fixedToolName.isPresent()) {
-            return executionRequest.toBuilder()
-                    .name(fixedToolName.get())
-                    .build();
+            return executionRequest.toBuilder().name(fixedToolName.get()).build();
         } else {
             return executionRequest;
         }

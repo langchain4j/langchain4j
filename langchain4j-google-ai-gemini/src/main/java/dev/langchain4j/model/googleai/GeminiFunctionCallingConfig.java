@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-
 import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
@@ -13,6 +12,7 @@ public class GeminiFunctionCallingConfig {
 
     @JsonProperty
     private GeminiMode mode;
+
     @JsonProperty
     private List<String> allowedFunctionNames;
 
@@ -51,8 +51,7 @@ public class GeminiFunctionCallingConfig {
         private GeminiMode mode;
         private List<String> allowedFunctionNames;
 
-        GeminiFunctionCallingConfigBuilder() {
-        }
+        GeminiFunctionCallingConfigBuilder() {}
 
         public GeminiFunctionCallingConfigBuilder mode(GeminiMode mode) {
             this.mode = mode;

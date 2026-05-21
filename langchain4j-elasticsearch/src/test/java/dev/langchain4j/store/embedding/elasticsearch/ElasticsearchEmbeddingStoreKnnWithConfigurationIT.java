@@ -1,29 +1,27 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import org.junit.jupiter.api.*;
-
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.*;
 
 class ElasticsearchEmbeddingStoreKnnWithConfigurationIT {
 
-    static ElasticsearchClientHelper elasticsearchClientHelper = new ElasticsearchClientHelper();
+    static final ElasticsearchClientHelper elasticsearchClientHelper = new ElasticsearchClientHelper();
     String indexName;
 
     @BeforeAll
     static void startServices() throws IOException {
         elasticsearchClientHelper.startServices();
-        assertThat(elasticsearchClientHelper.restClient).isNotNull();
         assertThat(elasticsearchClientHelper.client).isNotNull();
     }
 
@@ -54,13 +52,18 @@ class ElasticsearchEmbeddingStoreKnnWithConfigurationIT {
         Embedding embedding3 = embeddingModel.embed("buen día").content();
         List<Embedding> embeddings = Arrays.asList(embedding1, embedding2, embedding3);
 
+        // By default, Elasticsearch from 9.2 does not include the vector in the response
+        // But the inherited tests are looking for the exact vectors
+        // So we need to make sure that vectors are returned
+        boolean includeVector = elasticsearchClientHelper.isGTENineTwo();
         // Test with a high numCandidates
         {
             EmbeddingStore<TextSegment> embeddingStore = ElasticsearchEmbeddingStore.builder()
                     .configuration(ElasticsearchConfigurationKnn.builder()
                             .numCandidates(10)
+                            .includeVectorResponse(includeVector)
                             .build())
-                    .restClient(elasticsearchClientHelper.restClient)
+                    .client(elasticsearchClientHelper.client)
                     .indexName(indexName)
                     .build();
 
@@ -71,10 +74,13 @@ class ElasticsearchEmbeddingStoreKnnWithConfigurationIT {
             elasticsearchClientHelper.refreshIndex(indexName);
 
             // then
-            assertThat(embeddingStore.search(EmbeddingSearchRequest.builder()
-                    .queryEmbedding(embedding1)
-                    .maxResults(10)
-                    .build()).matches()).hasSize(3);
+            assertThat(embeddingStore
+                            .search(EmbeddingSearchRequest.builder()
+                                    .queryEmbedding(embedding1)
+                                    .maxResults(10)
+                                    .build())
+                            .matches())
+                    .hasSize(3);
         }
 
         // Remove the datastore between tests
@@ -84,8 +90,9 @@ class ElasticsearchEmbeddingStoreKnnWithConfigurationIT {
             EmbeddingStore<TextSegment> embeddingStore = ElasticsearchEmbeddingStore.builder()
                     .configuration(ElasticsearchConfigurationKnn.builder()
                             .numCandidates(1)
+                            .includeVectorResponse(includeVector)
                             .build())
-                    .restClient(elasticsearchClientHelper.restClient)
+                    .client(elasticsearchClientHelper.client)
                     .indexName(indexName)
                     .build();
 
@@ -96,10 +103,13 @@ class ElasticsearchEmbeddingStoreKnnWithConfigurationIT {
             elasticsearchClientHelper.refreshIndex(indexName);
 
             // then
-            assertThat(embeddingStore.search(EmbeddingSearchRequest.builder()
-                    .queryEmbedding(embedding1)
-                    .maxResults(10)
-                    .build()).matches()).hasSize(1);
+            assertThat(embeddingStore
+                            .search(EmbeddingSearchRequest.builder()
+                                    .queryEmbedding(embedding1)
+                                    .maxResults(10)
+                                    .build())
+                            .matches())
+                    .hasSize(1);
         }
     }
 }

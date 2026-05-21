@@ -3,14 +3,14 @@ Thank you for investing your time and effort in contributing to our project, we 
 # General guidelines
 
 - For new integrations, please consider adding it in [community repo](https://github.com/langchain4j/langchain4j-community) first.
-- If you want to contribute a bug fix or a new feature that isn't listed in the [issues](https://github.com/langchain4j/langchain4j/issues) yet, please open a new issue for it. We will triage is shortly.
+- If you want to contribute a bug fix or a new feature that isn't listed in the [issues](https://github.com/langchain4j/langchain4j/issues) yet, please open a new issue for it. We will triage it shortly.
 - Follow [Google's Best Practices for Java Libraries](https://jlbp.dev/)
 - Keep the code compatible with Java 17.
 - When integrating third-party services, use the official SDK whenever possible. If no official SDK is available, implement the client using `langchain4j-http-client` and Jackson.
 - Avoid adding new dependencies as much as possible (new dependencies with test scope are OK). If absolutely necessary, try to use the same libraries which are already used in the project. Make sure you run `mvn dependency:analyze` to identify unnecessary dependencies.
 - Write unit and/or integration tests for your code. This is critical: no tests, no review!
 - The tests should cover both positive and negative cases.
-- Make sure you run all unit tests on all modules with `mvn clean test`
+- Make sure you run all unit tests on all modules with `mvn clean test`. Some integration tests need the API token (key) to be set up as an environment variable in order to communicate with the configured model provider (look for "EnabledIfEnvironmentVariable" annotation to find out the name of this token).
 - Avoid making breaking changes. Always keep backward compatibility in mind. For example, instead of removing fields/methods/etc, mark them `@Deprecated` and make sure they still work as before.
 - Follow existing naming conventions.
 - Add Javadoc where necessary. There's no need to duplicate Javadoc from the implemented interfaces.

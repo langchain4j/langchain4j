@@ -4,8 +4,6 @@ import dev.langchain4j.agentic.observability.AgentListener;
 
 public interface AgentSpecsProvider {
 
-    String inputKey();
-
     String outputKey();
 
     String description();

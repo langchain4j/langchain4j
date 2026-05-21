@@ -2,22 +2,29 @@ package dev.langchain4j.agentic.observability;
 
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.service.tool.ToolExecution;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class AgentInvocation {
 
     private final List<AgentInvocation> nestedInvocations = Collections.synchronizedList(new ArrayList<>());
+    private final List<ToolExecution> toolExecutions = Collections.synchronizedList(new ArrayList<>());
 
     private final AgentRequest agentRequest;
     private final LocalDateTime startTime;
 
     private AgentResponse agentResponse;
     private LocalDateTime finishTime;
+    private int iterationIndex = -1;
 
     AgentInvocation(AgentRequest agentRequest) {
         this.agentRequest = agentRequest;
@@ -31,6 +38,10 @@ public class AgentInvocation {
 
     void addNestedInvocation(AgentInvocation agentInvocation) {
         this.nestedInvocations.add(agentInvocation);
+    }
+
+    void addToolExecution(ToolExecution toolExecution) {
+        toolExecutions.add(toolExecution);
     }
 
     public boolean done() {
@@ -71,8 +82,36 @@ public class AgentInvocation {
         return agentResponse.output();
     }
 
+    public int totalTokenCount() {
+        return tokenUsage().map(TokenUsage::totalTokenCount).orElse(0);
+    }
+
+    public Optional<TokenUsage> tokenUsage() {
+        if (!done()) {
+            throw new IllegalStateException("Agent call is not finished yet");
+        }
+        return Optional.ofNullable(agentResponse.chatResponse())
+                .map(ChatResponse::metadata)
+                .map(ChatResponseMetadata::tokenUsage);
+    }
+
+    /**
+     * Returns the zero-based iteration index when this invocation is part of a loop, or -1 otherwise.
+     */
+    public int iterationIndex() {
+        return iterationIndex;
+    }
+
+    void setIterationIndex(int iterationIndex) {
+        this.iterationIndex = iterationIndex;
+    }
+
     public List<AgentInvocation> nestedInvocations() {
         return nestedInvocations;
+    }
+
+    public List<ToolExecution> toolExecutions() {
+        return toolExecutions;
     }
 
     @Override
@@ -83,16 +122,24 @@ public class AgentInvocation {
     private String toString(String prefix) {
         StringBuilder sb = new StringBuilder(prefix + "AgentInvocation{" +
                 "agent=" + agent().name() +
+                (iterationIndex >= 0 ? ", iteration=" + iterationIndex : "") +
                 ", startTime=" + startTime +
                 ", finishTime=" + finishTime +
                 ", duration=" + (done() ? duration().toMillis() + " ms" : "in progress") +
+                ", tokens=" + (done() ? totalTokenCount() : "in progress") +
                 ", inputs=" + shortToString(inputs()) +
                 ", output=" + (done() ? shortToString(output()) : "in progress") +
                 '}');
+        if (!toolExecutions.isEmpty()) {
+            String toolPrefix = prefix.isEmpty() ? "|-> " : "    " + prefix;
+            for (ToolExecution toolExec : toolExecutions) {
+                sb.append("\n").append(toolPrefix).append(toolExec);
+            }
+        }
         if (!nestedInvocations.isEmpty()) {
-            prefix = prefix.isEmpty() ? "|=> " : "    " + prefix;
+            String nestedPrefix = prefix.isEmpty() ? "|=> " : "    " + prefix;
             for (AgentInvocation nestedCall : nestedInvocations) {
-                sb.append("\n").append(nestedCall.toString(prefix));
+                sb.append("\n").append(nestedCall.toString(nestedPrefix));
             }
         }
         return sb.toString();

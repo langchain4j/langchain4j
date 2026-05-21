@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 import java.util.Objects;
 
@@ -47,6 +48,8 @@ public class GenerateImagesRequest {
         this.responseFormat = builder.responseFormat;
     }
 
+    @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 2381;
         h += (h << 5) + Objects.hashCode(model);
@@ -60,6 +63,8 @@ public class GenerateImagesRequest {
         return h;
     }
 
+    @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return (
                 "GenerateImagesRequest{" +

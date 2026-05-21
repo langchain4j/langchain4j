@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import java.lang.reflect.Field;
+import java.net.http.HttpClient;
 import javax.net.ssl.SSLContext;
 import org.junit.jupiter.api.Test;
 
@@ -22,9 +23,71 @@ class StreamableHttpMcpTransportTest {
         assertThat(extractSslContext(transport)).isSameAs(customContext);
     }
 
+    @Test
+    void shouldUseHttp2ByDefault() throws Exception {
+        StreamableHttpMcpTransport transport =
+                StreamableHttpMcpTransport.builder().url("http://localhost/mcp").build();
+
+        assertThat(extractHttpClient(transport).version()).isEqualTo(HttpClient.Version.HTTP_2);
+    }
+
+    @Test
+    void shouldNotFollowRedirectsByDefault() throws Exception {
+        StreamableHttpMcpTransport transport =
+                StreamableHttpMcpTransport.builder().url("http://localhost/mcp").build();
+
+        assertThat(extractHttpClient(transport).followRedirects()).isEqualTo(HttpClient.Redirect.NEVER);
+    }
+
+    @Test
+    void shouldFollowRedirectsWhenEnabled() throws Exception {
+        StreamableHttpMcpTransport transport = StreamableHttpMcpTransport.builder()
+                .url("http://localhost/mcp")
+                .followRedirects(true)
+                .build();
+
+        assertThat(extractHttpClient(transport).followRedirects()).isEqualTo(HttpClient.Redirect.NORMAL);
+    }
+
+    @Test
+    void shouldForceHttp11ForStreamableTransport() throws Exception {
+        StreamableHttpMcpTransport transport = StreamableHttpMcpTransport.builder()
+                .url("http://localhost/mcp")
+                .setHttpVersion1_1()
+                .build();
+
+        assertThat(extractHttpClient(transport).version()).isEqualTo(HttpClient.Version.HTTP_1_1);
+    }
+
+    @Test
+    void mcpSessionIdShouldBeNullByDefault() {
+        StreamableHttpMcpTransport transport =
+                StreamableHttpMcpTransport.builder().url("http://localhost/mcp").build();
+
+        assertThat(transport.getMcpSessionId()).isNull();
+    }
+
+    @Test
+    void shouldExposeAndAcceptMcpSessionId() {
+        StreamableHttpMcpTransport transport =
+                StreamableHttpMcpTransport.builder().url("http://localhost/mcp").build();
+
+        transport.setMcpSessionId("session-123");
+        assertThat(transport.getMcpSessionId()).isEqualTo("session-123");
+
+        transport.setMcpSessionId(null);
+        assertThat(transport.getMcpSessionId()).isNull();
+    }
+
     private static SSLContext extractSslContext(StreamableHttpMcpTransport transport) throws Exception {
         Field field = StreamableHttpMcpTransport.class.getDeclaredField("sslContext");
         field.setAccessible(true);
         return (SSLContext) field.get(transport);
+    }
+
+    private static HttpClient extractHttpClient(StreamableHttpMcpTransport transport) throws Exception {
+        Field field = StreamableHttpMcpTransport.class.getDeclaredField("httpClient");
+        field.setAccessible(true);
+        return (HttpClient) field.get(transport);
     }
 }

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atMost;
 import static org.mockito.Mockito.mockStatic;
@@ -62,6 +63,7 @@ public class WatsonxModerationTest {
         when(mockDetectionServiceBuilder.logResponses(any())).thenReturn(mockDetectionServiceBuilder);
         when(mockDetectionServiceBuilder.apiKey(any())).thenReturn(mockDetectionServiceBuilder);
         when(mockDetectionServiceBuilder.httpClient(any())).thenReturn(mockDetectionServiceBuilder);
+        when(mockDetectionServiceBuilder.verifySsl(anyBoolean())).thenReturn(mockDetectionServiceBuilder);
         when(mockDetectionServiceBuilder.build()).thenReturn(mockDetectionService);
     }
 

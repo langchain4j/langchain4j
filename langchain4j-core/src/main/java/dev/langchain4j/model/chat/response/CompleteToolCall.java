@@ -5,6 +5,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+
 import java.util.Objects;
 
 /**
@@ -15,6 +17,7 @@ import java.util.Objects;
  * @since 1.2.0
  */
 @Experimental
+@JacocoIgnoreCoverageGenerated
 public class CompleteToolCall {
 
     private final int index;

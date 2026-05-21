@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 import java.util.Objects;
 
@@ -35,18 +36,21 @@ public class PdfFile {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
         return another instanceof PdfFile
                 && equalTo((PdfFile) another);
     }
 
+    @JacocoIgnoreCoverageGenerated
     private boolean equalTo(PdfFile another) {
         return Objects.equals(fileData, another.fileData)
                 && Objects.equals(filename, another.filename);
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public int hashCode() {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(fileData);
@@ -55,6 +59,7 @@ public class PdfFile {
     }
 
     @Override
+    @JacocoIgnoreCoverageGenerated
     public String toString() {
         return "PdfFile{" +
                 "fileData=" + (fileData != null ? "[PDF DATA]" : "null") +

@@ -4,9 +4,13 @@ import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
+import dev.langchain4j.agentic.planner.Planner;
+import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Objects;
+
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 
 public class NonAiAgentInstance implements AgentInstance, InternalAgent {
     private final Class<?> type;
@@ -16,7 +20,8 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
     private final String outputKey;
     private final boolean async;
     private final List<AgentArgument> arguments;
-    private final AgentListener listener;
+
+    private AgentListener listener;
 
     private InternalAgent parent;
     private String agentId;
@@ -52,12 +57,17 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
 
     @Override
     public AgenticSystemTopology topology() {
-        return AgenticSystemTopology.SINGLE_AGENT;
+        return type == HumanInTheLoop.class ? AgenticSystemTopology.HUMAN_IN_THE_LOOP : AgenticSystemTopology.NON_AI_AGENT;
     }
 
     @Override
     public Class<?> type() {
         return type;
+    }
+
+    @Override
+    public Class<? extends Planner> plannerType() {
+        return null;
     }
 
     @Override
@@ -93,6 +103,13 @@ public class NonAiAgentInstance implements AgentInstance, InternalAgent {
     @Override
     public AgentListener listener() {
         return listener;
+    }
+
+    @Override
+    public void registerInheritedParentListener(AgentListener parentListener) {
+        if (parentListener != null && parentListener.inheritedBySubagents()) {
+            listener = composeWithInherited(listener(), parentListener);
+        }
     }
 
     @Override

@@ -54,6 +54,15 @@
         "allPublicFields": true
     },
     {
+        "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicError",
+        "allDeclaredConstructors": true,
+        "allPublicConstructors": true,
+        "allDeclaredMethods": true,
+        "allPublicMethods": true,
+        "allDeclaredFields": true,
+        "allPublicFields": true
+    },
+    {
         "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicImageContent",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
@@ -72,7 +81,16 @@
         "allPublicFields": true
     },
     {
-      "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicOutputFormat",
+        "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicFormat",
+        "allDeclaredConstructors": true,
+        "allPublicConstructors": true,
+        "allDeclaredMethods": true,
+        "allPublicMethods": true,
+        "allDeclaredFields": true,
+        "allPublicFields": true
+    },
+    {
+      "name": "dev.langchain4j.model.anthropic.internal.api.AnthropicOutputConfig",
       "allDeclaredConstructors": true,
       "allPublicConstructors": true,
       "allDeclaredMethods": true,
