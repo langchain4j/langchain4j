@@ -25,14 +25,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Experimental
 public class GoogleGenAiChatModel implements ChatModel {
+
+    private static final Logger log = LoggerFactory.getLogger(GoogleGenAiChatModel.class);
 
     private final Client client;
     private final Integer maxRetries;
     private final List<ChatModelListener> listeners;
     private final ChatRequestParameters defaultRequestParameters;
+    private final boolean logRequests;
+    private final boolean logResponses;
 
     private final List<SafetySetting> safetySettings;
     private final Integer thinkingBudget;
@@ -48,6 +54,8 @@ public class GoogleGenAiChatModel implements ChatModel {
 
     private GoogleGenAiChatModel(Builder builder) {
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
+        this.logRequests = getOrDefault(builder.logRequests, false);
+        this.logResponses = getOrDefault(builder.logResponses, false);
         this.listeners = copy(builder.listeners);
         this.googleSearchEnabled = getOrDefault(builder.googleSearch, false);
         this.googleMapsEnabled = getOrDefault(builder.googleMaps, false);
@@ -108,10 +116,24 @@ public class GoogleGenAiChatModel implements ChatModel {
                 labels,
                 cachedContent);
 
+        if (logRequests) {
+            log.info(
+                    "Request:\n- model: {}\n- messages: {}\n- config: {}",
+                    chatRequest.modelName(),
+                    chatRequest.messages(),
+                    config);
+        }
+
         var result = withRetryMappingExceptions(
                 () -> client.models.generateContent(chatRequest.modelName(), contents, config), maxRetries);
 
-        return GoogleGenAiContentMapper.toChatResponse(result, chatRequest.modelName());
+        ChatResponse response = GoogleGenAiContentMapper.toChatResponse(result, chatRequest.modelName());
+
+        if (logResponses) {
+            log.info("Response:\n- model: {}\n- response: {}", chatRequest.modelName(), response);
+        }
+
+        return response;
     }
 
     @Override
@@ -169,6 +191,8 @@ public class GoogleGenAiChatModel implements ChatModel {
         private String apiEndpoint;
         private Map<String, String> customHeaders;
         private String cachedContent;
+        private Boolean logRequests;
+        private Boolean logResponses;
 
         public Builder client(Client client) {
             this.client = client;
@@ -320,6 +344,22 @@ public class GoogleGenAiChatModel implements ChatModel {
 
         public Builder cachedContent(String cachedContent) {
             this.cachedContent = cachedContent;
+            return this;
+        }
+
+        public Builder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public Builder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public Builder logRequestsAndResponses(Boolean logRequestsAndResponses) {
+            this.logRequests = logRequestsAndResponses;
+            this.logResponses = logRequestsAndResponses;
             return this;
         }
 

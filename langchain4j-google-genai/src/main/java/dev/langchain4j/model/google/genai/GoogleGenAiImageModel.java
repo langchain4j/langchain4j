@@ -30,12 +30,16 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Represents a Google GenAI model for image generation and editing using the official com.google.genai SDK.
  */
 @Experimental
 public class GoogleGenAiImageModel implements ImageModel {
+
+    private static final Logger log = LoggerFactory.getLogger(GoogleGenAiImageModel.class);
 
     private final Client client;
     private final String modelName;
@@ -46,6 +50,8 @@ public class GoogleGenAiImageModel implements ImageModel {
     private final String imageSize;
     private final String personGeneration;
     private final Map<String, String> labels;
+    private final boolean logRequests;
+    private final boolean logResponses;
 
     private GoogleGenAiImageModel(Builder builder) {
         this.client = builder.client != null
@@ -67,6 +73,8 @@ public class GoogleGenAiImageModel implements ImageModel {
         this.imageSize = builder.imageSize;
         this.personGeneration = builder.personGeneration;
         this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
+        this.logRequests = getOrDefault(builder.logRequests, false);
+        this.logResponses = getOrDefault(builder.logResponses, false);
     }
 
     public static Builder builder() {
@@ -116,10 +124,20 @@ public class GoogleGenAiImageModel implements ImageModel {
     private Response<Image> generateImageResponse(List<Content> contents) {
         GenerateContentConfig config = createGenerateContentConfig();
 
+        if (logRequests) {
+            log.info("Request:\n- model: {}\n- contents: {}\n- config: {}", modelName, contents, config);
+        }
+
         GenerateContentResponse response = withRetryMappingExceptions(
                 () -> client.models.generateContent(modelName, contents, config), maxRetries);
 
-        return toResponse(response);
+        Response<Image> imageResponse = toResponse(response);
+
+        if (logResponses) {
+            log.info("Response:\n- model: {}\n- response: {}", modelName, imageResponse);
+        }
+
+        return imageResponse;
     }
 
     private GenerateContentConfig createGenerateContentConfig() {
@@ -306,6 +324,12 @@ public class GoogleGenAiImageModel implements ImageModel {
 
         public Builder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        public Builder logRequestsAndResponses(Boolean logRequestsAndResponses) {
+            this.logRequests = logRequestsAndResponses;
+            this.logResponses = logRequestsAndResponses;
             return this;
         }
 

@@ -35,13 +35,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Experimental
 public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
 
+    private static final Logger log = LoggerFactory.getLogger(GoogleGenAiStreamingChatModel.class);
+
     private final Client client;
     private final List<ChatModelListener> listeners;
     private final ChatRequestParameters defaultRequestParameters;
+    private final boolean logRequests;
+    private final boolean logResponses;
 
     private final List<SafetySetting> safetySettings;
     private final Integer thinkingBudget;
@@ -59,6 +65,8 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
 
     private GoogleGenAiStreamingChatModel(Builder builder) {
         this.listeners = copy(builder.listeners);
+        this.logRequests = getOrDefault(builder.logRequests, false);
+        this.logResponses = getOrDefault(builder.logResponses, false);
         this.googleSearchEnabled = getOrDefault(builder.googleSearch, false);
         this.googleMapsEnabled = getOrDefault(builder.googleMaps, false);
         this.urlContextEnabled = getOrDefault(builder.urlContext, false);
@@ -121,6 +129,14 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 vertexSearchDatastore,
                 labels,
                 cachedContent);
+
+        if (logRequests) {
+            log.info(
+                    "Request:\n- model: {}\n- messages: {}\n- config: {}",
+                    chatRequest.modelName(),
+                    chatRequest.messages(),
+                    config);
+        }
 
         executor.execute(() -> {
             try {
@@ -204,6 +220,10 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                         .metadata(metadata)
                         .build();
 
+                if (logResponses) {
+                    log.info("Response:\n- model: {}\n- response: {}", modelName, finalChatResponse);
+                }
+
                 handler.onCompleteResponse(finalChatResponse);
             } catch (Exception e) {
                 handler.onError(e);
@@ -259,6 +279,8 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         private String apiEndpoint;
         private Map<String, String> customHeaders;
         private String cachedContent;
+        private Boolean logRequests;
+        private Boolean logResponses;
 
         public Builder client(Client client) {
             this.client = client;
@@ -419,6 +441,22 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
 
         public Builder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
+            return this;
+        }
+
+        public Builder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public Builder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public Builder logRequestsAndResponses(Boolean logRequestsAndResponses) {
+            this.logRequests = logRequestsAndResponses;
+            this.logResponses = logRequestsAndResponses;
             return this;
         }
 

@@ -21,6 +21,7 @@ https://github.com/googleapis/java-genai
     - [Executor](#executor)
 - [GoogleGenAiEmbeddingModel](#googlegenaiembeddingmodel)
 - [GoogleGenAiImageModel](#googlegenaiimagemodel)
+- [Request & Response Logging](#request--response-logging)
 - [Batch API](#batch-api)
 - [Tools](#tools)
 - [JSON Schema / Structured Outputs](#json-schema--structured-outputs)
@@ -134,6 +135,101 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
     .thinkingLevel("LOW")
     .listeners(...)
     .build();
+```
+
+## Request & Response Logging
+
+You can enable request and response logging for debugging, troubleshooting, and audit purposes on `GoogleGenAiChatModel`, `GoogleGenAiStreamingChatModel`, `GoogleGenAiEmbeddingModel`, and `GoogleGenAiImageModel`.
+
+To capture these logs, configure `.logRequests(true)`, `.logResponses(true)` (or both using `.logRequestsAndResponses(true)`) in your model builders.
+
+```java
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash")
+    .logRequests(true)
+    .logResponses(true)
+    // Or: .logRequestsAndResponses(true)
+    .build();
+```
+
+### Logging Configuration Setup
+
+All logging in the Google Gen AI integration module is routed through the standard **SLF4J** facade. To actually view the output, you must ensure that:
+1. An SLF4J binding (implementation) is present in your dependencies.
+2. The logging framework is configured to output logs under the `INFO` level for the package `dev.langchain4j.model.google.genai`.
+
+Below are common setup patterns for popular logging environments:
+
+#### 1. Setup using Logback
+
+Add the Logback classic implementation to your project:
+
+##### Maven
+```xml
+<dependency>
+    <groupId>ch.qos.logback</groupId>
+    <artifactId>logback-classic</artifactId>
+    <version>1.5.8</version> <!-- or your preferred version -->
+</dependency>
+```
+
+##### Gradle
+```groovy
+implementation 'ch.qos.logback:logback-classic:1.5.8'
+```
+
+Next, configure the logging level in your `src/main/resources/logback.xml` file. For example:
+
+```xml
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Configure the package specifically for Google Gen AI logging -->
+    <logger name="dev.langchain4j.model.google.genai" level="INFO" />
+
+    <root level="WARN">
+        <appender-ref ref="STDOUT" />
+    </root>
+</configuration>
+```
+
+#### 2. Setup in Spring Boot Applications
+
+Spring Boot automatically provides an SLF4J provider. Simply configure the logging level in your `application.properties` (or `application.yml` equivalent):
+
+```properties
+# Enable logging for Google Gen AI models
+logging.level.dev.langchain4j.model.google.genai=INFO
+```
+
+#### 3. Setup with SLF4J Simple
+
+If you are writing a script or a simple command-line application, you can use the lightweight `slf4j-simple` backend:
+
+##### Maven
+```xml
+<dependency>
+    <groupId>org.slf4j</groupId>
+    <artifactId>slf4j-simple</artifactId>
+    <version>2.0.13</version>
+</dependency>
+```
+
+Configure SLF4J Simple via a system property when starting your application:
+
+```bash
+java -Dorg.slf4j.simpleLogger.log.dev.langchain4j.model.google.genai=INFO -jar app.jar
+```
+
+Alternatively, create a `simplelogger.properties` file in `src/main/resources/` containing:
+
+```properties
+org.slf4j.simpleLogger.log.dev.langchain4j.model.google.genai=info
 ```
 
 ## GoogleGenAiStreamingChatModel

@@ -20,9 +20,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Experimental
 public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
+
+    private static final Logger log = LoggerFactory.getLogger(GoogleGenAiEmbeddingModel.class);
 
     public enum TaskTypeEnum {
         TASK_TYPE_UNSPECIFIED("TASK_TYPE_UNSPECIFIED"),
@@ -53,6 +57,8 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final String titleMetadataKey;
     private final Integer maxSegmentsPerBatch;
     private final Integer maxRetries;
+    private final boolean logRequests;
+    private final boolean logResponses;
 
     public GoogleGenAiEmbeddingModel(Builder builder) {
         this.client = builder.client != null
@@ -71,6 +77,8 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.titleMetadataKey = getOrDefault(builder.titleMetadataKey, "title");
         this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, 100);
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
+        this.logRequests = getOrDefault(builder.logRequests, false);
+        this.logResponses = getOrDefault(builder.logResponses, false);
     }
 
     @Override
@@ -87,6 +95,13 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
         if (textSegments == null || textSegments.isEmpty()) {
             return Response.from(new ArrayList<>());
+        }
+
+        if (logRequests) {
+            log.info(
+                    "Request:\n- model: {}\n- texts: {}",
+                    modelName,
+                    textSegments.stream().map(TextSegment::text).collect(Collectors.toList()));
         }
 
         // Group IndexedSegment objects by their segment title (or null key if none).
@@ -142,7 +157,11 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             }
         }
 
-        return Response.from(Arrays.asList(embeddingsArray));
+        Response<List<Embedding>> response = Response.from(Arrays.asList(embeddingsArray));
+        if (logResponses) {
+            log.info("Response:\n- model: {}\n- response: {}", modelName, response);
+        }
+        return response;
     }
 
     private static class IndexedSegment {
@@ -224,6 +243,12 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         public Builder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
+            return this;
+        }
+
+        public Builder logRequestsAndResponses(Boolean logRequestsAndResponses) {
+            this.logRequests = logRequestsAndResponses;
+            this.logResponses = logRequestsAndResponses;
             return this;
         }
 
