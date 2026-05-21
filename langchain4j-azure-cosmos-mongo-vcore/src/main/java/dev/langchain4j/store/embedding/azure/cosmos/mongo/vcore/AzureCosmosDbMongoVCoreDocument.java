@@ -1,9 +1,8 @@
 package dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore;
 
-import org.bson.codecs.pojo.annotations.BsonId;
-
 import java.util.List;
 import java.util.Map;
+import org.bson.codecs.pojo.annotations.BsonId;
 
 /**
  * @deprecated Replaced by
@@ -16,19 +15,20 @@ public class AzureCosmosDbMongoVCoreDocument {
 
     @BsonId
     private String id;
+
     private List<Float> embedding;
     private String text;
     private Map<String, String> metadata;
 
-    public AzureCosmosDbMongoVCoreDocument(String id, List<Float> embedding, String text, Map<String, String> metadata) {
+    public AzureCosmosDbMongoVCoreDocument(
+            String id, List<Float> embedding, String text, Map<String, String> metadata) {
         this.id = id;
         this.embedding = embedding;
         this.text = text;
         this.metadata = metadata;
     }
 
-    public AzureCosmosDbMongoVCoreDocument() {
-    }
+    public AzureCosmosDbMongoVCoreDocument() {}
 
     public static AzureCosmosDbMongoVCoreDocumentBuilder builder() {
         return new AzureCosmosDbMongoVCoreDocumentBuilder();
@@ -105,7 +105,8 @@ public class AzureCosmosDbMongoVCoreDocument {
     }
 
     public String toString() {
-        return "AzureCosmosDbMongoVCoreDocument(id=" + this.getId() + ", embedding=" + this.getEmbedding() + ", text=" + this.getText() + ", metadata=" + this.getMetadata() + ")";
+        return "AzureCosmosDbMongoVCoreDocument(id=" + this.getId() + ", embedding=" + this.getEmbedding() + ", text="
+                + this.getText() + ", metadata=" + this.getMetadata() + ")";
     }
 
     public static class AzureCosmosDbMongoVCoreDocumentBuilder {
@@ -114,8 +115,7 @@ public class AzureCosmosDbMongoVCoreDocument {
         private String text;
         private Map<String, String> metadata;
 
-        AzureCosmosDbMongoVCoreDocumentBuilder() {
-        }
+        AzureCosmosDbMongoVCoreDocumentBuilder() {}
 
         public AzureCosmosDbMongoVCoreDocumentBuilder id(String id) {
             this.id = id;
@@ -142,7 +142,8 @@ public class AzureCosmosDbMongoVCoreDocument {
         }
 
         public String toString() {
-            return "AzureCosmosDbMongoVCoreDocument.AzureCosmosDbMongoVCoreDocumentBuilder(id=" + this.id + ", embedding=" + this.embedding + ", text=" + this.text + ", metadata=" + this.metadata + ")";
+            return "AzureCosmosDbMongoVCoreDocument.AzureCosmosDbMongoVCoreDocumentBuilder(id=" + this.id
+                    + ", embedding=" + this.embedding + ", text=" + this.text + ", metadata=" + this.metadata + ")";
         }
     }
 }

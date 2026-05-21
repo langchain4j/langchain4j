@@ -18,7 +18,8 @@ public class AzureCosmosDbMongoVCoreMatchedDocument {
     private Map<String, String> metadata;
     private Double score;
 
-    public AzureCosmosDbMongoVCoreMatchedDocument(String id, List<Float> embedding, String text, Map<String, String> metadata, Double score) {
+    public AzureCosmosDbMongoVCoreMatchedDocument(
+            String id, List<Float> embedding, String text, Map<String, String> metadata, Double score) {
         this.id = id;
         this.embedding = embedding;
         this.text = text;
@@ -26,8 +27,7 @@ public class AzureCosmosDbMongoVCoreMatchedDocument {
         this.score = score;
     }
 
-    public AzureCosmosDbMongoVCoreMatchedDocument() {
-    }
+    public AzureCosmosDbMongoVCoreMatchedDocument() {}
 
     public String getId() {
         return this.id;
@@ -113,6 +113,7 @@ public class AzureCosmosDbMongoVCoreMatchedDocument {
     }
 
     public String toString() {
-        return "AzureCosmosDbMongoVCoreMatchedDocument(id=" + this.getId() + ", embedding=" + this.getEmbedding() + ", text=" + this.getText() + ", metadata=" + this.getMetadata() + ", score=" + this.getScore() + ")";
+        return "AzureCosmosDbMongoVCoreMatchedDocument(id=" + this.getId() + ", embedding=" + this.getEmbedding()
+                + ", text=" + this.getText() + ", metadata=" + this.getMetadata() + ", score=" + this.getScore() + ")";
     }
 }

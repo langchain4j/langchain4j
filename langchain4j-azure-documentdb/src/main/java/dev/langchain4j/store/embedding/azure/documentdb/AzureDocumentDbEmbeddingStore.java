@@ -336,8 +336,8 @@ public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment
 
         InsertManyResult result = collection.insertMany(documents);
         if (!result.wasAcknowledged()) {
-            String errMsg = String.format(
-                    "[AzureDocumentDbEmbeddingStore] Add document failed, Document=%s", documents);
+            String errMsg =
+                    String.format("[AzureDocumentDbEmbeddingStore] Add document failed, Document=%s", documents);
             throw new RuntimeException(errMsg);
         }
     }

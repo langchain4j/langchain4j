@@ -11,7 +11,8 @@ public class AzureDocumentDbMatchedDocument {
     private Map<String, String> metadata;
     private Double score;
 
-    public AzureDocumentDbMatchedDocument(String id, List<Float> embedding, String text, Map<String, String> metadata, Double score) {
+    public AzureDocumentDbMatchedDocument(
+            String id, List<Float> embedding, String text, Map<String, String> metadata, Double score) {
         this.id = id;
         this.embedding = embedding;
         this.text = text;
@@ -19,8 +20,7 @@ public class AzureDocumentDbMatchedDocument {
         this.score = score;
     }
 
-    public AzureDocumentDbMatchedDocument() {
-    }
+    public AzureDocumentDbMatchedDocument() {}
 
     public String getId() {
         return this.id;
@@ -106,6 +106,7 @@ public class AzureDocumentDbMatchedDocument {
     }
 
     public String toString() {
-        return "AzureDocumentDbMatchedDocument(id=" + this.getId() + ", embedding=" + this.getEmbedding() + ", text=" + this.getText() + ", metadata=" + this.getMetadata() + ", score=" + this.getScore() + ")";
+        return "AzureDocumentDbMatchedDocument(id=" + this.getId() + ", embedding=" + this.getEmbedding() + ", text="
+                + this.getText() + ", metadata=" + this.getMetadata() + ", score=" + this.getScore() + ")";
     }
 }

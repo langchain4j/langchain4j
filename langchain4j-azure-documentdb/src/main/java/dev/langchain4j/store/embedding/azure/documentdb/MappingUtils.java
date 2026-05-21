@@ -1,11 +1,11 @@
 package dev.langchain4j.store.embedding.azure.documentdb;
 
+import static dev.langchain4j.internal.Utils.toStringValueMap;
+
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
-
-import static dev.langchain4j.internal.Utils.toStringValueMap;
 
 class MappingUtils {
 
@@ -17,7 +17,11 @@ class MappingUtils {
         if (textSegment == null) {
             return new AzureDocumentDbDocument(id, embedding.vectorAsList(), null, null);
         }
-        return new AzureDocumentDbDocument(id, embedding.vectorAsList(), textSegment.text(), toStringValueMap(textSegment.metadata().toMap()));
+        return new AzureDocumentDbDocument(
+                id,
+                embedding.vectorAsList(),
+                textSegment.text(),
+                toStringValueMap(textSegment.metadata().toMap()));
     }
 
     static EmbeddingMatch<TextSegment> toEmbeddingMatch(AzureDocumentDbMatchedDocument matchedDocument) {
@@ -25,6 +29,10 @@ class MappingUtils {
         if (matchedDocument.getText() != null) {
             textSegment = TextSegment.from(matchedDocument.getText(), Metadata.from(matchedDocument.getMetadata()));
         }
-        return new EmbeddingMatch<>(matchedDocument.getScore(), matchedDocument.getId(), Embedding.from(matchedDocument.getEmbedding()), textSegment);
+        return new EmbeddingMatch<>(
+                matchedDocument.getScore(),
+                matchedDocument.getId(),
+                Embedding.from(matchedDocument.getEmbedding()),
+                textSegment);
     }
 }

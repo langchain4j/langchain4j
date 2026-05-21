@@ -31,9 +31,7 @@ class AzureDocumentDbEmbeddingStoreTest {
     @Test
     void should_fail_if_connectionString_missing() {
         assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
-            AzureDocumentDbEmbeddingStore.builder()
-                    .connectionString(null)
-                    .build();
+            AzureDocumentDbEmbeddingStore.builder().connectionString(null).build();
         });
 
         assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {

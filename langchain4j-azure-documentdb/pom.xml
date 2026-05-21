@@ -10,12 +10,10 @@
 
     <artifactId>langchain4j-azure-documentdb</artifactId>
     <name>LangChain4j :: Integration :: Azure DocumentDB</name>
-    <description>
-        Azure DocumentDB integration for LangChain4j. Replaces the legacy
+    <description>Azure DocumentDB integration for LangChain4j. Replaces the legacy
         langchain4j-azure-cosmos-mongo-vcore module, which targets the service
         previously known as "Azure CosmosDB for MongoDB vCore" and has since
-        been rebranded by Microsoft as "Azure DocumentDB".
-    </description>
+        been rebranded by Microsoft as "Azure DocumentDB".</description>
 
     <properties>
         <!-- No prior published artifact to compare against; re-enable after first release. -->

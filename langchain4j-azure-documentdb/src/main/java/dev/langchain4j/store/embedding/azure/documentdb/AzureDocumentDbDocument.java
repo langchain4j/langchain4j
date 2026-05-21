@@ -1,14 +1,14 @@
 package dev.langchain4j.store.embedding.azure.documentdb;
 
-import org.bson.codecs.pojo.annotations.BsonId;
-
 import java.util.List;
 import java.util.Map;
+import org.bson.codecs.pojo.annotations.BsonId;
 
 public class AzureDocumentDbDocument {
 
     @BsonId
     private String id;
+
     private List<Float> embedding;
     private String text;
     private Map<String, String> metadata;
@@ -20,8 +20,7 @@ public class AzureDocumentDbDocument {
         this.metadata = metadata;
     }
 
-    public AzureDocumentDbDocument() {
-    }
+    public AzureDocumentDbDocument() {}
 
     public static AzureDocumentDbDocumentBuilder builder() {
         return new AzureDocumentDbDocumentBuilder();
@@ -98,7 +97,8 @@ public class AzureDocumentDbDocument {
     }
 
     public String toString() {
-        return "AzureDocumentDbDocument(id=" + this.getId() + ", embedding=" + this.getEmbedding() + ", text=" + this.getText() + ", metadata=" + this.getMetadata() + ")";
+        return "AzureDocumentDbDocument(id=" + this.getId() + ", embedding=" + this.getEmbedding() + ", text="
+                + this.getText() + ", metadata=" + this.getMetadata() + ")";
     }
 
     public static class AzureDocumentDbDocumentBuilder {
@@ -107,8 +107,7 @@ public class AzureDocumentDbDocument {
         private String text;
         private Map<String, String> metadata;
 
-        AzureDocumentDbDocumentBuilder() {
-        }
+        AzureDocumentDbDocumentBuilder() {}
 
         public AzureDocumentDbDocumentBuilder id(String id) {
             this.id = id;
@@ -135,7 +134,8 @@ public class AzureDocumentDbDocument {
         }
 
         public String toString() {
-            return "AzureDocumentDbDocument.AzureDocumentDbDocumentBuilder(id=" + this.id + ", embedding=" + this.embedding + ", text=" + this.text + ", metadata=" + this.metadata + ")";
+            return "AzureDocumentDbDocument.AzureDocumentDbDocumentBuilder(id=" + this.id + ", embedding="
+                    + this.embedding + ", text=" + this.text + ", metadata=" + this.metadata + ")";
         }
     }
 }

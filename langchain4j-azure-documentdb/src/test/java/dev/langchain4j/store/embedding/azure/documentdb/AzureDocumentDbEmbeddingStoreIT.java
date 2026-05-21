@@ -1,5 +1,8 @@
 package dev.langchain4j.store.embedding.azure.documentdb;
 
+import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
+import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
+
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
@@ -17,9 +20,6 @@ import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
-import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
-
 @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_ENDPOINT", matches = ".+")
 public class AzureDocumentDbEmbeddingStoreIT extends EmbeddingStoreIT {
 
@@ -27,15 +27,13 @@ public class AzureDocumentDbEmbeddingStoreIT extends EmbeddingStoreIT {
     private final EmbeddingModel embeddingModel;
     private final EmbeddingStore<TextSegment> embeddingStore;
 
-
     public AzureDocumentDbEmbeddingStoreIT() {
         embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
-        client = MongoClients.create(
-                MongoClientSettings.builder()
-                        .applyConnectionString(new ConnectionString(System.getenv("AZURE_COSMOS_ENDPOINT")))
-                        .applicationName("JAVA_LANG_CHAIN")
-                        .build());
+        client = MongoClients.create(MongoClientSettings.builder()
+                .applyConnectionString(new ConnectionString(System.getenv("AZURE_COSMOS_ENDPOINT")))
+                .applicationName("JAVA_LANG_CHAIN")
+                .build());
 
         embeddingStore = AzureDocumentDbEmbeddingStore.builder()
                 .mongoClient(client)
