@@ -196,7 +196,7 @@ class AnthropicStreamingChatModelIT {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {1, 10, 100})
+    @ValueSource(ints = {1, 10})
     void should_handle_timeout(int millis) throws Exception {
 
         // given

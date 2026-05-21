@@ -1,14 +1,13 @@
 package dev.langchain4j.service.memory;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
-
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 @Internal
 public class ChatMemoryService {
@@ -29,17 +28,14 @@ public class ChatMemoryService {
     }
 
     public ChatMemory getOrCreateChatMemory(Object memoryId) {
-        if (memoryId == DEFAULT) {
-            if (defaultChatMemory == null) {
-                defaultChatMemory = chatMemoryProvider.get(DEFAULT);
-            }
-            return defaultChatMemory;
+        if (chatMemoryProvider != null) {
+            return chatMemories.computeIfAbsent(memoryId, chatMemoryProvider::get);
         }
-        return chatMemories.computeIfAbsent(memoryId, chatMemoryProvider::get);
+        return defaultChatMemory;
     }
 
     public ChatMemory getChatMemory(Object memoryId) {
-        return memoryId == DEFAULT ? defaultChatMemory : chatMemories.get(memoryId);
+        return chatMemoryProvider != null ? chatMemories.get(memoryId) : memoryId == DEFAULT ? defaultChatMemory : null;
     }
 
     public ChatMemory evictChatMemory(Object memoryId) {

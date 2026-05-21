@@ -52,6 +52,22 @@
           "new": "parameter dev.langchain4j.agentic.workflow.impl.ConditionalAgentServiceImpl<T> dev.langchain4j.agentic.workflow.impl.ConditionalAgentServiceImpl<T>::subAgents(===java.util.Collection<?>===)",
           "parameterIndex": "0",
           "justification": "Not a breaking change, this is an internal API that is not exposed to users"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.parameterTypeChanged",
+          "old": "parameter <T> T dev.langchain4j.agentic.AgenticServices::createAgenticSystem(java.lang.Class<T>, ===java.util.function.Consumer<dev.langchain4j.agentic.AgenticServices.DeclarativeAgentCreationContext<?>>===)",
+          "new": "parameter <T> T dev.langchain4j.agentic.AgenticServices::createAgenticSystem(java.lang.Class<T>, ===dev.langchain4j.agentic.AgenticServices.AgentConfigurator===)",
+          "parameterIndex": "1",
+          "justification": "Not a breaking change, this method is only used by the Quarkus extension"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.parameterTypeChanged",
+          "old": "parameter <T> T dev.langchain4j.agentic.AgenticServices::createAgenticSystem(java.lang.Class<T>, dev.langchain4j.model.chat.ChatModel, ===java.util.function.Consumer<dev.langchain4j.agentic.AgenticServices.DeclarativeAgentCreationContext<?>>===)",
+          "new": "parameter <T> T dev.langchain4j.agentic.AgenticServices::createAgenticSystem(java.lang.Class<T>, dev.langchain4j.model.chat.ChatModel, ===dev.langchain4j.agentic.AgenticServices.AgentConfigurator===)",
+          "parameterIndex": "2",
+          "justification": "Not a breaking change, this method is only used by the Quarkus extension"
         }
       ]
     }
