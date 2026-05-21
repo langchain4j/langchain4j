@@ -135,4 +135,53 @@ class GoogleGenAiEmbeddingModelIT {
         // then
         assertThat(allEmbeddings.content()).hasSize(150);
     }
+
+    @Test
+    void should_embed_in_batches_of_custom_size() {
+        // given
+        GoogleGenAiEmbeddingModel embeddingModel = GoogleGenAiEmbeddingModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-embedding-2")
+                .maxSegmentsPerBatch(10)
+                .build();
+
+        // when
+        List<TextSegment> textSegments = new ArrayList<>();
+        for (int i = 0; i < 25; i++) {
+            textSegments.add(TextSegment.from("Segment " + i));
+        }
+
+        Response<List<Embedding>> allEmbeddings = embeddingModel.embedAll(textSegments);
+
+        // then
+        assertThat(allEmbeddings.content()).hasSize(25);
+    }
+
+    @Test
+    void should_embed_with_title_grouping() {
+        // given
+        GoogleGenAiEmbeddingModel embeddingModel = GoogleGenAiEmbeddingModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-embedding-2")
+                .taskType(GoogleGenAiEmbeddingModel.TaskTypeEnum.RETRIEVAL_DOCUMENT)
+                .titleMetadataKey("title")
+                .maxSegmentsPerBatch(5)
+                .build();
+
+        // when
+        List<TextSegment> textSegments = new ArrayList<>();
+        textSegments.add(TextSegment.from("Document 1 chunk 1", Metadata.from("title", "Doc1")));
+        textSegments.add(TextSegment.from("Document 1 chunk 2", Metadata.from("title", "Doc1")));
+        textSegments.add(TextSegment.from("Document 2 chunk 1", Metadata.from("title", "Doc2")));
+        textSegments.add(TextSegment.from("Document 2 chunk 2", Metadata.from("title", "Doc2")));
+        textSegments.add(TextSegment.from("No title chunk"));
+
+        Response<List<Embedding>> allEmbeddings = embeddingModel.embedAll(textSegments);
+
+        // then
+        assertThat(allEmbeddings.content()).hasSize(5);
+        for (Embedding embedding : allEmbeddings.content()) {
+            assertThat(embedding.vector()).isNotNull();
+        }
+    }
 }

@@ -1,6 +1,11 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
@@ -49,20 +54,26 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final Integer outputDimensionality;
     private final TaskTypeEnum taskType;
     private final String titleMetadataKey;
+    private final Integer maxSegmentsPerBatch;
+    private final Integer maxRetries;
 
     public GoogleGenAiEmbeddingModel(Builder builder) {
-        this.client = GoogleGenAiClientFactory.createClient(
-                builder.apiKey,
-                builder.googleCredentials,
-                builder.projectId,
-                builder.location,
-                builder.timeout,
-                builder.customHeaders,
-                builder.apiEndpoint);
+        this.client = builder.client != null
+                ? builder.client
+                : GoogleGenAiClientFactory.createClient(
+                        builder.apiKey,
+                        builder.googleCredentials,
+                        builder.projectId,
+                        builder.location,
+                        builder.timeout,
+                        builder.customHeaders,
+                        builder.apiEndpoint);
         this.modelName = builder.modelName;
         this.outputDimensionality = builder.outputDimensionality;
         this.taskType = builder.taskType;
-        this.titleMetadataKey = builder.titleMetadataKey != null ? builder.titleMetadataKey : "title";
+        this.titleMetadataKey = getOrDefault(builder.titleMetadataKey, "title");
+        this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, 100);
+        this.maxRetries = getOrDefault(builder.maxRetries, 3);
     }
 
     @Override
@@ -77,47 +88,75 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-        List<Content> contents = textSegments.stream()
-                .map(segment -> Content.builder()
-                        .parts(List.of(Part.builder().text(segment.text()).build()))
-                        .build())
-                .collect(Collectors.toList());
+        if (textSegments == null || textSegments.isEmpty()) {
+            return Response.from(new ArrayList<>());
+        }
 
-        List<Embedding> allEmbeddings = new ArrayList<>();
-        int inputTokens = 0;
-        int totalTokens = 0;
-
+        // Group IndexedSegment objects by their segment title (or null key if none).
+        // Rationale: In document ingestion pipelines, multiple text segments often share the same document title.
+        // Since the google-genai SDK's embedContent method with list parameters shares a single EmbedContentConfig
+        // (which only supports a single title), grouping segments by their title allows us to batch texts sharing
+        // the same title together in one API request. This maximizes API throughput and fully preserves distinct titles.
+        Map<String, List<IndexedSegment>> grouped = new LinkedHashMap<>();
         for (int i = 0; i < textSegments.size(); i++) {
             TextSegment segment = textSegments.get(i);
-            Content content = contents.get(i);
-
-            EmbedContentConfig.Builder configBuilder = EmbedContentConfig.builder();
-            if (taskType != null) {
-                configBuilder.taskType(taskType.getSdkTaskType());
-            }
-            if (outputDimensionality != null) {
-                configBuilder.outputDimensionality(outputDimensionality);
-            }
+            String title = null;
             if (TaskTypeEnum.RETRIEVAL_DOCUMENT.equals(taskType) && segment.metadata() != null) {
-                String title = segment.metadata().getString(titleMetadataKey);
+                title = segment.metadata().getString(titleMetadataKey);
+            }
+            grouped.computeIfAbsent(title, k -> new ArrayList<>()).add(new IndexedSegment(i, segment));
+        }
+
+        Embedding[] embeddingsArray = new Embedding[textSegments.size()];
+
+        for (Map.Entry<String, List<IndexedSegment>> entry : grouped.entrySet()) {
+            String title = entry.getKey();
+            List<IndexedSegment> indexedSegments = entry.getValue();
+
+            int size = indexedSegments.size();
+            for (int i = 0; i < size; i += maxSegmentsPerBatch) {
+                List<IndexedSegment> batch = indexedSegments.subList(i, Math.min(i + maxSegmentsPerBatch, size));
+                List<String> texts = batch.stream()
+                        .map(is -> is.segment.text())
+                        .collect(Collectors.toList());
+
+                EmbedContentConfig.Builder configBuilder = EmbedContentConfig.builder();
+                if (taskType != null) {
+                    configBuilder.taskType(taskType.getSdkTaskType());
+                }
+                if (outputDimensionality != null) {
+                    configBuilder.outputDimensionality(outputDimensionality);
+                }
                 if (title != null) {
                     configBuilder.title(title);
                 }
+
+                EmbedContentResponse response = withRetryMappingExceptions(
+                        () -> client.models.embedContent(modelName, texts, configBuilder.build()),
+                        maxRetries);
+
+                if (response.embeddings().isPresent()) {
+                    var embeddings = response.embeddings().get();
+                    for (int j = 0; j < batch.size(); j++) {
+                        if (j < embeddings.size() && embeddings.get(j).values().isPresent()) {
+                            embeddingsArray[batch.get(j).index] = Embedding.from(embeddings.get(j).values().get());
+                        }
+                    }
+                }
             }
-
-            EmbedContentResponse response = client.models.embedContent(modelName, content, configBuilder.build());
-
-            allEmbeddings.add(
-                    Embedding.from(response.embeddings().get().get(0).values().get()));
-            // Usage is generally per-batch or per-request but `embedContent` is singular content for now.
-            // Wait, does models().embedContent take a list or a single content?
-            // Actually, we can check if there's a batchEmbedContents or similar. If not, do it in a loop.
-            // Let's aggregate usage for the response if available.
-            // Let's check `GoogleGenAiChatModel` to see how TokenUsage is mapped.
         }
 
-        // Return a response (ignoring token usage for a moment until we refine it)
-        return Response.from(allEmbeddings);
+        return Response.from(Arrays.asList(embeddingsArray));
+    }
+
+    private static class IndexedSegment {
+        final int index;
+        final TextSegment segment;
+
+        IndexedSegment(int index, TextSegment segment) {
+            this.index = index;
+            this.segment = segment;
+        }
     }
 
     @Override
@@ -149,6 +188,8 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private String titleMetadataKey;
         private String apiEndpoint;
         private Map<String, String> customHeaders;
+        private Integer maxSegmentsPerBatch = 100;
+        private Integer maxRetries = 3;
 
         public Builder client(Client client) {
             this.client = client;
@@ -217,6 +258,16 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         public Builder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
+            return this;
+        }
+
+        public Builder maxSegmentsPerBatch(Integer maxSegmentsPerBatch) {
+            this.maxSegmentsPerBatch = maxSegmentsPerBatch;
+            return this;
+        }
+
+        public Builder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
             return this;
         }
 
