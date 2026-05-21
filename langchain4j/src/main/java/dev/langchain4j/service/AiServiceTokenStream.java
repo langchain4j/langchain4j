@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 @Internal
 public class AiServiceTokenStream implements TokenStream {
@@ -53,6 +54,7 @@ public class AiServiceTokenStream implements TokenStream {
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
     private final StreamingChatModel perCallStreamingChatModel;
+    private Supplier<Boolean> perCallCancellationSupplier;
 
     private Consumer<String> partialResponseHandler;
     private BiConsumer<PartialResponse, PartialResponseContext> partialResponseWithContextHandler;
@@ -100,6 +102,7 @@ public class AiServiceTokenStream implements TokenStream {
         this.commonGuardrailParams = parameters.commonGuardrailParams();
         this.methodKey = parameters.methodKey();
         this.perCallStreamingChatModel = parameters.streamingChatModel();
+        this.perCallCancellationSupplier = parameters.cancellationSupplier();
     }
 
     @Override
@@ -194,6 +197,12 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     @Override
+    public TokenStream cancelOn(Supplier<Boolean> cancellationSupplier) {
+        this.perCallCancellationSupplier = cancellationSupplier;
+        return this;
+    }
+
+    @Override
     public void start() {
         validateConfiguration();
 
@@ -246,7 +255,8 @@ public class AiServiceTokenStream implements TokenStream {
                 methodKey,
                 modelToUse,
                 context.streamingToolDispatchHook,
-                chatRequest.parameters());
+                chatRequest.parameters(),
+                perCallCancellationSupplier);
 
         if (contentsHandler != null && retrievedContents != null) {
             contentsHandler.accept(retrievedContents);

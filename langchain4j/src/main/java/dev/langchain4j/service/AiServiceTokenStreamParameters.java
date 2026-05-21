@@ -16,6 +16,7 @@ import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
+import java.util.function.Supplier;
 
 /**
  * Parameters for creating an {@link AiServiceTokenStream}.
@@ -34,6 +35,7 @@ public class AiServiceTokenStreamParameters {
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
     private final StreamingChatModel streamingChatModel;
+    private final Supplier<Boolean> cancellationSupplier;
 
     protected AiServiceTokenStreamParameters(Builder builder) {
         this.messages = builder.messages;
@@ -47,6 +49,7 @@ public class AiServiceTokenStreamParameters {
         this.commonGuardrailParams = builder.commonGuardrailParams;
         this.methodKey = builder.methodKey;
         this.streamingChatModel = builder.streamingChatModel;
+        this.cancellationSupplier = builder.cancellationSupplier;
     }
 
     /**
@@ -174,6 +177,16 @@ public class AiServiceTokenStreamParameters {
     }
 
     /**
+     * Framework-integrator slot for the per-invocation cancellation supplier. End users should
+     * use {@link TokenStream#cancelOn(Supplier)} instead.
+     *
+     * @since 1.15.0-beta25
+     */
+    public Supplier<Boolean> cancellationSupplier() {
+        return cancellationSupplier;
+    }
+
+    /**
      * Creates a new builder for {@link AiServiceTokenStreamParameters}.
      *
      * @return a new builder
@@ -198,6 +211,7 @@ public class AiServiceTokenStreamParameters {
         private GuardrailRequestParams commonGuardrailParams;
         private Object methodKey;
         private StreamingChatModel streamingChatModel;
+        private Supplier<Boolean> cancellationSupplier;
 
         protected Builder() {}
 
@@ -364,6 +378,12 @@ public class AiServiceTokenStreamParameters {
          */
         public Builder streamingChatModel(StreamingChatModel streamingChatModel) {
             this.streamingChatModel = streamingChatModel;
+            return this;
+        }
+
+        /** @since 1.15.0-beta25 */
+        public Builder cancellationSupplier(Supplier<Boolean> cancellationSupplier) {
+            this.cancellationSupplier = cancellationSupplier;
             return this;
         }
 

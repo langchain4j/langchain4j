@@ -16,6 +16,7 @@ import dev.langchain4j.service.tool.ToolExecution;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Represents a token stream from the model to which you can subscribe and receive updates
@@ -204,6 +205,22 @@ public interface TokenStream {
      * @return token stream instance used to configure or start stream processing
      */
     TokenStream ignoreErrors();
+
+    /**
+     * Registers a per-stream cancellation flag, polled at agent-loop checkpoints. When the supplier
+     * returns {@code true}, the loop cancels pending tool futures, writes placeholder tool-result
+     * messages for any in-flight tool requests (preserving the tool_use/tool_result memory
+     * invariant), and skips both the assistant-turn memory write and the follow-up chat call.
+     * Cancellation is silent: no consumer callback fires.
+     *
+     * @param cancellationSupplier supplier returning {@code true} to cancel
+     * @return this token stream
+     * @since 1.15.0-beta25
+     */
+    @Experimental
+    default TokenStream cancelOn(Supplier<Boolean> cancellationSupplier) {
+        throw new UnsupportedOperationException("not implemented");
+    }
 
     /**
      * Completes the current token stream building and starts processing.
