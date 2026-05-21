@@ -310,6 +310,30 @@ EmbeddingModel embeddingModel = GoogleGenAiEmbeddingModel.builder()
 Response<Embedding> response = embeddingModel.embed("Hello world!");
 ```
 
+### Batching & Retries
+
+When embedding multiple text segments (via `embedAll`), `GoogleGenAiEmbeddingModel` automatically manages batching and API request retries.
+
+```java
+EmbeddingModel embeddingModel = GoogleGenAiEmbeddingModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-embedding-2")
+    .maxSegmentsPerBatch(100) // Default: 100. Sets maximum segments per batch request.
+    .maxRetries(3)             // Default: 3. Automatically retries failed requests.
+    .build();
+```
+
+#### Title-based Grouping Strategy
+The official Google Gen AI Java SDK's `embedContent` API only supports a single common `title` per batch request. To handle this restriction cleanly and preserve document-level associations, `GoogleGenAiEmbeddingModel` implements a **group-by-title** batching strategy:
+
+1. When `taskType` is set to `RETRIEVAL_DOCUMENT`, the model groups text segments by their document title (extracted from the segment's metadata using the key defined by `.titleMetadataKey(...)`, which defaults to `"title"`).
+2. Segments sharing the same title are batched and sent together in a single API call.
+3. Segments with different titles (or no title) are processed in separate, optimized batches.
+4. The resulting embeddings are seamlessly reassembled and returned in their original order.
+
+This maximizes API throughput without losing document metadata context or individual segment titles.
+
+
 ## GoogleGenAiImageModel
 
 The `GoogleGenAiImageModel` allows you to generate images from text prompts. It supports custom configuration like aspect ratios, image sizes, and person generation policies.
