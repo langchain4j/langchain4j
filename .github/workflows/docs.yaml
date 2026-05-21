@@ -43,7 +43,7 @@ jobs:
 
       - run: cd docs && npm ci
       - run: cd docs && npm run build
-      - run: cp -R target/site/apidocs docs/build/
+      - run: cp -R target/reports/apidocs docs/build/
 
       - name: Setup Pages
         uses: actions/configure-pages@1f0c5cde4bc74cd7e1254d0cb4de8d49e9068c7d # v4

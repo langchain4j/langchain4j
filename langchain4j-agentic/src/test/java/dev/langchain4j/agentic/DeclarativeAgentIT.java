@@ -178,11 +178,12 @@ public class DeclarativeAgentIT {
     @Test
     void declarative_sequence_with_agent_configuration_tests() {
         StoryCreatorWithConfigurableStyleEditor storyCreator =
-                AgenticServices.createAgenticSystem(StoryCreatorWithConfigurableStyleEditor.class, baseModel(), ctx -> {
-                    if (ctx.agentServiceClass() == StyleEditor.class) {
-                        ctx.agentBuilder().outputKey("styledStory");
-                    }
-                });
+                AgenticServices.createAgenticSystem(StoryCreatorWithConfigurableStyleEditor.class, baseModel(),
+                        new AgenticServices.AgentConfigurator(ctx -> {
+                            if (ctx.agentServiceClass() == StyleEditor.class) {
+                                ctx.agentBuilder().outputKey("styledStory");
+                            }
+                        }, null));
 
         String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
         assertThat(story).isNotBlank();

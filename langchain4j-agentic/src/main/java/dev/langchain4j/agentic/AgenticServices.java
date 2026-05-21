@@ -13,6 +13,15 @@ import static dev.langchain4j.agentic.internal.AgentUtil.nonAiAgentInvoker;
 import static dev.langchain4j.agentic.internal.AgentUtil.nonAiAgentToExecutor;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.ServiceLoader;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.Stream;
 import dev.langchain4j.agentic.agent.AgentBuilder;
 import dev.langchain4j.agentic.agent.UntypedAgentBuilder;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
@@ -280,6 +289,15 @@ public class AgenticServices {
     public record DefaultDeclarativeAgentCreationContext<T>(Class<T> agentServiceClass, AgentBuilder<T, ?> agentBuilder)
             implements DeclarativeAgentCreationContext<T> {}
 
+    public record AgentConfigurator(Consumer<DeclarativeAgentCreationContext<?>> configurator,
+                                    Function<Class<?>, Object> subAgentResolver) {
+        private static final AgentConfigurator EMPTY = new AgentConfigurator(ctx -> {}, null);
+
+        public static AgentConfigurator empty() {
+            return EMPTY;
+        }
+    }
+
     /**
      * Creates an instance of an agentic system defined through the declarative API.
      *
@@ -296,7 +314,7 @@ public class AgenticServices {
      * @param chatModel the ChatModel used by default for all agents participating in this agentic system
      */
     public static <T> T createAgenticSystem(Class<T> agentServiceClass, ChatModel chatModel) {
-        return createAgenticSystem(agentServiceClass, chatModel, ctx -> {});
+        return createAgenticSystem(agentServiceClass, chatModel, AgentConfigurator.empty());
     }
 
     /**
@@ -306,7 +324,7 @@ public class AgenticServices {
      * @param agentConfigurator A callback to tweak the configuration of each agent created in this agentic system
      */
     public static <T> T createAgenticSystem(
-            Class<T> agentServiceClass, Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+            Class<T> agentServiceClass, AgentConfigurator agentConfigurator) {
         return createAgenticSystem(agentServiceClass, declarativeChatModel(agentServiceClass), agentConfigurator);
     }
 
@@ -320,7 +338,7 @@ public class AgenticServices {
     public static <T> T createAgenticSystem(
             Class<T> agentServiceClass,
             ChatModel chatModel,
-            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+            AgentConfigurator agentConfigurator) {
         T agent = createComposedAgent(agentServiceClass, chatModel, agentConfigurator);
 
         if (agent == null) {
@@ -349,7 +367,7 @@ public class AgenticServices {
     private static <T> T createComposedAgent(
             Class<T> agentServiceClass,
             ChatModel chatModel,
-            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+            AgentConfigurator agentConfigurator) {
         Optional<Method> sequenceMethod = getAnnotatedMethodOnClass(agentServiceClass, SequenceAgent.class);
         if (sequenceMethod.isPresent()) {
             return buildSequentialAgent(agentServiceClass, sequenceMethod.get(), chatModel, agentConfigurator);
@@ -409,7 +427,7 @@ public class AgenticServices {
             Class<T> agentServiceClass,
             Method agentMethod,
             ChatModel chatModel,
-            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+            AgentConfigurator agentConfigurator) {
         SequenceAgent annotation = agentMethod.getAnnotation(SequenceAgent.class);
         var builder = sequenceBuilder(agentServiceClass)
                 .subAgents(createSubagents(annotation.subAgents(), chatModel, agentConfigurator));
@@ -428,7 +446,7 @@ public class AgenticServices {
             Class<T> agentServiceClass,
             Method agentMethod,
             ChatModel chatModel,
-            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+            AgentConfigurator agentConfigurator) {
         LoopAgent annotation = agentMethod.getAnnotation(LoopAgent.class);
         var builder = loopBuilder(agentServiceClass)
                 .subAgents(createSubagents(annotation.subAgents(), chatModel, agentConfigurator))
@@ -448,7 +466,7 @@ public class AgenticServices {
             Class<T> agentServiceClass,
             Method agentMethod,
             ChatModel chatModel,
-            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+            AgentConfigurator agentConfigurator) {
         ConditionalAgent annotation = agentMethod.getAnnotation(ConditionalAgent.class);
         var builder = conditionalBuilder(agentServiceClass);
 
@@ -478,7 +496,7 @@ public class AgenticServices {
             Class<T> agentServiceClass,
             Method agentMethod,
             ChatModel chatModel,
-            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+            AgentConfigurator agentConfigurator) {
         ParallelAgent annotation = agentMethod.getAnnotation(ParallelAgent.class);
         var builder = parallelBuilder(agentServiceClass)
                 .subAgents(createSubagents(annotation.subAgents(), chatModel, agentConfigurator));
@@ -497,7 +515,7 @@ public class AgenticServices {
             Class<T> agentServiceClass,
             Method agentMethod,
             ChatModel chatModel,
-            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+            AgentConfigurator agentConfigurator) {
         ParallelMapperAgent annotation = agentMethod.getAnnotation(ParallelMapperAgent.class);
         var builder = parallelMapperBuilder(agentServiceClass)
                 .subAgents(List.of(createSubagent(annotation.subAgent(), chatModel, agentConfigurator)))
@@ -517,7 +535,7 @@ public class AgenticServices {
             Class<T> agentServiceClass,
             Method agentMethod,
             ChatModel chatModel,
-            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+            AgentConfigurator agentConfigurator) {
         PlannerAgent annotation = agentMethod.getAnnotation(PlannerAgent.class);
         var builder = new PlannerBasedServiceImpl<>(agentServiceClass, agentMethod)
                 .subAgents(createSubagents(annotation.subAgents(), chatModel, agentConfigurator));
@@ -536,7 +554,7 @@ public class AgenticServices {
             Class<T> agentServiceClass,
             Method agentMethod,
             ChatModel chatModel,
-            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+            AgentConfigurator agentConfigurator) {
         dev.langchain4j.agentic.declarative.SupervisorAgent supervisorAgent =
                 agentMethod.getAnnotation(dev.langchain4j.agentic.declarative.SupervisorAgent.class);
         var builder = new SupervisorAgentServiceImpl<>(agentServiceClass, agentMethod, chatModel)
@@ -559,16 +577,21 @@ public class AgenticServices {
     }
 
     private static List<AgentExecutor> createSubagents(
-            Class<?>[] subAgents, ChatModel chatModel, Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+            Class<?>[] subAgents, ChatModel chatModel, AgentConfigurator agentConfigurator) {
         return Stream.of(subAgents)
                 .map(subagent -> createSubagent(subagent, chatModel, agentConfigurator))
                 .toList();
     }
 
     private static AgentExecutor createSubagent(
-            Class<?> subgentClass,
-            ChatModel chatModel,
-            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+            Class<?> subgentClass, ChatModel chatModel, AgentConfigurator agentConfigurator) {
+        if (agentConfigurator.subAgentResolver() != null) {
+            Object subagent = agentConfigurator.subAgentResolver().apply(subgentClass);
+            if (subagent != null) {
+                return agentToExecutor(subagent);
+            }
+        }
+
         AgentExecutor agentExecutor = createBuiltInAgentExecutor(subgentClass, chatModel, agentConfigurator);
         if (agentExecutor != null) {
             return agentExecutor;
@@ -581,13 +604,13 @@ public class AgenticServices {
     }
 
     public static AgentExecutor createBuiltInAgentExecutor(Class<?> agentServiceClass) {
-        return createBuiltInAgentExecutor(agentServiceClass, declarativeChatModel(agentServiceClass), context -> {});
+        return createBuiltInAgentExecutor(agentServiceClass, declarativeChatModel(agentServiceClass), AgentConfigurator.empty());
     }
 
     private static AgentExecutor createBuiltInAgentExecutor(
             Class<?> agentServiceClass,
             ChatModel chatModel,
-            Consumer<DeclarativeAgentCreationContext<?>> agentConfigurator) {
+            AgentConfigurator agentConfigurator) {
         Optional<Method> sequenceMethod = getAnnotatedMethodOnClass(agentServiceClass, SequenceAgent.class);
         if (sequenceMethod.isPresent()) {
             Method method = sequenceMethod.get();
