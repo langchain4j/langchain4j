@@ -4,15 +4,10 @@ import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
-import com.google.genai.types.Content;
 import com.google.genai.types.EmbedContentConfig;
 import com.google.genai.types.EmbedContentResponse;
-import com.google.genai.types.Part;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -20,6 +15,8 @@ import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -96,7 +93,8 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         // Rationale: In document ingestion pipelines, multiple text segments often share the same document title.
         // Since the google-genai SDK's embedContent method with list parameters shares a single EmbedContentConfig
         // (which only supports a single title), grouping segments by their title allows us to batch texts sharing
-        // the same title together in one API request. This maximizes API throughput and fully preserves distinct titles.
+        // the same title together in one API request. This maximizes API throughput and fully preserves distinct
+        // titles.
         Map<String, List<IndexedSegment>> grouped = new LinkedHashMap<>();
         for (int i = 0; i < textSegments.size(); i++) {
             TextSegment segment = textSegments.get(i);
@@ -116,9 +114,7 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             int size = indexedSegments.size();
             for (int i = 0; i < size; i += maxSegmentsPerBatch) {
                 List<IndexedSegment> batch = indexedSegments.subList(i, Math.min(i + maxSegmentsPerBatch, size));
-                List<String> texts = batch.stream()
-                        .map(is -> is.segment.text())
-                        .collect(Collectors.toList());
+                List<String> texts = batch.stream().map(is -> is.segment.text()).collect(Collectors.toList());
 
                 EmbedContentConfig.Builder configBuilder = EmbedContentConfig.builder();
                 if (taskType != null) {
@@ -132,14 +128,14 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 }
 
                 EmbedContentResponse response = withRetryMappingExceptions(
-                        () -> client.models.embedContent(modelName, texts, configBuilder.build()),
-                        maxRetries);
+                        () -> client.models.embedContent(modelName, texts, configBuilder.build()), maxRetries);
 
                 if (response.embeddings().isPresent()) {
                     var embeddings = response.embeddings().get();
                     for (int j = 0; j < batch.size(); j++) {
                         if (j < embeddings.size() && embeddings.get(j).values().isPresent()) {
-                            embeddingsArray[batch.get(j).index] = Embedding.from(embeddings.get(j).values().get());
+                            embeddingsArray[batch.get(j).index] =
+                                    Embedding.from(embeddings.get(j).values().get());
                         }
                     }
                 }
