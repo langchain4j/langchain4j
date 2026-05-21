@@ -6,6 +6,16 @@ sidebar_position: 4
 
 https://azure.microsoft.com/en-us/products/cosmos-db/
 
+:::warning Deprecated — renamed to Azure DocumentDB
+Azure CosmosDB for MongoDB vCore has been rebranded by Microsoft as
+**Azure DocumentDB** (see https://learn.microsoft.com/en-us/azure/documentdb/).
+
+This module and its Spring Boot starter are kept for backwards compatibility
+but will be deprecated in favor of a new
+[Azure DocumentDB](./azure-documentdb.md) integration. New projects should
+use the DocumentDB integration; existing projects can continue to use the
+module documented below and migrate at their own pace.
+:::
 
 ## Maven Dependency
 
