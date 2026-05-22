@@ -61,10 +61,13 @@ final class StreamingLoopState {
         }
     }
 
-    void fail(Throwable ignored) {
+    boolean fail(Throwable ignored) {
+        pollExternalCancellation();
         if (state.compareAndSet(TerminalState.RUNNING, TerminalState.FAILED)) {
             cancelPendingToolCalls();
+            return true;
         }
+        return false;
     }
 
     void complete() {

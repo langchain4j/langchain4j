@@ -128,6 +128,43 @@ class AiServiceStreamingResponseHandlerCancellationTest {
     }
 
     @Test
+    void on_error_after_silent_cancellation_is_ignored() throws Exception {
+        var memory = MessageWindowChatMemory.withMaxMessages(10);
+        AtomicBoolean cancelled = new AtomicBoolean(false);
+        AtomicInteger errors = new AtomicInteger();
+        AtomicInteger completes = new AtomicInteger();
+        RuntimeException streamError = new RuntimeException("transport closed after cancel");
+
+        var model = new ScriptedStreamingChatModel(List.of(), handler -> {
+            cancelled.set(true);
+            handler.onError(streamError);
+        });
+
+        try {
+            var assistant = AiServices.builder(Assistant.class)
+                    .streamingChatModel(model)
+                    .chatMemory(memory)
+                    .build();
+
+            assistant.chat("hi")
+                    .cancelOn(cancelled::get)
+                    .onCompleteResponse(r -> completes.incrementAndGet())
+                    .onError(t -> errors.incrementAndGet())
+                    .start();
+            model.awaitFirstInvocationDone();
+
+            assertThat(errors.get())
+                    .as("provider onError after silent cancellation must stay silent")
+                    .isZero();
+            assertThat(completes.get())
+                    .as("silent cancellation must not be converted to completion")
+                    .isZero();
+        } finally {
+            model.shutdown();
+        }
+    }
+
+    @Test
     void cancel_during_dispatch_hook_thread_hop_does_not_orphan_assistant_turn() throws Exception {
         var memory = MessageWindowChatMemory.withMaxMessages(10);
         AtomicBoolean cancelled = new AtomicBoolean(false);
@@ -318,6 +355,75 @@ class AiServiceStreamingResponseHandlerCancellationTest {
         }
     }
 
+    @Test
+    void silent_cancellation_suppresses_stream_level_tool_callbacks_after_it_is_observed() throws Exception {
+        var memory = MessageWindowChatMemory.withMaxMessages(10);
+        AtomicBoolean cancelled = new AtomicBoolean(false);
+        AtomicInteger streamToolCallbacks = new AtomicInteger();
+        AtomicInteger toolBodies = new AtomicInteger();
+
+        class TwoTools {
+            @Tool
+            String alpha(String arg) {
+                toolBodies.incrementAndGet();
+                return "alpha-done";
+            }
+
+            @Tool
+            String beta(String arg) {
+                toolBodies.incrementAndGet();
+                return "beta-done";
+            }
+        }
+
+        ToolExecutionRequest req1 = ToolExecutionRequest.builder()
+                .id("stream-cb-1")
+                .name("alpha")
+                .arguments("{\"arg0\": \"a\"}")
+                .build();
+        ToolExecutionRequest req2 = ToolExecutionRequest.builder()
+                .id("stream-cb-2")
+                .name("beta")
+                .arguments("{\"arg0\": \"b\"}")
+                .build();
+
+        var model = new ScriptedStreamingChatModel(
+                List.of(req1, req2), handler -> completeToolTurn(handler, req1, req2));
+        SettleSignal settle = new SettleSignal();
+
+        try {
+            var assistant = AiServices.builder(Assistant.class)
+                    .streamingChatModel(model)
+                    .chatMemory(memory)
+                    .tools(new TwoTools())
+                    .streamingToolDispatchHook(settle.hook())
+                    .build();
+
+            assistant.chat("hi")
+                    .cancelOn(cancelled::get)
+                    .onToolExecuted(execution -> {
+                        streamToolCallbacks.incrementAndGet();
+                        cancelled.set(true);
+                    })
+                    .onCompleteResponse(r -> {})
+                    .onError(t -> {})
+                    .start();
+            settle.awaitSettled();
+
+            assertThat(toolBodies.get())
+                    .as("deferred dispatch has already entered the batch when cancellation is observed")
+                    .isEqualTo(2);
+            assertThat(streamToolCallbacks.get())
+                    .as("stream-level tool callbacks after silent cancellation must be suppressed")
+                    .isEqualTo(1);
+            assertThat(model.invocations())
+                    .as("silent cancellation must skip the follow-up call")
+                    .isEqualTo(1);
+        } finally {
+            model.shutdown();
+        }
+    }
+
     /**
      * Exercises the failure-driven {@code catch (CancellationException)} branch in
      * {@code AiServiceStreamingResponseHandler.gatherScheduledToolResults}. With eager
@@ -339,7 +445,9 @@ class AiServiceStreamingResponseHandlerCancellationTest {
      */
     @Test
     void eager_path_future_cancelled_by_on_error_writes_failure_placeholder_and_does_not_continue() throws Exception {
-        var memory = MessageWindowChatMemory.withMaxMessages(10);
+        CountDownLatch assistantToolMessagePersisted = new CountDownLatch(1);
+        ChatMemory memory = new SignalOnAssistantToolMessageMemory(
+                MessageWindowChatMemory.withMaxMessages(10), assistantToolMessagePersisted);
         CountDownLatch slowToolStarted = new CountDownLatch(1);
         CountDownLatch slowToolProceed = new CountDownLatch(1);
         CountDownLatch errorDelivered = new CountDownLatch(1);
@@ -411,6 +519,7 @@ class AiServiceStreamingResponseHandlerCancellationTest {
             // CancellationException) or while parked in get(slow) (the blocked get wakes
             // with CancellationException). Either ordering exercises the catch.
             awaitOrThrow(dispatchStarted, "dispatch worker to start");
+            awaitOrThrow(assistantToolMessagePersisted, "assistant tool message to be persisted");
             handler.onError(new RuntimeException("simulated stream abort"));
         });
 
@@ -476,6 +585,9 @@ class AiServiceStreamingResponseHandlerCancellationTest {
             assertThat(slowResult.text())
                     .as("slow's future was cancelled by onError, so it must not look like silent cancellation")
                     .isEqualTo(AiServiceStreamingResponseHandler.FAILED_TOOL_RESULT_TEXT);
+            assertThat(slowResult.isError())
+                    .as("failed terminal placeholders must be marked as tool errors")
+                    .isTrue();
             assertThat(model.invocations())
                     .as("failed stream must skip the follow-up call")
                     .isEqualTo(1);
@@ -716,6 +828,39 @@ class AiServiceStreamingResponseHandlerCancellationTest {
             delegate.add(message);
             if (message instanceof AiMessage aiMessage && aiMessage.hasToolExecutionRequests()) {
                 cancelled.set(true);
+            }
+        }
+
+        @Override
+        public List<ChatMessage> messages() {
+            return delegate.messages();
+        }
+
+        @Override
+        public void clear() {
+            delegate.clear();
+        }
+    }
+
+    private static class SignalOnAssistantToolMessageMemory implements ChatMemory {
+        private final ChatMemory delegate;
+        private final CountDownLatch assistantToolMessagePersisted;
+
+        SignalOnAssistantToolMessageMemory(ChatMemory delegate, CountDownLatch assistantToolMessagePersisted) {
+            this.delegate = delegate;
+            this.assistantToolMessagePersisted = assistantToolMessagePersisted;
+        }
+
+        @Override
+        public Object id() {
+            return delegate.id();
+        }
+
+        @Override
+        public void add(ChatMessage message) {
+            delegate.add(message);
+            if (message instanceof AiMessage aiMessage && aiMessage.hasToolExecutionRequests()) {
+                assistantToolMessagePersisted.countDown();
             }
         }
 

@@ -360,16 +360,22 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private ToolExecutionResult execute(ToolExecutionRequest toolRequest) {
-        Consumer<ToolExecution> externalAfter =
-                toolExecutionHandler == null ? null : this::emitToolExecution;
         return context.toolService.executeTool(
-                invocationContext, toolExecutors, toolRequest, beforeToolExecutionHandler, externalAfter);
+                invocationContext, toolExecutors, toolRequest, beforeToolExecutionHandler, streamToolExecutionHandler());
+    }
+
+    private Consumer<ToolExecution> streamToolExecutionHandler() {
+        return toolExecutionHandler == null ? null : this::emitToolExecution;
     }
 
     private void emitToolExecution(ToolExecution toolExecution) {
         toolExecutionLock.lock();
         try {
-            if (terminated) {
+            if (terminated || loopState.isSilentlyCancelled()) {
+                if (loopState.isSilentlyCancelled()) {
+                    terminated = true;
+                }
+                bufferedToolExecutions.clear();
                 return;
             }
             if (!intermediateResponseEmitted) {
@@ -395,6 +401,21 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 return null;
             }
             return drainToolExecutionQueue();
+        } finally {
+            toolExecutionLock.unlock();
+        }
+    }
+
+    private boolean terminateAndClearVisibleToolExecutions() {
+        toolExecutionLock.lock();
+        try {
+            if (terminated) {
+                bufferedToolExecutions.clear();
+                return false;
+            }
+            terminated = true;
+            bufferedToolExecutions.clear();
+            return true;
         } finally {
             toolExecutionLock.unlock();
         }
@@ -426,6 +447,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private Throwable drainToolExecutionQueue() {
         Throwable captured = null;
         while (true) {
+            if (loopState.isSilentlyCancelled()) {
+                bufferedToolExecutions.clear();
+                return captured;
+            }
             ToolExecution next = bufferedToolExecutions.poll();
             if (next == null) {
                 return captured;
@@ -489,7 +514,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private void handleStreamingError(Throwable error) {
-        loopState.fail(error);
+        if (!loopState.fail(error) && !loopState.isFailed()) {
+            finishIfSilentlyCancelled();
+            return;
+        }
         terminateAndDrainVisibleToolExecutions();
         reportFailure(error);
     }
@@ -652,7 +680,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                                 .beforeToolExecution(combine(
                                         context.toolService.beforeToolExecution(), beforeToolExecutionHandler))
                                 .afterToolExecution(combine(
-                                        context.toolService.afterToolExecution(), toolExecutionHandler))
+                                        context.toolService.afterToolExecution(), streamToolExecutionHandler()))
                                 .errorHandlerBypass(context.toolService.errorHandlerBypass())
                                 .argumentsErrorHandler(toolArgumentsErrorHandler)
                                 .executionErrorHandler(toolExecutionErrorHandler)
@@ -844,7 +872,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private void finishIfSilentlyCancelled() {
         if (loopState.isSilentlyCancelled()) {
-            terminateAndDrainVisibleToolExecutions();
+            terminateAndClearVisibleToolExecutions();
         }
     }
 
@@ -902,7 +930,12 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private static ToolExecutionResultMessage failedToolResultMessage(ToolExecutionRequest request) {
-        return ToolExecutionResultMessage.from(request, FAILED_TOOL_RESULT_TEXT);
+        return ToolExecutionResultMessage.builder()
+                .id(request.id())
+                .toolName(request.name())
+                .text(FAILED_TOOL_RESULT_TEXT)
+                .isError(true)
+                .build();
     }
 
     private ChatMemory getMemory() {
@@ -928,8 +961,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     @Override
     public void onError(Throwable error) {
-        loopState.fail(error);
-        terminateAndDrainVisibleToolExecutions();
-        reportFailure(error);
+        handleStreamingError(error);
     }
 }
