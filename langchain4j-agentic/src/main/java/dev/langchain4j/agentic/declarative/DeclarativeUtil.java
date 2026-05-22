@@ -39,9 +39,10 @@ import java.util.function.Predicate;
 @Internal
 public class DeclarativeUtil {
 
-    private static final List<ChatSupplierParameterResolver> chatSupplierParameterResolvers = new CopyOnWriteArrayList<>();
+    private static final List<ChatSupplierParameterResolver> chatSupplierParameterResolvers =
+            new CopyOnWriteArrayList<>();
 
-    private DeclarativeUtil() { }
+    private DeclarativeUtil() {}
 
     public static void configureAgent(Class<?> agentType, AgentBuilder<?, ?> agentBuilder) {
         configureAgent(agentType, null, true, agentBuilder, AgenticServices.AgentConfigurator.empty());
@@ -107,7 +108,9 @@ public class DeclarativeUtil {
                 .ifPresentOrElse(
                         method -> {
                             if (method.getParameterCount() > 0) {
-                                Function<AgenticScope, ChatModel> scopeFunction = agenticScopeFunctionWithChatSupplierParameterResolver(agentType, method, ChatModel.class);
+                                Function<AgenticScope, ChatModel> scopeFunction =
+                                        agenticScopeFunctionWithChatSupplierParameterResolver(
+                                                agentType, method, ChatModel.class);
                                 Function<AgenticScope, ChatModel> provider = scope -> {
                                     if (scope == null) {
                                         return invokeStatic(method, new Object[method.getParameterCount()]);
@@ -123,7 +126,9 @@ public class DeclarativeUtil {
                                 .ifPresentOrElse(
                                         method -> {
                                             if (method.getParameterCount() > 0) {
-                                                Function<AgenticScope, StreamingChatModel> scopeFunction = agenticScopeFunctionWithChatSupplierParameterResolver(agentType, method, StreamingChatModel.class);
+                                                Function<AgenticScope, StreamingChatModel> scopeFunction =
+                                                        agenticScopeFunctionWithChatSupplierParameterResolver(
+                                                                agentType, method, StreamingChatModel.class);
                                                 Function<AgenticScope, StreamingChatModel> provider = scope -> {
                                                     if (scope == null) {
                                                         return invokeStatic(
@@ -253,8 +258,8 @@ public class DeclarativeUtil {
         ChatSupplierParameterResolver.Context[] contexts = new ChatSupplierParameterResolver.Context[parameters.length];
         ChatSupplierParameterResolver[] paramResolvers = new ChatSupplierParameterResolver[parameters.length];
         for (int i = 0; i < parameters.length; i++) {
-            ChatSupplierParameterResolver.Context ctx = new DefaultChatSupplierParameterResolverContext(
-                    agentType, functionMethod, parameters[i]);
+            ChatSupplierParameterResolver.Context ctx =
+                    new DefaultChatSupplierParameterResolverContext(agentType, functionMethod, parameters[i]);
             for (ChatSupplierParameterResolver resolver : resolvers) {
                 if (resolver.supports(ctx)) {
                     contexts[i] = ctx;
@@ -304,7 +309,7 @@ public class DeclarativeUtil {
         return chatSupplierParameterResolvers;
     }
 
-    private record DefaultChatSupplierParameterResolverContext(Class<?> declaringAgentClass, Method supplierMethod,
-            Parameter parameter) implements ChatSupplierParameterResolver.Context {
-    }
+    private record DefaultChatSupplierParameterResolverContext(
+            Class<?> declaringAgentClass, Method supplierMethod, Parameter parameter)
+            implements ChatSupplierParameterResolver.Context {}
 }
