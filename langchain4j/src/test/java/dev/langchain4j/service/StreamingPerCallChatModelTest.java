@@ -118,7 +118,7 @@ class StreamingPerCallChatModelTest {
                 perCallModel,
                 null,
                 initialRequest.parameters(),
-                null);
+                new StreamingLoopState(null));
 
         // Synthesize the first onCompleteResponse with a tool call — same as if the initial
         // streamed response from the default model had carried it.

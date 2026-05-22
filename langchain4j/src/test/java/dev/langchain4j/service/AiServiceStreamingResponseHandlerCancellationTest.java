@@ -11,6 +11,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -244,7 +245,7 @@ class AiServiceStreamingResponseHandlerCancellationTest {
                 List.of(req1, req2), handler -> completeToolTurn(handler, req1, req2));
 
         // Flip cancellation right after alpha's persistence-loop event fires; beta's
-        // iteration then observes isCancelled()=true and must write the placeholder.
+        // iteration then observes terminal loop state and must write the placeholder.
         ToolExecutedEventListener flipOnAlpha = event -> {
             if ("alpha".equals(event.request().name())) {
                 cancelled.set(true);
@@ -303,7 +304,7 @@ class AiServiceStreamingResponseHandlerCancellationTest {
                     .as("alpha completed before cancel flipped, so its real result must survive")
                     .isEqualTo("alpha-done");
             assertThat(betaResult.text())
-                    .as("beta's persistence iteration sees isCancelled()=true and must write the placeholder")
+                    .as("beta's persistence iteration sees terminal loop state and must write the placeholder")
                     .isEqualTo(AiServiceStreamingResponseHandler.CANCELLED_TOOL_RESULT_TEXT);
 
             assertThat(toolCallCount.get())
@@ -318,12 +319,11 @@ class AiServiceStreamingResponseHandlerCancellationTest {
     }
 
     /**
-     * Exercises the {@code catch (CancellationException)} branch in
+     * Exercises the failure-driven {@code catch (CancellationException)} branch in
      * {@code AiServiceStreamingResponseHandler.gatherScheduledToolResults}. With eager
-     * scheduling, an in-flight tool future can be cancelled (here via {@code onError}
-     * arriving during dispatch) while {@code gatherScheduledToolResults} is iterating —
-     * {@code future.get()} then throws {@code CancellationException}, the catch swallows
-     * it, and the persistence loop fills the missing entry with a placeholder.
+     * scheduling, an in-flight tool future can be cancelled by {@code onError} while
+     * {@code gatherScheduledToolResults} is iterating. That cancellation must be treated as
+     * failure termination, not silent cancellation.
      *
      * <p>The test pins this end-to-end:
      * <ul>
@@ -331,25 +331,18 @@ class AiServiceStreamingResponseHandlerCancellationTest {
      *   <li>beta is eagerly scheduled and completes normally (real result).</li>
      *   <li>A custom dispatch hook hops the post-{@code onCompleteResponse} work to a worker
      *       thread, so the model driver thread is free to fire {@code onError} concurrently.</li>
-     *   <li>{@code onError} calls {@code cancelPendingToolCalls(null)} which cancels alpha's
-     *       future. {@code gather}'s {@code future.get(alpha)} hits the
-     *       {@code CancellationException} branch and alpha ends up absent from the results map.</li>
-     *   <li>A {@code ToolExecutedEventListener} on beta flips the cancellation supplier after
-     *       beta's persistence iteration, so checkpoint #3 bails and there is no follow-up
-     *       chat call.</li>
+     *   <li>{@code onError} marks the loop failed and cancels slow's future. {@code gather}'s
+     *       {@code future.get(slow)} hits the {@code CancellationException} branch.</li>
+     *   <li>The completed fast result is preserved, slow gets a failure placeholder, and no
+     *       follow-up chat call is issued.</li>
      * </ul>
-     *
-     * <p>This test fails if the {@code catch (CancellationException)} branch is removed —
-     * {@code future.get()} would surface a {@code CancellationException} out of
-     * {@code gatherScheduledToolResults}, abort the persistence loop, and either lose beta's
-     * real result, the alpha placeholder, or both.
      */
     @Test
-    void eager_path_cancelled_in_flight_future_falls_through_to_placeholder_via_gather() throws Exception {
+    void eager_path_future_cancelled_by_on_error_writes_failure_placeholder_and_does_not_continue() throws Exception {
         var memory = MessageWindowChatMemory.withMaxMessages(10);
-        AtomicBoolean cancelled = new AtomicBoolean(false);
         CountDownLatch slowToolStarted = new CountDownLatch(1);
         CountDownLatch slowToolProceed = new CountDownLatch(1);
+        CountDownLatch errorDelivered = new CountDownLatch(1);
         AtomicReference<Throwable> errorReceived = new AtomicReference<>();
 
         class TwoEagerTools {
@@ -421,16 +414,6 @@ class AiServiceStreamingResponseHandlerCancellationTest {
             handler.onError(new RuntimeException("simulated stream abort"));
         });
 
-        // Flip the cancellation supplier after fast's persistence iteration fires its event.
-        // This is the only place to flip it post-gather and pre-checkpoint #3 deterministically:
-        // fireToolExecutedEvent only runs for real results, and slow's placeholder iteration
-        // continues without firing, so fast is the only trigger.
-        ToolExecutedEventListener flipAfterFast = event -> {
-            if ("fast".equals(event.request().name())) {
-                cancelled.set(true);
-            }
-        };
-
         ExecutorService toolExecutor = Executors.newSingleThreadExecutor();
         try {
             var assistant = AiServices.builder(Assistant.class)
@@ -439,13 +422,14 @@ class AiServiceStreamingResponseHandlerCancellationTest {
                     .tools(new TwoEagerTools())
                     .executeToolsConcurrently(toolExecutor)
                     .streamingToolDispatchHook(hook)
-                    .registerListener(flipAfterFast)
                     .build();
 
             assistant.chat("hi")
-                    .cancelOn(cancelled::get)
                     .onCompleteResponse(r -> {})
-                    .onError(errorReceived::set)
+                    .onError(t -> {
+                        errorReceived.set(t);
+                        errorDelivered.countDown();
+                    })
                     .start();
 
             // Wait for the dispatch worker to finish — that's when memory writes for the
@@ -455,9 +439,10 @@ class AiServiceStreamingResponseHandlerCancellationTest {
                     .isTrue();
             slowToolProceed.countDown();
 
-            assertThat(errorReceived.get())
+            assertThat(errorDelivered.await(5, SECONDS))
                     .as("the simulated onError should surface to the consumer")
-                    .isNotNull();
+                    .isTrue();
+            assertThat(errorReceived.get()).isNotNull();
 
             List<ChatMessage> stored = memory.messages();
             long requests = stored.stream()
@@ -486,18 +471,87 @@ class AiServiceStreamingResponseHandlerCancellationTest {
                     .orElseThrow();
 
             assertThat(fastResult.text())
-                    .as("fast completed before cancellation → its real result is preserved")
+                    .as("fast completed before failure termination, so its real result is preserved")
                     .isEqualTo("fast-done");
             assertThat(slowResult.text())
-                    .as("slow's future was cancelled mid-flight → CancellationException catch → placeholder")
-                    .isEqualTo(AiServiceStreamingResponseHandler.CANCELLED_TOOL_RESULT_TEXT);
+                    .as("slow's future was cancelled by onError, so it must not look like silent cancellation")
+                    .isEqualTo(AiServiceStreamingResponseHandler.FAILED_TOOL_RESULT_TEXT);
             assertThat(model.invocations())
-                    .as("checkpoint #3 (post-gather, pre-next-chat) must skip the follow-up call")
+                    .as("failed stream must skip the follow-up call")
                     .isEqualTo(1);
         } finally {
             slowToolProceed.countDown();
             toolExecutor.shutdownNow();
             dispatchExecutor.shutdownNow();
+            model.shutdown();
+        }
+    }
+
+    @Test
+    void eager_path_future_cancelled_by_silent_cancel_writes_cancellation_placeholder_and_does_not_continue()
+            throws Exception {
+        AtomicBoolean cancelled = new AtomicBoolean(false);
+        ChatMemory memory = new CancelAfterAssistantToolMessageMemory(
+                MessageWindowChatMemory.withMaxMessages(10), cancelled);
+        CountDownLatch slowToolStarted = new CountDownLatch(1);
+        CountDownLatch slowToolProceed = new CountDownLatch(1);
+
+        class SlowEagerTool {
+            @Tool
+            String slow(String arg) {
+                slowToolStarted.countDown();
+                try {
+                    slowToolProceed.await(5, SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return "slow-done";
+            }
+        }
+
+        ToolExecutionRequest slowRequest = ToolExecutionRequest.builder()
+                .id("silent-slow-id")
+                .name("slow")
+                .arguments("{\"arg0\": \"b\"}")
+                .build();
+
+        var model = new ScriptedStreamingChatModel(List.of(slowRequest), handler -> {
+            awaitOrThrow(slowToolStarted, "slow tool to start");
+            completeToolTurn(handler, slowRequest);
+        });
+
+        ExecutorService toolExecutor = Executors.newSingleThreadExecutor();
+        try {
+            var assistant = AiServices.builder(Assistant.class)
+                    .streamingChatModel(model)
+                    .chatMemory(memory)
+                    .tools(new SlowEagerTool())
+                    .executeToolsConcurrently(toolExecutor)
+                    .build();
+
+            assistant.chat("hi")
+                    .cancelOn(cancelled::get)
+                    .onCompleteResponse(r -> {})
+                    .onError(t -> {})
+                    .start();
+
+            model.awaitFirstInvocationDone();
+
+            List<ToolExecutionResultMessage> resultMessages = memory.messages().stream()
+                    .filter(m -> m instanceof ToolExecutionResultMessage)
+                    .map(m -> (ToolExecutionResultMessage) m)
+                    .toList();
+
+            assertThat(resultMessages).hasSize(1);
+            assertThat(resultMessages.get(0).text())
+                    .as("silent cancellation after assistant persistence writes cancellation placeholder")
+                    .isEqualTo(AiServiceStreamingResponseHandler.CANCELLED_TOOL_RESULT_TEXT);
+            assertThat(model.invocations())
+                    .as("silent cancellation must skip the follow-up call")
+                    .isEqualTo(1);
+        } finally {
+            slowToolProceed.countDown();
+            toolExecutor.shutdownNow();
             model.shutdown();
         }
     }
@@ -640,6 +694,39 @@ class AiServiceStreamingResponseHandlerCancellationTest {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new AssertionError("interrupted waiting for " + what, e);
+        }
+    }
+
+    private static class CancelAfterAssistantToolMessageMemory implements ChatMemory {
+        private final ChatMemory delegate;
+        private final AtomicBoolean cancelled;
+
+        CancelAfterAssistantToolMessageMemory(ChatMemory delegate, AtomicBoolean cancelled) {
+            this.delegate = delegate;
+            this.cancelled = cancelled;
+        }
+
+        @Override
+        public Object id() {
+            return delegate.id();
+        }
+
+        @Override
+        public void add(ChatMessage message) {
+            delegate.add(message);
+            if (message instanceof AiMessage aiMessage && aiMessage.hasToolExecutionRequests()) {
+                cancelled.set(true);
+            }
+        }
+
+        @Override
+        public List<ChatMessage> messages() {
+            return delegate.messages();
+        }
+
+        @Override
+        public void clear() {
+            delegate.clear();
         }
     }
 

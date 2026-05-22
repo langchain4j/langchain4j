@@ -228,6 +228,8 @@ public class AiServiceTokenStream implements TokenStream {
                 .eventListenerRegistrar(context.eventListenerRegistrar)
                 .build();
 
+        StreamingLoopState loopState = new StreamingLoopState(perCallCancellationSupplier);
+
         var handler = new AiServiceStreamingResponseHandler(
                 chatRequest,
                 chatExecutor,
@@ -256,7 +258,7 @@ public class AiServiceTokenStream implements TokenStream {
                 modelToUse,
                 context.streamingToolDispatchHook,
                 chatRequest.parameters(),
-                perCallCancellationSupplier);
+                loopState);
 
         if (contentsHandler != null && retrievedContents != null) {
             contentsHandler.accept(retrievedContents);
