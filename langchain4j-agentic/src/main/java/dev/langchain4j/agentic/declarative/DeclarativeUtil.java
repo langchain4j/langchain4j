@@ -26,17 +26,22 @@ import dev.langchain4j.service.tool.ToolProvider;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Parameter;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
 @Internal
 public class DeclarativeUtil {
 
-    private DeclarativeUtil() {}
+    private static final List<ChatSupplierParameterResolver> chatSupplierParameterResolvers = new CopyOnWriteArrayList<>();
+
+    private DeclarativeUtil() { }
 
     public static void configureAgent(Class<?> agentType, AgentBuilder<?, ?> agentBuilder) {
         configureAgent(agentType, null, true, agentBuilder, AgenticServices.AgentConfigurator.empty());
@@ -102,8 +107,7 @@ public class DeclarativeUtil {
                 .ifPresentOrElse(
                         method -> {
                             if (method.getParameterCount() > 0) {
-                                Function<AgenticScope, ChatModel> scopeFunction =
-                                        agenticScopeFunction(method, ChatModel.class);
+                                Function<AgenticScope, ChatModel> scopeFunction = agenticScopeFunctionWithChatSupplierParameterResolver(agentType, method, ChatModel.class);
                                 Function<AgenticScope, ChatModel> provider = scope -> {
                                     if (scope == null) {
                                         return invokeStatic(method, new Object[method.getParameterCount()]);
@@ -119,8 +123,7 @@ public class DeclarativeUtil {
                                 .ifPresentOrElse(
                                         method -> {
                                             if (method.getParameterCount() > 0) {
-                                                Function<AgenticScope, StreamingChatModel> scopeFunction =
-                                                        agenticScopeFunction(method, StreamingChatModel.class);
+                                                Function<AgenticScope, StreamingChatModel> scopeFunction = agenticScopeFunctionWithChatSupplierParameterResolver(agentType, method, StreamingChatModel.class);
                                                 Function<AgenticScope, StreamingChatModel> provider = scope -> {
                                                     if (scope == null) {
                                                         return invokeStatic(
@@ -237,6 +240,48 @@ public class DeclarativeUtil {
                 agenticScopeFunction(predicateMethod, boolean.class).apply(agenticScope);
     }
 
+    private static <T> Function<AgenticScope, T> agenticScopeFunctionWithChatSupplierParameterResolver(
+            Class<?> agentType, Method functionMethod, Class<T> targetClass) {
+        List<ChatSupplierParameterResolver> resolvers = getChatSupplierParameterResolvers();
+        if (resolvers.isEmpty()) {
+            return agenticScopeFunction(functionMethod, targetClass);
+        }
+
+        List<AgentArgument> agentArguments = argumentsFromMethod(functionMethod);
+        Parameter[] parameters = functionMethod.getParameters();
+
+        ChatSupplierParameterResolver.Context[] contexts = new ChatSupplierParameterResolver.Context[parameters.length];
+        ChatSupplierParameterResolver[] paramResolvers = new ChatSupplierParameterResolver[parameters.length];
+        for (int i = 0; i < parameters.length; i++) {
+            ChatSupplierParameterResolver.Context ctx = new DefaultChatSupplierParameterResolverContext(
+                    agentType, functionMethod, parameters[i]);
+            for (ChatSupplierParameterResolver resolver : resolvers) {
+                if (resolver.supports(ctx)) {
+                    contexts[i] = ctx;
+                    paramResolvers[i] = resolver;
+                    break;
+                }
+            }
+        }
+
+        return agenticScope -> {
+            try {
+                Map<String, Object> additionalArgs = new HashMap<>();
+                additionalArgs.put(AGENTIC_SCOPE_ARG_NAME, agenticScope);
+                for (int i = 0; i < paramResolvers.length; i++) {
+                    if (paramResolvers[i] != null) {
+                        additionalArgs.put(agentArguments.get(i).name(), paramResolvers[i].resolve(contexts[i]));
+                    }
+                }
+                Object[] args = agentInvocationArguments(agenticScope, agentArguments, additionalArgs)
+                        .positionalArgs();
+                return (T) functionMethod.invoke(null, args);
+            } catch (Exception e) {
+                throw new RuntimeException("Error invoking method: " + functionMethod.getName(), e);
+            }
+        };
+    }
+
     public static <T> Function<AgenticScope, T> agenticScopeFunction(Method functionMethod, Class<T> targetClass) {
         List<AgentArgument> agentArguments = argumentsFromMethod(functionMethod);
         return agenticScope -> {
@@ -249,5 +294,17 @@ public class DeclarativeUtil {
                 throw new RuntimeException("Error invoking method: " + functionMethod.getName(), e);
             }
         };
+    }
+
+    public static void addChatSupplierParameterResolver(ChatSupplierParameterResolver resolver) {
+        chatSupplierParameterResolvers.add(resolver);
+    }
+
+    public static List<ChatSupplierParameterResolver> getChatSupplierParameterResolvers() {
+        return chatSupplierParameterResolvers;
+    }
+
+    private record DefaultChatSupplierParameterResolverContext(Class<?> declaringAgentClass, Method supplierMethod,
+            Parameter parameter) implements ChatSupplierParameterResolver.Context {
     }
 }
