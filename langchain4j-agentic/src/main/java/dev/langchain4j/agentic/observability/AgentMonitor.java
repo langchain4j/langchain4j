@@ -60,7 +60,9 @@ public class AgentMonitor implements AgentListener {
         execution.afterAgentInvocation(agentResponse);
         if (execution.done()) {
             ongoingExecutions.remove(memoryId, execution);
-            successfulExecutions.computeIfAbsent(memoryId, AgentMonitor::newExecutionList).add(execution);
+            successfulExecutions
+                    .computeIfAbsent(memoryId, AgentMonitor::newExecutionList)
+                    .add(execution);
         }
     }
 
@@ -71,7 +73,9 @@ public class AgentMonitor implements AgentListener {
         if (execution != null) {
             execution.onAgentInvocationError(agentInvocationError);
             ongoingExecutions.remove(memoryId, execution);
-            failedExecutions.computeIfAbsent(memoryId, AgentMonitor::newExecutionList).add(execution);
+            failedExecutions
+                    .computeIfAbsent(memoryId, AgentMonitor::newExecutionList)
+                    .add(execution);
         }
     }
 
