@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Monitors agent executions and provides observability for the LangChain4j Agentic system.
@@ -30,6 +31,10 @@ public class AgentMonitor implements AgentListener {
     private final Map<Object, List<MonitoredExecution>> failedExecutions = new ConcurrentHashMap<>();
     private final Map<Object, MonitoredExecution> ongoingExecutions = new ConcurrentHashMap<>();
 
+    private static List<MonitoredExecution> newExecutionList(Object ignored) {
+        return Collections.synchronizedList(new ArrayList<>());
+    }
+
     @Internal
     public void setRootAgent(AgentInstance rootAgent) {
         this.rootAgent = rootAgent;
@@ -42,11 +47,12 @@ public class AgentMonitor implements AgentListener {
     @Override
     public void beforeAgentInvocation(AgentRequest agentRequest) {
         Object memoryId = agentRequest.agenticScope().memoryId();
-        MonitoredExecution currentExecution = ongoingExecutions.get(memoryId);
-        if (currentExecution == null) {
-            currentExecution = new MonitoredExecution(agentRequest);
-            ongoingExecutions.put(memoryId, currentExecution);
-        } else {
+        AtomicBoolean created = new AtomicBoolean(false);
+        MonitoredExecution currentExecution = ongoingExecutions.computeIfAbsent(memoryId, k -> {
+            created.set(true);
+            return new MonitoredExecution(agentRequest);
+        });
+        if (!created.get()) {
             currentExecution.beforeAgentInvocation(agentRequest);
         }
     }
@@ -58,7 +64,7 @@ public class AgentMonitor implements AgentListener {
         execution.afterAgentInvocation(agentResponse);
         if (execution.done()) {
             ongoingExecutions.remove(memoryId);
-            successfulExecutions.computeIfAbsent(memoryId, k -> new ArrayList<>()).add(execution);
+            successfulExecutions.computeIfAbsent(memoryId, AgentMonitor::newExecutionList).add(execution);
         }
     }
 
@@ -68,7 +74,7 @@ public class AgentMonitor implements AgentListener {
         MonitoredExecution execution = ongoingExecutions.remove(memoryId);
         if (execution != null) {
             execution.onAgentInvocationError(agentInvocationError);
-            failedExecutions.computeIfAbsent(memoryId, k -> new ArrayList<>()).add(execution);
+            failedExecutions.computeIfAbsent(memoryId, AgentMonitor::newExecutionList).add(execution);
         }
     }
 
