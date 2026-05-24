@@ -17,6 +17,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -126,10 +127,41 @@ class JdkHttpClientSseTest {
         await().atMost(5, TimeUnit.SECONDS).until(() -> !listener.events.isEmpty());
         clientReleased.countDown();
 
-        // Allow any in-flight delivery to settle.
-        TimeUnit.MILLISECONDS.sleep(300);
+        // Assert the event list stays at a single delivered event for a short window
+        // after the server flushed the second event, i.e. cancellation did suppress it.
+        await().during(Duration.ofMillis(500))
+                .atMost(2, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(listener.events)
+                        .extracting(ServerSentEvent::data)
+                        .containsExactly("first"));
+    }
 
-        assertThat(listener.events).extracting(ServerSentEvent::data).containsExactly("first");
+    @Test
+    void async_path_matches_default_parser_for_multi_line_data() {
+        // Mirrors the accumulation semantics of DefaultServerSentEventParser:
+        // multiple consecutive data: lines are joined with \n; trailing whitespace is trimmed
+        // per line (matching the existing parser behaviour).
+        server.createContext("/sse", exchange -> {
+            exchange.getResponseHeaders().add("Content-Type", "text/event-stream");
+            exchange.sendResponseHeaders(200, 0);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write("event: chunk\ndata: line one\ndata: line two\ndata: line three\n\n"
+                        .getBytes(StandardCharsets.UTF_8));
+                os.flush();
+            }
+        });
+
+        JdkHttpClient client = JdkHttpClient.builder().build();
+        RecordingListener listener = new RecordingListener();
+
+        client.execute(getRequest("/sse"), new DefaultServerSentEventParser(), listener);
+
+        await().atMost(5, TimeUnit.SECONDS).until(() -> listener.closed.get());
+
+        assertThat(listener.events).hasSize(1);
+        ServerSentEvent event = listener.events.get(0);
+        assertThat(event.event()).isEqualTo("chunk");
+        assertThat(event.data()).isEqualTo("line one\nline two\nline three");
     }
 
     @Test

@@ -101,10 +101,11 @@ public class JdkHttpClient implements HttpClient {
                     });
                 })
                 .exceptionally(throwable -> {
-                    if (throwable.getCause() instanceof HttpTimeoutException) {
-                        ignoringExceptions(() -> listener.onError(new TimeoutException(throwable)));
+                    Throwable cause = unwrap(throwable);
+                    if (cause instanceof HttpTimeoutException) {
+                        ignoringExceptions(() -> listener.onError(new TimeoutException(cause)));
                     } else {
-                        ignoringExceptions(() -> listener.onError(throwable));
+                        ignoringExceptions(() -> listener.onError(cause));
                     }
                     return null;
                 });
@@ -131,10 +132,11 @@ public class JdkHttpClient implements HttpClient {
                     }
                 })
                 .exceptionally(throwable -> {
-                    if (throwable.getCause() instanceof HttpTimeoutException) {
-                        ignoringExceptions(() -> listener.onError(new TimeoutException(throwable)));
+                    Throwable cause = unwrap(throwable);
+                    if (cause instanceof HttpTimeoutException) {
+                        ignoringExceptions(() -> listener.onError(new TimeoutException(cause)));
                     } else {
-                        ignoringExceptions(() -> listener.onError(throwable));
+                        ignoringExceptions(() -> listener.onError(cause));
                     }
                     return null;
                 });
@@ -194,6 +196,15 @@ public class JdkHttpClient implements HttpClient {
 
     private static boolean isSuccessful(int statusCode) {
         return statusCode >= 200 && statusCode < 300;
+    }
+
+    private static Throwable unwrap(Throwable throwable) {
+        if ((throwable instanceof java.util.concurrent.CompletionException
+                        || throwable instanceof java.util.concurrent.ExecutionException)
+                && throwable.getCause() != null) {
+            return throwable.getCause();
+        }
+        return throwable;
     }
 
     private static String readBody(java.net.http.HttpResponse<InputStream> response) {
