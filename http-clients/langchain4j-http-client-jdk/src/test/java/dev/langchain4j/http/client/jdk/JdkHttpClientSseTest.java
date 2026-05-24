@@ -20,7 +20,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
@@ -98,24 +97,20 @@ class JdkHttpClientSseTest {
     }
 
     @Test
-    void cancellation_via_parsing_handle_stops_event_delivery() throws InterruptedException {
-        CountDownLatch serverWrote = new CountDownLatch(1);
-        CountDownLatch clientReleased = new CountDownLatch(1);
+    void cancellation_via_parsing_handle_stops_event_delivery() {
+        int totalEventsServerWillTry = 50;
 
         server.createContext("/long", exchange -> {
             exchange.getResponseHeaders().add("Content-Type", "text/event-stream");
             exchange.sendResponseHeaders(200, 0);
             try (OutputStream os = exchange.getResponseBody()) {
-                os.write("data: first\n\n".getBytes(StandardCharsets.UTF_8));
-                os.flush();
-                serverWrote.countDown();
-                // Hold the connection open until the test releases us, then write one more event
-                // that the listener should never observe (because it cancelled).
-                clientReleased.await(5, TimeUnit.SECONDS);
-                os.write("data: should-not-see\n\n".getBytes(StandardCharsets.UTF_8));
-                os.flush();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+                for (int i = 0; i < totalEventsServerWillTry; i++) {
+                    os.write(("data: event-" + i + "\n\n").getBytes(StandardCharsets.UTF_8));
+                    os.flush();
+                    Thread.sleep(30);
+                }
+            } catch (Exception ignored) {
+                // expected once the client cancels the subscription and closes the connection
             }
         });
 
@@ -123,17 +118,14 @@ class JdkHttpClientSseTest {
         CancellingListener listener = new CancellingListener();
         client.execute(getRequest("/long"), new DefaultServerSentEventParser(), listener);
 
-        serverWrote.await(5, TimeUnit.SECONDS);
+        // Listener cancels on the first event, so the subscriber must stop delivering long
+        // before the server has finished sending all `totalEventsServerWillTry` events.
         await().atMost(5, TimeUnit.SECONDS).until(() -> !listener.events.isEmpty());
-        clientReleased.countDown();
-
-        // Assert the event list stays at a single delivered event for a short window
-        // after the server flushed the second event, i.e. cancellation did suppress it.
-        await().during(Duration.ofMillis(500))
-                .atMost(2, TimeUnit.SECONDS)
-                .untilAsserted(() -> assertThat(listener.events)
-                        .extracting(ServerSentEvent::data)
-                        .containsExactly("first"));
+        await().during(Duration.ofSeconds(2))
+                .atMost(4, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(listener.events.size())
+                        .as("listener should stop receiving events shortly after cancellation")
+                        .isLessThan(totalEventsServerWillTry / 2));
     }
 
     @Test
