@@ -28,6 +28,7 @@ import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
@@ -79,6 +80,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final BiConsumer<PartialThinking, PartialThinkingContext> partialThinkingWithContextHandler;
     private final Consumer<PartialToolCall> partialToolCallHandler;
     private final BiConsumer<PartialToolCall, PartialToolCallContext> partialToolCallWithContextHandler;
+    private final Consumer<StreamingHandle> streamingHandleHandler;
     private final Consumer<BeforeToolExecution> beforeToolExecutionHandler;
     private final Consumer<Object> rawEventHandler;
     private final Consumer<ToolExecution> toolExecutionHandler;
@@ -100,6 +102,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final List<String> responseBuffer = new ArrayList<>();
     private final boolean hasOutputGuardrails;
 
+    private StreamingHandle observedStreamingHandle;
+
     private int toolCallingRoundTripsLeft;
 
     private record ToolRequestResult(ToolExecutionRequest request, ToolExecutionResult result) {}
@@ -115,6 +119,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             BiConsumer<PartialThinking, PartialThinkingContext> partialThinkingWithContextHandler,
             Consumer<PartialToolCall> partialToolCallHandler,
             BiConsumer<PartialToolCall, PartialToolCallContext> partialToolCallWithContextHandler,
+            Consumer<StreamingHandle> streamingHandleHandler,
             Consumer<BeforeToolExecution> beforeToolExecutionHandler,
             Consumer<Object> rawEventHandler,
             Consumer<ToolExecution> toolExecutionHandler,
@@ -142,6 +147,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.partialThinkingWithContextHandler = partialThinkingWithContextHandler;
         this.partialToolCallHandler = partialToolCallHandler;
         this.partialToolCallWithContextHandler = partialToolCallWithContextHandler;
+        this.streamingHandleHandler = streamingHandleHandler;
         this.intermediateResponseHandler = intermediateResponseHandler;
         this.completeResponseHandler = completeResponseHandler;
         this.beforeToolExecutionHandler = beforeToolExecutionHandler;
@@ -179,6 +185,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     @Override
     public void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {
+        observeStreamingHandle(context.streamingHandle());
         // If we're using output guardrails, then buffer the partial response until the guardrails have completed
         if (hasOutputGuardrails) {
             responseBuffer.add(partialResponse.text());
@@ -201,6 +208,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     @Override
     public void onPartialThinking(PartialThinking partialThinking, PartialThinkingContext context) {
+        observeStreamingHandle(context.streamingHandle());
         if (partialThinkingHandler != null) {
             partialThinkingHandler.accept(partialThinking);
         } else if (partialThinkingWithContextHandler != null) {
@@ -220,6 +228,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     @Override
     public void onPartialToolCall(PartialToolCall partialToolCall, PartialToolCallContext context) {
+        observeStreamingHandle(context.streamingHandle());
         if (partialToolCallHandler != null) {
             partialToolCallHandler.accept(partialToolCall);
         } else if (partialToolCallWithContextHandler != null) {
@@ -381,6 +390,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     partialThinkingWithContextHandler,
                     partialToolCallHandler,
                     partialToolCallWithContextHandler,
+                    streamingHandleHandler,
                     beforeToolExecutionHandler,
                     rawEventHandler,
                     toolExecutionHandler,
@@ -478,6 +488,13 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
+        }
+    }
+
+    private void observeStreamingHandle(StreamingHandle streamingHandle) {
+        if (streamingHandleHandler != null && streamingHandle != observedStreamingHandle) {
+            observedStreamingHandle = streamingHandle;
+            streamingHandleHandler.accept(streamingHandle);
         }
     }
 
