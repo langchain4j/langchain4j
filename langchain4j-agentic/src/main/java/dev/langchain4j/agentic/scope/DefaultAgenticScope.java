@@ -18,6 +18,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
@@ -55,7 +56,16 @@ public class DefaultAgenticScope implements AgenticScope {
 
     private transient Function<ErrorContext, ErrorRecoveryResult> errorHandler = DEFAULT_ERROR_RECOVERY;
 
-    private static Predicate<Object> serializableStateFilter = obj -> !Proxy.isProxyClass(obj.getClass());
+    private static Predicate<Object> serializableStateFilter = Predicate.not(DefaultAgenticScope::isProxy)
+            .and(Predicate.not(DefaultAgenticScope::isTokenStream));
+
+    private static boolean isProxy(Object obj) {
+        return Proxy.isProxyClass(obj.getClass());
+    }
+
+    private static boolean isTokenStream(Object obj) {
+        return obj instanceof TokenStream;
+    }
 
     public enum Kind {
         EPHEMERAL,
@@ -68,13 +78,17 @@ public class DefaultAgenticScope implements AgenticScope {
     DefaultAgenticScope serializableCopy() {
         DefaultAgenticScope copy = new DefaultAgenticScope(memoryId, kind);
         state.forEach((key, value) -> {
-            if (serializableStateFilter.test(value)) {
+            if (isSerializable(value)) {
                 copy.state.put(key, value);
             }
         });
         copy.agentInvocations.addAll(agentInvocations);
         copy.context.addAll(context);
         return copy;
+    }
+
+    public static boolean isSerializable(Object value) {
+        return serializableStateFilter.test(value);
     }
 
     public static void addSerializableStateFilter(Predicate<Object> filter) {

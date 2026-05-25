@@ -16,13 +16,16 @@ import static dev.langchain4j.agentic.Models.baseModel;
 import static dev.langchain4j.agentic.Models.streamingBaseModel;
 import static dev.langchain4j.agentic.observability.HtmlReportGenerator.generateReport;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
+import dev.langchain4j.agentic.Agents.CreativeWriter;
 import dev.langchain4j.agentic.Agents.ReviewedWriter;
 import dev.langchain4j.agentic.Agents.AudienceEditor;
 import dev.langchain4j.agentic.Agents.CategoryRouter;
 import dev.langchain4j.agentic.Agents.ExpertRouterAgent;
+import dev.langchain4j.agentic.scope.AgenticScopePersister;
 import dev.langchain4j.agentic.StreamingAgents.StreamingCreativeWriter;
 import dev.langchain4j.agentic.StreamingAgents.StreamingAudienceEditor;
 import dev.langchain4j.agentic.StreamingAgents.StreamingStyleEditor;
@@ -415,6 +418,37 @@ public class StreamingIT {
         @Tool(name = "listAllTag", value = "List all article tags")
         public List<String> listAllTag() {
             return List.of("tag1", "tag2", "tag3");
+        }
+    }
+
+    public interface PersistentStreamingWriter {
+        @Agent
+        TokenStream writeStory(@MemoryId String sessionId, @V("topic") String topic, @V("style") String style);
+    }
+
+    @Test
+    void streaming_sequence_with_persistent_scope() {
+        JsonInMemoryAgenticScopeStore store = new JsonInMemoryAgenticScopeStore();
+        AgenticScopePersister.setStore(store);
+        try {
+            CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
+                    .chatModel(baseModel())
+                    .outputKey("story")
+                    .build();
+
+            StreamingStyleEditor styleEditor = AgenticServices.agentBuilder(StreamingStyleEditor.class)
+                    .streamingChatModel(streamingBaseModel())
+                    .outputKey("story")
+                    .build();
+
+            PersistentStreamingWriter writer = AgenticServices.sequenceBuilder(PersistentStreamingWriter.class)
+                    .subAgents(creativeWriter, styleEditor)
+                    .outputKey("story")
+                    .build();
+
+            assertThat(writer.writeStory("session-1", "dragons and wizards", "fantasy"));
+        } finally {
+            AgenticScopePersister.setStore(null);
         }
     }
 }
