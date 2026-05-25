@@ -595,8 +595,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     finishIfSilentlyCancelled();
                     return null;
                 }
-                addToMemory(aiMessage);
                 try {
+                    addToMemory(aiMessage);
                     runToolBatchAndContinue(chatResponse, aiMessage, toolRequests);
                 } catch (Throwable t) {
                     handleStreamingError(t);
@@ -642,16 +642,16 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     finishIfSilentlyCancelled();
                     return;
                 }
-                loopState.complete();
                 fireInvocationComplete(finalChatResponse);
                 completeResponseHandler.accept(finalChatResponse);
+                loopState.complete();
             } else {
                 if (!loopState.canContinue()) {
                     finishIfSilentlyCancelled();
                     return;
                 }
-                loopState.complete();
                 fireInvocationComplete(finalChatResponse);
+                loopState.complete();
             }
         }
     }
@@ -736,12 +736,12 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
         if (ToolService.shouldReturnImmediately(anyToolErrored, returnBehaviors)) {
             ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
-            loopState.complete();
             fireInvocationComplete(finalChatResponse);
 
             if (completeResponseHandler != null) {
                 completeResponseHandler.accept(finalChatResponse);
             }
+            loopState.complete();
             return;
         }
 

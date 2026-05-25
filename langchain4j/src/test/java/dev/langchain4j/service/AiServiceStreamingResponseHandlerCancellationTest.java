@@ -711,6 +711,100 @@ class AiServiceStreamingResponseHandlerCancellationTest {
         }
     }
 
+    /**
+     * Regression: a throw from {@code completeResponseHandler} must reach {@code errorHandler}.
+     * Pre-fix {@code loopState.complete()} ran before the user callback, so the resulting
+     * {@code onError} round-trip hit a COMPLETED state machine and was silently dropped.
+     */
+    @Test
+    void complete_response_handler_throw_is_reported_to_error_handler() throws Exception {
+        var memory = MessageWindowChatMemory.withMaxMessages(10);
+        RuntimeException boom = new RuntimeException("boom from complete handler");
+
+        var model = new ScriptedStreamingChatModel(List.of(), handler -> {
+            onCompleteResponse(
+                    handler,
+                    ChatResponse.builder().aiMessage(AiMessage.from("hello back")).build());
+        });
+
+        try {
+            CountDownLatch errorFired = new CountDownLatch(1);
+            AtomicReference<Throwable> captured = new AtomicReference<>();
+
+            var assistant = AiServices.builder(Assistant.class)
+                    .streamingChatModel(model)
+                    .chatMemory(memory)
+                    .build();
+
+            assistant.chat("hi")
+                    .onCompleteResponse(r -> {
+                        throw boom;
+                    })
+                    .onError(t -> {
+                        captured.set(t);
+                        errorFired.countDown();
+                    })
+                    .start();
+
+            assertThat(errorFired.await(5, SECONDS))
+                    .as("errorHandler must observe the throw from completeResponseHandler")
+                    .isTrue();
+            assertThat(captured.get())
+                    .as("the throwable from completeResponseHandler must be reported verbatim")
+                    .isSameAs(boom);
+        } finally {
+            model.shutdown();
+        }
+    }
+
+    /**
+     * Regression: a throw from {@code addToMemory(aiMessage)} inside the dispatch lambda must reach
+     * {@code errorHandler}. Pre-fix the call sat outside the lambda's try/catch, and even the default
+     * INLINE hook would swallow the throw into an unobserved failed CompletionStage.
+     */
+    @Test
+    void add_to_memory_throw_inside_dispatch_lambda_is_reported_to_error_handler() throws Exception {
+        RuntimeException boom = new RuntimeException("boom from memory");
+        var memory = new ThrowingMemory(MessageWindowChatMemory.withMaxMessages(10), boom);
+        var tool = new FastTool();
+        var toolRequest = toolCall("toolu_throw_memory");
+
+        var model = new ScriptedStreamingChatModel(List.of(toolRequest), handler -> {
+            completeToolTurn(handler, toolRequest);
+        });
+
+        ExecutorService toolExecutor = Executors.newCachedThreadPool();
+        try {
+            CountDownLatch errorFired = new CountDownLatch(1);
+            AtomicReference<Throwable> captured = new AtomicReference<>();
+
+            var assistant = AiServices.builder(Assistant.class)
+                    .streamingChatModel(model)
+                    .chatMemory(memory)
+                    .tools(tool)
+                    .executeToolsConcurrently(toolExecutor)
+                    .build();
+
+            assistant.chat("hi")
+                    .onCompleteResponse(r -> {})
+                    .onError(t -> {
+                        captured.set(t);
+                        errorFired.countDown();
+                    })
+                    .start();
+
+            assertThat(errorFired.await(5, SECONDS))
+                    .as("errorHandler must observe the throw from addToMemory inside the dispatch lambda")
+                    .isTrue();
+            assertThat(captured.get())
+                    .as("the throwable from the memory must be reported verbatim")
+                    .isSameAs(boom);
+        } finally {
+            toolExecutor.shutdownNow();
+            model.shutdown();
+        }
+    }
+
     private static class FastTool {
         final CountDownLatch bodyFinished = new CountDownLatch(1);
 
@@ -862,6 +956,39 @@ class AiServiceStreamingResponseHandlerCancellationTest {
             if (message instanceof AiMessage aiMessage && aiMessage.hasToolExecutionRequests()) {
                 assistantToolMessagePersisted.countDown();
             }
+        }
+
+        @Override
+        public List<ChatMessage> messages() {
+            return delegate.messages();
+        }
+
+        @Override
+        public void clear() {
+            delegate.clear();
+        }
+    }
+
+    private static class ThrowingMemory implements ChatMemory {
+        private final ChatMemory delegate;
+        private final RuntimeException toThrow;
+
+        ThrowingMemory(ChatMemory delegate, RuntimeException toThrow) {
+            this.delegate = delegate;
+            this.toThrow = toThrow;
+        }
+
+        @Override
+        public Object id() {
+            return delegate.id();
+        }
+
+        @Override
+        public void add(ChatMessage message) {
+            if (message instanceof AiMessage aiMessage && aiMessage.hasToolExecutionRequests()) {
+                throw toThrow;
+            }
+            delegate.add(message);
         }
 
         @Override
