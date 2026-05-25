@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.scope;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.Mockito.mock;
 
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
@@ -17,6 +18,7 @@ import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -103,6 +105,23 @@ class AgenticScopeStreamingStateTest {
                 .build();
 
         assertThat(workflow.chat("hello")).isEqualTo("ok done");
+    }
+
+    @Test
+    void agentInvocationSerializationDoesNotPersistRawStreamingOutput() {
+        DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.PERSISTENT);
+        TokenStream tokenStream = mock(TokenStream.class);
+
+        scope.agentInvocations()
+                .add(new AgentInvocation(AiServiceStreamingAgent.class, "chat", "agent-1", Map.of(), tokenStream));
+
+        String json = AgenticScopeSerializer.toJson(scope);
+        DefaultAgenticScope deserialized = AgenticScopeSerializer.fromJson(json);
+
+        assertThat(deserialized.agentInvocations())
+                .singleElement()
+                .extracting(AgentInvocation::output)
+                .isNull();
     }
 
     @Test
