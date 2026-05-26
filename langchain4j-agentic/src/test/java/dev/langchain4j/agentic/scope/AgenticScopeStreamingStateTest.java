@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.internal.DelayedResponse;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -19,7 +20,9 @@ import dev.langchain4j.service.V;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -108,6 +111,31 @@ class AgenticScopeStreamingStateTest {
     }
 
     @Test
+    void persistentCheckpointDoesNotPersistAsyncStreamingRuntimeObjects() {
+        JsonCapturingAgenticScopeStore store = new JsonCapturingAgenticScopeStore();
+        AgenticScopePersister.setStore(store);
+
+        AiServiceStreamingAgent streamingAgent = AgenticServices.agentBuilder(AiServiceStreamingAgent.class)
+                .streamingChatModel(new FixedStreamingChatModel())
+                .async(true)
+                .outputKey("story")
+                .build();
+
+        PersistentTextWorkflow workflow = AgenticServices.sequenceBuilder(PersistentTextWorkflow.class)
+                .subAgents(streamingAgent, new TextAgent())
+                .outputKey("result")
+                .build();
+
+        assertThat(workflow.chat("session-async-non-final", "hello")).isEqualTo("ok done");
+        assertThat(store.savedScopes)
+                .extracting(scope -> scope.state().get("story"))
+                .filteredOn(Objects::nonNull)
+                .containsOnly("ok")
+                .allSatisfy(story ->
+                        assertThat(story).isNotInstanceOf(TokenStream.class).isNotInstanceOf(DelayedResponse.class));
+    }
+
+    @Test
     void agentInvocationSerializationDoesNotPersistRawStreamingOutput() {
         DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.PERSISTENT);
         TokenStream tokenStream = mock(TokenStream.class);
@@ -122,6 +150,115 @@ class AgenticScopeStreamingStateTest {
                 .singleElement()
                 .extracting(AgentInvocation::output)
                 .isNull();
+    }
+
+    @Test
+    void stateSerializationDoesNotPersistRawStreamingOutput() {
+        DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.PERSISTENT);
+        TokenStream tokenStream = mock(TokenStream.class);
+
+        scope.writeState("result", tokenStream);
+
+        assertThat(scope.state()).containsEntry("result", tokenStream);
+
+        String json = AgenticScopeSerializer.toJson(scope);
+        DefaultAgenticScope deserialized = AgenticScopeSerializer.fromJson(json);
+
+        assertThat(deserialized.state()).doesNotContainKey("result");
+    }
+
+    @Test
+    void stateSerializationDoesNotPersistNestedStreamingOutput() {
+        DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.PERSISTENT);
+        TokenStream tokenStream = mock(TokenStream.class);
+
+        scope.writeState("payload", Map.of("result", tokenStream, "request", "hello"));
+
+        String json = AgenticScopeSerializer.toJson(scope);
+        DefaultAgenticScope deserialized = AgenticScopeSerializer.fromJson(json);
+
+        assertThat(deserialized.state().get("payload"))
+                .isInstanceOf(Map.class)
+                .satisfies(payload -> assertThat((Map<Object, Object>) payload)
+                        .doesNotContainKey("result")
+                        .containsEntry("request", "hello"));
+    }
+
+    @Test
+    void stateSerializationDoesNotBlockOnUnfinishedDelayedResponse() {
+        DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.PERSISTENT);
+
+        scope.writeState("result", new UnfinishedDelayedResponse());
+
+        String json = AgenticScopeSerializer.toJson(scope);
+        DefaultAgenticScope deserialized = AgenticScopeSerializer.fromJson(json);
+
+        assertThat(deserialized.state()).doesNotContainKey("result");
+    }
+
+    @Test
+    void checkpointDoesNotBlockOnUnfinishedDelayedResponse() {
+        JsonCapturingAgenticScopeStore store = new JsonCapturingAgenticScopeStore();
+        AgenticScopePersister.setStore(store);
+        AgenticScopeRegistry registry = new AgenticScopeRegistry("test-agent");
+        DefaultAgenticScope scope = registry.create("session-delayed-response");
+
+        scope.writeState("result", new UnfinishedDelayedResponse());
+
+        assertThatCode(() -> scope.checkpoint(registry)).doesNotThrowAnyException();
+        assertThat(store.savedScope.state()).doesNotContainKey("result");
+    }
+
+    @Test
+    void agentInvocationSerializationDoesNotPersistStreamingInputFromStateMap() {
+        DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.PERSISTENT);
+        TokenStream tokenStream = mock(TokenStream.class);
+        Map<String, Object> input = new ConcurrentHashMap<>();
+        input.put("result", tokenStream);
+        input.put("request", "hello");
+
+        scope.agentInvocations()
+                .add(new AgentInvocation(AiServiceStreamingAgent.class, "chat", "agent-1", input, "ok"));
+
+        assertThat(scope.agentInvocations())
+                .singleElement()
+                .extracting(AgentInvocation::input)
+                .satisfies(runtimeInput -> assertThat(runtimeInput)
+                        .containsEntry("result", tokenStream)
+                        .containsEntry("request", "hello"));
+
+        String json = AgenticScopeSerializer.toJson(scope);
+        DefaultAgenticScope deserialized = AgenticScopeSerializer.fromJson(json);
+
+        assertThat(deserialized.agentInvocations())
+                .singleElement()
+                .extracting(AgentInvocation::input)
+                .satisfies(persistentInput -> assertThat(persistentInput)
+                        .containsEntry("result", null)
+                        .containsEntry("request", "hello"));
+    }
+
+    @Test
+    void agentInvocationSerializationDoesNotPersistNestedStreamingInput() {
+        DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.PERSISTENT);
+        TokenStream tokenStream = mock(TokenStream.class);
+        Map<String, Object> input = new ConcurrentHashMap<>();
+        input.put("payload", Map.of("result", tokenStream, "request", "hello"));
+
+        scope.agentInvocations()
+                .add(new AgentInvocation(AiServiceStreamingAgent.class, "chat", "agent-1", input, "ok"));
+
+        String json = AgenticScopeSerializer.toJson(scope);
+        DefaultAgenticScope deserialized = AgenticScopeSerializer.fromJson(json);
+
+        assertThat(deserialized.agentInvocations())
+                .singleElement()
+                .extracting(AgentInvocation::input)
+                .satisfies(persistentInput -> assertThat(persistentInput.get("payload"))
+                        .isInstanceOf(Map.class)
+                        .satisfies(payload -> assertThat((Map<Object, Object>) payload)
+                                .doesNotContainKey("result")
+                                .containsEntry("request", "hello")));
     }
 
     @Test
@@ -163,6 +300,12 @@ class AgenticScopeStreamingStateTest {
         String chat(@V("input") String input);
     }
 
+    public interface PersistentTextWorkflow {
+
+        @Agent(outputKey = "result")
+        String chat(@MemoryId String memoryId, @V("input") String input);
+    }
+
     public static class TextAgent {
 
         @Agent(outputKey = "result")
@@ -177,6 +320,19 @@ class AgenticScopeStreamingStateTest {
         public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
             handler.onCompleteResponse(
                     ChatResponse.builder().aiMessage(AiMessage.from("ok")).build());
+        }
+    }
+
+    private static class UnfinishedDelayedResponse implements DelayedResponse<String> {
+
+        @Override
+        public boolean isDone() {
+            return false;
+        }
+
+        @Override
+        public String blockingGet() {
+            throw new AssertionError("Persistence must not block on an unfinished response");
         }
     }
 

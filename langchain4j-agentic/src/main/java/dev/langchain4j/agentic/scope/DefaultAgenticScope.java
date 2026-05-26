@@ -63,6 +63,23 @@ public class DefaultAgenticScope implements AgenticScope {
 
     private final Kind kind;
 
+    DefaultAgenticScope persistentCopy() {
+        DefaultAgenticScope copy = new DefaultAgenticScope(memoryId, kind);
+        state.forEach((key, value) -> {
+            Object persistentValue = AgenticScopePersistentValue.sanitize(value);
+            if (persistentValue != null) {
+                copy.state.put(key, persistentValue);
+            }
+        });
+        synchronized (agentInvocations) {
+            agentInvocations.forEach(agentInvocation -> copy.agentInvocations.add(agentInvocation.persistentCopy()));
+        }
+        synchronized (context) {
+            copy.context.addAll(context);
+        }
+        return copy;
+    }
+
     /**
      * This lock is used to ensure that the AgenticScope doesn't get concurrently modified when it is going to be persisted.
      * The internal data structures of the AgenticScope are all thread-safe, so they don't need to be guarded by a read lock
