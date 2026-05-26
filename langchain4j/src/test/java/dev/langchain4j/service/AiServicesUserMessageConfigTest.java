@@ -109,18 +109,23 @@ class AiServicesUserMessageConfigTest {
         String chat17(@ExternalAnnotation1 @ExternalAnnotation2 String msg);
 
         String chat18_1(Content content);
+
         String chat18_2(AudioContent audioContent);
 
         String chat19_1(@UserMessage Content content);
+
         String chat19_2(@UserMessage AudioContent audioContent);
 
         String chat20_1(List<Content> contents);
+
         String chat20_2(List<AudioContent> audioContents);
 
         String chat21_1(@UserMessage List<Content> contents);
+
         String chat21_2(@UserMessage List<AudioContent> audioContents);
 
         String chat22_1(@UserMessage Content content1, @UserMessage Content content2);
+
         String chat22_2(@UserMessage AudioContent audio, @UserMessage ImageContent image);
 
         String chat23_1(Map<String, ?> args);
@@ -732,7 +737,9 @@ class AiServicesUserMessageConfigTest {
     void illegal_user_message_configuration_3() {
 
         // when-then
-        assertThatThrownBy(() -> AiServices.builder(IllegalAiService3.class).chatModel(chatModel).build())
+        assertThatThrownBy(() -> AiServices.builder(IllegalAiService3.class)
+                        .chatModel(chatModel)
+                        .build())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage(
                         "The parameter 'arg0' in the method 'illegalChat3' of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$IllegalAiService3"
@@ -743,7 +750,9 @@ class AiServicesUserMessageConfigTest {
     void illegal_user_message_configuration_4() {
 
         // when-then
-        assertThatThrownBy(() -> AiServices.builder(IllegalAiService4.class).chatModel(chatModel).build())
+        assertThatThrownBy(() -> AiServices.builder(IllegalAiService4.class)
+                        .chatModel(chatModel)
+                        .build())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage(
                         "The parameter 'arg1' in the method 'illegalChat4' of the class dev.langchain4j.service.AiServicesUserMessageConfigTest$IllegalAiService4"
@@ -781,7 +790,9 @@ class AiServicesUserMessageConfigTest {
     void illegal_user_message_configuration_7() {
 
         // when-then
-        assertThatThrownBy(() -> AiServices.builder(IllegalAiService7.class).chatModel(chatModel).build())
+        assertThatThrownBy(() -> AiServices.builder(IllegalAiService7.class)
+                        .chatModel(chatModel)
+                        .build())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("The parameter 'arg0' in the method 'illegalChat7' of the class "
                         + IllegalAiService7.class.getName() + VALIDATION_ERROR_MESSAGE_SUFFIX);
@@ -791,7 +802,9 @@ class AiServicesUserMessageConfigTest {
     void illegal_user_message_configuration_8() {
 
         // when-then
-        assertThatThrownBy(() -> AiServices.builder(IllegalAiService8.class).chatModel(chatModel).build())
+        assertThatThrownBy(() -> AiServices.builder(IllegalAiService8.class)
+                        .chatModel(chatModel)
+                        .build())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("The method 'illegalChat8' of the class " + IllegalAiService8.class.getName()
                         + " has more than one parameter of type " + InvocationParameters.class.getName());
@@ -801,7 +814,9 @@ class AiServicesUserMessageConfigTest {
     void illegal_user_message_configuration_9() {
 
         // when-then
-        assertThatThrownBy(() -> AiServices.builder(IllegalAiService9.class).chatModel(chatModel).build())
+        assertThatThrownBy(() -> AiServices.builder(IllegalAiService9.class)
+                        .chatModel(chatModel)
+                        .build())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("The method 'illegalChat9' of the class " + IllegalAiService9.class.getName()
                         + " has more than one parameter of type " + ChatRequestParameters.class.getName());
