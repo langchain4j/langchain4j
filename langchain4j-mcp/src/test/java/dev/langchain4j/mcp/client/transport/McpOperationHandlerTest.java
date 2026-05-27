@@ -1,7 +1,6 @@
 package dev.langchain4j.mcp.client.transport;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -57,7 +56,12 @@ class McpOperationHandlerTest {
         handler.handle(notification);
 
         assertThat(future).isCompletedExceptionally();
-        assertThatThrownBy(future::get)
+        // Inspect the throwable stored on the future via handle() rather than calling
+        // future.get(): JDK 25 changed CompletableFuture.reportGet() to throw a fresh
+        // CancellationException with a generic message instead of re-throwing the one we
+        // supplied. handle() returns the stored throwable as-is on every JDK.
+        Throwable stored = future.handle((v, e) -> e).join();
+        assertThat(stored)
                 .isInstanceOf(CancellationException.class)
                 .hasMessageContaining("42")
                 .hasMessageContaining("user aborted");
