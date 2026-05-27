@@ -88,7 +88,7 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     public static boolean isSerializable(Object value) {
-        return serializableStateFilter.test(value);
+        return value == null || serializableStateFilter.test(value);
     }
 
     public static void addSerializableStateFilter(Predicate<Object> filter) {
