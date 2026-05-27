@@ -44,8 +44,12 @@ public class AgentMonitor implements AgentListener {
         Object memoryId = agentRequest.agenticScope().memoryId();
         MonitoredExecution currentExecution = ongoingExecutions.get(memoryId);
         if (currentExecution == null) {
-            currentExecution = new MonitoredExecution(agentRequest);
-            ongoingExecutions.put(memoryId, currentExecution);
+            MonitoredExecution newExecution = new MonitoredExecution(agentRequest);
+            currentExecution = ongoingExecutions.putIfAbsent(memoryId, newExecution);
+            if (currentExecution != null) {
+                // Another thread won the initialization race; nest this invocation in the existing execution
+                currentExecution.beforeAgentInvocation(agentRequest);
+            }
         } else {
             currentExecution.beforeAgentInvocation(agentRequest);
         }
@@ -58,7 +62,7 @@ public class AgentMonitor implements AgentListener {
         execution.afterAgentInvocation(agentResponse);
         if (execution.done()) {
             ongoingExecutions.remove(memoryId);
-            successfulExecutions.computeIfAbsent(memoryId, k -> new ArrayList<>()).add(execution);
+            successfulExecutions.computeIfAbsent(memoryId, k -> Collections.synchronizedList(new ArrayList<>())).add(execution);
         }
     }
 
@@ -68,7 +72,7 @@ public class AgentMonitor implements AgentListener {
         MonitoredExecution execution = ongoingExecutions.remove(memoryId);
         if (execution != null) {
             execution.onAgentInvocationError(agentInvocationError);
-            failedExecutions.computeIfAbsent(memoryId, k -> new ArrayList<>()).add(execution);
+            failedExecutions.computeIfAbsent(memoryId, k -> Collections.synchronizedList(new ArrayList<>())).add(execution);
         }
     }
 
@@ -99,7 +103,13 @@ public class AgentMonitor implements AgentListener {
     }
 
     public List<MonitoredExecution> successfulExecutions() {
-        return successfulExecutions.values().stream().flatMap(List::stream).toList();
+        List<MonitoredExecution> all = new ArrayList<>();
+        for (List<MonitoredExecution> list : successfulExecutions.values()) {
+            synchronized (list) {
+                all.addAll(list);
+            }
+        }
+        return all;
     }
 
     public List<MonitoredExecution> successfulExecutionsFor(AgenticScope agenticScope) {
@@ -107,11 +117,23 @@ public class AgentMonitor implements AgentListener {
     }
 
     public List<MonitoredExecution> successfulExecutionsFor(Object memoryId) {
-        return successfulExecutions.getOrDefault(memoryId, List.of());
+        List<MonitoredExecution> list = successfulExecutions.get(memoryId);
+        if (list == null) {
+            return List.of();
+        }
+        synchronized (list) {
+            return new ArrayList<>(list);
+        }
     }
 
     public List<MonitoredExecution> failedExecutions() {
-        return failedExecutions.values().stream().flatMap(List::stream).toList();
+        List<MonitoredExecution> all = new ArrayList<>();
+        for (List<MonitoredExecution> list : failedExecutions.values()) {
+            synchronized (list) {
+                all.addAll(list);
+            }
+        }
+        return all;
     }
 
     public List<MonitoredExecution> failedExecutionsFor(AgenticScope agenticScope) {
@@ -119,7 +141,13 @@ public class AgentMonitor implements AgentListener {
     }
 
     public List<MonitoredExecution> failedExecutionsFor(Object memoryId) {
-        return failedExecutions.getOrDefault(memoryId, List.of());
+        List<MonitoredExecution> list = failedExecutions.get(memoryId);
+        if (list == null) {
+            return List.of();
+        }
+        synchronized (list) {
+            return new ArrayList<>(list);
+        }
     }
 
     /**
