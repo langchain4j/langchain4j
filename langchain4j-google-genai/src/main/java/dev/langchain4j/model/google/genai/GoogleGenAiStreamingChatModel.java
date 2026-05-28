@@ -98,6 +98,8 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
                 .topK(getOrDefault(builder.topK, commonParameters.topK()))
+                .frequencyPenalty(getOrDefault(builder.frequencyPenalty, commonParameters.frequencyPenalty()))
+                .presencePenalty(getOrDefault(builder.presencePenalty, commonParameters.presencePenalty()))
                 .maxOutputTokens(getOrDefault(builder.maxOutputTokens, commonParameters.maxOutputTokens()))
                 .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
                 .toolSpecifications(commonParameters.toolSpecifications())
@@ -260,7 +262,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         private Client client;
         private GoogleCredentials googleCredentials;
         private String apiKey, projectId, location, modelName;
-        private Double temperature, topP;
+        private Double temperature, topP, frequencyPenalty, presencePenalty;
         private Integer topK, maxOutputTokens, thinkingBudget, seed;
         private String thinkingLevel;
         private List<String> stopSequences;
@@ -329,6 +331,16 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
 
         public Builder topK(Integer topK) {
             this.topK = topK;
+            return this;
+        }
+
+        public Builder frequencyPenalty(Double frequencyPenalty) {
+            this.frequencyPenalty = frequencyPenalty;
+            return this;
+        }
+
+        public Builder presencePenalty(Double presencePenalty) {
+            this.presencePenalty = presencePenalty;
             return this;
         }
 

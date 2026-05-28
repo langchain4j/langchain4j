@@ -66,6 +66,8 @@ class GoogleGenAiStreamingChatModelTest {
                 .temperature(0.7)
                 .topP(0.9)
                 .topK(40)
+                .frequencyPenalty(0.5)
+                .presencePenalty(0.3)
                 .maxOutputTokens(512)
                 .stopSequences(List.of("END"))
                 .build();
@@ -73,6 +75,8 @@ class GoogleGenAiStreamingChatModelTest {
         assertThat(model.defaultRequestParameters().temperature()).isEqualTo(0.7);
         assertThat(model.defaultRequestParameters().topP()).isEqualTo(0.9);
         assertThat(model.defaultRequestParameters().topK()).isEqualTo(40);
+        assertThat(model.defaultRequestParameters().frequencyPenalty()).isEqualTo(0.5);
+        assertThat(model.defaultRequestParameters().presencePenalty()).isEqualTo(0.3);
         assertThat(model.defaultRequestParameters().maxOutputTokens()).isEqualTo(512);
         assertThat(model.defaultRequestParameters().stopSequences()).containsExactly("END");
     }
@@ -120,6 +124,8 @@ class GoogleGenAiStreamingChatModelTest {
                 .temperature(0.5)
                 .topP(0.8)
                 .topK(30)
+                .frequencyPenalty(0.5)
+                .presencePenalty(0.3)
                 .maxOutputTokens(1024)
                 .thinkingBudget(500)
                 .seed(42)
@@ -161,6 +167,8 @@ class GoogleGenAiStreamingChatModelTest {
         assertThat(builder.temperature(0.5)).isSameAs(builder);
         assertThat(builder.topP(0.8)).isSameAs(builder);
         assertThat(builder.topK(40)).isSameAs(builder);
+        assertThat(builder.frequencyPenalty(0.5)).isSameAs(builder);
+        assertThat(builder.presencePenalty(0.3)).isSameAs(builder);
         assertThat(builder.maxOutputTokens(100)).isSameAs(builder);
         assertThat(builder.thinkingBudget(500)).isSameAs(builder);
         assertThat(builder.seed(42)).isSameAs(builder);

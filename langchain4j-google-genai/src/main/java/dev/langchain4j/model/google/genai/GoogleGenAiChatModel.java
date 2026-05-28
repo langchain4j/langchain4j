@@ -88,6 +88,8 @@ public class GoogleGenAiChatModel implements ChatModel {
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
                 .topK(getOrDefault(builder.topK, commonParameters.topK()))
+                .frequencyPenalty(getOrDefault(builder.frequencyPenalty, commonParameters.frequencyPenalty()))
+                .presencePenalty(getOrDefault(builder.presencePenalty, commonParameters.presencePenalty()))
                 .maxOutputTokens(getOrDefault(builder.maxOutputTokens, commonParameters.maxOutputTokens()))
                 .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
                 .toolSpecifications(commonParameters.toolSpecifications())
@@ -171,6 +173,8 @@ public class GoogleGenAiChatModel implements ChatModel {
         private Double temperature;
         private Double topP;
         private Integer topK;
+        private Double frequencyPenalty;
+        private Double presencePenalty;
         private Integer maxOutputTokens;
         private Integer thinkingBudget;
         private String thinkingLevel;
@@ -241,6 +245,16 @@ public class GoogleGenAiChatModel implements ChatModel {
 
         public Builder topK(Integer topK) {
             this.topK = topK;
+            return this;
+        }
+
+        public Builder frequencyPenalty(Double frequencyPenalty) {
+            this.frequencyPenalty = frequencyPenalty;
+            return this;
+        }
+
+        public Builder presencePenalty(Double presencePenalty) {
+            this.presencePenalty = presencePenalty;
             return this;
         }
 
