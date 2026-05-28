@@ -51,6 +51,9 @@ class ToolSpecificationHelper {
             if (tool.has("title")) {
                 builder.addMetadata(TITLE, tool.get("title").asText());
             }
+            if (tool.has("outputSchema")) {
+                builder.addMetadata(OUTPUT_SCHEMA, OBJECT_MAPPER.convertValue(tool.get("outputSchema"), Object.class));
+            }
             result.add(builder.build());
         }
         return result;
