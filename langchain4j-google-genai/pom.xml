@@ -19,7 +19,7 @@
         <dependency>
             <groupId>com.google.genai</groupId>
             <artifactId>google-genai</artifactId>
-            <version>1.53.0</version>
+            <version>1.55.0</version>
         </dependency>
 
         <dependency>
