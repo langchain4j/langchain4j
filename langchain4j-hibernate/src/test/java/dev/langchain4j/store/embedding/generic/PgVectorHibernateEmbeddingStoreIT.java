@@ -30,14 +30,14 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
-class PgVectorEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
+class PgVectorHibernateEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     @Container
     static PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>("pgvector/pgvector:pg15");
 
-    HibernateEmbeddingStore<?> embeddingStore;
+    private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
-    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+    private HibernateEmbeddingStore<?> embeddingStore;
 
     @Override
     protected void ensureStoreIsReady() {
@@ -45,11 +45,14 @@ class PgVectorEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 .databaseKind(DatabaseKind.POSTGRESQL)
                 .host(pgVector.getHost())
                 .port(pgVector.getFirstMappedPort())
-                .database("test")
-                .user("test")
-                .password("test")
-                .table("test" + nextInt(1000, 2000))
-                .dimension(384)
+                .database(pgVector.getDatabaseName())
+                .user(pgVector.getUsername())
+                .password(pgVector.getPassword())
+                .table("test" + nextInt(1, 1000))
+                .dimension(embeddingModel.dimension())
+                .createIndex(true)
+                .indexType("ivfflat")
+                .indexOptions("lists = 1")
                 .createTable(true)
                 .dropTableFirst(true)
                 .build();

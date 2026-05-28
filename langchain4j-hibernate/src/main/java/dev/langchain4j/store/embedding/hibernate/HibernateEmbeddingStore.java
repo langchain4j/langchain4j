@@ -1282,7 +1282,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
         private String[] metadataAttributeNames;
         private SessionFactory sessionFactory;
         private DatabaseKind databaseKind;
-        private DistanceFunction distanceFunction = DistanceFunction.COSINE;
+        private DistanceFunction distanceFunction;
 
         Builder(Class<E> entityClass) {
             this.entityClass = entityClass;
@@ -1328,6 +1328,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             final String embeddedTextAttributeName;
             final String unmappedMetadataAttributeName;
             final String[] metadataAttributeNames;
+            DistanceFunction localDistanceFunction = null;
             if (this.embeddingAttributeName == null
                     || this.embeddedTextAttributeName == null
                     || this.unmappedMetadataAttributeName == null
@@ -1340,13 +1341,26 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                 for (SingularAttribute<?, ?> singularAttribute : entityType.getSingularAttributes()) {
                     final Member member = singularAttribute.getJavaMember();
                     if (member instanceof AnnotatedElement annotatedElement) {
+                        EmbeddingVector embeddingVector = annotatedElement.getAnnotation(EmbeddingVector.class);
+                        if (embeddingVector != null) {
+                            if (embeddingAttribute != null) {
+                                throw new IllegalArgumentException(
+                                        "Multiple @Embedding/@EmbeddingVector annotated attributes ["
+                                                + embeddingAttribute.getName() + "," + singularAttribute.getName()
+                                                + "] found on " + entityClass.getName()
+                                                + ". Please specify the explicit embedding vector attribute name instead");
+                            }
+                            embeddingAttribute = singularAttribute;
+                            localDistanceFunction = embeddingVector.distance();
+                        }
                         if (annotatedElement.isAnnotationPresent(
                                 dev.langchain4j.store.embedding.hibernate.Embedding.class)) {
                             if (embeddingAttribute != null) {
-                                throw new IllegalArgumentException("Multiple @Embedding annotated attributes ["
-                                        + embeddingAttribute.getName() + "," + singularAttribute.getName()
-                                        + "] found on " + entityClass.getName()
-                                        + ". Please specify the explicit embedding attribute name instead");
+                                throw new IllegalArgumentException(
+                                        "Multiple @Embedding/@EmbeddingVector annotated attributes ["
+                                                + embeddingAttribute.getName() + "," + singularAttribute.getName()
+                                                + "] found on " + entityClass.getName()
+                                                + ". Please specify the explicit embedding vector attribute name instead");
                             }
                             embeddingAttribute = singularAttribute;
                         }
@@ -1408,6 +1422,9 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             } else {
                 databaseKind = this.databaseKind;
             }
+            final DistanceFunction distanceFunction = this.distanceFunction != null
+                    ? this.distanceFunction
+                    : localDistanceFunction != null ? localDistanceFunction : DistanceFunction.COSINE;
             return new HibernateEmbeddingStore<>(
                     false,
                     this.sessionFactory,
@@ -1417,7 +1434,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                     embeddedTextAttributeName,
                     unmappedMetadataAttributeName,
                     metadataAttributeNames,
-                    this.distanceFunction);
+                    distanceFunction);
         }
 
         private void collectMetadataAttributes(

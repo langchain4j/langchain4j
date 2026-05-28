@@ -11,7 +11,7 @@ public class EmbeddingEntity {
     @EmbeddedText
     private String text;
 
-    @Embedding
+    @EmbeddingVector
     @Array(length = 0) // The length is overridden by the dynamic builder
     private float[] embedding;
 

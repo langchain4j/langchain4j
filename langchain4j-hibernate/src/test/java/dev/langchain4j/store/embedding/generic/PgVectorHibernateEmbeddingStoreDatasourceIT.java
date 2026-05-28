@@ -16,6 +16,7 @@ import dev.langchain4j.store.embedding.hibernate.DatabaseKind;
 import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,29 +26,26 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
-public class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithFilteringIT {
+public class PgVectorHibernateEmbeddingStoreDatasourceIT extends EmbeddingStoreWithFilteringIT {
 
     @Container
     static PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>("pgvector/pgvector:pg16");
 
-    static HibernateEmbeddingStore<?> embeddingStore;
+    private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
-    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
-
-    static DataSource dataSource;
+    private HibernateEmbeddingStore<?> embeddingStore;
 
     static final String TABLE_NAME = "test";
     static final int TABLE_DIMENSION = 384;
 
-    @BeforeAll
-    static void configureStore() {
-        var source = new PGSimpleDataSource();
-        source.setServerNames(new String[] {pgVector.getHost()});
-        source.setPortNumbers(new int[] {pgVector.getFirstMappedPort()});
-        source.setDatabaseName("test");
-        source.setUser("test");
-        source.setPassword("test");
-        dataSource = source;
+    @Override
+    protected void ensureStoreIsReady() {
+        var dataSource = new PGSimpleDataSource();
+        dataSource.setServerNames(new String[] {pgVector.getHost()});
+        dataSource.setPortNumbers(new int[] {pgVector.getFirstMappedPort()});
+        dataSource.setDatabaseName(pgVector.getDatabaseName());
+        dataSource.setUser(pgVector.getUsername());
+        dataSource.setPassword(pgVector.getPassword());
         embeddingStore = HibernateEmbeddingStore.dynamicDatasourceBuilder()
                 .databaseKind(DatabaseKind.POSTGRESQL)
                 .dataSource(dataSource)
@@ -58,21 +56,11 @@ public class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithFilteringI
                 .build();
     }
 
-    @AfterAll
-    static void clearData() {
+    @AfterEach
+    void clearData() {
         if (embeddingStore != null) {
             embeddingStore.close();
         }
-    }
-
-    @BeforeEach
-    void beforeEach() {
-        embeddingStore.removeAll();
-    }
-
-    @Override
-    protected void ensureStoreIsEmpty() {
-        // it's not necessary to clear the store before every test
     }
 
     @Override
