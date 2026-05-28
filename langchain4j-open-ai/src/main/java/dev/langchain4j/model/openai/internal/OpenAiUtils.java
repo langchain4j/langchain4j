@@ -362,11 +362,11 @@ public class OpenAiUtils {
         AssistantMessage assistantMessage = response.choices().get(0).message();
 
         String refusal = assistantMessage.refusal();
-        if (isNotNullOrBlank(refusal)) {
+        String content = assistantMessage.content();
+
+        if (isNullOrBlank(content) && isNotNullOrBlank(refusal)) {
             throw new ContentFilteredException(refusal);
         }
-
-        String content = assistantMessage.content();
 
         String reasoningContent = null;
         if (returnThinking) {
