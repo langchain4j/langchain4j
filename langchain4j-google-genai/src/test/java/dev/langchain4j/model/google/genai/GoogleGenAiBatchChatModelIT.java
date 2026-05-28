@@ -51,4 +51,22 @@ class GoogleGenAiBatchChatModelIT {
         // Delete
         batchModel.deleteBatchJob(batchName);
     }
+
+    @Test
+    void test_list_batch_jobs_with_pagination() {
+        GoogleGenAiBatchChatModel batchModel = GoogleGenAiBatchChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash")
+                .build();
+
+        var firstPage = batchModel.listBatchJobs(1, null);
+        assertThat(firstPage).isNotNull();
+        assertThat(firstPage.batches()).isNotNull();
+
+        if (firstPage.pageToken() != null) {
+            var secondPage = batchModel.listBatchJobs(1, firstPage.pageToken());
+            assertThat(secondPage).isNotNull();
+            assertThat(secondPage.batches()).isNotNull();
+        }
+    }
 }

@@ -138,7 +138,7 @@ public final class GoogleGenAiBatchImageModel {
      * Lists batch jobs.
      */
     public BatchList<Response<Image>> listBatchJobs(Integer pageSize, String pageToken) {
-        throw new UnsupportedOperationException("Batch List requires Pager API adaptation. Not fully supported yet.");
+        return GoogleGenAiBatchRequestResponse.listBatchJobs(client, pageSize, pageToken, this::processResponse);
     }
 
     private InlinedRequest createInlinedRequest(ImageGenerationRequest request) {

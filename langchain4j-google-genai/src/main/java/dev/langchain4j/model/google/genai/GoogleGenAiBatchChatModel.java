@@ -163,11 +163,7 @@ public final class GoogleGenAiBatchChatModel {
      * Lists batch jobs.
      */
     public BatchList<ChatResponse> listBatchJobs(Integer pageSize, String pageToken) {
-        // Native listing does not support pagination directly via parameters matching this exactly in a single call
-        // easily?
-        // Let's use the pager mechanism.
-        // For simplicity, we just use the list() method and convert.
-        throw new UnsupportedOperationException("Batch List requires Pager API adaptation. Not fully supported yet.");
+        return GoogleGenAiBatchRequestResponse.listBatchJobs(client, pageSize, pageToken, this::processResponse);
     }
 
     private InlinedRequest createInlinedRequest(ChatRequest request) {

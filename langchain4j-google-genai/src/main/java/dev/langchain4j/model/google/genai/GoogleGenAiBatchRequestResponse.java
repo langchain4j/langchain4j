@@ -1,8 +1,15 @@
 package dev.langchain4j.model.google.genai;
 
+import com.google.genai.Client;
+import com.google.genai.Pager;
+import com.google.genai.types.BatchJob;
+import com.google.genai.types.ListBatchJobsConfig;
 import dev.langchain4j.Experimental;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * Common request and response classes for Gemini Batch Operations.
@@ -79,4 +86,39 @@ public final class GoogleGenAiBatchRequestResponse {
      * A simple representation of an error status within an operation.
      */
     public record Status(Integer code, String message, List<Map<String, Object>> details) {}
+
+    static <T> BatchList<T> listBatchJobs(
+            Client client, Integer pageSize, String pageToken, Function<BatchJob, BatchResponse<T>> mapper) {
+        ListBatchJobsConfig.Builder builder = ListBatchJobsConfig.builder();
+        if (pageSize != null) {
+            builder.pageSize(pageSize);
+        }
+        if (pageToken != null) {
+            builder.pageToken(pageToken);
+        }
+
+        Pager pager = client.batches.list(builder.build());
+
+        List<BatchResponse<T>> batches = new ArrayList<>();
+        if (pager.page() != null) {
+            for (Object obj : pager.page()) {
+                if (obj instanceof BatchJob batchJob) {
+                    batches.add(mapper.apply(batchJob));
+                }
+            }
+        }
+
+        String nextPageToken = null;
+        try {
+            // The nextPageToken field on BasePager should be accessible but is currently protected
+            // without a public getter in the SDK, so we retrieve it using reflection.
+            Field field = pager.getClass().getSuperclass().getDeclaredField("nextPageToken");
+            field.setAccessible(true);
+            nextPageToken = (String) field.get(pager);
+        } catch (Exception e) {
+            // ignore/fallback
+        }
+
+        return new BatchList<>(nextPageToken, batches);
+    }
 }

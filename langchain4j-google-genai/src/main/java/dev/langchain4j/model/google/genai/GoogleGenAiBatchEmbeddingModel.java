@@ -159,7 +159,7 @@ public final class GoogleGenAiBatchEmbeddingModel {
      * Lists batch jobs.
      */
     public BatchList<Embedding> listBatchJobs(Integer pageSize, String pageToken) {
-        throw new UnsupportedOperationException("Batch List requires Pager API adaptation. Not fully supported yet.");
+        return GoogleGenAiBatchRequestResponse.listBatchJobs(client, pageSize, pageToken, this::processResponse);
     }
 
     private BatchResponse<Embedding> processResponse(BatchJob batchJob) {
