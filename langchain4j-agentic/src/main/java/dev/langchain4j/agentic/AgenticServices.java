@@ -16,6 +16,8 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import dev.langchain4j.agentic.agent.AgentBuilder;
 import dev.langchain4j.agentic.agent.UntypedAgentBuilder;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
+import dev.langchain4j.agentic.declarative.A2AContextId;
+import dev.langchain4j.agentic.declarative.A2ATaskId;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
@@ -53,6 +55,7 @@ import dev.langchain4j.agentic.workflow.impl.WorkflowAgentsBuilderImpl;
 import dev.langchain4j.model.chat.ChatModel;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -670,9 +673,12 @@ public class AgenticServices {
         var a2aClient = a2aMethod.getAnnotation(A2AClientAgent.class);
         var a2aClientBuilder = a2aBuilder(a2aClient.a2aServerUrl(), agentServiceClass)
                 .inputKeys(Stream.of(a2aMethod.getParameters())
+                        .filter(parameter -> !isA2AMessageContextParameter(parameter, a2aClient))
                         .map(AgentInvoker::parameterName)
                         .toArray(String[]::new))
                 .outputKey(AgentUtil.outputKey(a2aClient.outputKey(), a2aClient.typedOutputKey()))
+                .contextIdKey(a2aClient.contextIdKey())
+                .taskIdKey(a2aClient.taskIdKey())
                 .async(a2aClient.async());
 
         getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
@@ -682,6 +688,19 @@ public class AgenticServices {
                 });
 
         return agentToExecutor(a2aClientBuilder.build());
+    }
+
+    private static boolean isA2AMessageContextParameter(Parameter parameter, A2AClientAgent a2aClient) {
+        return parameter.isAnnotationPresent(A2AContextId.class)
+                || parameter.isAnnotationPresent(A2ATaskId.class)
+                || isConfiguredKey(a2aClient.contextIdKey(), parameter)
+                || isConfiguredKey(a2aClient.taskIdKey(), parameter);
+    }
+
+    private static boolean isConfiguredKey(String configuredKey, Parameter parameter) {
+        return AgentInvoker.optionalParameterName(parameter)
+                .map(key -> configuredKey != null && !configuredKey.isBlank() && configuredKey.equals(key))
+                .orElse(false);
     }
 
     private static AgentExecutor createMcpClientAgent(Class<?> agentServiceClass, Method mcpMethod) {

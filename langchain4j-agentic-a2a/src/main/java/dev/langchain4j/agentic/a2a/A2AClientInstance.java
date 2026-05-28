@@ -8,4 +8,12 @@ public interface A2AClientInstance extends InternalAgent {
     String[] inputKeys();
 
     AgentCard agentCard();
+
+    default String contextIdKey() {
+        return null;
+    }
+
+    default String taskIdKey() {
+        return null;
+    }
 }

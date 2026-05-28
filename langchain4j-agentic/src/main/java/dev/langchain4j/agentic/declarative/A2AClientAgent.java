@@ -1,10 +1,9 @@
 package dev.langchain4j.agentic.declarative;
 
-import dev.langchain4j.agentic.Agent;
-
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+import dev.langchain4j.agentic.Agent;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
@@ -51,6 +50,20 @@ public @interface A2AClientAgent {
      * @return name of the output variable.
      */
     String outputKey() default "";
+
+    /**
+     * Key of the state variable that contains the A2A message context id.
+     *
+     * @return name of the context id state variable.
+     */
+    String contextIdKey() default "";
+
+    /**
+     * Key of the state variable that contains the A2A message task id.
+     *
+     * @return name of the task id state variable.
+     */
+    String taskIdKey() default "";
 
     /**
      * Strongly typed key of the output variable that will be used to store the result of the agent's invocation.

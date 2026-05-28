@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 public class AgentUtil {
@@ -165,14 +166,24 @@ public class AgentUtil {
     }
 
     public static List<AgentArgument> argumentsFromMethod(Method method) {
-        return argumentsFromMethod(method, Map.of());
+        return argumentsFromMethod(method, p -> true);
+    }
+
+    public static List<AgentArgument> argumentsFromMethod(Method method, Predicate<Parameter> parameterFilter) {
+        return argumentsFromMethod(method, Map.of(), parameterFilter);
     }
 
     public static List<AgentArgument> argumentsFromMethod(Method method, Map<String, Object> defaultValues) {
+        return argumentsFromMethod(method, defaultValues, p -> true);
+    }
+
+    public static List<AgentArgument> argumentsFromMethod(
+            Method method, Map<String, Object> defaultValues, Predicate<Parameter> parameterFilter) {
         if (method.getDeclaringClass() == UntypedAgent.class) {
             return List.of();
         }
         return Stream.of(method.getParameters())
+                .filter(parameterFilter)
                 .map(p -> {
                     String argName = parameterName(p);
                     Object defaultValue = defaultValues.getOrDefault(argName, parameterDefaultValue(p));

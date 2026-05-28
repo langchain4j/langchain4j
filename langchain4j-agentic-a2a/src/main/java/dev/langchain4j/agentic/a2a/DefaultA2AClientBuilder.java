@@ -1,13 +1,20 @@
 package dev.langchain4j.agentic.a2a;
 
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
+
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.declarative.A2AContextId;
+import dev.langchain4j.agentic.declarative.A2ATaskId;
+import dev.langchain4j.agentic.internal.A2AClientBuilder;
+import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
-import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.service.output.ServiceOutputParser;
 import io.a2a.A2A;
 import io.a2a.client.Client;
@@ -26,6 +33,7 @@ import io.a2a.spec.Part;
 import io.a2a.spec.TextPart;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -38,8 +46,6 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 
 public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, InternalAgent, InvocationHandler {
 
@@ -57,16 +63,31 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
 
     private String[] inputKeys;
     private String outputKey;
+    private String contextIdKey;
+    private String taskIdKey;
     private boolean async;
 
     private AgentListener agentListener;
 
     DefaultA2AClientBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
-        this.agentCard = agentCard(a2aServerUrl);
+        this(agentCard(a2aServerUrl), agentServiceClass);
+    }
+
+    private DefaultA2AClientBuilder(AgentCard agentCard, Class<T> agentServiceClass) {
+        this(agentCard, a2aClient(agentCard), agentServiceClass);
+    }
+
+    DefaultA2AClientBuilder(AgentCard agentCard, Client a2aClient, Class<T> agentServiceClass) {
+        this.agentCard = agentCard;
+        this.a2aClient = a2aClient;
         this.name = agentCard.name();
         this.agentId = this.name;
+        this.agentServiceClass = agentServiceClass;
+    }
+
+    private static Client a2aClient(AgentCard agentCard) {
         try {
-            this.a2aClient = Client.builder(agentCard)
+            return Client.builder(agentCard)
                     .clientConfig(new ClientConfig.Builder()
                             .setStreaming(false) // Disabling streaming
                             .build())
@@ -75,7 +96,6 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         } catch (A2AClientException e) {
             throw new RuntimeException(e);
         }
-        this.agentServiceClass = agentServiceClass;
     }
 
     private static AgentCard agentCard(String a2aServerUrl) {
@@ -93,8 +113,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         }
 
         Object agent = Proxy.newProxyInstance(
-                agentServiceClass.getClassLoader(),
-                new Class<?>[] {agentServiceClass, A2AClientInstance.class}, this);
+                agentServiceClass.getClassLoader(), new Class<?>[] {agentServiceClass, A2AClientInstance.class}, this);
 
         return (T) agent;
     }
@@ -109,13 +128,15 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             return switch (method.getName()) {
                 case "agentCard" -> agentCard;
                 case "inputKeys" -> inputKeys;
+                case "contextIdKey" -> contextIdKey;
+                case "taskIdKey" -> taskIdKey;
                 default ->
-                        throw new UnsupportedOperationException(
-                                "Unknown method on A2AClientInstance class : " + method.getName());
+                    throw new UnsupportedOperationException(
+                            "Unknown method on A2AClientInstance class : " + method.getName());
             };
         }
 
-        return invokeAgent(getReturnType(method), args);
+        return invokeAgent(method, getReturnType(method), args);
     }
 
     private static Type getReturnType(Method method) {
@@ -123,22 +144,51 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         return type == Object.class ? String.class : type;
     }
 
-    private Object invokeAgent(Type returnType, Object[] args) throws A2AClientException {
+    private Object invokeAgent(Method method, Type returnType, Object[] args) throws A2AClientException {
         List<Part<?>> parts = new ArrayList<>();
+        String contextId = null;
+        String taskId = null;
 
         if (agentServiceClass == UntypedAgent.class) {
             Map<String, Object> params = (Map<String, Object>) args[0];
+            contextId = valueAsString(readMap(params, contextIdKey));
+            taskId = valueAsString(readMap(params, taskIdKey));
             for (String inputKey : inputKeys) {
+                if (isA2AMessageContextKey(inputKey)) {
+                    continue;
+                }
                 parts.add(new TextPart(params.get(inputKey).toString()));
             }
         } else {
-            for (Object arg : args) {
+            Parameter[] parameters = method.getParameters();
+            for (int i = 0; i < args.length; i++) {
+                Object arg = args[i];
+                if (isContextIdParameter(parameters[i])) {
+                    contextId = valueAsString(arg);
+                    continue;
+                }
+                if (isTaskIdParameter(parameters[i])) {
+                    taskId = valueAsString(arg);
+                    continue;
+                }
                 parts.add(new TextPart(arg.toString()));
             }
         }
 
-        Message message =
-                new Message.Builder().role(Message.Role.USER).parts(parts).build();
+        AgenticScope agenticScope = LangChain4jManaged.current(AgenticScope.class);
+        if (contextId == null) {
+            contextId = valueAsString(readState(agenticScope, contextIdKey));
+        }
+        if (taskId == null) {
+            taskId = valueAsString(readState(agenticScope, taskIdKey));
+        }
+
+        Message message = new Message.Builder()
+                .role(Message.Role.USER)
+                .parts(parts)
+                .contextId(contextId)
+                .taskId(taskId)
+                .build();
 
         final CompletableFuture<String> messageResponse = new CompletableFuture<>();
         List<BiConsumer<ClientEvent, AgentCard>> consumers = List.of((event, card) -> {
@@ -198,6 +248,18 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     @Override
     public DefaultA2AClientBuilder<T> outputKey(String outputKey) {
         this.outputKey = outputKey;
+        return this;
+    }
+
+    @Override
+    public DefaultA2AClientBuilder<T> contextIdKey(String contextIdKey) {
+        this.contextIdKey = contextIdKey;
+        return this;
+    }
+
+    @Override
+    public DefaultA2AClientBuilder<T> taskIdKey(String taskIdKey) {
+        this.taskIdKey = taskIdKey;
         return this;
     }
 
@@ -293,5 +355,38 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     @Override
     public AgenticSystemTopology topology() {
         return AgenticSystemTopology.AI_AGENT;
+    }
+
+    private boolean isA2AMessageContextKey(String key) {
+        return isConfiguredKey(contextIdKey, key) || isConfiguredKey(taskIdKey, key);
+    }
+
+    private boolean isContextIdParameter(Parameter parameter) {
+        return parameter.isAnnotationPresent(A2AContextId.class) || isConfiguredKey(contextIdKey, parameter);
+    }
+
+    private boolean isTaskIdParameter(Parameter parameter) {
+        return parameter.isAnnotationPresent(A2ATaskId.class) || isConfiguredKey(taskIdKey, parameter);
+    }
+
+    private static boolean isConfiguredKey(String configuredKey, String key) {
+        return configuredKey != null && !configuredKey.isBlank() && configuredKey.equals(key);
+    }
+
+    private static boolean isConfiguredKey(String configuredKey, Parameter parameter) {
+        return isConfiguredKey(
+                configuredKey, AgentInvoker.optionalParameterName(parameter).orElse(null));
+    }
+
+    private static Object readMap(Map<String, Object> map, String key) {
+        return key != null && !key.isBlank() ? map.get(key) : null;
+    }
+
+    private static Object readState(AgenticScope agenticScope, String key) {
+        return agenticScope != null && key != null && !key.isBlank() ? agenticScope.readState(key) : null;
+    }
+
+    private static String valueAsString(Object value) {
+        return value == null ? null : value.toString();
     }
 }
