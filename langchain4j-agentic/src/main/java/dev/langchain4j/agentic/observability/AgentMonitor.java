@@ -30,10 +30,6 @@ public class AgentMonitor implements AgentListener {
     private final Map<Object, List<MonitoredExecution>> failedExecutions = new ConcurrentHashMap<>();
     private final Map<Object, MonitoredExecution> ongoingExecutions = new ConcurrentHashMap<>();
 
-    private static List<MonitoredExecution> newExecutionList(Object ignored) {
-        return Collections.synchronizedList(new ArrayList<>());
-    }
-
     @Internal
     public void setRootAgent(AgentInstance rootAgent) {
         this.rootAgent = rootAgent;
@@ -61,7 +57,7 @@ public class AgentMonitor implements AgentListener {
         if (execution.done()) {
             ongoingExecutions.remove(memoryId, execution);
             successfulExecutions
-                    .computeIfAbsent(memoryId, AgentMonitor::newExecutionList)
+                    .computeIfAbsent(memoryId, k -> Collections.synchronizedList(new ArrayList<>()))
                     .add(execution);
         }
     }
@@ -69,12 +65,11 @@ public class AgentMonitor implements AgentListener {
     @Override
     public void onAgentInvocationError(AgentInvocationError agentInvocationError) {
         Object memoryId = agentInvocationError.agenticScope().memoryId();
-        MonitoredExecution execution = ongoingExecutions.get(memoryId);
+        MonitoredExecution execution = ongoingExecutions.remove(memoryId);
         if (execution != null) {
             execution.onAgentInvocationError(agentInvocationError);
-            ongoingExecutions.remove(memoryId, execution);
             failedExecutions
-                    .computeIfAbsent(memoryId, AgentMonitor::newExecutionList)
+                    .computeIfAbsent(memoryId, k -> Collections.synchronizedList(new ArrayList<>()))
                     .add(execution);
         }
     }

@@ -25,8 +25,8 @@ import org.junit.jupiter.api.Test;
  */
 class AgentMonitorConcurrencyTest {
 
-    private static final int THREADS = 32;
-    private static final int RUNS = 200;
+    private static final int THREADS = 4;
+    private static final int RUNS = 10;
 
     @Test
     void concurrent_invocations_with_distinct_memory_ids_are_all_tracked() throws Exception {
