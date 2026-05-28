@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
@@ -1050,6 +1051,61 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             return;
         }
         sessionFactory.inStatelessTransaction(session -> session.insertMultiple(entities));
+    }
+
+    public void applyEmbeddings(List<? extends E> entities, EmbeddingModel embeddingModel) {
+        final List<TextSegment> textSegments = createTextSegments(entities);
+        final List<Embedding> embeddings = embeddingModel.embedAll(textSegments).content();
+        for (int i = 0; i < entities.size(); i++) {
+            embeddingAttributeMapping.setValue(
+                    entities.get(i), embeddings.get(i).vector());
+        }
+    }
+
+    public List<TextSegment> createTextSegments(List<? extends E> entities) {
+        if (embeddedTextAttributeMapping == null) {
+            throw new IllegalStateException("Embedding entity [" + entityClass.getName()
+                    + "] has no text attribute mapping, so can't create text segments");
+        }
+        final List<TextSegment> textSegments = new ArrayList<>(entities.size());
+        for (E entity : entities) {
+            final String text = (String) embeddedTextAttributeMapping.getValue(entity);
+            if (text == null) {
+                textSegments.add(null);
+            } else {
+                @SuppressWarnings("unchecked")
+                final Metadata metadata =
+                        new Metadata((Map<String, ?>) unmappedMetadataAttributeMapping.getValue(entity));
+                for (Map.Entry<String, AttributeMapping> metadataAttribute : metadataAttributeMappings.entrySet()) {
+                    final String metadataAttributePath = metadataAttribute.getKey();
+                    final JavaType<?> metadataAttributeJavaType =
+                            metadataAttribute.getValue().getJavaType();
+                    final Object metadataValue = metadataAttribute.getValue().getValue(entity);
+                    if (metadataValue != null) {
+                        if (metadataValue instanceof String string) {
+                            metadata.put(metadataAttributePath, string);
+                        } else if (metadataValue instanceof UUID uuid) {
+                            metadata.put(metadataAttributePath, uuid);
+                        } else if (metadataValue instanceof Integer integerValue) {
+                            metadata.put(metadataAttributePath, integerValue);
+                        } else if (metadataValue instanceof Long longValue) {
+                            metadata.put(metadataAttributePath, longValue);
+                        } else if (metadataValue instanceof Float floatValue) {
+                            metadata.put(metadataAttributePath, floatValue);
+                        } else if (metadataValue instanceof Double doubleValue) {
+                            metadata.put(metadataAttributePath, doubleValue);
+                        } else {
+                            //noinspection unchecked
+                            metadata.put(
+                                    metadataAttributePath,
+                                    ((JavaType<Object>) metadataAttributeJavaType).toString(metadataValue));
+                        }
+                    }
+                }
+                textSegments.add(TextSegment.from(text, metadata));
+            }
+        }
+        return textSegments;
     }
 
     @Override
