@@ -1,6 +1,6 @@
 package dev.langchain4j.model.google.genai;
 
-import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
+import static dev.langchain4j.model.ModelProvider.GOOGLE_GENAI;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
@@ -63,11 +63,11 @@ public class GoogleGenAiModelCatalog implements ModelCatalog {
 
     @Override
     public ModelProvider provider() {
-        return GOOGLE_AI_GEMINI;
+        return GOOGLE_GENAI;
     }
 
     private ModelDescription mapToModelDescription(Model modelInfo) {
-        ModelDescription.Builder builder = ModelDescription.builder().provider(GOOGLE_AI_GEMINI);
+        ModelDescription.Builder builder = ModelDescription.builder().provider(GOOGLE_GENAI);
 
         if (modelInfo.name().isPresent()) {
             String name = modelInfo.name().get();
