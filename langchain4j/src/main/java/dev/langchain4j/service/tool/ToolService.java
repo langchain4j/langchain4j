@@ -525,9 +525,6 @@ public class ToolService {
         if (anyToolErrored) {
             return false; // if any tool call failed, LLM should receive an error so that it can attempt to fix it
         }
-        if (returnBehaviors.isEmpty()) {
-            return false;
-        }
         if (returnBehaviors.get(returnBehaviors.size() - 1) == IMMEDIATE_IF_LAST) {
             return true;
         }
