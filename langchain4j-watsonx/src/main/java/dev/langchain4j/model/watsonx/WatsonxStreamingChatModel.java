@@ -95,7 +95,7 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
                         ResultChoice choice = completeResponse.choices().get(0);
                         FinishReason finishReason = Converter.toFinishReason(choice.finishReason());
                         var usage = completeResponse.usage();
-                        TokenUsage tokenUsage = usage != null ? new TokenUsage(usage.promptTokens(), usage.completionTokens(), usage.totalTokens()) : new TokenUsage(0, 0, 0);
+                        TokenUsage tokenUsage = usage != null ? new TokenUsage(usage.promptTokens(), usage.completionTokens(), usage.totalTokens()) : null;
 
                         var assistantMessage = completeResponse.toAssistantMessage();
                         var aiMessage = AiMessage.builder();
