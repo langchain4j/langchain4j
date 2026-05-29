@@ -13,7 +13,7 @@ https://developers.cloudflare.com/workers-ai/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-workers-ai</artifactId>
-    <version>1.14.1-beta24</version>
+    <version>1.15.1-beta25</version>
 </dependency>
 ```
 

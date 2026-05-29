@@ -8,6 +8,7 @@ public enum ModelProvider {
     @Deprecated
     AZURE_OPEN_AI,
     GOOGLE_AI_GEMINI,
+    GOOGLE_GENAI,
     GOOGLE_VERTEX_AI_GEMINI,
     GOOGLE_VERTEX_AI_ANTHROPIC,
     MICROSOFT_FOUNDRY,
