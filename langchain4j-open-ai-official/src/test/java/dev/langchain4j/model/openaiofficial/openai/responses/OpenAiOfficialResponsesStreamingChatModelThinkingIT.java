@@ -68,7 +68,7 @@ class OpenAiOfficialResponsesStreamingChatModelThinkingIT {
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName("gpt-5-mini")
-                .reasoningEffort(ReasoningEffort.LOW)
+                .reasoningEffort(ReasoningEffort.MEDIUM)
                 .reasoningSummary(reasoningSummary)
                 .build();
 
@@ -109,7 +109,7 @@ class OpenAiOfficialResponsesStreamingChatModelThinkingIT {
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName("gpt-5-mini")
-                .reasoningEffort(ReasoningEffort.LOW)
+                .reasoningEffort(ReasoningEffort.MEDIUM)
                 .build();
 
         UserMessage userMessage = UserMessage.from("What is the capital of Germany?");

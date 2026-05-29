@@ -18,7 +18,9 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -54,6 +56,17 @@ public class DefaultAgenticScope implements AgenticScope {
 
     private transient Function<ErrorContext, ErrorRecoveryResult> errorHandler = DEFAULT_ERROR_RECOVERY;
 
+    private static Predicate<Object> serializableStateFilter = Predicate.not(DefaultAgenticScope::isProxy)
+            .and(Predicate.not(DefaultAgenticScope::isTokenStream));
+
+    private static boolean isProxy(Object obj) {
+        return Proxy.isProxyClass(obj.getClass());
+    }
+
+    private static boolean isTokenStream(Object obj) {
+        return obj instanceof TokenStream;
+    }
+
     public enum Kind {
         EPHEMERAL,
         REGISTERED,
@@ -61,6 +74,26 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     private final Kind kind;
+
+    DefaultAgenticScope serializableCopy() {
+        DefaultAgenticScope copy = new DefaultAgenticScope(memoryId, kind);
+        state.forEach((key, value) -> {
+            if (isSerializable(value)) {
+                copy.state.put(key, value);
+            }
+        });
+        copy.agentInvocations.addAll(agentInvocations);
+        copy.context.addAll(context);
+        return copy;
+    }
+
+    public static boolean isSerializable(Object value) {
+        return value == null || serializableStateFilter.test(value);
+    }
+
+    public static void addSerializableStateFilter(Predicate<Object> filter) {
+        serializableStateFilter = serializableStateFilter.and(filter);
+    }
 
     /**
      * This lock is used to ensure that the AgenticScope doesn't get concurrently modified when it is going to be persisted.

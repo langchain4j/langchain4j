@@ -17,6 +17,8 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static dev.langchain4j.agentic.scope.DefaultAgenticScope.isSerializable;
+
 public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements AgentInstance, InternalAgent {
 
     private static final Logger LOG = LoggerFactory.getLogger(AgentExecutor.class);
@@ -76,8 +78,7 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
             if (outputKey != null && !outputKey.isBlank()) {
                 agenticScope.writeState(outputKey, response);
             }
-            AgentInvocation agentInvocation =
-                    new AgentInvocation(type(), name(), agentId(), args.namedArgs(), response);
+            AgentInvocation agentInvocation = new AgentInvocation(type(), name(), agentId(), args.namedArgs(), isSerializable(response) ? response : "<unknown>");
             agenticScope.registerAgentInvocation(agentInvocation, invokedAgent);
             if (planner != null) {
                 planner.onSubagentInvoked(agentInvocation);
