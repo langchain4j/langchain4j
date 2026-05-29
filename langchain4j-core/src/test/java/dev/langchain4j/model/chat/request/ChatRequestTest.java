@@ -448,6 +448,7 @@ class ChatRequestTest {
 
         // then
         assertThat(modified).isEqualTo(original);
+        assertThat(modified.parameters()).isSameAs(parameters);
     }
 
     @Test
@@ -640,10 +641,9 @@ class ChatRequestTest {
         // when
         ChatRequest modified = original.toBuilder().build();
 
-        // then: result still has the provider-specific subclass parameters
-        assertThat(modified.parameters()).isInstanceOf(TestProviderChatRequestParameters.class);
-        assertThat(((TestProviderChatRequestParameters) modified.parameters()).customField())
-                .isEqualTo("custom-value");
+        // then: original parameters object passed through as-is (identity preserved,
+        // so subclasses that do not override overrideWith still keep their type)
+        assertThat(modified.parameters()).isSameAs(parameters);
     }
 
     public static class TestProviderChatRequestParameters extends DefaultChatRequestParameters {

@@ -1,6 +1,7 @@
 package dev.langchain4j.model.chat.request;
 
 import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
 
@@ -18,6 +19,23 @@ public class ChatRequest {
 
     protected ChatRequest(Builder builder) {
         this.messages = copy(ensureNotEmpty(builder.messages, "messages"));
+
+        boolean individualParametersAreSpecified = builder.modelName != null
+                || builder.temperature != null
+                || builder.topP != null
+                || builder.topK != null
+                || builder.frequencyPenalty != null
+                || builder.presencePenalty != null
+                || builder.maxOutputTokens != null
+                || !isNullOrEmpty(builder.stopSequences)
+                || !isNullOrEmpty(builder.toolSpecifications)
+                || builder.toolChoice != null
+                || builder.responseFormat != null;
+
+        if (!individualParametersAreSpecified) {
+            this.parameters = builder.parameters != null ? builder.parameters : DefaultChatRequestParameters.EMPTY;
+            return;
+        }
 
         ChatRequestParameters overrides = ChatRequestParameters.builder()
                 .modelName(builder.modelName)
