@@ -820,6 +820,210 @@ class SkillTest {
         assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "dynamic_tool");
     }
 
+    @Test
+    void toBuilder_then_tools_should_replace_existing_annotated_tools() {
+
+        // given - skill already has annotated tools
+        DefaultSkill original = Skill.builder()
+                .name("my-skill")
+                .description("My skill")
+                .content("Use sayHello")
+                .tools(new MyTools())
+                .build();
+
+        // when - replace tools via toBuilder
+        DefaultSkill replaced = original.toBuilder().tools(new AnotherTools()).build();
+
+        Skills skills = Skills.from(replaced);
+        ToolProviderRequest request =
+                requestWithMessages(List.of(UserMessage.from("do stuff"), skillActivatedMessage("my-skill")));
+        ToolProviderResult result = skills.toolProvider().provideTools(request);
+
+        // then - same "last call wins" semantics as a fresh builder chain
+        assertThat(replaced.toolProviders()).hasSize(1);
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "sayGoodbye");
+    }
+
+    @Test
+    void toBuilder_then_tools_map_should_replace_existing_map_tools() {
+
+        // given
+        ToolSpecification tool1 =
+                ToolSpecification.builder().name("tool_1").description("Tool 1").build();
+        ToolSpecification tool2 =
+                ToolSpecification.builder().name("tool_2").description("Tool 2").build();
+
+        DefaultSkill original = Skill.builder()
+                .name("my-skill")
+                .description("My skill")
+                .content("Use tools")
+                .tools(Map.of(tool1, (request, memoryId) -> "1"))
+                .build();
+
+        // when
+        DefaultSkill replaced = original.toBuilder()
+                .tools(Map.of(tool2, (request, memoryId) -> "2"))
+                .build();
+
+        Skills skills = Skills.from(replaced);
+        ToolProviderRequest request =
+                requestWithMessages(List.of(UserMessage.from("do stuff"), skillActivatedMessage("my-skill")));
+        ToolProviderResult result = skills.toolProvider().provideTools(request);
+
+        // then
+        assertThat(replaced.toolProviders()).hasSize(1);
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "tool_2");
+    }
+
+    @Test
+    void toBuilder_then_toolProviders_should_not_wipe_out_static_tools() {
+
+        // given - skill has BOTH annotated tools and a tool provider
+        ToolProvider originalProvider = request -> ToolProviderResult.builder()
+                .add(
+                        ToolSpecification.builder()
+                                .name("original_dynamic")
+                                .description("Original")
+                                .build(),
+                        (req, memoryId) -> "original")
+                .build();
+        DefaultSkill original = Skill.builder()
+                .name("my-skill")
+                .description("My skill")
+                .content("Use tools")
+                .tools(new MyTools())
+                .toolProviders(originalProvider)
+                .build();
+
+        ToolProvider newProvider = request -> ToolProviderResult.builder()
+                .add(
+                        ToolSpecification.builder()
+                                .name("new_dynamic")
+                                .description("New")
+                                .build(),
+                        (req, memoryId) -> "new")
+                .build();
+
+        // when - swap providers via toBuilder
+        DefaultSkill modified = original.toBuilder().toolProviders(newProvider).build();
+
+        Skills skills = Skills.from(modified);
+        ToolProviderRequest request =
+                requestWithMessages(List.of(UserMessage.from("do stuff"), skillActivatedMessage("my-skill")));
+        ToolProviderResult result = skills.toolProvider().provideTools(request);
+
+        // then - static tools survived; the old provider was replaced by the new one (same as a fresh chain)
+        assertThat(modified.toolProviders()).hasSize(2);
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "sayHello", "new_dynamic");
+    }
+
+    @Test
+    void toBuilder_roundtrip_should_preserve_all_three_tool_types() {
+
+        // given
+        ToolSpecification manualTool = ToolSpecification.builder()
+                .name("manual_tool")
+                .description("A manual tool")
+                .build();
+        ToolProvider dynamicProvider = request -> ToolProviderResult.builder()
+                .add(
+                        ToolSpecification.builder()
+                                .name("dynamic_tool")
+                                .description("Dynamic")
+                                .build(),
+                        (req, memoryId) -> "dynamic")
+                .build();
+
+        DefaultSkill original = Skill.builder()
+                .name("my-skill")
+                .description("My skill")
+                .content("Use tools")
+                .tools(new MyTools())
+                .tools(Map.of(manualTool, (request, memoryId) -> "manual"))
+                .toolProviders(dynamicProvider)
+                .build();
+
+        // when - round-trip
+        DefaultSkill copy = original.toBuilder().build();
+
+        // then - same provider count, same tools, equal
+        assertThat(copy.toolProviders()).hasSize(2);
+        assertThat(copy).isEqualTo(original);
+
+        Skills skills = Skills.from(copy);
+        ToolProviderRequest request =
+                requestWithMessages(List.of(UserMessage.from("do stuff"), skillActivatedMessage("my-skill")));
+        ToolProviderResult result = skills.toolProvider().provideTools(request);
+        assertThat(getToolNames(result))
+                .containsExactlyInAnyOrder("activate_skill", "sayHello", "manual_tool", "dynamic_tool");
+    }
+
+    @Test
+    void defaultFileSystemSkill_toBuilder_then_tools_should_replace_existing_annotated_tools() {
+
+        // given
+        Path basePath = Paths.get("/tmp/skills/my-skill");
+        DefaultFileSystemSkill original = DefaultFileSystemSkill.builder()
+                .name("my-skill")
+                .description("My skill")
+                .content("Use sayHello")
+                .basePath(basePath)
+                .tools(new MyTools())
+                .build();
+
+        // when
+        DefaultFileSystemSkill replaced =
+                original.toBuilder().tools(new AnotherTools()).build();
+
+        Skills skills = Skills.from(replaced);
+        ToolProviderRequest request =
+                requestWithMessages(List.of(UserMessage.from("do stuff"), skillActivatedMessage("my-skill")));
+        ToolProviderResult result = skills.toolProvider().provideTools(request);
+
+        // then
+        assertThat(replaced.basePath()).isEqualTo(basePath);
+        assertThat(replaced.toolProviders()).hasSize(1);
+        assertThat(getToolNames(result)).containsExactlyInAnyOrder("activate_skill", "sayGoodbye");
+    }
+
+    @Test
+    void defaultFileSystemSkill_toBuilder_roundtrip_should_be_equal_for_skill_with_tools() {
+
+        // given
+        Path basePath = Paths.get("/tmp/skills/my-skill");
+        DefaultFileSystemSkill original = DefaultFileSystemSkill.builder()
+                .name("my-skill")
+                .description("My skill")
+                .content("Use tools")
+                .basePath(basePath)
+                .tools(new MyTools())
+                .build();
+
+        // when
+        DefaultFileSystemSkill copy = original.toBuilder().build();
+
+        // then
+        assertThat(copy).isEqualTo(original);
+        assertThat(copy.hashCode()).isEqualTo(original.hashCode());
+        assertThat(copy.basePath()).isEqualTo(basePath);
+    }
+
+    @Test
+    void defaultFileSystemSkill_toString_should_include_toolProviders() {
+
+        // given
+        DefaultFileSystemSkill skill = DefaultFileSystemSkill.builder()
+                .name("my-skill")
+                .description("My skill")
+                .content("Use sayHello")
+                .basePath(Paths.get("/tmp/skills/my-skill"))
+                .tools(new MyTools())
+                .build();
+
+        // then
+        assertThat(skill.toString()).contains("toolProviders").contains("basePath");
+    }
+
     private static ToolProviderRequest dummyRequest() {
         return ToolProviderRequest.builder()
                 .invocationContext(InvocationContext.builder().build())

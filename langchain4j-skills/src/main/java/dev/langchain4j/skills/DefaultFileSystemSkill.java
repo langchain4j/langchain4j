@@ -41,26 +41,20 @@ public class DefaultFileSystemSkill extends AbstractSkill implements FileSystemS
                 + ", description = " + description()
                 + ", content = " + content()
                 + ", resources = " + resources()
+                + ", toolProviders = " + toolProviders()
                 + ", basePath = " + basePath
                 + " }";
     }
 
     /**
      * Returns a new builder pre-populated with the values from this skill.
-     * Useful for creating a modified copy, e.g. attaching tools to a filesystem-loaded skill:
+     * Useful for creating a modified copy, e.g. adding tools to a filesystem-loaded skill:
      * <pre>{@code
      * FileSystemSkill skillWithTools = skill.toBuilder().tools(new MyTools()).build();
      * }</pre>
      */
     public Builder toBuilder() {
-        Builder builder = new Builder();
-        builder.name(name())
-                .description(description())
-                .content(content())
-                .resources(resources())
-                .toolProviders(toolProviders());
-        builder.basePath(basePath);
-        return builder;
+        return builder().copyFrom(this).basePath(basePath());
     }
 
     public static Builder builder() {
