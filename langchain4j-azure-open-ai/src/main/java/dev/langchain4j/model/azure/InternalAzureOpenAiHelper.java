@@ -81,7 +81,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -230,12 +229,8 @@ class InternalAzureOpenAiHelper {
                 return version;
             }
         }
-        List<String> supportedVersions = Arrays.stream(OpenAIServiceVersion.values())
-                .map(OpenAIServiceVersion::getVersion)
-                .collect(toList());
         throw new IllegalArgumentException("Unsupported Azure OpenAI service version: '" + serviceVersion
-                + "'. Supported versions are: " + supportedVersions
-                + ". Leave serviceVersion null or empty to use the latest version.");
+                + "'. Leave serviceVersion null or empty to use the latest supported version.");
     }
 
     static List<ChatRequestMessage> toOpenAiMessages(List<ChatMessage> messages) {
