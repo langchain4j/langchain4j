@@ -1,18 +1,19 @@
 package dev.langchain4j.agentic.workflow.impl;
 
-import dev.langchain4j.agentic.Agents;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.Agents;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 /**
  * Verifies that LoopPlanner respects maxIterations exactly,
@@ -28,9 +29,7 @@ class LoopPlannerTest {
             @Override
             public ChatResponse chat(ChatRequest chatRequest) {
                 callCount.incrementAndGet();
-                return ChatResponse.builder()
-                        .aiMessage(AiMessage.from("0.5"))
-                        .build();
+                return ChatResponse.builder().aiMessage(AiMessage.from("0.5")).build();
             }
         };
 
@@ -62,9 +61,7 @@ class LoopPlannerTest {
             @Override
             public ChatResponse chat(ChatRequest chatRequest) {
                 scorerCalls.incrementAndGet();
-                return ChatResponse.builder()
-                        .aiMessage(AiMessage.from("0.5"))
-                        .build();
+                return ChatResponse.builder().aiMessage(AiMessage.from("0.5")).build();
             }
         };
 
