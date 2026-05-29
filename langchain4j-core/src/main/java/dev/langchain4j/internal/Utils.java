@@ -4,7 +4,6 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.net.HttpURLConnection.HTTP_OK;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.Collections.unmodifiableCollection;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
@@ -25,8 +24,10 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.HexFormat;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -551,6 +552,42 @@ public class Utils {
             }
         }
         return Optional.empty();
+    }
+
+    private static final Map<Class<?>, List<Method>> DECLARED_METHODS_CACHE = new ConcurrentHashMap<>();
+
+    /**
+     * Returns all methods declared in the given class and its superclasses, excluding {@link Object}.
+     * If a subclass overrides a superclass method, only the subclass version is included.
+     */
+    public static List<Method> allDeclaredMethods(Class<?> clazz) {
+        return DECLARED_METHODS_CACHE.computeIfAbsent(clazz, Utils::findAllDeclaredMethods);
+    }
+
+    private static List<Method> findAllDeclaredMethods(Class<?> clazz) {
+        List<Method> allMethods = new ArrayList<>();
+        Set<String> overridden = new HashSet<>();
+        while (clazz != null && clazz != Object.class) {
+            List<Method> cached = DECLARED_METHODS_CACHE.get(clazz);
+            if (cached != null) {
+                for (Method method : cached) {
+                    if (!overridden.contains(method.getName())) {
+                        allMethods.add(method);
+                    }
+                }
+                break;
+            }
+            for (Method method : clazz.getDeclaredMethods()) {
+                if (!overridden.contains(method.getName())) {
+                    allMethods.add(method);
+                }
+            }
+            for (Method method : clazz.getDeclaredMethods()) {
+                overridden.add(method.getName());
+            }
+            clazz = clazz.getSuperclass();
+        }
+        return allMethods;
     }
 
     /**

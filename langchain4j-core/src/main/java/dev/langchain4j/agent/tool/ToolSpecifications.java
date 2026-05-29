@@ -1,5 +1,6 @@
 package dev.langchain4j.agent.tool;
 
+import static dev.langchain4j.internal.Utils.allDeclaredMethods;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Arrays.stream;
@@ -60,7 +61,7 @@ public class ToolSpecifications {
      * @return the {@link ToolSpecification}s.
      */
     public static List<ToolSpecification> toolSpecificationsFrom(Class<?> classWithTools) {
-        List<ToolSpecification> toolSpecifications = stream(classWithTools.getDeclaredMethods())
+        List<ToolSpecification> toolSpecifications = allDeclaredMethods(classWithTools).stream()
                 .filter(method -> method.isAnnotationPresent(Tool.class))
                 .map(ToolSpecifications::toolSpecificationFrom)
                 .collect(toList());
