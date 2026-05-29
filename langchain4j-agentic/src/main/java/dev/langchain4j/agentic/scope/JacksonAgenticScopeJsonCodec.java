@@ -51,7 +51,7 @@ class JacksonAgenticScopeJsonCodec implements AgenticScopeJsonCodec {
     @Override
     public String toJson(DefaultAgenticScope agenticScope) {
         try {
-            return MAPPER.writeValueAsString(agenticScope);
+            return MAPPER.writeValueAsString(agenticScope.serializableCopy());
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Failed to serialize AgenticScope to JSON", e);
         }
