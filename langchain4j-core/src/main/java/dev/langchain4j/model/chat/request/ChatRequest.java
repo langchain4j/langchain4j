@@ -1,7 +1,6 @@
 package dev.langchain4j.model.chat.request;
 
 import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
 
@@ -20,58 +19,21 @@ public class ChatRequest {
     protected ChatRequest(Builder builder) {
         this.messages = copy(ensureNotEmpty(builder.messages, "messages"));
 
-        DefaultChatRequestParameters.Builder<?> parametersBuilder = ChatRequestParameters.builder();
+        ChatRequestParameters overrides = ChatRequestParameters.builder()
+                .modelName(builder.modelName)
+                .temperature(builder.temperature)
+                .topP(builder.topP)
+                .topK(builder.topK)
+                .frequencyPenalty(builder.frequencyPenalty)
+                .presencePenalty(builder.presencePenalty)
+                .maxOutputTokens(builder.maxOutputTokens)
+                .stopSequences(builder.stopSequences)
+                .toolSpecifications(builder.toolSpecifications)
+                .toolChoice(builder.toolChoice)
+                .responseFormat(builder.responseFormat)
+                .build();
 
-        if (builder.modelName != null) {
-            validate(builder, "modelName");
-            parametersBuilder.modelName(builder.modelName);
-        }
-        if (builder.temperature != null) {
-            validate(builder, "temperature");
-            parametersBuilder.temperature(builder.temperature);
-        }
-        if (builder.topP != null) {
-            validate(builder, "topP");
-            parametersBuilder.topP(builder.topP);
-        }
-        if (builder.topK != null) {
-            validate(builder, "topK");
-            parametersBuilder.topK(builder.topK);
-        }
-        if (builder.frequencyPenalty != null) {
-            validate(builder, "frequencyPenalty");
-            parametersBuilder.frequencyPenalty(builder.frequencyPenalty);
-        }
-        if (builder.presencePenalty != null) {
-            validate(builder, "presencePenalty");
-            parametersBuilder.presencePenalty(builder.presencePenalty);
-        }
-        if (builder.maxOutputTokens != null) {
-            validate(builder, "maxOutputTokens");
-            parametersBuilder.maxOutputTokens(builder.maxOutputTokens);
-        }
-        if (!isNullOrEmpty(builder.stopSequences)) {
-            validate(builder, "stopSequences");
-            parametersBuilder.stopSequences(builder.stopSequences);
-        }
-        if (!isNullOrEmpty(builder.toolSpecifications)) {
-            validate(builder, "toolSpecifications");
-            parametersBuilder.toolSpecifications(builder.toolSpecifications);
-        }
-        if (builder.toolChoice != null) {
-            validate(builder, "toolChoice");
-            parametersBuilder.toolChoice(builder.toolChoice);
-        }
-        if (builder.responseFormat != null) {
-            validate(builder, "responseFormat");
-            parametersBuilder.responseFormat(builder.responseFormat);
-        }
-
-        if (builder.parameters != null) {
-            this.parameters = builder.parameters;
-        } else {
-            this.parameters = parametersBuilder.build();
-        }
+        this.parameters = builder.parameters != null ? builder.parameters.overrideWith(overrides) : overrides;
     }
 
     public List<ChatMessage> messages() {
@@ -148,7 +110,17 @@ public class ChatRequest {
     }
 
     /**
-     * Transforms this instance to a {@link Builder} with all of the same field values
+     * Transforms this instance to a {@link Builder} with all of the same field values.
+     * <p>
+     * Individual setters on the returned {@link Builder} (e.g., {@link Builder#modelName(String)},
+     * {@link Builder#temperature(Double)}, etc.) can be used to override specific fields of the existing
+     * {@link #parameters()} without rebuilding them from scratch. For example:
+     * <pre>{@code
+     * ChatRequest modified = chatRequest.toBuilder()
+     *         .temperature(0.0)
+     *         .build();
+     * }</pre>
+     * See {@link Builder} for details on the override semantics.
      */
     public Builder toBuilder() {
         return new Builder(this);
@@ -158,6 +130,22 @@ public class ChatRequest {
         return new Builder();
     }
 
+    /**
+     * Builder for {@link ChatRequest}.
+     * <p>
+     * <b>Override semantics</b>: when {@link #parameters(ChatRequestParameters)} is set together with
+     * one or more individual setters (e.g., {@link #modelName(String)},
+     * {@link #temperature(Double)}, etc.), the values from the individual
+     * setters take precedence over the corresponding fields of {@code parameters}, while all other
+     * fields of {@code parameters} (including provider-specific fields on subclasses of
+     * {@link ChatRequestParameters}) are preserved. Merging is performed via
+     * {@link ChatRequestParameters#overrideWith(ChatRequestParameters)}, which only overrides with
+     * non-null (and, for collections, non-empty) values — setting a field back to {@code null} via
+     * an individual setter will <em>not</em> clear an existing value on {@code parameters}.
+     * <p>
+     * This makes it easy to modify a single field of an existing {@link ChatRequest} via
+     * {@link ChatRequest#toBuilder()} without losing any other configuration.
+     */
     public static class Builder {
 
         private List<ChatMessage> messages;
@@ -191,6 +179,14 @@ public class ChatRequest {
             return messages(asList(messages));
         }
 
+        /**
+         * Sets the {@link ChatRequestParameters} to be used as the base for this request.
+         * <p>
+         * Any individual setters called on this {@link Builder} (e.g., {@link #modelName(String)},
+         * {@link #temperature(Double)}, etc.) will override the corresponding fields of the supplied
+         * {@code parameters}; all other fields of {@code parameters} are preserved.
+         * See {@link Builder} for full override semantics.
+         */
         public Builder parameters(ChatRequestParameters parameters) {
             this.parameters = parameters;
             return this;
@@ -257,12 +253,6 @@ public class ChatRequest {
 
         public ChatRequest build() {
             return new ChatRequest(this);
-        }
-    }
-
-    private static void validate(Builder builder, String name) {
-        if (builder.parameters != null) {
-            throw new IllegalArgumentException("Cannot set both 'parameters' and '%s' on ChatRequest".formatted(name));
         }
     }
 }

@@ -61,28 +61,29 @@ class ChatRequestTest {
     }
 
     @Test
-    void should_fail_when_both_request_parameters_and_response_format_are_set() {
+    void should_override_response_format_when_both_parameters_and_response_format_are_set() {
 
-        assertThatThrownBy(() -> ChatRequest.builder()
-                        .messages(UserMessage.from("hi"))
-                        .parameters(DefaultChatRequestParameters.EMPTY)
-                        .responseFormat(ResponseFormat.JSON)
-                        .build())
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Cannot set both 'parameters' and 'responseFormat' on ChatRequest");
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("hi"))
+                .parameters(DefaultChatRequestParameters.EMPTY)
+                .responseFormat(ResponseFormat.JSON)
+                .build();
+
+        assertThat(chatRequest.responseFormat()).isEqualTo(ResponseFormat.JSON);
     }
 
     @Test
-    void should_fail_when_both_request_parameters_and_toolSpecifications_are_set() {
+    void should_override_tool_specifications_when_both_parameters_and_toolSpecifications_are_set() {
 
-        assertThatThrownBy(() -> ChatRequest.builder()
-                        .messages(UserMessage.from("hi"))
-                        .parameters(DefaultChatRequestParameters.EMPTY)
-                        .toolSpecifications(
-                                ToolSpecification.builder().name("tool").build())
-                        .build())
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Cannot set both 'parameters' and 'toolSpecifications' on ChatRequest");
+        ToolSpecification tool = ToolSpecification.builder().name("tool").build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("hi"))
+                .parameters(DefaultChatRequestParameters.EMPTY)
+                .toolSpecifications(tool)
+                .build();
+
+        assertThat(chatRequest.toolSpecifications()).containsExactly(tool);
     }
 
     @Test
@@ -197,32 +198,36 @@ class ChatRequestTest {
     }
 
     @Test
-    void should_fail_when_both_parameters_and_response_format_are_non_null() {
+    void should_override_response_format_when_both_parameters_and_response_format_are_non_null() {
         // given
         ChatRequestParameters parameters = ChatRequestParameters.builder().build();
 
-        assertThatThrownBy(() -> ChatRequest.builder()
-                        .messages(UserMessage.from("hi"))
-                        .parameters(parameters)
-                        .responseFormat(ResponseFormat.JSON)
-                        .build())
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Cannot set both 'parameters' and 'responseFormat' on ChatRequest");
+        // when
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("hi"))
+                .parameters(parameters)
+                .responseFormat(ResponseFormat.JSON)
+                .build();
+
+        // then
+        assertThat(chatRequest.responseFormat()).isEqualTo(ResponseFormat.JSON);
     }
 
     @Test
-    void should_fail_when_both_parameters_and_tool_specifications_are_non_null() {
+    void should_override_tool_specifications_when_both_parameters_and_tool_specifications_are_non_null() {
         // given
         ChatRequestParameters parameters = ChatRequestParameters.builder().build();
         ToolSpecification tool = ToolSpecification.builder().name("tool").build();
 
-        assertThatThrownBy(() -> ChatRequest.builder()
-                        .messages(UserMessage.from("hi"))
-                        .parameters(parameters)
-                        .toolSpecifications(tool)
-                        .build())
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Cannot set both 'parameters' and 'toolSpecifications' on ChatRequest");
+        // when
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("hi"))
+                .parameters(parameters)
+                .toolSpecifications(tool)
+                .build();
+
+        // then
+        assertThat(chatRequest.toolSpecifications()).containsExactly(tool);
     }
 
     @Test
@@ -242,7 +247,7 @@ class ChatRequestTest {
     }
 
     @Test
-    void should_fail_when_parameters_contains_conflicting_tool_specifications() {
+    void should_override_tool_specifications_from_parameters() {
         // given
         ToolSpecification paramTool =
                 ToolSpecification.builder().name("paramTool").build();
@@ -252,14 +257,15 @@ class ChatRequestTest {
         ChatRequestParameters parameters =
                 ChatRequestParameters.builder().toolSpecifications(paramTool).build();
 
-        // when/then
-        assertThatThrownBy(() -> ChatRequest.builder()
+        // when
+        ChatRequest chatRequest = ChatRequest.builder()
                 .messages(UserMessage.from("hi"))
                 .parameters(parameters)
                 .toolSpecifications(builderTool)
-                .build())
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Cannot set both 'parameters' and 'toolSpecifications' on ChatRequest");
+                .build();
+
+        // then
+        assertThat(chatRequest.toolSpecifications()).containsExactly(builderTool);
     }
 
     @Test
@@ -283,83 +289,162 @@ class ChatRequestTest {
     }
 
     @Test
-    void should_fail_when_parameters_and_modelName_are_both_set() {
-        assertThatThrownBy(() ->
-                ChatRequest.builder()
-                        .messages(UserMessage.from("hello"))
-                        .parameters(ChatRequestParameters.builder().modelName("gpt-4").build())
-                        .modelName("gpt-3.5")
-                        .build()
-        )
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("parameters")
-                .hasMessageContaining("modelName");
+    void should_override_modelName_when_both_parameters_and_modelName_are_set() {
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("hello"))
+                .parameters(ChatRequestParameters.builder().modelName("gpt-4").build())
+                .modelName("gpt-3.5")
+                .build();
+
+        assertThat(chatRequest.modelName()).isEqualTo("gpt-3.5");
     }
 
     @Test
-    void should_fail_when_parameters_and_temperature_are_both_set() {
-        assertThatThrownBy(() ->
-                ChatRequest.builder()
-                        .messages(UserMessage.from("hello"))
-                        .parameters(ChatRequestParameters.builder().temperature(0.5).build())
-                        .temperature(0.7)
-                        .build()
-        )
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("parameters")
-                .hasMessageContaining("temperature");
+    void should_override_temperature_when_both_parameters_and_temperature_are_set() {
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("hello"))
+                .parameters(ChatRequestParameters.builder().temperature(0.5).build())
+                .temperature(0.7)
+                .build();
+
+        assertThat(chatRequest.temperature()).isEqualTo(0.7);
     }
 
     @Test
-    void should_fail_when_parameters_and_stopSequences_are_both_set() {
-        assertThatThrownBy(() ->
-                ChatRequest.builder()
-                        .messages(UserMessage.from("hello"))
-                        .parameters(ChatRequestParameters.builder()
-                                .stopSequences(List.of("STOP"))
-                                .build())
-                        .stopSequences(List.of("END"))
-                        .build()
-        )
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("parameters")
-                .hasMessageContaining("stopSequences");
+    void should_override_stopSequences_when_both_parameters_and_stopSequences_are_set() {
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("hello"))
+                .parameters(ChatRequestParameters.builder()
+                        .stopSequences(List.of("STOP"))
+                        .build())
+                .stopSequences(List.of("END"))
+                .build();
+
+        assertThat(chatRequest.stopSequences()).containsExactly("END");
     }
 
     @Test
-    void should_fail_when_parameters_and_toolSpecifications_are_both_set() {
-        ToolSpecification tool = ToolSpecification.builder()
-                .name("tool")
+    void should_override_toolSpecifications_when_both_parameters_and_toolSpecifications_are_set() {
+        ToolSpecification paramTool = ToolSpecification.builder()
+                .name("paramTool")
+                .description("desc")
+                .build();
+        ToolSpecification builderTool = ToolSpecification.builder()
+                .name("builderTool")
                 .description("desc")
                 .build();
 
-        assertThatThrownBy(() ->
-                ChatRequest.builder()
-                        .messages(UserMessage.from("hello"))
-                        .parameters(ChatRequestParameters.builder()
-                                .toolSpecifications(List.of(tool))
-                                .build())
-                        .toolSpecifications(tool)
-                        .build()
-        )
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("parameters")
-                .hasMessageContaining("toolSpecifications");
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("hello"))
+                .parameters(ChatRequestParameters.builder()
+                        .toolSpecifications(List.of(paramTool))
+                        .build())
+                .toolSpecifications(builderTool)
+                .build();
+
+        assertThat(chatRequest.toolSpecifications()).containsExactly(builderTool);
     }
 
     @Test
-    void should_fail_when_parameters_and_responseFormat_are_both_set() {
-        assertThatThrownBy(() ->
-                ChatRequest.builder()
-                        .messages(UserMessage.from("hello"))
-                        .parameters(ChatRequestParameters.builder()
-                                .responseFormat(ResponseFormat.JSON)
-                                .build())
+    void should_override_responseFormat_when_both_parameters_and_responseFormat_are_set() {
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("hello"))
+                .parameters(ChatRequestParameters.builder()
+                        .responseFormat(ResponseFormat.JSON)
+                        .build())
+                .responseFormat(ResponseFormat.TEXT)
+                .build();
+
+        assertThat(chatRequest.responseFormat()).isEqualTo(ResponseFormat.TEXT);
+    }
+
+    @Test
+    void should_override_responseFormat_via_toBuilder() {
+        // given
+        ChatRequest original = ChatRequest.builder()
+                .messages(UserMessage.from("hi"))
+                .parameters(ChatRequestParameters.builder()
+                        .modelName("gpt-4")
+                        .temperature(0.7)
+                        .build())
+                .build();
+
+        // when
+        ChatRequest modified = original.toBuilder()
+                .responseFormat(ResponseFormat.JSON)
+                .build();
+
+        // then
+        assertThat(modified.responseFormat()).isEqualTo(ResponseFormat.JSON);
+        assertThat(modified.modelName()).isEqualTo("gpt-4");
+        assertThat(modified.temperature()).isEqualTo(0.7);
+        assertThat(modified.messages()).containsExactly(UserMessage.from("hi"));
+    }
+
+    @Test
+    void should_override_existing_responseFormat_via_toBuilder() {
+        // given
+        ChatRequest original = ChatRequest.builder()
+                .messages(UserMessage.from("hi"))
+                .parameters(ChatRequestParameters.builder()
                         .responseFormat(ResponseFormat.TEXT)
-                        .build()
-        )
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("parameters")
-                .hasMessageContaining("responseFormat");
+                        .build())
+                .build();
+
+        // when
+        ChatRequest modified = original.toBuilder()
+                .responseFormat(ResponseFormat.JSON)
+                .build();
+
+        // then
+        assertThat(modified.responseFormat()).isEqualTo(ResponseFormat.JSON);
+    }
+
+    @Test
+    void should_override_multiple_fields_via_toBuilder() {
+        // given
+        ToolSpecification tool = ToolSpecification.builder().name("tool").build();
+        ChatRequest original = ChatRequest.builder()
+                .messages(UserMessage.from("hi"))
+                .parameters(ChatRequestParameters.builder()
+                        .modelName("gpt-4")
+                        .temperature(0.7)
+                        .maxOutputTokens(100)
+                        .build())
+                .build();
+
+        // when
+        ChatRequest modified = original.toBuilder()
+                .temperature(0.2)
+                .responseFormat(ResponseFormat.JSON)
+                .toolSpecifications(tool)
+                .build();
+
+        // then
+        assertThat(modified.modelName()).isEqualTo("gpt-4");
+        assertThat(modified.temperature()).isEqualTo(0.2);
+        assertThat(modified.maxOutputTokens()).isEqualTo(100);
+        assertThat(modified.responseFormat()).isEqualTo(ResponseFormat.JSON);
+        assertThat(modified.toolSpecifications()).containsExactly(tool);
+    }
+
+    @Test
+    void should_not_modify_anything_when_toBuilder_used_without_setters() {
+        // given
+        ChatRequestParameters parameters = ChatRequestParameters.builder()
+                .modelName("gpt-4")
+                .temperature(0.7)
+                .responseFormat(ResponseFormat.JSON)
+                .build();
+        ChatRequest original = ChatRequest.builder()
+                .messages(UserMessage.from("hi"))
+                .parameters(parameters)
+                .build();
+
+        // when
+        ChatRequest modified = original.toBuilder().build();
+
+        // then
+        assertThat(modified).isEqualTo(original);
     }
 }
