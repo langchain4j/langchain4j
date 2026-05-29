@@ -11,15 +11,17 @@ import dev.langchain4j.store.embedding.hibernate.DatabaseKind;
 import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.Db2Container;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
-class PgVectorHibernateEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
+class Db2HibernateEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
     @Container
-    static PostgreSQLContainer<?> databaseContainer = new PostgreSQLContainer<>("pgvector/pgvector:pg15");
+    static Db2Container dbContainer = new Db2Container("icr.io/db2_community/db2:12.1.2.0")
+            .acceptLicense()
+            .withPrivilegedMode(true);
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
@@ -28,12 +30,12 @@ class PgVectorHibernateEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemoval
     @BeforeEach
     protected void beforeEach() {
         embeddingStore = HibernateEmbeddingStore.dynamicBuilder()
-                .databaseKind(DatabaseKind.POSTGRESQL)
-                .host(databaseContainer.getHost())
-                .port(databaseContainer.getFirstMappedPort())
-                .database(databaseContainer.getDatabaseName())
-                .user(databaseContainer.getUsername())
-                .password(databaseContainer.getPassword())
+                .databaseKind(DatabaseKind.DB2)
+                .host(dbContainer.getHost())
+                .port(dbContainer.getFirstMappedPort())
+                .database(dbContainer.getDatabaseName())
+                .user(dbContainer.getUsername())
+                .password(dbContainer.getPassword())
                 .table("test" + nextInt(2000, 3000))
                 .dimension(384)
                 .createTable(true)

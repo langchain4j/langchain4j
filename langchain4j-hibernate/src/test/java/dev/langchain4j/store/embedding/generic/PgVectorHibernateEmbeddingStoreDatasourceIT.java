@@ -14,11 +14,7 @@ import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.hibernate.DatabaseKind;
 import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
-import javax.sql.DataSource;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -29,7 +25,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 public class PgVectorHibernateEmbeddingStoreDatasourceIT extends EmbeddingStoreWithFilteringIT {
 
     @Container
-    static PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>("pgvector/pgvector:pg16");
+    static PostgreSQLContainer<?> databaseContainer = new PostgreSQLContainer<>("pgvector/pgvector:pg16");
 
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
@@ -41,11 +37,11 @@ public class PgVectorHibernateEmbeddingStoreDatasourceIT extends EmbeddingStoreW
     @Override
     protected void ensureStoreIsReady() {
         var dataSource = new PGSimpleDataSource();
-        dataSource.setServerNames(new String[] {pgVector.getHost()});
-        dataSource.setPortNumbers(new int[] {pgVector.getFirstMappedPort()});
-        dataSource.setDatabaseName(pgVector.getDatabaseName());
-        dataSource.setUser(pgVector.getUsername());
-        dataSource.setPassword(pgVector.getPassword());
+        dataSource.setServerNames(new String[] {databaseContainer.getHost()});
+        dataSource.setPortNumbers(new int[] {databaseContainer.getFirstMappedPort()});
+        dataSource.setDatabaseName(databaseContainer.getDatabaseName());
+        dataSource.setUser(databaseContainer.getUsername());
+        dataSource.setPassword(databaseContainer.getPassword());
         embeddingStore = HibernateEmbeddingStore.dynamicDatasourceBuilder()
                 .databaseKind(DatabaseKind.POSTGRESQL)
                 .dataSource(dataSource)

@@ -11,15 +11,15 @@ import dev.langchain4j.store.embedding.hibernate.DatabaseKind;
 import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.oracle.OracleContainer;
 
 @Testcontainers
-class PgVectorHibernateEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
+class OracleHibernateEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
     @Container
-    static PostgreSQLContainer<?> databaseContainer = new PostgreSQLContainer<>("pgvector/pgvector:pg15");
+    static OracleContainer databaseContainer = new OracleContainer("gvenzl/oracle-free:23.6-faststart");
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
@@ -28,7 +28,7 @@ class PgVectorHibernateEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemoval
     @BeforeEach
     protected void beforeEach() {
         embeddingStore = HibernateEmbeddingStore.dynamicBuilder()
-                .databaseKind(DatabaseKind.POSTGRESQL)
+                .databaseKind(DatabaseKind.ORACLE)
                 .host(databaseContainer.getHost())
                 .port(databaseContainer.getFirstMappedPort())
                 .database(databaseContainer.getDatabaseName())

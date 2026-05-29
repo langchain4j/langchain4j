@@ -33,7 +33,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 class PgVectorHibernateEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     @Container
-    static PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>("pgvector/pgvector:pg15");
+    static PostgreSQLContainer<?> databaseContainer = new PostgreSQLContainer<>("pgvector/pgvector:pg15");
 
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
@@ -43,11 +43,11 @@ class PgVectorHibernateEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     protected void ensureStoreIsReady() {
         embeddingStore = HibernateEmbeddingStore.dynamicBuilder()
                 .databaseKind(DatabaseKind.POSTGRESQL)
-                .host(pgVector.getHost())
-                .port(pgVector.getFirstMappedPort())
-                .database(pgVector.getDatabaseName())
-                .user(pgVector.getUsername())
-                .password(pgVector.getPassword())
+                .host(databaseContainer.getHost())
+                .port(databaseContainer.getFirstMappedPort())
+                .database(databaseContainer.getDatabaseName())
+                .user(databaseContainer.getUsername())
+                .password(databaseContainer.getPassword())
                 .table("test" + nextInt(1, 1000))
                 .dimension(embeddingModel.dimension())
                 .createIndex(true)

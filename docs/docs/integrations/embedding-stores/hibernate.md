@@ -500,6 +500,15 @@ create index if not exists my_entity_ivfflat_index
     on my_entity using ivfflat(embedding vector_cosine_ops) with (lists = 1);
 ```
 
+##### CockroachDB
+
+See the [CockroachDB documentation]([https://github.com/pgvector/pgvector?tab=readme-ov-file#indexing](https://www.cockroachlabs.com/docs/v26.2/vector-indexes)) for details.
+
+```sql
+create vector index if not exists my_entity_ivfflat_index
+    on my_entity (embedding vector_cosine_ops);
+```
+
 ##### Oracle
 
 See the [`create index` statement documentation](https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/create-vector-index.html)
@@ -518,4 +527,14 @@ for details.
 ```sql
 create vector index my_entity_vector_index 
     on my_entity(embedding) with (metric='cosine');
+```
+
+##### SAP HANA
+
+See the [`create vector index` statement documentation]([https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql?view=sql-server-ver17](https://help.sap.com/docs/hana-cloud-database/sap-hana-cloud-sap-hana-database-sql-reference-guide/create-vector-index-statement-data-definition?locale=en-US))
+for details.
+
+```sql
+create hnsw vector index my_entity_vector_index 
+    on my_entity(embedding) with similarity function cosine_similarity;
 ```

@@ -11,15 +11,17 @@ import dev.langchain4j.store.embedding.hibernate.DatabaseKind;
 import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.CockroachContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
-class PgVectorHibernateEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
+class CockroachDBHibernateEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
     @Container
-    static PostgreSQLContainer<?> databaseContainer = new PostgreSQLContainer<>("pgvector/pgvector:pg15");
+    static CockroachContainer databaseContainer = new CockroachContainer("cockroachdb/cockroach:v26.2.1")
+            .withUsername("cockroachdb")
+            .withPassword("cockroachdb");
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
@@ -28,9 +30,9 @@ class PgVectorHibernateEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemoval
     @BeforeEach
     protected void beforeEach() {
         embeddingStore = HibernateEmbeddingStore.dynamicBuilder()
-                .databaseKind(DatabaseKind.POSTGRESQL)
+                .databaseKind(DatabaseKind.COCKROACHDB)
                 .host(databaseContainer.getHost())
-                .port(databaseContainer.getFirstMappedPort())
+                .port(databaseContainer.getMappedPort(26257))
                 .database(databaseContainer.getDatabaseName())
                 .user(databaseContainer.getUsername())
                 .password(databaseContainer.getPassword())
