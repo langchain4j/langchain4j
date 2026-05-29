@@ -49,7 +49,7 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected String customModelName() {
-        return "open-mixtral-8x22b";
+        return "mistral-small-latest";
     }
 
     @Override
