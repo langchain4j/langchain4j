@@ -4,6 +4,7 @@ import dev.langchain4j.data.document.BlankDocumentException;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.Metadata;
+import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentInformation;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -30,7 +31,7 @@ public class ApachePdfBoxDocumentParser implements DocumentParser {
 
     @Override
     public Document parse(InputStream inputStream) {
-        try (PDDocument pdfDocument = PDDocument.load(inputStream)) {
+        try (PDDocument pdfDocument = Loader.loadPDF(inputStream.readAllBytes())) {
             PDFTextStripper stripper = new PDFTextStripper();
             String text = stripper.getText(pdfDocument);
             if (isNullOrBlank(text)) {
