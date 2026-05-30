@@ -176,85 +176,217 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Set<Capability> supportedCapabilities;
         private Supplier<Map<String, String>> customHeadersSupplier;
 
+        /**
+         * Sets a custom {@link HttpClientBuilder} for the underlying HTTP client.
+         * Use this to configure timeouts, proxies, or other HTTP-level settings.
+         *
+         * @param httpClientBuilder the HTTP client builder
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
             return this;
         }
 
+        /**
+         * Sets the base URL of the Anthropic API.
+         * <p>
+         * Defaults to {@code https://api.anthropic.com/v1/}.
+         *
+         * @param baseUrl the base URL
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
 
+        /**
+         * Sets the Anthropic API key used to authenticate requests.
+         * <p>
+         * Alternatively, set the {@code ANTHROPIC_API_KEY} environment variable.
+         *
+         * @param apiKey the API key
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
         }
 
+        /**
+         * Sets the value of the {@code anthropic-version} request header.
+         * <p>
+         * Defaults to {@code 2023-06-01}.
+         * See the <a href="https://docs.anthropic.com/en/api/versioning">Anthropic API versioning docs</a>.
+         *
+         * @param version the API version string
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder version(String version) {
             this.version = version;
             return this;
         }
 
+        /**
+         * Sets the value of the {@code anthropic-beta} request header to opt into beta features.
+         * <p>
+         * See the <a href="https://docs.anthropic.com/en/api/beta-headers">Anthropic beta headers docs</a>.
+         *
+         * @param beta the beta feature identifier
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder beta(String beta) {
             this.beta = beta;
             return this;
         }
 
+        /**
+         * Sets the model to use for streaming chat completions, specified as a string model ID.
+         * <p>
+         * See {@link AnthropicChatModelName} for available model constants.
+         *
+         * @param modelName the model ID, e.g. {@code "claude-opus-4-5"}
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
+        /**
+         * Sets the model to use for streaming chat completions using a type-safe enum constant.
+         *
+         * @param modelName the model name enum value
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder modelName(AnthropicChatModelName modelName) {
             this.modelName = modelName.toString();
             return this;
         }
 
+        /**
+         * Sets the sampling temperature in the range {@code [0.0, 1.0]}.
+         * Higher values produce more random output; lower values produce more deterministic output.
+         * <p>
+         * Cannot be used together with {@link #topP(Double)}.
+         *
+         * @param temperature the sampling temperature
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
+        /**
+         * Sets the nucleus sampling probability (top-p) in the range {@code (0.0, 1.0]}.
+         * Only the tokens whose cumulative probability exceeds this threshold are considered.
+         * <p>
+         * Cannot be used together with {@link #temperature(Double)}.
+         *
+         * @param topP the nucleus sampling threshold
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
+        /**
+         * Sets the top-K sampling value. Only the {@code topK} most-likely next tokens are considered at each step.
+         * <p>
+         * Recommended for advanced use only; {@link #temperature(Double)} is usually sufficient.
+         *
+         * @param topK the number of top tokens to sample from
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder topK(Integer topK) {
             this.topK = topK;
             return this;
         }
 
+        /**
+         * Sets the maximum number of tokens to generate in the response.
+         * <p>
+         * Defaults to {@code 1024} if not set.
+         *
+         * @param maxTokens the maximum number of output tokens
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder maxTokens(Integer maxTokens) {
             this.maxTokens = maxTokens;
             return this;
         }
 
+        /**
+         * Sets sequences that, when generated, will cause the model to stop generating further tokens.
+         *
+         * @param stopSequences the list of stop sequences
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder stopSequences(List<String> stopSequences) {
             this.stopSequences = stopSequences;
             return this;
         }
 
+        /**
+         * Sets the response format, enabling structured output such as JSON mode.
+         *
+         * @param responseFormat the desired response format
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
             return this;
         }
 
+        /**
+         * Sets the list of tools (functions) available to the model for function calling.
+         *
+         * @param toolSpecifications the tool specifications
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder toolSpecifications(List<ToolSpecification> toolSpecifications) {
             this.toolSpecifications = toolSpecifications;
             return this;
         }
 
+        /**
+         * Sets the tools (functions) available to the model for function calling.
+         *
+         * @param toolSpecifications the tool specifications
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder toolSpecifications(ToolSpecification... toolSpecifications) {
             return toolSpecifications(asList(toolSpecifications));
         }
 
+        /**
+         * Enables prompt caching for {@link SystemMessage}s.
+         * <p>
+         * When {@code true}, system messages are sent with the {@code cache_control} header to allow
+         * Anthropic to cache them across requests, reducing cost and latency for repeated prompts.
+         * See the <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching">prompt caching docs</a>.
+         *
+         * @param cacheSystemMessages whether to cache system messages
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder cacheSystemMessages(Boolean cacheSystemMessages) {
             this.cacheSystemMessages = cacheSystemMessages;
             return this;
         }
 
+        /**
+         * Enables prompt caching for {@link ToolSpecification}s.
+         * <p>
+         * When {@code true}, tool definitions are sent with the {@code cache_control} header to allow
+         * Anthropic to cache them across requests.
+         * See the <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching">prompt caching docs</a>.
+         *
+         * @param cacheTools whether to cache tool definitions
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder cacheTools(Boolean cacheTools) {
             this.cacheTools = cacheTools;
             return this;
@@ -328,16 +460,34 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        /**
+         * Sets the HTTP request timeout for calls to the Anthropic streaming API.
+         *
+         * @param timeout the request timeout
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
+        /**
+         * Enables debug logging of HTTP request bodies sent to the Anthropic API.
+         *
+         * @param logRequests whether to log requests
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
+        /**
+         * Enables debug logging of HTTP response bodies (server-sent events) received from the Anthropic API.
+         *
+         * @param logResponses whether to log responses
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
@@ -352,25 +502,59 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        /**
+         * Sets the list of {@link ChatModelListener}s to be notified on each request and response.
+         * Useful for logging, metrics, and observability integrations.
+         *
+         * @param listeners the chat model listeners
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return this;
         }
 
+        /**
+         * Sets the {@link ChatModelListener}s to be notified on each request and response.
+         *
+         * @param listeners the chat model listeners
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder listeners(ChatModelListener... listeners) {
             return listeners(asList(listeners));
         }
 
+        /**
+         * Controls how the model uses tools.
+         * <p>
+         * Use {@link ToolChoice#AUTO} to let the model decide, {@link ToolChoice#ANY} to force tool use,
+         * or {@link ToolChoice#NONE} to disable tool use.
+         *
+         * @param toolChoice the tool choice strategy
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder toolChoice(ToolChoice toolChoice) {
             this.toolChoice = toolChoice;
             return this;
         }
 
+        /**
+         * Sets the name of the specific tool the model must use when {@link ToolChoice} is set to {@link ToolChoice#ANY}.
+         *
+         * @param toolChoiceName the name of the tool to force
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder toolChoiceName(String toolChoiceName) {
             this.toolChoiceName = toolChoiceName;
             return this;
         }
 
+        /**
+         * When set to {@code true}, prevents the model from calling multiple tools in a single response turn.
+         *
+         * @param disableParallelToolUse whether to disable parallel tool use
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder disableParallelToolUse(Boolean disableParallelToolUse) {
             this.disableParallelToolUse = disableParallelToolUse;
             return this;
@@ -451,31 +635,71 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        /**
+         * Sets arbitrary extra parameters to include in the Anthropic API request body.
+         * Use this for experimental or provider-specific fields not yet covered by dedicated builder methods.
+         *
+         * @param customParameters a map of parameter names to values
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder customParameters(Map<String, Object> customParameters) {
             this.customParameters = customParameters;
             return this;
         }
 
+        /**
+         * Enables strict JSON schema validation for tool input parameters.
+         * When {@code true}, the model enforces the exact schema defined in {@link ToolSpecification}.
+         *
+         * @param strictTools whether to enable strict tool schema validation
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder strictTools(Boolean strictTools) {
             this.strictTools = strictTools;
             return this;
         }
 
+        /**
+         * Declares the capabilities supported by the model (e.g. {@link Capability#RESPONSE_FORMAT_JSON_SCHEMA}).
+         * This influences how LangChain4j generates requests for this model.
+         *
+         * @param supportedCapabilities the capabilities to declare
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder supportedCapabilities(Capability... supportedCapabilities) {
             this.supportedCapabilities = Arrays.stream(supportedCapabilities).collect(Collectors.toSet());
             return this;
         }
 
+        /**
+         * Declares the capabilities supported by the model.
+         *
+         * @param supportedCapabilities the set of capabilities to declare
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder supportedCapabilities(Set<Capability> supportedCapabilities) {
             this.supportedCapabilities = supportedCapabilities;
             return this;
         }
 
+        /**
+         * Sets extra HTTP headers to include in every request to the Anthropic API.
+         *
+         * @param customHeaders a map of header names to values
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder customHeaders(Map<String, String> customHeaders) {
             this.customHeadersSupplier = () -> customHeaders;
             return this;
         }
 
+        /**
+         * Sets a supplier of extra HTTP headers to include in every request to the Anthropic API.
+         * The supplier is called once per request, allowing dynamic header values.
+         *
+         * @param customHeadersSupplier a supplier that returns a map of header names to values
+         * @return {@code this}
+         */
         public AnthropicStreamingChatModelBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
             this.customHeadersSupplier = customHeadersSupplier;
             return this;
