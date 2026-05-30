@@ -54,6 +54,12 @@ class GoogleGenAiConfigBuilder {
         if (parameters.topK() != null) {
             configBuilder.topK(parameters.topK().floatValue());
         }
+        if (parameters.frequencyPenalty() != null) {
+            configBuilder.frequencyPenalty(parameters.frequencyPenalty().floatValue());
+        }
+        if (parameters.presencePenalty() != null) {
+            configBuilder.presencePenalty(parameters.presencePenalty().floatValue());
+        }
         if (parameters.maxOutputTokens() != null) {
             configBuilder.maxOutputTokens(parameters.maxOutputTokens());
         }

@@ -29,6 +29,8 @@ class GoogleGenAiConfigBuilderTest {
                 .temperature(0.7)
                 .topP(0.9)
                 .topK(40)
+                .frequencyPenalty(0.5)
+                .presencePenalty(0.3)
                 .maxOutputTokens(1024)
                 .stopSequences(List.of("STOP"))
                 .build();
@@ -40,6 +42,8 @@ class GoogleGenAiConfigBuilderTest {
         assertThat(config.temperature().get()).isEqualTo(0.7f);
         assertThat(config.topP().get()).isEqualTo(0.9f);
         assertThat(config.topK().get()).isEqualTo(40f);
+        assertThat(config.frequencyPenalty().get()).isEqualTo(0.5f);
+        assertThat(config.presencePenalty().get()).isEqualTo(0.3f);
         assertThat(config.maxOutputTokens().get()).isEqualTo(1024);
         assertThat(config.stopSequences().get()).containsExactly("STOP");
     }
