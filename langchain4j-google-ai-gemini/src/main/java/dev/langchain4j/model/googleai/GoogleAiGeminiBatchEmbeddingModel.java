@@ -97,11 +97,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
      */
     public BatchResponse<Embedding> submit(GeminiBatchRequest<TextSegment> request) {
         return batchProcessor.createBatch(
-                request.displayName(),
-                request.priority(),
-                request.requests(),
-                modelName,
-                ASYNC_BATCH_EMBED_CONTENT);
+                request.displayName(), request.priority(), request.requests(), modelName, ASYNC_BATCH_EMBED_CONTENT);
     }
 
     /**

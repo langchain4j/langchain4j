@@ -166,11 +166,7 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
      */
     public BatchResponse<Response<@NonNull Image>> submit(GeminiBatchRequest<String> request) {
         return batchProcessor.createBatch(
-                request.displayName(),
-                request.priority(),
-                request.requests(),
-                modelName,
-                BATCH_GENERATE_CONTENT);
+                request.displayName(), request.priority(), request.requests(), modelName, BATCH_GENERATE_CONTENT);
     }
 
     /**

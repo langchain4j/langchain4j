@@ -81,11 +81,7 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
      */
     public BatchResponse<ChatResponse> submit(GeminiBatchRequest<ChatRequest> request) {
         return batchProcessor.createBatch(
-                request.displayName(),
-                request.priority(),
-                request.requests(),
-                modelName,
-                BATCH_GENERATE_CONTENT);
+                request.displayName(), request.priority(), request.requests(), modelName, BATCH_GENERATE_CONTENT);
     }
 
     /**
