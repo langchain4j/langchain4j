@@ -280,17 +280,28 @@ class GoogleGenAiStreamingChatModelTest {
 
         // Chunk 1: FinishReason.MAX_TOKENS -> maps to LENGTH
         Candidate candidate1 = Candidate.builder()
-                .content(Content.builder().role("model").parts(List.of(Part.builder().text("First part").build())).build())
-                .finishReason(new com.google.genai.types.FinishReason(com.google.genai.types.FinishReason.Known.MAX_TOKENS))
+                .content(Content.builder()
+                        .role("model")
+                        .parts(List.of(Part.builder().text("First part").build()))
+                        .build())
+                .finishReason(
+                        new com.google.genai.types.FinishReason(com.google.genai.types.FinishReason.Known.MAX_TOKENS))
                 .build();
-        GenerateContentResponse chunk1 = GenerateContentResponse.builder().candidates(List.of(candidate1)).build();
+        GenerateContentResponse chunk1 = GenerateContentResponse.builder()
+                .candidates(List.of(candidate1))
+                .build();
 
         // Chunk 2: FinishReason.STOP -> maps to STOP (trailing chunk)
         Candidate candidate2 = Candidate.builder()
-                .content(Content.builder().role("model").parts(List.of(Part.builder().text("").build())).build())
+                .content(Content.builder()
+                        .role("model")
+                        .parts(List.of(Part.builder().text("").build()))
+                        .build())
                 .finishReason(new com.google.genai.types.FinishReason(com.google.genai.types.FinishReason.Known.STOP))
                 .build();
-        GenerateContentResponse chunk2 = GenerateContentResponse.builder().candidates(List.of(candidate2)).build();
+        GenerateContentResponse chunk2 = GenerateContentResponse.builder()
+                .candidates(List.of(candidate2))
+                .build();
 
         when(stream.iterator()).thenReturn(List.of(chunk1, chunk2).iterator());
 

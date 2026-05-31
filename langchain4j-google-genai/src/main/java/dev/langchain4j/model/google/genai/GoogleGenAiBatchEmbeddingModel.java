@@ -1,7 +1,6 @@
 package dev.langchain4j.model.google.genai;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
@@ -112,7 +111,8 @@ public final class GoogleGenAiBatchEmbeddingModel {
                 .displayName(displayName)
                 .build();
 
-        BatchJob batchJob = withRetryMappingExceptions(() -> client.batches.createEmbeddings(modelName, src, config), maxRetries);
+        BatchJob batchJob =
+                withRetryMappingExceptions(() -> client.batches.createEmbeddings(modelName, src, config), maxRetries);
         return processResponse(batchJob);
     }
 
@@ -132,7 +132,8 @@ public final class GoogleGenAiBatchEmbeddingModel {
                 .displayName(displayName)
                 .build();
 
-        BatchJob batchJob = withRetryMappingExceptions(() -> client.batches.createEmbeddings(modelName, src, config), maxRetries);
+        BatchJob batchJob =
+                withRetryMappingExceptions(() -> client.batches.createEmbeddings(modelName, src, config), maxRetries);
         return processResponse(batchJob);
     }
 
