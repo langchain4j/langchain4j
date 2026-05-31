@@ -181,12 +181,11 @@
           "parameterIndex": "1",
           "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
         },
-
         {
           "ignore": true,
           "code": "java.class.externalClassExposedInAPI",
           "new": "missing-class dev.langchain4j.model.batch.BatchPage",
-          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
         },
         {
           "ignore": true,
