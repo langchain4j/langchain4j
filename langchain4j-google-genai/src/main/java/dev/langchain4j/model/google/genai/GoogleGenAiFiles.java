@@ -124,8 +124,12 @@ public final class GoogleGenAiFiles {
     private String detectMimeType(Path filePath) throws IOException {
         String mimeType = Files.probeContentType(filePath);
         if (mimeType == null) {
-            // Fallback to application/octet-stream if MIME type cannot be detected
-            mimeType = "application/octet-stream";
+            try {
+                mimeType = GoogleGenAiContentMapper.detectMimeType(filePath.toUri());
+            } catch (IllegalArgumentException e) {
+                // Fallback to application/octet-stream if MIME type cannot be detected
+                mimeType = "application/octet-stream";
+            }
         }
         return mimeType;
     }
