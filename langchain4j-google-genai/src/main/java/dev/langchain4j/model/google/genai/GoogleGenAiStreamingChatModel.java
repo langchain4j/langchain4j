@@ -187,9 +187,11 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     if (partialResponse.tokenUsage() != null) {
                         tokenUsage = partialResponse.tokenUsage();
                     }
-                    if (partialResponse.finishReason() != null
-                            && partialResponse.finishReason() != FinishReason.OTHER) {
-                        finishReason = partialResponse.finishReason();
+                    FinishReason partialReason = partialResponse.finishReason();
+                    if (partialReason != null && partialReason != FinishReason.OTHER) {
+                        if (finishReason != FinishReason.LENGTH && finishReason != FinishReason.CONTENT_FILTER) {
+                            finishReason = partialReason;
+                        }
                     }
                 }
 

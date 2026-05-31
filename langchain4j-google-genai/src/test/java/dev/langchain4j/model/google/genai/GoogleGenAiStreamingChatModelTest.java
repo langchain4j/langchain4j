@@ -22,6 +22,7 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.output.FinishReason;
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.Base64;
@@ -261,5 +262,62 @@ class GoogleGenAiStreamingChatModelTest {
         String encodedSig = Base64.getEncoder().encodeToString("signature-data".getBytes());
         assertThat(aiMessage.attribute("thought_signature_call_123", String.class))
                 .isEqualTo(encodedSig);
+    }
+
+    @Test
+    void should_not_overwrite_truncation_finish_reason_with_stop() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+
+        when(models.generateContentStream(any(String.class), any(List.class), any()))
+                .thenReturn(stream);
+
+        // Chunk 1: FinishReason.MAX_TOKENS -> maps to LENGTH
+        Candidate candidate1 = Candidate.builder()
+                .content(Content.builder().role("model").parts(List.of(Part.builder().text("First part").build())).build())
+                .finishReason(new com.google.genai.types.FinishReason(com.google.genai.types.FinishReason.Known.MAX_TOKENS))
+                .build();
+        GenerateContentResponse chunk1 = GenerateContentResponse.builder().candidates(List.of(candidate1)).build();
+
+        // Chunk 2: FinishReason.STOP -> maps to STOP (trailing chunk)
+        Candidate candidate2 = Candidate.builder()
+                .content(Content.builder().role("model").parts(List.of(Part.builder().text("").build())).build())
+                .finishReason(new com.google.genai.types.FinishReason(com.google.genai.types.FinishReason.Known.STOP))
+                .build();
+        GenerateContentResponse chunk2 = GenerateContentResponse.builder().candidates(List.of(candidate2)).build();
+
+        when(stream.iterator()).thenReturn(List.of(chunk1, chunk2).iterator());
+
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.5-flash")
+                .build();
+
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+
+        model.chat(List.of(UserMessage.from("Hello")), new StreamingChatResponseHandler() {
+            @Override
+            public void onPartialResponse(String partialResponse) {}
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                future.complete(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                future.completeExceptionally(error);
+            }
+        });
+
+        ChatResponse response = future.get(5, TimeUnit.SECONDS);
+
+        assertThat(response.metadata().finishReason()).isEqualTo(FinishReason.LENGTH);
     }
 }
