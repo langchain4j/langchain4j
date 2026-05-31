@@ -1,5 +1,7 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
@@ -44,6 +46,7 @@ public final class GoogleGenAiBatchEmbeddingModel {
 
     private final Client client;
     private final String modelName;
+    private final Integer maxRetries;
 
     private final Integer outputDimensionality;
     private final TaskTypeEnum taskType;
@@ -51,6 +54,7 @@ public final class GoogleGenAiBatchEmbeddingModel {
 
     private GoogleGenAiBatchEmbeddingModel(Builder builder) {
         this.modelName = getOrDefault(builder.modelName, "gemini-embedding-2");
+        this.maxRetries = getOrDefault(builder.maxRetries, 3);
         this.outputDimensionality = builder.outputDimensionality;
         this.taskType = builder.taskType;
         this.titleMetadataKey = builder.titleMetadataKey;
@@ -108,7 +112,7 @@ public final class GoogleGenAiBatchEmbeddingModel {
                 .displayName(displayName)
                 .build();
 
-        BatchJob batchJob = client.batches.createEmbeddings(modelName, src, config);
+        BatchJob batchJob = withRetryMappingExceptions(() -> client.batches.createEmbeddings(modelName, src, config), maxRetries);
         return processResponse(batchJob);
     }
 
@@ -128,7 +132,7 @@ public final class GoogleGenAiBatchEmbeddingModel {
                 .displayName(displayName)
                 .build();
 
-        BatchJob batchJob = client.batches.createEmbeddings(modelName, src, config);
+        BatchJob batchJob = withRetryMappingExceptions(() -> client.batches.createEmbeddings(modelName, src, config), maxRetries);
         return processResponse(batchJob);
     }
 
@@ -222,6 +226,7 @@ public final class GoogleGenAiBatchEmbeddingModel {
         private String projectId;
         private String location;
         private String modelName;
+        private Integer maxRetries;
         private Duration timeout;
         private Integer outputDimensionality;
         private TaskTypeEnum taskType;
@@ -256,6 +261,11 @@ public final class GoogleGenAiBatchEmbeddingModel {
 
         public Builder modelName(String modelName) {
             this.modelName = ensureNotBlank(modelName, "modelName");
+            return this;
+        }
+
+        public Builder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
             return this;
         }
 

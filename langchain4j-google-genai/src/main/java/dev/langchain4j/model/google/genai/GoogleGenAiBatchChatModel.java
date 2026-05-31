@@ -1,5 +1,8 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
 import com.google.genai.types.BatchJob;
@@ -44,6 +47,7 @@ public final class GoogleGenAiBatchChatModel {
 
     private final Client client;
     private final String modelName;
+    private final Integer maxRetries;
 
     // Configuration parameters reused from the chat model builder
     private final List<SafetySetting> safetySettings;
@@ -61,6 +65,7 @@ public final class GoogleGenAiBatchChatModel {
 
     private GoogleGenAiBatchChatModel(Builder builder) {
         this.modelName = builder.modelName;
+        this.maxRetries = getOrDefault(builder.maxRetries, 3);
         this.safetySettings = builder.safetySettings != null ? new ArrayList<>(builder.safetySettings) : null;
         this.thinkingBudget = builder.thinkingBudget;
         this.thinkingLevel = builder.thinkingLevel;
@@ -113,7 +118,7 @@ public final class GoogleGenAiBatchChatModel {
         CreateBatchJobConfig config =
                 CreateBatchJobConfig.builder().displayName(displayName).build();
 
-        BatchJob batchJob = client.batches.create(modelName, src, config);
+        BatchJob batchJob = withRetryMappingExceptions(() -> client.batches.create(modelName, src, config), maxRetries);
         return processResponse(batchJob);
     }
 
@@ -132,7 +137,7 @@ public final class GoogleGenAiBatchChatModel {
         CreateBatchJobConfig config =
                 CreateBatchJobConfig.builder().displayName(displayName).build();
 
-        BatchJob batchJob = client.batches.create(modelName, src, config);
+        BatchJob batchJob = withRetryMappingExceptions(() -> client.batches.create(modelName, src, config), maxRetries);
         return processResponse(batchJob);
     }
 
@@ -255,6 +260,7 @@ public final class GoogleGenAiBatchChatModel {
         private String projectId;
         private String location;
         private String modelName;
+        private Integer maxRetries;
         private Duration timeout;
         private Integer thinkingBudget;
         private String thinkingLevel;
@@ -298,6 +304,11 @@ public final class GoogleGenAiBatchChatModel {
 
         public Builder modelName(String modelName) {
             this.modelName = modelName;
+            return this;
+        }
+
+        public Builder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
             return this;
         }
 

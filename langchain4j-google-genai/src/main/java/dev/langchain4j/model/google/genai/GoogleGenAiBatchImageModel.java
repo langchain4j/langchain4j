@@ -1,5 +1,7 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 import com.google.auth.oauth2.GoogleCredentials;
@@ -46,6 +48,7 @@ public final class GoogleGenAiBatchImageModel {
 
     private final Client client;
     private final String modelName;
+    private final Integer maxRetries;
 
     private final List<SafetySetting> safetySettings;
     private final String aspectRatio;
@@ -55,6 +58,7 @@ public final class GoogleGenAiBatchImageModel {
 
     private GoogleGenAiBatchImageModel(Builder builder) {
         this.modelName = builder.modelName;
+        this.maxRetries = getOrDefault(builder.maxRetries, 3);
         this.safetySettings = builder.safetySettings != null ? new ArrayList<>(builder.safetySettings) : null;
         this.aspectRatio = builder.aspectRatio;
         this.imageSize = builder.imageSize;
@@ -92,7 +96,7 @@ public final class GoogleGenAiBatchImageModel {
         CreateBatchJobConfig config =
                 CreateBatchJobConfig.builder().displayName(displayName).build();
 
-        BatchJob batchJob = client.batches.create(modelName, src, config);
+        BatchJob batchJob = withRetryMappingExceptions(() -> client.batches.create(modelName, src, config), maxRetries);
         return processResponse(batchJob);
     }
 
@@ -107,7 +111,7 @@ public final class GoogleGenAiBatchImageModel {
         CreateBatchJobConfig config =
                 CreateBatchJobConfig.builder().displayName(displayName).build();
 
-        BatchJob batchJob = client.batches.create(modelName, src, config);
+        BatchJob batchJob = withRetryMappingExceptions(() -> client.batches.create(modelName, src, config), maxRetries);
         return processResponse(batchJob);
     }
 
@@ -253,6 +257,7 @@ public final class GoogleGenAiBatchImageModel {
         private String projectId;
         private String location;
         private String modelName;
+        private Integer maxRetries;
         private Duration timeout;
         private String aspectRatio;
         private String imageSize;
@@ -289,6 +294,11 @@ public final class GoogleGenAiBatchImageModel {
 
         public Builder modelName(String modelName) {
             this.modelName = modelName;
+            return this;
+        }
+
+        public Builder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
             return this;
         }
 
