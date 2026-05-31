@@ -180,6 +180,31 @@
           "new": "parameter void dev.langchain4j.model.googleai.GoogleAiGeminiBatchImageModel::writeBatchToFile(dev.langchain4j.model.googleai.jsonl.JsonLinesWriter, ===java.lang.Iterable<dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest<java.lang.String>>===) throws java.io.IOException",
           "parameterIndex": "1",
           "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+
+        {
+          "ignore": true,
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.batch.BatchPage",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core",
+        },
+        {
+          "ignore": true,
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.batch.BatchPagination",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.batch.BatchRequest",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.batch.BatchResponse",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
         }
       ]
     }
