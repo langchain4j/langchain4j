@@ -379,7 +379,7 @@ public class AnthropicChatModel implements ChatModel {
         /**
          * Controls how the model uses tools.
          * <p>
-         * Use {@link ToolChoice#AUTO} to let the model decide, {@link ToolChoice#ANY} to force tool use,
+         * Use {@link ToolChoice#AUTO} to let the model decide, {@link ToolChoice#REQUIRED} to force tool use,
          * or {@link ToolChoice#NONE} to disable tool use.
          *
          * @param toolChoice the tool choice strategy
@@ -391,7 +391,7 @@ public class AnthropicChatModel implements ChatModel {
         }
 
         /**
-         * Sets the name of the specific tool the model must use when {@link ToolChoice} is set to {@link ToolChoice#ANY}.
+         * Sets the name of the specific tool the model must use when {@link ToolChoice} is set to {@link ToolChoice#REQUIRED}.
          *
          * @param toolChoiceName the name of the tool to force
          * @return {@code this}
