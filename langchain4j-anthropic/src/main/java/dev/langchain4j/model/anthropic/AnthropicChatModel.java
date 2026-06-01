@@ -391,7 +391,8 @@ public class AnthropicChatModel implements ChatModel {
         }
 
         /**
-         * Sets the name of the specific tool the model must use when {@link ToolChoice} is set to {@link ToolChoice#REQUIRED}.
+         * Sets the name of the specific tool the model must use when {@link ToolChoice}
+         * is set to {@link ToolChoice#REQUIRED}.
          *
          * @param toolChoiceName the name of the tool to force
          * @return {@code this}
