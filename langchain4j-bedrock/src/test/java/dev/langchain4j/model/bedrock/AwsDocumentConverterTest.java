@@ -326,6 +326,25 @@ class AwsDocumentConverterTest {
     }
 
     @Test
+    void convert_empty_tool_specification_parameters_to_strict_document() {
+        // Given
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("test-tool")
+                .parameters(JsonObjectSchema.builder().build())
+                .build();
+
+        // When
+        Document document = AwsDocumentConverter.convertJsonObjectSchemaToDocument(toolSpec, true);
+
+        // Then
+        Map<String, Document> docMap = document.asMap();
+        assertThat(docMap.get("type").asString()).isEqualTo("object");
+        assertThat(docMap.get("properties").asMap()).isEmpty();
+        assertThat(docMap.get("required").asList()).isEmpty();
+        assertThat(docMap.get("additionalProperties").asBoolean()).isFalse();
+    }
+
+    @Test
     void convert_json_objec_schema_to_document_withNoExplicitRequiredFields() {
         // Given - properties defined but none marked as required
         ToolSpecification toolSpec = ToolSpecification.builder()
