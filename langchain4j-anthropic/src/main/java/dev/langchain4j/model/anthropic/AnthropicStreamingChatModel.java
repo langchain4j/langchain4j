@@ -203,8 +203,6 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
 
         /**
          * Sets the Anthropic API key used to authenticate requests.
-         * <p>
-         * Alternatively, set the {@code ANTHROPIC_API_KEY} environment variable.
          *
          * @param apiKey the API key
          * @return {@code this}
