@@ -46,4 +46,11 @@ public class McpToolMetadataKeys {
      */
     public static final String OPEN_WORLD_HINT = "openWorldHint";
 
+    /**
+     * The JSON schema describing the structured output of the tool, as declared in the Tool definition.
+     * Paired with {@code structuredContent} in tool responses.
+     * See <a href="https://github.com/modelcontextprotocol/modelcontextprotocol/blob/2025-06-18/schema/2025-06-18/schema.json">schema.json</a>
+     * Value type: {@code Map<String, Object>}
+     */
+    public static final String OUTPUT_SCHEMA = "outputSchema";
 }
