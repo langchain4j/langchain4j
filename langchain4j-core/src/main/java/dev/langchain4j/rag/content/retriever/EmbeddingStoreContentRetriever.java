@@ -367,7 +367,8 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                     }
                     TextSegment newSegment = TextSegment.from(
                             deduplicated, next.getValue().textSegment().metadata());
-                    Content newContent = Content.from(newSegment, next.getValue().metadata());
+                    Content newContent =
+                            Content.from(newSegment, next.getValue().metadata());
                     replacements.put(next.getValue(), newContent);
                 }
             }
@@ -377,9 +378,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
             return contents;
         }
 
-        return contents.stream()
-                .map(c -> replacements.getOrDefault(c, c))
-                .collect(Collectors.toList());
+        return contents.stream().map(c -> replacements.getOrDefault(c, c)).collect(Collectors.toList());
     }
 
     /**

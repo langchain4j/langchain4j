@@ -8,7 +8,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import dev.langchain4j.data.embedding.Embedding;
@@ -186,10 +185,8 @@ class EmbeddingStoreContentRetrieverTest {
     void deduplicateOverlap_shouldRemoveOverlapFromAdjacentSegments() {
         // Segment 0: "the quick brown fox"
         // Segment 1: "brown fox jumps over" <- "brown fox" is the overlap
-        dev.langchain4j.data.document.Metadata meta0 =
-                dev.langchain4j.data.document.Metadata.from("index", "0");
-        dev.langchain4j.data.document.Metadata meta1 =
-                dev.langchain4j.data.document.Metadata.from("index", "1");
+        dev.langchain4j.data.document.Metadata meta0 = dev.langchain4j.data.document.Metadata.from("index", "0");
+        dev.langchain4j.data.document.Metadata meta1 = dev.langchain4j.data.document.Metadata.from("index", "1");
 
         Content c0 = Content.from(TextSegment.from("the quick brown fox", meta0));
         Content c1 = Content.from(TextSegment.from("brown fox jumps over", meta1));
@@ -204,10 +201,8 @@ class EmbeddingStoreContentRetrieverTest {
     @Test
     void deduplicateOverlap_shouldNotModifyNonAdjacentSegments() {
         // Segments 0 and 2 are not adjacent — no deduplication should occur
-        dev.langchain4j.data.document.Metadata meta0 =
-                dev.langchain4j.data.document.Metadata.from("index", "0");
-        dev.langchain4j.data.document.Metadata meta2 =
-                dev.langchain4j.data.document.Metadata.from("index", "2");
+        dev.langchain4j.data.document.Metadata meta0 = dev.langchain4j.data.document.Metadata.from("index", "0");
+        dev.langchain4j.data.document.Metadata meta2 = dev.langchain4j.data.document.Metadata.from("index", "2");
 
         Content c0 = Content.from(TextSegment.from("the quick brown fox", meta0));
         Content c2 = Content.from(TextSegment.from("brown fox jumps over", meta2));
@@ -255,8 +250,7 @@ class EmbeddingStoreContentRetrieverTest {
 
     @Test
     void deduplicateOverlap_shouldReturnSingleContentUnchanged() {
-        dev.langchain4j.data.document.Metadata meta0 =
-                dev.langchain4j.data.document.Metadata.from("index", "0");
+        dev.langchain4j.data.document.Metadata meta0 = dev.langchain4j.data.document.Metadata.from("index", "0");
         Content c0 = Content.from(TextSegment.from("the quick brown fox", meta0));
 
         List<Content> result = EmbeddingStoreContentRetriever.deduplicateOverlap(asList(c0));
@@ -267,10 +261,8 @@ class EmbeddingStoreContentRetrieverTest {
 
     @Test
     void deduplicateOverlap_shouldHandleNoOverlap() {
-        dev.langchain4j.data.document.Metadata meta0 =
-                dev.langchain4j.data.document.Metadata.from("index", "0");
-        dev.langchain4j.data.document.Metadata meta1 =
-                dev.langchain4j.data.document.Metadata.from("index", "1");
+        dev.langchain4j.data.document.Metadata meta0 = dev.langchain4j.data.document.Metadata.from("index", "0");
+        dev.langchain4j.data.document.Metadata meta1 = dev.langchain4j.data.document.Metadata.from("index", "1");
 
         Content c0 = Content.from(TextSegment.from("the quick brown fox", meta0));
         Content c1 = Content.from(TextSegment.from("jumps over the lazy dog", meta1));
@@ -312,8 +304,7 @@ class EmbeddingStoreContentRetrieverTest {
 
     @Test
     void longestSuffixPrefixOverlap_shouldReturnZeroWhenNoOverlap() {
-        assertThat(EmbeddingStoreContentRetriever.longestSuffixPrefixOverlap(
-                        "hello world", "foo bar"))
+        assertThat(EmbeddingStoreContentRetriever.longestSuffixPrefixOverlap("hello world", "foo bar"))
                 .isEqualTo(0);
     }
 
