@@ -1,6 +1,5 @@
 package dev.langchain4j.model.googleai;
 
-import static dev.langchain4j.internal.Utils.firstNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import dev.langchain4j.Experimental;
@@ -18,7 +17,11 @@ import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest.In
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest.InputConfig;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateRequest.Requests;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
+import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
+import dev.langchain4j.model.googleai.BatchRequestResponse.ListOperationsResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.Operation;
+import dev.langchain4j.model.googleai.jsonl.JsonLinesWriter;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
@@ -76,6 +79,17 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
     }
 
     /**
+     * Writes the given requests to a JSONL writer in the Gemini batch file format,
+     * converting each high-level request to its inlined API representation.
+     */
+    void writeBatch(JsonLinesWriter writer, Iterable<BatchFileRequest<REQUEST>> requests) throws IOException {
+        for (var request : requests) {
+            var inlinedRequest = preparer.createInlinedRequest(request.request());
+            writer.write(new BatchFileRequest<>(request.key(), inlinedRequest));
+        }
+    }
+
+    /**
      * Retrieves the current state and results of a batch operation.
      */
     @SuppressWarnings("unchecked")
@@ -101,17 +115,13 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
     /**
      * Lists batch jobs.
      */
-    @SuppressWarnings("unchecked")
     BatchPage<RESPONSE> listBatchJobs(final @Nullable BatchPagination batchPagination) {
         var pageSize = batchPagination != null ? batchPagination.getPageSize() : null;
         var pageToken = batchPagination != null ? batchPagination.getPageToken() : null;
-        var response = geminiService.<List<API_RESPONSE>>batchListBatches(pageSize, pageToken);
+        ListOperationsResponse<API_RESPONSE> response = geminiService.batchListBatches(pageSize, pageToken);
 
-        return new BatchPage<>(
-                firstNotNull("operationsResponse", response.operations(), List.of()).stream()
-                        .map(operation -> processResponse((Operation<API_RESPONSE>) operation))
-                        .toList(),
-                response.nextPageToken());
+        List<Operation<API_RESPONSE>> operations = getOrDefault(response.operations(), List.of());
+        return new BatchPage<>(operations.stream().map(this::processResponse).toList(), response.nextPageToken());
     }
 
     /**
@@ -123,14 +133,28 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
 
         if (operation.done()) {
             var error = operation.error();
-            if (operation.error() != null) {
-                return new BatchResponse<>(batchId, BatchState.FAILED, List.of(), List.of(error.toGenericStatus()));
-            } else {
-                var responses = preparer.extractResults(operation.response());
-                return new BatchResponse<>(batchId, BatchState.SUCCEEDED, responses.responses(), responses.errors());
+            if (error != null) {
+                return BatchResponse.<RESPONSE>builder()
+                        .batchId(batchId)
+                        .state(BatchState.FAILED)
+                        .errors(List.of(error.toGenericStatus()))
+                        .build();
             }
+            var responses = preparer.extractResults(operation.response());
+            // A done operation is SUCCEEDED unless the metadata reports another terminal state
+            // (e.g. CANCELLED or EXPIRED), which must be preserved rather than reported as success.
+            var finalState = state.isTerminal() ? state : BatchState.SUCCEEDED;
+            return BatchResponse.<RESPONSE>builder()
+                    .batchId(batchId)
+                    .state(finalState)
+                    .responses(responses.responses())
+                    .errors(responses.errors())
+                    .build();
         } else {
-            return new BatchResponse<>(batchId, state, List.of(), null);
+            return BatchResponse.<RESPONSE>builder()
+                    .batchId(batchId)
+                    .state(state)
+                    .build();
         }
     }
 

@@ -22,9 +22,7 @@ import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel.BaseGoogleAiEmbeddi
 import dev.langchain4j.model.googleai.jsonl.JsonLinesWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -39,7 +37,6 @@ import org.jspecify.annotations.Nullable;
  * @see BatchResponse
  */
 @Experimental
-@NullMarked
 public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingModel {
     private final GeminiBatchProcessor<TextSegment, Embedding, GeminiEmbeddingRequest, GeminiEmbeddingResponse>
             batchProcessor;
@@ -69,7 +66,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
         this.batchProcessor = new GeminiBatchProcessor<>(geminiService, preparer);
         this.modelName = builder.modelName;
         this.taskType = builder.taskType;
-        this.titleMetadataKey = builder.titleMetadataKey != null ? builder.titleMetadataKey : "title";
+        this.titleMetadataKey = getOrDefault(builder.titleMetadataKey, "title");
         this.outputDimensionality = builder.outputDimensionality;
     }
 
@@ -143,10 +140,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
      */
     public void writeBatchToFile(JsonLinesWriter writer, Iterable<BatchFileRequest<TextSegment>> requests)
             throws IOException {
-        for (var request : requests) {
-            var inlinedRequest = preparer.createInlinedRequest(request.request());
-            writer.write(new BatchFileRequest<>(request.key(), inlinedRequest));
-        }
+        batchProcessor.writeBatch(writer, requests);
     }
 
     /**
@@ -238,7 +232,7 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
             GeminiContent.GeminiPart geminiPart =
                     GeminiContent.GeminiPart.builder().text(textSegment.text()).build();
 
-            GeminiContent content = new GeminiContent(Collections.singletonList(geminiPart), null);
+            GeminiContent content = new GeminiContent(List.of(geminiPart), null);
 
             String title = null;
             if (GoogleAiEmbeddingModel.TaskType.RETRIEVAL_DOCUMENT.equals(taskType)

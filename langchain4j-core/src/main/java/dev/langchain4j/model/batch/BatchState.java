@@ -6,7 +6,6 @@ import java.util.List;
  * Represents the possible states of a batch job.
  */
 public enum BatchState {
-
     PENDING,
     RUNNING,
     SUCCEEDED,

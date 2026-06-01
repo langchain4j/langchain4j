@@ -654,6 +654,26 @@ class GoogleAiGeminiBatchChatModelTest {
         }
 
         @Test
+        void should_preserve_terminal_state_when_done_without_top_level_error() {
+            // given
+            var batchId = "batches/test-cancelled-no-error";
+            // A done operation whose metadata reports CANCELLED but carries no top-level error
+            // must be reported as CANCELLED, not SUCCEEDED.
+            var operation = new Operation<GeminiGenerateContentResponse>(
+                    batchId, Map.of("state", CANCELLED.name()), true, null, null);
+            when(mockGeminiService.<GeminiGenerateContentResponse>batchRetrieveBatch(batchId))
+                    .thenReturn(operation);
+
+            // when
+            var result = subject.retrieve(batchId);
+
+            // then
+            assertThat(result.state()).isEqualTo(CANCELLED);
+            assertThat(result.hasSucceeded()).isFalse();
+            assertThat(result.isInProgress()).isFalse();
+        }
+
+        @Test
         void should_return_error_when_batch_processing_fails() {
             // given
             var batchId = "batches/test-error";

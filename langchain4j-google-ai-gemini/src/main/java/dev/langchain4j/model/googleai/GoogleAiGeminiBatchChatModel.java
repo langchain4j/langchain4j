@@ -62,10 +62,11 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
      * using default display name and priority. To set a custom display name or priority, pass a
      * {@link GeminiBatchRequest} (it will resolve to {@link #submit(GeminiBatchRequest)}).</p>
      *
-     * @param request a list of chat requests to be processed in the batch; all requests must
-     *                use the same model
+     * <p>All requests are processed by the model configured on this batch model
+     * (via {@link Builder#modelName(String)}).</p>
+     *
+     * @param request a list of chat requests to be processed in the batch
      * @return a {@link BatchResponse} representing the initial state of the batch operation
-     * @throws IllegalArgumentException if the requests contain different models
      */
     @Override
     public BatchResponse<ChatResponse> submit(BatchRequest<ChatRequest> request) {
@@ -140,10 +141,7 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
      */
     public void writeBatchToFile(JsonLinesWriter writer, Iterable<BatchFileRequest<ChatRequest>> requests)
             throws IOException {
-        for (var request : requests) {
-            var inlinedRequest = preparer.createInlinedRequest(request.request());
-            writer.write(new BatchFileRequest<>(request.key(), inlinedRequest));
-        }
+        batchProcessor.writeBatch(writer, requests);
     }
 
     /**

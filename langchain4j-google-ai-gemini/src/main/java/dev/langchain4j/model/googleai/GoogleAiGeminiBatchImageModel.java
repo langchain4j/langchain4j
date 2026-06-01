@@ -216,10 +216,7 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
      */
     public void writeBatchToFile(JsonLinesWriter writer, Iterable<BatchFileRequest<String>> requests)
             throws IOException {
-        for (var request : requests) {
-            var inlinedRequest = preparer.createInlinedRequest(request.request());
-            writer.write(new BatchFileRequest<>(request.key(), inlinedRequest));
-        }
+        batchProcessor.writeBatch(writer, requests);
     }
 
     /**
@@ -470,17 +467,11 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
         public GeminiGenerateContentRequest createInlinedRequest(String prompt) {
             GeminiContent content = new GeminiContent(List.of(GeminiPart.ofText(prompt)), GeminiRole.USER.toString());
 
-            // Build imageConfig only if there are values to set
-            GeminiImageConfig config =
-                    (imageConfig != null && (imageConfig.aspectRatio() != null || imageConfig.imageSize() != null))
-                            ? imageConfig
-                            : null;
-
             return GeminiGenerateContentRequest.builder()
                     .contents(List.of(content))
                     .generationConfig(GeminiGenerationConfig.builder()
                             .responseModalities(responseModalities)
-                            .imageConfig(config)
+                            .imageConfig(imageConfig)
                             .build())
                     .safetySettings(safetySettings)
                     .build();

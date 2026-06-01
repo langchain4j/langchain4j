@@ -1,5 +1,7 @@
 package dev.langchain4j.model.batch;
 
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.batch.BatchState.FAILED;
 import static dev.langchain4j.model.batch.BatchState.SUCCEEDED;
@@ -7,7 +9,6 @@ import static dev.langchain4j.model.batch.BatchState.SUCCEEDED;
 import dev.langchain4j.Experimental;
 import java.util.List;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Represents the responses of a batch operation.
@@ -17,19 +18,25 @@ import org.jspecify.annotations.Nullable;
  *
  * @param <T> the type of the responses payload (e.g., {@code ChatResponse}, {@code Embedding})
  */
+// TODO: responses() and errors() are returned as two uncorrelated lists, so for a partially-failed
+//  batch the caller cannot tell which input request produced which response or error. Consider
+//  preserving per-request identity (e.g. the request key for file-based batches, or the original
+//  index for inline batches) so results can be mapped back to their originating requests.
+// TODO: expose batch-level metadata (creation/completion timestamps, request counts, model name)
+//  once a provider-agnostic representation is agreed upon.
 @Experimental
 public class BatchResponse<T> {
+
     private final String batchId;
     private final BatchState state;
     private final List<T> responses;
     private final List<BatchError> errors;
 
-    public BatchResponse(
-            String batchId, BatchState state, @Nullable List<T> responses, @Nullable List<BatchError> errors) {
-        this.batchId = ensureNotNull(batchId, "batchId");
-        this.state = ensureNotNull(state, "state");
-        this.responses = responses;
-        this.errors = errors;
+    public BatchResponse(Builder<T> builder) {
+        this.batchId = ensureNotNull(builder.batchId, "batchId");
+        this.state = ensureNotNull(builder.state, "state");
+        this.responses = copy(builder.responses);
+        this.errors = copy(builder.errors);
     }
 
     /**
@@ -47,17 +54,15 @@ public class BatchResponse<T> {
     }
 
     /**
-     * Returns the batch results, or {@code null} if the batch has not completed successfully.
+     * Returns the batch results, or an empty list if the batch has not completed successfully.
      */
-    @Nullable
     public List<T> responses() {
         return responses;
     }
 
     /**
-     * Returns the errors encountered during the batch processing, if any.
+     * Returns the errors encountered during the batch processing, or an empty list if there were none.
      */
-    @Nullable
     public List<BatchError> errors() {
         return errors;
     }
@@ -106,5 +111,67 @@ public class BatchResponse<T> {
                 + state + ", responses="
                 + responses + ", errors="
                 + errors + '}';
+    }
+
+    /**
+     * Returns a new builder for constructing {@link BatchResponse} instances.
+     *
+     * @param <T> the type of the responses payload
+     * @return a new builder instance
+     */
+    public static <T> Builder<T> builder() {
+        return new Builder<>();
+    }
+
+    /**
+     * Builder for constructing {@link BatchResponse} instances.
+     *
+     * @param <T> the type of the responses payload
+     */
+    public static class Builder<T> {
+
+        private String batchId;
+        private BatchState state;
+        private List<T> responses;
+        private List<BatchError> errors;
+
+        /**
+         * Sets the unique identifier of the batch operation.
+         */
+        public Builder<T> batchId(String batchId) {
+            this.batchId = batchId;
+            return this;
+        }
+
+        /**
+         * Sets the current state of the batch job.
+         */
+        public Builder<T> state(BatchState state) {
+            this.state = state;
+            return this;
+        }
+
+        /**
+         * Sets the successful responses of the batch operation.
+         */
+        public Builder<T> responses(List<T> responses) {
+            this.responses = responses;
+            return this;
+        }
+
+        /**
+         * Sets the errors encountered during the batch operation.
+         */
+        public Builder<T> errors(List<BatchError> errors) {
+            this.errors = errors;
+            return this;
+        }
+
+        /**
+         * Builds a new {@link BatchResponse} instance.
+         */
+        public BatchResponse<T> build() {
+            return new BatchResponse<>(this);
+        }
     }
 }
