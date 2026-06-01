@@ -556,9 +556,12 @@ public class Utils {
 
     private static final Map<Class<?>, List<Method>> DECLARED_METHODS_CACHE = new ConcurrentHashMap<>();
 
+    private record MethodSignature(String name, List<Class<?>> params) {}
+
     /**
      * Returns all methods declared in the given class and its superclasses, excluding {@link Object}.
      * If a subclass overrides a superclass method, only the subclass version is included.
+     * Bridge and synthetic methods are filtered out.
      */
     public static List<Method> allDeclaredMethods(Class<?> clazz) {
         return DECLARED_METHODS_CACHE.computeIfAbsent(clazz, Utils::findAllDeclaredMethods);
@@ -566,28 +569,20 @@ public class Utils {
 
     private static List<Method> findAllDeclaredMethods(Class<?> clazz) {
         List<Method> allMethods = new ArrayList<>();
-        Set<String> overridden = new HashSet<>();
+        Set<MethodSignature> seen = new HashSet<>();
         while (clazz != null && clazz != Object.class) {
-            List<Method> cached = DECLARED_METHODS_CACHE.get(clazz);
-            if (cached != null) {
-                for (Method method : cached) {
-                    if (!overridden.contains(method.getName())) {
-                        allMethods.add(method);
-                    }
-                }
-                break;
-            }
             for (Method method : clazz.getDeclaredMethods()) {
-                if (!overridden.contains(method.getName())) {
+                if (method.isBridge() || method.isSynthetic()) {
+                    continue;
+                }
+                MethodSignature sig = new MethodSignature(method.getName(), List.of(method.getParameterTypes()));
+                if (seen.add(sig)) {
                     allMethods.add(method);
                 }
             }
-            for (Method method : clazz.getDeclaredMethods()) {
-                overridden.add(method.getName());
-            }
             clazz = clazz.getSuperclass();
         }
-        return allMethods;
+        return List.copyOf(allMethods);
     }
 
     /**

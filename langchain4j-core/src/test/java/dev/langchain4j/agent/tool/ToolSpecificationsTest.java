@@ -516,4 +516,165 @@ class ToolSpecificationsTest implements WithAssertions {
         JsonStringSchema element = (JsonStringSchema) ts.parameters().properties().get("myParam");
         assertThat(element.description()).isNull();
     }
+
+    // --- Inheritance tests ---
+
+    @SuppressWarnings("unused")
+    public static class ParentTool {
+        @Tool("parent tool")
+        public int parentMethod(int a) {
+            return a;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class ChildTool extends ParentTool {
+        @Tool("child tool")
+        public int childMethod(int b) {
+            return b;
+        }
+    }
+
+    @Test
+    void should_discover_tool_from_superclass() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ChildTool());
+
+        assertThat(specs).hasSize(2);
+        assertThat(specs).extracting(ToolSpecification::name)
+                .containsExactlyInAnyOrder("childMethod", "parentMethod");
+        assertThat(specs).extracting(ToolSpecification::description)
+                .containsExactlyInAnyOrder("child tool", "parent tool");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ParentWithNamedTool {
+        @Tool(name = "shared_name", value = "parent version")
+        public int doSomething(int a) {
+            return a;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class ChildWithSameToolName extends ParentWithNamedTool {
+        @Tool(name = "shared_name", value = "child version")
+        public int doSomethingElse(int b) {
+            return b;
+        }
+    }
+
+    @Test
+    void should_fail_when_parent_and_child_have_same_tool_name() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ToolSpecifications.toolSpecificationsFrom(new ChildWithSameToolName()))
+                .withMessage("Tool names must be unique. The tool 'shared_name' appears several times");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ParentWithOverridableTool {
+        @Tool("parent description")
+        public int compute(int a) {
+            return a;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class ChildOverridingTool extends ParentWithOverridableTool {
+        @Override
+        @Tool("child description")
+        public int compute(int a) {
+            return a * 2;
+        }
+    }
+
+    @Test
+    void should_use_overriding_method_from_child_class() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ChildOverridingTool());
+
+        assertThat(specs).hasSize(1);
+        assertThat(specs.get(0).name()).isEqualTo("compute");
+        assertThat(specs.get(0).description()).isEqualTo("child description");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ChildOverridingToolWithNewAnnotation extends ParentWithOverridableTool {
+        @Override
+        @Tool(name = "renamed_compute", value = "updated description")
+        public int compute(int a) {
+            return a * 3;
+        }
+    }
+
+    @Test
+    void should_use_updated_tool_annotation_from_overriding_child() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ChildOverridingToolWithNewAnnotation());
+
+        assertThat(specs).hasSize(1);
+        assertThat(specs.get(0).name()).isEqualTo("renamed_compute");
+        assertThat(specs.get(0).description()).isEqualTo("updated description");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ParentWithProcess {
+        @Tool("process a string")
+        public String process(String input) {
+            return input;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class ChildWithOverloadedProcess extends ParentWithProcess {
+        @Tool("process an int")
+        public int process(int input) {
+            return input;
+        }
+    }
+
+    @Test
+    void should_fail_when_overloaded_methods_in_parent_and_child_default_to_same_tool_name() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ToolSpecifications.toolSpecificationsFrom(new ChildWithOverloadedProcess()))
+                .withMessage("Tool names must be unique. The tool 'process' appears several times");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ParentWithNamedProcess {
+        @Tool(name = "process", value = "process a string")
+        public String process(String input) {
+            return input;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class ChildWithOverloadedSameToolName extends ParentWithNamedProcess {
+        @Tool(name = "process", value = "process an int")
+        public int process(int input) {
+            return input;
+        }
+    }
+
+    @Test
+    void should_fail_when_overloaded_methods_in_parent_and_child_have_same_tool_name() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ToolSpecifications.toolSpecificationsFrom(new ChildWithOverloadedSameToolName()))
+                .withMessage("Tool names must be unique. The tool 'process' appears several times");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ChildWithOverloadedDifferentToolNames extends ParentWithNamedProcess {
+        @Tool(name = "process_int", value = "process an int")
+        public static int process(int input) {
+            return input;
+        }
+    }
+
+    @Test
+    void should_discover_both_when_overloaded_methods_in_parent_and_child_have_different_tool_names() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ChildWithOverloadedDifferentToolNames());
+
+        assertThat(specs).hasSize(2);
+        assertThat(specs).extracting(ToolSpecification::name)
+                .containsExactlyInAnyOrder("process", "process_int");
+        assertThat(specs).extracting(ToolSpecification::description)
+                .containsExactlyInAnyOrder("process a string", "process an int");
+    }
 }
