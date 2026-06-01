@@ -1,11 +1,15 @@
 package dev.langchain4j.model.batch;
 
+import dev.langchain4j.Experimental;
+
 import java.util.List;
 
 /**
  * Represents the possible states of a batch job.
  */
+@Experimental
 public enum BatchState {
+
     PENDING,
     RUNNING,
     SUCCEEDED,

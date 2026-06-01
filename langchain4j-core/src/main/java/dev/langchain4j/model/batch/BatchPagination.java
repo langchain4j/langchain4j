@@ -1,8 +1,11 @@
 package dev.langchain4j.model.batch;
 
 import java.util.Objects;
+
+import dev.langchain4j.Experimental;
 import org.jspecify.annotations.Nullable;
 
+@Experimental
 public final class BatchPagination {
 
     @Nullable

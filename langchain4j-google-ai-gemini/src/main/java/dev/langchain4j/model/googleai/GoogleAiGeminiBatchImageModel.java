@@ -8,7 +8,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.model.batch.BatchError;
+import dev.langchain4j.model.batch.BatchItemResult;
 import dev.langchain4j.model.batch.BatchPage;
 import dev.langchain4j.model.batch.BatchPagination;
 import dev.langchain4j.model.batch.BatchRequest;
@@ -478,28 +478,27 @@ public final class GoogleAiGeminiBatchImageModel implements BatchImageModel {
         }
 
         @Override
-        public GeminiBatchProcessor.ExtractedBatchResults<Response<@NonNull Image>> extractResults(
+        public List<BatchItemResult<Response<@NonNull Image>>> extractResults(
                 @Nullable BatchCreateResponse<GeminiGenerateContentResponse> response) {
             if (response == null || response.inlinedResponses() == null) {
-                return new GeminiBatchProcessor.ExtractedBatchResults<>(List.of(), List.of());
+                return List.of();
             }
 
-            List<Response<@NonNull Image>> responses = new ArrayList<>();
-            List<BatchError> errors = new ArrayList<>();
+            List<BatchItemResult<Response<@NonNull Image>>> results = new ArrayList<>();
 
             for (Object wrapper : response.inlinedResponses().inlinedResponses()) {
                 var typed = Json.convertValue(wrapper, inlinedResponseWrapperType);
                 if (typed.response() != null) {
                     var geminiResponse = Json.convertValue(typed.response(), responseWrapperType);
-                    responses.add(extractImage(geminiResponse));
+                    results.add(BatchItemResult.success(extractImage(geminiResponse)));
                 }
                 var error = typed.error();
                 if (error != null) {
-                    errors.add(error.toGenericStatus());
+                    results.add(BatchItemResult.failure(error.toGenericStatus()));
                 }
             }
 
-            return new GeminiBatchProcessor.ExtractedBatchResults<>(responses, errors);
+            return results;
         }
 
         private Response<@NonNull Image> extractImage(GeminiGenerateContentResponse geminiResponse) {

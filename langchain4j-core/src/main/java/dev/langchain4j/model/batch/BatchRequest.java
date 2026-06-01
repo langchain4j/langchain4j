@@ -1,5 +1,7 @@
 package dev.langchain4j.model.batch;
 
+import dev.langchain4j.Experimental;
+
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import java.util.List;
@@ -10,7 +12,9 @@ import java.util.Objects;
  *
  * @param <T> The type of the requests in this batch.
  */
+@Experimental
 public class BatchRequest<T> {
+
     private final List<T> requests;
 
     /**

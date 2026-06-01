@@ -5,7 +5,7 @@ import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.BA
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.Experimental;
-import dev.langchain4j.model.batch.BatchError;
+import dev.langchain4j.model.batch.BatchItemResult;
 import dev.langchain4j.model.batch.BatchPage;
 import dev.langchain4j.model.batch.BatchPagination;
 import dev.langchain4j.model.batch.BatchRequest;
@@ -240,27 +240,26 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
         }
 
         @Override
-        public GeminiBatchProcessor.ExtractedBatchResults<ChatResponse> extractResults(
+        public List<BatchItemResult<ChatResponse>> extractResults(
                 @Nullable BatchCreateResponse<GeminiGenerateContentResponse> response) {
             if (response == null || response.inlinedResponses() == null) {
-                return new GeminiBatchProcessor.ExtractedBatchResults<>(List.of(), List.of());
+                return List.of();
             }
 
-            List<ChatResponse> responses = new ArrayList<>();
-            List<BatchError> errors = new ArrayList<>();
+            List<BatchItemResult<ChatResponse>> results = new ArrayList<>();
             for (Object wrapper : response.inlinedResponses().inlinedResponses()) {
                 var typed = Json.convertValue(wrapper, responseWrapperType);
                 var typedResponse = typed.response();
                 if (typedResponse != null) {
-                    responses.add(chatModel.processResponse(typedResponse));
+                    results.add(BatchItemResult.success(chatModel.processResponse(typedResponse)));
                 }
                 var error = typed.error();
                 if (error != null) {
-                    errors.add(error.toGenericStatus());
+                    results.add(BatchItemResult.failure(error.toGenericStatus()));
                 }
             }
 
-            return new GeminiBatchProcessor.ExtractedBatchResults<>(responses, errors);
+            return results;
         }
     }
 }

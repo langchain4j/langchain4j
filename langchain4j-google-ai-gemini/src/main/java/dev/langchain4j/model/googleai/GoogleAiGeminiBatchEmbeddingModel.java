@@ -7,7 +7,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.batch.BatchError;
+import dev.langchain4j.model.batch.BatchItemResult;
 import dev.langchain4j.model.batch.BatchPage;
 import dev.langchain4j.model.batch.BatchPagination;
 import dev.langchain4j.model.batch.BatchRequest;
@@ -245,29 +245,28 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
         }
 
         @Override
-        public GeminiBatchProcessor.ExtractedBatchResults<Embedding> extractResults(
+        public List<BatchItemResult<Embedding>> extractResults(
                 @Nullable BatchCreateResponse<GeminiEmbeddingResponse> response) {
             if (response == null || response.inlinedResponses() == null) {
-                return new GeminiBatchProcessor.ExtractedBatchResults<>(List.of(), List.of());
+                return List.of();
             }
 
-            List<Embedding> responses = new ArrayList<>();
-            List<BatchError> errors = new ArrayList<>();
+            List<BatchItemResult<Embedding>> results = new ArrayList<>();
 
             for (Object wrapper : response.inlinedResponses().inlinedResponses()) {
                 var typed = Json.convertValue(wrapper, responseWrapperType);
                 var typedResponse = typed.response();
                 if (typedResponse != null) {
                     var embedding = Embedding.from(typedResponse.embedding().values());
-                    responses.add(embedding);
+                    results.add(BatchItemResult.success(embedding));
                 }
                 var error = typed.error();
                 if (error != null) {
-                    errors.add(error.toGenericStatus());
+                    results.add(BatchItemResult.failure(error.toGenericStatus()));
                 }
             }
 
-            return new GeminiBatchProcessor.ExtractedBatchResults<>(responses, errors);
+            return results;
         }
     }
 }

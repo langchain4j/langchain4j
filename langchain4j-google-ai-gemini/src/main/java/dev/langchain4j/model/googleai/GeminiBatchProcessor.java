@@ -3,7 +3,7 @@ package dev.langchain4j.model.googleai;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.model.batch.BatchError;
+import dev.langchain4j.model.batch.BatchItemResult;
 import dev.langchain4j.model.batch.BatchPage;
 import dev.langchain4j.model.batch.BatchPagination;
 import dev.langchain4j.model.batch.BatchResponse;
@@ -134,21 +134,22 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
         if (operation.done()) {
             var error = operation.error();
             if (error != null) {
+                // Batch-level failure: there is no per-request breakdown, so it is surfaced as a
+                // single failed result.
                 return BatchResponse.<RESPONSE>builder()
                         .batchId(batchId)
                         .state(BatchState.FAILED)
-                        .errors(List.of(error.toGenericStatus()))
+                        .results(List.of(BatchItemResult.failure(error.toGenericStatus())))
                         .build();
             }
-            var responses = preparer.extractResults(operation.response());
+            var results = preparer.extractResults(operation.response());
             // A done operation is SUCCEEDED unless the metadata reports another terminal state
             // (e.g. CANCELLED or EXPIRED), which must be preserved rather than reported as success.
             var finalState = state.isTerminal() ? state : BatchState.SUCCEEDED;
             return BatchResponse.<RESPONSE>builder()
                     .batchId(batchId)
                     .state(finalState)
-                    .responses(responses.responses())
-                    .errors(responses.errors())
+                    .results(results)
                     .build();
         } else {
             return BatchResponse.<RESPONSE>builder()
@@ -187,19 +188,10 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
 
         API_REQUEST createInlinedRequest(REQUEST request);
 
-        ExtractedBatchResults<RESPONSE> extractResults(BatchCreateResponse<API_RESPONSE> response);
+        /**
+         * Extracts the per-request results from a batch operation response, preserving the order of
+         * the submitted requests so that each result can be correlated with its originating request.
+         */
+        List<BatchItemResult<RESPONSE>> extractResults(BatchCreateResponse<API_RESPONSE> response);
     }
-
-    /**
-     * Contains the extracted results from a batch operation, separating successful responses from errors.
-     *
-     * <p>This record is used internally by batch processors to return both successful responses
-     * and any errors that occurred during batch processing. Each batch request may succeed or fail
-     * independently, so a single batch operation can produce both responses and errors.</p>
-     *
-     * @param <T>       the type of successful response (e.g., {@code ChatResponse}, {@code Embedding})
-     * @param responses the list of successful responses from the batch operation
-     * @param errors    the list of errors that occurred for individual requests in the batch
-     */
-    record ExtractedBatchResults<T>(List<T> responses, List<BatchError> errors) {}
 }

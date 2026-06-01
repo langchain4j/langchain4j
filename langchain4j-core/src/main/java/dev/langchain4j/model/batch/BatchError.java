@@ -3,11 +3,14 @@ package dev.langchain4j.model.batch;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
+import dev.langchain4j.Experimental;
 import org.jspecify.annotations.Nullable;
 
 /**
  * Represents an error status for a failed request within a batch operation.
  */
+@Experimental
 public final class BatchError {
 
     private final int code;
