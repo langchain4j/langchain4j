@@ -26,8 +26,8 @@ public class BatchResponse<T> {
 
     public BatchResponse(
             String batchId, BatchState state, @Nullable List<T> responses, @Nullable List<BatchError> errors) {
-        this.batchId = ensureNotNull(batchId, "batchId cannot be null");
-        this.state = ensureNotNull(state, "state cannot be null");
+        this.batchId = ensureNotNull(batchId, "batchId");
+        this.state = ensureNotNull(state, "state");
         this.responses = responses;
         this.errors = errors;
     }
