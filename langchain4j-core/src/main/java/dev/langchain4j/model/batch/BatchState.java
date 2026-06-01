@@ -6,6 +6,7 @@ import java.util.List;
  * Represents the possible states of a batch job.
  */
 public enum BatchState {
+
     PENDING,
     RUNNING,
     SUCCEEDED,
@@ -14,7 +15,7 @@ public enum BatchState {
     EXPIRED,
     UNSPECIFIED;
 
-    private static final List<BatchState> TERMINAL_BATCH_STATES = List.of(CANCELLED, EXPIRED, FAILED, SUCCEEDED);
+    private static final List<BatchState> TERMINAL_BATCH_STATES = List.of(SUCCEEDED, FAILED, CANCELLED, EXPIRED);
 
     public boolean isTerminal() {
         return TERMINAL_BATCH_STATES.contains(this);
