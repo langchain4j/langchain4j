@@ -70,6 +70,7 @@ class FunctionMapper {
     static List<ToolExecutionRequest> toToolExecutionRequests(List<GeminiFunctionCall> functionCalls) {
         return functionCalls.stream()
                 .map(functionCall -> ToolExecutionRequest.builder()
+                        .id(functionCall.id())
                         .name(functionCall.name())
                         .arguments(toJsonWithoutIndent(functionCall.args()))
                         .build())
