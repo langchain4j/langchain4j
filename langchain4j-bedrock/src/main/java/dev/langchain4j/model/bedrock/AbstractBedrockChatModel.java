@@ -1,6 +1,7 @@
 package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
@@ -510,7 +511,7 @@ abstract class AbstractBedrockChatModel {
             ChatRequest chatRequest, BedrockCachePointPlacement cachePointPlacement, CacheTTL cacheTtl) {
         List<ToolSpecification> toolSpecifications = chatRequest.toolSpecifications();
         ChatRequestParameters parameters = chatRequest.parameters();
-        boolean strictTools = parameters instanceof BedrockChatRequestParameters bedrockParameters
+        boolean modelLevelStrictTools = parameters instanceof BedrockChatRequestParameters bedrockParameters
                 && Boolean.TRUE.equals(bedrockParameters.strictTools());
 
         final List<Tool> allTools = new ArrayList<>();
@@ -519,14 +520,15 @@ abstract class AbstractBedrockChatModel {
         if (nonNull(toolSpecifications) && !toolSpecifications.isEmpty()) {
             final List<Tool> tools = toolSpecifications.stream()
                     .map(toolSpecification -> {
+                        boolean strict = isEffectivelyStrict(toolSpecification, modelLevelStrictTools);
                         ToolInputSchema toolInputSchema = ToolInputSchema.builder()
-                                .json(convertJsonObjectSchemaToDocument(toolSpecification, strictTools))
+                                .json(convertJsonObjectSchemaToDocument(toolSpecification, strict))
                                 .build();
                         return software.amazon.awssdk.services.bedrockruntime.model.ToolSpecification.builder()
                                 .name(toolSpecification.name())
                                 .description(toolSpecification.description())
                                 .inputSchema(toolInputSchema)
-                                .strict(strictTools ? Boolean.TRUE : null)
+                                .strict(strict ? Boolean.TRUE : null)
                                 .build();
                     })
                     .map(toolSpecification ->
@@ -1160,6 +1162,10 @@ abstract class AbstractBedrockChatModel {
             return self();
         }
 
+        /**
+         * Controls whether Bedrock tool definitions should use strict schema enforcement by default.
+         * Individual tools can override this setting via {@link ToolSpecification#strict()}.
+         */
         public T strictTools(Boolean strictTools) {
             this.strictTools = strictTools;
             return self();

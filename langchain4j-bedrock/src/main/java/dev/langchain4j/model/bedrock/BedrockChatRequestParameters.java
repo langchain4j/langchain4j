@@ -71,6 +71,10 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
         return serviceTier;
     }
 
+    /**
+     * Returns whether Bedrock tool definitions should use strict schema enforcement by default.
+     * Individual tools can override this setting via {@link dev.langchain4j.agent.tool.ToolSpecification#strict()}.
+     */
     public Boolean strictTools() {
         return strictTools;
     }
@@ -215,6 +219,10 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
             return this;
         }
 
+        /**
+         * Controls whether Bedrock tool definitions should use strict schema enforcement by default.
+         * Individual tools can override this setting via {@link dev.langchain4j.agent.tool.ToolSpecification#strict()}.
+         */
         public Builder strictTools(Boolean strictTools) {
             this.strictTools = strictTools;
             return this;

@@ -12,6 +12,7 @@ import dev.langchain4j.internal.JsonSchemaElementUtils;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import software.amazon.awssdk.core.document.Document;
@@ -110,25 +111,19 @@ class AwsDocumentConverter {
     }
 
     public static Document convertJsonObjectSchemaToDocument(ToolSpecification toolSpecification, boolean strict) {
-        Map<String, Object> schemaMap = new HashMap<>();
-        schemaMap.put("type", "object");
+        Map<String, Object> schemaMap;
 
-        if (toolSpecification.parameters() != null) {
-            var parameters = toolSpecification.parameters();
-            Map<String, Map<String, Object>> propertiesMap =
-                    JsonSchemaElementUtils.toMap(parameters.properties(), strict);
-            schemaMap.put("properties", propertiesMap);
+        if (toolSpecification.parameters() == null) {
+            schemaMap = new LinkedHashMap<>();
+            schemaMap.put("type", "object");
 
-            List<String> required = new ArrayList<>(parameters.required());
-            schemaMap.put("required", required);
-
-            if (!parameters.definitions().isEmpty()) {
-                schemaMap.put("$defs", JsonSchemaElementUtils.toMap(parameters.definitions(), strict));
+            if (strict) {
+                schemaMap.put("properties", Map.of());
+                schemaMap.put("required", List.of());
+                schemaMap.put("additionalProperties", false);
             }
-        }
-
-        if (strict) {
-            schemaMap.put("additionalProperties", false);
+        } else {
+            schemaMap = JsonSchemaElementUtils.toMap(toolSpecification.parameters(), strict);
         }
 
         try {

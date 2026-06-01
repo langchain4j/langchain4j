@@ -214,10 +214,16 @@ class AwsDocumentConverterTest {
         // Then
         Map<String, Document> docMap = document.asMap();
         assertThat(docMap.get("additionalProperties").asBoolean()).isFalse();
-        assertThat(docMap.get("required").asList()).containsExactly(Document.fromString("location"));
+        assertThat(docMap.get("required").asList())
+                .containsExactlyInAnyOrder(
+                        Document.fromString("name"),
+                        Document.fromString("location"),
+                        Document.fromString("stops"),
+                        Document.fromString("metadata"));
 
         Map<String, Document> properties = docMap.get("properties").asMap();
-        assertThat(properties.get("name").asMap().get("type").asString()).isEqualTo("string");
+        assertThat(properties.get("name").asMap().get("type").asList())
+                .containsExactly(Document.fromString("string"), Document.fromString("null"));
 
         Map<String, Document> location = properties.get("location").asMap();
         assertThat(location.get("additionalProperties").asBoolean()).isFalse();
