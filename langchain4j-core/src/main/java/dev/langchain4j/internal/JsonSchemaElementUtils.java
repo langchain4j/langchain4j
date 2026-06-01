@@ -440,11 +440,14 @@ public class JsonSchemaElementUtils {
                 }
             }
 
-            if (strict) {
+            if (strict
+                    && (!jsonObjectSchema.properties().isEmpty()
+                            || (jsonObjectSchema.definitions() != null
+                                    && !jsonObjectSchema.definitions().isEmpty()))) {
                 map.put("additionalProperties", false);
             }
 
-            if (!jsonObjectSchema.definitions().isEmpty()) {
+            if (jsonObjectSchema.definitions() != null && !jsonObjectSchema.definitions().isEmpty()) {
                 map.put("$defs", toMap(jsonObjectSchema.definitions(), strict));
             }
 
