@@ -424,6 +424,11 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     // completing
                     if (partialResponseHandler != null) {
                         responseBuffer.forEach(partialResponseHandler::accept);
+                    } else if (partialResponseWithContextHandler != null) {
+                        PartialResponseContext partialResponseContext =
+                                new PartialResponseContext(new CancellationUnsupportedStreamingHandle());
+                        responseBuffer.forEach(s -> partialResponseWithContextHandler.accept(
+                                new PartialResponse(s), partialResponseContext));
                     }
                     responseBuffer.clear();
                 }
