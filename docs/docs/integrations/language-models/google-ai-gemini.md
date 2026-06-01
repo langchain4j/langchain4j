@@ -837,8 +837,9 @@ BatchResponse<ChatResponse> response = batchModel.submit("My Batch Job", uploade
 
 ### Handling Batch Responses
 
-A `BatchResponse` exposes the current `state()` together with `responses()` and `errors()`. Use the
-convenience predicates `isInProgress()`, `hasSucceeded()`, and `hasFailed()` to branch:
+A `BatchResponse` exposes the current `state()` together with the per-request `results()` and the
+`responses()` / `errors()` convenience views. Use the convenience predicates `isInProgress()`,
+`hasSucceeded()`, and `hasFailed()` to branch:
 
 ```java
 BatchResponse<ChatResponse> response = batchModel.submit(new BatchRequest<>(requests));
@@ -855,7 +856,7 @@ if (response.isInProgress()) {
     }
 
     // Check for individual request errors within the batch
-    if (response.errors() != null && !response.errors().isEmpty()) {
+    if (!response.errors().isEmpty()) {
         System.out.println("Some requests failed:");
         for (BatchError error : response.errors()) {
             System.err.println("Error code: " + error.code() + ", message: " + error.message());
@@ -869,8 +870,32 @@ if (response.isInProgress()) {
 **Note:** A batch with `state() == SUCCEEDED` indicates the batch job completed, but individual
 requests within the batch may have failed. The `errors()` list contains any individual request
 failures (e.g., timeouts, rate limits), while `responses()` contains the successful responses.
-Always check both lists to handle partial failures gracefully.
+Both are convenience views and are never `null` (empty when there is nothing to report), so check
+`!responses().isEmpty()` / `!errors().isEmpty()` to handle partial failures gracefully.
 
+### Correlating Results with Requests
+
+`responses()` and `errors()` are flat views that lose track of which input produced which outcome.
+When you need to map every outcome back to its originating request, use `results()` instead: it
+returns one `BatchItemResult` per request, **in the same order as the submitted requests**, so the
+i-th result corresponds to the i-th request. Each result is either a `BatchItemResult.Success`
+(carrying the `response()`) or a `BatchItemResult.Failure` (carrying the `error()`):
+
+```java
+BatchResponse<ChatResponse> result = batchModel.submit(new BatchRequest<>(requests));
+// ... poll until terminal ...
+
+List<BatchItemResult<ChatResponse>> results = result.results();
+for (int i = 0; i < results.size(); i++) {
+    BatchItemResult<ChatResponse> item = results.get(i);
+    if (item.isSuccess()) {
+        System.out.println("Request #" + i + " -> " + item.response().aiMessage().text());
+    } else {
+        BatchError error = item.error();
+        System.err.println("Request #" + i + " failed: " + error.code() + " - " + error.message());
+    }
+}
+```
 
 ### Polling for Results
 
@@ -894,7 +919,7 @@ if (result.hasSucceeded()) {
     }
 
     // Handle any individual request failures
-    if (result.errors() != null && !result.errors().isEmpty()) {
+    if (!result.errors().isEmpty()) {
         System.out.println("Failed requests: " + result.errors().size());
         for (BatchError error : result.errors()) {
             System.err.println("Error: " + error.code() + " - " + error.message());
@@ -1072,7 +1097,7 @@ if (result.hasSucceeded()) {
     }
 
     // Report any failures
-    if (result.errors() != null && !result.errors().isEmpty()) {
+    if (!result.errors().isEmpty()) {
         System.err.println(result.errors().size() + " requests failed:");
         for (BatchError error : result.errors()) {
             System.err.println("  - Code " + error.code() + ": " + error.message());

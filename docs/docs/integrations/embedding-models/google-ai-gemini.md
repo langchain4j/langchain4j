@@ -200,8 +200,9 @@ BatchResponse<Embedding> response = batchModel.submit("My Embedding Batch Job", 
 
 ### Handling Batch Responses
 
-A `BatchResponse` exposes the current `state()` together with `responses()` and `errors()`. Use the
-convenience predicates `isInProgress()`, `hasSucceeded()`, and `hasFailed()` to branch:
+A `BatchResponse` exposes the current `state()` together with the per-request `results()` and the
+`responses()` / `errors()` convenience views. Use the convenience predicates `isInProgress()`,
+`hasSucceeded()`, and `hasFailed()` to branch:
 
 ```java
 BatchResponse<Embedding> response = batchModel.submit(new BatchRequest<>(segments));
@@ -216,6 +217,30 @@ if (response.isInProgress()) {
     }
 } else {
     System.err.println("Batch " + response.state() + ": " + response.errors());
+}
+```
+
+`responses()` and `errors()` are convenience views and are never `null` (empty when there is nothing
+to report).
+
+### Correlating Results with Requests
+
+`responses()` and `errors()` are flat views that lose track of which input produced which outcome.
+When you need to map every outcome back to its originating segment, use `results()` instead: it
+returns one `BatchItemResult` per request, **in the same order as the submitted segments**, so the
+i-th result corresponds to the i-th segment. Each result is either a `BatchItemResult.Success`
+(carrying the `response()`) or a `BatchItemResult.Failure` (carrying the `error()`):
+
+```java
+List<BatchItemResult<Embedding>> results = response.results();
+for (int i = 0; i < results.size(); i++) {
+    BatchItemResult<Embedding> item = results.get(i);
+    if (item.isSuccess()) {
+        System.out.println("Segment #" + i + " -> " + item.response().dimension() + " dimensions");
+    } else {
+        BatchError error = item.error();
+        System.err.println("Segment #" + i + " failed: " + error.code() + " - " + error.message());
+    }
 }
 ```
 

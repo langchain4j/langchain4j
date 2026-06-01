@@ -249,6 +249,26 @@ if (response.hasSucceeded()) {
 batchModel.deleteBatchJob(batchId);
 ```
 
+`responses()` and `errors()` are flat convenience views (never `null`, empty when there is nothing to
+report) that don't tell you which prompt produced which image. To map each outcome back to its prompt,
+use `results()`: it returns one `BatchItemResult` per request, **in the same order as the submitted
+prompts**, each being a `BatchItemResult.Success` (with `response()`) or a `BatchItemResult.Failure`
+(with `error()`):
+
+```java
+List<BatchItemResult<Response<Image>>> results = response.results();
+for (int i = 0; i < results.size(); i++) {
+    BatchItemResult<Response<Image>> item = results.get(i);
+    if (item.isSuccess()) {
+        Image image = item.response().content();
+        // Save or process the image generated for prompts.get(i)
+    } else {
+        BatchError error = item.error();
+        System.err.println("Prompt #" + i + " failed: " + error.code() + " - " + error.message());
+    }
+}
+```
+
 ## Limitations
 
 - **Languages**: Best performance with EN, and supported languages including ar-EG, de-DE, es-MX, fr-FR, hi-IN, id-ID, it-IT, ja-JP, ko-KR, pt-BR, ru-RU, vi-VN, zh-CN
