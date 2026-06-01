@@ -58,8 +58,11 @@ import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import dev.langchain4j.agentic.workflow.LoopAgentInstance;
 import dev.langchain4j.agentic.workflow.impl.LoopPlanner;
 import dev.langchain4j.agentic.workflow.impl.SequentialPlanner;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
@@ -1387,5 +1390,77 @@ public class WorkflowAgentsIT {
         String story = (String) novelCreator.invoke(input);
         System.out.println(story);
         assertThat(story).containsIgnoringCase("dragon").containsIgnoringCase("wizard");
+    }
+
+    @Test
+    void single_agent_loop_max_iteration_test() {
+        AtomicInteger callCount = new AtomicInteger(0);
+        ChatModel countingModel = new ChatModel() {
+            @Override
+            public ChatResponse chat(ChatRequest chatRequest) {
+                callCount.incrementAndGet();
+                return ChatResponse.builder()
+                        .aiMessage(AiMessage.from("0.5"))
+                        .build();
+            }
+        };
+
+        Agents.StyleScorer scorer = AgenticServices.agentBuilder(Agents.StyleScorer.class)
+                .chatModel(countingModel)
+                .outputKey("score")
+                .build();
+
+        UntypedAgent loop = AgenticServices.loopBuilder()
+                .name("testLoop")
+                .subAgents(scorer)
+                .maxIterations(3)
+                .exitCondition("score >= 0.8", scope -> scope.readState("score", 0.0) >= 0.8)
+                .build();
+
+        loop.invokeWithAgenticScope(Map.of("story", "A test story", "style", "comedy"));
+        assertThat(callCount.get()).isEqualTo(3);
+    }
+
+    @Test
+    void multiple_agents_loop_max_iteration_test() {
+        ChatModel model = new ChatModel() {
+            @Override
+            public ChatResponse chat(ChatRequest chatRequest) {
+                return ChatResponse.builder()
+                        .aiMessage(AiMessage.from("0.5"))
+                        .build();
+            }
+        };
+
+        AtomicInteger callCount = new AtomicInteger(0);
+        ChatModel countingModel = new ChatModel() {
+            @Override
+            public ChatResponse chat(ChatRequest chatRequest) {
+                callCount.incrementAndGet();
+                return ChatResponse.builder()
+                        .aiMessage(AiMessage.from("0.5"))
+                        .build();
+            }
+        };
+
+        Agents.StyleScorer scorer = AgenticServices.agentBuilder(Agents.StyleScorer.class)
+                .chatModel(model)
+                .outputKey("score")
+                .build();
+
+        Agents.StyleScorer countingScorer = AgenticServices.agentBuilder(Agents.StyleScorer.class)
+                .chatModel(countingModel)
+                .outputKey("score")
+                .build();
+
+        UntypedAgent loop = AgenticServices.loopBuilder()
+                .name("testLoop")
+                .subAgents(scorer, countingScorer)
+                .maxIterations(3)
+                .exitCondition("score >= 0.8", scope -> scope.readState("score", 0.0) >= 0.8)
+                .build();
+
+        loop.invokeWithAgenticScope(Map.of("story", "A test story", "style", "comedy"));
+        assertThat(callCount.get()).isEqualTo(3);
     }
 }
