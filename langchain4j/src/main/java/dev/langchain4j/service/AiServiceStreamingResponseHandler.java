@@ -53,6 +53,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
@@ -101,7 +102,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final List<String> responseBuffer = new ArrayList<>();
     private final boolean hasOutputGuardrails;
 
-    private StreamingHandle observedStreamingHandle;
+    private final AtomicReference<StreamingHandle> observedStreamingHandle = new AtomicReference<>();
 
     private int toolCallingRoundTripsLeft;
 
@@ -175,7 +176,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         } else if (partialResponseHandler != null) {
             partialResponseHandler.accept(partialResponse);
         } else if (partialResponseWithContextHandler != null) {
-            PartialResponseContext context = new PartialResponseContext(new CancellationUnsupportedStreamingHandle());
+            PartialResponseContext context = new PartialResponseContext(streamingHandleOrCancellationUnsupported());
             partialResponseWithContextHandler.accept(new PartialResponse(partialResponse), context);
         }
     }
@@ -198,7 +199,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         if (partialThinkingHandler != null) {
             partialThinkingHandler.accept(partialThinking);
         } else if (partialThinkingWithContextHandler != null) {
-            PartialThinkingContext context = new PartialThinkingContext(new CancellationUnsupportedStreamingHandle());
+            PartialThinkingContext context = new PartialThinkingContext(streamingHandleOrCancellationUnsupported());
             partialThinkingWithContextHandler.accept(partialThinking, context);
         }
     }
@@ -218,7 +219,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         if (partialToolCallHandler != null) {
             partialToolCallHandler.accept(partialToolCall);
         } else if (partialToolCallWithContextHandler != null) {
-            PartialToolCallContext context = new PartialToolCallContext(new CancellationUnsupportedStreamingHandle());
+            PartialToolCallContext context = new PartialToolCallContext(streamingHandleOrCancellationUnsupported());
             partialToolCallWithContextHandler.accept(partialToolCall, context);
         }
     }
@@ -424,10 +425,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     if (partialResponseHandler != null) {
                         responseBuffer.forEach(partialResponseHandler::accept);
                     } else if (partialResponseWithContextHandler != null) {
-                        PartialResponseContext partialResponseContext =
-                                new PartialResponseContext(new CancellationUnsupportedStreamingHandle());
-                        responseBuffer.forEach(s -> partialResponseWithContextHandler.accept(
-                                new PartialResponse(s), partialResponseContext));
+                        PartialResponseContext replayContext =
+                                new PartialResponseContext(streamingHandleOrCancellationUnsupported());
+                        responseBuffer.forEach(
+                                s -> partialResponseWithContextHandler.accept(new PartialResponse(s), replayContext));
                     }
                     responseBuffer.clear();
                 }
@@ -441,10 +442,15 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private void observeStreamingHandle(StreamingHandle streamingHandle) {
-        if (streamingHandleHandler != null && streamingHandle != observedStreamingHandle) {
-            observedStreamingHandle = streamingHandle;
+        StreamingHandle previousStreamingHandle = observedStreamingHandle.getAndSet(streamingHandle);
+        if (streamingHandleHandler != null && previousStreamingHandle != streamingHandle) {
             streamingHandleHandler.accept(streamingHandle);
         }
+    }
+
+    private StreamingHandle streamingHandleOrCancellationUnsupported() {
+        StreamingHandle streamingHandle = observedStreamingHandle.get();
+        return streamingHandle != null ? streamingHandle : new CancellationUnsupportedStreamingHandle();
     }
 
     private ChatResponse finalResponse(ChatResponse completeResponse, AiMessage aiMessage) {
