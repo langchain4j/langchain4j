@@ -767,6 +767,78 @@ Depending on the tool, the LLM might understand it well even without any descrip
 but it is usually better to provide clear and meaningful names and descriptions.
 This way, the LLM has more information to decide whether or not to call the given tool, and how to do so.
 
+### Inheritance and tool discovery
+
+Concrete `@Tool`-annotated methods are inherited from superclasses and interfaces. When you pass a tool object to an AI Service, LangChain4j discovers `@Tool` methods from the object's class, all of its superclasses (up to, but excluding, `Object`), and `default` and `static` methods from implemented interfaces.
+
+```java
+class BaseMathTools {
+
+    @Tool("Calculates the sum of two numbers")
+    int sum(int a, int b) {
+        return a + b;
+    }
+}
+
+class AdvancedMathTools extends BaseMathTools {
+
+    @Tool("Calculates the product of two numbers")
+    int multiply(int a, int b) {
+        return a * b;
+    }
+}
+
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatModel(model)
+    .tools(new AdvancedMathTools()) // both "sum" and "multiply" are available
+    .build();
+```
+
+A subclass can override a `@Tool` method from its parent. In that case, only the subclass version is used — including its `@Tool` annotation:
+
+```java
+class ParentTools {
+
+    @Tool("Returns the greeting")
+    String greet(String name) {
+        return "Hello, " + name;
+    }
+}
+
+class ChildTools extends ParentTools {
+
+    @Override
+    @Tool(name = "greet_formal", value = "Returns a formal greeting")
+    String greet(String name) {
+        return "Good day, " + name;
+    }
+}
+```
+
+Here the LLM will see a single tool named `greet_formal` with description "Returns a formal greeting".
+
+If a subclass declares a method with the same name as a parent method but with different parameters (an overload, not an override), both methods are discovered. Since tool names must be unique and default to the method name, you must give at least one of them an explicit name:
+
+```java
+class ParentTools {
+
+    @Tool(name = "process_text", value = "Processes a text input")
+    String process(String input) {
+        return input.toUpperCase();
+    }
+}
+
+class ChildTools extends ParentTools {
+
+    @Tool(name = "process_number", value = "Processes a numeric input")
+    int process(int input) {
+        return input * 2;
+    }
+}
+```
+
+If both methods resolve to the same tool name, an `IllegalArgumentException` is thrown at AI Service creation time.
+
 ### `@P`
 Method parameters can optionally be annotated with `@P`.
 
