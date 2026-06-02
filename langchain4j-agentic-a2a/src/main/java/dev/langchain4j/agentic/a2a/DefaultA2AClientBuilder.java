@@ -9,21 +9,22 @@ import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.service.output.ServiceOutputParser;
-import io.a2a.A2A;
-import io.a2a.client.Client;
-import io.a2a.client.ClientEvent;
-import io.a2a.client.MessageEvent;
-import io.a2a.client.TaskEvent;
-import io.a2a.client.TaskUpdateEvent;
-import io.a2a.client.config.ClientConfig;
-import io.a2a.client.transport.jsonrpc.JSONRPCTransport;
-import io.a2a.client.transport.jsonrpc.JSONRPCTransportConfig;
-import io.a2a.spec.A2AClientError;
-import io.a2a.spec.A2AClientException;
-import io.a2a.spec.AgentCard;
-import io.a2a.spec.Message;
-import io.a2a.spec.Part;
-import io.a2a.spec.TextPart;
+import org.a2aproject.sdk.A2A;
+import org.a2aproject.sdk.client.Client;
+import org.a2aproject.sdk.client.ClientEvent;
+import org.a2aproject.sdk.client.MessageEvent;
+import org.a2aproject.sdk.client.TaskEvent;
+import org.a2aproject.sdk.client.TaskUpdateEvent;
+import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransport;
+import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransportConfigBuilder;
+import org.a2aproject.sdk.spec.A2AClientError;
+import org.a2aproject.sdk.spec.A2AClientException;
+import org.a2aproject.sdk.spec.AgentCard;
+import org.a2aproject.sdk.spec.Message;
+import org.a2aproject.sdk.spec.Part;
+import org.a2aproject.sdk.spec.Task;
+import org.a2aproject.sdk.spec.TaskState;
+import org.a2aproject.sdk.spec.TextPart;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -67,10 +68,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         this.agentId = this.name;
         try {
             this.a2aClient = Client.builder(agentCard)
-                    .clientConfig(new ClientConfig.Builder()
-                            .setStreaming(false) // Disabling streaming
-                            .build())
-                    .withTransport(JSONRPCTransport.class, new JSONRPCTransportConfig())
+                    .withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder())
                     .build();
         } catch (A2AClientException e) {
             throw new RuntimeException(e);
@@ -138,43 +136,30 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         }
 
         Message message =
-                new Message.Builder().role(Message.Role.USER).parts(parts).build();
+                Message.builder().role(Message.Role.ROLE_USER).parts(parts).build();
 
         final CompletableFuture<String> messageResponse = new CompletableFuture<>();
         List<BiConsumer<ClientEvent, AgentCard>> consumers = List.of((event, card) -> {
             if (event instanceof MessageEvent messageEvent) {
-                messageResponse.complete(messageEvent.getMessage().getParts().stream()
-                        .filter(TextPart.class::isInstance)
-                        .map(TextPart.class::cast)
-                        .map(TextPart::getText)
-                        .collect(Collectors.joining("\n")));
+                messageResponse.complete(extractTextFromParts(messageEvent.getMessage().parts()));
             } else if (event instanceof TaskEvent taskEvent) {
-                messageResponse.complete(taskEvent.getTask().getArtifacts().stream()
-                        .flatMap(a -> a.parts().stream())
-                        .filter(TextPart.class::isInstance)
-                        .map(TextPart.class::cast)
-                        .map(TextPart::getText)
-                        .collect(Collectors.joining("\n")));
+                completeFromTask(taskEvent.getTask(), messageResponse);
             } else if (event instanceof TaskUpdateEvent updateEvent) {
-                if (updateEvent.getTask().getArtifacts() != null) {
-                    messageResponse.complete(updateEvent.getTask().getArtifacts().stream()
-                            .flatMap(a -> a.parts().stream())
-                            .filter(TextPart.class::isInstance)
-                            .map(TextPart.class::cast)
-                            .map(TextPart::getText)
-                            .collect(Collectors.joining("\n")));
-                }
+                completeFromTask(updateEvent.getTask(), messageResponse);
             } else {
                 messageResponse.completeExceptionally(
                         new IllegalArgumentException("The event expected should be of type " + event.getClass()));
             }
         });
-        // Create error handler for streaming errors
-        Consumer<Throwable> streamingErrorHandler = (error) -> {
-            LOG.error("Streaming error occurred: " + error.getMessage(), error);
-            messageResponse.completeExceptionally(error);
+        Consumer<Throwable> streamingErrorHandler = error -> {
+            if (messageResponse.isDone()) {
+                LOG.debug("SSE stream closed after response received: {}", error.getMessage());
+            } else {
+                LOG.error("Streaming error occurred: {}", error.getMessage(), error);
+                messageResponse.completeExceptionally(error);
+            }
         };
-        a2aClient.sendMessage(message, consumers, streamingErrorHandler);
+        a2aClient.sendMessage(message, consumers, streamingErrorHandler, null);
         try {
             String responseText = messageResponse.get();
             LOG.debug("Response: " + responseText);
@@ -187,6 +172,29 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             LOG.error("Failed to get response: " + e.getMessage(), e);
             throw new RuntimeException("Failed to get response: " + e.getMessage(), e);
         }
+    }
+
+    private static void completeFromTask(Task task, CompletableFuture<String> messageResponse) {
+        if (!isTerminalState(task.status().state()) && task.artifacts().isEmpty()) {
+            return;
+        }
+        messageResponse.complete(extractTextFromParts(
+                task.artifacts().stream().flatMap(a -> a.parts().stream()).toList()));
+    }
+
+    private static boolean isTerminalState(TaskState state) {
+        return state == TaskState.TASK_STATE_COMPLETED
+                || state == TaskState.TASK_STATE_FAILED
+                || state == TaskState.TASK_STATE_CANCELED
+                || state == TaskState.TASK_STATE_REJECTED;
+    }
+
+    private static String extractTextFromParts(List<Part<?>> parts) {
+        return parts.stream()
+                .filter(TextPart.class::isInstance)
+                .map(TextPart.class::cast)
+                .map(TextPart::text)
+                .collect(Collectors.joining("\n"));
     }
 
     @Override
