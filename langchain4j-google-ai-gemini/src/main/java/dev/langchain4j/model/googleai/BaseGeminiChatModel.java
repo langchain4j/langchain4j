@@ -354,56 +354,130 @@ class BaseGeminiChatModel {
             return (B) this;
         }
 
+        /**
+         * Sets a custom {@link HttpClientBuilder} for the underlying HTTP client.
+         * Use this to configure timeouts, proxies, or other HTTP-level settings.
+         *
+         * @param httpClientBuilder the HTTP client builder
+         * @return {@code this}
+         */
         public B httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
             return builder();
         }
 
+        /**
+         * Sets default {@link ChatRequestParameters} that are merged into every request.
+         * Individual request parameters take precedence over these defaults.
+         *
+         * @param defaultRequestParameters the default request parameters
+         * @return {@code this}
+         */
         public B defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
             this.defaultRequestParameters = defaultRequestParameters;
             return builder();
         }
 
+        /**
+         * Sets the Google AI Gemini API key used to authenticate requests.
+         * <p>
+         * Alternatively, set the {@code GOOGLE_AI_GEMINI_API_KEY} environment variable.
+         *
+         * @param apiKey the API key
+         * @return {@code this}
+         */
         public B apiKey(String apiKey) {
             this.apiKey = apiKey;
             return builder();
         }
 
+        /**
+         * Sets the base URL of the Google AI Gemini API endpoint.
+         * <p>
+         * Defaults to {@code https://generativelanguage.googleapis.com/v1beta/}.
+         *
+         * @param baseUrl the base URL
+         * @return {@code this}
+         */
         public B baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return builder();
         }
 
+        /**
+         * Sets the model to use for chat completions, specified as a string model ID.
+         *
+         * @param modelName the model ID, e.g. {@code "gemini-2.0-flash"}
+         * @return {@code this}
+         */
         public B modelName(String modelName) {
             this.modelName = modelName;
             return builder();
         }
 
+        /**
+         * Sets the HTTP request timeout for calls to the Google AI Gemini API.
+         *
+         * @param timeout the request timeout
+         * @return {@code this}
+         */
         public B timeout(Duration timeout) {
             this.timeout = timeout;
             return builder();
         }
 
+        /**
+         * Sets the list of {@link ChatModelListener}s to be notified on each request and response.
+         * Useful for logging, metrics, and observability integrations.
+         *
+         * @param listeners the chat model listeners
+         * @return {@code this}
+         */
         public B listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return builder();
         }
 
+        /**
+         * When {@code true}, includes the output of code execution tool calls in the response.
+         *
+         * @param includeCodeExecutionOutput whether to include code execution output
+         * @return {@code this}
+         */
         public B includeCodeExecutionOutput(Boolean includeCodeExecutionOutput) {
             this.includeCodeExecutionOutput = includeCodeExecutionOutput;
             return builder();
         }
 
+        /**
+         * Enables logging of both HTTP requests and responses.
+         * Equivalent to enabling both {@link #logRequests(Boolean)} and {@link #logResponses(Boolean)}.
+         *
+         * @param logRequestsAndResponses whether to log requests and responses
+         * @return {@code this}
+         */
         public B logRequestsAndResponses(Boolean logRequestsAndResponses) {
             this.logRequestsAndResponses = logRequestsAndResponses;
             return builder();
         }
 
+        /**
+         * Enables debug logging of HTTP request bodies sent to the Google AI Gemini API.
+         *
+         * @param logRequests whether to log requests
+         * @return {@code this}
+         */
         public B logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return builder();
         }
 
+        /**
+         * Enables debug logging of HTTP response bodies received from the Google AI Gemini API.
+         *
+         * @param logResponses whether to log responses
+         * @return {@code this}
+         */
         public B logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return builder();
@@ -747,11 +821,24 @@ class BaseGeminiChatModel {
             return builder();
         }
 
+        /**
+         * Sets extra HTTP headers to include in every request to the Google AI Gemini API.
+         *
+         * @param customHeaders a map of header names to values
+         * @return {@code this}
+         */
         public B customHeaders(Map<String, String> customHeaders) {
             this.customHeadersSupplier = () -> customHeaders;
             return builder();
         }
 
+        /**
+         * Sets a supplier of extra HTTP headers to include in every request to the Google AI Gemini API.
+         * The supplier is called once per request, allowing dynamic header values.
+         *
+         * @param customHeadersSupplier a supplier that returns a map of header names to values
+         * @return {@code this}
+         */
         public B customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
             this.customHeadersSupplier = customHeadersSupplier;
             return builder();
