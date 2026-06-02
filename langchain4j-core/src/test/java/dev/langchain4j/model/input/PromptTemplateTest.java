@@ -225,8 +225,7 @@ class PromptTemplateTest {
     void lenient_true_should_keep_unresolved_variables() {
 
         // given
-        PromptTemplate promptTemplate = PromptTemplate.from(
-                "My name is {{name}}. Unresolved: {{unknown}}", true);
+        PromptTemplate promptTemplate = PromptTemplate.from("My name is {{name}}. Unresolved: {{unknown}}", true);
 
         Map<String, Object> variables = singletonMap("name", "Klaus");
 
