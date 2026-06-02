@@ -181,31 +181,71 @@ public class MistralAiChatModel implements ChatModel {
 
         public MistralAiChatModelBuilder() {}
 
+        /**
+         * Sets a custom {@link HttpClientBuilder} for the underlying HTTP client.
+         * Use this to configure timeouts, proxies, or other HTTP-level settings.
+         *
+         * @param httpClientBuilder the HTTP client builder
+         * @return {@code this}
+         */
         public MistralAiChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
             return this;
         }
 
+        /**
+         * Sets extra HTTP headers to include in every request to the Mistral AI API.
+         *
+         * @param customHeaders a map of header names to values
+         * @return {@code this}
+         */
         public MistralAiChatModelBuilder customHeaders(java.util.Map<String, String> customHeaders) {
             this.customHeadersSupplier = () -> customHeaders;
             return this;
         }
 
+        /**
+         * Sets a supplier of extra HTTP headers to include in every request to the Mistral AI API.
+         * The supplier is called once per request, allowing dynamic header values.
+         *
+         * @param customHeadersSupplier a supplier that returns a map of header names to values
+         * @return {@code this}
+         */
         public MistralAiChatModelBuilder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
             this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 
+        /**
+         * Sets the model to use for chat completions, specified as a string model ID.
+         * <p>
+         * See {@link MistralAiChatModelName} for available model constants.
+         *
+         * @param modelName the model ID, e.g. {@code "mistral-large-latest"}
+         * @return {@code this}
+         */
         public MistralAiChatModelBuilder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
+        /**
+         * Sets the model to use for chat completions using a type-safe enum constant.
+         *
+         * @param modelName the model name enum value
+         * @return {@code this}
+         */
         public MistralAiChatModelBuilder modelName(MistralAiChatModelName modelName) {
             this.modelName = modelName.toString();
             return this;
         }
 
+        /**
+         * Sets the response format, enabling structured output such as JSON mode.
+         *
+         * @param responseFormat the desired response format
+         * @return {@code this}
+         */
         public MistralAiChatModelBuilder responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
             return this;
@@ -342,49 +382,109 @@ public class MistralAiChatModel implements ChatModel {
         }
 
         /**
-         * @param maxRetries
-         * @return {@code this}.
+         * Sets the number of times to retry a request on transient errors (e.g. rate limits, server errors).
+         * <p>
+         * Defaults to {@code 2}.
+         *
+         * @param maxRetries the maximum number of retry attempts
+         * @return {@code this}
          */
         public MistralAiChatModelBuilder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
+        /**
+         * Declares the capabilities supported by the model (e.g. {@link Capability#RESPONSE_FORMAT_JSON_SCHEMA}).
+         * This influences how LangChain4j generates requests for this model.
+         *
+         * @param supportedCapabilities the capabilities to declare
+         * @return {@code this}
+         */
         public MistralAiChatModelBuilder supportedCapabilities(Capability... supportedCapabilities) {
             this.supportedCapabilities = Arrays.stream(supportedCapabilities).collect(Collectors.toSet());
             return this;
         }
 
+        /**
+         * Declares the capabilities supported by the model.
+         *
+         * @param supportedCapabilities the set of capabilities to declare
+         * @return {@code this}
+         */
         public MistralAiChatModelBuilder supportedCapabilities(Set<Capability> supportedCapabilities) {
             this.supportedCapabilities = Set.copyOf(supportedCapabilities);
             return this;
         }
 
+        /**
+         * Enables strict JSON schema validation for structured outputs.
+         * When {@code true}, the model strictly follows the JSON schema defined in the response format.
+         *
+         * @param strictJsonSchema whether to enable strict JSON schema validation
+         * @return {@code this}
+         */
         public MistralAiChatModelBuilder strictJsonSchema(Boolean strictJsonSchema) {
             this.strictJsonSchema = strictJsonSchema;
             return this;
         }
 
+        /**
+         * Sets sequences that, when generated, will cause the model to stop generating further tokens.
+         *
+         * @param stopSequences the list of stop sequences
+         * @return {@code this}
+         */
         public MistralAiChatModelBuilder stopSequences(List<String> stopSequences) {
             this.stopSequences = stopSequences;
             return this;
         }
 
+        /**
+         * Sets the presence penalty in the range {@code [-2.0, 2.0]}.
+         * Positive values penalize tokens that have already appeared, increasing the model's
+         * likelihood to talk about new topics.
+         *
+         * @param presencePenalty the presence penalty
+         * @return {@code this}
+         */
         public MistralAiChatModelBuilder presencePenalty(Double presencePenalty) {
             this.presencePenalty = presencePenalty;
             return this;
         }
 
+        /**
+         * Sets the frequency penalty in the range {@code [-2.0, 2.0]}.
+         * Positive values penalize tokens based on their frequency in the text so far, reducing
+         * the model's likelihood to repeat the same words verbatim.
+         *
+         * @param frequencyPenalty the frequency penalty
+         * @return {@code this}
+         */
         public MistralAiChatModelBuilder frequencyPenalty(Double frequencyPenalty) {
             this.frequencyPenalty = frequencyPenalty;
             return this;
         }
 
+        /**
+         * Sets the list of {@link ChatModelListener}s to be notified on each request and response.
+         * Useful for logging, metrics, and observability integrations.
+         *
+         * @param listeners the chat model listeners
+         * @return {@code this}
+         */
         public MistralAiChatModelBuilder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return this;
         }
 
+        /**
+         * Sets default {@link ChatRequestParameters} that are merged into every request.
+         * Individual request parameters take precedence over these defaults.
+         *
+         * @param parameters the default request parameters
+         * @return {@code this}
+         */
         public MistralAiChatModelBuilder defaultRequestParameters(ChatRequestParameters parameters) {
             this.defaultRequestParameters = parameters;
             return this;
