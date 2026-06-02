@@ -221,12 +221,16 @@ class InternalAzureOpenAiHelper {
     }
 
     static OpenAIServiceVersion getOpenAIServiceVersion(String serviceVersion) {
+        if (serviceVersion == null || serviceVersion.isBlank()) {
+            return OpenAIServiceVersion.getLatest();
+        }
         for (OpenAIServiceVersion version : OpenAIServiceVersion.values()) {
             if (version.getVersion().equals(serviceVersion)) {
                 return version;
             }
         }
-        return OpenAIServiceVersion.getLatest();
+        throw new IllegalArgumentException("Unsupported Azure OpenAI service version: '" + serviceVersion
+                + "'. Leave serviceVersion null or empty to use the latest supported version.");
     }
 
     static List<ChatRequestMessage> toOpenAiMessages(List<ChatMessage> messages) {
@@ -242,9 +246,8 @@ class InternalAzureOpenAiHelper {
             return chatRequestAssistantMessage;
         } else if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
             if (!toolExecutionResultMessage.hasSingleText()) {
-                throw new UnsupportedFeatureException(
-                        "Azure OpenAI does not support non-text content in tool results. "
-                                + "Only text content is supported.");
+                throw new UnsupportedFeatureException("Azure OpenAI does not support non-text content in tool results. "
+                        + "Only text content is supported.");
             }
             return new ChatRequestToolMessage(toolExecutionResultMessage.text(), toolExecutionResultMessage.id());
         } else if (message instanceof SystemMessage systemMessage) {
