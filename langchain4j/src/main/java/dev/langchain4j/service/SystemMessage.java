@@ -1,12 +1,12 @@
 package dev.langchain4j.service;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-import java.util.function.Function;
-
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.ElementType.TYPE;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
+import java.util.function.Function;
 
 /**
  * Specifies either a complete system message (prompt) or a system message template to be used each time an AI service is invoked.
