@@ -27,6 +27,12 @@ public interface PromptTemplateFactory {
          * @return the name of the template.
          */
         default String getName() { return "template"; }
+
+        /**
+         * When {@code true}, unresolved template variables are left as-is instead of throwing an exception.
+         * @return whether lenient mode is enabled.
+         */
+        default boolean isLenient() { return false; }
     }
 
     /**

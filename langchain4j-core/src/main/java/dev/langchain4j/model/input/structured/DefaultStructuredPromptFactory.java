@@ -38,7 +38,7 @@ class DefaultStructuredPromptFactory implements StructuredPromptFactory {
         StructuredPrompt annotation = StructuredPrompt.Util.validateStructuredPrompt(structuredPrompt);
 
         String promptTemplateString = StructuredPrompt.Util.join(annotation);
-        PromptTemplate promptTemplate = PromptTemplate.from(promptTemplateString);
+        PromptTemplate promptTemplate = PromptTemplate.from(promptTemplateString, annotation.lenient());
 
         Map<String, Object> variables = extractVariables(structuredPrompt);
 

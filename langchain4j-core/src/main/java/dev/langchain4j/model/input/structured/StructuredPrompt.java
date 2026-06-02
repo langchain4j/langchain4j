@@ -29,6 +29,16 @@ public @interface StructuredPrompt {
     String delimiter() default "\n";
 
     /**
+     * When set to {@code true}, unresolved template variables will be kept as-is (e.g., {@code {{variable}}})
+     * instead of throwing an exception.
+     * <p>
+     * Defaults to {@code false}.
+     *
+     * @return whether lenient mode is enabled
+     */
+    boolean lenient() default false;
+
+    /**
      * Utility class for {@link StructuredPrompt}.
      */
     class Util {

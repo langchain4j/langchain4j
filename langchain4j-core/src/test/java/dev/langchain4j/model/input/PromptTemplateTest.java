@@ -218,4 +218,22 @@ class PromptTemplateTest {
         // then
         assertThat(prompt.text()).isEqualTo("This is " + s + ".");
     }
+
+    // ==================== Lenient mode ====================
+
+    @Test
+    void lenient_true_should_keep_unresolved_variables() {
+
+        // given
+        PromptTemplate promptTemplate = PromptTemplate.from(
+                "My name is {{name}}. Unresolved: {{unknown}}", true);
+
+        Map<String, Object> variables = singletonMap("name", "Klaus");
+
+        // when
+        Prompt prompt = promptTemplate.apply(variables);
+
+        // then
+        assertThat(prompt.text()).isEqualTo("My name is Klaus. Unresolved: {{unknown}}");
+    }
 }

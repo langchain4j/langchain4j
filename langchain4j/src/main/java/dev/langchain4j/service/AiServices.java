@@ -279,6 +279,46 @@ public abstract class AiServices<T> {
     }
 
     /**
+     * Configures whether the system message template should be lenient.
+     * When set to {@code true}, unresolved template variables in the system message will be kept as-is
+     * instead of throwing an exception.
+     * <br>
+     * This only applies when the system message is provided via {@link #systemMessage(String)} or
+     * {@link #systemMessageProvider(Function)}. When {@code @SystemMessage} annotation is present,
+     * the annotation's own {@code lenient} attribute is used instead, and this setting has no effect.
+     * <p>
+     * Defaults to {@code false}.
+     *
+     * @param systemMessageLenient whether to use lenient mode for system message templates
+     * @return builder
+     * @since 1.12.0
+     */
+    public AiServices<T> systemMessageLenient(boolean systemMessageLenient) {
+        context.systemMessageLenient = systemMessageLenient;
+        return this;
+    }
+
+    /**
+     * Configures whether the user message template should be lenient.
+     * When set to {@code true}, unresolved template variables in the user message will be kept as-is
+     * instead of throwing an exception.
+     * <br>
+     * This only applies when the user message is provided via {@link #userMessage(String)} or
+     * {@link #userMessageProvider(Function)}. When {@code @UserMessage} annotation is present,
+     * the annotation's own {@code lenient} attribute is used instead, and this setting has no effect.
+     * <p>
+     * Defaults to {@code false}.
+     *
+     * @param userMessageLenient whether to use lenient mode for user message templates
+     * @return builder
+     * @since 1.12.0
+     */
+    public AiServices<T> userMessageLenient(boolean userMessageLenient) {
+        context.userMessageLenient = userMessageLenient;
+        return this;
+    }
+
+    /**
      * Configures a transformer that will be applied to the system message on each AI service invocation,
      * after all other system message configuration (i.e., {@code @SystemMessage} annotation and
      * {@link #systemMessageProvider(Function)}) has been applied, but before the
