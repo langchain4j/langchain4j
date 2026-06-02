@@ -1,6 +1,6 @@
 package dev.langchain4j.service.tool;
 
-import static dev.langchain4j.internal.Utils.allDeclaredMethods;
+import static dev.langchain4j.internal.Utils.allConcreteMethods;
 import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
@@ -69,7 +69,7 @@ public class DefaultToolExecutor implements ToolExecutor {
     private Method findMethod(Object object, ToolExecutionRequest toolExecutionRequest) {
         String requestedMethodName = toolExecutionRequest.name();
 
-        for (Method method : allDeclaredMethods(object.getClass())) {
+        for (Method method : allConcreteMethods(object.getClass())) {
             if (method.getName().equals(requestedMethodName)) {
                 return method;
             }

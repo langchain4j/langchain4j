@@ -677,4 +677,109 @@ class ToolSpecificationsTest implements WithAssertions {
         assertThat(specs).extracting(ToolSpecification::description)
                 .containsExactlyInAnyOrder("process a string", "process an int");
     }
+
+    // --- Interface default method tests ---
+
+    public interface ToolInterface {
+        @Tool("interface tool")
+        default int interfaceMethod(int a) {
+            return a;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class ImplementsToolInterface implements ToolInterface {
+    }
+
+    @Test
+    void should_discover_tool_from_interface_default_method() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ImplementsToolInterface());
+
+        assertThat(specs).hasSize(1);
+        assertThat(specs.get(0).name()).isEqualTo("interfaceMethod");
+        assertThat(specs.get(0).description()).isEqualTo("interface tool");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ClassWithOwnToolAndInterface implements ToolInterface {
+        @Tool("class tool")
+        public int classMethod(int b) {
+            return b;
+        }
+    }
+
+    @Test
+    void should_discover_tools_from_both_class_and_interface() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ClassWithOwnToolAndInterface());
+
+        assertThat(specs).hasSize(2);
+        assertThat(specs).extracting(ToolSpecification::name)
+                .containsExactlyInAnyOrder("classMethod", "interfaceMethod");
+        assertThat(specs).extracting(ToolSpecification::description)
+                .containsExactlyInAnyOrder("class tool", "interface tool");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ClassOverridingInterfaceDefault implements ToolInterface {
+        @Override
+        @Tool("overridden tool")
+        public int interfaceMethod(int a) {
+            return a * 2;
+        }
+    }
+
+    @Test
+    void should_use_class_method_when_overriding_interface_default() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ClassOverridingInterfaceDefault());
+
+        assertThat(specs).hasSize(1);
+        assertThat(specs.get(0).name()).isEqualTo("interfaceMethod");
+        assertThat(specs.get(0).description()).isEqualTo("overridden tool");
+    }
+
+    public interface ToolInterfaceWithAbstractMethod {
+        @Tool("abstract tool")
+        int abstractMethod(int a);
+    }
+
+    @SuppressWarnings("unused")
+    public static class ImplementsAbstractToolMethod implements ToolInterfaceWithAbstractMethod {
+        @Override
+        public int abstractMethod(int a) {
+            return a;
+        }
+    }
+
+    @Test
+    void should_not_discover_abstract_interface_method_without_tool_on_implementation() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ImplementsAbstractToolMethod());
+
+        assertThat(specs).isEmpty();
+    }
+
+    public interface ToolInterfaceWithStaticMethod {
+        @Tool("static tool")
+        static int staticMethod(int a) {
+            return a;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class ImplementsInterfaceWithStaticTool implements ToolInterfaceWithStaticMethod {
+        @Tool("instance tool")
+        public int instanceMethod(int b) {
+            return b;
+        }
+    }
+
+    @Test
+    void should_discover_static_tool_from_interface() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ImplementsInterfaceWithStaticTool());
+
+        assertThat(specs).hasSize(2);
+        assertThat(specs).extracting(ToolSpecification::name)
+                .containsExactlyInAnyOrder("staticMethod", "instanceMethod");
+        assertThat(specs).extracting(ToolSpecification::description)
+                .containsExactlyInAnyOrder("static tool", "instance tool");
+    }
 }

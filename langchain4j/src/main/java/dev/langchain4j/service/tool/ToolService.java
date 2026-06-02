@@ -2,7 +2,7 @@ package dev.langchain4j.service.tool;
 
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
-import static dev.langchain4j.internal.Utils.allDeclaredMethods;
+import static dev.langchain4j.internal.Utils.allConcreteMethods;
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.copy;
@@ -227,7 +227,7 @@ public class ToolService {
         }
 
         List<AiServiceTool> result = new ArrayList<>();
-        for (Method method : allDeclaredMethods(objectWithTools.getClass())) {
+        for (Method method : allConcreteMethods(objectWithTools.getClass())) {
             Optional<Method> annotatedMethod = getAnnotatedMethod(method, Tool.class);
             if (annotatedMethod.isPresent()) {
                 Method toolMethod = annotatedMethod.get();

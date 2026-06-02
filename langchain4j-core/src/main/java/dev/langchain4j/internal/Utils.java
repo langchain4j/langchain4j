@@ -13,6 +13,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.net.HttpURLConnection;
 import java.net.URI;
@@ -27,7 +28,6 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.HexFormat;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -557,26 +557,56 @@ public class Utils {
     private record MethodSignature(String name, List<Class<?>> params) {}
 
     /**
-     * Returns all methods declared in the given class and its superclasses, excluding {@link Object}.
-     * If a subclass overrides a superclass method, only the subclass version is included.
+     * Returns all concrete methods from the given class, its superclasses (excluding {@link Object}),
+     * and default/static methods from implemented interfaces.
+     * If a subclass overrides a method, only the subclass version is included.
      * Bridge and synthetic methods are filtered out.
      */
-    public static List<Method> allDeclaredMethods(Class<?> clazz) {
+    public static List<Method> allConcreteMethods(Class<?> clazz) {
         List<Method> allMethods = new ArrayList<>();
         Set<MethodSignature> seen = new HashSet<>();
-        while (clazz != null && clazz != Object.class) {
-            for (Method method : clazz.getDeclaredMethods()) {
-                if (method.isBridge() || method.isSynthetic()) {
+        Class<?> current = clazz;
+        while (current != null && current != Object.class) {
+            collectConcreteMethods(current, seen, allMethods);
+            current = current.getSuperclass();
+        }
+        collectInterfaceMethods(clazz, seen, allMethods, new HashSet<>());
+        return List.copyOf(allMethods);
+    }
+
+    private static void collectConcreteMethods(Class<?> clazz, Set<MethodSignature> seen, List<Method> result) {
+        for (Method method : clazz.getDeclaredMethods()) {
+            if (method.isBridge() || method.isSynthetic()) {
+                continue;
+            }
+            MethodSignature sig = new MethodSignature(method.getName(), List.of(method.getParameterTypes()));
+            if (seen.add(sig)) {
+                result.add(method);
+            }
+        }
+    }
+
+    private static void collectInterfaceMethods(Class<?> clazz, Set<MethodSignature> seen,
+                                                List<Method> result, Set<Class<?>> visited) {
+        if (clazz == null) {
+            return;
+        }
+        for (Class<?> iface : clazz.getInterfaces()) {
+            if (!visited.add(iface)) {
+                continue;
+            }
+            for (Method method : iface.getDeclaredMethods()) {
+                if (method.isBridge() || method.isSynthetic() || Modifier.isAbstract(method.getModifiers())) {
                     continue;
                 }
                 MethodSignature sig = new MethodSignature(method.getName(), List.of(method.getParameterTypes()));
                 if (seen.add(sig)) {
-                    allMethods.add(method);
+                    result.add(method);
                 }
             }
-            clazz = clazz.getSuperclass();
+            collectInterfaceMethods(iface, seen, result, visited);
         }
-        return List.copyOf(allMethods);
+        collectInterfaceMethods(clazz.getSuperclass(), seen, result, visited);
     }
 
     /**

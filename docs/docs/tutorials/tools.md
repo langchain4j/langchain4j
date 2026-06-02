@@ -769,7 +769,7 @@ This way, the LLM has more information to decide whether or not to call the give
 
 ### Inheritance and tool discovery
 
-`@Tool`-annotated methods are inherited from superclasses. When you pass a tool object to an AI Service, LangChain4j discovers `@Tool` methods from the object's class and all of its superclasses (up to, but excluding, `Object`).
+Concrete `@Tool`-annotated methods are inherited from superclasses and interfaces. When you pass a tool object to an AI Service, LangChain4j discovers `@Tool` methods from the object's class, all of its superclasses (up to, but excluding, `Object`), and `default` and `static` methods from implemented interfaces.
 
 ```java
 class BaseMathTools {
