@@ -581,6 +581,72 @@ ToolExecutionRequest request = ToolExecutionRequest.builder()
 String toolResult = mcpClient.executeTool(request);
 ```
 
+## Tool Guardrails
+
+:::note
+MCP tool guardrails are an experimental feature.
+:::
+
+You can attach guardrails to an MCP client to intercept tool calls before and after
+execution. These are independent of the [chat guardrails](/tutorials/guardrails)
+and are specific to MCP tool invocations.
+
+- **Input guardrails** run before the tool call reaches the MCP server. They can
+  reject the call, for example to block requests with forbidden content.
+- **Output guardrails** run after the MCP server returns a result. They can reject
+  the result or transform it, for example to redact sensitive data.
+
+Guardrails are configured on the `DefaultMcpClient.Builder`:
+
+```java
+McpClient mcpClient = new DefaultMcpClient.Builder()
+    .transport(transport)
+    .inputGuardrails(List.of(forbiddenWordGuardrail))
+    .outputGuardrails(List.of(redactionGuardrail))
+    .build();
+```
+
+### Input Guardrails
+
+Implement `McpToolInputGuardrail`. If validation passes, return normally.
+If it fails, throw `McpToolGuardrailException` — the exception message will be
+returned to the LLM as an error and the tool will not be executed.
+
+```java
+McpToolInputGuardrail forbiddenWordGuardrail = request -> {
+    String args = request.toolExecutionRequest().arguments();
+    if (args != null && args.contains("CONFIDENTIAL")) {
+        throw new McpToolGuardrailException(
+            "Tool call rejected: arguments contain confidential data");
+    }
+};
+```
+
+### Output Guardrails
+
+Implement `McpToolOutputGuardrail`. Return `McpToolOutputGuardrailResult.success(result)`
+with the original or a transformed `ToolExecutionResult`. To reject the result, throw
+`McpToolGuardrailException`.
+
+```java
+McpToolOutputGuardrail redactionGuardrail = request -> {
+    String text = request.toolExecutionResult().resultText();
+    // redact social security numbers
+    String redacted = text.replaceAll("\\d{3}-\\d{2}-\\d{4}", "[REDACTED]");
+    return McpToolOutputGuardrailResult.success(
+        ToolExecutionResult.builder()
+            .resultText(redacted)
+            .build());
+};
+```
+
+When multiple guardrails are configured, they execute in list order.
+For output guardrails, each receives the (possibly transformed) result from the
+previous one. The first guardrail to throw stops the chain.
+
+The guardrail request objects provide access to the `ToolExecutionRequest`,
+the `InvocationContext` (if available), and the `McpClient` that is handling the call.
+
 ## Notes about Tool Caching
 
 `DefaultMcpClient` maintains an internal cache of MCP tools. Once retrieved, the
