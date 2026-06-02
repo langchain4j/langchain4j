@@ -24,7 +24,7 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
 
     static final GoogleAiGeminiChatModel GOOGLE_AI_GEMINI_CHAT_MODEL = GoogleAiGeminiChatModel.builder()
             .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-            .modelName("gemini-2.0-flash-lite")
+            .modelName("gemini-2.5-flash-lite")
             .logRequests(false) // images are huge in logs
             .logResponses(false)
             .build();
@@ -39,7 +39,7 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected String customModelName() {
-        return "gemini-2.0-flash";
+        return "gemini-2.5-flash";
     }
 
     @Override
@@ -47,7 +47,7 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
         return GoogleAiGeminiChatModel.builder()
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
                 .defaultRequestParameters(parameters)
-                .modelName(getOrDefault(parameters.modelName(), "gemini-2.0-flash-lite"))
+                .modelName(getOrDefault(parameters.modelName(), "gemini-2.5-flash-lite"))
                 .logRequests(true)
                 .logResponses(true)
                 .build();
