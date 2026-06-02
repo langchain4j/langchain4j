@@ -1,6 +1,10 @@
 package dev.langchain4j.internal;
 
 import dev.langchain4j.Internal;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
 
 @Internal
 public class JsonParsingUtils {
@@ -16,7 +20,8 @@ public class JsonParsingUtils {
         return extractAndParseJson(text, s -> Json.fromJson(s, type));
     }
 
-    public static <T> ParsedJson<T> extractAndParseJson(String text, ThrowingFunction<String, T> parser) throws Exception {
+    public static <T> ParsedJson<T> extractAndParseJson(String text, ThrowingFunction<String, T> parser)
+            throws Exception {
         Exception parseException = null;
         try {
             return new ParsedJson<>(parser.apply(text), text);
@@ -25,50 +30,80 @@ public class JsonParsingUtils {
             parseException = ex;
         }
 
-        int index = text.length();
-        while (true) {
-
-            int jsonEnd = findJsonEnd(text, index);
-            if (jsonEnd < 0) {
-                throw parseException;
-            }
-
-            int jsonStart = findJsonStart(text, jsonEnd, text.charAt(jsonEnd));
-            if (jsonStart < 0) {
-                throw parseException;
-            }
-
+        List<String> jsonCandidates = findJsonCandidates(text);
+        for (int i = jsonCandidates.size() - 1; i >= 0; i--) {
             try {
-                String tentativeJson = text.substring(jsonStart, jsonEnd + 1);
+                String tentativeJson = jsonCandidates.get(i);
                 return new ParsedJson<>(parser.apply(tentativeJson), tentativeJson);
             } catch (Exception ignored) {
                 // If parsing fails, try to extract a JSON block from the text
             }
-            index = jsonStart; // Move to the next character after the found JSON block
         }
+
+        throw parseException;
     }
 
-    private static int findJsonEnd(String text, int fromIndex) {
-        int jsonMapEnd = text.lastIndexOf('}', fromIndex);
-        int jsonListEnd = text.lastIndexOf(']', fromIndex);
-        return Math.max(jsonMapEnd, jsonListEnd);
-    }
+    private static List<String> findJsonCandidates(String text) {
+        List<String> jsonCandidates = new ArrayList<>();
 
-    private static int findJsonStart(String text, int jsonEnd, char closingBrace) {
-        char openingBrace = closingBrace == '}' ? '{' : '[';
-        int braceCount = 0;
-
-        for (int i = jsonEnd; i >= 0; i--) {
+        for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
-            if (c == openingBrace) {
-                braceCount++;
-                if (braceCount == 0) {
-                    return i == 0 || text.charAt(i - 1) != openingBrace ? i : -1;
+
+            if ((c == '{' || c == '[') && isNotPartOfSameOpeningBraceSequence(text, i)) {
+                int jsonEnd = findMatchingJsonEnd(text, i);
+                if (jsonEnd >= 0) {
+                    jsonCandidates.add(text.substring(i, jsonEnd + 1));
+                    i = jsonEnd;
                 }
-            } else if (c == closingBrace) {
-                braceCount--;
             }
         }
+
+        return jsonCandidates;
+    }
+
+    private static int findMatchingJsonEnd(String text, int jsonStart) {
+        Deque<Character> stack = new ArrayDeque<>();
+        boolean inString = false;
+        boolean escaped = false;
+
+        for (int i = jsonStart; i < text.length(); i++) {
+            char c = text.charAt(i);
+
+            if (inString) {
+                if (escaped) {
+                    escaped = false;
+                } else if (c == '\\') {
+                    escaped = true;
+                } else if (c == '"') {
+                    inString = false;
+                }
+                continue;
+            }
+
+            if (c == '"') {
+                inString = true;
+            } else if (c == '{' || c == '[') {
+                stack.push(c);
+            } else if (c == '}' || c == ']') {
+                if (stack.isEmpty() || !bracesMatch(stack.peek(), c)) {
+                    return -1;
+                }
+
+                stack.pop();
+                if (stack.isEmpty()) {
+                    return i;
+                }
+            }
+        }
+
         return -1;
+    }
+
+    private static boolean isNotPartOfSameOpeningBraceSequence(String text, int index) {
+        return index == 0 || text.charAt(index - 1) != text.charAt(index);
+    }
+
+    private static boolean bracesMatch(char openingBrace, char closingBrace) {
+        return openingBrace == '{' && closingBrace == '}' || openingBrace == '[' && closingBrace == ']';
     }
 }

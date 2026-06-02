@@ -3,10 +3,9 @@ package dev.langchain4j.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.core.JsonParseException;
 import java.util.List;
 import java.util.Map;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -77,8 +76,7 @@ class JsonParsingUtilsTest {
     @Test
     void extract_array() throws Exception {
         String json = "[{\"name\":\"A\",\"age\":1},{\"name\":\"B\",\"age\":2}]";
-        JsonParsingUtils.ParsedJson<MyPojo[]> result =
-                JsonParsingUtils.extractAndParseJson(json, MyPojo[].class);
+        JsonParsingUtils.ParsedJson<MyPojo[]> result = JsonParsingUtils.extractAndParseJson(json, MyPojo[].class);
         assertThat(result).isNotNull();
         assertThat(result.value().length).isEqualTo(2);
         assertThat(result.value()[0].name).isEqualTo("A");
@@ -93,8 +91,7 @@ class JsonParsingUtilsTest {
     @Test
     void extract_array_with_noise() throws Exception {
         String json = "abc [{\"name\":\"A\",\"age\":1},{\"name\":\"B\",\"age\":2}] xyz";
-        JsonParsingUtils.ParsedJson<MyPojo[]> result =
-                JsonParsingUtils.extractAndParseJson(json, MyPojo[].class);
+        JsonParsingUtils.ParsedJson<MyPojo[]> result = JsonParsingUtils.extractAndParseJson(json, MyPojo[].class);
         assertThat(result).isNotNull();
         assertThat(result.value().length).isEqualTo(2);
     }
@@ -108,8 +105,7 @@ class JsonParsingUtilsTest {
     @Test
     void extract_nested_array() throws Exception {
         String json = "[[{\"name\":\"A\",\"age\":1}],[{\"name\":\"B\",\"age\":2}]]";
-        JsonParsingUtils.ParsedJson<MyPojo[][]> result =
-                JsonParsingUtils.extractAndParseJson(json, MyPojo[][].class);
+        JsonParsingUtils.ParsedJson<MyPojo[][]> result = JsonParsingUtils.extractAndParseJson(json, MyPojo[][].class);
         assertThat(result).isNotNull();
         assertThat(result.value().length).isEqualTo(2);
         assertThat(result.value()[0][0].name).isEqualTo("A");
@@ -184,6 +180,22 @@ class JsonParsingUtilsTest {
         assertThat(result.value().tags).contains("[c]");
     }
 
+    @Test
+    void extract_object_with_closing_brace_in_string_and_prefix_suffix() throws Exception {
+        String json = "prefix {\"name\":\"brace } inside\",\"age\":18} suffix";
+        JsonParsingUtils.ParsedJson<MyPojo> result = JsonParsingUtils.extractAndParseJson(json, MyPojo.class);
+        assertThat(result).isNotNull();
+        assertThat(result.value().name).isEqualTo("brace } inside");
+    }
+
+    @Test
+    void extract_array_with_closing_bracket_in_string_and_prefix_suffix() throws Exception {
+        String json = "prefix [{\"name\":\"bracket ] inside\",\"age\":18}] suffix";
+        JsonParsingUtils.ParsedJson<MyPojo[]> result = JsonParsingUtils.extractAndParseJson(json, MyPojo[].class);
+        assertThat(result).isNotNull();
+        assertThat(result.value()[0].name).isEqualTo("bracket ] inside");
+    }
+
     /**
      * Test complex JSON array with nested objects and arrays.
      * This comprehensive test verifies that the method can handle
@@ -194,8 +206,7 @@ class JsonParsingUtilsTest {
     void extract_json_array_with_nested_objects_and_arrays() throws Exception {
         String json =
                 "[{\"name\":\"Tom\",\"age\":18,\"tags\":[\"a\",\"b\"]},{\"name\":\"Jerry\",\"age\":20,\"tags\":[\"x\",\"y\"]}]";
-        JsonParsingUtils.ParsedJson<MyPojo[]> result =
-                JsonParsingUtils.extractAndParseJson(json, MyPojo[].class);
+        JsonParsingUtils.ParsedJson<MyPojo[]> result = JsonParsingUtils.extractAndParseJson(json, MyPojo[].class);
         assertThat(result).isNotNull();
         assertThat(result.value()[1].tags).containsExactly("x", "y");
     }
