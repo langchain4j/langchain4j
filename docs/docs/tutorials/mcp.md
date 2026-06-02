@@ -608,25 +608,26 @@ McpClient mcpClient = new DefaultMcpClient.Builder()
 
 ### Input Guardrails
 
-Implement `McpToolInputGuardrail`. If validation passes, return normally.
-If it fails, throw `McpToolGuardrailException` — the exception message will be
-returned to the LLM as an error and the tool will not be executed.
+Implement `McpToolInputGuardrail`. Return `McpToolInputGuardrailResult.success()` to
+allow the call, or `McpToolInputGuardrailResult.failure(message)` to reject it — the
+error message is returned to the LLM and the tool is not executed.
 
 ```java
 McpToolInputGuardrail forbiddenWordGuardrail = request -> {
     String args = request.toolExecutionRequest().arguments();
     if (args != null && args.contains("CONFIDENTIAL")) {
-        throw new McpToolGuardrailException(
+        return McpToolInputGuardrailResult.failure(
             "Tool call rejected: arguments contain confidential data");
     }
+    return McpToolInputGuardrailResult.success();
 };
 ```
 
 ### Output Guardrails
 
 Implement `McpToolOutputGuardrail`. Return `McpToolOutputGuardrailResult.success(result)`
-with the original or a transformed `ToolExecutionResult`. To reject the result, throw
-`McpToolGuardrailException`.
+with the original or a transformed `ToolExecutionResult`. To reject the result, return
+`McpToolOutputGuardrailResult.failure(message)`.
 
 ```java
 McpToolOutputGuardrail redactionGuardrail = request -> {
@@ -642,7 +643,7 @@ McpToolOutputGuardrail redactionGuardrail = request -> {
 
 When multiple guardrails are configured, they execute in list order.
 For output guardrails, each receives the (possibly transformed) result from the
-previous one. The first guardrail to throw stops the chain.
+previous one. The first guardrail to return a failure stops the chain.
 
 The guardrail request objects provide access to the `ToolExecutionRequest`,
 the `InvocationContext` (if available), and the `McpClient` that is handling the call.

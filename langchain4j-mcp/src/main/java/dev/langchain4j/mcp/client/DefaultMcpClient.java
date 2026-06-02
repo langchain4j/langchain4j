@@ -16,9 +16,9 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.mcp.client.guardrail.McpToolGuardrailException;
 import dev.langchain4j.mcp.client.guardrail.McpToolInputGuardrail;
 import dev.langchain4j.mcp.client.guardrail.McpToolInputGuardrailRequest;
+import dev.langchain4j.mcp.client.guardrail.McpToolInputGuardrailResult;
 import dev.langchain4j.mcp.client.guardrail.McpToolOutputGuardrail;
 import dev.langchain4j.mcp.client.guardrail.McpToolOutputGuardrailRequest;
 import dev.langchain4j.mcp.client.guardrail.McpToolOutputGuardrailResult;
@@ -313,11 +313,11 @@ public class DefaultMcpClient implements McpClient {
             throw new ToolArgumentsException(e);
         }
         for (McpToolInputGuardrail guardrail : inputGuardrails) {
-            try {
-                guardrail.validate(new McpToolInputGuardrailRequest(executionRequest, invocationContext, this));
-            } catch (McpToolGuardrailException e) {
+            McpToolInputGuardrailResult guardrailResult =
+                    guardrail.validate(new McpToolInputGuardrailRequest(executionRequest, invocationContext, this));
+            if (!guardrailResult.isSuccess()) {
                 return ToolExecutionResult.builder()
-                        .resultText(e.getMessage())
+                        .resultText(guardrailResult.errorMessage())
                         .isError(true)
                         .build();
             }
@@ -378,16 +378,15 @@ public class DefaultMcpClient implements McpClient {
             InvocationContext invocationContext) {
         ToolExecutionResult current = toolResult;
         for (McpToolOutputGuardrail guardrail : outputGuardrails) {
-            try {
-                McpToolOutputGuardrailResult guardrailResult = guardrail.validate(
-                        new McpToolOutputGuardrailRequest(executionRequest, current, invocationContext, this));
-                current = guardrailResult.toolExecutionResult();
-            } catch (McpToolGuardrailException e) {
+            McpToolOutputGuardrailResult guardrailResult = guardrail.validate(
+                    new McpToolOutputGuardrailRequest(executionRequest, current, invocationContext, this));
+            if (!guardrailResult.isSuccess()) {
                 return ToolExecutionResult.builder()
-                        .resultText(e.getMessage())
+                        .resultText(guardrailResult.errorMessage())
                         .isError(true)
                         .build();
             }
+            current = guardrailResult.toolExecutionResult();
         }
         return current;
     }

@@ -5,12 +5,12 @@ import dev.langchain4j.Experimental;
 /**
  * A guardrail that validates a tool execution request before it is sent to the MCP server.
  * <p>
- * If validation passes, the method returns normally.
- * If validation fails, the method throws {@link McpToolGuardrailException},
- * and the tool call is not executed — the exception message is returned to the LLM as an error.
+ * Return {@link McpToolInputGuardrailResult#success()} to allow the call, or
+ * {@link McpToolInputGuardrailResult#failure(String)} to reject it — the error message
+ * is returned to the LLM.
  * <p>
  * When multiple input guardrails are configured, they are executed in order.
- * The first guardrail to throw stops the chain.
+ * The first guardrail to return a failure stops the chain.
  */
 @Experimental
 @FunctionalInterface
@@ -20,7 +20,7 @@ public interface McpToolInputGuardrail {
      * Validates the tool execution request.
      *
      * @param request the guardrail request containing the tool execution request and context
-     * @throws McpToolGuardrailException if the tool call should be rejected
+     * @return the validation result
      */
-    void validate(McpToolInputGuardrailRequest request) throws McpToolGuardrailException;
+    McpToolInputGuardrailResult validate(McpToolInputGuardrailRequest request);
 }
