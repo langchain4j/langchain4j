@@ -75,6 +75,25 @@ class AiServiceTokenStreamStreamingHandleTest {
     }
 
     @Test
+    void should_reuse_observed_streaming_handle_for_partial_response_without_context() {
+        TestStreamingHandle streamingHandle = new TestStreamingHandle();
+
+        Assistant assistant = AiServices.create(Assistant.class, new MixedContextStreamingChatModel(streamingHandle));
+
+        List<StreamingHandle> contextStreamingHandles = new ArrayList<>();
+
+        assistant
+                .chat("Hello")
+                .onPartialResponseWithContext(
+                        (partialResponse, context) -> contextStreamingHandles.add(context.streamingHandle()))
+                .onCompleteResponse(ignored -> {})
+                .onError(error -> fail(error.getMessage()))
+                .start();
+
+        assertThat(contextStreamingHandles).containsExactly(streamingHandle, streamingHandle);
+    }
+
+    @Test
     void should_observe_streaming_handle_from_thinking_and_tool_call_contexts() {
         TestStreamingHandle streamingHandle = new TestStreamingHandle();
 
@@ -126,6 +145,17 @@ class AiServiceTokenStreamStreamingHandleTest {
                     new PartialToolCallContext(streamingHandle));
             handler.onCompleteResponse(
                     ChatResponse.builder().aiMessage(AiMessage.from("done")).build());
+        }
+    }
+
+    private record MixedContextStreamingChatModel(StreamingHandle streamingHandle) implements StreamingChatModel {
+
+        @Override
+        public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+            handler.onPartialResponse(new PartialResponse("hello"), new PartialResponseContext(streamingHandle));
+            handler.onPartialResponse("!");
+            handler.onCompleteResponse(
+                    ChatResponse.builder().aiMessage(AiMessage.from("hello!")).build());
         }
     }
 
