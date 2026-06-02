@@ -7,10 +7,12 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static java.util.Arrays.asList;
 import static java.util.Objects.nonNull;
 
+import com.ibm.watsonx.ai.chat.ChatProvider;
 import com.ibm.watsonx.ai.chat.ChatService;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.Thinking;
 import com.ibm.watsonx.ai.chat.model.ThinkingEffort;
+import com.ibm.watsonx.ai.deployment.DeploymentService;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
@@ -31,7 +33,7 @@ import java.util.Set;
 @Internal
 abstract class WatsonxChat {
 
-    protected final ChatService chatService;
+    protected final ChatProvider chatProvider;
     protected final List<ChatModelListener> listeners;
     protected final ChatRequestParameters defaultRequestParameters;
     protected final Set<Capability> supportedCapabilities;
@@ -58,6 +60,7 @@ abstract class WatsonxChat {
         var spaceId = getOrDefault(builder.spaceId, watsonxParameters.spaceId());
         var timeout = getOrDefault(builder.timeout, watsonxParameters.timeout());
         var thinking = getOrDefault(builder.thinking, watsonxParameters.thinking());
+        var deploymentId = getOrDefault(builder.deploymentId, watsonxParameters.deploymentId());
 
         defaultRequestParameters = WatsonxChatRequestParameters.builder()
                 // Common parameters
@@ -86,24 +89,44 @@ abstract class WatsonxChat {
                 .guidedRegex(getOrDefault(builder.guidedRegex, watsonxParameters.guidedRegex()))
                 .lengthPenalty(getOrDefault(builder.lengthPenalty, watsonxParameters.lengthPenalty()))
                 .repetitionPenalty(getOrDefault(builder.repetitionPenalty, watsonxParameters.repetitionPenalty()))
+                .deploymentId(deploymentId)
                 .build();
 
-        var chatServiceBuilder = nonNull(builder.authenticator)
-                ? ChatService.builder().authenticator(builder.authenticator)
-                : ChatService.builder().apiKey(builder.apiKey);
+        if (nonNull(deploymentId)) {
 
-        chatService = chatServiceBuilder
-                .baseUrl(builder.baseUrl)
-                .modelId(modelName)
-                .version(builder.version)
-                .projectId(projectId)
-                .spaceId(spaceId)
-                .timeout(timeout)
-                .logRequests(builder.logRequests)
-                .logResponses(builder.logResponses)
-                .httpClient(builder.httpClient)
-                .verifySsl(builder.verifySsl)
-                .build();
+            var deploymentBuilder = nonNull(builder.authenticator)
+                    ? DeploymentService.builder().authenticator(builder.authenticator)
+                    : DeploymentService.builder().apiKey(builder.apiKey);
+
+            chatProvider = deploymentBuilder
+                    .baseUrl(builder.baseUrl)
+                    .version(builder.version)
+                    .timeout(timeout)
+                    .logRequests(builder.logRequests)
+                    .logResponses(builder.logResponses)
+                    .httpClient(builder.httpClient)
+                    .verifySsl(builder.verifySsl)
+                    .build();
+
+        } else {
+
+            var chatServiceBuilder = nonNull(builder.authenticator)
+                    ? ChatService.builder().authenticator(builder.authenticator)
+                    : ChatService.builder().apiKey(builder.apiKey);
+
+            chatProvider = chatServiceBuilder
+                    .baseUrl(builder.baseUrl)
+                    .modelId(modelName)
+                    .version(builder.version)
+                    .projectId(projectId)
+                    .spaceId(spaceId)
+                    .timeout(timeout)
+                    .logRequests(builder.logRequests)
+                    .logResponses(builder.logResponses)
+                    .httpClient(builder.httpClient)
+                    .verifySsl(builder.verifySsl)
+                    .build();
+        }
     }
 
     final void validateThinkingIsAllowedForGraniteModel(
@@ -151,6 +174,7 @@ abstract class WatsonxChat {
         private String guidedGrammar;
         private Double repetitionPenalty;
         private Double lengthPenalty;
+        private String deploymentId;
         private Thinking thinking;
 
         public T modelName(String modelName) {
@@ -252,6 +276,11 @@ abstract class WatsonxChat {
 
         public T defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
             this.defaultRequestParameters = defaultRequestParameters;
+            return (T) this;
+        }
+
+        public T deploymentId(String deploymentId) {
+            this.deploymentId = deploymentId;
             return (T) this;
         }
 

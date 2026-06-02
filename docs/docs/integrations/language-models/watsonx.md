@@ -123,7 +123,7 @@ You can create an API key at [https://cloud.ibm.com/iam/apikeys](https://cloud.i
 
 ## WatsonxChatModel
 
-The `WatsonxChatModel` class allows you to create an instance of the `ChatModel` interface fully encapsulated within LangChain4j.  
+The `WatsonxChatModel` class allows you to create an instance of the `ChatModel` interface fully encapsulated within LangChain4j.
 To create an instance, you must specify the mandatory parameters:
 
 - `baseUrl(...)` – IBM Cloud endpoint URL (as `String`, `URI`, or `CloudRegion`);
@@ -131,9 +131,17 @@ To create an instance, you must specify the mandatory parameters:
 - `projectId(...)` – IBM Cloud Project ID (or use `spaceId(...)`);
 - `modelName(...)` – Foundation model ID for inference;
 
+Alternatively, you can use a **deployed model** by specifying:
+
+- `baseUrl(...)` – IBM Cloud endpoint URL (as `String`, `URI`, or `CloudRegion`);
+- `apiKey(...)` – IBM Cloud IAM API key;
+- `deploymentId(...)` – Deployment ID of the on-demand deployed model;
+
 > You can authenticate using either `.apiKey(...)` or a full `Authenticator` instance via `.authenticator(...)`.
 
 ### Example
+
+#### Using a foundation model from the catalog
 
 ```java
 import dev.langchain4j.model.chat.ChatModel;
@@ -153,15 +161,42 @@ String answer = chatModel.chat("Hello from watsonx.ai");
 System.out.println(answer);
 ```
 
+#### Using a deployed model (on-demand deployment)
+
+IBM watsonx.ai allows you to deploy foundation models on-demand on dedicated hardware for exclusive use by your organization. These deployed models can be accessed using their `deploymentId`.
+
+```java
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.watsonx.WatsonxChatModel;
+import com.ibm.watsonx.ai.CloudRegion;
+
+ChatModel chatModel = WatsonxChatModel.builder()
+    .baseUrl(CloudRegion.FRANKFURT)
+    .apiKey("your-api-key")
+    .deploymentId("your-deployment-id")
+    .temperature(0.7)
+    .maxOutputTokens(0)
+    .build();
+
+String answer = chatModel.chat("Hello from watsonx.ai");
+System.out.println(answer);
+```
+
+> **Note:** When using `deploymentId`, you don't need to specify `projectId`, `spaceId`, or `modelName` as the deployment already contains this information.
+
 > 🔗 [View available models](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models.html?context=wx#ibm-provided)
+
+> 🔗 [Learn more about deploying models on-demand](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/deploy-on-demand-overview.html?context=wx&audience=wdp)
 
 ## WatsonxStreamingChatModel
 
-The `WatsonxStreamingChatModel` provides streaming support for IBM watsonx.ai within LangChain4j. It’s useful when you want to process tokens as they are generated, ideal for real-time applications such as chat UIs or long text generation.
+The `WatsonxStreamingChatModel` provides streaming support for IBM watsonx.ai within LangChain4j. It's useful when you want to process tokens as they are generated, ideal for real-time applications such as chat UIs or long text generation.
 
 Streaming uses the same configuration structure and parameters as the non-streaming [`WatsonxChatModel`](#watsonxchatmodel). The main difference is that responses are delivered incrementally through a handler interface.
 
 ### Example
+
+#### Using a foundation model from the catalog
 
 ```java
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -197,7 +232,46 @@ model.chat("What is the capital of Italy?", new StreamingChatResponseHandler() {
 });
 ```
 
+#### Using a deployed model (on-demand deployment)
+
+```java
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.ChatResponse;
+import dev.langchain4j.model.watsonx.WatsonxStreamingChatModel;
+import com.ibm.watsonx.ai.CloudRegion;
+
+StreamingChatModel model = WatsonxStreamingChatModel.builder()
+    .baseUrl(CloudRegion.FRANKFURT)
+    .apiKey("your-api-key")
+    .deploymentId("your-deployment-id")
+    .maxOutputTokens(0)
+    .build();
+
+model.chat("What is the capital of Italy?", new StreamingChatResponseHandler() {
+
+    @Override
+    public void onPartialResponse(String partialResponse) {
+        System.out.println("Partial: " + partialResponse);
+    }
+
+    @Override
+    public void onCompleteResponse(ChatResponse completeResponse) {
+        System.out.println("Complete: " + completeResponse);
+    }
+
+    @Override
+    public void onError(Throwable error) {
+        error.printStackTrace();
+    }
+});
+```
+
+> **Note:** When using `deploymentId`, you don't need to specify `projectId`, `spaceId`, or `modelName` as the deployment already contains this information.
+
 > 🔗 [View available models](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models.html?context=wx#ibm-provided)
+
+> 🔗 [Learn more about deploying models on-demand](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/deploy-on-demand-overview.html?context=wx&audience=wdp)
 
 ## Tool Integration
 

@@ -26,6 +26,7 @@ import com.ibm.watsonx.ai.chat.model.ResultMessage;
 import com.ibm.watsonx.ai.chat.model.ThinkingEffort;
 import com.ibm.watsonx.ai.chat.model.ToolCall;
 import com.ibm.watsonx.ai.chat.model.UserMessage;
+import com.ibm.watsonx.ai.deployment.DeploymentService;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.LangChain4jException;
@@ -63,7 +64,13 @@ public class WatsonxChatModelTest {
     ChatService mockChatService;
 
     @Mock
+    DeploymentService deploymentService;
+
+    @Mock
     ChatService.Builder mockChatServiceBuilder;
+
+    @Mock
+    DeploymentService.Builder mockDeploymentServiceBuilder;
 
     @Captor
     ArgumentCaptor<com.ibm.watsonx.ai.chat.ChatRequest> chatRequestCaptor;
@@ -87,6 +94,17 @@ public class WatsonxChatModelTest {
         when(mockChatServiceBuilder.verifySsl(anyBoolean())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.build()).thenReturn(mockChatService);
 
+        when(mockDeploymentServiceBuilder.baseUrl(any(URI.class))).thenReturn(mockDeploymentServiceBuilder);
+        when(mockDeploymentServiceBuilder.timeout(any())).thenReturn(mockDeploymentServiceBuilder);
+        when(mockDeploymentServiceBuilder.version(any())).thenReturn(mockDeploymentServiceBuilder);
+        when(mockDeploymentServiceBuilder.logRequests(any())).thenReturn(mockDeploymentServiceBuilder);
+        when(mockDeploymentServiceBuilder.logResponses(any())).thenReturn(mockDeploymentServiceBuilder);
+        when(mockDeploymentServiceBuilder.authenticator(any())).thenReturn(mockDeploymentServiceBuilder);
+        when(mockDeploymentServiceBuilder.apiKey(any())).thenReturn(mockDeploymentServiceBuilder);
+        when(mockDeploymentServiceBuilder.httpClient(any())).thenReturn(mockDeploymentServiceBuilder);
+        when(mockDeploymentServiceBuilder.verifySsl(anyBoolean())).thenReturn(mockDeploymentServiceBuilder);
+        when(mockDeploymentServiceBuilder.build()).thenReturn(deploymentService);
+
         var chatUsage = new ChatUsage(10, 10, 20);
         chatResponse = ChatResponse.build()
                 .id("id")
@@ -100,9 +118,9 @@ public class WatsonxChatModelTest {
     }
 
     @Test
-    void testWatsonxChatModelBuilder() {
+    void should_create_create_a_watsonx_chat_model_from_a_chat_service() {
 
-        var chatModel = WatsonxChatModel.builder()
+        var chatModel = assertDoesNotThrow(() -> WatsonxChatModel.builder()
                 .baseUrl(CloudRegion.FRANKFURT)
                 .modelName("model-name")
                 .apiKey("api-key-test")
@@ -111,10 +129,16 @@ public class WatsonxChatModelTest {
                 .version("my-version")
                 .logRequests(true)
                 .logResponses(true)
-                .build();
+                .build());
 
         var defaultRequestParameters =
                 assertInstanceOf(WatsonxChatRequestParameters.class, chatModel.defaultRequestParameters());
+
+        var chatProviderField =
+                assertDoesNotThrow(() -> chatModel.getClass().getSuperclass().getDeclaredField("chatProvider"));
+        var chatProvider = assertDoesNotThrow(() -> chatProviderField.get(chatModel));
+
+        assertInstanceOf(ChatService.class, chatProvider);
         assertNull(defaultRequestParameters.frequencyPenalty());
         assertNull(defaultRequestParameters.logitBias());
         assertNull(defaultRequestParameters.logprobs());
@@ -139,18 +163,57 @@ public class WatsonxChatModelTest {
         assertNull(defaultRequestParameters.guidedRegex());
         assertNull(defaultRequestParameters.repetitionPenalty());
         assertNull(defaultRequestParameters.lengthPenalty());
-
-        assertDoesNotThrow(() -> WatsonxChatModel.builder()
-                .baseUrl("https://test.com")
-                .modelName("model-name")
-                .apiKey("api-key")
-                .projectId("project-id")
-                .spaceId("space-id")
-                .build());
     }
 
     @Test
-    void testDoChat() {
+    void should_create_create_a_watsonx_chat_model_from_a_deployment_service() {
+
+        var chatModel = assertDoesNotThrow(() -> WatsonxChatModel.builder()
+                .baseUrl(CloudRegion.FRANKFURT)
+                .apiKey("api-key-test")
+                .version("my-version")
+                .logRequests(true)
+                .logResponses(true)
+                .deploymentId("deployment-id")
+                .build());
+
+        var defaultRequestParameters =
+                assertInstanceOf(WatsonxChatRequestParameters.class, chatModel.defaultRequestParameters());
+
+        var chatProviderField =
+                assertDoesNotThrow(() -> chatModel.getClass().getSuperclass().getDeclaredField("chatProvider"));
+        var chatProvider = assertDoesNotThrow(() -> chatProviderField.get(chatModel));
+
+        assertInstanceOf(DeploymentService.class, chatProvider);
+        assertNull(defaultRequestParameters.frequencyPenalty());
+        assertNull(defaultRequestParameters.logitBias());
+        assertNull(defaultRequestParameters.logprobs());
+        assertNull(defaultRequestParameters.maxOutputTokens());
+        assertNull(defaultRequestParameters.modelName());
+        assertNull(defaultRequestParameters.presencePenalty());
+        assertNull(defaultRequestParameters.projectId());
+        assertNull(defaultRequestParameters.responseFormat());
+        assertNull(defaultRequestParameters.seed());
+        assertNull(defaultRequestParameters.spaceId());
+        assertEquals(List.of(), defaultRequestParameters.stopSequences());
+        assertNull(defaultRequestParameters.temperature());
+        assertNull(defaultRequestParameters.timeout());
+        assertNull(defaultRequestParameters.toolChoice());
+        assertNull(defaultRequestParameters.toolChoiceName());
+        assertEquals(List.of(), defaultRequestParameters.toolSpecifications());
+        assertNull(defaultRequestParameters.topK());
+        assertNull(defaultRequestParameters.topLogprobs());
+        assertNull(defaultRequestParameters.topP());
+        assertNull(defaultRequestParameters.guidedChoice());
+        assertNull(defaultRequestParameters.guidedGrammar());
+        assertNull(defaultRequestParameters.guidedRegex());
+        assertNull(defaultRequestParameters.repetitionPenalty());
+        assertNull(defaultRequestParameters.lengthPenalty());
+        assertEquals("deployment-id", defaultRequestParameters.deploymentId());
+    }
+
+    @Test
+    void should_do_chat() {
 
         var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null, null);
         var resultChoice = new ResultChoice(0, resultMessage, "stop");
@@ -170,11 +233,50 @@ public class WatsonxChatModelTest {
             assertEquals(
                     List.of(UserMessage.text("hello")),
                     chatRequestCaptor.getValue().messages());
+            assertNull(chatRequestCaptor.getValue().deploymentId());
         });
     }
 
     @Test
-    void testDoChatWithRefusal() {
+    void should_do_chat_with_deployment_service() {
+
+        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null, null);
+        var resultChoice = new ResultChoice(0, resultMessage, "stop");
+        chatResponse.choices(List.of(resultChoice));
+
+        when(deploymentService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
+
+        withDeploymentServiceMock(() -> {
+            var chatModel = WatsonxChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .deploymentId("deployment-id")
+                    .apiKey("api-key")
+                    .build();
+
+            assertEquals("Hello", chatModel.chat("hello"));
+            assertEquals(
+                    List.of(UserMessage.text("hello")),
+                    chatRequestCaptor.getValue().messages());
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(List.of(dev.langchain4j.data.message.UserMessage.from("hello")))
+                    .parameters(WatsonxChatRequestParameters.builder()
+                            .deploymentId("deployment-id-override")
+                            .build())
+                    .build();
+
+            assertNotNull(chatModel.chat(chatRequest));
+            assertEquals(2, chatRequestCaptor.getAllValues().size());
+            assertEquals(
+                    "deployment-id", chatRequestCaptor.getAllValues().get(0).deploymentId());
+            assertEquals(
+                    "deployment-id-override",
+                    chatRequestCaptor.getAllValues().get(1).deploymentId());
+        });
+    }
+
+    @Test
+    void should_do_chat_with_refusal() {
 
         var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, "refusal", null);
         var resultChoice = new ResultChoice(0, resultMessage, "stop");
@@ -195,7 +297,7 @@ public class WatsonxChatModelTest {
     }
 
     @Test
-    void shouldExtractThinkingWhenConfiguredInModelBuilder() throws Exception {
+    void should_extract_thinking_when_configured_in_model_builder() throws Exception {
 
         var extractionTags = ExtractionTags.of("think", "response");
         var resultMessage = new ResultMessage(
@@ -292,7 +394,7 @@ public class WatsonxChatModelTest {
     }
 
     @Test
-    void shouldExtractThinkingWhenConfiguredInRequestParameters() throws Exception {
+    void should_extract_thinking_when_configured_in_request_parameters() throws Exception {
 
         var extractionTags = ExtractionTags.of("think", "response");
         var resultMessage = new ResultMessage(
@@ -395,7 +497,7 @@ public class WatsonxChatModelTest {
     }
 
     @Test
-    void shouldThrowExceptionWhenThinkingUsedWithSystemMessage() {
+    void should_throw_exception_when_thinking_used_with_system_message() {
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
@@ -418,7 +520,7 @@ public class WatsonxChatModelTest {
     }
 
     @Test
-    void shouldThrowExceptionWhenThinkingUsedWithTools() {
+    void should_throw_exception_when_thinking_used_with_tools() {
 
         withChatServiceMock(() -> {
             var chatModel = WatsonxChatModel.builder()
@@ -440,7 +542,7 @@ public class WatsonxChatModelTest {
     }
 
     @Test
-    void shouldReturnRawTextWhenThinkingIsNotEnabled() {
+    void should_return_raw_text_when_thinking_is_not_enabled() {
 
         var resultMessage = new ResultMessage(
                 AssistantMessage.ROLE,
@@ -476,7 +578,7 @@ public class WatsonxChatModelTest {
     }
 
     @Test
-    void testDoChatWithTool() {
+    void should_do_chat_with_tool() {
 
         var toolCall = new ToolCall(0, "id", "function", new FunctionCall("name", "{}"));
         var resultMessage = new ResultMessage(AssistantMessage.ROLE, null, null, null, List.of(toolCall));
@@ -526,7 +628,7 @@ public class WatsonxChatModelTest {
     }
 
     @Test
-    void testChatRequest() {
+    void should_handle_chat_request() {
 
         var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null, null);
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
@@ -591,7 +693,7 @@ public class WatsonxChatModelTest {
     }
 
     @Test
-    void testChatRequestParameter() {
+    void should_handle_chat_request_parameters() {
 
         var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null, null);
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
@@ -895,7 +997,7 @@ public class WatsonxChatModelTest {
     }
 
     @Test
-    void testChatRequestWithTopK() {
+    void should_throw_exception_for_chat_request_with_top_k() {
 
         var chatModel = WatsonxChatModel.builder()
                 .baseUrl("https://test.com")
@@ -912,19 +1014,21 @@ public class WatsonxChatModelTest {
                         .topK(10)
                         .build()));
 
-        assertThrows(UnsupportedFeatureException.class, () -> WatsonxChatModel.builder()
-                .baseUrl("https://test.com")
-                .modelName("modelId")
-                .projectId("project-id")
-                .spaceId("space-id")
-                .apiKey("api-key")
-                .defaultRequestParameters(
-                        ChatRequestParameters.builder().topK(10).build())
-                .build());
+        assertThrows(
+                UnsupportedFeatureException.class,
+                () -> WatsonxChatModel.builder()
+                        .baseUrl("https://test.com")
+                        .modelName("modelId")
+                        .projectId("project-id")
+                        .spaceId("space-id")
+                        .apiKey("api-key")
+                        .defaultRequestParameters(
+                                ChatRequestParameters.builder().topK(10).build())
+                        .build());
     }
 
     @Test
-    void testSupportCapabilities() {
+    void should_support_capabilities() {
 
         var chatModel = WatsonxChatModel.builder()
                 .baseUrl("https://test.com")
@@ -942,6 +1046,13 @@ public class WatsonxChatModelTest {
     private void withChatServiceMock(Runnable action) {
         try (MockedStatic<ChatService> mockedStatic = mockStatic(ChatService.class)) {
             mockedStatic.when(ChatService::builder).thenReturn(mockChatServiceBuilder);
+            action.run();
+        }
+    }
+
+    private void withDeploymentServiceMock(Runnable action) {
+        try (MockedStatic<DeploymentService> mockedStatic = mockStatic(DeploymentService.class)) {
+            mockedStatic.when(DeploymentService::builder).thenReturn(mockDeploymentServiceBuilder);
             action.run();
         }
     }

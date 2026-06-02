@@ -9,7 +9,6 @@ import static java.util.stream.Collectors.toCollection;
 import com.ibm.watsonx.ai.chat.ChatResponse.ResultChoice;
 import com.ibm.watsonx.ai.chat.model.AssistantMessage;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
-import com.ibm.watsonx.ai.chat.model.ChatParameters;
 import com.ibm.watsonx.ai.chat.model.ChatUsage;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.ResultMessage;
@@ -68,23 +67,30 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
                 ? toolSpecifications.stream().map(Converter::toTool).toList()
                 : null;
 
-        var watsonxChatRequest = com.ibm.watsonx.ai.chat.ChatRequest.builder();
-        ExtractionTags tags = null;
+        var watsonxChatRequestBuilder = com.ibm.watsonx.ai.chat.ChatRequest.builder();
 
-        if (chatRequest.parameters() instanceof WatsonxChatRequestParameters wcrp && nonNull(wcrp.thinking())) {
-            validateThinkingIsAllowedForGraniteModel(wcrp.modelName(), chatRequest.messages(), toolSpecifications);
-            watsonxChatRequest.thinking(wcrp.thinking());
-            tags = wcrp.thinking().extractionTags();
+        ExtractionTags tags = null;
+        String deploymentId = null;
+
+        if (chatRequest.parameters() instanceof WatsonxChatRequestParameters wcrp) {
+            deploymentId = wcrp.deploymentId();
+            if (nonNull(wcrp.thinking())) {
+                validateThinkingIsAllowedForGraniteModel(wcrp.modelName(), chatRequest.messages(), toolSpecifications);
+                watsonxChatRequestBuilder.thinking(wcrp.thinking());
+                tags = wcrp.thinking().extractionTags();
+            }
         }
 
-        ChatParameters parameters = Converter.toChatParameters(chatRequest.parameters());
+        var parameters = Converter.toChatParameters(chatRequest.parameters());
+        var watsonxChatRequest = watsonxChatRequestBuilder
+                .messages(messages)
+                .tools(tools)
+                .parameters(parameters)
+                .deploymentId(deploymentId)
+                .build();
 
         com.ibm.watsonx.ai.chat.ChatResponse chatResponse =
-                WatsonxExceptionMapper.INSTANCE.withExceptionMapper(() -> chatService.chat(watsonxChatRequest
-                        .messages(messages)
-                        .tools(tools)
-                        .parameters(parameters)
-                        .build()));
+                WatsonxExceptionMapper.INSTANCE.withExceptionMapper(() -> chatProvider.chat(watsonxChatRequest));
 
         ResultChoice choice = chatResponse.choices().get(0);
         ChatUsage usage = chatResponse.usage();
