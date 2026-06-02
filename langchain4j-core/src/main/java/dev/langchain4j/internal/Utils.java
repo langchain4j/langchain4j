@@ -554,8 +554,6 @@ public class Utils {
         return Optional.empty();
     }
 
-    private static final Map<Class<?>, List<Method>> DECLARED_METHODS_CACHE = new ConcurrentHashMap<>();
-
     private record MethodSignature(String name, List<Class<?>> params) {}
 
     /**
@@ -564,10 +562,6 @@ public class Utils {
      * Bridge and synthetic methods are filtered out.
      */
     public static List<Method> allDeclaredMethods(Class<?> clazz) {
-        return DECLARED_METHODS_CACHE.computeIfAbsent(clazz, Utils::findAllDeclaredMethods);
-    }
-
-    private static List<Method> findAllDeclaredMethods(Class<?> clazz) {
         List<Method> allMethods = new ArrayList<>();
         Set<MethodSignature> seen = new HashSet<>();
         while (clazz != null && clazz != Object.class) {
