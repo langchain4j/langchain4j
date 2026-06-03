@@ -16,6 +16,10 @@ import org.jspecify.annotations.Nullable;
  * <p>Batch processing typically offers significant cost reductions compared to real-time requests
  * and is ideal for large-scale, non-urgent tasks.</p>
  *
+ * <p>Each successful result is a {@link Response} wrapping the computed {@link Embedding}. The
+ * {@link Response} carries the per-embedding {@link dev.langchain4j.model.output.TokenUsage} when the
+ * provider reports it, and {@code null} otherwise.</p>
+ *
  * @see BatchResponse
  * @see BatchPage
  */
@@ -54,7 +58,7 @@ public interface BatchEmbeddingModel {
      * Lists embedding batch jobs with optional pagination.
      *
      * @param pagination the maximum number of batch jobs to return and token for retrieving a specific page; if null, uses server default
-     * @return a {@link BatchPage} containing chat batch responses and pagination information
+     * @return a {@link BatchPage} containing embedding batch responses and pagination information
      */
     BatchPage<Response<Embedding>> list(@Nullable BatchPagination pagination);
 }

@@ -1,6 +1,7 @@
 package dev.langchain4j.model.batch;
 
-import static dev.langchain4j.model.batch.BatchState.*;
+import static dev.langchain4j.model.batch.BatchState.PENDING;
+import static dev.langchain4j.model.batch.BatchState.SUCCEEDED;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;

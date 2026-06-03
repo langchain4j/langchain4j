@@ -53,7 +53,7 @@ public interface BatchImageModel {
      * Lists image generation batch jobs with optional pagination.
      *
      * @param pagination the maximum number of batch jobs to return and token for retrieving a specific page; if null, uses server default
-     * @return a {@link BatchPage} containing chat batch responses and pagination information
+     * @return a {@link BatchPage} containing image generation batch responses and pagination information
      */
     BatchPage<Response<Image>> list(@Nullable BatchPagination pagination);
 }
