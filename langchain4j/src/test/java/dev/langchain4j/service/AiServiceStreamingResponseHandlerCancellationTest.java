@@ -63,7 +63,8 @@ class AiServiceStreamingResponseHandlerCancellationTest {
                     .executeToolsConcurrently(toolExecutor)
                     .build();
 
-            assistant.chat("hi")
+            assistant
+                    .chat("hi")
                     .cancelOn(cancelled::get)
                     .onCompleteResponse(r -> {})
                     .onError(t -> {})
@@ -110,7 +111,8 @@ class AiServiceStreamingResponseHandlerCancellationTest {
                     .executeToolsConcurrently(toolExecutor)
                     .build();
 
-            assistant.chat("hi")
+            assistant
+                    .chat("hi")
                     .cancelOn(cancelled::get)
                     .onCompleteResponse(r -> completeFired.set(true))
                     .onError(t -> {})
@@ -146,7 +148,8 @@ class AiServiceStreamingResponseHandlerCancellationTest {
                     .chatMemory(memory)
                     .build();
 
-            assistant.chat("hi")
+            assistant
+                    .chat("hi")
                     .cancelOn(cancelled::get)
                     .onCompleteResponse(r -> completes.incrementAndGet())
                     .onError(t -> errors.incrementAndGet())
@@ -213,7 +216,8 @@ class AiServiceStreamingResponseHandlerCancellationTest {
                     .streamingToolDispatchHook(settle.hook())
                     .build();
 
-            assistant.chat("hi")
+            assistant
+                    .chat("hi")
                     .cancelOn(cancelled::get)
                     .onCompleteResponse(r -> {})
                     .onError(t -> {})
@@ -278,8 +282,8 @@ class AiServiceStreamingResponseHandlerCancellationTest {
                 .arguments("{\"arg0\": \"b\"}")
                 .build();
 
-        var model = new ScriptedStreamingChatModel(
-                List.of(req1, req2), handler -> completeToolTurn(handler, req1, req2));
+        var model =
+                new ScriptedStreamingChatModel(List.of(req1, req2), handler -> completeToolTurn(handler, req1, req2));
 
         // Flip cancellation right after alpha's persistence-loop event fires; beta's
         // iteration then observes terminal loop state and must write the placeholder.
@@ -303,7 +307,8 @@ class AiServiceStreamingResponseHandlerCancellationTest {
                     .streamingToolDispatchHook(settle.hook())
                     .build();
 
-            assistant.chat("hi")
+            assistant
+                    .chat("hi")
                     .cancelOn(cancelled::get)
                     .onCompleteResponse(r -> {})
                     .onError(t -> {})
@@ -387,8 +392,8 @@ class AiServiceStreamingResponseHandlerCancellationTest {
                 .arguments("{\"arg0\": \"b\"}")
                 .build();
 
-        var model = new ScriptedStreamingChatModel(
-                List.of(req1, req2), handler -> completeToolTurn(handler, req1, req2));
+        var model =
+                new ScriptedStreamingChatModel(List.of(req1, req2), handler -> completeToolTurn(handler, req1, req2));
         SettleSignal settle = new SettleSignal();
 
         try {
@@ -399,7 +404,8 @@ class AiServiceStreamingResponseHandlerCancellationTest {
                     .streamingToolDispatchHook(settle.hook())
                     .build();
 
-            assistant.chat("hi")
+            assistant
+                    .chat("hi")
                     .cancelOn(cancelled::get)
                     .onToolExecuted(execution -> {
                         streamToolCallbacks.incrementAndGet();
@@ -533,7 +539,8 @@ class AiServiceStreamingResponseHandlerCancellationTest {
                     .streamingToolDispatchHook(hook)
                     .build();
 
-            assistant.chat("hi")
+            assistant
+                    .chat("hi")
                     .onCompleteResponse(r -> {})
                     .onError(t -> {
                         errorReceived.set(t);
@@ -603,8 +610,8 @@ class AiServiceStreamingResponseHandlerCancellationTest {
     void eager_path_future_cancelled_by_silent_cancel_writes_cancellation_placeholder_and_does_not_continue()
             throws Exception {
         AtomicBoolean cancelled = new AtomicBoolean(false);
-        ChatMemory memory = new CancelAfterAssistantToolMessageMemory(
-                MessageWindowChatMemory.withMaxMessages(10), cancelled);
+        ChatMemory memory =
+                new CancelAfterAssistantToolMessageMemory(MessageWindowChatMemory.withMaxMessages(10), cancelled);
         CountDownLatch slowToolStarted = new CountDownLatch(1);
         CountDownLatch slowToolProceed = new CountDownLatch(1);
 
@@ -641,7 +648,8 @@ class AiServiceStreamingResponseHandlerCancellationTest {
                     .executeToolsConcurrently(toolExecutor)
                     .build();
 
-            assistant.chat("hi")
+            assistant
+                    .chat("hi")
                     .cancelOn(cancelled::get)
                     .onCompleteResponse(r -> {})
                     .onError(t -> {})
@@ -682,7 +690,9 @@ class AiServiceStreamingResponseHandlerCancellationTest {
             // No tool calls — the model goes straight to a final text response.
             onCompleteResponse(
                     handler,
-                    ChatResponse.builder().aiMessage(AiMessage.from("hello back")).build());
+                    ChatResponse.builder()
+                            .aiMessage(AiMessage.from("hello back"))
+                            .build());
         });
 
         try {
@@ -692,7 +702,8 @@ class AiServiceStreamingResponseHandlerCancellationTest {
                     .chatMemory(memory)
                     .build();
 
-            assistant.chat("hi")
+            assistant
+                    .chat("hi")
                     .cancelOn(cancelled::get)
                     .onCompleteResponse(r -> done.countDown())
                     .onError(t -> done.countDown())
@@ -701,8 +712,8 @@ class AiServiceStreamingResponseHandlerCancellationTest {
             assertThat(done.await(5, SECONDS)).as("loop should complete").isTrue();
 
             List<ChatMessage> stored = memory.messages();
-            boolean hasAssistantTurn = stored.stream()
-                    .anyMatch(m -> m instanceof AiMessage ai && "hello back".equals(ai.text()));
+            boolean hasAssistantTurn =
+                    stored.stream().anyMatch(m -> m instanceof AiMessage ai && "hello back".equals(ai.text()));
             assertThat(hasAssistantTurn)
                     .as("non-tool response must still be persisted (the addToMemory move keeps both branches)")
                     .isTrue();
@@ -724,7 +735,9 @@ class AiServiceStreamingResponseHandlerCancellationTest {
         var model = new ScriptedStreamingChatModel(List.of(), handler -> {
             onCompleteResponse(
                     handler,
-                    ChatResponse.builder().aiMessage(AiMessage.from("hello back")).build());
+                    ChatResponse.builder()
+                            .aiMessage(AiMessage.from("hello back"))
+                            .build());
         });
 
         try {
@@ -736,7 +749,8 @@ class AiServiceStreamingResponseHandlerCancellationTest {
                     .chatMemory(memory)
                     .build();
 
-            assistant.chat("hi")
+            assistant
+                    .chat("hi")
                     .onCompleteResponse(r -> {
                         throw boom;
                     })
@@ -785,7 +799,8 @@ class AiServiceStreamingResponseHandlerCancellationTest {
                     .executeToolsConcurrently(toolExecutor)
                     .build();
 
-            assistant.chat("hi")
+            assistant
+                    .chat("hi")
                     .onCompleteResponse(r -> {})
                     .onError(t -> {
                         captured.set(t);
@@ -891,7 +906,8 @@ class AiServiceStreamingResponseHandlerCancellationTest {
 
     private static void completeToolTurn(StreamingChatResponseHandler handler, ToolExecutionRequest... requests) {
         onCompleteResponse(
-                handler, ChatResponse.builder().aiMessage(AiMessage.from(requests)).build());
+                handler,
+                ChatResponse.builder().aiMessage(AiMessage.from(requests)).build());
     }
 
     private static void awaitOrThrow(CountDownLatch latch, String what) {

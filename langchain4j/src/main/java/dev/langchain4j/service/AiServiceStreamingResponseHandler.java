@@ -234,7 +234,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.toolExecutionErrorHandler = ensureNotNull(toolExecutionErrorHandler, "toolExecutionErrorHandler");
         this.toolExecutor = toolExecutor;
         this.streamingChatModel = streamingChatModel;
-        this.streamingDispatchHook = streamingDispatchHook != null ? streamingDispatchHook : StreamingToolDispatchHook.INLINE;
+        this.streamingDispatchHook =
+                streamingDispatchHook != null ? streamingDispatchHook : StreamingToolDispatchHook.INLINE;
         this.loopParameters = loopParameters != null ? loopParameters : chatRequest.parameters();
         this.loopState = ensureNotNull(loopState, "loopState");
 
@@ -361,7 +362,11 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private ToolExecutionResult execute(ToolExecutionRequest toolRequest) {
         return context.toolService.executeTool(
-                invocationContext, toolExecutors, toolRequest, beforeToolExecutionHandler, streamToolExecutionHandler());
+                invocationContext,
+                toolExecutors,
+                toolRequest,
+                beforeToolExecutionHandler,
+                streamToolExecutionHandler());
     }
 
     private Consumer<ToolExecution> streamToolExecutionHandler() {
@@ -671,24 +676,22 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             if (shouldScheduleToolsEagerly()) {
                 results = gatherScheduledToolResults();
             } else {
-                results = ToolBatchDispatcher.dispatch(
-                        ToolBatchDispatcher.Request.builder()
-                                .toolRequests(toolRequests)
-                                .toolExecutors(toolExecutors)
-                                .executor(toolExecutor)
-                                .invocationContext(invocationContext)
-                                .beforeToolExecution(combine(
-                                        context.toolService.beforeToolExecution(), beforeToolExecutionHandler))
-                                .afterToolExecution(combine(
-                                        context.toolService.afterToolExecution(), streamToolExecutionHandler()))
-                                .errorHandlerBypass(context.toolService.errorHandlerBypass())
-                                .argumentsErrorHandler(toolArgumentsErrorHandler)
-                                .executionErrorHandler(toolExecutionErrorHandler)
-                                .hallucinationStrategy(context.toolService.hallucinatedToolNameStrategy())
-                                .maxToolCallsPerResponse(0)
-                                .useExecutorForSingleTool(shouldUseExecutorForDeferredSingleTool(
-                                        maxToolCallsPerResponse))
-                                .build());
+                results = ToolBatchDispatcher.dispatch(ToolBatchDispatcher.Request.builder()
+                        .toolRequests(toolRequests)
+                        .toolExecutors(toolExecutors)
+                        .executor(toolExecutor)
+                        .invocationContext(invocationContext)
+                        .beforeToolExecution(
+                                combine(context.toolService.beforeToolExecution(), beforeToolExecutionHandler))
+                        .afterToolExecution(
+                                combine(context.toolService.afterToolExecution(), streamToolExecutionHandler()))
+                        .errorHandlerBypass(context.toolService.errorHandlerBypass())
+                        .argumentsErrorHandler(toolArgumentsErrorHandler)
+                        .executionErrorHandler(toolExecutionErrorHandler)
+                        .hallucinationStrategy(context.toolService.hallucinatedToolNameStrategy())
+                        .maxToolCallsPerResponse(0)
+                        .useExecutorForSingleTool(shouldUseExecutorForDeferredSingleTool(maxToolCallsPerResponse))
+                        .build());
             }
         } catch (Throwable t) {
             loopState.fail(t);
@@ -751,8 +754,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         }
         List<ChatMessage> messages = messagesToSend(invocationContext.chatMemoryId());
 
-        ToolServiceContext updatedToolContext = context.toolService.refreshDynamicProvidersWithFactory(
-                toolServiceContext, messages, invocationContext);
+        ToolServiceContext updatedToolContext =
+                context.toolService.refreshDynamicProvidersWithFactory(toolServiceContext, messages, invocationContext);
         updatedToolContext = ToolSearchService.addFoundTools(updatedToolContext, toolResults);
 
         if (!loopState.canContinue()) {
