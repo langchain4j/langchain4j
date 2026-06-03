@@ -19,17 +19,17 @@ import com.google.genai.types.JobState;
 import com.google.genai.types.JobState.Known;
 import com.google.genai.types.SafetySetting;
 import dev.langchain4j.Experimental;
+import dev.langchain4j.model.batch.BatchError;
+import dev.langchain4j.model.batch.BatchItemResult;
+import dev.langchain4j.model.batch.BatchPage;
+import dev.langchain4j.model.batch.BatchPagination;
+import dev.langchain4j.model.batch.BatchRequest;
+import dev.langchain4j.model.batch.BatchResponse;
+import dev.langchain4j.model.batch.BatchState;
+import dev.langchain4j.model.chat.BatchChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.BatchError;
-import dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.BatchIncomplete;
-import dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.BatchJobState;
-import dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.BatchList;
-import dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.BatchName;
-import dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.BatchResponse;
-import dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.BatchSuccess;
-import dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.Status;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,7 +43,7 @@ import java.util.stream.Stream;
  * Provides an interface for interacting with the Google GenAI Batch API for Chat models.
  */
 @Experimental
-public final class GoogleGenAiBatchChatModel {
+public final class GoogleGenAiBatchChatModel implements BatchChatModel {
 
     private final Client client;
     private final String modelName;
@@ -96,17 +96,38 @@ public final class GoogleGenAiBatchChatModel {
         return new Builder();
     }
 
+    @Override
+    public BatchResponse<ChatResponse> submit(BatchRequest<ChatRequest> request) {
+        return submit("batch-chat-job", request.requests());
+    }
+
+    @Override
+    public BatchResponse<ChatResponse> retrieve(String batchId) {
+        BatchJob batchJob = client.batches.get(batchId, GetBatchJobConfig.builder().build());
+        return processResponse(batchJob);
+    }
+
+    @Override
+    public void cancel(String batchId) {
+        client.batches.cancel(batchId, CancelBatchJobConfig.builder().build());
+    }
+
+    @Override
+    public BatchPage<ChatResponse> list(BatchPagination pagination) {
+        Integer pageSize = pagination != null ? pagination.pageSize() : null;
+        String pageToken = pagination != null ? pagination.pageToken() : null;
+        return GoogleGenAiBatchUtils.listBatchJobs(client, pageSize, pageToken, this::processResponse);
+    }
+
     /**
      * Creates and enqueues a batch of content generation requests for asynchronous processing.
      * All requests must use the same model.
      *
      * @param displayName a user-defined name for the batch
-     * @param priority    not explicitly supported in google-genai Java SDK BatchJob creation, ignored.
      * @param requests    a list of chat requests to be processed in the batch
      * @return a {@link BatchResponse} representing the initial state of the batch operation
      */
-    public BatchResponse<ChatResponse> createBatchInline(
-            String displayName, Long priority, List<ChatRequest> requests) {
+    public BatchResponse<ChatResponse> submit(String displayName, List<ChatRequest> requests) {
         validateModelInChatRequests(modelName, requests);
 
         List<InlinedRequest> inlinedRequests =
@@ -129,7 +150,7 @@ public final class GoogleGenAiBatchChatModel {
      * @param file        the Google GenAI File object representing the uploaded file containing batch requests
      * @return a {@link BatchResponse} representing the initial state of the batch operation
      */
-    public BatchResponse<ChatResponse> createBatchFromFile(String displayName, File file) {
+    public BatchResponse<ChatResponse> submit(String displayName, File file) {
         BatchJobSource src = BatchJobSource.builder()
                 .fileName(file.name().isPresent() ? file.name().get() : null)
                 .build();
@@ -142,33 +163,10 @@ public final class GoogleGenAiBatchChatModel {
     }
 
     /**
-     * Retrieves the current state and results of a batch operation.
-     */
-    public BatchResponse<ChatResponse> retrieveBatchResults(BatchName name) {
-        BatchJob batchJob =
-                client.batches.get(name.value(), GetBatchJobConfig.builder().build());
-        return processResponse(batchJob);
-    }
-
-    /**
-     * Cancels a batch operation that is currently pending or running.
-     */
-    public void cancelBatchJob(BatchName name) {
-        client.batches.cancel(name.value(), CancelBatchJobConfig.builder().build());
-    }
-
-    /**
      * Deletes a batch job from the system.
      */
-    public void deleteBatchJob(BatchName name) {
-        client.batches.delete(name.value(), DeleteBatchJobConfig.builder().build());
-    }
-
-    /**
-     * Lists batch jobs.
-     */
-    public BatchList<ChatResponse> listBatchJobs(Integer pageSize, String pageToken) {
-        return GoogleGenAiBatchRequestResponse.listBatchJobs(client, pageSize, pageToken, this::processResponse);
+    public void deleteBatchJob(String batchId) {
+        client.batches.delete(batchId, DeleteBatchJobConfig.builder().build());
     }
 
     private InlinedRequest createInlinedRequest(ChatRequest request) {
@@ -201,33 +199,53 @@ public final class GoogleGenAiBatchChatModel {
         String jobName = batchJob.name().orElse("unknown");
         Known state = batchJob.state().map(JobState::knownEnum).orElse(Known.JOB_STATE_UNSPECIFIED);
 
-        BatchJobState translatedState;
-        try {
-            translatedState = BatchJobState.valueOf(state.name());
-        } catch (IllegalArgumentException e) {
-            translatedState = BatchJobState.UNRECOGNIZED;
+        BatchState translatedState;
+        switch (state) {
+            case JOB_STATE_PENDING:
+                translatedState = BatchState.PENDING;
+                break;
+            case JOB_STATE_RUNNING:
+            case JOB_STATE_CANCELLING:
+                translatedState = BatchState.RUNNING;
+                break;
+            case JOB_STATE_SUCCEEDED:
+                translatedState = BatchState.SUCCEEDED;
+                break;
+            case JOB_STATE_FAILED:
+                translatedState = BatchState.FAILED;
+                break;
+            case JOB_STATE_CANCELLED:
+                translatedState = BatchState.CANCELLED;
+                break;
+            case JOB_STATE_EXPIRED:
+                translatedState = BatchState.EXPIRED;
+                break;
+            default:
+                translatedState = BatchState.UNSPECIFIED;
+                break;
         }
 
-        if (state == Known.JOB_STATE_SUCCEEDED) {
-            List<ChatResponse> responses = new ArrayList<>();
-            List<Status> errors = new ArrayList<>();
+        BatchResponse.Builder<ChatResponse> builder = BatchResponse.<ChatResponse>builder()
+                .batchId(jobName)
+                .state(translatedState);
 
+        if (state == Known.JOB_STATE_SUCCEEDED) {
+            List<BatchItemResult<ChatResponse>> results = new ArrayList<>();
             if (batchJob.dest().isPresent()
                     && batchJob.dest().get().inlinedResponses().isPresent()) {
                 var inlinedResponses = batchJob.dest().get().inlinedResponses().get();
                 for (var inlined : inlinedResponses) {
                     if (inlined.response().isPresent()) {
-                        responses.add(GoogleGenAiContentMapper.toChatResponse(
-                                inlined.response().get(), batchJob.model().orElse(modelName)));
-                    }
-                    if (inlined.error().isPresent()) {
+                        results.add(BatchItemResult.success(GoogleGenAiContentMapper.toChatResponse(
+                                inlined.response().get(), batchJob.model().orElse(modelName))));
+                    } else if (inlined.error().isPresent()) {
                         var error = inlined.error().get();
-                        errors.add(new Status(
-                                error.code().orElse(0), error.message().orElse(""), new ArrayList<>()));
+                        results.add(BatchItemResult.failure(new BatchError(
+                                error.code().orElse(0), error.message().orElse(""), new ArrayList<>())));
                     }
                 }
             }
-            return new BatchSuccess<>(new BatchName(jobName), responses, errors);
+            builder.results(results);
         } else if (state == Known.JOB_STATE_FAILED) {
             Integer code = 0;
             String message = "Batch job failed";
@@ -235,10 +253,12 @@ public final class GoogleGenAiBatchChatModel {
                 code = batchJob.error().get().code().orElse(0);
                 message = batchJob.error().get().message().orElse("Batch job failed");
             }
-            return new BatchError<>(new BatchName(jobName), code, message, translatedState, new ArrayList<>());
+            builder.results(List.of(BatchItemResult.failure(new BatchError(code, message, new ArrayList<>()))));
         } else {
-            return new BatchIncomplete<>(new BatchName(jobName), translatedState);
+            builder.results(List.of());
         }
+
+        return builder.build();
     }
 
     private static void validateModelInChatRequests(String modelName, List<ChatRequest> requests) {

@@ -1,13 +1,13 @@
 package dev.langchain4j.model.google.genai;
 
-import static dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.BatchJobState.JOB_STATE_PENDING;
-import static dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.BatchJobState.JOB_STATE_RUNNING;
+import static dev.langchain4j.model.batch.BatchState.PENDING;
+import static dev.langchain4j.model.batch.BatchState.RUNNING;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.batch.BatchPagination;
+import dev.langchain4j.model.batch.BatchRequest;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.BatchIncomplete;
-import dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.BatchName;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -32,24 +32,24 @@ class GoogleGenAiBatchChatModelIT {
                         .messages(UserMessage.from("What is the capital of Germany?"))
                         .build());
 
-        var response = batchModel.createBatchInline("Test Batch", 1L, requests);
+        var response = batchModel.submit(new BatchRequest<>(requests));
 
-        assertThat(response).isInstanceOf(BatchIncomplete.class);
-        BatchIncomplete<?> incomplete = (BatchIncomplete<?>) response;
-        assertThat(incomplete.name().value()).startsWith("batches/");
-        assertThat(incomplete.state()).isIn(JOB_STATE_PENDING, JOB_STATE_RUNNING);
+        assertThat(response).isNotNull();
+        assertThat(response.batchId()).startsWith("batches/");
+        assertThat(response.state()).isIn(PENDING, RUNNING);
 
-        BatchName batchName = incomplete.name();
+        String batchId = response.batchId();
 
         // Retrieve
-        var retrieved = batchModel.retrieveBatchResults(batchName);
+        var retrieved = batchModel.retrieve(batchId);
         assertThat(retrieved).isNotNull();
+        assertThat(retrieved.batchId()).isEqualTo(batchId);
 
         // Cancel
-        batchModel.cancelBatchJob(batchName);
+        batchModel.cancel(batchId);
 
         // Delete
-        batchModel.deleteBatchJob(batchName);
+        batchModel.deleteBatchJob(batchId);
     }
 
     @Test
@@ -59,12 +59,12 @@ class GoogleGenAiBatchChatModelIT {
                 .modelName("gemini-2.5-flash")
                 .build();
 
-        var firstPage = batchModel.listBatchJobs(1, null);
+        var firstPage = batchModel.list(new BatchPagination(1, null));
         assertThat(firstPage).isNotNull();
         assertThat(firstPage.batches()).isNotNull();
 
-        if (firstPage.pageToken() != null) {
-            var secondPage = batchModel.listBatchJobs(1, firstPage.pageToken());
+        if (firstPage.nextPageToken() != null) {
+            var secondPage = batchModel.list(new BatchPagination(1, firstPage.nextPageToken()));
             assertThat(secondPage).isNotNull();
             assertThat(secondPage.batches()).isNotNull();
         }

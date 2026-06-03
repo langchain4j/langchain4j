@@ -1,12 +1,11 @@
 package dev.langchain4j.model.google.genai;
 
-import static dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.BatchJobState.JOB_STATE_PENDING;
-import static dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.BatchJobState.JOB_STATE_RUNNING;
+import static dev.langchain4j.model.batch.BatchState.PENDING;
+import static dev.langchain4j.model.batch.BatchState.RUNNING;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.BatchIncomplete;
-import dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.BatchName;
+import dev.langchain4j.model.batch.BatchRequest;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -27,23 +26,23 @@ class GoogleGenAiBatchEmbeddingModelIT {
                 TextSegment.from("What is the capital of France?"),
                 TextSegment.from("What is the capital of Germany?"));
 
-        var response = batchModel.createBatchInline("Test Embedding Batch", 1L, requests);
+        var response = batchModel.submit(new BatchRequest<>(requests));
 
-        assertThat(response).isInstanceOf(BatchIncomplete.class);
-        BatchIncomplete<?> incomplete = (BatchIncomplete<?>) response;
-        assertThat(incomplete.name().value()).startsWith("batches/");
-        assertThat(incomplete.state()).isIn(JOB_STATE_PENDING, JOB_STATE_RUNNING);
+        assertThat(response).isNotNull();
+        assertThat(response.batchId()).startsWith("batches/");
+        assertThat(response.state()).isIn(PENDING, RUNNING);
 
-        BatchName batchName = incomplete.name();
+        String batchId = response.batchId();
 
         // Retrieve
-        var retrieved = batchModel.retrieveBatchResults(batchName);
+        var retrieved = batchModel.retrieve(batchId);
         assertThat(retrieved).isNotNull();
+        assertThat(retrieved.batchId()).isEqualTo(batchId);
 
         // Cancel
-        batchModel.cancelBatchJob(batchName);
+        batchModel.cancel(batchId);
 
         // Delete
-        batchModel.deleteBatchJob(batchName);
+        batchModel.deleteBatchJob(batchId);
     }
 }

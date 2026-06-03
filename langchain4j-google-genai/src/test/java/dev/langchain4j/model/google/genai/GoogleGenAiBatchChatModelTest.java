@@ -13,8 +13,9 @@ import com.google.genai.types.BatchJob;
 import com.google.genai.types.JobState;
 import com.google.genai.types.JobState.Known;
 import com.google.genai.types.ListBatchJobsConfig;
+import dev.langchain4j.model.batch.BatchPage;
+import dev.langchain4j.model.batch.BatchPagination;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.BatchList;
 import java.lang.reflect.Field;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -53,11 +54,11 @@ class GoogleGenAiBatchChatModelTest {
                 .modelName("gemini-2.5-flash")
                 .build();
 
-        BatchList<ChatResponse> response = batchModel.listBatchJobs(10, null);
+        BatchPage<ChatResponse> response = batchModel.list(new BatchPagination(10, null));
 
         assertThat(response).isNotNull();
         assertThat(response.batches()).hasSize(1);
-        assertThat(response.batches().get(0).name().value()).isEqualTo("batches/1");
-        assertThat(response.pageToken()).isEqualTo("token-123");
+        assertThat(response.batches().get(0).batchId()).isEqualTo("batches/1");
+        assertThat(response.nextPageToken()).isEqualTo("token-123");
     }
 }

@@ -22,15 +22,16 @@ import com.google.genai.types.Part;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.BatchError;
-import dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.BatchIncomplete;
-import dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.BatchJobState;
-import dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.BatchList;
-import dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.BatchName;
-import dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.BatchResponse;
-import dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.BatchSuccess;
-import dev.langchain4j.model.google.genai.GoogleGenAiBatchRequestResponse.Status;
+import dev.langchain4j.model.batch.BatchError;
+import dev.langchain4j.model.batch.BatchItemResult;
+import dev.langchain4j.model.batch.BatchPage;
+import dev.langchain4j.model.batch.BatchPagination;
+import dev.langchain4j.model.batch.BatchRequest;
+import dev.langchain4j.model.batch.BatchResponse;
+import dev.langchain4j.model.batch.BatchState;
+import dev.langchain4j.model.embedding.BatchEmbeddingModel;
 import dev.langchain4j.model.google.genai.GoogleGenAiEmbeddingModel.TaskTypeEnum;
+import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +42,7 @@ import java.util.stream.Collectors;
  * Provides an interface for interacting with the Google GenAI Batch API for Embedding models.
  */
 @Experimental
-public final class GoogleGenAiBatchEmbeddingModel {
+public final class GoogleGenAiBatchEmbeddingModel implements BatchEmbeddingModel {
 
     private final Client client;
     private final String modelName;
@@ -74,16 +75,37 @@ public final class GoogleGenAiBatchEmbeddingModel {
         return new Builder();
     }
 
+    @Override
+    public BatchResponse<Response<Embedding>> submit(BatchRequest<TextSegment> request) {
+        return submit("batch-embedding-job", request.requests());
+    }
+
+    @Override
+    public BatchResponse<Response<Embedding>> retrieve(String batchId) {
+        BatchJob batchJob = client.batches.get(batchId, GetBatchJobConfig.builder().build());
+        return processResponse(batchJob);
+    }
+
+    @Override
+    public void cancel(String batchId) {
+        client.batches.cancel(batchId, CancelBatchJobConfig.builder().build());
+    }
+
+    @Override
+    public BatchPage<Response<Embedding>> list(BatchPagination pagination) {
+        Integer pageSize = pagination != null ? pagination.pageSize() : null;
+        String pageToken = pagination != null ? pagination.pageToken() : null;
+        return GoogleGenAiBatchUtils.listBatchJobs(client, pageSize, pageToken, this::processResponse);
+    }
+
     /**
      * Creates and enqueues a batch of embedding requests for asynchronous processing.
      *
      * @param displayName a user-defined name for the batch
-     * @param priority    not explicitly supported in google-genai Java SDK BatchJob creation, ignored.
      * @param requests    a list of text segments to be embedded in the batch
      * @return a {@link BatchResponse} representing the initial state of the batch operation
      */
-    public BatchResponse<Embedding> createBatchInline(String displayName, Long priority, List<TextSegment> requests) {
-
+    public BatchResponse<Response<Embedding>> submit(String displayName, List<TextSegment> requests) {
         List<Content> contents = requests.stream()
                 .map(segment -> Content.builder()
                         .parts(List.of(Part.builder().text(segment.text()).build()))
@@ -123,7 +145,7 @@ public final class GoogleGenAiBatchEmbeddingModel {
      * @param file        the Google GenAI File object representing the uploaded file containing batch requests
      * @return a {@link BatchResponse} representing the initial state of the batch operation
      */
-    public BatchResponse<Embedding> createBatchFromFile(String displayName, File file) {
+    public BatchResponse<Response<Embedding>> submit(String displayName, File file) {
         EmbeddingsBatchJobSource src = EmbeddingsBatchJobSource.builder()
                 .fileName(file.name().isPresent() ? file.name().get() : null)
                 .build();
@@ -138,50 +160,48 @@ public final class GoogleGenAiBatchEmbeddingModel {
     }
 
     /**
-     * Retrieves the current state and results of a batch operation.
-     */
-    public BatchResponse<Embedding> retrieveBatchResults(BatchName name) {
-        BatchJob batchJob =
-                client.batches.get(name.value(), GetBatchJobConfig.builder().build());
-        return processResponse(batchJob);
-    }
-
-    /**
-     * Cancels a batch operation that is currently pending or running.
-     */
-    public void cancelBatchJob(BatchName name) {
-        client.batches.cancel(name.value(), CancelBatchJobConfig.builder().build());
-    }
-
-    /**
      * Deletes a batch job from the system.
      */
-    public void deleteBatchJob(BatchName name) {
-        client.batches.delete(name.value(), DeleteBatchJobConfig.builder().build());
+    public void deleteBatchJob(String batchId) {
+        client.batches.delete(batchId, DeleteBatchJobConfig.builder().build());
     }
 
-    /**
-     * Lists batch jobs.
-     */
-    public BatchList<Embedding> listBatchJobs(Integer pageSize, String pageToken) {
-        return GoogleGenAiBatchRequestResponse.listBatchJobs(client, pageSize, pageToken, this::processResponse);
-    }
-
-    private BatchResponse<Embedding> processResponse(BatchJob batchJob) {
+    private BatchResponse<Response<Embedding>> processResponse(BatchJob batchJob) {
         String jobName = batchJob.name().orElse("unknown");
         Known state = batchJob.state().map(JobState::knownEnum).orElse(Known.JOB_STATE_UNSPECIFIED);
 
-        BatchJobState translatedState;
-        try {
-            translatedState = BatchJobState.valueOf(state.name());
-        } catch (IllegalArgumentException e) {
-            translatedState = BatchJobState.UNRECOGNIZED;
+        BatchState translatedState;
+        switch (state) {
+            case JOB_STATE_PENDING:
+                translatedState = BatchState.PENDING;
+                break;
+            case JOB_STATE_RUNNING:
+            case JOB_STATE_CANCELLING:
+                translatedState = BatchState.RUNNING;
+                break;
+            case JOB_STATE_SUCCEEDED:
+                translatedState = BatchState.SUCCEEDED;
+                break;
+            case JOB_STATE_FAILED:
+                translatedState = BatchState.FAILED;
+                break;
+            case JOB_STATE_CANCELLED:
+                translatedState = BatchState.CANCELLED;
+                break;
+            case JOB_STATE_EXPIRED:
+                translatedState = BatchState.EXPIRED;
+                break;
+            default:
+                translatedState = BatchState.UNSPECIFIED;
+                break;
         }
 
-        if (state == Known.JOB_STATE_SUCCEEDED) {
-            List<Embedding> responses = new ArrayList<>();
-            List<Status> errors = new ArrayList<>();
+        BatchResponse.Builder<Response<Embedding>> builder = BatchResponse.<Response<Embedding>>builder()
+                .batchId(jobName)
+                .state(translatedState);
 
+        if (state == Known.JOB_STATE_SUCCEEDED) {
+            List<BatchItemResult<Response<Embedding>>> results = new ArrayList<>();
             if (batchJob.dest().isPresent()
                     && batchJob.dest().get().inlinedEmbedContentResponses().isPresent()) {
                 var inlinedResponses =
@@ -196,17 +216,16 @@ public final class GoogleGenAiBatchEmbeddingModel {
                             for (int i = 0; i < values.size(); i++) {
                                 floatArray[i] = values.get(i).floatValue();
                             }
-                            responses.add(Embedding.from(floatArray));
+                            results.add(BatchItemResult.success(Response.from(Embedding.from(floatArray))));
                         }
-                    }
-                    if (inlined.error().isPresent()) {
+                    } else if (inlined.error().isPresent()) {
                         var error = inlined.error().get();
-                        errors.add(new Status(
-                                error.code().orElse(0), error.message().orElse(""), new ArrayList<>()));
+                        results.add(BatchItemResult.failure(new BatchError(
+                                error.code().orElse(0), error.message().orElse(""), new ArrayList<>())));
                     }
                 }
             }
-            return new BatchSuccess<>(new BatchName(jobName), responses, errors);
+            builder.results(results);
         } else if (state == Known.JOB_STATE_FAILED) {
             Integer code = 0;
             String message = "Batch job failed";
@@ -214,10 +233,12 @@ public final class GoogleGenAiBatchEmbeddingModel {
                 code = batchJob.error().get().code().orElse(0);
                 message = batchJob.error().get().message().orElse("Batch job failed");
             }
-            return new BatchError<>(new BatchName(jobName), code, message, translatedState, new ArrayList<>());
+            builder.results(List.of(BatchItemResult.failure(new BatchError(code, message, new ArrayList<>()))));
         } else {
-            return new BatchIncomplete<>(new BatchName(jobName), translatedState);
+            builder.results(List.of());
         }
+
+        return builder.build();
     }
 
     public static class Builder {
