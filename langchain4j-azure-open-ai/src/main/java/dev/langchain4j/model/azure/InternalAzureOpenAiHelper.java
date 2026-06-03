@@ -48,7 +48,6 @@ import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClient;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
-import com.azure.core.http.netty.NettyAsyncHttpClientProvider;
 import com.azure.core.http.policy.ExponentialBackoffOptions;
 import com.azure.core.http.policy.HttpLogDetailLevel;
 import com.azure.core.http.policy.HttpLogOptions;
@@ -85,6 +84,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 
 @Internal
 class InternalAzureOpenAiHelper {
@@ -175,7 +175,9 @@ class InternalAzureOpenAiHelper {
             customHeaders.forEach((name, value) -> headers.add(new Header(name, value)));
         }
         clientOptions.setHeaders(headers);
-        httpClientProvider = getOrDefault(httpClientProvider, NettyAsyncHttpClientProvider::new);
+        if (httpClientProvider == null) {
+            httpClientProvider = loadDefaultHttpClientProvider();
+        }
         HttpClient httpClient = httpClientProvider.createInstance(clientOptions);
 
         HttpLogOptions httpLogOptions = new HttpLogOptions();
@@ -204,6 +206,15 @@ class InternalAzureOpenAiHelper {
         }
 
         return openAIClientBuilder;
+    }
+
+    private static HttpClientProvider loadDefaultHttpClientProvider() {
+        return ServiceLoader.load(HttpClientProvider.class)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        "No HttpClientProvider implementation found on the classpath. "
+                                + "Add 'com.azure:azure-core-http-netty' as a dependency, "
+                                + "or provide a custom HttpClientProvider via the builder."));
     }
 
     static RetryOptions resolveRetryOptions(Integer maxRetries, RetryOptions retryOptions) {
