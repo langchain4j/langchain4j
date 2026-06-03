@@ -82,7 +82,8 @@ public final class GoogleGenAiBatchEmbeddingModel implements BatchEmbeddingModel
 
     @Override
     public BatchResponse<Response<Embedding>> retrieve(String batchId) {
-        BatchJob batchJob = client.batches.get(batchId, GetBatchJobConfig.builder().build());
+        BatchJob batchJob =
+                client.batches.get(batchId, GetBatchJobConfig.builder().build());
         return processResponse(batchJob);
     }
 
@@ -196,9 +197,8 @@ public final class GoogleGenAiBatchEmbeddingModel implements BatchEmbeddingModel
                 break;
         }
 
-        BatchResponse.Builder<Response<Embedding>> builder = BatchResponse.<Response<Embedding>>builder()
-                .batchId(jobName)
-                .state(translatedState);
+        BatchResponse.Builder<Response<Embedding>> builder =
+                BatchResponse.<Response<Embedding>>builder().batchId(jobName).state(translatedState);
 
         if (state == Known.JOB_STATE_SUCCEEDED) {
             List<BatchItemResult<Response<Embedding>>> results = new ArrayList<>();

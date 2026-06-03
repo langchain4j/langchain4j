@@ -88,7 +88,8 @@ public final class GoogleGenAiBatchImageModel implements BatchImageModel {
 
     @Override
     public BatchResponse<Response<Image>> retrieve(String batchId) {
-        BatchJob batchJob = client.batches.get(batchId, GetBatchJobConfig.builder().build());
+        BatchJob batchJob =
+                client.batches.get(batchId, GetBatchJobConfig.builder().build());
         return processResponse(batchJob);
     }
 
@@ -116,13 +117,11 @@ public final class GoogleGenAiBatchImageModel implements BatchImageModel {
                 .map(prompt -> createInlinedRequest(new ImageGenerationRequest(prompt)))
                 .collect(Collectors.toList());
 
-        BatchJobSource src = BatchJobSource.builder()
-                .inlinedRequests(inlinedRequests)
-                .build();
+        BatchJobSource src =
+                BatchJobSource.builder().inlinedRequests(inlinedRequests).build();
 
-        CreateBatchJobConfig config = CreateBatchJobConfig.builder()
-                .displayName(displayName)
-                .build();
+        CreateBatchJobConfig config =
+                CreateBatchJobConfig.builder().displayName(displayName).build();
 
         BatchJob batchJob = withRetryMappingExceptions(() -> client.batches.create(modelName, src, config), maxRetries);
         return processResponse(batchJob);
@@ -140,9 +139,8 @@ public final class GoogleGenAiBatchImageModel implements BatchImageModel {
                 .fileName(file.name().isPresent() ? file.name().get() : null)
                 .build();
 
-        CreateBatchJobConfig config = CreateBatchJobConfig.builder()
-                .displayName(displayName)
-                .build();
+        CreateBatchJobConfig config =
+                CreateBatchJobConfig.builder().displayName(displayName).build();
 
         BatchJob batchJob = withRetryMappingExceptions(() -> client.batches.create(modelName, src, config), maxRetries);
         return processResponse(batchJob);
@@ -221,9 +219,8 @@ public final class GoogleGenAiBatchImageModel implements BatchImageModel {
                 break;
         }
 
-        BatchResponse.Builder<Response<Image>> builder = BatchResponse.<Response<Image>>builder()
-                .batchId(jobName)
-                .state(translatedState);
+        BatchResponse.Builder<Response<Image>> builder =
+                BatchResponse.<Response<Image>>builder().batchId(jobName).state(translatedState);
 
         if (state == Known.JOB_STATE_SUCCEEDED) {
             List<BatchItemResult<Response<Image>>> results = new ArrayList<>();
@@ -255,7 +252,8 @@ public final class GoogleGenAiBatchImageModel implements BatchImageModel {
                             }
                         }
                         if (!imageAdded) {
-                            results.add(BatchItemResult.failure(new BatchError(0, "No image data found in response", new ArrayList<>())));
+                            results.add(BatchItemResult.failure(
+                                    new BatchError(0, "No image data found in response", new ArrayList<>())));
                         }
                     } else if (inlined.error().isPresent()) {
                         var error = inlined.error().get();

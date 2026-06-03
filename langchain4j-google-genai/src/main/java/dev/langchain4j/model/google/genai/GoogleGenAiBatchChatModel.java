@@ -103,7 +103,8 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
 
     @Override
     public BatchResponse<ChatResponse> retrieve(String batchId) {
-        BatchJob batchJob = client.batches.get(batchId, GetBatchJobConfig.builder().build());
+        BatchJob batchJob =
+                client.batches.get(batchId, GetBatchJobConfig.builder().build());
         return processResponse(batchJob);
     }
 
@@ -225,9 +226,8 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
                 break;
         }
 
-        BatchResponse.Builder<ChatResponse> builder = BatchResponse.<ChatResponse>builder()
-                .batchId(jobName)
-                .state(translatedState);
+        BatchResponse.Builder<ChatResponse> builder =
+                BatchResponse.<ChatResponse>builder().batchId(jobName).state(translatedState);
 
         if (state == Known.JOB_STATE_SUCCEEDED) {
             List<BatchItemResult<ChatResponse>> results = new ArrayList<>();
