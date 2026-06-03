@@ -12,7 +12,6 @@ import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
-import com.azure.core.http.netty.NettyAsyncHttpClientProvider;
 import com.azure.core.http.policy.RetryOptions;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.audio.Audio;
@@ -166,9 +165,7 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioTranscriptionMod
                     builder.timeout,
                     builder.maxRetries,
                     builder.retryOptions,
-                    builder.httpClientProvider != null
-                            ? builder.httpClientProvider
-                            : new NettyAsyncHttpClientProvider(),
+                    builder.httpClientProvider,
                     builder.proxyOptions,
                     builder.logRequestsAndResponses,
                     builder.userAgentSuffix,
@@ -181,9 +178,7 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioTranscriptionMod
                     builder.timeout,
                     builder.maxRetries,
                     builder.retryOptions,
-                    builder.httpClientProvider != null
-                            ? builder.httpClientProvider
-                            : new NettyAsyncHttpClientProvider(),
+                    builder.httpClientProvider,
                     builder.proxyOptions,
                     builder.logRequestsAndResponses,
                     builder.userAgentSuffix,
@@ -196,9 +191,7 @@ public class AzureOpenAiAudioTranscriptionModel implements AudioTranscriptionMod
                     builder.timeout,
                     builder.maxRetries,
                     builder.retryOptions,
-                    builder.httpClientProvider != null
-                            ? builder.httpClientProvider
-                            : new NettyAsyncHttpClientProvider(),
+                    builder.httpClientProvider,
                     builder.proxyOptions,
                     builder.logRequestsAndResponses,
                     builder.userAgentSuffix,

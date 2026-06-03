@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.typed;
 
+import dev.langchain4j.store.embedding.AbstractPgVectorHibernateEmbeddingStoreIT;
 import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.cfg.SchemaToolingSettings;
@@ -11,7 +12,8 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
-class PgVectorEmbeddingStoreWithJSONBMultiIndexesFilteringIT extends PgVectorEmbeddingStoreConfigIT {
+class PgVectorHibernateEmbeddingStoreWithJSONBFilteringIT extends AbstractPgVectorHibernateEmbeddingStoreIT {
+
     @BeforeAll
     static void setup() {
         sessionFactory = new Configuration()
@@ -21,7 +23,7 @@ class PgVectorEmbeddingStoreWithJSONBMultiIndexesFilteringIT extends PgVectorEmb
                 .setSchemaExportAction(Action.CREATE_DROP)
                 .setProperty(SchemaToolingSettings.JAKARTA_HBM2DDL_CREATE_SOURCE, SourceType.SCRIPT_THEN_METADATA)
                 .setProperty(SchemaToolingSettings.JAKARTA_HBM2DDL_CREATE_SCRIPT_SOURCE, "/setup.sql")
-                .setProperty(SchemaToolingSettings.JAKARTA_HBM2DDL_LOAD_SCRIPT_SOURCE, "/import-with-multi-gin.sql")
+                .setProperty(SchemaToolingSettings.JAKARTA_HBM2DDL_LOAD_SCRIPT_SOURCE, "/import-with-gin.sql")
                 .buildSessionFactory();
         embeddingStore = HibernateEmbeddingStore.builder(GenericEmbeddingEntity.class)
                 .sessionFactory(sessionFactory)

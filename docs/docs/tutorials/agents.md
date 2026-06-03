@@ -878,7 +878,7 @@ so it will reveal the nested sequence of agents invocations necessary to generat
 
 ```
 AgentInvocation{agent=Sequential, startTime=2026-03-18T17:27:28.099439515, finishTime=2026-03-18T17:27:38.683498783, duration=10584 ms, tokens=0, inputs={topic=dragons and wiz..., style=comedy}, output=In a realm wher...}
-|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.15.0287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
+|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.15.1287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
 |=> AgentInvocation{agent=reviewLoop, startTime=2026-03-18T17:27:31.035952285, finishTime=2026-03-18T17:27:38.683438433, duration=7647 ms, tokens=0, inputs={score=0.8, topic=dragons and wiz..., style=comedy, story=In a realm wher...}, output=null}
     |=> AgentInvocation{agent=scoreStyle, iteration=0, startTime=2026-03-18T17:27:31.036155107, finishTime=2026-03-18T17:27:31.671478699, duration=635 ms, tokens=152, inputs={style=comedy, story=In a realm wher...}, output=0.2}
     |=> AgentInvocation{agent=editStory, iteration=0, startTime=2026-03-18T17:27:31.671711250, finishTime=2026-03-18T17:27:38.182881941, duration=6511 ms, tokens=491, inputs={style=comedy, story=In a realm wher...}, output=In a realm wher...}
@@ -1346,7 +1346,7 @@ AgentInvocation{agentName='withdraw', arguments={user=Mario, amount=115.0}}
 
 AgentInvocation{agentName='credit', arguments={user=Georgios, amount=115.0}}
 
-AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1115.0 USD. The conversion rate was 1.15 EUR to USD.}}
+AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.15.1 USD. The conversion rate was 1.15 EUR to USD.}}
 ```
 
 The last invocation is a special one that signals the supervisor believes the task has been completed, and returns as a response a summary of all the operations performed.
@@ -1922,6 +1922,120 @@ Based on the provided references, here are some key points about stochastic grav
 8. **Template Banks and Simulations:**
    - Template banks like those developed by Ajith et al. are crucial for matching observed signals with theoretical predictions.
 ```
+
+### Blackboard agentic pattern
+
+The P2P pattern activates all ready agents in parallel, treating them as equal peers. However, there are scenarios where a centralized scheduler should decide which single agent fires next, applying conflict resolution when multiple agents could contribute. This is the blackboard pattern: agents are knowledge sources that post partial results to the `AgenticScope` (the blackboard), and a centralized planner inspects the blackboard after each step to activate the most appropriate agent.
+
+Like P2P, agents activate implicitly when all their arguments are present in the scope. The key difference is that only one agent fires per step, and when multiple agents are ready, a `ConflictResolutionStrategy` determines which one takes priority. If no strategy is provided, the declaration order in the `subAgents` method is used as the default tie-breaker.
+
+The `BlackboardPlanner` terminates when the goal predicate is satisfied, no agent can fire (quiescence), or the maximum number of invocations is reached. By default, the goal predicate checks whether the planner's `outputKey` is present in the scope — which is the most common termination condition:
+
+```java
+public class BlackboardPlanner implements Planner {
+
+    private final Predicate<AgenticScope> goalPredicate;
+    private final ConflictResolutionStrategy conflictResolutionStrategy;
+    private final int maxInvocations;
+
+    @Override
+    public Action nextAction(PlanningContext planningContext) {
+        // After each agent completes:
+        // 1. Check goal predicate → done() if satisfied
+        // 2. Find all agents whose inputs are available
+        // 3. Pick the best one via conflict resolution (or declaration order)
+        // 4. Return call(selectedAgent) — always exactly one agent per step
+    }
+}
+```
+
+The `ConflictResolutionStrategy` is a functional interface that receives the current scope and all candidate agents that are ready to fire, returning the one that should be activated.
+
+```java
+@FunctionalInterface
+public interface ConflictResolutionStrategy {
+
+    AgentInstance resolve(AgenticScope scope, List<AgentInstance> candidates);
+}
+```
+
+The interface ships with a few convenient factory methods, together with a `or` combinator to chain multiple strategies together. For instance, `declarationOrder()` simply picks the first candidate, preserving the order used in the `subAgents` method, while `agentOfType` selects the candidate matching a given type — optionally guarded by a condition on the `AgenticScope`, and returns `null` when the condition is not met or no candidate of that type is present. The `or` combinator chains two strategies: if the first returns `null`, the second is tried. Together they let you build pipelines like `agentOfType(X.class, condition).or(declarationOrder())` that read as "prefer agent of type X when the condition holds, otherwise fall back to declaration order".
+
+As a practical example, consider a medical diagnostic system where specialist agents post findings to the blackboard, and a diagnosis is produced only when enough evidence has accumulated. The order in which agents fire is not predetermined, but depends on what data is available:
+
+```java
+SymptomExtractor symptomExtractor = AgenticServices.agentBuilder(SymptomExtractor.class)
+        .chatModel(baseModel()).build();
+
+LabResultAnalyzer labAnalyzer = AgenticServices.agentBuilder(LabResultAnalyzer.class)
+        .chatModel(baseModel()).build();
+
+DrugInteractionChecker drugInteraction = AgenticServices.agentBuilder(DrugInteractionChecker.class)
+        .chatModel(baseModel()).build();
+
+DiagnosisAgent diagnosis = AgenticServices.agentBuilder(DiagnosisAgent.class)
+        .chatModel(baseModel()).build();
+
+MedicalDiagnostics diagnostics = AgenticServices.plannerBuilder(MedicalDiagnostics.class)
+        .subAgents(symptomExtractor, labAnalyzer, drugInteraction, diagnosis)
+        .planner(BlackboardPlanner::new)
+        .outputKey("diagnosis")
+        .build();
+
+String result = diagnostics.diagnose(patientInput, labResults, medications);
+```
+
+The `SymptomExtractor` fires first because its only input (`patientInput`) is available from the start. Once symptoms are extracted, both `LabResultAnalyzer` and `DrugInteractionChecker` may become eligible — but only one fires per step. Finally, `DiagnosisAgent` fires when both `symptoms` and `labAnalysis` are on the blackboard. The system terminates because the default goal predicate detects that `"diagnosis"` (the planner's `outputKey`) is now present in the scope. A custom goal predicate can be provided to the `BlackboardPlanner` constructor when the termination condition is more complex.
+
+When the clinical context matters for agent ordering, a `ConflictResolutionStrategy` can inspect the scope state to make an informed decision. For example, if the patient's symptoms mention medications or side effects, drug interaction analysis should be prioritized over lab analysis. 
+
+```java
+MedicalDiagnostics diagnostics = AgenticServices.plannerBuilder(MedicalDiagnostics.class)
+        .subAgents(symptomExtractor, labAnalyzer, drugInteraction, diagnosis)
+        .planner(() -> new BlackboardPlanner(
+                agentOfType(DrugInteractionChecker.class, scope -> {
+                            String symptoms = scope.readState("symptoms", "");
+                            return symptoms.toLowerCase().contains("medication")
+                                    || symptoms.toLowerCase().contains("drug");
+                        })
+                        .or(declarationOrder())))
+        .outputKey("diagnosis")
+        .build();
+```
+
+To enrich this example, a `HumanInTheLoop` agent can also participate directly as a knowledge source in the blackboard. The `inputKey` method declares which scope key the human reviewer depends on, so the blackboard activates it only when that data is available. Its `outputKey` is set to `"symptoms"` — when the reviewer rejects a diagnosis, the return value overwrites the symptoms with additional information, which naturally re-triggers all agents that depend on symptoms:
+
+```java
+HumanInTheLoop humanReview = AgenticServices.humanInTheLoopBuilder()
+        .description("Review the diagnosis and decide whether to approve or request additional analysis")
+        .outputKey("symptoms")
+        .inputKey(String.class, "diagnosis")
+        .responseProvider(scope -> {
+            String diagnosis = scope.readState("diagnosis", "");
+            String symptoms = scope.readState("symptoms", "");
+            if (!isAcceptable(diagnosis)) {
+                return symptoms + ". Patient also reports blurred vision.";
+            }
+            scope.writeState("approvedDiagnosis", diagnosis);
+            return symptoms;
+        })
+        .build();
+
+MedicalDiagnostics diagnostics = AgenticServices.plannerBuilder(MedicalDiagnostics.class)
+        .subAgents(symptomExtractor, labAnalyzer, drugInteraction, diagnosisAgent, humanReview)
+        .planner(() -> new BlackboardPlanner(
+                scope -> scope.hasState("approvedDiagnosis"),
+                agentOfType(DrugInteractionChecker.class, scope -> {
+                            String symptoms = scope.readState("symptoms", "");
+                            return symptoms.toLowerCase().contains("medication")
+                                    || symptoms.toLowerCase().contains("drug");
+                        })
+                        .or(declarationOrder())))
+        .outputKey("approvedDiagnosis")
+        .build();
+```
+
+The `inputKey(String.class, "diagnosis")` tells the blackboard that the reviewer should only activate after `"diagnosis"` is present in scope. When the reviewer rejects, the return value (enhanced symptoms) is written to the `"symptoms"` key via the HITL's `outputKey`. The blackboard's normal `onStateChanged("symptoms")` mechanism then re-activates agents that depend on symptoms (e.g. `DrugInteractionChecker` and `DiagnosisAgent`), producing a revised diagnosis for the next review. Note that in this second implementation the outputKey of the `MedicalDiagnostics` implemented through the `BlackboardPlanner` has been changed from `"diagnosis"` to `"approvedDiagnosis"` to give a chance to the `HumanInTheLoop` to participate in the agentic system's execution. In this way when the reviewer approves it writes the `"approvedDiagnosis"` in the `AgenticScope`, thus satisfying the goal predicate.
 
 ### Voting agentic pattern
 
