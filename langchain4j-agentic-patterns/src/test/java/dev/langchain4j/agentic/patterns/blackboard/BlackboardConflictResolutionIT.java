@@ -1,6 +1,8 @@
 package dev.langchain4j.agentic.patterns.blackboard;
 
 import static dev.langchain4j.agentic.patterns.Models.baseModel;
+import static dev.langchain4j.agentic.patterns.blackboard.ConflictResolutionStrategy.agentOfType;
+import static dev.langchain4j.agentic.patterns.blackboard.ConflictResolutionStrategy.declarationOrder;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agentic.AgenticServices;
@@ -60,17 +62,15 @@ public class BlackboardConflictResolutionIT {
                 .subAgents(symptomExtractor, labAnalyzer, drugInteraction, diagnosisAgent, humanReview)
                 .planner(() -> new BlackboardPlanner(
                         scope -> scope.hasState("approvedDiagnosis"),
-                        (scope, a1, a2) -> {
-                            String symptoms = scope.readState("symptoms", "");
-                            boolean drugRelated = symptoms.toLowerCase().contains("medication")
-                                    || symptoms.toLowerCase().contains("drug")
-                                    || symptoms.toLowerCase().contains("side effect");
-                            if (drugRelated) {
-                                if (a1.type() == DrugInteractionChecker.class) return a1;
-                                if (a2.type() == DrugInteractionChecker.class) return a2;
-                            }
-                            return a1;
-                        }))
+                        agentOfType(DrugInteractionChecker.class, scope -> {
+                                    String symptoms = scope.readState("symptoms", "");
+                                    // check if the symptoms are related to drugs or medications
+                                    return symptoms.toLowerCase().contains("medication")
+                                            || symptoms.toLowerCase().contains("drug")
+                                            || symptoms.toLowerCase().contains("side effect");
+                                })
+                                .or(declarationOrder())
+                        ))
                 .outputKey("approvedDiagnosis")
                 .build();
 

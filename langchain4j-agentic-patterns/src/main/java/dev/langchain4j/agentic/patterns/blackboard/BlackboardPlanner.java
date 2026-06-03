@@ -47,11 +47,11 @@ public class BlackboardPlanner implements Planner {
     private int invocationCounter = 0;
 
     public BlackboardPlanner() {
-        this(null, DEFAULT_MAX_INVOCATIONS, null);
+        this(null, DEFAULT_MAX_INVOCATIONS, ConflictResolutionStrategy.DECLARATION_ORDER);
     }
 
     public BlackboardPlanner(Predicate<AgenticScope> goalPredicate) {
-        this(goalPredicate, DEFAULT_MAX_INVOCATIONS, null);
+        this(goalPredicate, DEFAULT_MAX_INVOCATIONS, ConflictResolutionStrategy.DECLARATION_ORDER);
     }
 
     public BlackboardPlanner(ConflictResolutionStrategy conflictResolutionStrategy) {
@@ -59,7 +59,7 @@ public class BlackboardPlanner implements Planner {
     }
 
     public BlackboardPlanner(Predicate<AgenticScope> goalPredicate, int maxInvocations) {
-        this(goalPredicate, maxInvocations, null);
+        this(goalPredicate, maxInvocations, ConflictResolutionStrategy.DECLARATION_ORDER);
     }
 
     public BlackboardPlanner(Predicate<AgenticScope> goalPredicate, ConflictResolutionStrategy conflictResolutionStrategy) {
@@ -124,6 +124,10 @@ public class BlackboardPlanner implements Planner {
         }
 
         AgentActivator selected = selectActivator(ready, scope);
+        if (selected == null) {
+            LOG.info("No agents can fire — blackboard quiescent after {} invocations", invocationCounter);
+            return done();
+        }
         selected.markFired();
         invocationCounter++;
 
@@ -132,12 +136,12 @@ public class BlackboardPlanner implements Planner {
     }
 
     private AgentActivator selectActivator(List<AgentActivator> ready, AgenticScope scope) {
-        if (ready.size() == 1 || conflictResolutionStrategy == null) {
-            return ready.get(0);
-        }
-        return ready.stream()
-                .reduce((a, b) -> conflictResolutionStrategy.resolve(scope, a.agent, b.agent) == a.agent ? a : b)
-                .orElseThrow();
+        List<AgentInstance> candidates = ready.stream().map(a -> a.agent).toList();
+        AgentInstance selected = conflictResolutionStrategy.resolve(scope, candidates);
+        return selected == null ? null : ready.stream()
+                .filter(a -> a.agent == selected)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Agent not found in ready list"));
     }
 
     @Override

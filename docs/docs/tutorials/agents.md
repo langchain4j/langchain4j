@@ -1949,16 +1949,19 @@ public class BlackboardPlanner implements Planner {
 }
 ```
 
-The `ConflictResolutionStrategy` is a functional interface that receives the current scope and two candidate agents, returning the preferred one. It is applied as a pairwise reduction over all ready agents:
+The `ConflictResolutionStrategy` is a functional interface that receives the current scope and all candidate agents that are ready to fire, returning the one that should be activated.
 
 ```java
 @FunctionalInterface
 public interface ConflictResolutionStrategy {
-    AgentInstance resolve(AgenticScope scope, AgentInstance a1, AgentInstance a2);
+
+    AgentInstance resolve(AgenticScope scope, List<AgentInstance> candidates);
 }
 ```
 
-As a practical example, consider a medical diagnostic system where specialist agents post findings to the blackboard, and a diagnosis is produced only when enough evidence has accumulated. The order in which agents fire is not predetermined — it depends on what data is available:
+The interface ships with a few convenient factory methods, together with a `or` combinator to chain multiple strategies together. For instance, `declarationOrder()` simply picks the first candidate, preserving the order used in the `subAgents` method, while `agentOfType` selects the candidate matching a given type — optionally guarded by a condition on the `AgenticScope`, and returns `null` when the condition is not met or no candidate of that type is present. The `or` combinator chains two strategies: if the first returns `null`, the second is tried. Together they let you build pipelines like `agentOfType(X.class, condition).or(declarationOrder())` that read as "prefer agent of type X when the condition holds, otherwise fall back to declaration order".
+
+As a practical example, consider a medical diagnostic system where specialist agents post findings to the blackboard, and a diagnosis is produced only when enough evidence has accumulated. The order in which agents fire is not predetermined, but depends on what data is available:
 
 ```java
 SymptomExtractor symptomExtractor = AgenticServices.agentBuilder(SymptomExtractor.class)
@@ -1984,21 +1987,18 @@ String result = diagnostics.diagnose(patientInput, labResults, medications);
 
 The `SymptomExtractor` fires first because its only input (`patientInput`) is available from the start. Once symptoms are extracted, both `LabResultAnalyzer` and `DrugInteractionChecker` may become eligible — but only one fires per step. Finally, `DiagnosisAgent` fires when both `symptoms` and `labAnalysis` are on the blackboard. The system terminates because the default goal predicate detects that `"diagnosis"` (the planner's `outputKey`) is now present in the scope. A custom goal predicate can be provided to the `BlackboardPlanner` constructor when the termination condition is more complex.
 
-When the clinical context matters for agent ordering, a `ConflictResolutionStrategy` can inspect the scope state to make an informed decision. For example, if the patient's symptoms mention medications or side effects, drug interaction analysis should be prioritized over lab analysis:
+When the clinical context matters for agent ordering, a `ConflictResolutionStrategy` can inspect the scope state to make an informed decision. For example, if the patient's symptoms mention medications or side effects, drug interaction analysis should be prioritized over lab analysis. 
 
 ```java
 MedicalDiagnostics diagnostics = AgenticServices.plannerBuilder(MedicalDiagnostics.class)
         .subAgents(symptomExtractor, labAnalyzer, drugInteraction, diagnosis)
-        .planner(() -> new BlackboardPlanner((scope, a1, a2) -> {
-                    String symptoms = scope.readState("symptoms", "");
-                    boolean drugRelated = symptoms.toLowerCase().contains("medication")
-                            || symptoms.toLowerCase().contains("drug");
-                    if (drugRelated) {
-                        if (a1.type() == DrugInteractionChecker.class) return a1;
-                        if (a2.type() == DrugInteractionChecker.class) return a2;
-                    }
-                    return a1;
-                }))
+        .planner(() -> new BlackboardPlanner(
+                agentOfType(DrugInteractionChecker.class, scope -> {
+                            String symptoms = scope.readState("symptoms", "");
+                            return symptoms.toLowerCase().contains("medication")
+                                    || symptoms.toLowerCase().contains("drug");
+                        })
+                        .or(declarationOrder())))
         .outputKey("diagnosis")
         .build();
 ```
@@ -2025,7 +2025,12 @@ MedicalDiagnostics diagnostics = AgenticServices.plannerBuilder(MedicalDiagnosti
         .subAgents(symptomExtractor, labAnalyzer, drugInteraction, diagnosisAgent, humanReview)
         .planner(() -> new BlackboardPlanner(
                 scope -> scope.hasState("approvedDiagnosis"),
-                conflictResolutionStrategy))
+                agentOfType(DrugInteractionChecker.class, scope -> {
+                            String symptoms = scope.readState("symptoms", "");
+                            return symptoms.toLowerCase().contains("medication")
+                                    || symptoms.toLowerCase().contains("drug");
+                        })
+                        .or(declarationOrder())))
         .outputKey("approvedDiagnosis")
         .build();
 ```
