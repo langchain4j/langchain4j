@@ -32,8 +32,6 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.output.FinishReason;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.time.Duration;
@@ -321,28 +319,12 @@ class InternalAzureOpenAiHelperTest {
     }
 
     @Test
-    void loadDefaultHttpClientProvider_throwsIllegalStateExceptionWhenNoProviderOnClasspath() throws Exception {
-        Method method = InternalAzureOpenAiHelper.class.getDeclaredMethod("loadDefaultHttpClientProvider");
-        method.setAccessible(true);
-
-        // Isolated ClassLoader with no parent — no META-INF/services file will be found
+    void loadDefaultHttpClientProvider_throwsWhenNoProviderOnClasspath() {
         ClassLoader emptyLoader = new URLClassLoader(new URL[0], null);
-        Thread currentThread = Thread.currentThread();
-        ClassLoader original = currentThread.getContextClassLoader();
-        currentThread.setContextClassLoader(emptyLoader);
-        try {
-            assertThatThrownBy(() -> {
-                        try {
-                            method.invoke(null);
-                        } catch (InvocationTargetException e) {
-                            throw e.getCause();
-                        }
-                    })
-                    .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("No HttpClientProvider implementation found on the classpath")
-                    .hasMessageContaining("com.azure:azure-core-http-netty");
-        } finally {
-            currentThread.setContextClassLoader(original);
-        }
+
+        assertThatThrownBy(() -> InternalAzureOpenAiHelper.loadDefaultHttpClientProvider(emptyLoader))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("No HttpClientProvider implementation found on the classpath")
+                .hasMessageContaining("com.azure:azure-core-http-netty");
     }
 }

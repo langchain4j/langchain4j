@@ -209,12 +209,16 @@ class InternalAzureOpenAiHelper {
     }
 
     private static HttpClientProvider loadDefaultHttpClientProvider() {
-        return ServiceLoader.load(HttpClientProvider.class)
+        return loadDefaultHttpClientProvider(Thread.currentThread().getContextClassLoader());
+    }
+
+    static HttpClientProvider loadDefaultHttpClientProvider(ClassLoader classLoader) {
+        return ServiceLoader.load(HttpClientProvider.class, classLoader)
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException(
                         "No HttpClientProvider implementation found on the classpath. "
                                 + "Add 'com.azure:azure-core-http-netty' as a dependency, "
-                                + "or provide a custom HttpClientProvider via the builder."));
+                                + "or provide a custom HttpClientProvider via .httpClientProvider() on the builder."));
     }
 
     static RetryOptions resolveRetryOptions(Integer maxRetries, RetryOptions retryOptions) {
