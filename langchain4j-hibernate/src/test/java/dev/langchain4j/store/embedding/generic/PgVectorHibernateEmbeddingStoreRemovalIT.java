@@ -16,10 +16,10 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
-class PgVectorEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
+class PgVectorHibernateEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
     @Container
-    static PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>("pgvector/pgvector:pg15");
+    static PostgreSQLContainer<?> databaseContainer = new PostgreSQLContainer<>("pgvector/pgvector:pg15");
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
@@ -29,11 +29,11 @@ class PgVectorEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
     protected void beforeEach() {
         embeddingStore = HibernateEmbeddingStore.dynamicBuilder()
                 .databaseKind(DatabaseKind.POSTGRESQL)
-                .host(pgVector.getHost())
-                .port(pgVector.getFirstMappedPort())
-                .database("test")
-                .user("test")
-                .password("test")
+                .host(databaseContainer.getHost())
+                .port(databaseContainer.getFirstMappedPort())
+                .database(databaseContainer.getDatabaseName())
+                .user(databaseContainer.getUsername())
+                .password(databaseContainer.getPassword())
                 .table("test" + nextInt(2000, 3000))
                 .dimension(384)
                 .createTable(true)
