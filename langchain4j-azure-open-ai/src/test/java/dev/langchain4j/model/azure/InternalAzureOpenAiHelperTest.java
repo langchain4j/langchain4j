@@ -2,6 +2,11 @@ package dev.langchain4j.model.azure;
 
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.aiMessageFrom;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.azure.ai.openai.OpenAIAsyncClient;
 import com.azure.ai.openai.OpenAIClient;
@@ -12,6 +17,8 @@ import com.azure.ai.openai.models.ChatRequestMessage;
 import com.azure.ai.openai.models.ChatRequestUserMessage;
 import com.azure.ai.openai.models.ChatResponseMessage;
 import com.azure.ai.openai.models.CompletionsFinishReason;
+import com.azure.core.http.HttpClient;
+import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.policy.ExponentialBackoffOptions;
 import com.azure.core.http.policy.RetryOptions;
 import com.azure.json.JsonOptions;
@@ -25,6 +32,10 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.output.FinishReason;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -264,5 +275,74 @@ class InternalAzureOpenAiHelperTest {
                 .contains("url")
                 .doesNotContain("data:image")
                 .doesNotContain("base64");
+    }
+
+    @Test
+    void loadDefaultHttpClientProvider_returnsProviderWhenNettyIsOnClasspath() {
+        // azure-core-http-netty is on the classpath as a transitive dependency;
+        // ServiceLoader should find NettyAsyncHttpClientProvider and the client should be created.
+        OpenAIClient client = InternalAzureOpenAiHelper.setupSyncClient(
+                "test-endpoint",
+                null,
+                "test-api-key",
+                null,
+                null,
+                null,
+                null, // no custom provider → loadDefaultHttpClientProvider() is invoked
+                null,
+                false,
+                null,
+                null);
+
+        assertThat(client).isNotNull();
+    }
+
+    @Test
+    void setupSyncClient_usesCustomProviderAndSkipsLoadDefault() {
+        HttpClient mockHttpClient = mock(HttpClient.class);
+        HttpClientProvider customProvider = mock(HttpClientProvider.class);
+        when(customProvider.createInstance(any())).thenReturn(mockHttpClient);
+
+        OpenAIClient client = InternalAzureOpenAiHelper.setupSyncClient(
+                "test-endpoint",
+                null,
+                "test-api-key",
+                null,
+                null,
+                null,
+                customProvider,
+                null,
+                false,
+                null,
+                null);
+
+        assertThat(client).isNotNull();
+        verify(customProvider).createInstance(any());
+    }
+
+    @Test
+    void loadDefaultHttpClientProvider_throwsIllegalStateExceptionWhenNoProviderOnClasspath() throws Exception {
+        Method method = InternalAzureOpenAiHelper.class.getDeclaredMethod("loadDefaultHttpClientProvider");
+        method.setAccessible(true);
+
+        // Isolated ClassLoader with no parent — no META-INF/services file will be found
+        ClassLoader emptyLoader = new URLClassLoader(new URL[0], null);
+        Thread currentThread = Thread.currentThread();
+        ClassLoader original = currentThread.getContextClassLoader();
+        currentThread.setContextClassLoader(emptyLoader);
+        try {
+            assertThatThrownBy(() -> {
+                        try {
+                            method.invoke(null);
+                        } catch (InvocationTargetException e) {
+                            throw e.getCause();
+                        }
+                    })
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("No HttpClientProvider implementation found on the classpath")
+                    .hasMessageContaining("com.azure:azure-core-http-netty");
+        } finally {
+            currentThread.setContextClassLoader(original);
+        }
     }
 }
