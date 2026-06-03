@@ -1,10 +1,8 @@
-package dev.langchain4j.store.embedding.typed;
+package dev.langchain4j.store.embedding;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,16 +11,16 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
-abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithFilteringIT {
+public abstract class AbstractPgVectorHibernateEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     @Container
-    static PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>("pgvector/pgvector:pg16");
+    protected static PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>("pgvector/pgvector:pg16");
 
-    static SessionFactory sessionFactory;
+    protected static SessionFactory sessionFactory;
 
-    static EmbeddingStore<TextSegment> embeddingStore;
+    protected static EmbeddingStore<TextSegment> embeddingStore;
 
-    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+    protected EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
     @BeforeEach
     void beforeEach() {

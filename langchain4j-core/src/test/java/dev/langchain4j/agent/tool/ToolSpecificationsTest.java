@@ -516,4 +516,270 @@ class ToolSpecificationsTest implements WithAssertions {
         JsonStringSchema element = (JsonStringSchema) ts.parameters().properties().get("myParam");
         assertThat(element.description()).isNull();
     }
+
+    // --- Inheritance tests ---
+
+    @SuppressWarnings("unused")
+    public static class ParentTool {
+        @Tool("parent tool")
+        public int parentMethod(int a) {
+            return a;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class ChildTool extends ParentTool {
+        @Tool("child tool")
+        public int childMethod(int b) {
+            return b;
+        }
+    }
+
+    @Test
+    void should_discover_tool_from_superclass() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ChildTool());
+
+        assertThat(specs).hasSize(2);
+        assertThat(specs).extracting(ToolSpecification::name)
+                .containsExactlyInAnyOrder("childMethod", "parentMethod");
+        assertThat(specs).extracting(ToolSpecification::description)
+                .containsExactlyInAnyOrder("child tool", "parent tool");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ParentWithNamedTool {
+        @Tool(name = "shared_name", value = "parent version")
+        public int doSomething(int a) {
+            return a;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class ChildWithSameToolName extends ParentWithNamedTool {
+        @Tool(name = "shared_name", value = "child version")
+        public int doSomethingElse(int b) {
+            return b;
+        }
+    }
+
+    @Test
+    void should_fail_when_parent_and_child_have_same_tool_name() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ToolSpecifications.toolSpecificationsFrom(new ChildWithSameToolName()))
+                .withMessage("Tool names must be unique. The tool 'shared_name' appears several times");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ParentWithOverridableTool {
+        @Tool("parent description")
+        public int compute(int a) {
+            return a;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class ChildOverridingTool extends ParentWithOverridableTool {
+        @Override
+        @Tool("child description")
+        public int compute(int a) {
+            return a * 2;
+        }
+    }
+
+    @Test
+    void should_use_overriding_method_from_child_class() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ChildOverridingTool());
+
+        assertThat(specs).hasSize(1);
+        assertThat(specs.get(0).name()).isEqualTo("compute");
+        assertThat(specs.get(0).description()).isEqualTo("child description");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ChildOverridingToolWithNewAnnotation extends ParentWithOverridableTool {
+        @Override
+        @Tool(name = "renamed_compute", value = "updated description")
+        public int compute(int a) {
+            return a * 3;
+        }
+    }
+
+    @Test
+    void should_use_updated_tool_annotation_from_overriding_child() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ChildOverridingToolWithNewAnnotation());
+
+        assertThat(specs).hasSize(1);
+        assertThat(specs.get(0).name()).isEqualTo("renamed_compute");
+        assertThat(specs.get(0).description()).isEqualTo("updated description");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ParentWithProcess {
+        @Tool("process a string")
+        public String process(String input) {
+            return input;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class ChildWithOverloadedProcess extends ParentWithProcess {
+        @Tool("process an int")
+        public int process(int input) {
+            return input;
+        }
+    }
+
+    @Test
+    void should_fail_when_overloaded_methods_in_parent_and_child_default_to_same_tool_name() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ToolSpecifications.toolSpecificationsFrom(new ChildWithOverloadedProcess()))
+                .withMessage("Tool names must be unique. The tool 'process' appears several times");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ParentWithNamedProcess {
+        @Tool(name = "process", value = "process a string")
+        public String process(String input) {
+            return input;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class ChildWithOverloadedSameToolName extends ParentWithNamedProcess {
+        @Tool(name = "process", value = "process an int")
+        public int process(int input) {
+            return input;
+        }
+    }
+
+    @Test
+    void should_fail_when_overloaded_methods_in_parent_and_child_have_same_tool_name() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ToolSpecifications.toolSpecificationsFrom(new ChildWithOverloadedSameToolName()))
+                .withMessage("Tool names must be unique. The tool 'process' appears several times");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ChildWithOverloadedDifferentToolNames extends ParentWithNamedProcess {
+        @Tool(name = "process_int", value = "process an int")
+        public static int process(int input) {
+            return input;
+        }
+    }
+
+    @Test
+    void should_discover_both_when_overloaded_methods_in_parent_and_child_have_different_tool_names() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ChildWithOverloadedDifferentToolNames());
+
+        assertThat(specs).hasSize(2);
+        assertThat(specs).extracting(ToolSpecification::name)
+                .containsExactlyInAnyOrder("process", "process_int");
+        assertThat(specs).extracting(ToolSpecification::description)
+                .containsExactlyInAnyOrder("process a string", "process an int");
+    }
+
+    // --- Interface default method tests ---
+
+    public interface ToolInterface {
+        @Tool("interface tool")
+        default int interfaceMethod(int a) {
+            return a;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class ImplementsToolInterface implements ToolInterface {
+    }
+
+    @Test
+    void should_discover_tool_from_interface_default_method() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ImplementsToolInterface());
+
+        assertThat(specs).hasSize(1);
+        assertThat(specs.get(0).name()).isEqualTo("interfaceMethod");
+        assertThat(specs.get(0).description()).isEqualTo("interface tool");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ClassWithOwnToolAndInterface implements ToolInterface {
+        @Tool("class tool")
+        public int classMethod(int b) {
+            return b;
+        }
+    }
+
+    @Test
+    void should_discover_tools_from_both_class_and_interface() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ClassWithOwnToolAndInterface());
+
+        assertThat(specs).hasSize(2);
+        assertThat(specs).extracting(ToolSpecification::name)
+                .containsExactlyInAnyOrder("classMethod", "interfaceMethod");
+        assertThat(specs).extracting(ToolSpecification::description)
+                .containsExactlyInAnyOrder("class tool", "interface tool");
+    }
+
+    @SuppressWarnings("unused")
+    public static class ClassOverridingInterfaceDefault implements ToolInterface {
+        @Override
+        @Tool("overridden tool")
+        public int interfaceMethod(int a) {
+            return a * 2;
+        }
+    }
+
+    @Test
+    void should_use_class_method_when_overriding_interface_default() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ClassOverridingInterfaceDefault());
+
+        assertThat(specs).hasSize(1);
+        assertThat(specs.get(0).name()).isEqualTo("interfaceMethod");
+        assertThat(specs.get(0).description()).isEqualTo("overridden tool");
+    }
+
+    public interface ToolInterfaceWithAbstractMethod {
+        @Tool("abstract tool")
+        int abstractMethod(int a);
+    }
+
+    @SuppressWarnings("unused")
+    public static class ImplementsAbstractToolMethod implements ToolInterfaceWithAbstractMethod {
+        @Override
+        public int abstractMethod(int a) {
+            return a;
+        }
+    }
+
+    @Test
+    void should_not_discover_abstract_interface_method_without_tool_on_implementation() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ImplementsAbstractToolMethod());
+
+        assertThat(specs).isEmpty();
+    }
+
+    public interface ToolInterfaceWithStaticMethod {
+        @Tool("static tool")
+        static int staticMethod(int a) {
+            return a;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class ImplementsInterfaceWithStaticTool implements ToolInterfaceWithStaticMethod {
+        @Tool("instance tool")
+        public int instanceMethod(int b) {
+            return b;
+        }
+    }
+
+    @Test
+    void should_discover_static_tool_from_interface() {
+        List<ToolSpecification> specs = ToolSpecifications.toolSpecificationsFrom(new ImplementsInterfaceWithStaticTool());
+
+        assertThat(specs).hasSize(2);
+        assertThat(specs).extracting(ToolSpecification::name)
+                .containsExactlyInAnyOrder("staticMethod", "instanceMethod");
+        assertThat(specs).extracting(ToolSpecification::description)
+                .containsExactlyInAnyOrder("static tool", "instance tool");
+    }
 }
