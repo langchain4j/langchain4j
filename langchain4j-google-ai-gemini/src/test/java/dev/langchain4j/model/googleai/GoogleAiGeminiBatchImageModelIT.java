@@ -35,7 +35,7 @@ class GoogleAiGeminiBatchImageModelIT {
         var response = subject.submit(GeminiBatchRequest.from(prompts, displayName, priority));
 
         // then
-        assertThat(response.isInProgress()).isTrue();
+        assertThat(response.state().isTerminal()).isFalse();
         assertThat(response.batchId()).startsWith("batches/");
         assertThat(response.state()).isEqualTo(PENDING);
 
@@ -60,7 +60,7 @@ class GoogleAiGeminiBatchImageModelIT {
 
         // then
         var retrieveResponse = subject.retrieve(response.batchId());
-        assertThat(retrieveResponse.hasFailed()).isTrue();
+        assertThat(retrieveResponse.state()).isEqualTo(FAILED);
         assertThat(retrieveResponse.state()).isIn(CANCELLED, FAILED);
     }
 

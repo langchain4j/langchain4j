@@ -99,7 +99,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var result = subject.submit(GeminiBatchRequest.from(requests, displayName, priority));
 
             // then
-            assertThat(result.isInProgress()).isTrue();
+            assertThat(result.state().isTerminal()).isFalse();
             assertThat(result.batchId()).isEqualTo("batches/test-123");
             assertThat(result.state()).isEqualTo(PENDING);
 
@@ -131,7 +131,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var result = subject.submit(GeminiBatchRequest.from(requests, displayName));
 
             // then
-            assertThat(result.isInProgress()).isTrue();
+            assertThat(result.state().isTerminal()).isFalse();
             assertThat(result.batchId()).isEqualTo("batches/test-456");
             assertThat(result.state()).isEqualTo(PENDING);
 
@@ -160,7 +160,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var result = subject.submit(GeminiBatchRequest.from(requests, displayName, priority));
 
             // then
-            assertThat(result.isInProgress()).isTrue();
+            assertThat(result.state().isTerminal()).isFalse();
             assertThat(result.batchId()).isEqualTo("batches/test-789");
             assertThat(result.state()).isEqualTo(PENDING);
 
@@ -189,7 +189,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var result = subject.submit(GeminiBatchRequest.from(requests, displayName, priority));
 
             // then
-            assertThat(result.isInProgress()).isTrue();
+            assertThat(result.state().isTerminal()).isFalse();
             assertThat(result.batchId()).isEqualTo("batches/test-negative");
             assertThat(result.state()).isEqualTo(PENDING);
 
@@ -220,7 +220,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var result = subject.submit(GeminiBatchRequest.from(requests, displayName, priority));
 
             // then
-            assertThat(result.isInProgress()).isTrue();
+            assertThat(result.state().isTerminal()).isFalse();
 
             verify(mockGeminiService)
                     .batchCreate(
@@ -246,7 +246,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var result = subject.submit(GeminiBatchRequest.from(requests, displayName, priority));
 
             // then
-            assertThat(result.isInProgress()).isTrue();
+            assertThat(result.state().isTerminal()).isFalse();
 
             verify(mockGeminiService).batchCreate(any(), batchRequestCaptor.capture(), eq(BATCH_GENERATE_CONTENT));
 
@@ -279,7 +279,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var result = subject.submit(GeminiBatchRequest.from(requests, displayName, priority));
 
             // then
-            assertThat(result.isInProgress()).isTrue();
+            assertThat(result.state().isTerminal()).isFalse();
             assertThat(result.batchId()).isEqualTo("batches/test-multiple");
             assertThat(result.state()).isEqualTo(PENDING);
 
@@ -306,7 +306,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var result = subject.submit(GeminiBatchRequest.from(requests));
 
             // then
-            assertThat(result.isInProgress()).isTrue();
+            assertThat(result.state().isTerminal()).isFalse();
             assertThat(result.batchId()).isEqualTo("batches/test-interface");
 
             verify(mockGeminiService)
@@ -339,7 +339,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var result = subject.submit(displayName, mockGeminiFile);
 
             // then
-            assertThat(result.isInProgress()).isTrue();
+            assertThat(result.state().isTerminal()).isFalse();
             assertThat(result.batchId()).isEqualTo("batches/chat-file-test-123");
             assertThat(result.state()).isEqualTo(PENDING);
 
@@ -366,7 +366,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var result = subject.submit(displayName, mockGeminiFile);
 
             // then
-            assertThat(result.isInProgress()).isTrue();
+            assertThat(result.state().isTerminal()).isFalse();
             assertThat(result.batchId()).isEqualTo("batches/chat-file-test-456");
             assertThat(result.state()).isEqualTo(PENDING);
 
@@ -552,7 +552,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var result = subject.retrieve(batchId);
 
             // then
-            assertThat(result.isInProgress()).isTrue();
+            assertThat(result.state().isTerminal()).isFalse();
             assertThat(result.batchId()).isEqualTo(batchId);
             assertThat(result.state()).isEqualTo(PENDING);
         }
@@ -569,7 +569,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var result = subject.retrieve(batchId);
 
             // then
-            assertThat(result.isInProgress()).isTrue();
+            assertThat(result.state().isTerminal()).isFalse();
             assertThat(result.batchId()).isEqualTo(batchId);
             assertThat(result.state()).isEqualTo(RUNNING);
         }
@@ -587,7 +587,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var result = subject.retrieve(batchId);
 
             // then
-            assertThat(result.hasSucceeded()).isTrue();
+            assertThat(result.state()).isEqualTo(SUCCEEDED);
             assertThat(result.batchId()).isEqualTo(batchId);
             assertThat(result.responses()).isEqualTo(chatResponses);
         }
@@ -630,7 +630,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var result = subject.retrieve(batchId);
 
             // then
-            assertThat(result.hasSucceeded()).isTrue();
+            assertThat(result.state()).isEqualTo(SUCCEEDED);
             assertThat(result.batchId()).isEqualTo(batchId);
             assertThat(result.responses()).isEmpty();
         }
@@ -648,7 +648,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var result = subject.retrieve(batchId);
 
             // then
-            assertThat(result.hasFailed()).isTrue();
+            assertThat(result.state()).isEqualTo(FAILED);
             assertThat(result.errors())
                     .containsExactly(new BatchError(13, "batches/test-error failed without error", List.of()));
         }
@@ -669,8 +669,8 @@ class GoogleAiGeminiBatchChatModelTest {
 
             // then
             assertThat(result.state()).isEqualTo(CANCELLED);
-            assertThat(result.hasSucceeded()).isFalse();
-            assertThat(result.isInProgress()).isFalse();
+            assertThat(result.state()).isNotEqualTo(SUCCEEDED);
+            assertThat(result.state().isTerminal()).isTrue();
         }
 
         @Test
@@ -685,7 +685,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var result = subject.retrieve(batchId);
 
             // then
-            assertThat(result.hasFailed()).isTrue();
+            assertThat(result.state()).isEqualTo(FAILED);
             assertThat(result.batchId()).isEqualTo(batchId);
             assertThat(result.state()).isEqualTo(FAILED);
         }
@@ -705,7 +705,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var result = subject.retrieve(batchId);
 
             // then
-            assertThat(result.hasFailed()).isTrue();
+            assertThat(result.state()).isEqualTo(FAILED);
             assertThat(result.errors()).containsExactly(new BatchError(400, "Bad Request", errorDetails));
         }
 
@@ -722,7 +722,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var result = subject.retrieve(batchId);
 
             // then
-            assertThat(result.isInProgress()).isTrue();
+            assertThat(result.state().isTerminal()).isFalse();
             assertThat(result.batchId()).isEqualTo(batchId);
             assertThat(result.state()).isEqualTo(BatchState.UNSPECIFIED);
         }
@@ -740,7 +740,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var result = subject.retrieve(batchId);
 
             // then
-            assertThat(result.isInProgress()).isTrue();
+            assertThat(result.state().isTerminal()).isFalse();
             assertThat(result.batchId()).isEqualTo(batchId);
             assertThat(result.state()).isEqualTo(BatchState.UNSPECIFIED);
         }
@@ -758,7 +758,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var result = subject.retrieve(batchId);
 
             // then
-            assertThat(result.hasSucceeded()).isTrue();
+            assertThat(result.state()).isEqualTo(SUCCEEDED);
             assertThat(result.batchId()).isEqualTo(batchId);
             assertThat(result.responses()).isEqualTo(chatResponses);
         }
@@ -781,7 +781,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var result = subject.retrieve(batchId);
 
             // then
-            assertThat(result.hasSucceeded()).isTrue();
+            assertThat(result.state()).isEqualTo(SUCCEEDED);
             assertThat(result.batchId()).isEqualTo(batchId);
             assertThat(result.responses()).isEqualTo(chatResponses);
         }
@@ -1292,7 +1292,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var result = subject.submit(GeminiBatchRequest.from(requests, "capitals-batch", 0L));
 
             // then
-            assertThat(result.isInProgress()).isTrue();
+            assertThat(result.state().isTerminal()).isFalse();
             assertThat(result.batchId()).isEqualTo("batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac");
             assertThat(result.state()).isEqualTo(PENDING);
         }
@@ -1315,7 +1315,7 @@ class GoogleAiGeminiBatchChatModelTest {
             var result = subject.retrieve(batchId);
 
             // then
-            assertThat(result.hasSucceeded()).isTrue();
+            assertThat(result.state()).isEqualTo(SUCCEEDED);
             assertThat(result.batchId()).isEqualTo("batches/tti3ik8qob66dxcvynlg5swnutyntbi926ac");
 
             var results = result.responses();

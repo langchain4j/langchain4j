@@ -52,7 +52,8 @@ public interface BatchChatModel {
     /**
      * Lists chat batch jobs with optional pagination.
      *
-     * @param pagination the maximum number of batch jobs to return and token for retrieving a specific page; if null, uses server default
+     * @param pagination the maximum number of batch jobs to return and token for retrieving a specific page;
+     *                   if null, uses server default
      * @return a {@link BatchPage} containing chat batch responses and pagination information
      */
     BatchPage<ChatResponse> list(@Nullable BatchPagination pagination);

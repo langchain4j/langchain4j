@@ -231,13 +231,13 @@ BatchResponse<Response<Image>> response = batchModel.submit(GeminiBatchRequest.f
 String batchId = response.batchId();
 
 // Poll for completion
-while (response.isInProgress()) {
+while (!response.state().isTerminal()) {
     Thread.sleep(10000);
     response = batchModel.retrieve(batchId);
 }
 
 // Process results
-if (response.hasSucceeded()) {
+if (response.state() == BatchState.SUCCEEDED) {
     for (Response<Image> imageResponse : response.responses()) {
         Image image = imageResponse.content();
         byte[] imageBytes = Base64.getDecoder().decode(image.base64Data());

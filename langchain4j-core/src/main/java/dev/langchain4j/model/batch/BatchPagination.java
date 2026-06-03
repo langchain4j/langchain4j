@@ -1,9 +1,9 @@
 package dev.langchain4j.model.batch;
 
-import java.util.Objects;
-
 import dev.langchain4j.Experimental;
 import org.jspecify.annotations.Nullable;
+
+import java.util.Objects;
 
 @Experimental
 public final class BatchPagination {
@@ -20,23 +20,19 @@ public final class BatchPagination {
     }
 
     @Nullable
-    public Integer getPageSize() {
+    public Integer pageSize() {
         return pageSize;
     }
 
     @Nullable
-    public String getPageToken() {
+    public String pageToken() {
         return pageToken;
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof final BatchPagination that)) {
-            return false;
-        }
+        if (o == null || getClass() != o.getClass()) return false;
+        BatchPagination that = (BatchPagination) o;
         return Objects.equals(pageSize, that.pageSize) && Objects.equals(pageToken, that.pageToken);
     }
 
@@ -47,6 +43,9 @@ public final class BatchPagination {
 
     @Override
     public String toString() {
-        return "BatchPagination{" + "pageSize=" + pageSize + ", pageToken='" + pageToken + '\'' + '}';
+        return "BatchPagination{" +
+                "pageSize=" + pageSize +
+                ", pageToken='" + pageToken + '\'' +
+                '}';
     }
 }

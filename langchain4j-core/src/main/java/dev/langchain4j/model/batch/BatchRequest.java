@@ -1,9 +1,9 @@
 package dev.langchain4j.model.batch;
 
-import dev.langchain4j.Experimental;
-
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.Experimental;
 import java.util.List;
 import java.util.Objects;
 
@@ -23,7 +23,7 @@ public class BatchRequest<T> {
      * @param requests The list of requests. Must not be null.
      */
     public BatchRequest(List<T> requests) {
-        this.requests = ensureNotNull(requests, "requests");
+        this.requests = copy(ensureNotNull(requests, "requests"));
     }
 
     /**
@@ -37,16 +37,18 @@ public class BatchRequest<T> {
 
     @Override
     public boolean equals(Object o) {
-        return this == o || (o instanceof BatchRequest<?> that && Objects.equals(this.requests, that.requests));
+        if (o == null || getClass() != o.getClass()) return false;
+        BatchRequest<?> that = (BatchRequest<?>) o;
+        return Objects.equals(requests, that.requests);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(requests);
+        return Objects.hashCode(requests);
     }
 
     @Override
     public String toString() {
-        return String.format("BatchRequest{requests=%s}", requests);
+        return "BatchRequest{" + "requests=" + requests + '}';
     }
 }

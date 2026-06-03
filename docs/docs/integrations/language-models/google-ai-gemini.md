@@ -838,16 +838,16 @@ BatchResponse<ChatResponse> response = batchModel.submit("My Batch Job", uploade
 ### Handling Batch Responses
 
 A `BatchResponse` exposes the current `state()` together with the per-request `results()` and the
-`responses()` / `errors()` convenience views. Use the convenience predicates `isInProgress()`,
-`hasSucceeded()`, and `hasFailed()` to branch:
+`responses()` / `errors()` convenience views. Branch on the `state()` (use `state().isTerminal()`
+to tell whether the batch is still in progress):
 
 ```java
 BatchResponse<ChatResponse> response = batchModel.submit(new BatchRequest<>(requests));
 
-if (response.isInProgress()) {
+if (!response.state().isTerminal()) {
     System.out.println("Batch is " + response.state());
     System.out.println("Batch ID: " + response.batchId());
-} else if (response.hasSucceeded()) {
+} else if (response.state() == BatchState.SUCCEEDED) {
     System.out.println("Batch completed successfully!");
 
     // Process successful responses
@@ -906,13 +906,13 @@ BatchResponse<ChatResponse> result = batchModel.submit(new BatchRequest<>(reques
 String batchId = result.batchId();
 
 // Poll until the batch reaches a terminal state
-while (result.isInProgress()) {
+while (!result.state().isTerminal()) {
     Thread.sleep(5000); // Wait 5 seconds between polls
     result = batchModel.retrieve(batchId);
 }
 
 // Process final result
-if (result.hasSucceeded()) {
+if (result.state() == BatchState.SUCCEEDED) {
     System.out.println("Successful responses: " + result.responses().size());
     for (ChatResponse chatResponse : result.responses()) {
         System.out.println(chatResponse.aiMessage().text());
@@ -1012,7 +1012,7 @@ The `BatchState` enum represents the possible states of a batch job:
 - `EXPIRED`: Batch expired before completion (terminal)
 - `UNSPECIFIED`: State is unknown or not provided
 
-Use `BatchState.isTerminal()` (or equivalently `BatchResponse.isInProgress()`) to detect when polling can stop.
+Use `BatchState.isTerminal()` on `BatchResponse.state()` to detect when polling can stop.
 
 ### Setting Batch Priority
 
@@ -1079,7 +1079,7 @@ String batchId = result.batchId();
 // Poll for completion
 int attempts = 0;
 int maxAttempts = 720; // 1 hour with 5-second intervals
-while (result.isInProgress()) {
+while (!result.state().isTerminal()) {
     if (attempts++ >= maxAttempts) {
         throw new RuntimeException("Batch processing timeout");
     }
@@ -1089,7 +1089,7 @@ while (result.isInProgress()) {
 }
 
 // Process results
-if (result.hasSucceeded()) {
+if (result.state() == BatchState.SUCCEEDED) {
     System.out.println("Generated " + result.responses().size() + " stories");
     for (int i = 0; i < result.responses().size(); i++) {
         ChatResponse chatResponse = result.responses().get(i);

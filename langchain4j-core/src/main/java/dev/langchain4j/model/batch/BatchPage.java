@@ -4,9 +4,12 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.BatchChatModel;
 import dev.langchain4j.model.embedding.BatchEmbeddingModel;
 import dev.langchain4j.model.image.BatchImageModel;
+import org.jspecify.annotations.Nullable;
+
 import java.util.List;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
+
+import static dev.langchain4j.internal.Utils.copy;
 
 /**
  * Represents a set of batch jobs that is potentially paginated.
@@ -15,7 +18,6 @@ import org.jspecify.annotations.Nullable;
  * the {@code nextPageToken} can be used to request the next page of results.</p>
  *
  * @param <T> the type of the responses payload in each batch (e.g., {@code ChatResponse}, {@code Embedding})
- *
  * @see BatchChatModel#list(BatchPagination)
  * @see BatchEmbeddingModel#list(BatchPagination)
  * @see BatchImageModel#list(BatchPagination)
@@ -38,7 +40,7 @@ public class BatchPage<T> {
      *                      if no more pages exist.
      */
     public BatchPage(List<BatchResponse<T>> batches, @Nullable String nextPageToken) {
-        this.batches = batches;
+        this.batches = copy(batches);
         this.nextPageToken = nextPageToken;
     }
 
@@ -60,9 +62,9 @@ public class BatchPage<T> {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof BatchPage<?> that)) return false;
-        return Objects.equals(batches, that.batches) && Objects.equals(nextPageToken, that.nextPageToken);
+        if (o == null || getClass() != o.getClass()) return false;
+        BatchPage<?> batchPage = (BatchPage<?>) o;
+        return Objects.equals(batches, batchPage.batches) && Objects.equals(nextPageToken, batchPage.nextPageToken);
     }
 
     @Override
@@ -72,6 +74,9 @@ public class BatchPage<T> {
 
     @Override
     public String toString() {
-        return "BatchPage{" + "batches=" + batches + ", nextPageToken='" + nextPageToken + '\'' + '}';
+        return "BatchPage{" +
+                "batches=" + batches +
+                ", nextPageToken='" + nextPageToken + '\'' +
+                '}';
     }
 }

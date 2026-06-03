@@ -76,10 +76,10 @@ import org.slf4j.Logger;
  * do {
  *     Thread.sleep(5000);
  *     result = model.retrieve(batchId);
- * } while (result.isInProgress());
+ * } while (!result.state().isTerminal());
  *
  * // Process results
- * if (result.hasSucceeded()) {
+ * if (result.state() == BatchState.SUCCEEDED) {
  *     for (Response<Image> imageResponse : result.responses()) {
  *         Image image = imageResponse.content();
  *         // Save or process the generated image

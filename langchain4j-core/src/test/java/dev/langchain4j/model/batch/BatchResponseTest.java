@@ -14,61 +14,6 @@ class BatchResponseTest {
     }
 
     @Test
-    void isIncomplete_shouldReturnTrue_whenStateIsPending() {
-        assertThat(responseWithState(PENDING).isInProgress()).isTrue();
-    }
-
-    @Test
-    void isIncomplete_shouldReturnTrue_whenStateIsRunning() {
-        assertThat(responseWithState(RUNNING).isInProgress()).isTrue();
-    }
-
-    @Test
-    void isIncomplete_shouldReturnFalse_whenStateIsSucceeded() {
-        assertThat(responseWithState(SUCCEEDED).isInProgress()).isFalse();
-    }
-
-    @Test
-    void isIncomplete_shouldReturnFalse_whenStateIsFailed() {
-        assertThat(responseWithState(FAILED).isInProgress()).isFalse();
-    }
-
-    @Test
-    void isIncomplete_shouldReturnFalse_whenStateIsExpired() {
-        assertThat(responseWithState(EXPIRED).isInProgress()).isFalse();
-    }
-
-    @Test
-    void isSuccess_shouldReturnTrue_whenStateIsSucceeded() {
-        assertThat(responseWithState(SUCCEEDED).hasSucceeded()).isTrue();
-    }
-
-    @Test
-    void isSuccess_shouldReturnFalse_whenStateIsFailed() {
-        assertThat(responseWithState(FAILED).hasSucceeded()).isFalse();
-    }
-
-    @Test
-    void isSuccess_shouldReturnFalse_whenStateIsPending() {
-        assertThat(responseWithState(PENDING).hasSucceeded()).isFalse();
-    }
-
-    @Test
-    void isError_shouldReturnTrue_whenStateIsFailed() {
-        assertThat(responseWithState(FAILED).hasFailed()).isTrue();
-    }
-
-    @Test
-    void isError_shouldReturnFalse_whenStateIsSucceeded() {
-        assertThat(responseWithState(SUCCEEDED).hasFailed()).isFalse();
-    }
-
-    @Test
-    void isError_shouldReturnFalse_whenStateIsExpired() {
-        assertThat(responseWithState(EXPIRED).hasFailed()).isFalse();
-    }
-
-    @Test
     void responsesAndErrors_shouldBeDerivedFromResults() {
         var error = new BatchError(400, "Bad request", null);
         var response = BatchResponse.<String>builder()
@@ -159,6 +104,6 @@ class BatchResponseTest {
         assertThat(built.results()).isEmpty();
         assertThat(built.responses()).isEmpty();
         assertThat(built.errors()).isEmpty();
-        assertThat(built.isInProgress()).isTrue();
+        assertThat(built.state().isTerminal()).isFalse();
     }
 }

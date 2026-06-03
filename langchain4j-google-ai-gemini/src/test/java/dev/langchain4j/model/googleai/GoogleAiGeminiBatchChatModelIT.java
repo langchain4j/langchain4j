@@ -46,7 +46,7 @@ class GoogleAiGeminiBatchChatModelIT {
         var response = subject.submit(GeminiBatchRequest.from(requests, displayName, priority));
 
         // then
-        assertThat(response.isInProgress()).isTrue();
+        assertThat(response.state().isTerminal()).isFalse();
         assertThat(response.batchId()).startsWith("batches/");
         assertThat(response.state()).isEqualTo(PENDING);
     }
@@ -87,7 +87,7 @@ class GoogleAiGeminiBatchChatModelIT {
             var response = chatModel.submit("IT Chat File Batch", uploadedFile);
 
             // then
-            assertThat(response.isInProgress()).isTrue();
+            assertThat(response.state().isTerminal()).isFalse();
             assertThat(response.state()).isEqualTo(PENDING);
             batchId = response.batchId();
             assertThat(batchId).startsWith("batches/");
@@ -160,7 +160,7 @@ class GoogleAiGeminiBatchChatModelIT {
 
         // then
         var retrieveResponse = subject.retrieve(response.batchId());
-        assertThat(retrieveResponse.hasFailed()).isTrue();
+        assertThat(retrieveResponse.state()).isEqualTo(FAILED);
         assertThat(retrieveResponse.state()).isIn(CANCELLED, FAILED);
     }
 

@@ -6,9 +6,8 @@ import java.util.List;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.model.batch.BatchState.FAILED;
-import static dev.langchain4j.model.batch.BatchState.SUCCEEDED;
 
 /**
  * Represents the responses of a batch operation.
@@ -31,7 +30,7 @@ public class BatchResponse<T> {
     private final List<BatchItemResult<T>> results;
 
     public BatchResponse(Builder<T> builder) {
-        this.batchId = ensureNotNull(builder.batchId, "batchId");
+        this.batchId = ensureNotBlank(builder.batchId, "batchId");
         this.state = ensureNotNull(builder.state, "state");
         this.results = copy(builder.results);
     }
@@ -84,27 +83,6 @@ public class BatchResponse<T> {
                 .filter(result -> !result.isSuccess())
                 .map(BatchItemResult::error)
                 .toList();
-    }
-
-    /**
-     * Returns {@code true} if the batch is still processing (not in a terminal state).
-     */
-    public boolean isInProgress() {
-        return !state.isTerminal();
-    }
-
-    /**
-     * Returns {@code true} if the batch completed successfully.
-     */
-    public boolean hasSucceeded() {
-        return state == SUCCEEDED;
-    }
-
-    /**
-     * Returns {@code true} if the batch failed.
-     */
-    public boolean hasFailed() {
-        return state == FAILED;
     }
 
     @Override

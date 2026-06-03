@@ -116,8 +116,8 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
      * Lists batch jobs.
      */
     BatchPage<RESPONSE> listBatchJobs(final @Nullable BatchPagination batchPagination) {
-        var pageSize = batchPagination != null ? batchPagination.getPageSize() : null;
-        var pageToken = batchPagination != null ? batchPagination.getPageToken() : null;
+        var pageSize = batchPagination != null ? batchPagination.pageSize() : null;
+        var pageToken = batchPagination != null ? batchPagination.pageToken() : null;
         ListOperationsResponse<API_RESPONSE> response = geminiService.batchListBatches(pageSize, pageToken);
 
         List<Operation<API_RESPONSE>> operations = getOrDefault(response.operations(), List.of());

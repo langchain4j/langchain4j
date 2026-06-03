@@ -53,7 +53,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var response = subject.submit(GeminiBatchRequest.from(textSegments, displayName, priority));
 
             // then
-            assertThat(response.isInProgress()).isTrue();
+            assertThat(response.state().isTerminal()).isFalse();
             assertThat(response.batchId()).startsWith("batches/");
             assertThat(response.state()).isEqualTo(PENDING);
         }
@@ -76,7 +76,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var response = subject.submit(GeminiBatchRequest.from(textSegments, displayName, priority));
 
             // then
-            assertThat(response.isInProgress()).isTrue();
+            assertThat(response.state().isTerminal()).isFalse();
             assertThat(response.batchId()).startsWith("batches/");
         }
 
@@ -102,7 +102,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var response = subject.submit(GeminiBatchRequest.from(textSegments, displayName, priority));
 
             // then
-            assertThat(response.isInProgress()).isTrue();
+            assertThat(response.state().isTerminal()).isFalse();
             assertThat(response.batchId()).startsWith("batches/");
         }
 
@@ -125,7 +125,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var response = subject.submit(GeminiBatchRequest.from(textSegments, displayName, priority));
 
             // then
-            assertThat(response.isInProgress()).isTrue();
+            assertThat(response.state().isTerminal()).isFalse();
             assertThat(response.batchId()).startsWith("batches/");
         }
     }
@@ -168,7 +168,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var response = embeddingModel.submit("IT File Batch", uploadedFile);
 
             // then
-            assertThat(response.isInProgress()).isTrue();
+            assertThat(response.state().isTerminal()).isFalse();
             assertThat(response.state()).isEqualTo(PENDING);
             batchId = response.batchId();
             assertThat(batchId).startsWith("batches/");
@@ -224,7 +224,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
 
             // then
             var retrieveResponse = subject.retrieve(response.batchId());
-            assertThat(retrieveResponse.hasFailed()).isTrue();
+            assertThat(retrieveResponse.state()).isEqualTo(FAILED);
             assertThat(retrieveResponse.state()).isIn(CANCELLED, FAILED);
         }
 
@@ -382,7 +382,7 @@ class GoogleAiGeminiBatchEmbeddingModelIT {
             var retrieveResponse = subject.retrieve(response.batchId());
 
             // then
-            assertThat(retrieveResponse.isInProgress()).isTrue();
+            assertThat(retrieveResponse.state().isTerminal()).isFalse();
             assertThat(retrieveResponse.batchId()).isEqualTo(response.batchId());
         }
     }
