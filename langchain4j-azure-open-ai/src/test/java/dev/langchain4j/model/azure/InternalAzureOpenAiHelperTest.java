@@ -2,7 +2,6 @@ package dev.langchain4j.model.azure;
 
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.aiMessageFrom;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -21,6 +20,7 @@ import com.azure.core.http.HttpClient;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.policy.ExponentialBackoffOptions;
 import com.azure.core.http.policy.RetryOptions;
+import com.azure.core.util.HttpClientOptions;
 import com.azure.json.JsonOptions;
 import com.azure.json.JsonReader;
 import com.azure.json.implementation.DefaultJsonReader;
@@ -32,8 +32,6 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.output.FinishReason;
 import java.io.IOException;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -276,9 +274,29 @@ class InternalAzureOpenAiHelperTest {
     }
 
     @Test
-    void loadDefaultHttpClientProvider_returnsProviderWhenNettyIsOnClasspath() {
-        // azure-core-http-netty is on the classpath as a transitive dependency;
-        // ServiceLoader should find NettyAsyncHttpClientProvider and the client should be created.
+    void createHttpClient_createsDefaultClient_whenNoCustomProviderGiven() {
+        // azure-core-http-netty is on the classpath as a transitive dependency, so the Azure SDK's
+        // HttpClient.createDefault() discovers it and returns a usable client.
+        HttpClient httpClient = InternalAzureOpenAiHelper.createHttpClient(null, new HttpClientOptions());
+
+        assertThat(httpClient).isNotNull();
+    }
+
+    @Test
+    void createHttpClient_usesCustomProvider_whenProvided() {
+        HttpClient mockHttpClient = mock(HttpClient.class);
+        HttpClientProvider customProvider = mock(HttpClientProvider.class);
+        HttpClientOptions clientOptions = new HttpClientOptions();
+        when(customProvider.createInstance(clientOptions)).thenReturn(mockHttpClient);
+
+        HttpClient httpClient = InternalAzureOpenAiHelper.createHttpClient(customProvider, clientOptions);
+
+        assertThat(httpClient).isSameAs(mockHttpClient);
+        verify(customProvider).createInstance(clientOptions);
+    }
+
+    @Test
+    void setupSyncClient_createsClient_whenNoCustomProviderGiven() {
         OpenAIClient client = InternalAzureOpenAiHelper.setupSyncClient(
                 "test-endpoint",
                 null,
@@ -286,7 +304,7 @@ class InternalAzureOpenAiHelperTest {
                 null,
                 null,
                 null,
-                null, // no custom provider → loadDefaultHttpClientProvider() is invoked
+                null, // no custom provider → default HttpClient is discovered via the Azure SDK
                 null,
                 false,
                 null,
@@ -296,7 +314,7 @@ class InternalAzureOpenAiHelperTest {
     }
 
     @Test
-    void setupSyncClient_usesCustomProviderAndSkipsLoadDefault() {
+    void setupSyncClient_usesCustomProvider_whenProvided() {
         HttpClient mockHttpClient = mock(HttpClient.class);
         HttpClientProvider customProvider = mock(HttpClientProvider.class);
         when(customProvider.createInstance(any())).thenReturn(mockHttpClient);
@@ -306,15 +324,5 @@ class InternalAzureOpenAiHelperTest {
 
         assertThat(client).isNotNull();
         verify(customProvider).createInstance(any());
-    }
-
-    @Test
-    void loadDefaultHttpClientProvider_throwsWhenNoProviderOnClasspath() {
-        ClassLoader emptyLoader = new URLClassLoader(new URL[0], null);
-
-        assertThatThrownBy(() -> InternalAzureOpenAiHelper.loadDefaultHttpClientProvider(emptyLoader))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("No HttpClientProvider implementation found on the classpath")
-                .hasMessageContaining("com.azure:azure-core-http-netty");
     }
 }
