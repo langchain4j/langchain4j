@@ -133,6 +133,49 @@ class OracleChatMemoryStoreIT extends OracleContainerTestBase {
         assertThatThrownBy(() -> missingTableStore.getMessages("missing")).isInstanceOf(RuntimeException.class);
     }
 
+    @Test
+    void should_accept_quoted_identifiers() throws SQLException {
+        String customTable = "\"LANGCHAIN4J CHAT MEMORY "
+                + Long.toString(Math.abs(System.nanoTime()), 36).toUpperCase(Locale.ROOT)
+                + "\"";
+        try {
+            createTable(customTable, "\"session-id\"", "\"messages json\"");
+
+            OracleChatMemoryStore customStore = OracleChatMemoryStore.builder()
+                    .dataSource(getDataSource())
+                    .tableName(customTable)
+                    .memoryIdColumnName("\"session-id\"")
+                    .contentColumnName("\"messages json\"")
+                    .build();
+
+            customStore.updateMessages(
+                    "quoted-user", Collections.<ChatMessage>singletonList(UserMessage.from("quoted works")));
+            assertThat(customStore.getMessages("quoted-user")).hasSize(1);
+        } finally {
+            dropTableIfExists(customTable);
+        }
+    }
+
+    @Test
+    void should_reject_injected_table_name() {
+        assertThatThrownBy(() -> OracleChatMemoryStore.builder()
+                        .dataSource(getDataSource())
+                        .tableName("CHAT_MEMORY; DROP TABLE USERS")
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("tableName");
+    }
+
+    @Test
+    void should_reject_injected_column_name() {
+        assertThatThrownBy(() -> OracleChatMemoryStore.builder()
+                        .dataSource(getDataSource())
+                        .memoryIdColumnName("memory_id OR 1=1")
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("memoryIdColumnName");
+    }
+
     private void createTable(String tableName, String memoryIdColumnName, String contentColumnName)
             throws SQLException {
         try (Connection connection = getConnection();

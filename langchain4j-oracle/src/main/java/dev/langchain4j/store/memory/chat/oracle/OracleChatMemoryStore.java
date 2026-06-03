@@ -10,6 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
 import javax.sql.DataSource;
 
 /**
@@ -18,6 +19,12 @@ import javax.sql.DataSource;
  * <p>Messages are stored as a JSON array in a single row identified by memory id.
  */
 public final class OracleChatMemoryStore implements ChatMemoryStore {
+
+    private static final String DEFAULT_TABLE_NAME = "CHAT_MEMORY";
+    private static final String DEFAULT_MEMORY_ID_COLUMN_NAME = "MEMORY_ID";
+    private static final String DEFAULT_CONTENT_COLUMN_NAME = "CONTENT";
+    private static final Pattern SIMPLE_IDENTIFIER = Pattern.compile("^[A-Za-z_][A-Za-z0-9_]*$");
+    private static final Pattern QUOTED_IDENTIFIER = Pattern.compile("^\"([^\"]|\"\")+\"$");
 
     private final DataSource dataSource;
     private final String selectSql;
@@ -31,9 +38,14 @@ public final class OracleChatMemoryStore implements ChatMemoryStore {
 
         this.dataSource = builder.dataSource;
 
-        String tableName = builder.tableName == null ? "CHAT_MEMORY" : builder.tableName;
-        String memoryIdColumnName = builder.memoryIdColumnName == null ? "MEMORY_ID" : builder.memoryIdColumnName;
-        String contentColumnName = builder.contentColumnName == null ? "CONTENT" : builder.contentColumnName;
+        String tableName =
+                builder.tableName == null ? DEFAULT_TABLE_NAME : validateIdentifier(builder.tableName, "tableName");
+        String memoryIdColumnName = builder.memoryIdColumnName == null
+                ? DEFAULT_MEMORY_ID_COLUMN_NAME
+                : validateIdentifier(builder.memoryIdColumnName, "memoryIdColumnName");
+        String contentColumnName = builder.contentColumnName == null
+                ? DEFAULT_CONTENT_COLUMN_NAME
+                : validateIdentifier(builder.contentColumnName, "contentColumnName");
 
         this.selectSql = "SELECT " + contentColumnName + " FROM " + tableName + " WHERE " + memoryIdColumnName + " = ?";
         this.mergeSql = "MERGE INTO " + tableName + " t "
@@ -43,6 +55,19 @@ public final class OracleChatMemoryStore implements ChatMemoryStore {
                 + "WHEN NOT MATCHED THEN INSERT (" + memoryIdColumnName + ", " + contentColumnName + ") "
                 + "VALUES (s." + memoryIdColumnName + ", s." + contentColumnName + ")";
         this.deleteSql = "DELETE FROM " + tableName + " WHERE " + memoryIdColumnName + " = ?";
+    }
+
+    private static String validateIdentifier(String identifier, String fieldName) {
+        if (identifier == null || identifier.isBlank()) {
+            throw new IllegalArgumentException(fieldName + " cannot be blank");
+        }
+        if (SIMPLE_IDENTIFIER.matcher(identifier).matches()) {
+            return identifier;
+        }
+        if (QUOTED_IDENTIFIER.matcher(identifier).matches()) {
+            return identifier;
+        }
+        throw new IllegalArgumentException(fieldName + " contains unsupported characters: " + identifier);
     }
 
     public static Builder builder() {
