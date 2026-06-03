@@ -556,6 +556,48 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
+    void contextual_system_message_provider_is_called_with_chat_model() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(model)
+                .contextualSystemMessageProvider(context -> {
+                    assertThat(context.defaultChatModel()).isSameAs(model);
+                    return "Given a name of a country, answer with a name of it's capital";
+                })
+                .build();
+
+        // when-then
+        assertThat(aiService.chat11("Country: Germany")).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("Given a name of a country, answer with a name of it's capital"),
+                                userMessage("Country: Germany"))
+                        .build());
+    }
+
+    @Test
+    void contextual_system_message_provider_is_overridden_by_annotation() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatModel(model)
+                .contextualSystemMessageProvider(context -> "This message should be ignored")
+                .build();
+
+        // when-then
+        assertThat(aiService.chat21("What is the capital of Germany?")).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage(
+                                        "This message should take precedence over the one provided by systemMessageProvider"),
+                                userMessage("What is the capital of Germany?"))
+                        .build());
+    }
+
+    @Test
     void illegal_system_message_configuration_1() {
 
         // given

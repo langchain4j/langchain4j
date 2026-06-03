@@ -32,6 +32,7 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -140,7 +141,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         InvocationParameters.class, args, method.getParameters())
                                 .orElseGet(InvocationParameters::new);
 
-                        InvocationContext invocationContext = InvocationContext.builder()
+                        InvocationContext invocationContext = dev.langchain4j.invocation.InvocationContext.builder()
                                 .invocationId(UUID.randomUUID())
                                 .interfaceName(context.aiServiceClass.getName())
                                 .methodName(method.getName())
@@ -544,8 +545,21 @@ class DefaultAiServices<T> extends AiServices<T> {
             return Optional.of(getTemplate(
                     method, "System", annotation.fromResource(), annotation.value(), annotation.delimiter()));
         }
+        if (context.contextualSystemMessageProvider != null) {
+            return Optional.of(context.contextualSystemMessageProvider.get(new SystemMessageProvider.InvocationContext() {
+                @Override
+                public Object memoryId() {
+                    return memoryId;
+                }
 
-        return context.systemMessageProvider.apply(memoryId);
+                @Override
+                public ChatModel defaultChatModel() {
+                    return context.chatModel;
+                }
+            }));
+        } else {
+            return context.systemMessageProvider.apply(memoryId);
+        }
     }
 
     private static UserMessage prepareUserMessage(
