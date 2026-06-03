@@ -215,8 +215,8 @@ class InternalAzureOpenAiHelper {
     static HttpClientProvider loadDefaultHttpClientProvider(ClassLoader classLoader) {
         return ServiceLoader.load(HttpClientProvider.class, classLoader)
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException(
-                        "No HttpClientProvider implementation found on the classpath. "
+                .orElseThrow(
+                        () -> new IllegalStateException("No HttpClientProvider implementation found on the classpath. "
                                 + "Add 'com.azure:azure-core-http-netty' as a dependency, "
                                 + "or provide a custom HttpClientProvider via .httpClientProvider() on the builder."));
     }
@@ -257,9 +257,8 @@ class InternalAzureOpenAiHelper {
             return chatRequestAssistantMessage;
         } else if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
             if (!toolExecutionResultMessage.hasSingleText()) {
-                throw new UnsupportedFeatureException(
-                        "Azure OpenAI does not support non-text content in tool results. "
-                                + "Only text content is supported.");
+                throw new UnsupportedFeatureException("Azure OpenAI does not support non-text content in tool results. "
+                        + "Only text content is supported.");
             }
             return new ChatRequestToolMessage(toolExecutionResultMessage.text(), toolExecutionResultMessage.id());
         } else if (message instanceof SystemMessage systemMessage) {

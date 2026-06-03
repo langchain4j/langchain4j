@@ -302,17 +302,7 @@ class InternalAzureOpenAiHelperTest {
         when(customProvider.createInstance(any())).thenReturn(mockHttpClient);
 
         OpenAIClient client = InternalAzureOpenAiHelper.setupSyncClient(
-                "test-endpoint",
-                null,
-                "test-api-key",
-                null,
-                null,
-                null,
-                customProvider,
-                null,
-                false,
-                null,
-                null);
+                "test-endpoint", null, "test-api-key", null, null, null, customProvider, null, false, null, null);
 
         assertThat(client).isNotNull();
         verify(customProvider).createInstance(any());
