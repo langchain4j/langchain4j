@@ -1,5 +1,8 @@
 package dev.langchain4j.model.googleai.common;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import dev.langchain4j.model.googleai.GeminiThinkingConfig;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import org.junit.jupiter.api.AfterEach;
@@ -7,9 +10,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
 public class GoogleAiGeminiThinkingLevelIT {
@@ -19,7 +19,8 @@ public class GoogleAiGeminiThinkingLevelIT {
     void should_specify_thinking_level(GeminiThinkingConfig.GeminiThinkingLevel thinkingLevel) {
 
         // given
-        GeminiThinkingConfig config = GeminiThinkingConfig.builder().thinkingLevel(thinkingLevel).build();
+        GeminiThinkingConfig config =
+                GeminiThinkingConfig.builder().thinkingLevel(thinkingLevel).build();
 
         GoogleAiGeminiChatModel modelHigh = GoogleAiGeminiChatModel.builder()
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
@@ -54,8 +55,7 @@ public class GoogleAiGeminiThinkingLevelIT {
                 .build();
 
         // when-then
-        assertThatThrownBy(() -> modelLow.chat("What is the meaning of life?"))
-                .hasMessageContaining("Invalid value");
+        assertThatThrownBy(() -> modelLow.chat("What is the meaning of life?")).hasMessageContaining("Invalid value");
     }
 
     @AfterEach
