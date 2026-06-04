@@ -133,86 +133,218 @@ abstract class OllamaBaseChatModel {
             return self();
         }
 
+        /**
+         * Sets the base URL of the Ollama server.
+         * <p>
+         * Defaults to {@code http://localhost:11434}.
+         *
+         * @param baseUrl the Ollama server base URL
+         * @return {@code this}
+         */
         public B baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return self();
         }
 
+        /**
+         * Sets default {@link ChatRequestParameters} that are merged into every request.
+         * Individual request parameters take precedence over these defaults.
+         *
+         * @param defaultRequestParameters the default request parameters
+         * @return {@code this}
+         */
         public B defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
             this.defaultRequestParameters = defaultRequestParameters;
             return self();
         }
 
+        /**
+         * Sets the Ollama model name to use for chat completions.
+         * <p>
+         * The model must be available on the Ollama server (run {@code ollama pull <model>} first).
+         * Examples: {@code "llama3"}, {@code "mistral"}, {@code "deepseek-r1"}.
+         *
+         * @param modelName the model name
+         * @return {@code this}
+         */
         public B modelName(String modelName) {
             this.modelName = modelName;
             return self();
         }
 
+        /**
+         * Sets the sampling temperature in the range {@code [0.0, 1.0]}.
+         * Higher values produce more creative output; lower values produce more deterministic output.
+         *
+         * @param temperature the sampling temperature
+         * @return {@code this}
+         */
         public B temperature(Double temperature) {
             this.temperature = temperature;
             return self();
         }
 
+        /**
+         * Sets the top-K sampling value. Only the {@code topK} most-likely next tokens are considered at each step.
+         *
+         * @param topK the number of top tokens to sample from
+         * @return {@code this}
+         */
         public B topK(Integer topK) {
             this.topK = topK;
             return self();
         }
 
+        /**
+         * Sets the nucleus sampling probability (top-p).
+         * Only the tokens whose cumulative probability exceeds this threshold are considered.
+         *
+         * @param topP the nucleus sampling threshold
+         * @return {@code this}
+         */
         public B topP(Double topP) {
             this.topP = topP;
             return self();
         }
 
+        /**
+         * Sets the Mirostat sampling algorithm version.
+         * <ul>
+         *   <li>{@code 0} — disabled (default)</li>
+         *   <li>{@code 1} — Mirostat v1</li>
+         *   <li>{@code 2} — Mirostat v2</li>
+         * </ul>
+         * Mirostat aims to maintain a consistent level of perplexity in the output.
+         * See the <a href="https://arxiv.org/abs/2007.14966">Mirostat paper</a>.
+         *
+         * @param mirostat the Mirostat algorithm version
+         * @return {@code this}
+         */
         public B mirostat(Integer mirostat) {
             this.mirostat = mirostat;
             return self();
         }
 
+        /**
+         * Sets the Mirostat learning rate (eta), which controls how quickly the algorithm
+         * adjusts to feedback. A lower value results in slower adjustments.
+         * <p>
+         * Only applicable when {@link #mirostat(Integer)} is set to 1 or 2.
+         *
+         * @param mirostatEta the Mirostat learning rate
+         * @return {@code this}
+         */
         public B mirostatEta(Double mirostatEta) {
             this.mirostatEta = mirostatEta;
             return self();
         }
 
+        /**
+         * Sets the Mirostat target entropy (tau), which controls the balance between
+         * coherence and diversity in the output. A lower value results in more focused text.
+         * <p>
+         * Only applicable when {@link #mirostat(Integer)} is set to 1 or 2.
+         *
+         * @param mirostatTau the Mirostat target entropy
+         * @return {@code this}
+         */
         public B mirostatTau(Double mirostatTau) {
             this.mirostatTau = mirostatTau;
             return self();
         }
 
+        /**
+         * Sets the number of tokens to look back when applying the repeat penalty.
+         * Use {@code -1} to use the full context window.
+         *
+         * @param repeatLastN the lookback window size in tokens
+         * @return {@code this}
+         */
         public B repeatLastN(Integer repeatLastN) {
             this.repeatLastN = repeatLastN;
             return self();
         }
 
+        /**
+         * Sets the penalty applied to tokens that have already appeared in the context window,
+         * discouraging repetition. Values greater than {@code 1.0} penalise repetition more strongly.
+         *
+         * @param repeatPenalty the repeat penalty factor
+         * @return {@code this}
+         */
         public B repeatPenalty(Double repeatPenalty) {
             this.repeatPenalty = repeatPenalty;
             return self();
         }
 
+        /**
+         * Sets the random seed for deterministic output.
+         * Setting the same seed and prompt will produce the same response.
+         *
+         * @param seed the random seed
+         * @return {@code this}
+         */
         public B seed(Integer seed) {
             this.seed = seed;
             return self();
         }
 
+        /**
+         * Sets the maximum number of tokens to generate.
+         * Use {@code -1} for unlimited (model's context window limit).
+         *
+         * @param numPredict the maximum number of tokens to generate
+         * @return {@code this}
+         */
         public B numPredict(Integer numPredict) {
             this.numPredict = numPredict;
             return self();
         }
 
+        /**
+         * Sets the context window size in tokens — the number of tokens the model can
+         * attend to when generating a response.
+         * <p>
+         * Larger values consume more memory. Defaults to the model's built-in context size.
+         *
+         * @param numCtx the context window size
+         * @return {@code this}
+         */
         public B numCtx(Integer numCtx) {
             this.numCtx = numCtx;
             return self();
         }
 
+        /**
+         * Sets sequences that, when generated, will cause the model to stop generating further tokens.
+         *
+         * @param stop the list of stop sequences
+         * @return {@code this}
+         */
         public B stop(List<String> stop) {
             this.stop = stop;
             return self();
         }
 
+        /**
+         * Sets the minimum probability threshold for token selection.
+         * Tokens with probability below {@code minP * (probability of the most likely token)} are filtered out.
+         * This is an alternative to {@link #topP(Double)} nucleus sampling.
+         *
+         * @param minP the minimum probability threshold
+         * @return {@code this}
+         */
         public B minP(Double minP) {
             this.minP = minP;
             return self();
         }
 
+        /**
+         * Sets the response format, enabling structured output such as JSON mode.
+         *
+         * @param responseFormat the desired response format
+         * @return {@code this}
+         */
         public B responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
             return self();
@@ -250,6 +382,14 @@ abstract class OllamaBaseChatModel {
             return self();
         }
 
+        /**
+         * Sets the HTTP request timeout for calls to the Ollama server.
+         * <p>
+         * NOTE: This overrides any timeout set via {@link #httpClientBuilder(HttpClientBuilder)}.
+         *
+         * @param timeout the request timeout
+         * @return {@code this}
+         */
         public B timeout(Duration timeout) {
             this.timeout = timeout;
             return self();
@@ -273,11 +413,23 @@ abstract class OllamaBaseChatModel {
             return self();
         }
 
+        /**
+         * Enables debug logging of HTTP request bodies sent to the Ollama server.
+         *
+         * @param logRequests whether to log requests
+         * @return {@code this}
+         */
         public B logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return self();
         }
 
+        /**
+         * Enables debug logging of HTTP response bodies received from the Ollama server.
+         *
+         * @param logResponses whether to log responses
+         * @return {@code this}
+         */
         public B logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return self();
@@ -292,16 +444,36 @@ abstract class OllamaBaseChatModel {
             return self();
         }
 
+        /**
+         * Sets the list of {@link ChatModelListener}s to be notified on each request and response.
+         * Useful for logging, metrics, and observability integrations.
+         *
+         * @param listeners the chat model listeners
+         * @return {@code this}
+         */
         public B listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return self();
         }
 
+        /**
+         * Declares the capabilities supported by the model.
+         * This influences how LangChain4j generates requests for this model.
+         *
+         * @param supportedCapabilities the set of capabilities to declare
+         * @return {@code this}
+         */
         public B supportedCapabilities(Set<Capability> supportedCapabilities) {
             this.supportedCapabilities = supportedCapabilities;
             return self();
         }
 
+        /**
+         * Declares the capabilities supported by the model.
+         *
+         * @param supportedCapabilities the capabilities to declare
+         * @return {@code this}
+         */
         public B supportedCapabilities(Capability... supportedCapabilities) {
             return supportedCapabilities(new HashSet<>(asList(supportedCapabilities)));
         }
