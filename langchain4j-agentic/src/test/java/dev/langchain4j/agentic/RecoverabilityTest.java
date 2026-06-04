@@ -14,9 +14,6 @@ import dev.langchain4j.agentic.scope.AgenticScopeSerializer;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.workflow.impl.LoopPlanner;
 import dev.langchain4j.agentic.workflow.impl.SequentialPlanner;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +21,8 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 class RecoverabilityTest {
 
@@ -170,7 +169,8 @@ class RecoverabilityTest {
         scope.checkpoint(registry);
 
         // Verify checkpoint was saved with updated state
-        DefaultAgenticScope loaded = store.load(new AgenticScopeKey("test-agent", "mem-1")).orElse(null);
+        DefaultAgenticScope loaded =
+                store.load(new AgenticScopeKey("test-agent", "mem-1")).orElse(null);
         assertThat(loaded).isNotNull();
         assertThat(loaded.state().get("step")).isEqualTo("first");
     }
@@ -188,11 +188,8 @@ class RecoverabilityTest {
 
     @Test
     void sequentialPlanner_executionStateAndRestore() {
-        List<AgentInstance> subagents = List.of(
-                mockAgentInstance("sub-1"),
-                mockAgentInstance("sub-2"),
-                mockAgentInstance("sub-3")
-        );
+        List<AgentInstance> subagents =
+                List.of(mockAgentInstance("sub-1"), mockAgentInstance("sub-2"), mockAgentInstance("sub-3"));
 
         SequentialPlanner planner = new SequentialPlanner();
         AgenticScopeRegistry registry = new AgenticScopeRegistry("test-agent");
@@ -227,11 +224,8 @@ class RecoverabilityTest {
 
     @Test
     void sequentialPlanner_restoreResumeFromCursor() {
-        List<AgentInstance> subagents = List.of(
-                mockAgentInstance("sub-1"),
-                mockAgentInstance("sub-2"),
-                mockAgentInstance("sub-3")
-        );
+        List<AgentInstance> subagents =
+                List.of(mockAgentInstance("sub-1"), mockAgentInstance("sub-2"), mockAgentInstance("sub-3"));
 
         // Create a new planner and restore cursor=2 (agents[0] and [1] already ran)
         SequentialPlanner planner = new SequentialPlanner();
@@ -254,10 +248,7 @@ class RecoverabilityTest {
 
     @Test
     void loopPlanner_executionStateAndRestore() {
-        List<AgentInstance> subagents = List.of(
-                mockAgentInstance("sub-1"),
-                mockAgentInstance("sub-2")
-        );
+        List<AgentInstance> subagents = List.of(mockAgentInstance("sub-1"), mockAgentInstance("sub-2"));
 
         LoopPlanner planner = new LoopPlanner(10, true, (s, i) -> false, "never");
         AgenticScopeRegistry registry = new AgenticScopeRegistry("test-agent");
@@ -284,10 +275,7 @@ class RecoverabilityTest {
 
     @Test
     void loopPlanner_restoreResumesFromSavedState() {
-        List<AgentInstance> subagents = List.of(
-                mockAgentInstance("sub-1"),
-                mockAgentInstance("sub-2")
-        );
+        List<AgentInstance> subagents = List.of(mockAgentInstance("sub-1"), mockAgentInstance("sub-2"));
 
         LoopPlanner planner = new LoopPlanner(10, true, (s, i) -> false, "never");
         AgenticScopeRegistry registry = new AgenticScopeRegistry("test-agent");
@@ -321,18 +309,65 @@ class RecoverabilityTest {
 
     private static AgentInstance mockAgentInstance(String agentId) {
         return new AgentInstance() {
-            @Override public Class<?> type() { return Object.class; }
-            @Override public Class<? extends Planner> plannerType() { return null; }
-            @Override public String name() { return agentId; }
-            @Override public String agentId() { return agentId; }
-            @Override public String description() { return ""; }
-            @Override public Type outputType() { return Object.class; }
-            @Override public String outputKey() { return null; }
-            @Override public boolean async() { return false; }
-            @Override public List<dev.langchain4j.agentic.planner.AgentArgument> arguments() { return List.of(); }
-            @Override public List<AgentInstance> subagents() { return List.of(); }
-            @Override public AgentInstance parent() { return null; }
-            @Override public AgenticSystemTopology topology() { return AgenticSystemTopology.SEQUENCE; }
+            @Override
+            public Class<?> type() {
+                return Object.class;
+            }
+
+            @Override
+            public Class<? extends Planner> plannerType() {
+                return null;
+            }
+
+            @Override
+            public String name() {
+                return agentId;
+            }
+
+            @Override
+            public String agentId() {
+                return agentId;
+            }
+
+            @Override
+            public String description() {
+                return "";
+            }
+
+            @Override
+            public Type outputType() {
+                return Object.class;
+            }
+
+            @Override
+            public String outputKey() {
+                return null;
+            }
+
+            @Override
+            public boolean async() {
+                return false;
+            }
+
+            @Override
+            public List<dev.langchain4j.agentic.planner.AgentArgument> arguments() {
+                return List.of();
+            }
+
+            @Override
+            public List<AgentInstance> subagents() {
+                return List.of();
+            }
+
+            @Override
+            public AgentInstance parent() {
+                return null;
+            }
+
+            @Override
+            public AgenticSystemTopology topology() {
+                return AgenticSystemTopology.SEQUENCE;
+            }
         };
     }
 }

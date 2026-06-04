@@ -1,5 +1,8 @@
 package dev.langchain4j.service.output;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeName;
@@ -12,40 +15,31 @@ import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.output.structured.Description;
-import org.junit.jupiter.api.Test;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
 
 class PolymorphicOutputParserTest {
 
-    sealed interface Animal permits Dog, Cat {
-    }
+    sealed interface Animal permits Dog, Cat {}
 
-    record Dog(String name, String breed) implements Animal {
-    }
+    record Dog(String name, String breed) implements Animal {}
 
-    record Cat(String name, boolean indoor) implements Animal {
-    }
+    record Cat(String name, boolean indoor) implements Animal {}
 
     @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "kind")
     @JsonSubTypes({
-            @JsonSubTypes.Type(value = Square.class, name = "square"),
-            @JsonSubTypes.Type(value = Circle.class, name = "circle")
+        @JsonSubTypes.Type(value = Square.class, name = "square"),
+        @JsonSubTypes.Type(value = Circle.class, name = "circle")
     })
-    interface Shape {
-    }
+    interface Shape {}
 
     static class Square implements Shape {
         double side;
 
-        Square() {
-        }
+        Square() {}
 
         Square(double side) {
             this.side = side;
@@ -55,8 +49,7 @@ class PolymorphicOutputParserTest {
     static class Circle implements Shape {
         double radius;
 
-        Circle() {
-        }
+        Circle() {}
 
         Circle(double radius) {
             this.radius = radius;
@@ -64,19 +57,15 @@ class PolymorphicOutputParserTest {
     }
 
     @Description("A pet that lives in your home")
-    sealed interface Pet permits Hamster, Parrot {
-    }
+    sealed interface Pet permits Hamster, Parrot {}
 
-    sealed interface Vehicle permits Truck {
-    }
+    sealed interface Vehicle permits Truck {}
 
-    record Truck(String type, int wheels) implements Vehicle {
-    }
+    record Truck(String type, int wheels) implements Vehicle {}
 
     @JsonTypeInfo(use = JsonTypeInfo.Id.MINIMAL_CLASS)
     @JsonSubTypes(@JsonSubTypes.Type(Coffee.class))
-    interface Beverage {
-    }
+    interface Beverage {}
 
     static class Coffee implements Beverage {
         String origin;
@@ -84,8 +73,7 @@ class PolymorphicOutputParserTest {
 
     @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.WRAPPER_OBJECT)
     @JsonSubTypes(@JsonSubTypes.Type(value = Apple.class, name = "apple"))
-    interface Fruit {
-    }
+    interface Fruit {}
 
     static class Apple implements Fruit {
         String variety;
@@ -93,8 +81,7 @@ class PolymorphicOutputParserTest {
 
     @JsonTypeInfo(use = JsonTypeInfo.Id.SIMPLE_NAME)
     @JsonSubTypes(@JsonSubTypes.Type(Pizza.class))
-    interface Food {
-    }
+    interface Food {}
 
     static class Pizza implements Food {
         String topping;
@@ -102,8 +89,7 @@ class PolymorphicOutputParserTest {
 
     @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, defaultImpl = Wrench.class)
     @JsonSubTypes({@JsonSubTypes.Type(value = Hammer.class, name = "hammer")})
-    interface Tool {
-    }
+    interface Tool {}
 
     static class Hammer implements Tool {
         double weightKg;
@@ -115,21 +101,16 @@ class PolymorphicOutputParserTest {
 
     @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "kind", visible = true)
     @JsonSubTypes({@JsonSubTypes.Type(value = Sword.class, name = "sword")})
-    interface Weapon {
-    }
+    interface Weapon {}
 
     static class Sword implements Weapon {
         String kind; // intentionally collides; visible=true makes it OK
         int blade_length_cm;
     }
 
-    @JsonTypeInfo(
-            use = JsonTypeInfo.Id.NAME,
-            include = JsonTypeInfo.As.EXISTING_PROPERTY,
-            property = "category")
+    @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "category")
     @JsonSubTypes({@JsonSubTypes.Type(value = HardCover.class, name = "hard")})
-    interface Book {
-    }
+    interface Book {}
 
     static class HardCover implements Book {
         String category; // existing field used by Jackson as the type id
@@ -137,49 +118,37 @@ class PolymorphicOutputParserTest {
     }
 
     @Description("A small caged rodent kept as a pet")
-    record Hamster(String name, double weightGrams) implements Pet {
-    }
+    record Hamster(String name, double weightGrams) implements Pet {}
 
     @Description("A talking bird that can mimic human speech")
-    record Parrot(String name, int vocabulary) implements Pet {
-    }
+    record Parrot(String name, int vocabulary) implements Pet {}
 
-    record Owner(String name, Animal pet) {
-    }
+    record Owner(String name, Animal pet) {}
 
-    sealed interface Bird permits Eagle, Sparrow {
-    }
+    sealed interface Bird permits Eagle, Sparrow {}
 
     @JsonTypeName("eagle")
-    record Eagle(double wingspanMeters) implements Bird {
-    }
+    record Eagle(double wingspanMeters) implements Bird {}
 
     @JsonTypeName("sparrow")
-    record Sparrow(boolean migratory) implements Bird {
-    }
+    record Sparrow(boolean migratory) implements Bird {}
 
-    sealed interface Tree permits Oak, Pine {
-    }
+    sealed interface Tree permits Oak, Pine {}
 
     // No annotation — should fall back to simpleName "Oak"
-    record Oak(int rings) implements Tree {
-    }
+    record Oak(int rings) implements Tree {}
 
     @JsonTypeName("pine")
-    record Pine(int needles) implements Tree {
-    }
+    record Pine(int needles) implements Tree {}
 
     @JsonSubTypes(@JsonSubTypes.Type(value = ElectricCar.class, name = "tesla"))
-    sealed interface Car permits ElectricCar {
-    }
+    sealed interface Car permits ElectricCar {}
 
     // @JsonSubTypes.Type(name="tesla") on the base should win over @JsonTypeName here.
     @JsonTypeName("losing-name")
-    record ElectricCar(int range) implements Car {
-    }
+    record ElectricCar(int range) implements Car {}
 
-    sealed static class Plant permits Rose, Cactus {
-    }
+    static sealed class Plant permits Rose, Cactus {}
 
     static final class Rose extends Plant {
         String color;
@@ -190,11 +159,10 @@ class PolymorphicOutputParserTest {
     }
 
     @JsonSubTypes({
-            @JsonSubTypes.Type(value = Email.class, name = "email"),
-            @JsonSubTypes.Type(value = SmsMessage.class, name = "sms")
+        @JsonSubTypes.Type(value = Email.class, name = "email"),
+        @JsonSubTypes.Type(value = SmsMessage.class, name = "sms")
     })
-    abstract static class Notification {
-    }
+    abstract static class Notification {}
 
     static class Email extends Notification {
         String subject;
@@ -205,11 +173,10 @@ class PolymorphicOutputParserTest {
     }
 
     @JsonSubTypes({
-            @JsonSubTypes.Type(value = Pdf.class, name = "pdf"),
-            @JsonSubTypes.Type(value = Html.class, name = "html")
+        @JsonSubTypes.Type(value = Pdf.class, name = "pdf"),
+        @JsonSubTypes.Type(value = Html.class, name = "html")
     })
-    interface Document {
-    }
+    interface Document {}
 
     static class Pdf implements Document {
         int pages;
@@ -219,22 +186,17 @@ class PolymorphicOutputParserTest {
         String url;
     }
 
-    sealed interface ExpressionNode permits Literal, BinaryOp {
-    }
+    sealed interface ExpressionNode permits Literal, BinaryOp {}
 
-    record Literal(int value) implements ExpressionNode {
-    }
+    record Literal(int value) implements ExpressionNode {}
 
-    record BinaryOp(String operator, ExpressionNode left, ExpressionNode right) implements ExpressionNode {
-    }
+    record BinaryOp(String operator, ExpressionNode left, ExpressionNode right) implements ExpressionNode {}
 
     // Multi-level sealed hierarchy: Transport permits LandTransport, Plane;
     // LandTransport itself is sealed and permits Bus, Train.
-    sealed interface Transport permits LandTransport, Plane {
-    }
+    sealed interface Transport permits LandTransport, Plane {}
 
-    sealed interface LandTransport extends Transport permits Bus, Train {
-    }
+    sealed interface LandTransport extends Transport permits Bus, Train {}
 
     record Bus(int seats) implements LandTransport {}
 
@@ -261,8 +223,8 @@ class PolymorphicOutputParserTest {
     @Test
     void multi_level_sealed_hierarchy_parses_a_leaf_subtype() {
 
-        Transport transport = new PojoOutputParser<>(Transport.class)
-                .parse("{\"value\":{\"type\":\"Train\",\"cars\":12}}");
+        Transport transport =
+                new PojoOutputParser<>(Transport.class).parse("{\"value\":{\"type\":\"Train\",\"cars\":12}}");
 
         assertThat(transport).isInstanceOf(Train.class);
         assertThat(((Train) transport).cars()).isEqualTo(12);
@@ -271,10 +233,12 @@ class PolymorphicOutputParserTest {
     @Test
     void recursive_polymorphic_schema_is_compact_and_uses_refs() {
 
-        JsonSchema actual = new PojoOutputParser<>(ExpressionNode.class).jsonSchema().get();
+        JsonSchema actual =
+                new PojoOutputParser<>(ExpressionNode.class).jsonSchema().get();
 
         String reference = dev.langchain4j.internal.Utils.generateUUIDFrom(ExpressionNode.class.getName());
-        JsonReferenceSchema selfRef = JsonReferenceSchema.builder().reference(reference).build();
+        JsonReferenceSchema selfRef =
+                JsonReferenceSchema.builder().reference(reference).build();
 
         JsonSchema expected = JsonSchema.builder()
                 .name("ExpressionNode")
@@ -336,8 +300,7 @@ class PolymorphicOutputParserTest {
         assertThat(inner.right()).isEqualTo(new Literal(2));
     }
 
-    record Container(Animal pet, Tree tree) {
-    }
+    record Container(Animal pet, Tree tree) {}
 
     @Test
     void pojo_with_two_distinct_polymorphic_fields() {
@@ -356,11 +319,9 @@ class PolymorphicOutputParserTest {
         assertThat(c.tree()).isInstanceOf(Pine.class);
     }
 
-    sealed interface SingleVariant permits OnlyOne {
-    }
+    sealed interface SingleVariant permits OnlyOne {}
 
-    record OnlyOne(String value) implements SingleVariant {
-    }
+    record OnlyOne(String value) implements SingleVariant {}
 
     @Test
     void sealed_with_single_subtype_works() {
@@ -378,25 +339,25 @@ class PolymorphicOutputParserTest {
         assertThat(((OnlyOne) parsed).value()).isEqualTo("hi");
     }
 
-    sealed interface Action permits Ping, Print {
-    }
+    sealed interface Action permits Ping, Print {}
 
-    record Ping() implements Action {
-    }
+    record Ping() implements Action {}
 
-    record Print(String message) implements Action {
-    }
+    record Print(String message) implements Action {}
 
     record OwnerWithDescribedPet(
             String name,
-            @Description("The owner's pet, must be either a dog or a cat") Animal pet) {
-    }
+
+            @Description("The owner's pet, must be either a dog or a cat")
+            Animal pet) {}
 
     @Test
     void field_level_Description_on_polymorphic_field_flows_into_anyOf_description() {
 
-        JsonObjectSchema root = (JsonObjectSchema)
-                new PojoOutputParser<>(OwnerWithDescribedPet.class).jsonSchema().get().rootElement();
+        JsonObjectSchema root = (JsonObjectSchema) new PojoOutputParser<>(OwnerWithDescribedPet.class)
+                .jsonSchema()
+                .get()
+                .rootElement();
 
         JsonAnyOfSchema petAnyOf = (JsonAnyOfSchema) root.properties().get("pet");
         assertThat(petAnyOf.description()).isEqualTo("The owner's pet, must be either a dog or a cat");
@@ -404,17 +365,15 @@ class PolymorphicOutputParserTest {
 
     record OwnerWithDescribedPetAlsoOnBase(
             String name,
-            @Description("Field-level description wins") Pet pet) {
-    }
+            @Description("Field-level description wins") Pet pet) {}
 
     @Test
     void field_level_Description_wins_over_base_type_Description() {
 
-        JsonObjectSchema root = (JsonObjectSchema)
-                new PojoOutputParser<>(OwnerWithDescribedPetAlsoOnBase.class)
-                        .jsonSchema()
-                        .get()
-                        .rootElement();
+        JsonObjectSchema root = (JsonObjectSchema) new PojoOutputParser<>(OwnerWithDescribedPetAlsoOnBase.class)
+                .jsonSchema()
+                .get()
+                .rootElement();
 
         JsonAnyOfSchema petAnyOf = (JsonAnyOfSchema) root.properties().get("pet");
         // Pet has @Description("A pet that lives in your home"), but the field's @Description wins
@@ -441,8 +400,7 @@ class PolymorphicOutputParserTest {
         JsonAnyOfSchema anyOf = (JsonAnyOfSchema) root.properties().get("value");
         assertThat(anyOf.anyOf()).hasSize(2);
 
-        Plant plant = new PojoOutputParser<>(Plant.class)
-                .parse("{\"value\":{\"type\":\"Rose\",\"color\":\"red\"}}");
+        Plant plant = new PojoOutputParser<>(Plant.class).parse("{\"value\":{\"type\":\"Rose\",\"color\":\"red\"}}");
         assertThat(plant).isInstanceOf(Rose.class);
         assertThat(((Rose) plant).color).isEqualTo("red");
     }
@@ -463,11 +421,9 @@ class PolymorphicOutputParserTest {
         assertThat(((Email) notification).subject).isEqualTo("hello");
     }
 
-    interface NotPolymorphicInterface {
-    }
+    interface NotPolymorphicInterface {}
 
-    abstract static class NotPolymorphicAbstractClass {
-    }
+    abstract static class NotPolymorphicAbstractClass {}
 
     @Test
     void plain_interface_without_subtypes_fails_with_clear_message() {
@@ -499,8 +455,7 @@ class PolymorphicOutputParserTest {
         JsonAnyOfSchema anyOf = (JsonAnyOfSchema) root.properties().get("value");
         assertThat(anyOf.anyOf()).hasSize(2);
 
-        Document document = new PojoOutputParser<>(Document.class)
-                .parse("{\"value\":{\"type\":\"pdf\",\"pages\":42}}");
+        Document document = new PojoOutputParser<>(Document.class).parse("{\"value\":{\"type\":\"pdf\",\"pages\":42}}");
         assertThat(document).isInstanceOf(Pdf.class);
         assertThat(((Pdf) document).pages).isEqualTo(42);
     }
@@ -514,19 +469,20 @@ class PolymorphicOutputParserTest {
         JsonAnyOfSchema anyOf = (JsonAnyOfSchema) root.properties().get("value");
 
         JsonObjectSchema eagleOption = (JsonObjectSchema) anyOf.anyOf().get(0);
-        JsonEnumSchema eagleDiscriminator = (JsonEnumSchema) eagleOption.properties().get("type");
+        JsonEnumSchema eagleDiscriminator =
+                (JsonEnumSchema) eagleOption.properties().get("type");
         assertThat(eagleDiscriminator.enumValues()).containsExactly("eagle");
 
         JsonObjectSchema sparrowOption = (JsonObjectSchema) anyOf.anyOf().get(1);
-        JsonEnumSchema sparrowDiscriminator = (JsonEnumSchema) sparrowOption.properties().get("type");
+        JsonEnumSchema sparrowDiscriminator =
+                (JsonEnumSchema) sparrowOption.properties().get("type");
         assertThat(sparrowDiscriminator.enumValues()).containsExactly("sparrow");
     }
 
     @Test
     void JsonTypeName_drives_dispatch_during_parsing() {
 
-        Bird bird = new PojoOutputParser<>(Bird.class)
-                .parse("{\"value\":{\"type\":\"eagle\",\"wingspanMeters\":2.5}}");
+        Bird bird = new PojoOutputParser<>(Bird.class).parse("{\"value\":{\"type\":\"eagle\",\"wingspanMeters\":2.5}}");
 
         assertThat(bird).isInstanceOf(Eagle.class);
         assertThat(((Eagle) bird).wingspanMeters()).isEqualTo(2.5);
@@ -541,12 +497,14 @@ class PolymorphicOutputParserTest {
         JsonAnyOfSchema anyOf = (JsonAnyOfSchema) root.properties().get("value");
 
         JsonObjectSchema oakOption = (JsonObjectSchema) anyOf.anyOf().get(0);
-        JsonEnumSchema oakDiscriminator = (JsonEnumSchema) oakOption.properties().get("type");
+        JsonEnumSchema oakDiscriminator =
+                (JsonEnumSchema) oakOption.properties().get("type");
         // Oak has no @JsonTypeName — falls back to simple name
         assertThat(oakDiscriminator.enumValues()).containsExactly("Oak");
 
         JsonObjectSchema pineOption = (JsonObjectSchema) anyOf.anyOf().get(1);
-        JsonEnumSchema pineDiscriminator = (JsonEnumSchema) pineOption.properties().get("type");
+        JsonEnumSchema pineDiscriminator =
+                (JsonEnumSchema) pineOption.properties().get("type");
         // Pine has @JsonTypeName("pine") — wins over simple name
         assertThat(pineDiscriminator.enumValues()).containsExactly("pine");
     }
@@ -564,8 +522,7 @@ class PolymorphicOutputParserTest {
         assertThat(discriminator.enumValues()).containsExactly("tesla");
     }
 
-    record Adoption(Owner owner, List<Animal> petsAdopted) {
-    }
+    record Adoption(Owner owner, List<Animal> petsAdopted) {}
 
     @Test
     void nested_sealed_field_produces_anyOf_in_outer_schema() {
@@ -624,11 +581,12 @@ class PolymorphicOutputParserTest {
     void deeply_nested_sealed_collection_parses_correctly() {
 
         Adoption adoption = new PojoOutputParser<>(Adoption.class)
-                .parse("{\"owner\":{\"name\":\"Alice\",\"pet\":{\"type\":\"Cat\",\"name\":\"Whiskers\",\"indoor\":true}},"
-                        + "\"petsAdopted\":["
-                        + "{\"type\":\"Dog\",\"name\":\"Rex\",\"breed\":\"Lab\"},"
-                        + "{\"type\":\"Cat\",\"name\":\"Mittens\",\"indoor\":false}"
-                        + "]}");
+                .parse(
+                        "{\"owner\":{\"name\":\"Alice\",\"pet\":{\"type\":\"Cat\",\"name\":\"Whiskers\",\"indoor\":true}},"
+                                + "\"petsAdopted\":["
+                                + "{\"type\":\"Dog\",\"name\":\"Rex\",\"breed\":\"Lab\"},"
+                                + "{\"type\":\"Cat\",\"name\":\"Mittens\",\"indoor\":false}"
+                                + "]}");
 
         assertThat(adoption.owner().name()).isEqualTo("Alice");
         assertThat(adoption.owner().pet()).isInstanceOf(Cat.class);
@@ -637,8 +595,7 @@ class PolymorphicOutputParserTest {
         assertThat(adoption.petsAdopted().get(1)).isInstanceOf(Cat.class);
     }
 
-    record Reservation(String customer, Shape preferredShape) {
-    }
+    record Reservation(String customer, Shape preferredShape) {}
 
     @Test
     void nested_jackson_annotated_field_produces_anyOf_with_jackson_discriminator() {
@@ -689,7 +646,8 @@ class PolymorphicOutputParserTest {
     @Test
     void Id_SIMPLE_NAME_parses_simple_name() {
 
-        Food food = new PojoOutputParser<>(Food.class).parse("{\"value\":{\"@type\":\"Pizza\",\"topping\":\"margherita\"}}");
+        Food food = new PojoOutputParser<>(Food.class)
+                .parse("{\"value\":{\"@type\":\"Pizza\",\"topping\":\"margherita\"}}");
 
         assertThat(food).isInstanceOf(Pizza.class);
         assertThat(((Pizza) food).topping).isEqualTo("margherita");
@@ -737,8 +695,8 @@ class PolymorphicOutputParserTest {
         assertThat(schema).isPresent();
 
         // and parsing populates the field
-        Weapon weapon = new PojoOutputParser<>(Weapon.class)
-                .parse("{\"value\":{\"kind\":\"sword\",\"blade_length_cm\":85}}");
+        Weapon weapon =
+                new PojoOutputParser<>(Weapon.class).parse("{\"value\":{\"kind\":\"sword\",\"blade_length_cm\":85}}");
 
         assertThat(weapon).isInstanceOf(Sword.class);
         assertThat(((Sword) weapon).kind).isEqualTo("sword");
@@ -833,12 +791,14 @@ class PolymorphicOutputParserTest {
         // Dog option includes synthesized type discriminator with simple-name enum value
         JsonObjectSchema dogOption = (JsonObjectSchema) anyOf.anyOf().get(0);
         assertThat(dogOption.required()).startsWith("type");
-        JsonEnumSchema dogDiscriminator = (JsonEnumSchema) dogOption.properties().get("type");
+        JsonEnumSchema dogDiscriminator =
+                (JsonEnumSchema) dogOption.properties().get("type");
         assertThat(dogDiscriminator.enumValues()).containsExactly("Dog");
         assertThat(dogOption.properties()).containsKeys("name", "breed");
 
         JsonObjectSchema catOption = (JsonObjectSchema) anyOf.anyOf().get(1);
-        JsonEnumSchema catDiscriminator = (JsonEnumSchema) catOption.properties().get("type");
+        JsonEnumSchema catDiscriminator =
+                (JsonEnumSchema) catOption.properties().get("type");
         assertThat(catDiscriminator.enumValues()).containsExactly("Cat");
         assertThat(catOption.properties()).containsKeys("name", "indoor");
     }
@@ -888,8 +848,8 @@ class PolymorphicOutputParserTest {
     @Test
     void parse_accepts_unwrapped_polymorphic_payload() {
 
-        Animal animal = new PojoOutputParser<>(Animal.class)
-                .parse("{\"type\":\"Cat\",\"name\":\"Whiskers\",\"indoor\":true}");
+        Animal animal =
+                new PojoOutputParser<>(Animal.class).parse("{\"type\":\"Cat\",\"name\":\"Whiskers\",\"indoor\":true}");
 
         assertThat(animal).isInstanceOf(Cat.class);
         assertThat(((Cat) animal).name()).isEqualTo("Whiskers");
@@ -914,9 +874,7 @@ class PolymorphicOutputParserTest {
     void parse_set_of_polymorphic() {
 
         Set<Animal> animals = new PojoSetOutputParser<>(Animal.class)
-                .parse("{\"values\":["
-                        + "{\"type\":\"Dog\",\"name\":\"Rex\",\"breed\":\"Labrador\"}"
-                        + "]}");
+                .parse("{\"values\":[" + "{\"type\":\"Dog\",\"name\":\"Rex\",\"breed\":\"Labrador\"}" + "]}");
 
         assertThat(animals).hasSize(1);
         assertThat(animals.iterator().next()).isInstanceOf(Dog.class);
@@ -925,8 +883,7 @@ class PolymorphicOutputParserTest {
     @Test
     void parse_polymorphic_with_jackson_discriminator() {
 
-        Shape shape = new PojoOutputParser<>(Shape.class)
-                .parse("{\"value\":{\"kind\":\"circle\",\"radius\":2.5}}");
+        Shape shape = new PojoOutputParser<>(Shape.class).parse("{\"value\":{\"kind\":\"circle\",\"radius\":2.5}}");
 
         assertThat(shape).isInstanceOf(Circle.class);
         assertThat(((Circle) shape).radius).isEqualTo(2.5);
@@ -935,8 +892,8 @@ class PolymorphicOutputParserTest {
     @Test
     void parse_fails_for_unknown_discriminator_value() {
 
-        assertThatThrownBy(() -> new PojoOutputParser<>(Animal.class)
-                .parse("{\"type\":\"Hamster\",\"name\":\"Nibbles\"}"))
+        assertThatThrownBy(
+                        () -> new PojoOutputParser<>(Animal.class).parse("{\"type\":\"Hamster\",\"name\":\"Nibbles\"}"))
                 .isInstanceOf(OutputParsingException.class)
                 .hasMessageContaining("Failed to parse");
     }
@@ -945,7 +902,7 @@ class PolymorphicOutputParserTest {
     void parse_fails_when_discriminator_missing() {
 
         assertThatThrownBy(() -> new PojoOutputParser<>(Animal.class)
-                .parse("{\"value\":{\"name\":\"Rex\",\"breed\":\"Labrador\"}}"))
+                        .parse("{\"value\":{\"name\":\"Rex\",\"breed\":\"Labrador\"}}"))
                 .isInstanceOf(OutputParsingException.class)
                 .hasMessageContaining("Failed to parse");
     }

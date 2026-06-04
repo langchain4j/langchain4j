@@ -66,7 +66,11 @@ public class DeclarativeCriticAgents {
         @PlannerAgent(
                 name = "votingCritics",
                 outputKey = "critique",
-                subAgents = {DeclarativeStyleCritic.class, DeclarativeOriginalityCritic.class, DeclarativeEngagementCritic.class})
+                subAgents = {
+                    DeclarativeStyleCritic.class,
+                    DeclarativeOriginalityCritic.class,
+                    DeclarativeEngagementCritic.class
+                })
         CritiqueResult critique(@V("story") String story);
 
         @PlannerSupplier
@@ -93,8 +97,7 @@ public class DeclarativeCriticAgents {
 
     public interface DeclarativeStoryEvaluator extends MonitoredAgent {
 
-        @SequenceAgent(
-                subAgents = {DeclarativeCreativeWriter.class, DeclarativeReviewLoop.class})
+        @SequenceAgent(subAgents = {DeclarativeCreativeWriter.class, DeclarativeReviewLoop.class})
         ScoredStory evaluate(@V("topic") String topic);
 
         @Output

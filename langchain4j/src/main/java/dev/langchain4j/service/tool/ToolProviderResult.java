@@ -1,9 +1,10 @@
 package dev.langchain4j.service.tool;
 
+import static java.util.stream.Collectors.toSet;
+
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.service.IllegalConfigurationException;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -12,8 +13,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import static java.util.stream.Collectors.toSet;
 
 public class ToolProviderResult {
 
@@ -153,9 +152,11 @@ public class ToolProviderResult {
                 }
                 AiServiceTool existing = tools.get(idx);
                 if (existing.returnBehavior() != ReturnBehavior.IMMEDIATE) {
-                    tools.set(idx, existing.toBuilder()
-                            .returnBehavior(ReturnBehavior.IMMEDIATE)
-                            .build());
+                    tools.set(
+                            idx,
+                            existing.toBuilder()
+                                    .returnBehavior(ReturnBehavior.IMMEDIATE)
+                                    .build());
                 }
             }
             return tools;

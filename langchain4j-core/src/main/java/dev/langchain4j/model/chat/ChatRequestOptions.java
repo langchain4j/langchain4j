@@ -1,14 +1,13 @@
 package dev.langchain4j.model.chat;
 
+import static dev.langchain4j.internal.Utils.copy;
+
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
-
-import static dev.langchain4j.internal.Utils.copy;
 
 /**
  * Options that accompany a {@link ChatRequest} through the

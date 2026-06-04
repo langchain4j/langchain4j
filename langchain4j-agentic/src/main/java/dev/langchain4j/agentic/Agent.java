@@ -1,10 +1,9 @@
 package dev.langchain4j.agentic;
 
-import dev.langchain4j.agentic.declarative.TypedKey;
-
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+import dev.langchain4j.agentic.declarative.TypedKey;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
@@ -69,5 +68,5 @@ public @interface Agent {
      */
     String[] summarizedContext() default {};
 
-    class NoTypedKey implements TypedKey<Void> { }
+    class NoTypedKey implements TypedKey<Void> {}
 }

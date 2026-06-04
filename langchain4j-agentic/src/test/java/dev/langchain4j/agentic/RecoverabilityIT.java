@@ -15,10 +15,6 @@ import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.V;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,6 +25,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * End-to-end integration test demonstrating workflow persistence and recovery
@@ -147,8 +146,8 @@ class RecoverabilityIT {
         // ================================================================
         //  PHASE 1: Start workflow — it will block waiting for human input
         // ================================================================
-        CompletableFuture<String> phase1Future = CompletableFuture.supplyAsync(
-                () -> workflow.process("session-1", "raw data to process"));
+        CompletableFuture<String> phase1Future =
+                CompletableFuture.supplyAsync(() -> workflow.process("session-1", "raw data to process"));
 
         // Wait until the HumanInTheLoop agent has executed and persisted the PendingResponse
         // The per-step checkpointing saves state after each agent invocation
@@ -166,7 +165,8 @@ class RecoverabilityIT {
 
         // Verify that the planner execution state was saved in scope state (by PlannerLoop)
         assertThat(scopeBeforeCrash.state().entrySet().stream()
-                .anyMatch(e -> e.getKey().startsWith("__planner_state_"))).isTrue();
+                        .anyMatch(e -> e.getKey().startsWith("__planner_state_")))
+                .isTrue();
 
         // Verify the scope was persisted to file
         assertThat(store.getAllKeys()).isNotEmpty();
@@ -209,7 +209,8 @@ class RecoverabilityIT {
         // ================================================================
         //  VERIFY: the workflow completed successfully using recovered state
         // ================================================================
-        assertThat(finalResult).isEqualTo("Final result: PROCESSED: raw data to process | Approval: APPROVED by human reviewer");
+        assertThat(finalResult)
+                .isEqualTo("Final result: PROCESSED: raw data to process | Approval: APPROVED by human reviewer");
 
         // Cleanup: unblock the Phase 1 thread (it's blocked on the OLD PendingResponse object)
         PendingResponse<String> phase1Pending = phase1PendingRef.get();
@@ -228,11 +229,10 @@ class RecoverabilityIT {
     @SuppressWarnings("unchecked")
     private RecoverableWorkflow buildWorkflow(AtomicReference<PendingResponse<String>> pendingRef) {
         // Agent 1: DataProcessor — transforms raw input and writes to state
-        AgenticServices.AgenticScopeAction dataProcessor = AgenticServices.agentAction(
-                scope -> {
-                    String input = (String) scope.readState("input");
-                    scope.writeState("processed_data", "PROCESSED: " + input);
-                });
+        AgenticServices.AgenticScopeAction dataProcessor = AgenticServices.agentAction(scope -> {
+            String input = (String) scope.readState("input");
+            scope.writeState("processed_data", "PROCESSED: " + input);
+        });
 
         // Agent 2: HumanInTheLoop — creates a PendingResponse to pause for human approval
         HumanInTheLoop humanReviewer = AgenticServices.humanInTheLoopBuilder()
@@ -246,13 +246,11 @@ class RecoverabilityIT {
                 .build();
 
         // Agent 3: ResultFinalizer — combines processed data with human approval
-        AgenticServices.AgenticScopeAction resultFinalizer = AgenticServices.agentAction(
-                scope -> {
-                    String processedData = (String) scope.readState("processed_data");
-                    String approval = (String) scope.readState("approval");
-                    scope.writeState("final_result",
-                            "Final result: " + processedData + " | Approval: " + approval);
-                });
+        AgenticServices.AgenticScopeAction resultFinalizer = AgenticServices.agentAction(scope -> {
+            String processedData = (String) scope.readState("processed_data");
+            String approval = (String) scope.readState("approval");
+            scope.writeState("final_result", "Final result: " + processedData + " | Approval: " + approval);
+        });
 
         return AgenticServices.sequenceBuilder(RecoverableWorkflow.class)
                 .subAgents(dataProcessor, humanReviewer, resultFinalizer)

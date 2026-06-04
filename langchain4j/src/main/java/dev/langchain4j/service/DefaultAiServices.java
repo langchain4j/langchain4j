@@ -531,10 +531,11 @@ class DefaultAiServices<T> extends AiServices<T> {
     }
 
     private Optional<SystemMessage> prepareSystemMessage(Object memoryId, Method method, Object[] args) {
-        return findSystemMessageTemplate(memoryId, method).map(systemMessageTemplate -> PromptTemplate.from(
-                        systemMessageTemplate)
-                .apply(InternalReflectionVariableResolver.findTemplateVariables(systemMessageTemplate, method, args))
-                .toSystemMessage());
+        return findSystemMessageTemplate(memoryId, method)
+                .map(systemMessageTemplate -> PromptTemplate.from(systemMessageTemplate)
+                        .apply(InternalReflectionVariableResolver.findTemplateVariables(
+                                systemMessageTemplate, method, args))
+                        .toSystemMessage());
     }
 
     private Optional<String> findSystemMessageTemplate(Object memoryId, Method method) {
@@ -577,7 +578,7 @@ class DefaultAiServices<T> extends AiServices<T> {
         Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
 
         return maybeUserName
-                .map(userName -> UserMessage.from(userName, prompt.text()))
+                .map(userName -> UserMessage.from(userName, prompt.contents()))
                 .orElseGet(prompt::toUserMessage);
     }
 
@@ -727,6 +728,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                 hasTextContent |= ((List<Content>) args[0]).stream().anyMatch(TextContent.class::isInstance);
                 contents.addAll((List<Content>) args[0]);
             }
+        }
+
+        if (contents.isEmpty() && !userMessage.contents().isEmpty()) {
+            return userMessage;
         }
 
         if (!hasTextContent) {

@@ -1,5 +1,8 @@
 package dev.langchain4j.skills.shell;
 
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_6;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.LoggingChatModelListener;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.anthropic.AnthropicChatModel;
@@ -9,16 +12,12 @@ import dev.langchain4j.service.Result;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.skills.FileSystemSkill;
 import dev.langchain4j.skills.FileSystemSkillLoader;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.stream.Stream;
-
-import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_6;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
 class ShellSkillsIT {
@@ -51,8 +50,9 @@ class ShellSkillsIT {
         // given
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
-                .systemMessage("You have access to the following skills:\n" + skills.formatAvailableSkills()
-                        + "\nWhen the user's request relates to one of these skills, read its SKILL.md before proceeding.")
+                .systemMessage(
+                        "You have access to the following skills:\n" + skills.formatAvailableSkills()
+                                + "\nWhen the user's request relates to one of these skills, read its SKILL.md before proceeding.")
                 .toolProvider(skills.toolProvider())
                 .build();
 

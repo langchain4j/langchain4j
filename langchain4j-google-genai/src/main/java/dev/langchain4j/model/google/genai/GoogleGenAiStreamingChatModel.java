@@ -108,7 +108,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
 
         executor.execute(() -> {
             try (ResponseStream<GenerateContentResponse> stream =
-                         client.models.generateContentStream(modelName, contents, config)) {
+                    client.models.generateContentStream(modelName, contents, config)) {
 
                 StringBuilder textBuilder = new StringBuilder();
                 List<ToolExecutionRequest> toolRequests = new ArrayList<>();

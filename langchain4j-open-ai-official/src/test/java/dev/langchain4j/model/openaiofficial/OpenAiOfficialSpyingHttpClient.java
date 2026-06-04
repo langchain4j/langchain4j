@@ -5,7 +5,6 @@ import com.openai.core.http.HttpClient;
 import com.openai.core.http.HttpRequest;
 import com.openai.core.http.HttpRequestBody;
 import com.openai.core.http.HttpResponse;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -100,7 +99,6 @@ public class OpenAiOfficialSpyingHttpClient implements HttpClient {
         }
 
         @Override
-        public void close() {
-        }
+        public void close() {}
     }
 }

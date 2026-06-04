@@ -3,9 +3,9 @@ package dev.langchain4j.agentic;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
+import dev.langchain4j.agentic.declarative.ChatSupplierParameterResolver;
 import dev.langchain4j.agentic.declarative.DeclarativeUtil;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
-import dev.langchain4j.agentic.declarative.ChatSupplierParameterResolver;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -116,17 +116,23 @@ class ChatSupplierParameterResolverTest {
     // -- Wrapper agents to provide agentic context --
 
     public interface WrapperAgent {
-        @SequenceAgent(outputKey = "echo", subAgents = {EchoAgent.class})
+        @SequenceAgent(
+                outputKey = "echo",
+                subAgents = {EchoAgent.class})
         String run(@V("it") String input);
     }
 
     public interface WrapperAgentForTwo {
-        @SequenceAgent(outputKey = "echo", subAgents = {EchoAgentWithTwoParams.class})
+        @SequenceAgent(
+                outputKey = "echo",
+                subAgents = {EchoAgentWithTwoParams.class})
         String run(@V("it") String input);
     }
 
     public interface WrapperAgentForMixed {
-        @SequenceAgent(outputKey = "echo", subAgents = {EchoAgentWithMixedParams.class})
+        @SequenceAgent(
+                outputKey = "echo",
+                subAgents = {EchoAgentWithMixedParams.class})
         String run(@V("it") String input);
     }
 
@@ -154,7 +160,8 @@ class ChatSupplierParameterResolverTest {
         assertThat(supportsCalls).isNotEmpty();
         ChatSupplierParameterResolver.Context ctx = supportsCalls.stream()
                 .filter(c -> c.parameter().getType() == TestService.class)
-                .findFirst().orElseThrow();
+                .findFirst()
+                .orElseThrow();
         assertThat(ctx.declaringAgentClass()).isEqualTo(EchoAgent.class);
         assertThat(ctx.supplierMethod().getName()).isEqualTo("chatModel");
         assertThat(ctx.parameter().getType()).isEqualTo(TestService.class);
@@ -163,7 +170,8 @@ class ChatSupplierParameterResolverTest {
         String result = agent.run("hello");
 
         assertThat(resolveCalls).isNotEmpty();
-        assertThat(resolveCalls.stream().anyMatch(c -> c.parameter().getType() == TestService.class)).isTrue();
+        assertThat(resolveCalls.stream().anyMatch(c -> c.parameter().getType() == TestService.class))
+                .isTrue();
         assertThat(capturedService).isSameAs(testService);
         assertThat(result).isEqualTo("test-response");
     }

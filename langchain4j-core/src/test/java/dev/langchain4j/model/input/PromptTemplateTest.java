@@ -5,6 +5,8 @@ import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -12,6 +14,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -217,5 +220,41 @@ class PromptTemplateTest {
 
         // then
         assertThat(prompt.text()).isEqualTo("This is " + s + ".");
+    }
+
+    @Test
+    void should_preserve_non_text_content_inside_template_variable() {
+
+        ImageContent image = new ImageContent("https://example.org/picture.png");
+        Prompt prompt = PromptTemplate.from("Describe {{it}} for me.").apply(Map.of("it", image));
+
+        assertThat(prompt.contents())
+                .containsExactly(TextContent.from("Describe "), image, TextContent.from(" for me."));
+
+        assertThatThrownBy(prompt::text).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void should_expand_variable_whose_value_is_list_of_content() {
+
+        ImageContent first = new ImageContent("https://example.org/a.png");
+        ImageContent second = new ImageContent("https://example.org/b.png");
+
+        Prompt prompt =
+                PromptTemplate.from("Compare {{pair}} side by side.").apply(Map.of("pair", List.of(first, second)));
+
+        assertThat(prompt.contents())
+                .containsExactly(TextContent.from("Compare "), first, second, TextContent.from(" side by side."));
+
+        assertThatThrownBy(prompt::text).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void should_merge_scalar_substitutions_with_surrounding_literals_like_render() {
+
+        Prompt prompt = PromptTemplate.from("{{a}}{{b}}.").apply(Map.of("a", "Hello", "b", " Klaus"));
+
+        assertThat(prompt.text()).isEqualTo("Hello Klaus.");
+        assertThat(prompt.contents()).singleElement().isInstanceOf(TextContent.class);
     }
 }

@@ -1,19 +1,18 @@
 package dev.langchain4j.model.ovhai.internal.client;
 
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.ovhai.internal.api.EmbeddingRequest;
 import dev.langchain4j.model.ovhai.internal.api.EmbeddingResponse;
 import dev.langchain4j.model.ovhai.internal.api.OvhAiApi;
+import java.io.IOException;
+import java.util.List;
 import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
-
-import java.io.IOException;
-import java.util.List;
-
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 /**
  * @deprecated Do not use anymore, use {@code langchain4j-open-ai} module instead
@@ -42,16 +41,19 @@ public class DefaultOvhAiClient extends OvhAiClient {
     }
 
     DefaultOvhAiClient(Builder builder) {
-        ensureNotBlank(builder.apiKey, "%s", "OVHcloud API key must be defined. It can be generated here: https://endpoints.ai.cloud.ovh.net/");
+        ensureNotBlank(
+                builder.apiKey,
+                "%s",
+                "OVHcloud API key must be defined. It can be generated here: https://endpoints.ai.cloud.ovh.net/");
 
         this.apiKey = builder.apiKey;
         this.logResponses = builder.logResponses;
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
-            .callTimeout(builder.timeout)
-            .connectTimeout(builder.timeout)
-            .readTimeout(builder.timeout)
-            .writeTimeout(builder.timeout);
+                .callTimeout(builder.timeout)
+                .connectTimeout(builder.timeout)
+                .readTimeout(builder.timeout)
+                .writeTimeout(builder.timeout);
 
         if (builder.logRequests) {
             okHttpClientBuilder.addInterceptor(new RequestLoggingInterceptor(builder.logger));
@@ -63,10 +65,10 @@ public class DefaultOvhAiClient extends OvhAiClient {
         this.okHttpClient = okHttpClientBuilder.build();
 
         Retrofit retrofit = new Retrofit.Builder()
-            .baseUrl(Utils.ensureTrailingForwardSlash(ensureNotBlank(builder.baseUrl, "baseUrl")))
-            .client(okHttpClient)
-            .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
-            .build();
+                .baseUrl(Utils.ensureTrailingForwardSlash(ensureNotBlank(builder.baseUrl, "baseUrl")))
+                .client(okHttpClient)
+                .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
+                .build();
 
         this.ovhAiApi = retrofit.create(OvhAiApi.class);
         this.authorizationHeader = "Bearer " + ensureNotBlank(apiKey, "apiKey");
@@ -74,7 +76,8 @@ public class DefaultOvhAiClient extends OvhAiClient {
 
     public EmbeddingResponse embed(EmbeddingRequest request) {
         try {
-            retrofit2.Response<List<float[]>> retrofitResponse = ovhAiApi.embed(request, authorizationHeader).execute();
+            retrofit2.Response<List<float[]>> retrofitResponse =
+                    ovhAiApi.embed(request, authorizationHeader).execute();
 
             if (retrofitResponse.isSuccessful()) {
                 return new EmbeddingResponse(retrofitResponse.body());

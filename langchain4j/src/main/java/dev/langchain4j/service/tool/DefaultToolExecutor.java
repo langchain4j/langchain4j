@@ -238,8 +238,8 @@ public class DefaultToolExecutor implements ToolExecutor {
             } else {
                 P pAnnotation = parameter.getAnnotation(P.class);
                 if (pAnnotation != null && !P.NO_DEFAULT.equals(pAnnotation.defaultValue())) {
-                    arguments[i] = parseDefaultValue(
-                            pAnnotation.defaultValue(), parameterName, parameterClass, parameterType);
+                    arguments[i] =
+                            parseDefaultValue(pAnnotation.defaultValue(), parameterName, parameterClass, parameterType);
                 } else if (parameterClass.isPrimitive()) {
                     throw new IllegalArgumentException(String.format(
                             "Required parameter \"%s\" of tool \"%s\" is missing", parameterName, toolName));

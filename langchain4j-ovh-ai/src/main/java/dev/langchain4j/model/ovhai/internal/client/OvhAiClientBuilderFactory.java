@@ -7,5 +7,4 @@ import java.util.function.Supplier;
  */
 @Deprecated(forRemoval = true, since = "1.14.0")
 @SuppressWarnings("rawtypes")
-public interface OvhAiClientBuilderFactory extends Supplier<OvhAiClient.Builder> {
-}
+public interface OvhAiClientBuilderFactory extends Supplier<OvhAiClient.Builder> {}

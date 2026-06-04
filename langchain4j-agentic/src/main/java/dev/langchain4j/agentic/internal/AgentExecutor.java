@@ -11,11 +11,11 @@ import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.service.TokenStream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static dev.langchain4j.agentic.scope.DefaultAgenticScope.isSerializable;
 
@@ -40,7 +40,10 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
     }
 
     private Object handleAgentFailure(
-            AgentInvocationException e, DefaultAgenticScope agenticScope, Object invokedAgent, PlannerExecutor planner) {
+            AgentInvocationException e,
+            DefaultAgenticScope agenticScope,
+            Object invokedAgent,
+            PlannerExecutor planner) {
         ErrorRecoveryResult recoveryResult = agenticScope.handleError(agentInvoker.name(), e);
         return switch (recoveryResult.type()) {
             case THROW_EXCEPTION -> throw e;
@@ -49,14 +52,18 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
         };
     }
 
-    private Object internalExecute(DefaultAgenticScope agenticScope, Object invokedAgent, PlannerExecutor planner, boolean async) {
+    private Object internalExecute(
+            DefaultAgenticScope agenticScope, Object invokedAgent, PlannerExecutor planner, boolean async) {
         try {
             AgentInvocationArguments args = null;
             try {
                 args = agentInvoker.toInvocationArguments(agenticScope);
             } catch (MissingArgumentException e) {
                 if (optional()) {
-                    LOG.info("Skipping optional agent '{}' because of missing argument '{}'", agentInvoker.name(), e.argumentName());
+                    LOG.info(
+                            "Skipping optional agent '{}' because of missing argument '{}'",
+                            agentInvoker.name(),
+                            e.argumentName());
                     Object response = agenticScope.readState(agentInvoker.outputKey());
                     if (planner != null) {
                         planner.onSubagentInvoked(new AgentInvocation(type(), name(), agentId(), Map.of(), response));
@@ -82,7 +89,12 @@ public record AgentExecutor(AgentInvoker agentInvoker, Object agent) implements 
         }
     }
 
-    private Object agentResponse(DefaultAgenticScope agenticScope, Object invokedAgent, PlannerExecutor planner, AgentInvocationArguments args, boolean async) {
+    private Object agentResponse(
+            DefaultAgenticScope agenticScope,
+            Object invokedAgent,
+            PlannerExecutor planner,
+            AgentInvocationArguments args,
+            boolean async) {
         if (async) {
             return new AsyncResponse<>(() -> {
                 try {

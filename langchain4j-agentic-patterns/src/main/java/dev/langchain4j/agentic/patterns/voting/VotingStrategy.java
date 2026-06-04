@@ -12,12 +12,14 @@ public interface VotingStrategy {
     Object aggregate(Collection<Object> votes);
 
     static VotingStrategy majority() {
-        return votes -> votes.stream()
-                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()))
-                .entrySet().stream()
-                .max(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
-                .orElse(null);
+        return votes ->
+                votes.stream()
+                        .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()))
+                        .entrySet()
+                        .stream()
+                        .max(Map.Entry.comparingByValue())
+                        .map(Map.Entry::getKey)
+                        .orElse(null);
     }
 
     static VotingStrategy average() {

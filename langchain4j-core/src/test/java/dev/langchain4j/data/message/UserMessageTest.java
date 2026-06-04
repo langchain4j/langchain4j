@@ -13,7 +13,8 @@ class UserMessageTest implements WithAssertions {
     @Test
     void toBuilder() {
         UserMessage message1 = UserMessage.from(TextContent.from("one"));
-        UserMessage message2 = message1.toBuilder().addContent(TextContent.from("two")).build();
+        UserMessage message2 =
+                message1.toBuilder().addContent(TextContent.from("two")).build();
         assertThat(message1.contents()).containsExactly(TextContent.from("one"));
         assertThat(message2.contents()).containsExactly(TextContent.from("one"), TextContent.from("two"));
     }
@@ -25,7 +26,9 @@ class UserMessageTest implements WithAssertions {
         assertThat(m.singleText()).isEqualTo("text");
         assertThat(m.contents()).containsExactly(TextContent.from("text"));
         assertThat(m.name()).isEqualTo("name");
-        assertThat(m).hasToString("UserMessage { name = \"name\", contents = [TextContent { text = \"text\" }], attributes = {} }");
+        assertThat(m)
+                .hasToString(
+                        "UserMessage { name = \"name\", contents = [TextContent { text = \"text\" }], attributes = {} }");
     }
 
     @Test
@@ -75,8 +78,8 @@ class UserMessageTest implements WithAssertions {
         assertThat(new UserMessage("text").singleText()).isEqualTo("text");
 
         assertThatExceptionOfType(RuntimeException.class)
-                .isThrownBy(
-                        () -> new UserMessage("name", listOf(new TextContent("abc"), new TextContent("def"))).singleText())
+                .isThrownBy(() ->
+                        new UserMessage("name", listOf(new TextContent("abc"), new TextContent("def"))).singleText())
                 .withMessageContaining("Expecting single text content, but got:");
     }
 

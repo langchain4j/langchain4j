@@ -31,8 +31,7 @@ public class AnthropicToolResultContent extends AnthropicMessageContent {
         this.isError = isError;
     }
 
-    public AnthropicToolResultContent(
-            String toolUseId, List<AnthropicMessageContent> content, Boolean isError) {
+    public AnthropicToolResultContent(String toolUseId, List<AnthropicMessageContent> content, Boolean isError) {
         super("tool_result");
         this.toolUseId = toolUseId;
         this.content = content;

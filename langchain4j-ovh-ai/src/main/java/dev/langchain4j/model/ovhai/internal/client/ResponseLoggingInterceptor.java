@@ -1,14 +1,14 @@
 package dev.langchain4j.model.ovhai.internal.client;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.ovhai.internal.client.RequestLoggingInterceptor.inOneLine;
+
+import java.io.IOException;
 import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.ovhai.internal.client.RequestLoggingInterceptor.inOneLine;
-import java.io.IOException;
 
 /**
  * @deprecated Do not use anymore, use {@code langchain4j-open-ai} module instead
@@ -33,14 +33,10 @@ class ResponseLoggingInterceptor implements Interceptor {
 
     void log(Response response) {
         log.debug(
-                "Response:\n" +
-                        "- status code: {}\n" +
-                        "- headers: {}\n" +
-                        "- body: {}",
+                "Response:\n" + "- status code: {}\n" + "- headers: {}\n" + "- body: {}",
                 response.code(),
                 inOneLine(response.headers()),
-                getBody(response)
-        );
+                getBody(response));
     }
 
     private String getBody(Response response) {

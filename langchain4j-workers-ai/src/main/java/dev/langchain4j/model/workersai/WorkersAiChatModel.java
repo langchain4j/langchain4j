@@ -1,15 +1,17 @@
 package dev.langchain4j.model.workersai;
 
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.internal.ChatRequestValidationUtils;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
@@ -17,13 +19,10 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.workersai.client.AbstractWorkersAIModel;
 import dev.langchain4j.model.workersai.client.WorkersAiChatCompletionRequest;
 import dev.langchain4j.model.workersai.spi.WorkersAiChatModelBuilderFactory;
-import org.slf4j.Logger;
-
 import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import org.slf4j.Logger;
 
 /**
  * WorkerAI Chat model.
@@ -86,8 +85,7 @@ public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatMo
         /**
          * Simple constructor.
          */
-        public Builder() {
-        }
+        public Builder() {}
 
         /**
          * Simple constructor.
@@ -154,9 +152,7 @@ public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatMo
 
     private Response<AiMessage> generate(List<ChatMessage> messages) {
         WorkersAiChatCompletionRequest req = new WorkersAiChatCompletionRequest();
-        req.setMessages(messages.stream()
-                .map(this::toMessage)
-                .collect(Collectors.toList()));
+        req.setMessages(messages.stream().map(this::toMessage).collect(Collectors.toList()));
         return new Response<>(new AiMessage(generate(req)), null, FinishReason.STOP);
     }
 
@@ -168,9 +164,9 @@ public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatMo
      */
     private WorkersAiChatCompletionRequest.Message toMessage(ChatMessage message) {
         return new WorkersAiChatCompletionRequest.Message(
-                WorkersAiChatCompletionRequest.MessageRole.valueOf(message.type().name().toLowerCase()),
-                toText(message)
-        );
+                WorkersAiChatCompletionRequest.MessageRole.valueOf(
+                        message.type().name().toLowerCase()),
+                toText(message));
     }
 
     private static String toText(ChatMessage chatMessage) {
@@ -182,9 +178,8 @@ public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatMo
             return aiMessage.text();
         } else if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
             if (!toolExecutionResultMessage.hasSingleText()) {
-                throw new UnsupportedFeatureException(
-                        "Workers AI does not support non-text content in tool results. "
-                                + "Only text content is supported.");
+                throw new UnsupportedFeatureException("Workers AI does not support non-text content in tool results. "
+                        + "Only text content is supported.");
             }
             return toolExecutionResultMessage.text();
         } else {
@@ -200,9 +195,10 @@ public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatMo
      */
     private String generate(WorkersAiChatCompletionRequest req) {
         try {
-            retrofit2.Response<dev.langchain4j.model.workersai.client.WorkersAiChatCompletionResponse> retrofitResponse = workerAiClient
-                    .generateChat(req, accountId, modelName)
-                    .execute();
+            retrofit2.Response<dev.langchain4j.model.workersai.client.WorkersAiChatCompletionResponse>
+                    retrofitResponse = workerAiClient
+                            .generateChat(req, accountId, modelName)
+                            .execute();
             processErrors(retrofitResponse.body(), retrofitResponse.errorBody());
             if (retrofitResponse.body() == null) {
                 throw new IllegalStateException("Response is empty");
