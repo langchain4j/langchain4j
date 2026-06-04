@@ -14,7 +14,6 @@ import io.stargate.sdk.data.domain.JsonDocumentResult;
 import io.stargate.sdk.data.domain.odm.Document;
 import io.stargate.sdk.data.domain.query.Filter;
 import org.jspecify.annotations.NonNull;
-import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;

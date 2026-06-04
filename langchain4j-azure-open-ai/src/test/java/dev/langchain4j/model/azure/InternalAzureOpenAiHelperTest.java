@@ -2,6 +2,10 @@ package dev.langchain4j.model.azure;
 
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.aiMessageFrom;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.azure.ai.openai.OpenAIAsyncClient;
 import com.azure.ai.openai.OpenAIClient;
@@ -12,8 +16,11 @@ import com.azure.ai.openai.models.ChatRequestMessage;
 import com.azure.ai.openai.models.ChatRequestUserMessage;
 import com.azure.ai.openai.models.ChatResponseMessage;
 import com.azure.ai.openai.models.CompletionsFinishReason;
+import com.azure.core.http.HttpClient;
+import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.policy.ExponentialBackoffOptions;
 import com.azure.core.http.policy.RetryOptions;
+import com.azure.core.util.HttpClientOptions;
 import com.azure.json.JsonOptions;
 import com.azure.json.JsonReader;
 import com.azure.json.implementation.DefaultJsonReader;
@@ -264,5 +271,58 @@ class InternalAzureOpenAiHelperTest {
                 .contains("url")
                 .doesNotContain("data:image")
                 .doesNotContain("base64");
+    }
+
+    @Test
+    void createHttpClient_createsDefaultClient_whenNoCustomProviderGiven() {
+        // azure-core-http-netty is on the classpath as a transitive dependency, so the Azure SDK's
+        // HttpClient.createDefault() discovers it and returns a usable client.
+        HttpClient httpClient = InternalAzureOpenAiHelper.createHttpClient(null, new HttpClientOptions());
+
+        assertThat(httpClient).isNotNull();
+    }
+
+    @Test
+    void createHttpClient_usesCustomProvider_whenProvided() {
+        HttpClient mockHttpClient = mock(HttpClient.class);
+        HttpClientProvider customProvider = mock(HttpClientProvider.class);
+        HttpClientOptions clientOptions = new HttpClientOptions();
+        when(customProvider.createInstance(clientOptions)).thenReturn(mockHttpClient);
+
+        HttpClient httpClient = InternalAzureOpenAiHelper.createHttpClient(customProvider, clientOptions);
+
+        assertThat(httpClient).isSameAs(mockHttpClient);
+        verify(customProvider).createInstance(clientOptions);
+    }
+
+    @Test
+    void setupSyncClient_createsClient_whenNoCustomProviderGiven() {
+        OpenAIClient client = InternalAzureOpenAiHelper.setupSyncClient(
+                "test-endpoint",
+                null,
+                "test-api-key",
+                null,
+                null,
+                null,
+                null, // no custom provider → default HttpClient is discovered via the Azure SDK
+                null,
+                false,
+                null,
+                null);
+
+        assertThat(client).isNotNull();
+    }
+
+    @Test
+    void setupSyncClient_usesCustomProvider_whenProvided() {
+        HttpClient mockHttpClient = mock(HttpClient.class);
+        HttpClientProvider customProvider = mock(HttpClientProvider.class);
+        when(customProvider.createInstance(any())).thenReturn(mockHttpClient);
+
+        OpenAIClient client = InternalAzureOpenAiHelper.setupSyncClient(
+                "test-endpoint", null, "test-api-key", null, null, null, customProvider, null, false, null, null);
+
+        assertThat(client).isNotNull();
+        verify(customProvider).createInstance(any());
     }
 }

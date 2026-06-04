@@ -2,6 +2,7 @@ package dev.langchain4j.service.tool;
 
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
+import static dev.langchain4j.internal.Utils.allConcreteMethods;
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.copy;
@@ -226,7 +227,7 @@ public class ToolService {
         }
 
         List<AiServiceTool> result = new ArrayList<>();
-        for (Method method : objectWithTools.getClass().getDeclaredMethods()) {
+        for (Method method : allConcreteMethods(objectWithTools.getClass())) {
             Optional<Method> annotatedMethod = getAnnotatedMethod(method, Tool.class);
             if (annotatedMethod.isPresent()) {
                 Method toolMethod = annotatedMethod.get();
@@ -524,6 +525,9 @@ public class ToolService {
     public static boolean shouldReturnImmediately(boolean anyToolErrored, List<ReturnBehavior> returnBehaviors) {
         if (anyToolErrored) {
             return false; // if any tool call failed, LLM should receive an error so that it can attempt to fix it
+        }
+        if (returnBehaviors.isEmpty()) {
+            return false;
         }
         if (returnBehaviors.get(returnBehaviors.size() - 1) == IMMEDIATE_IF_LAST) {
             return true;

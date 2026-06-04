@@ -18,6 +18,7 @@ sidebar_position: 0
 | [Chroma](/integrations/embedding-stores/chroma)                                       | ✅                | ✅                     | ✅                   |
 | [ClickHouse](/integrations/embedding-stores/clickhouse)                               | ✅                | ✅                     | ✅                   |
 | [Cloud SQL for Postgres](/integrations/embedding-stores/cloud-sql)                    | ✅                | ✅                     | ✅                   |
+| [CockroachDB](/integrations/embedding-stores/cockroachdb)                             | ✅                | ✅                     | ✅                   |
 | [Coherence](/integrations/embedding-stores/coherence)                                 | ✅                | ✅                     | ✅                   |
 | [Couchbase](/integrations/embedding-stores/couchbase)                                 | ✅                |                       | ✅                   |
 | [DuckDB](/integrations/embedding-stores/duckdb)                                       | ✅                | ✅                     | ✅                   |

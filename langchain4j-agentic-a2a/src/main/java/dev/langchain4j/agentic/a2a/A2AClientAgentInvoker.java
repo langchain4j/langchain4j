@@ -10,7 +10,7 @@ import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.internal.AgentInvoker;
-import io.a2a.spec.AgentCard;
+import org.a2aproject.sdk.spec.AgentCard;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.List;
