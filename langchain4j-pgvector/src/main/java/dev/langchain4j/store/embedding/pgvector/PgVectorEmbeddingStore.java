@@ -289,7 +289,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.vectorType = getOrDefault(builder.vectorType, VectorType.VECTOR);
 
         if (useIndex || createTable || dropTableFirst) {
-            initTable(dropTableFirst, createTable, useIndex, builder.dimension, builder.indexListSize, this.vectorType);
+            initTable(dropTableFirst, createTable, useIndex, builder.dimension, builder.indexListSize);
         }
     }
 
@@ -338,15 +338,13 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param useIndex       Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
      * @param dimension      The vector dimension
      * @param indexListSize  The IVFFlat number of lists
-     * @param vectorType     The field type of embeddings
      */
     protected void initTable(
             Boolean dropTableFirst,
             Boolean createTable,
             Boolean useIndex,
             Integer dimension,
-            Integer indexListSize,
-            VectorType vectorType) {
+            Integer indexListSize) {
         String query = "init";
         try (Connection connection = getConnection();
                 Statement statement = connection.createStatement()) {
