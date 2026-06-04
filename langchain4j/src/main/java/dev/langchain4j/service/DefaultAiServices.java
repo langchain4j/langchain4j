@@ -7,7 +7,6 @@ import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
 import static dev.langchain4j.service.AiServiceParamsUtil.findArgumentOfType;
-import static dev.langchain4j.service.AiServiceValidation.validateParameters;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.TypeUtils.getRawClass;
 import static dev.langchain4j.service.TypeUtils.isImageType;
@@ -132,9 +131,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                         if (method.getDeclaringClass() == ChatMemoryAccess.class) {
                             return handleChatMemoryAccess(method, args);
                         }
-
-                        // TODO do it once, when creating AI Service?
-                        validateParameters(context.aiServiceClass, method);
 
                         InvocationParameters invocationParameters = findArgumentOfType(
                                         InvocationParameters.class, args, method.getParameters())
@@ -531,10 +527,11 @@ class DefaultAiServices<T> extends AiServices<T> {
     }
 
     private Optional<SystemMessage> prepareSystemMessage(Object memoryId, Method method, Object[] args) {
-        return findSystemMessageTemplate(memoryId, method).map(systemMessageTemplate -> PromptTemplate.from(
-                        systemMessageTemplate)
-                .apply(InternalReflectionVariableResolver.findTemplateVariables(systemMessageTemplate, method, args))
-                .toSystemMessage());
+        return findSystemMessageTemplate(memoryId, method)
+                .map(systemMessageTemplate -> PromptTemplate.from(systemMessageTemplate)
+                        .apply(InternalReflectionVariableResolver.findTemplateVariables(
+                                systemMessageTemplate, method, args))
+                        .toSystemMessage());
     }
 
     private Optional<String> findSystemMessageTemplate(Object memoryId, Method method) {
