@@ -354,24 +354,13 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 statement.executeUpdate(String.format("DROP TABLE IF EXISTS %s", table));
             }
             if (createTable) {
-                switch (vectorType) {
-                    case HALFVEC:
-                        query = String.format(
-                                "CREATE TABLE IF NOT EXISTS %s (embedding_id UUID PRIMARY KEY, "
-                                        + "embedding halfvec(%s), text TEXT NULL, %s )",
-                                table,
-                                ensureGreaterThanZero(dimension, "dimension"),
-                                metadataHandler.columnDefinitionsString());
-                        break;
-                    case VECTOR:
-                    default:
-                        query = String.format(
-                                "CREATE TABLE IF NOT EXISTS %s (embedding_id UUID PRIMARY KEY, "
-                                        + "embedding vector(%s), text TEXT NULL, %s )",
-                                table,
-                                ensureGreaterThanZero(dimension, "dimension"),
-                                metadataHandler.columnDefinitionsString());
-                }
+                query = String.format(
+                        "CREATE TABLE IF NOT EXISTS %s (embedding_id UUID PRIMARY KEY, "
+                                + "embedding %s(%s), text TEXT NULL, %s )",
+                        table,
+                        vectorType,
+                        ensureGreaterThanZero(dimension, "dimension"),
+                        metadataHandler.columnDefinitionsString());
                 statement.executeUpdate(query);
                 metadataHandler.createMetadataIndexes(statement, table);
             }
