@@ -1,7 +1,6 @@
 package dev.langchain4j.internal;
 
 import dev.langchain4j.Internal;
-import java.util.Optional;
 
 @Internal
 public class JsonParsingUtils {
@@ -61,6 +60,16 @@ public class JsonParsingUtils {
 
         for (int i = jsonEnd; i >= 0; i--) {
             char c = text.charAt(i);
+            if (c == '"' && !isEscaped(text, i)) {
+                i--;
+                while (i >= 0) {
+                    if (text.charAt(i) == '"' && !isEscaped(text, i)) {
+                        break;
+                    }
+                    i--;
+                }
+                continue;
+            }
             if (c == openingBrace) {
                 braceCount++;
                 if (braceCount == 0) {
@@ -71,5 +80,15 @@ public class JsonParsingUtils {
             }
         }
         return -1;
+    }
+
+    private static boolean isEscaped(String text, int index) {
+        int backslashCount = 0;
+        int i = index - 1;
+        while (i >= 0 && text.charAt(i) == '\\') {
+            backslashCount++;
+            i--;
+        }
+        return backslashCount % 2 != 0;
     }
 }

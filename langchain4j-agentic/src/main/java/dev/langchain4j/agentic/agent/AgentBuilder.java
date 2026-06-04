@@ -8,6 +8,7 @@ import static dev.langchain4j.agentic.observability.ComposedAgentListener.listen
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Arrays.asList;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.Agent;
@@ -129,6 +130,15 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     AgentListener agentListener;
 
     public AgentBuilder(Class<T> agentServiceClass) {
+        this(agentServiceClass, true);
+    }
+
+    @Internal
+    public static <T> AgentBuilder<T, AgentBuilder<T, ?>> withoutDeclarativeConfiguration(Class<T> agentServiceClass) {
+        return new AgentBuilder<>(agentServiceClass, false);
+    }
+
+    private AgentBuilder(Class<T> agentServiceClass, boolean configureDeclarativeAgent) {
         this.agentServiceClass = agentServiceClass;
         this.agenticMethod = validateAgentClass(agentServiceClass);
         this.agentReturnType = agenticMethod.getReturnType();
@@ -138,7 +148,9 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
             throw new IllegalArgumentException("Method " + agenticMethod + " is not annotated with @Agent");
         }
 
-        configureAgent(agentServiceClass, this);
+        if (configureDeclarativeAgent) {
+            configureAgent(agentServiceClass, this);
+        }
 
         this.name = !isNullOrBlank(agent.name()) ? agent.name() : agenticMethod.getName();
 

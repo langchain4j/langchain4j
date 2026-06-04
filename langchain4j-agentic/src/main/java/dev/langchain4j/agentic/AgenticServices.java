@@ -8,6 +8,7 @@ import static dev.langchain4j.agentic.declarative.DeclarativeUtil.predicateMetho
 import static dev.langchain4j.agentic.declarative.DeclarativeUtil.selectMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
 import static dev.langchain4j.agentic.internal.AgentUtil.agentToExecutor;
+import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.getAnnotatedMethodOnClass;
 import static dev.langchain4j.agentic.internal.AgentUtil.nonAiAgentInvoker;
 import static dev.langchain4j.agentic.internal.AgentUtil.nonAiAgentToExecutor;
@@ -32,6 +33,7 @@ import dev.langchain4j.agentic.internal.A2AService;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.AgentUtil;
+import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.internal.McpService;
 import dev.langchain4j.agentic.observability.AgentListener;
@@ -331,7 +333,7 @@ public class AgenticServices {
         T agent = createComposedAgent(agentServiceClass, chatModel, agentConfigurator);
 
         if (agent == null) {
-            var agentBuilder = agentBuilder(agentServiceClass);
+            var agentBuilder = AgentBuilder.withoutDeclarativeConfiguration(agentServiceClass);
             configureAgent(agentServiceClass, chatModel, agentBuilder, agentConfigurator);
             agent = agentBuilder.build();
         }
@@ -563,7 +565,7 @@ public class AgenticServices {
             return agentExecutor;
         }
 
-        AgentBuilder<?, ?> agentBuilder = agentBuilder(subgentClass);
+        AgentBuilder<?, ?> agentBuilder = AgentBuilder.withoutDeclarativeConfiguration(subgentClass);
         configureAgent(subgentClass, chatModel, agentBuilder, agentConfigurator);
 
         return agentToExecutor(agentBuilder.build());
@@ -717,10 +719,14 @@ public class AgenticServices {
     private static AgentExecutor createHumanInTheLoopAgent(Class<?> agentServiceClass, Method method) {
         var humanInTheLoop = method.getAnnotation(dev.langchain4j.agentic.declarative.HumanInTheLoop.class);
 
+        List<AgentArgument> methodArguments = argumentsFromMethod(method).stream()
+                .filter(arg -> !arg.name().startsWith("@"))
+                .toList();
         var humanInTheLoopBuilder = humanInTheLoopBuilder()
                 .description(humanInTheLoop.description())
                 .outputKey(humanInTheLoop.outputKey())
                 .async(humanInTheLoop.async())
+                .inputs(methodArguments.isEmpty() ? null : methodArguments)
                 .responseProvider(scope -> invokeStatic(
                         method, agentInvocationArguments(scope, method).positionalArgs()));
 

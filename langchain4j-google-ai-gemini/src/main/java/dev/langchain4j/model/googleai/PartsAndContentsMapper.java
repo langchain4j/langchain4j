@@ -376,7 +376,9 @@ final class PartsAndContentsMapper {
                                         0,
                                         GeminiContent.GeminiPart.builder()
                                                 .functionResponse(new GeminiFunctionResponse(
-                                                        toolResultMessage.toolName(), responseMap))
+                                                        toolResultMessage.id(),
+                                                        toolResultMessage.toolName(),
+                                                        responseMap))
                                                 .build());
                                 return new GeminiContent(toolParts, GeminiRole.USER.toString());
                             }
@@ -384,6 +386,7 @@ final class PartsAndContentsMapper {
                             return new GeminiContent(
                                     List.of(GeminiContent.GeminiPart.builder()
                                             .functionResponse(new GeminiFunctionResponse(
+                                                    toolResultMessage.id(),
                                                     toolResultMessage.toolName(),
                                                     Map.of("response", toolResultMessage.text())))
                                             .build()),
@@ -424,7 +427,9 @@ final class PartsAndContentsMapper {
             boolean shouldAddThoughtSignature = i == 0 && isNotNullOrEmpty(thoughtSignature);
             GeminiContent.GeminiPart geminiPart = GeminiContent.GeminiPart.builder()
                     .functionCall(new GeminiFunctionCall(
-                            toolExecutionRequest.name(), fromJson(toolExecutionRequest.arguments(), Map.class)))
+                            toolExecutionRequest.id(),
+                            toolExecutionRequest.name(),
+                            fromJson(toolExecutionRequest.arguments(), Map.class)))
                     .thoughtSignature(shouldAddThoughtSignature ? thoughtSignature : null)
                     .build();
             geminiParts.add(geminiPart);

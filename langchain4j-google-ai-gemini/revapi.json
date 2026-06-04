@@ -38,6 +38,172 @@
           "code": "java.class.nonPublicPartOfAPI",
           "old": "class dev.langchain4j.model.googleai.GeminiService",
           "justification": "Exposed only through package-private base classes"
+        },
+        {
+          "ignore": true,
+          "code": "java.class.removed",
+          "old": "class dev.langchain4j.model.googleai.BatchRequestResponse.BatchList<T>",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method void dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel::cancelBatchJob(dev.langchain4j.model.googleai.BatchRequestResponse.BatchName)",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse<dev.langchain4j.model.chat.response.ChatResponse> dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel::createBatchFromFile(java.lang.String, dev.langchain4j.model.googleai.GeminiFiles.GeminiFile)",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse<dev.langchain4j.model.chat.response.ChatResponse> dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel::createBatchInline(java.lang.String, java.lang.Long, java.util.List<dev.langchain4j.model.chat.request.ChatRequest>)",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.parameterTypeChanged",
+          "old": "parameter void dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel::deleteBatchJob(===dev.langchain4j.model.googleai.BatchRequestResponse.BatchName===)",
+          "new": "parameter void dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel::deleteBatchJob(===java.lang.String===)",
+          "parameterIndex": "0",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method dev.langchain4j.model.googleai.BatchRequestResponse.BatchList<dev.langchain4j.model.chat.response.ChatResponse> dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel::listBatchJobs(java.lang.Integer, java.lang.String)",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse<dev.langchain4j.model.chat.response.ChatResponse> dev.langchain4j.model.googleai.GoogleAiGeminiBatchChatModel::retrieveBatchResults(dev.langchain4j.model.googleai.BatchRequestResponse.BatchName)",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method void dev.langchain4j.model.googleai.GoogleAiGeminiBatchEmbeddingModel::cancelBatchJob(dev.langchain4j.model.googleai.BatchRequestResponse.BatchName)",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse<dev.langchain4j.data.embedding.Embedding> dev.langchain4j.model.googleai.GoogleAiGeminiBatchEmbeddingModel::createBatchFromFile(java.lang.String, dev.langchain4j.model.googleai.GeminiFiles.GeminiFile)",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse<dev.langchain4j.data.embedding.Embedding> dev.langchain4j.model.googleai.GoogleAiGeminiBatchEmbeddingModel::createBatchInline(java.lang.String, java.lang.Long, java.util.List<dev.langchain4j.data.segment.TextSegment>)",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.parameterTypeChanged",
+          "old": "parameter void dev.langchain4j.model.googleai.GoogleAiGeminiBatchEmbeddingModel::deleteBatchJob(===dev.langchain4j.model.googleai.BatchRequestResponse.BatchName===)",
+          "new": "parameter void dev.langchain4j.model.googleai.GoogleAiGeminiBatchEmbeddingModel::deleteBatchJob(===java.lang.String===)",
+          "parameterIndex": "0",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method dev.langchain4j.model.googleai.BatchRequestResponse.BatchList<dev.langchain4j.data.embedding.Embedding> dev.langchain4j.model.googleai.GoogleAiGeminiBatchEmbeddingModel::listBatchJobs(java.lang.Integer, java.lang.String)",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse<dev.langchain4j.data.embedding.Embedding> dev.langchain4j.model.googleai.GoogleAiGeminiBatchEmbeddingModel::retrieveBatchResults(dev.langchain4j.model.googleai.BatchRequestResponse.BatchName)",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.annotation.added",
+          "old": "class dev.langchain4j.model.googleai.GoogleAiGeminiBatchEmbeddingModel",
+          "new": "class dev.langchain4j.model.googleai.GoogleAiGeminiBatchEmbeddingModel",
+          "annotation": "@org.jspecify.annotations.NullMarked",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.class.removed",
+          "old": "class dev.langchain4j.model.googleai.GoogleAiGeminiBatchImageModel.ImageGenerationRequest",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method void dev.langchain4j.model.googleai.GoogleAiGeminiBatchImageModel::cancelBatchJob(dev.langchain4j.model.googleai.BatchRequestResponse.BatchName)",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse<dev.langchain4j.model.output.Response<dev.langchain4j.data.image.Image>> dev.langchain4j.model.googleai.GoogleAiGeminiBatchImageModel::createBatchFromFile(java.lang.String, dev.langchain4j.model.googleai.GeminiFiles.GeminiFile)",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse<dev.langchain4j.model.output.Response<dev.langchain4j.data.image.Image>> dev.langchain4j.model.googleai.GoogleAiGeminiBatchImageModel::createBatchInline(java.lang.String, java.lang.Long, java.util.List<dev.langchain4j.model.googleai.GoogleAiGeminiBatchImageModel.ImageGenerationRequest>)",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.parameterTypeChanged",
+          "old": "parameter void dev.langchain4j.model.googleai.GoogleAiGeminiBatchImageModel::deleteBatchJob(===dev.langchain4j.model.googleai.BatchRequestResponse.BatchName===)",
+          "new": "parameter void dev.langchain4j.model.googleai.GoogleAiGeminiBatchImageModel::deleteBatchJob(===java.lang.String===)",
+          "parameterIndex": "0",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method dev.langchain4j.model.googleai.BatchRequestResponse.BatchList<dev.langchain4j.model.output.Response<dev.langchain4j.data.image.Image>> dev.langchain4j.model.googleai.GoogleAiGeminiBatchImageModel::listBatchJobs(java.lang.Integer, java.lang.String)",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method dev.langchain4j.model.googleai.BatchRequestResponse.BatchResponse<dev.langchain4j.model.output.Response<dev.langchain4j.data.image.Image>> dev.langchain4j.model.googleai.GoogleAiGeminiBatchImageModel::retrieveBatchResults(dev.langchain4j.model.googleai.BatchRequestResponse.BatchName)",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.parameterTypeParameterChanged",
+          "old": "parameter void dev.langchain4j.model.googleai.GoogleAiGeminiBatchImageModel::writeBatchToFile(dev.langchain4j.model.googleai.jsonl.JsonLinesWriter, ===java.lang.Iterable<dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest<dev.langchain4j.model.googleai.GoogleAiGeminiBatchImageModel.ImageGenerationRequest>>===) throws java.io.IOException",
+          "new": "parameter void dev.langchain4j.model.googleai.GoogleAiGeminiBatchImageModel::writeBatchToFile(dev.langchain4j.model.googleai.jsonl.JsonLinesWriter, ===java.lang.Iterable<dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest<java.lang.String>>===) throws java.io.IOException",
+          "parameterIndex": "1",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.batch.BatchPage",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.batch.BatchPagination",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.batch.BatchRequest",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
+        },
+        {
+          "ignore": true,
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.batch.BatchResponse",
+          "justification": "Classes/Methods moved to generic batch impl in langchain4j-core"
         }
       ]
     }

@@ -23,7 +23,7 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
 
     static final GoogleAiGeminiChatModel GOOGLE_AI_GEMINI_CHAT_MODEL = GoogleAiGeminiChatModel.builder()
             .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-            .modelName("gemini-2.0-flash-lite")
+            .modelName("gemini-2.5-flash-lite")
             .logRequests(false) // images are huge in logs
             .logResponses(false)
             .build();
@@ -38,7 +38,7 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected String customModelName() {
-        return "gemini-2.0-flash";
+        return "gemini-2.5-flash";
     }
 
     @Override
@@ -46,7 +46,7 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
         return GoogleAiGeminiChatModel.builder()
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
                 .defaultRequestParameters(parameters)
-                .modelName(getOrDefault(parameters.modelName(), "gemini-2.0-flash-lite"))
+                .modelName(getOrDefault(parameters.modelName(), "gemini-2.5-flash-lite"))
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -83,17 +83,8 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
         return GoogleAiGeminiTokenUsage.class;
     }
 
-    @Override
-    protected void sleepIfNeeded() {
-        try {
-            sleep();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     @AfterEach
-    void sleep() throws InterruptedException {
+    void afterEach() throws InterruptedException {
         String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI");
         if (ciDelaySeconds != null) {
             Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);

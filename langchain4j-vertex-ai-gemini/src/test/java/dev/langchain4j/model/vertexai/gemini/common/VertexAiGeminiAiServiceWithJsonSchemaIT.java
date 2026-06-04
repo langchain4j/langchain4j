@@ -17,15 +17,17 @@ class VertexAiGeminiAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonS
 
     @Override
     protected List<ChatModel> models() {
-        return List.of(VertexAiGeminiChatModel.builder()
-                .project(System.getenv("GCP_PROJECT_ID"))
-                .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-2.0-flash")
-                .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
-                .temperature(0.0f)
-                .logRequests(true)
-                .logResponses(true)
-                .build());
+        return List.of(
+                VertexAiGeminiChatModel.builder()
+                        .project(System.getenv("GCP_PROJECT_ID"))
+                        .location(System.getenv("GCP_LOCATION"))
+                        .modelName("gemini-2.5-flash")
+                        .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
+                        .temperature(0.0f)
+                        .logRequests(true)
+                        .logResponses(true)
+                        .build()
+        );
     }
 
     @Disabled("Gemini cannot do it properly")
