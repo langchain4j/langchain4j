@@ -340,11 +340,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param indexListSize  The IVFFlat number of lists
      */
     protected void initTable(
-            Boolean dropTableFirst,
-            Boolean createTable,
-            Boolean useIndex,
-            Integer dimension,
-            Integer indexListSize) {
+            Boolean dropTableFirst, Boolean createTable, Boolean useIndex, Integer dimension, Integer indexListSize) {
         String query = "init";
         try (Connection connection = getConnection();
                 Statement statement = connection.createStatement()) {
