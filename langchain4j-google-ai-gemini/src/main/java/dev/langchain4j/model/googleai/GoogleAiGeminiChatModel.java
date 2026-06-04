@@ -81,16 +81,37 @@ public class GoogleAiGeminiChatModel extends BaseGeminiChatModel implements Chat
 
         private GoogleAiGeminiChatModelBuilder() {}
 
+        /**
+         * Sets the number of times to retry a request on transient errors (e.g. rate limits, server errors).
+         * <p>
+         * Defaults to {@code 2}.
+         *
+         * @param maxRetries the maximum number of retry attempts
+         * @return {@code this}
+         */
         public GoogleAiGeminiChatModelBuilder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
+        /**
+         * Declares the capabilities supported by the model.
+         * This influences how LangChain4j generates requests for this model.
+         *
+         * @param supportedCapabilities the set of capabilities to declare
+         * @return {@code this}
+         */
         public GoogleAiGeminiChatModelBuilder supportedCapabilities(Set<Capability> supportedCapabilities) {
             this.supportedCapabilities = supportedCapabilities;
             return this;
         }
 
+        /**
+         * Declares the capabilities supported by the model.
+         *
+         * @param supportedCapabilities the capabilities to declare
+         * @return {@code this}
+         */
         public GoogleAiGeminiChatModelBuilder supportedCapabilities(Capability... supportedCapabilities) {
             return supportedCapabilities(new HashSet<>(asList(supportedCapabilities)));
         }
