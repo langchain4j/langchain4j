@@ -53,8 +53,12 @@ class OllamaResponsesChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         ChatResponse response = model.chat(UserMessage.from("What is the capital of Germany?"));
 
         // then
+        // Ollama returns status "completed" even when truncated by max_output_tokens,
+        // so we verify the output is short rather than checking for LENGTH finish reason
+        assertThat(response.aiMessage().text()).isNotNull();
         ChatResponseMetadata metadata = response.metadata();
-        assertThat(metadata.finishReason()).isEqualTo(FinishReason.LENGTH);
+        assertThat(metadata.tokenUsage()).isNotNull();
+        assertThat(metadata.tokenUsage().outputTokenCount()).isLessThanOrEqualTo(2);
     }
 
     @Test
