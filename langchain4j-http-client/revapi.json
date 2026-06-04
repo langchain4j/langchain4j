@@ -1,0 +1,22 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.method.returnTypeTypeParametersChanged",
+          "old": "method java.util.Map<java.lang.String, dev.langchain4j.http.client.FormDataFile> dev.langchain4j.http.client.HttpRequest::formDataFiles()",
+          "new": "method java.util.Map<java.lang.String, java.util.List<dev.langchain4j.http.client.FormDataFile>> dev.langchain4j.http.client.HttpRequest::formDataFiles()",
+          "justification": "formDataFiles() is @Experimental (since 1.10.0) and was widened from Map<String, FormDataFile> to Map<String, List<FormDataFile>> so a single field name can carry multiple parts (required for OpenAI's image-edit endpoint, which accepts repeated `image[]` parts)."
+        },
+        {
+          "code": "java.method.parameterTypeParameterChanged",
+          "old": "parameter dev.langchain4j.http.client.HttpRequest.Builder dev.langchain4j.http.client.HttpRequest.Builder::formDataFiles(===java.util.Map<java.lang.String, dev.langchain4j.http.client.FormDataFile>===)",
+          "new": "parameter dev.langchain4j.http.client.HttpRequest.Builder dev.langchain4j.http.client.HttpRequest.Builder::formDataFiles(===java.util.Map<java.lang.String, java.util.List<dev.langchain4j.http.client.FormDataFile>>===)",
+          "justification": "formDataFiles(...) builder setter is @Experimental (since 1.10.0); type parameter widened in lock-step with the accessor change above."
+        }
+      ]
+    }
+  }
+]
