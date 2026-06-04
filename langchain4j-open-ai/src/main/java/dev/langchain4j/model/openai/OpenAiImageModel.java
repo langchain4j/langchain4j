@@ -7,6 +7,11 @@ import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGE
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.image.ImageModel;
@@ -16,11 +21,6 @@ import dev.langchain4j.model.openai.internal.image.GenerateImagesResponse;
 import dev.langchain4j.model.openai.internal.image.ImageData;
 import dev.langchain4j.model.openai.spi.OpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 
 /**
@@ -32,7 +32,6 @@ public class OpenAiImageModel implements ImageModel {
     private final String modelName;
     private final String size;
     private final String quality;
-    private final String style;
     private final String user;
     private final String responseFormat;
 
@@ -62,7 +61,6 @@ public class OpenAiImageModel implements ImageModel {
         this.modelName = builder.modelName;
         this.size = builder.size;
         this.quality = builder.quality;
-        this.style = builder.style;
         this.user = builder.user;
         this.responseFormat = builder.responseFormat;
     }
@@ -110,7 +108,6 @@ public class OpenAiImageModel implements ImageModel {
         private String modelName;
         private String size;
         private String quality;
-        private String style;
         private String user;
         private String responseFormat;
         private Duration timeout;
@@ -167,11 +164,6 @@ public class OpenAiImageModel implements ImageModel {
 
         public OpenAiImageModelBuilder quality(String quality) {
             this.quality = quality;
-            return this;
-        }
-
-        public OpenAiImageModelBuilder style(String style) {
-            this.style = style;
             return this;
         }
 
@@ -256,7 +248,6 @@ public class OpenAiImageModel implements ImageModel {
                 .prompt(prompt)
                 .size(size)
                 .quality(quality)
-                .style(style)
                 .user(user)
                 .responseFormat(responseFormat);
     }
