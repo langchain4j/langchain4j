@@ -46,3 +46,4 @@ CLAUDE.md
 
 ### Quarkus stuff ###
 .quarkus
+.azure-secrets/

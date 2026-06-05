@@ -1,11 +1,11 @@
-package dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore;
+package dev.langchain4j.store.embedding.azure.documentdb;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
-import static dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore.MappingUtils.toEmbeddingMatch;
-import static dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore.MappingUtils.toMongoDbDocument;
+import static dev.langchain4j.store.embedding.azure.documentdb.MappingUtils.toEmbeddingMatch;
+import static dev.langchain4j.store.embedding.azure.documentdb.MappingUtils.toMongoDbDocument;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
@@ -48,22 +48,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Represents an Azure CosmosDB Mongo vCore as an embedding store.
+ * Represents an Azure DocumentDB as an embedding store.
  * <p>
  * More <a href="https://learn.microsoft.com/en-us/azure/cosmos-db/mongodb/vcore/vector-search">info</a>
  * to set up MongoDb as vectorDatabase.
- *
- * @deprecated Azure CosmosDB for MongoDB vCore has been rebranded by Microsoft as
- * <a href="https://learn.microsoft.com/en-us/azure/documentdb/">Azure DocumentDB</a>.
- * Use {@code dev.langchain4j.store.embedding.azure.documentdb.AzureDocumentDbEmbeddingStore}
- * from the {@code langchain4j-azure-documentdb} module instead. This class is kept
- * for backwards compatibility and will be removed in a future release.
  */
-@Deprecated(forRemoval = true)
-public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<TextSegment> {
+public class AzureDocumentDbEmbeddingStore implements EmbeddingStore<TextSegment> {
 
-    private static final Logger log = LoggerFactory.getLogger(AzureCosmosDbMongoVCoreEmbeddingStore.class);
-    private final MongoCollection<AzureCosmosDbMongoVCoreDocument> collection;
+    private static final Logger log = LoggerFactory.getLogger(AzureDocumentDbEmbeddingStore.class);
+    private final MongoCollection<AzureDocumentDbDocument> collection;
     private final String indexName;
     private final VectorIndexType kind;
     private final Integer numLists;
@@ -73,8 +66,8 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
     private final Integer efSearch;
 
     /**
-     * @param mongoClient             - mongoClient for the Azure CosmosDB Mongo vCore
-     * @param connectionString        - connection string required to connect to Azure Cosmos Mongo vCore
+     * @param mongoClient             - mongoClient for the Azure DocumentDB
+     * @param connectionString        - connection string required to connect to Azure DocumentDB
      * @param databaseName            - databaseName for the mongoDb vCore
      * @param collectionName          - collection name for the mongoDB vCore
      * @param indexName               - index name for the mongoDB vCore collection
@@ -103,7 +96,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
      * @param efSearch                - used only for vector -hnsw. The size of the dynamic candidate list for search (40 by default). A higher value provides
      *                                better recall at the cost of speed.
      */
-    public AzureCosmosDbMongoVCoreEmbeddingStore(
+    public AzureDocumentDbEmbeddingStore(
             MongoClient mongoClient,
             String connectionString,
             String databaseName,
@@ -120,7 +113,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
             Integer efSearch) {
         if (mongoClient == null && isNullOrEmpty(connectionString)) {
             throw new IllegalArgumentException("You need to pass either the mongoClient or "
-                    + "the connectionString required for connecting to Azure CosmosDB Mongo vCore");
+                    + "the connectionString required for connecting to Azure DocumentDB");
         }
 
         if (isNullOrEmpty(databaseName) || isNullOrEmpty(collectionName)) {
@@ -139,7 +132,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         this.efSearch = getOrDefault(efSearch, 40);
 
         CodecRegistry pojoCodecRegistry = fromProviders(PojoCodecProvider.builder()
-                .register(AzureCosmosDbMongoVCoreDocument.class, BsonDocument.class)
+                .register(AzureDocumentDbDocument.class, BsonDocument.class)
                 .build());
         CodecRegistry codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(), pojoCodecRegistry);
 
@@ -156,7 +149,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
             createCollection(
                     database, collectionName, getOrDefault(createCollectionOptions, new CreateCollectionOptions()));
         }
-        this.collection = database.getCollection(collectionName, AzureCosmosDbMongoVCoreDocument.class)
+        this.collection = database.getCollection(collectionName, AzureDocumentDbDocument.class)
                 .withCodecRegistry(codecRegistry);
 
         // create index if not exist
@@ -227,13 +220,13 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
                     .filter(doc -> RelevanceScore.fromCosineSimilarity(
                                     doc.getDouble("similarityScore").getValue())
                             >= minScore)
-                    .map(doc -> toEmbeddingMatch(mapBsonToAzureCosmosDbMongoVCoreMatchedDocument(
+                    .map(doc -> toEmbeddingMatch(mapBsonToAzureDocumentDbMatchedDocument(
                             doc.getDocument("document"),
                             doc.getDouble("similarityScore").getValue())))
                     .collect(Collectors.toList());
 
         } catch (MongoCommandException e) {
-            throw new RuntimeException("Error in AzureCosmosDbMongoVCoreEmbeddingStore.findRelevant", e);
+            throw new RuntimeException("Error in AzureDocumentDbEmbeddingStore.findRelevant", e);
         }
     }
 
@@ -283,9 +276,9 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         return pipeline;
     }
 
-    private AzureCosmosDbMongoVCoreMatchedDocument mapBsonToAzureCosmosDbMongoVCoreMatchedDocument(
+    private AzureDocumentDbMatchedDocument mapBsonToAzureDocumentDbMatchedDocument(
             BsonDocument bsonDocument, Double score) {
-        AzureCosmosDbMongoVCoreMatchedDocument document = new AzureCosmosDbMongoVCoreMatchedDocument();
+        AzureDocumentDbMatchedDocument document = new AzureDocumentDbMatchedDocument();
 
         // Extract id
         document.setId(bsonDocument.getString("_id").getValue());
@@ -326,7 +319,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
-            log.info("do not add empty embeddings to Azure CosmosDB  Mongo vCore");
+            log.info("do not add empty embeddings to Azure DocumentDB");
             return;
         }
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
@@ -334,17 +327,17 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
                 embedded == null || embeddings.size() == embedded.size(),
                 "embeddings size is not equal to embedded size");
 
-        List<AzureCosmosDbMongoVCoreDocument> documents = new ArrayList<>(ids.size());
+        List<AzureDocumentDbDocument> documents = new ArrayList<>(ids.size());
         for (int i = 0; i < ids.size(); i++) {
-            AzureCosmosDbMongoVCoreDocument document =
+            AzureDocumentDbDocument document =
                     toMongoDbDocument(ids.get(i), embeddings.get(i), embedded == null ? null : embedded.get(i));
             documents.add(document);
         }
 
         InsertManyResult result = collection.insertMany(documents);
         if (!result.wasAcknowledged()) {
-            String errMsg = String.format(
-                    "[AzureCosmosDbMongoVCoreEmbeddingStore] Add document failed, Document=%s", documents);
+            String errMsg =
+                    String.format("[AzureDocumentDbEmbeddingStore] Add document failed, Document=%s", documents);
             throw new RuntimeException(errMsg);
         }
     }
@@ -471,9 +464,9 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         }
 
         /**
-         * Sets the Azure CosmosDB Mongo vCore connectionString. This is a mandatory parameter if not providing the Mongo Client.
+         * Sets the Azure DocumentDB connectionString. This is a mandatory parameter if not providing the Mongo Client.
          *
-         * @param connectionString The Azure CosmosDB Mongo vCore connectionString.
+         * @param connectionString The Azure DocumentDB connectionString.
          * @return builder
          */
         public Builder connectionString(String connectionString) {
@@ -586,8 +579,8 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
             return this;
         }
 
-        public AzureCosmosDbMongoVCoreEmbeddingStore build() {
-            return new AzureCosmosDbMongoVCoreEmbeddingStore(
+        public AzureDocumentDbEmbeddingStore build() {
+            return new AzureDocumentDbEmbeddingStore(
                     mongoClient,
                     connectionString,
                     databaseName,
