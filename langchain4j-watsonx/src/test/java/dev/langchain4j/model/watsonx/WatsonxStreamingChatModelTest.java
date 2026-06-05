@@ -395,7 +395,7 @@ public class WatsonxStreamingChatModelTest {
         var resultMessage = new ResultMessage(
                 AssistantMessage.ROLE,
                 "<think>I'm thinking</think><response>This is the response</response>",
-                "I'm thinking",
+                null,
                 null,
                 null);
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
@@ -478,7 +478,7 @@ public class WatsonxStreamingChatModelTest {
         var resultMessage = new ResultMessage(
                 AssistantMessage.ROLE,
                 "<think>I'm thinking</think><response>This is the response</response>",
-                "I'm thinking",
+                null,
                 null,
                 null);
 
@@ -552,6 +552,79 @@ public class WatsonxStreamingChatModelTest {
                         com.ibm.watsonx.ai.chat.model.UserMessage.text("Hello"),
                         chatRequestCaptor.getValue().messages().get(0));
                 assertNotNull(chatRequestCaptor.getValue().thinking());
+            } catch (Exception e) {
+                fail(e);
+            }
+        });
+    }
+
+    @Test
+    void should_return_text_and_thinking_when_response_contains_reasoning_content() {
+
+        var resultMessage =
+                new ResultMessage(AssistantMessage.ROLE, "This is the response", "I'm thinking", null, null);
+
+        var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
+        chatResponse.choices(List.of(resultChoice));
+        var cr = chatResponse.build();
+
+        doAnswer(invocation -> {
+                    ChatHandler handler = invocation.getArgument(1);
+                    handler.onPartialThinking("I'm thinking", null);
+                    handler.onPartialResponse("This is", null);
+                    handler.onPartialResponse("the response", null);
+                    handler.onCompleteResponse(cr);
+                    return CompletableFuture.completedFuture(null);
+                })
+                .when(mockChatService)
+                .chatStreaming(chatRequestCaptor.capture(), any());
+
+        withChatServiceMock(() -> {
+            StreamingChatModel streamingChatModel = WatsonxStreamingChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("modelId")
+                    .projectId("projectId")
+                    .spaceId("spaceId")
+                    .apiKey("api-key")
+                    .build();
+
+            ChatRequest chatRequest =
+                    ChatRequest.builder().messages(UserMessage.from("Hello")).build();
+
+            CountDownLatch latch = new CountDownLatch(1);
+            StreamingChatResponseHandler streamingHandler = new StreamingChatResponseHandler() {
+                @Override
+                public void onPartialResponse(String partialResponse) {
+                    assertTrue(partialResponse.equals("This is") || partialResponse.equals("the response"));
+                }
+
+                @Override
+                public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {
+                    assertEquals("I'm thinking", completeResponse.aiMessage().thinking());
+                    assertEquals(
+                            "This is the response", completeResponse.aiMessage().text());
+                    latch.countDown();
+                }
+
+                @Override
+                public void onPartialThinking(PartialThinking partialThinking) {
+                    assertEquals("I'm thinking", partialThinking.text());
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    fail("Unexpected error: " + error);
+                }
+            };
+
+            streamingChatModel.chat(chatRequest, streamingHandler);
+
+            try {
+                boolean completed = latch.await(2, TimeUnit.SECONDS);
+                assertTrue(completed, "Handler did not complete in time");
+                assertEquals(
+                        com.ibm.watsonx.ai.chat.model.UserMessage.text("Hello"),
+                        chatRequestCaptor.getValue().messages().get(0));
             } catch (Exception e) {
                 fail(e);
             }

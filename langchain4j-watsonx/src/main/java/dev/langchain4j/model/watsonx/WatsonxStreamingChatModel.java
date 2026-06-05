@@ -11,7 +11,6 @@ import com.ibm.watsonx.ai.chat.ChatResponse.ResultChoice;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.ChatUsage;
 import com.ibm.watsonx.ai.chat.model.CompletedToolCall;
-import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.PartialChatResponse;
 import com.ibm.watsonx.ai.chat.model.PartialToolCall;
 import com.ibm.watsonx.ai.chat.model.Tool;
@@ -53,8 +52,6 @@ import java.util.Set;
  */
 public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingChatModel {
 
-    private record WatsonxRequestConfig(ExtractionTags tags, String deploymentId) {}
-
     private WatsonxStreamingChatModel(Builder builder) {
         super(builder);
     }
@@ -74,11 +71,13 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
                 ? toolSpecifications.stream().map(Converter::toTool).toList()
                 : null;
 
+        String deploymentId = null;
         var watsonxChatRequestBuilder = com.ibm.watsonx.ai.chat.ChatRequest.builder();
 
-        var config = configureWatsonxRequest(chatRequest, watsonxChatRequestBuilder, toolSpecifications);
-        ExtractionTags tags = config.tags();
-        String deploymentId = config.deploymentId();
+        if (chatRequest.parameters() instanceof WatsonxChatRequestParameters wcrp) {
+            deploymentId = wcrp.deploymentId();
+            if (nonNull(wcrp.thinking())) watsonxChatRequestBuilder.thinking(wcrp.thinking());
+        }
 
         var parameters = Converter.toChatParameters(chatRequest.parameters());
         var watsonxChatRequest = watsonxChatRequestBuilder
@@ -108,18 +107,14 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
                 if (isNotNullOrBlank(assistantMessage.refusal()))
                     handler.onError(new ContentFilteredException(assistantMessage.refusal()));
 
-                if (nonNull(tags)) {
-                    aiMessage.thinking(assistantMessage.thinking());
-                    aiMessage.text(assistantMessage.content());
-                } else {
-                    aiMessage.text(assistantMessage.content());
-                }
-
                 if (nonNull(assistantMessage.toolCalls())) {
                     aiMessage.toolExecutionRequests(assistantMessage.toolCalls().stream()
                             .map(Converter::toToolExecutionRequest)
                             .toList());
                 }
+
+                aiMessage.thinking(assistantMessage.thinking());
+                aiMessage.text(assistantMessage.content());
 
                 ChatResponse chatResponse = ChatResponse.builder()
                         .aiMessage(aiMessage.build())
@@ -181,25 +176,6 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
     @Override
     public ModelProvider provider() {
         return WATSONX;
-    }
-
-    private WatsonxRequestConfig configureWatsonxRequest(
-            ChatRequest chatRequest,
-            com.ibm.watsonx.ai.chat.ChatRequest.Builder requestBuilder,
-            List<ToolSpecification> toolSpecifications) {
-
-        ExtractionTags tags = null;
-        String deploymentId = null;
-
-        if (chatRequest.parameters() instanceof WatsonxChatRequestParameters wcrp) {
-            if (nonNull(wcrp.thinking())) {
-                requestBuilder.thinking(wcrp.thinking());
-                tags = wcrp.thinking().extractionTags();
-            }
-            deploymentId = wcrp.deploymentId();
-        }
-
-        return new WatsonxRequestConfig(tags, deploymentId);
     }
 
     /**

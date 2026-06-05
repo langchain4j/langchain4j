@@ -302,11 +302,7 @@ public class WatsonxChatModelTest {
 
         var extractionTags = ExtractionTags.of("think", "response");
         var resultMessage = new ResultMessage(
-                AssistantMessage.ROLE,
-                "<think>I'm thinking</think><response>Hello</response>",
-                "I'm thinking",
-                null,
-                null);
+                AssistantMessage.ROLE, "<think>I'm thinking</think><response>Hello</response>", null, null, null);
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
         chatResponse.choices(List.of(resultChoice));
         var cr = chatResponse.build();
@@ -400,11 +396,7 @@ public class WatsonxChatModelTest {
         var extractionTags =
                 ExtractionTags.of(new Think("<think>", "</think>"), new Response("<response>", "</response>"));
         var resultMessage = new ResultMessage(
-                AssistantMessage.ROLE,
-                "<think>I'm thinking</think><response>Hello</response>",
-                "I'm thinking",
-                null,
-                null);
+                AssistantMessage.ROLE, "<think>I'm thinking</think><response>Hello</response>", null, null, null);
 
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
         chatResponse.choices(List.of(resultChoice));
@@ -499,14 +491,9 @@ public class WatsonxChatModelTest {
     }
 
     @Test
-    void should_return_raw_text_when_thinking_is_not_enabled() {
+    void should_return_text_and_thinking_when_response_contains_reasoning_content() {
 
-        var resultMessage = new ResultMessage(
-                AssistantMessage.ROLE,
-                "<think>I'm thinking</think><response>Hello</response>",
-                "I'm thinking",
-                null,
-                null);
+        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", "I'm thinking", null, null);
 
         var resultChoice = new ChatResponse.ResultChoice(0, resultMessage, "stop");
         chatResponse.choices(List.of(resultChoice));
@@ -523,10 +510,8 @@ public class WatsonxChatModelTest {
             var result = chatModel.chat(ChatRequest.builder()
                     .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
                     .build());
-            assertEquals(
-                    "<think>I'm thinking</think><response>Hello</response>",
-                    result.aiMessage().text());
-            assertNull(result.aiMessage().thinking());
+            assertEquals("Hello", result.aiMessage().text());
+            assertEquals("I'm thinking", result.aiMessage().thinking());
             assertEquals(1, chatRequestCaptor.getValue().messages().size());
             assertEquals(
                     UserMessage.text("Hello"),

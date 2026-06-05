@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags.Response;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags.Think;
+import com.ibm.watsonx.ai.chat.model.ThinkingEffort;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
@@ -105,6 +106,46 @@ public class WatsonxStreamingChatModelThinkingIT {
 
         var aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.thinking()).isBlank();
+        assertThat(aiMessage.text()).isNotBlank();
+    }
+
+    @Test
+    public void should_return_thinking_using_gpt_oss() {
+        var streamingChatModel = WatsonxStreamingChatModel.builder()
+                .baseUrl(URL)
+                .apiKey(API_KEY)
+                .projectId(PROJECT_ID)
+                .modelName("openai/gpt-oss-120b")
+                .timeout(Duration.ofSeconds(30))
+                .thinking(ThinkingEffort.MEDIUM)
+                .build();
+
+        CompletableFuture<ChatResponse> futureChatResponse = new CompletableFuture<>();
+        CompletableFuture<String> futureThinking = new CompletableFuture<>();
+        streamingChatModel.chat("Why the sky is blue?", new StreamingChatResponseHandler() {
+
+            @Override
+            public void onPartialResponse(String partialResponse) {}
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                futureChatResponse.complete(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {}
+
+            @Override
+            public void onPartialThinking(PartialThinking partialThinking) {
+                futureThinking.complete(partialThinking.text());
+            }
+        });
+
+        var chatResponse = assertDoesNotThrow(() -> futureChatResponse.get(10, TimeUnit.SECONDS));
+        assertDoesNotThrow(() -> futureThinking.get(10, TimeUnit.SECONDS));
+
+        var aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.thinking()).isNotBlank();
         assertThat(aiMessage.text()).isNotBlank();
     }
 

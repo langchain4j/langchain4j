@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags.Response;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags.Think;
+import com.ibm.watsonx.ai.chat.model.ThinkingEffort;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.watsonx.WatsonxChatModel;
@@ -26,7 +27,16 @@ public class WatsonxChatModelThinkingIT {
     @Test
     public void should_return_and_send_thinking() {
 
-        ChatModel chatModel = createChatModel().build();
+        ChatModel chatModel = WatsonxChatModel.builder()
+                .baseUrl(URL)
+                .apiKey(API_KEY)
+                .deploymentId(DEPLOYMENT_ID)
+                .thinking(
+                        ExtractionTags.of(new Think("<think>", "</think>"), new Response("<response>", "</response>")))
+                .maxOutputTokens(0)
+                .timeout(Duration.ofSeconds(30))
+                .build();
+
         var chatResponse = chatModel.chat(UserMessage.from("Why the sky is blue?"));
         var aiMessage = chatResponse.aiMessage();
         assertThat(aiMessage.thinking()).isNotBlank();
@@ -50,14 +60,19 @@ public class WatsonxChatModelThinkingIT {
         assertThat(aiMessage.text()).isNotBlank();
     }
 
-    private WatsonxChatModel.Builder createChatModel() {
-        return WatsonxChatModel.builder()
+    @Test
+    public void should_return_thinking_using_gpt_oss() {
+        var chatModel = WatsonxChatModel.builder()
                 .baseUrl(URL)
                 .apiKey(API_KEY)
-                .deploymentId(DEPLOYMENT_ID)
-                .thinking(
-                        ExtractionTags.of(new Think("<think>", "</think>"), new Response("<response>", "</response>")))
-                .maxOutputTokens(0)
-                .timeout(Duration.ofSeconds(30));
+                .projectId(PROJECT_ID)
+                .modelName("openai/gpt-oss-120b")
+                .timeout(Duration.ofSeconds(30))
+                .thinking(ThinkingEffort.MEDIUM)
+                .build();
+
+        var aiMessage = chatModel.chat(UserMessage.from("Hello!")).aiMessage();
+        assertThat(aiMessage.text()).isNotBlank();
+        assertThat(aiMessage.thinking()).isNotBlank();
     }
 }
