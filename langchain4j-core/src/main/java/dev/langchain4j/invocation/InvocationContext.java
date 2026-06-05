@@ -1,8 +1,9 @@
 package dev.langchain4j.invocation;
 
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,12 +60,22 @@ public interface InvocationContext {
     Object chatMemoryId();
 
     /**
-     * Returns the {@link ChatModel} configured on the AI service,
-     * or {@code null} if only a {@link StreamingChatModel} was configured.
+     * Returns the default {@link ChatRequestParameters} of the chat model
+     * configured on the AI service.
      *
      * @since 1.16.0
      */
-    default ChatModel chatModel() {
+    default ChatRequestParameters defaultRequestParameters() {
+        return null;
+    }
+
+    /**
+     * Returns the {@link ModelProvider} of the chat model
+     * configured on the AI service.
+     *
+     * @since 1.16.0
+     */
+    default ModelProvider provider() {
         return null;
     }
 
@@ -113,7 +124,8 @@ public interface InvocationContext {
         private List<@NonNull Object> methodArguments = new ArrayList<>();
         private UserMessage userMessage;
         private Object chatMemoryId;
-        private ChatModel chatModel;
+        private ChatRequestParameters defaultRequestParameters;
+        private ModelProvider provider;
         private InvocationParameters invocationParameters;
         private Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters;
         private Instant timestamp;
@@ -127,7 +139,8 @@ public interface InvocationContext {
             methodArguments(invocationContext.methodArguments());
             userMessage(invocationContext.userMessage());
             chatMemoryId(invocationContext.chatMemoryId());
-            chatModel(invocationContext.chatModel());
+            defaultRequestParameters(invocationContext.defaultRequestParameters());
+            provider(invocationContext.provider());
             invocationParameters(invocationContext.invocationParameters());
             managedParameters(invocationContext.managedParameters());
             timestamp(invocationContext.timestamp());
@@ -198,10 +211,18 @@ public interface InvocationContext {
         }
 
         /**
-         * Sets the chat model for the builder.
+         * Sets the default request parameters for the builder.
          */
-        public Builder chatModel(ChatModel chatModel) {
-            this.chatModel = chatModel;
+        public Builder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
+            this.defaultRequestParameters = defaultRequestParameters;
+            return this;
+        }
+
+        /**
+         * Sets the model provider for the builder.
+         */
+        public Builder provider(ModelProvider provider) {
+            this.provider = provider;
             return this;
         }
 
@@ -269,8 +290,12 @@ public interface InvocationContext {
             return chatMemoryId;
         }
 
-        public ChatModel chatModel() {
-            return chatModel;
+        public ChatRequestParameters defaultRequestParameters() {
+            return defaultRequestParameters;
+        }
+
+        public ModelProvider provider() {
+            return provider;
         }
 
         public InvocationParameters invocationParameters() {

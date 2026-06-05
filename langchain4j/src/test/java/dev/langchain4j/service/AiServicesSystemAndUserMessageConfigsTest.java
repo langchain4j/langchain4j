@@ -556,13 +556,14 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void system_message_provider_with_context_is_called_with_chat_model() {
+    void system_message_provider_with_context_exposes_provider_and_parameters() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
                 .chatModel(model)
                 .systemMessageProviderWithContext(invocationContext -> {
-                    assertThat(invocationContext.chatModel()).isSameAs(model);
+                    assertThat(invocationContext.provider()).isEqualTo(model.provider());
+                    assertThat(invocationContext.defaultRequestParameters()).isEqualTo(model.defaultRequestParameters());
                     return "Given a name of a country, answer with a name of it's capital";
                 })
                 .build();

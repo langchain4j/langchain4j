@@ -32,6 +32,7 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -72,6 +73,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import org.jspecify.annotations.Nullable;
 
 @Internal
 class DefaultAiServices<T> extends AiServices<T> {
@@ -146,7 +148,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .methodName(method.getName())
                                 .methodArguments(args != null ? Arrays.asList(args) : List.of())
                                 .chatMemoryId(findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT))
-                                .chatModel(context.chatModel)
+                                .defaultRequestParameters(determineChatRequestParameters(context))
+                                .provider(determineModelProvider(context))
                                 .invocationParameters(invocationParameters)
                                 .managedParameters(LangChain4jManaged.current())
                                 .timestampNow()
@@ -160,6 +163,20 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .build());
                             throw ex;
                         }
+                    }
+
+                    private static ChatRequestParameters determineChatRequestParameters(AiServiceContext context) {
+                        if (context.chatModel != null) {
+                            return context.chatModel.defaultRequestParameters();
+                        }
+                        return context.streamingChatModel != null ? context.streamingChatModel.defaultRequestParameters() : null;
+                    }
+
+                    private static ModelProvider determineModelProvider(AiServiceContext context) {
+                        if (context.chatModel != null) {
+                            return context.chatModel.provider();
+                        }
+                        return context.streamingChatModel != null ? context.streamingChatModel.provider() : null;
                     }
 
                     public Object invoke(Method method, Object[] args, InvocationContext invocationContext) {
