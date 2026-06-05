@@ -23,9 +23,11 @@ import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
@@ -278,13 +280,13 @@ public abstract class AiServices<T> {
         return this;
     }
 
-
     /**
      * Configures a system message provider that provides a system message each time an AI service is invoked.
      * <p>
      * This is similar to {@link #systemMessageProvider(Function)}, but the provider receives the full
-     * {@link InvocationContext} which exposes the {@link dev.langchain4j.model.chat.ChatModel}
-     * configured on this AI service, allowing the system message to vary based on model capabilities.
+     * {@link InvocationContext}, which exposes the {@link ChatRequestParameters} and {@link ModelProvider}
+     * of the {@link ChatModel} or {@link StreamingChatModel} configured for this AI service,
+     * allowing the system message to vary based on the model used.
      * <p>
      * When both {@code @SystemMessage} and this provider are configured,
      * {@code @SystemMessage} takes precedence.
