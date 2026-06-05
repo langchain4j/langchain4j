@@ -65,7 +65,7 @@ public class GoogleGenAiImageModel implements ImageModel {
                         builder.customHeaders,
                         builder.apiEndpoint);
 
-        this.modelName = getOrDefault(builder.modelName, "gemini-3.1-flash-image-preview");
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
         this.safetySettings = copy(builder.safetySettings);
         this.useGoogleSearchGrounding = getOrDefault(builder.useGoogleSearchGrounding, false);

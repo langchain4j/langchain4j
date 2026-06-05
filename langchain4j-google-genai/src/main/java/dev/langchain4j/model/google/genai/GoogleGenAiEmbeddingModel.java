@@ -71,12 +71,13 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                         builder.timeout,
                         builder.customHeaders,
                         builder.apiEndpoint);
-        this.modelName = builder.modelName;
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.outputDimensionality = builder.outputDimensionality;
         this.taskType = builder.taskType;
         this.titleMetadataKey = getOrDefault(builder.titleMetadataKey, "title");
-        this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, 100);
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
+
+        this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, 100);
         this.logRequests = getOrDefault(builder.logRequests, false);
         this.logResponses = getOrDefault(builder.logResponses, false);
     }
@@ -190,7 +191,7 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     public static class Builder {
         private Client client;
-        private String modelName = "gemini-embedding-2";
+        private String modelName;
         private String apiKey;
         private GoogleCredentials googleCredentials;
         private String projectId;

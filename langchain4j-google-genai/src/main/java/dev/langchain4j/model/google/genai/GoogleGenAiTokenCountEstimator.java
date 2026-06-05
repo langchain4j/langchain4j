@@ -41,7 +41,7 @@ public class GoogleGenAiTokenCountEstimator implements TokenCountEstimator {
                         builder.timeout,
                         builder.customHeaders,
                         builder.apiEndpoint);
-        this.modelName = ensureNotBlank(getOrDefault(builder.modelName, "gemini-2.5-flash-lite"), "modelName");
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
     }
 

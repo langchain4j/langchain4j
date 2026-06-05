@@ -1,7 +1,9 @@
 package dev.langchain4j.model.google.genai;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
@@ -19,7 +21,6 @@ import com.google.genai.types.JobState;
 import com.google.genai.types.JobState.Known;
 import com.google.genai.types.SafetySetting;
 import dev.langchain4j.Experimental;
-import dev.langchain4j.model.batch.BatchError;
 import dev.langchain4j.model.batch.BatchItemResult;
 import dev.langchain4j.model.batch.BatchPage;
 import dev.langchain4j.model.batch.BatchPagination;
@@ -31,6 +32,9 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -40,7 +44,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Provides an interface for interacting with the Google GenAI Batch API for Chat models.
+ * Provides an interface for interacting with the Google GenAI Batch API for
+ * Chat models.
  */
 @Experimental
 public final class GoogleGenAiBatchChatModel implements BatchChatModel {
@@ -64,17 +69,16 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
     private final ChatRequestParameters defaultRequestParameters;
 
     private GoogleGenAiBatchChatModel(Builder builder) {
-        this.modelName = builder.modelName;
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
-        this.safetySettings = builder.safetySettings != null ? new ArrayList<>(builder.safetySettings) : null;
+        this.safetySettings = copy(builder.safetySettings);
         this.thinkingBudget = builder.thinkingBudget;
         this.thinkingLevel = builder.thinkingLevel;
         this.seed = builder.seed;
-        this.googleSearchEnabled = builder.googleSearch != null ? builder.googleSearch : false;
-        this.googleMapsEnabled = builder.googleMaps != null ? builder.googleMaps : false;
-        this.urlContextEnabled = builder.urlContext != null ? builder.urlContext : false;
-        this.allowedFunctionNames =
-                builder.allowedFunctionNames != null ? new ArrayList<>(builder.allowedFunctionNames) : null;
+        this.googleSearchEnabled = getOrDefault(builder.googleSearch, false);
+        this.googleMapsEnabled = getOrDefault(builder.googleMaps, false);
+        this.urlContextEnabled = getOrDefault(builder.urlContext, false);
+        this.allowedFunctionNames = copy(builder.allowedFunctionNames);
         this.vertexSearchDatastore = builder.vertexSearchDatastore;
         this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
         this.cachedContent = builder.cachedContent;
@@ -98,7 +102,10 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
 
     @Override
     public BatchResponse<ChatResponse> submit(BatchRequest<ChatRequest> request) {
-        return submit("batch-chat-job", request.requests());
+        String timestamp = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss")
+                .withZone(ZoneId.systemDefault())
+                .format(Instant.now());
+        return submit("batch-chat-job-" + timestamp, request.requests());
     }
 
     @Override
@@ -121,12 +128,14 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
     }
 
     /**
-     * Creates and enqueues a batch of content generation requests for asynchronous processing.
+     * Creates and enqueues a batch of content generation requests for asynchronous
+     * processing.
      * All requests must use the same model.
      *
      * @param displayName a user-defined name for the batch
      * @param requests    a list of chat requests to be processed in the batch
-     * @return a {@link BatchResponse} representing the initial state of the batch operation
+     * @return a {@link BatchResponse} representing the initial state of the batch
+     *         operation
      */
     public BatchResponse<ChatResponse> submit(String displayName, List<ChatRequest> requests) {
         validateModelInChatRequests(modelName, requests);
@@ -148,8 +157,10 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
      * Creates a batch of chat requests from an uploaded file.
      *
      * @param displayName a user-defined name for the batch
-     * @param file        the Google GenAI File object representing the uploaded file containing batch requests
-     * @return a {@link BatchResponse} representing the initial state of the batch operation
+     * @param file        the Google GenAI File object representing the uploaded
+     *                    file containing batch requests
+     * @return a {@link BatchResponse} representing the initial state of the batch
+     *         operation
      */
     public BatchResponse<ChatResponse> submit(String displayName, File file) {
         BatchJobSource src = BatchJobSource.builder()
@@ -200,31 +211,7 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         String jobName = batchJob.name().orElse("unknown");
         Known state = batchJob.state().map(JobState::knownEnum).orElse(Known.JOB_STATE_UNSPECIFIED);
 
-        BatchState translatedState;
-        switch (state) {
-            case JOB_STATE_PENDING:
-                translatedState = BatchState.PENDING;
-                break;
-            case JOB_STATE_RUNNING:
-            case JOB_STATE_CANCELLING:
-                translatedState = BatchState.RUNNING;
-                break;
-            case JOB_STATE_SUCCEEDED:
-                translatedState = BatchState.SUCCEEDED;
-                break;
-            case JOB_STATE_FAILED:
-                translatedState = BatchState.FAILED;
-                break;
-            case JOB_STATE_CANCELLED:
-                translatedState = BatchState.CANCELLED;
-                break;
-            case JOB_STATE_EXPIRED:
-                translatedState = BatchState.EXPIRED;
-                break;
-            default:
-                translatedState = BatchState.UNSPECIFIED;
-                break;
-        }
+        BatchState translatedState = GoogleGenAiBatchUtils.toBatchState(state);
 
         BatchResponse.Builder<ChatResponse> builder =
                 BatchResponse.<ChatResponse>builder().batchId(jobName).state(translatedState);
@@ -239,23 +226,15 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
                         results.add(BatchItemResult.success(GoogleGenAiContentMapper.toChatResponse(
                                 inlined.response().get(), batchJob.model().orElse(modelName))));
                     } else if (inlined.error().isPresent()) {
-                        var error = inlined.error().get();
-                        results.add(BatchItemResult.failure(new BatchError(
-                                error.code().orElse(0), error.message().orElse(""), new ArrayList<>())));
+                        results.add(BatchItemResult.failure(GoogleGenAiBatchUtils.toBatchError(
+                                inlined.error().get())));
                     }
                 }
             }
             builder.results(results);
         } else if (state == Known.JOB_STATE_FAILED) {
-            Integer code = 0;
-            String message = "Batch job failed";
-            if (batchJob.error().isPresent()) {
-                code = batchJob.error().get().code().orElse(0);
-                message = batchJob.error().get().message().orElse("Batch job failed");
-            }
-            builder.results(List.of(BatchItemResult.failure(new BatchError(code, message, new ArrayList<>()))));
-        } else {
-            builder.results(List.of());
+            builder.results(List.of(BatchItemResult.failure(
+                    GoogleGenAiBatchUtils.toBatchError(batchJob.error().orElse(null)))));
         }
 
         return builder.build();
@@ -338,7 +317,8 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         }
 
         /**
-         * The thinking budget to use. This is a legacy parameter. For Gemini 3.x models, use {@link #thinkingLevel(String)} instead.
+         * The thinking budget to use. This is a legacy parameter. For Gemini 3.x
+         * models, use {@link #thinkingLevel(String)} instead.
          */
         public Builder thinkingBudget(Integer thinkingBudget) {
             this.thinkingBudget = thinkingBudget;
@@ -346,8 +326,10 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         }
 
         /**
-         * The thinking level to use. This is the recommended parameter for Gemini 3.x models.
-         * Allowed values are {@code "MINIMAL"}, {@code "LOW"}, {@code "MEDIUM"}, {@code "HIGH"}.
+         * The thinking level to use. This is the recommended parameter for Gemini 3.x
+         * models.
+         * Allowed values are {@code "MINIMAL"}, {@code "LOW"}, {@code "MEDIUM"},
+         * {@code "HIGH"}.
          * Note that this cannot be used together with {@link #thinkingBudget(Integer)}.
          */
         public Builder thinkingLevel(String thinkingLevel) {

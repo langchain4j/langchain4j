@@ -303,7 +303,6 @@ class GoogleGenAiContentMapper {
                 .tokenUsage(usage)
                 .finishReason(finishReason)
                 .rawResponse(response)
-                .groundingMetadata(candidate.groundingMetadata().orElse(null))
                 .build();
 
         return ChatResponse.builder().aiMessage(aiMessage).metadata(metadata).build();

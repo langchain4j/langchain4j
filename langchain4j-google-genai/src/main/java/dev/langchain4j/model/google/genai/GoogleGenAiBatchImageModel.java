@@ -57,7 +57,7 @@ public final class GoogleGenAiBatchImageModel implements BatchImageModel {
     private final Map<String, String> labels;
 
     private GoogleGenAiBatchImageModel(Builder builder) {
-        this.modelName = builder.modelName;
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
         this.safetySettings = builder.safetySettings != null ? new ArrayList<>(builder.safetySettings) : null;
         this.aspectRatio = builder.aspectRatio;
@@ -193,31 +193,7 @@ public final class GoogleGenAiBatchImageModel implements BatchImageModel {
         String jobName = batchJob.name().orElse("unknown");
         Known state = batchJob.state().map(JobState::knownEnum).orElse(Known.JOB_STATE_UNSPECIFIED);
 
-        BatchState translatedState;
-        switch (state) {
-            case JOB_STATE_PENDING:
-                translatedState = BatchState.PENDING;
-                break;
-            case JOB_STATE_RUNNING:
-            case JOB_STATE_CANCELLING:
-                translatedState = BatchState.RUNNING;
-                break;
-            case JOB_STATE_SUCCEEDED:
-                translatedState = BatchState.SUCCEEDED;
-                break;
-            case JOB_STATE_FAILED:
-                translatedState = BatchState.FAILED;
-                break;
-            case JOB_STATE_CANCELLED:
-                translatedState = BatchState.CANCELLED;
-                break;
-            case JOB_STATE_EXPIRED:
-                translatedState = BatchState.EXPIRED;
-                break;
-            default:
-                translatedState = BatchState.UNSPECIFIED;
-                break;
-        }
+        BatchState translatedState = GoogleGenAiBatchUtils.toBatchState(state);
 
         BatchResponse.Builder<Response<Image>> builder =
                 BatchResponse.<Response<Image>>builder().batchId(jobName).state(translatedState);
@@ -256,23 +232,15 @@ public final class GoogleGenAiBatchImageModel implements BatchImageModel {
                                     new BatchError(0, "No image data found in response", new ArrayList<>())));
                         }
                     } else if (inlined.error().isPresent()) {
-                        var error = inlined.error().get();
-                        results.add(BatchItemResult.failure(new BatchError(
-                                error.code().orElse(0), error.message().orElse(""), new ArrayList<>())));
+                        results.add(BatchItemResult.failure(GoogleGenAiBatchUtils.toBatchError(
+                                inlined.error().get())));
                     }
                 }
             }
             builder.results(results);
         } else if (state == Known.JOB_STATE_FAILED) {
-            Integer code = 0;
-            String message = "Batch job failed";
-            if (batchJob.error().isPresent()) {
-                code = batchJob.error().get().code().orElse(0);
-                message = batchJob.error().get().message().orElse("Batch job failed");
-            }
-            builder.results(List.of(BatchItemResult.failure(new BatchError(code, message, new ArrayList<>()))));
-        } else {
-            builder.results(List.of());
+            builder.results(List.of(BatchItemResult.failure(
+                    GoogleGenAiBatchUtils.toBatchError(batchJob.error().orElse(null)))));
         }
 
         return builder.build();

@@ -1,7 +1,6 @@
 package dev.langchain4j.model.google.genai;
 
 import com.google.genai.types.GenerateContentResponse;
-import com.google.genai.types.GroundingMetadata;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import java.util.Objects;
 
@@ -12,12 +11,10 @@ import java.util.Objects;
 public class GoogleGenAiChatResponseMetadata extends ChatResponseMetadata {
 
     private final GenerateContentResponse rawResponse;
-    private final GroundingMetadata groundingMetadata;
 
     private GoogleGenAiChatResponseMetadata(Builder builder) {
         super(builder);
         this.rawResponse = builder.rawResponse;
-        this.groundingMetadata = builder.groundingMetadata;
     }
 
     /**
@@ -27,16 +24,9 @@ public class GoogleGenAiChatResponseMetadata extends ChatResponseMetadata {
         return rawResponse;
     }
 
-    /**
-     * Returns the grounding metadata (search entry points, grounding chunks, etc.).
-     */
-    public GroundingMetadata groundingMetadata() {
-        return groundingMetadata;
-    }
-
     @Override
     public Builder toBuilder() {
-        return ((Builder) super.toBuilder(builder())).rawResponse(rawResponse).groundingMetadata(groundingMetadata);
+        return ((Builder) super.toBuilder(builder())).rawResponse(rawResponse);
     }
 
     @Override
@@ -44,13 +34,12 @@ public class GoogleGenAiChatResponseMetadata extends ChatResponseMetadata {
         if (this == o) return true;
         if (!(o instanceof GoogleGenAiChatResponseMetadata that)) return false;
         if (!super.equals(o)) return false;
-        return Objects.equals(rawResponse, that.rawResponse)
-                && Objects.equals(groundingMetadata, that.groundingMetadata);
+        return Objects.equals(rawResponse, that.rawResponse);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), rawResponse, groundingMetadata);
+        return Objects.hash(super.hashCode(), rawResponse);
     }
 
     @Override
@@ -59,8 +48,7 @@ public class GoogleGenAiChatResponseMetadata extends ChatResponseMetadata {
                 + id() + '\'' + ", modelName='"
                 + modelName() + '\'' + ", tokenUsage="
                 + tokenUsage() + ", finishReason="
-                + finishReason() + ", groundingMetadata="
-                + groundingMetadata + '}';
+                + finishReason() + '}';
     }
 
     public static Builder builder() {
@@ -70,15 +58,9 @@ public class GoogleGenAiChatResponseMetadata extends ChatResponseMetadata {
     public static class Builder extends ChatResponseMetadata.Builder<Builder> {
 
         private GenerateContentResponse rawResponse;
-        private GroundingMetadata groundingMetadata;
 
         public Builder rawResponse(GenerateContentResponse rawResponse) {
             this.rawResponse = rawResponse;
-            return this;
-        }
-
-        public Builder groundingMetadata(GroundingMetadata groundingMetadata) {
-            this.groundingMetadata = groundingMetadata;
             return this;
         }
 

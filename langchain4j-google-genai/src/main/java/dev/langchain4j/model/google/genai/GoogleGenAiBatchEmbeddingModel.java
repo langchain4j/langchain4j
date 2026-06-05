@@ -22,7 +22,6 @@ import com.google.genai.types.Part;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.batch.BatchError;
 import dev.langchain4j.model.batch.BatchItemResult;
 import dev.langchain4j.model.batch.BatchPage;
 import dev.langchain4j.model.batch.BatchPagination;
@@ -53,7 +52,7 @@ public final class GoogleGenAiBatchEmbeddingModel implements BatchEmbeddingModel
     private final String titleMetadataKey;
 
     private GoogleGenAiBatchEmbeddingModel(Builder builder) {
-        this.modelName = getOrDefault(builder.modelName, "gemini-embedding-2");
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
         this.outputDimensionality = builder.outputDimensionality;
         this.taskType = builder.taskType;
@@ -171,31 +170,7 @@ public final class GoogleGenAiBatchEmbeddingModel implements BatchEmbeddingModel
         String jobName = batchJob.name().orElse("unknown");
         Known state = batchJob.state().map(JobState::knownEnum).orElse(Known.JOB_STATE_UNSPECIFIED);
 
-        BatchState translatedState;
-        switch (state) {
-            case JOB_STATE_PENDING:
-                translatedState = BatchState.PENDING;
-                break;
-            case JOB_STATE_RUNNING:
-            case JOB_STATE_CANCELLING:
-                translatedState = BatchState.RUNNING;
-                break;
-            case JOB_STATE_SUCCEEDED:
-                translatedState = BatchState.SUCCEEDED;
-                break;
-            case JOB_STATE_FAILED:
-                translatedState = BatchState.FAILED;
-                break;
-            case JOB_STATE_CANCELLED:
-                translatedState = BatchState.CANCELLED;
-                break;
-            case JOB_STATE_EXPIRED:
-                translatedState = BatchState.EXPIRED;
-                break;
-            default:
-                translatedState = BatchState.UNSPECIFIED;
-                break;
-        }
+        BatchState translatedState = GoogleGenAiBatchUtils.toBatchState(state);
 
         BatchResponse.Builder<Response<Embedding>> builder =
                 BatchResponse.<Response<Embedding>>builder().batchId(jobName).state(translatedState);
@@ -219,23 +194,15 @@ public final class GoogleGenAiBatchEmbeddingModel implements BatchEmbeddingModel
                             results.add(BatchItemResult.success(Response.from(Embedding.from(floatArray))));
                         }
                     } else if (inlined.error().isPresent()) {
-                        var error = inlined.error().get();
-                        results.add(BatchItemResult.failure(new BatchError(
-                                error.code().orElse(0), error.message().orElse(""), new ArrayList<>())));
+                        results.add(BatchItemResult.failure(GoogleGenAiBatchUtils.toBatchError(
+                                inlined.error().get())));
                     }
                 }
             }
             builder.results(results);
         } else if (state == Known.JOB_STATE_FAILED) {
-            Integer code = 0;
-            String message = "Batch job failed";
-            if (batchJob.error().isPresent()) {
-                code = batchJob.error().get().code().orElse(0);
-                message = batchJob.error().get().message().orElse("Batch job failed");
-            }
-            builder.results(List.of(BatchItemResult.failure(new BatchError(code, message, new ArrayList<>()))));
-        } else {
-            builder.results(List.of());
+            builder.results(List.of(BatchItemResult.failure(
+                    GoogleGenAiBatchUtils.toBatchError(batchJob.error().orElse(null)))));
         }
 
         return builder.build();

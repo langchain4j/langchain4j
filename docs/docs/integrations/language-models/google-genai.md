@@ -459,23 +459,22 @@ GoogleGenAiBatchChatModel batchChatModel = GoogleGenAiBatchChatModel.builder()
     .modelName("gemini-2.5-flash")
     .build();
 
-BatchResponse<ChatResponse> batchResponse = batchChatModel.createBatchInline(
+BatchResponse<ChatResponse> batchResponse = batchChatModel.submit(
     "My Batch Job",
-    null,
     List.of(
         ChatRequest.builder().messages(UserMessage.from("What is 2+2?")).build(),
         ChatRequest.builder().messages(UserMessage.from("What is the capital of France?")).build()
     )
 );
 
-System.out.println("Batch Job ID: " + batchResponse.name().value());
+System.out.println("Batch Job ID: " + batchResponse.batchId());
 ```
 
-You can then retrieve the status and results of the job using `batchChatModel.retrieveBatchResults(batchResponse.name())`.
+You can then retrieve the status and results of the job using `batchChatModel.retrieve(batchResponse.batchId())`.
 
 ## Grounding Metadata
 
-If you enable Google Search grounding or use a Vertex AI Search datastore, the Google Gen AI chat model exposes the native `GroundingMetadata` directly in the `ChatResponse`. You can retrieve it through the response metadata.
+If you enable Google Search grounding or use a Vertex AI Search datastore, the Google Gen AI chat model exposes the native `GroundingMetadata` directly in the `ChatResponse`. You can retrieve it through the response metadata via the underlying raw `GenerateContentResponse`.
 
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
@@ -491,9 +490,13 @@ ChatResponse response = gemini.chat(ChatRequest.builder()
 GoogleGenAiChatResponseMetadata metadata = 
     (GoogleGenAiChatResponseMetadata) response.metadata();
 
-if (metadata.groundingMetadata() != null) {
-    System.out.println("Search Queries: " + 
-        metadata.groundingMetadata().webSearchQueries());
+if (metadata.rawResponse() != null 
+        && metadata.rawResponse().candidates() != null 
+        && !metadata.rawResponse().candidates().isEmpty()) {
+    var groundingMetadata = metadata.rawResponse().candidates().get(0).groundingMetadata();
+    if (groundingMetadata != null && groundingMetadata.webSearchQueries() != null) {
+        System.out.println("Search Queries: " + groundingMetadata.webSearchQueries());
+    }
 }
 ```
 

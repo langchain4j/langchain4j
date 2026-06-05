@@ -18,7 +18,7 @@ class GoogleGenAiBatchImageModelIT {
     void test_create_and_cancel_batch() throws InterruptedException {
         GoogleGenAiBatchImageModel batchModel = GoogleGenAiBatchImageModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-3.1-flash-image-preview") // Or another appropriate model
+                .modelName("gemini-3.1-flash-image-preview")
                 .build();
 
         var requests = List.of("A picture of a cat", "A picture of a dog");
