@@ -1,9 +1,7 @@
 package dev.langchain4j.model.watsonx;
 
-import static dev.langchain4j.data.message.ChatMessageType.SYSTEM;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static java.util.Arrays.asList;
 import static java.util.Objects.nonNull;
 
@@ -15,9 +13,6 @@ import com.ibm.watsonx.ai.chat.model.ThinkingEffort;
 import com.ibm.watsonx.ai.deployment.DeploymentService;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.exception.InvalidRequestException;
-import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -127,21 +122,6 @@ abstract class WatsonxChat {
                     .verifySsl(builder.verifySsl)
                     .build();
         }
-    }
-
-    final void validateThinkingIsAllowedForGraniteModel(
-            String modelName, List<ChatMessage> messages, List<ToolSpecification> tools) throws LangChain4jException {
-
-        if (!"ibm/granite-3-3-8b-instruct".equals(modelName)) return;
-
-        if (!isNullOrEmpty(tools))
-            throw new InvalidRequestException("The thinking/reasoning cannot be activated when tools are used");
-
-        var systemMessageIsPresent = messages.stream().map(ChatMessage::type).anyMatch(SYSTEM::equals);
-
-        if (systemMessageIsPresent)
-            throw new InvalidRequestException(
-                    "The thinking/reasoning cannot be activated when a system message is present");
     }
 
     final void validate(ChatRequestParameters parameters) {

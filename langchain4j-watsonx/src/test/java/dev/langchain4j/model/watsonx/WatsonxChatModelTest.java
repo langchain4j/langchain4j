@@ -21,6 +21,8 @@ import com.ibm.watsonx.ai.chat.model.AssistantMessage;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.ChatUsage;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
+import com.ibm.watsonx.ai.chat.model.ExtractionTags.Response;
+import com.ibm.watsonx.ai.chat.model.ExtractionTags.Think;
 import com.ibm.watsonx.ai.chat.model.FunctionCall;
 import com.ibm.watsonx.ai.chat.model.ResultMessage;
 import com.ibm.watsonx.ai.chat.model.ThinkingEffort;
@@ -29,7 +31,6 @@ import com.ibm.watsonx.ai.chat.model.UserMessage;
 import com.ibm.watsonx.ai.deployment.DeploymentService;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ContentFilteredException;
-import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -396,7 +397,8 @@ public class WatsonxChatModelTest {
     @Test
     void should_extract_thinking_when_configured_in_request_parameters() throws Exception {
 
-        var extractionTags = ExtractionTags.of("think", "response");
+        var extractionTags =
+                ExtractionTags.of(new Think("<think>", "</think>"), new Response("<response>", "</response>"));
         var resultMessage = new ResultMessage(
                 AssistantMessage.ROLE,
                 "<think>I'm thinking</think><response>Hello</response>",
@@ -493,51 +495,6 @@ public class WatsonxChatModelTest {
                     UserMessage.text("Hello"),
                     chatRequestCaptor.getValue().messages().get(0));
             assertFalse(chatRequestCaptor.getValue().thinking().enabled());
-        });
-    }
-
-    @Test
-    void should_throw_exception_when_thinking_used_with_system_message() {
-
-        withChatServiceMock(() -> {
-            var chatModel = WatsonxChatModel.builder()
-                    .baseUrl("https://test.com")
-                    .modelName("ibm/granite-3-3-8b-instruct")
-                    .projectId("project-id")
-                    .apiKey("api-key")
-                    .thinking(ExtractionTags.of("think"))
-                    .build();
-
-            assertThrows(
-                    LangChain4jException.class,
-                    () -> chatModel.chat(ChatRequest.builder()
-                            .messages(
-                                    dev.langchain4j.data.message.SystemMessage.from("You are an helpful assistant"),
-                                    dev.langchain4j.data.message.UserMessage.from("Hello"))
-                            .build()),
-                    "The thinking/reasoning cannot be activated when a system message is present");
-        });
-    }
-
-    @Test
-    void should_throw_exception_when_thinking_used_with_tools() {
-
-        withChatServiceMock(() -> {
-            var chatModel = WatsonxChatModel.builder()
-                    .baseUrl("https://test.com")
-                    .modelName("ibm/granite-3-3-8b-instruct")
-                    .projectId("project-id")
-                    .apiKey("api-key")
-                    .thinking(ExtractionTags.of("think"))
-                    .toolSpecifications(ToolSpecification.builder().name("test").build())
-                    .build();
-
-            assertThrows(
-                    LangChain4jException.class,
-                    () -> chatModel.chat(ChatRequest.builder()
-                            .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
-                            .build()),
-                    "The thinking/reasoning cannot be activated when tools are used");
         });
     }
 

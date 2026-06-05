@@ -75,7 +75,6 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
         if (chatRequest.parameters() instanceof WatsonxChatRequestParameters wcrp) {
             deploymentId = wcrp.deploymentId();
             if (nonNull(wcrp.thinking())) {
-                validateThinkingIsAllowedForGraniteModel(wcrp.modelName(), chatRequest.messages(), toolSpecifications);
                 watsonxChatRequestBuilder.thinking(wcrp.thinking());
                 tags = wcrp.thinking().extractionTags();
             }

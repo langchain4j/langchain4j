@@ -193,7 +193,6 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
 
         if (chatRequest.parameters() instanceof WatsonxChatRequestParameters wcrp) {
             if (nonNull(wcrp.thinking())) {
-                validateThinkingIsAllowedForGraniteModel(wcrp.modelName(), chatRequest.messages(), toolSpecifications);
                 requestBuilder.thinking(wcrp.thinking());
                 tags = wcrp.thinking().extractionTags();
             }

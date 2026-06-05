@@ -23,6 +23,8 @@ import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.ChatUsage;
 import com.ibm.watsonx.ai.chat.model.CompletedToolCall;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
+import com.ibm.watsonx.ai.chat.model.ExtractionTags.Response;
+import com.ibm.watsonx.ai.chat.model.ExtractionTags.Think;
 import com.ibm.watsonx.ai.chat.model.FunctionCall;
 import com.ibm.watsonx.ai.chat.model.ResultMessage;
 import com.ibm.watsonx.ai.chat.model.ToolCall;
@@ -323,7 +325,7 @@ public class WatsonxStreamingChatModelTest {
                     return CompletableFuture.completedFuture(null);
                 })
                 .when(deploymentService)
-                .chatStreaming(chatRequestCaptor.capture(), any());
+                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
 
         withDeploymentServiceMock(() -> {
             var streamingChatModel = WatsonxStreamingChatModel.builder()
@@ -387,7 +389,8 @@ public class WatsonxStreamingChatModelTest {
     @Test
     void should_extract_thinking_when_configured_in_model_builder() throws Exception {
 
-        var extractionTags = ExtractionTags.of("think", "response");
+        var extractionTags =
+                ExtractionTags.of(new Think("<think>", "</think>"), new Response("<response>", "</response>"));
 
         var resultMessage = new ResultMessage(
                 AssistantMessage.ROLE,
@@ -470,7 +473,8 @@ public class WatsonxStreamingChatModelTest {
     @Test
     void should_extract_thinking_when_configured_in_request_parameters() throws Exception {
 
-        var extractionTags = ExtractionTags.of("think", "response");
+        var extractionTags =
+                ExtractionTags.of(new Think("<think>", "</think>"), new Response("<response>", "</response>"));
         var resultMessage = new ResultMessage(
                 AssistantMessage.ROLE,
                 "<think>I'm thinking</think><response>This is the response</response>",
@@ -508,7 +512,8 @@ public class WatsonxStreamingChatModelTest {
             ChatRequest chatRequest = ChatRequest.builder()
                     .messages(UserMessage.from("Hello"))
                     .parameters(WatsonxChatRequestParameters.builder()
-                            .thinking(ExtractionTags.of("think", "response"))
+                            .thinking(ExtractionTags.of(
+                                    new Think("<think>", "</think>"), new Response("<response>", "</response>")))
                             .build())
                     .build();
 
