@@ -1,5 +1,7 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
+import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
@@ -16,6 +18,7 @@ import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
@@ -52,6 +55,7 @@ import dev.langchain4j.service.guardrail.GuardrailService;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.service.output.ServiceOutputParser;
+import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
@@ -73,6 +77,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 @Internal
 class DefaultAiServices<T> extends AiServices<T> {
@@ -168,7 +173,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                         if (context.chatModel != null) {
                             return context.chatModel.defaultRequestParameters();
                         }
-                        return context.streamingChatModel != null ? context.streamingChatModel.defaultRequestParameters() : null;
+                        return context.streamingChatModel != null
+                                ? context.streamingChatModel.defaultRequestParameters()
+                                : null;
                     }
 
                     private static ModelProvider determineModelProvider(AiServiceContext context) {
@@ -346,18 +353,54 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 toolServiceContext,
                                 isReturnTypeResult);
 
-                        if (toolServiceResult.immediateToolReturn() && isReturnTypeResult) {
-                            var result = Result.builder()
-                                    .content(null)
-                                    .tokenUsage(toolServiceResult.aggregateTokenUsage())
-                                    .sources(augmentationResult == null ? null : augmentationResult.contents())
-                                    .finishReason(TOOL_EXECUTION)
-                                    .toolExecutions(toolServiceResult.toolExecutions())
-                                    .intermediateResponses(toolServiceResult.intermediateResponses())
-                                    .finalResponse(toolServiceResult.finalResponse())
-                                    .build();
+                        if (toolServiceResult.immediateToolReturn()) {
+                            if (isReturnTypeResult) {
+                                var result = Result.builder()
+                                        .content(null)
+                                        .tokenUsage(toolServiceResult.aggregateTokenUsage())
+                                        .sources(augmentationResult == null ? null : augmentationResult.contents())
+                                        .finishReason(TOOL_EXECUTION)
+                                        .toolExecutions(toolServiceResult.toolExecutions())
+                                        .intermediateResponses(toolServiceResult.intermediateResponses())
+                                        .finalResponse(toolServiceResult.finalResponse())
+                                        .build();
 
-                            return fireEventAndReturn(invocationContext, result);
+                                return fireEventAndReturn(invocationContext, result);
+                            }
+                            if (returnType == void.class) {
+                                return fireEventAndReturn(invocationContext, null);
+                            }
+                            Set<ReturnBehavior> returnBehaviors = toolServiceResult.toolExecutions().stream()
+                                    .map(execution -> toolServiceContext.returnBehavior(
+                                            execution.request().name()))
+                                    .collect(Collectors.toSet());
+                            if (returnBehaviors.stream()
+                                    .allMatch(returnBehavior -> returnBehavior == ReturnBehavior.IMMEDIATE
+                                            || returnBehavior == ReturnBehavior.IMMEDIATE_IF_LAST)) {
+                                int numNullResults = 0;
+                                ToolExecution lastNonNull = null;
+                                for (ToolExecution execution : toolServiceResult.toolExecutions()) {
+                                    if (execution.resultObject() == null) {
+                                        numNullResults++;
+                                    } else {
+                                        lastNonNull = execution;
+                                    }
+                                }
+                                if (numNullResults
+                                        == toolServiceResult.toolExecutions().size()) {
+                                    return fireEventAndReturn(invocationContext, null);
+                                } else if (numNullResults + 1
+                                                == toolServiceResult
+                                                        .toolExecutions()
+                                                        .size()
+                                        && resolvesToType(lastNonNull.resultObject(), returnType)) {
+                                    // if only one non-null result, return it if it resolves to the return type
+                                    return fireEventAndReturn(invocationContext, lastNonNull.resultObject());
+                                }
+                                throw illegalConfiguration(
+                                        "AI Service method '%s' call cannot resolve return type from tool executions with ReturnBehavior.%s/%s. Use %s as your return type.",
+                                        method.getName(), IMMEDIATE, IMMEDIATE_IF_LAST, Result.class.getName());
+                            }
                         }
 
                         ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
@@ -510,6 +553,10 @@ class DefaultAiServices<T> extends AiServices<T> {
         return (T) proxyInstance;
     }
 
+    private static boolean resolvesToType(Object o, Type returnType) {
+        return o != null && returnType instanceof Class && ((Class) returnType).isAssignableFrom(o.getClass());
+    }
+
     private UserMessage invokeInputGuardrails(
             GuardrailService guardrailService,
             Method method,
@@ -549,10 +596,11 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private Optional<SystemMessage> prepareSystemMessage(
             InvocationContext invocationContext, Method method, Object[] args) {
-        return findSystemMessageTemplate(invocationContext, method).map(systemMessageTemplate -> PromptTemplate.from(
-                        systemMessageTemplate)
-                .apply(InternalReflectionVariableResolver.findTemplateVariables(systemMessageTemplate, method, args))
-                .toSystemMessage());
+        return findSystemMessageTemplate(invocationContext, method)
+                .map(systemMessageTemplate -> PromptTemplate.from(systemMessageTemplate)
+                        .apply(InternalReflectionVariableResolver.findTemplateVariables(
+                                systemMessageTemplate, method, args))
+                        .toSystemMessage());
     }
 
     private Optional<String> findSystemMessageTemplate(InvocationContext invocationContext, Method method) {
