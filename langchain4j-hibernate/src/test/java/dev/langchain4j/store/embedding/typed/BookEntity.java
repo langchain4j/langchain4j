@@ -1,6 +1,6 @@
 package dev.langchain4j.store.embedding.typed;
 
-import dev.langchain4j.store.embedding.hibernate.Embedding;
+import dev.langchain4j.store.embedding.hibernate.EmbeddingVector;
 import dev.langchain4j.store.embedding.hibernate.MetadataAttribute;
 import dev.langchain4j.store.embedding.hibernate.UnmappedMetadata;
 import jakarta.persistence.Embedded;
@@ -29,7 +29,7 @@ public class BookEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     private AuthorEntity author;
 
-    @Embedding
+    @EmbeddingVector
     @Array(length = 384)
     private float[] embedding;
 

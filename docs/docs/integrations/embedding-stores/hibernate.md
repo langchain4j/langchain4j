@@ -62,16 +62,16 @@ the entity store is preferred.
 
 To configure it, use either `HibernateEmbeddingStore.builder()`.
 
-| Plain Java Property             | Description                                                                                                                                                                                                                                                                                    | Default Value | Required/Optional                                                                                  |
-|---------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|----------------------------------------------------------------------------------------------------|
-| `sessionFactory`                | The `SessionFactory` object where the `entityClass` is part of.                                                                                                                                                                                                                                | None          | Required                                                                                           |
-| `databaseKind`                  | The database kind. Required if kind can't be inferred from the Hibernate ORM dialect.                                                                                                                                                                                                          | None          | Required if kind can't be inferred from the Hibernate ORM dialect                                  |
-| `entityClass`                   | Specifies the entity class of the `SessionFactory` to use for the `EmbeddingStore`.                                                                                                                                                                                                            | None          | Required                                                                                           |
-| `embeddingAttributeName`        | Specifies the name of the entity attribute that represents the vector embedding.                                                                                                                                                                                                               | None          | Optional. If not set, the entity is scanned for an attribute annotated with `@Embedding`           |
-| `embeddedTextAttributeName`     | Specifies the name of the entity attribute that represents the source text of the vector embedding.                                                                                                                                                                                            | None          | Optional. If not set, the entity is scanned for an attribute annotated with `@EmbeddedText`       |
-| `unmappedMetadataAttributeName` | Specifies the name of the entity attribute that represents the JSON column where unmapped metadata is stored.                                                                                                                                                                                  | None          | Optional. If not set, the entity is scanned for an attribute annotated with `@UnmappedMetadata`    |
-| `metadataAttributeNames`        | Specifies the names of the entity attributes that are explicitly mapped to text metadata.                                                                                                                                                                                                      | None          | Optional. If not set, the entity is scanned for an attribute annotated with `@MetadataAttribute`   |
-| `distanceFunction`              | The distance function to use for vector search. Supports varies based on database: <ul><li>**COSINE**</li><li>**EUCLIDEAN**</li><li>**EUCLIDEAN_SQUARED**</li><li>**MANHATTAN**</li><li>**INNER_PRODUCT**</li><li>**NEGATIVE_INNER_PRODUCT**</li><li>**HAMMING**</li><li>**JACCARD**</li></ul> | `COSINE`      | Optional. If not set, a default configuration is used with `COSINE`.                               |
+| Plain Java Property             | Description                                                                                                                                                                                                                                                                                    | Default Value | Required/Optional                                                                                                                                                                                        |
+|---------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `sessionFactory`                | The `SessionFactory` object where the `entityClass` is part of.                                                                                                                                                                                                                                | None          | Required                                                                                                                                                                                                 |
+| `databaseKind`                  | The database kind. Required if kind can't be inferred from the Hibernate ORM dialect.                                                                                                                                                                                                          | None          | Required if kind can't be inferred from the Hibernate ORM dialect                                                                                                                                        |
+| `entityClass`                   | Specifies the entity class of the `SessionFactory` to use for the `EmbeddingStore`.                                                                                                                                                                                                            | None          | Required                                                                                                                                                                                                 |
+| `embeddingAttributeName`        | Specifies the name of the entity attribute that represents the vector embedding.                                                                                                                                                                                                               | None          | Optional. If not set, the entity is scanned for an attribute annotated with `@EmbeddingVector`                                                                                                           |
+| `embeddedTextAttributeName`     | Specifies the name of the entity attribute that represents the source text of the vector embedding.                                                                                                                                                                                            | None          | Optional. If not set, the entity is scanned for an attribute annotated with `@EmbeddedText`                                                                                                              |
+| `unmappedMetadataAttributeName` | Specifies the name of the entity attribute that represents the JSON column where unmapped metadata is stored.                                                                                                                                                                                  | None          | Optional. If not set, the entity is scanned for an attribute annotated with `@UnmappedMetadata`                                                                                                          |
+| `metadataAttributeNames`        | Specifies the names of the entity attributes that are explicitly mapped to text metadata.                                                                                                                                                                                                      | None          | Optional. If not set, the entity is scanned for an attribute annotated with `@MetadataAttribute`                                                                                                         |
+| `distanceFunction`              | The distance function to use for vector search. Supports varies based on database: <ul><li>**COSINE**</li><li>**EUCLIDEAN**</li><li>**EUCLIDEAN_SQUARED**</li><li>**MANHATTAN**</li><li>**INNER_PRODUCT**</li><li>**NEGATIVE_INNER_PRODUCT**</li><li>**HAMMING**</li><li>**JACCARD**</li></ul> | `COSINE`      | Optional. If not set, the entity is scanned for an attribute annotated with `@EmbeddingVector` and the `distance` value is used, or if that is missing, the default configuration is used with `COSINE`. |
 
 ## Examples
 
@@ -151,7 +151,7 @@ Don't forget to close the `HibernateEmbeddingStore` when you don't need it anymo
 #### Custom Hibernate entity
 
 When you want to customize the data model or want to reuse an existing entity as source for the `EmbeddingStore`,
-you can make use of the annotations `@Embedding`, `@EmbeddedText`, `@UnmappedMetadata` and `@MetadataAttribute` to mark the
+you can make use of the annotations `@EmbeddingVector`, `@EmbeddedText`, `@UnmappedMetadata` and `@MetadataAttribute` to mark the
 entity attributes to use by the Hibernate `EmbeddingStore` implementation. 
 
 ```java
@@ -159,7 +159,7 @@ entity attributes to use by the Hibernate `EmbeddingStore` implementation.
 public class MyEmbeddingEntity {
     @Id
     UUID id;
-    @Embedding
+    @EmbeddingVector
     @Array(length = 384)                // The dimension of the embedding vector based on the embedding model
     float[] embedding;
     @EmbeddedText
@@ -213,7 +213,7 @@ public class Book {
     @ManyToOne(fetch = FetchType.LAZY)
     private Author author;
 
-    @Embedding
+    @EmbeddingVector
     @Array(length = 384)
     private float[] embedding;
     @UnmappedMetadata
@@ -361,7 +361,7 @@ String question = "What is the refund policy?";
 Embedding questionEmbedding = embeddingModel.embed(question).content();
 
 // Search for the most similar text segments (top 3 results)
-List<EmbeddingMatch<TextSegment>> relevantSegments = embeddingStore.search(
+EmbeddingSearchResult<TextSegment> result = embeddingStore.search(
         EmbeddingSearchRequest.builder()
                 .queryEmbedding(questionEmbedding)
                 .maxResults(3)  // Retrieve top 3 most similar chunks
@@ -369,7 +369,7 @@ List<EmbeddingMatch<TextSegment>> relevantSegments = embeddingStore.search(
 );
 
 // Build context from retrieved segments
-String context = relevantSegments.stream()
+String context = result.matches().stream()
         .map(match -> match.embedded().text())
         .collect(Collectors.joining("\n\n"));
 
@@ -500,6 +500,15 @@ create index if not exists my_entity_ivfflat_index
     on my_entity using ivfflat(embedding vector_cosine_ops) with (lists = 1);
 ```
 
+##### CockroachDB
+
+See the [CockroachDB documentation]([https://github.com/pgvector/pgvector?tab=readme-ov-file#indexing](https://www.cockroachlabs.com/docs/v26.2/vector-indexes)) for details.
+
+```sql
+create vector index if not exists my_entity_ivfflat_index
+    on my_entity (embedding vector_cosine_ops);
+```
+
 ##### Oracle
 
 See the [`create index` statement documentation](https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/create-vector-index.html)
@@ -518,4 +527,14 @@ for details.
 ```sql
 create vector index my_entity_vector_index 
     on my_entity(embedding) with (metric='cosine');
+```
+
+##### SAP HANA
+
+See the [`create vector index` statement documentation]([https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql?view=sql-server-ver17](https://help.sap.com/docs/hana-cloud-database/sap-hana-cloud-sap-hana-database-sql-reference-guide/create-vector-index-statement-data-definition?locale=en-US))
+for details.
+
+```sql
+create hnsw vector index my_entity_vector_index 
+    on my_entity(embedding) with similarity function cosine_similarity;
 ```

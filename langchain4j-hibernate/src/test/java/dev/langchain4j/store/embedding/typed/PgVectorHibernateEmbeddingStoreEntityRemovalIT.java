@@ -20,7 +20,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
-class PgVectorEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
+class PgVectorHibernateEmbeddingStoreEntityRemovalIT extends EmbeddingStoreWithRemovalIT {
 
     @Container
     static PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>("pgvector/pgvector:pg15");
