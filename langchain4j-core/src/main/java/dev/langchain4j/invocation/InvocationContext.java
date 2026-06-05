@@ -62,7 +62,7 @@ public interface InvocationContext {
      * Returns the {@link ChatModel} configured on the AI service,
      * or {@code null} if only a {@link StreamingChatModel} was configured.
      *
-     * @since 1.14.0
+     * @since 1.16.0
      */
     default ChatModel chatModel() {
         return null;
