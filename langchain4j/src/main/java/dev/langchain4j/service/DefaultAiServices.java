@@ -32,6 +32,7 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -146,6 +147,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .methodName(method.getName())
                                 .methodArguments(args != null ? Arrays.asList(args) : List.of())
                                 .chatMemoryId(findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT))
+                                .defaultRequestParameters(determineChatRequestParameters(context))
+                                .modelProvider(determineModelProvider(context))
                                 .invocationParameters(invocationParameters)
                                 .managedParameters(LangChain4jManaged.current())
                                 .timestampNow()
@@ -161,6 +164,20 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
                     }
 
+                    private static ChatRequestParameters determineChatRequestParameters(AiServiceContext context) {
+                        if (context.chatModel != null) {
+                            return context.chatModel.defaultRequestParameters();
+                        }
+                        return context.streamingChatModel != null ? context.streamingChatModel.defaultRequestParameters() : null;
+                    }
+
+                    private static ModelProvider determineModelProvider(AiServiceContext context) {
+                        if (context.chatModel != null) {
+                            return context.chatModel.provider();
+                        }
+                        return context.streamingChatModel != null ? context.streamingChatModel.provider() : null;
+                    }
+
                     public Object invoke(Method method, Object[] args, InvocationContext invocationContext) {
 
                         Object memoryId = invocationContext.chatMemoryId();
@@ -168,7 +185,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 ? context.chatMemoryService.getOrCreateChatMemory(memoryId)
                                 : null;
 
-                        Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
+                        Optional<SystemMessage> systemMessage = prepareSystemMessage(invocationContext, method, args);
                         if (context.systemMessageTransformer != null) {
                             String transformedSystemMessage = context.systemMessageTransformer.apply(
                                     systemMessage.map(SystemMessage::text).orElse(null), invocationContext);
@@ -530,22 +547,26 @@ class DefaultAiServices<T> extends AiServices<T> {
         return (T) responseFromLLM;
     }
 
-    private Optional<SystemMessage> prepareSystemMessage(Object memoryId, Method method, Object[] args) {
-        return findSystemMessageTemplate(memoryId, method).map(systemMessageTemplate -> PromptTemplate.from(
+    private Optional<SystemMessage> prepareSystemMessage(
+            InvocationContext invocationContext, Method method, Object[] args) {
+        return findSystemMessageTemplate(invocationContext, method).map(systemMessageTemplate -> PromptTemplate.from(
                         systemMessageTemplate)
                 .apply(InternalReflectionVariableResolver.findTemplateVariables(systemMessageTemplate, method, args))
                 .toSystemMessage());
     }
 
-    private Optional<String> findSystemMessageTemplate(Object memoryId, Method method) {
+    private Optional<String> findSystemMessageTemplate(InvocationContext invocationContext, Method method) {
         dev.langchain4j.service.SystemMessage annotation =
                 method.getAnnotation(dev.langchain4j.service.SystemMessage.class);
         if (annotation != null) {
             return Optional.of(getTemplate(
                     method, "System", annotation.fromResource(), annotation.value(), annotation.delimiter()));
         }
-
-        return context.systemMessageProvider.apply(memoryId);
+        if (context.systemMessageProviderWithContext != null) {
+            return Optional.of(context.systemMessageProviderWithContext.apply(invocationContext));
+        } else {
+            return context.systemMessageProvider.apply(invocationContext.chatMemoryId());
+        }
     }
 
     private static UserMessage prepareUserMessage(
