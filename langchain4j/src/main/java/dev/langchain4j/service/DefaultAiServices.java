@@ -140,7 +140,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         InvocationParameters.class, args, method.getParameters())
                                 .orElseGet(InvocationParameters::new);
 
-                        InvocationContext invocationContext = dev.langchain4j.invocation.InvocationContext.builder()
+                        InvocationContext invocationContext = InvocationContext.builder()
                                 .invocationId(UUID.randomUUID())
                                 .interfaceName(context.aiServiceClass.getName())
                                 .methodName(method.getName())
