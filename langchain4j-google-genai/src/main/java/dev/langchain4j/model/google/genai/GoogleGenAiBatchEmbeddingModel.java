@@ -32,6 +32,9 @@ import dev.langchain4j.model.embedding.BatchEmbeddingModel;
 import dev.langchain4j.model.google.genai.GoogleGenAiEmbeddingModel.TaskTypeEnum;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -76,7 +79,10 @@ public final class GoogleGenAiBatchEmbeddingModel implements BatchEmbeddingModel
 
     @Override
     public BatchResponse<Response<Embedding>> submit(BatchRequest<TextSegment> request) {
-        return submit("batch-embedding-job", request.requests());
+        String timestamp = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss")
+                .withZone(ZoneId.systemDefault())
+                .format(Instant.now());
+        return submit("batch-embedding-job-" + timestamp, request.requests());
     }
 
     @Override

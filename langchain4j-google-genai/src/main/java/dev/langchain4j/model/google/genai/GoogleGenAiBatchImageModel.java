@@ -33,6 +33,9 @@ import dev.langchain4j.model.batch.BatchState;
 import dev.langchain4j.model.image.BatchImageModel;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
@@ -83,7 +86,10 @@ public final class GoogleGenAiBatchImageModel implements BatchImageModel {
 
     @Override
     public BatchResponse<Response<Image>> submit(BatchRequest<String> request) {
-        return submit("batch-image-job", request.requests());
+        String timestamp = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss")
+                .withZone(ZoneId.systemDefault())
+                .format(Instant.now());
+        return submit("batch-image-job-" + timestamp, request.requests());
     }
 
     @Override
