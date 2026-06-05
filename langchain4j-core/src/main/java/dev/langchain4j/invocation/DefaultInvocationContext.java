@@ -22,7 +22,7 @@ public class DefaultInvocationContext implements InvocationContext {
     private final UserMessage userMessage;
     private final Object chatMemoryId;
     private final ChatRequestParameters defaultRequestParameters;
-    private final ModelProvider provider;
+    private final ModelProvider modelProvider;
     private final InvocationParameters invocationParameters;
     private final Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters;
     private final Instant timestamp;
@@ -35,7 +35,7 @@ public class DefaultInvocationContext implements InvocationContext {
         this.userMessage = builder.userMessage();
         this.chatMemoryId = builder.chatMemoryId();
         this.defaultRequestParameters = builder.defaultRequestParameters();
-        this.provider = builder.provider();
+        this.modelProvider = builder.modelProvider();
         this.invocationParameters = builder.invocationParameters();
         this.managedParameters = builder.managedParameters();
         this.timestamp = builder.timestamp();
@@ -77,8 +77,8 @@ public class DefaultInvocationContext implements InvocationContext {
     }
 
     @Override
-    public ModelProvider provider() {
-        return provider;
+    public ModelProvider modelProvider() {
+        return modelProvider;
     }
 
     @Override
@@ -108,7 +108,7 @@ public class DefaultInvocationContext implements InvocationContext {
                 && Objects.equals(userMessage, that.userMessage)
                 && Objects.equals(chatMemoryId, that.chatMemoryId)
                 && Objects.equals(defaultRequestParameters, that.defaultRequestParameters)
-                && Objects.equals(provider, that.provider)
+                && Objects.equals(modelProvider, that.modelProvider)
                 && Objects.equals(invocationParameters, that.invocationParameters)
                 && Objects.equals(managedParameters, that.managedParameters)
                 && Objects.equals(timestamp, that.timestamp);
@@ -124,7 +124,7 @@ public class DefaultInvocationContext implements InvocationContext {
                 userMessage,
                 chatMemoryId,
                 defaultRequestParameters,
-                provider,
+                modelProvider,
                 invocationParameters,
                 managedParameters,
                 timestamp);
@@ -140,7 +140,7 @@ public class DefaultInvocationContext implements InvocationContext {
                 ", userMessage=" + userMessage +
                 ", chatMemoryId=" + chatMemoryId +
                 ", defaultRequestParameters=" + defaultRequestParameters +
-                ", provider=" + provider +
+                ", modelProvider=" + modelProvider +
                 ", invocationParameters=" + invocationParameters +
                 ", managedParameters=" + managedParameters +
                 ", timestamp=" + timestamp +

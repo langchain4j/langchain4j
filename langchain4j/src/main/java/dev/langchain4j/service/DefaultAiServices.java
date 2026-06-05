@@ -73,7 +73,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import org.jspecify.annotations.Nullable;
 
 @Internal
 class DefaultAiServices<T> extends AiServices<T> {
@@ -149,7 +148,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .methodArguments(args != null ? Arrays.asList(args) : List.of())
                                 .chatMemoryId(findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT))
                                 .defaultRequestParameters(determineChatRequestParameters(context))
-                                .provider(determineModelProvider(context))
+                                .modelProvider(determineModelProvider(context))
                                 .invocationParameters(invocationParameters)
                                 .managedParameters(LangChain4jManaged.current())
                                 .timestampNow()

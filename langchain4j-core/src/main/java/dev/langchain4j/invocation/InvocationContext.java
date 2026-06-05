@@ -75,7 +75,7 @@ public interface InvocationContext {
      *
      * @since 1.16.0
      */
-    default ModelProvider provider() {
+    default ModelProvider modelProvider() {
         return null;
     }
 
@@ -125,7 +125,7 @@ public interface InvocationContext {
         private UserMessage userMessage;
         private Object chatMemoryId;
         private ChatRequestParameters defaultRequestParameters;
-        private ModelProvider provider;
+        private ModelProvider modelProvider;
         private InvocationParameters invocationParameters;
         private Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters;
         private Instant timestamp;
@@ -140,7 +140,7 @@ public interface InvocationContext {
             userMessage(invocationContext.userMessage());
             chatMemoryId(invocationContext.chatMemoryId());
             defaultRequestParameters(invocationContext.defaultRequestParameters());
-            provider(invocationContext.provider());
+            modelProvider(invocationContext.modelProvider());
             invocationParameters(invocationContext.invocationParameters());
             managedParameters(invocationContext.managedParameters());
             timestamp(invocationContext.timestamp());
@@ -221,8 +221,8 @@ public interface InvocationContext {
         /**
          * Sets the model provider for the builder.
          */
-        public Builder provider(ModelProvider provider) {
-            this.provider = provider;
+        public Builder modelProvider(ModelProvider modelProvider) {
+            this.modelProvider = modelProvider;
             return this;
         }
 
@@ -294,8 +294,8 @@ public interface InvocationContext {
             return defaultRequestParameters;
         }
 
-        public ModelProvider provider() {
-            return provider;
+        public ModelProvider modelProvider() {
+            return modelProvider;
         }
 
         public InvocationParameters invocationParameters() {

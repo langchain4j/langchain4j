@@ -562,7 +562,7 @@ class AiServicesSystemAndUserMessageConfigsTest {
         AiService aiService = AiServices.builder(AiService.class)
                 .chatModel(model)
                 .systemMessageProviderWithContext(invocationContext -> {
-                    assertThat(invocationContext.provider()).isEqualTo(model.provider());
+                    assertThat(invocationContext.modelProvider()).isEqualTo(model.provider());
                     assertThat(invocationContext.defaultRequestParameters()).isEqualTo(model.defaultRequestParameters());
                     return "Given a name of a country, answer with a name of it's capital";
                 })
