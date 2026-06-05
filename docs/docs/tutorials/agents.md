@@ -2586,6 +2586,80 @@ This agent can then be used in the same way as a local agent, and mixed with the
 
 The remote A2A agent must return a [Task](https://a2a-protocol.org/latest/specification/#61-task-object) type.
 
+### Multi-turn conversations with A2A servers
+
+The A2A protocol supports multi-turn conversations through `contextId` and `taskId` fields on the message envelope. A `contextId` groups related tasks into a conversation, while a `taskId` references a specific task within that conversation. When omitted, the A2A server generates new values; when provided, the server continues the existing conversation.
+
+To pass these fields on the outgoing message envelope, annotate method parameters with `@A2AContextId` and `@A2ATaskId`. These parameters are **not** sent as message content — they are set on the message envelope instead.
+
+```java
+public interface ChatAgent {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", outputKey = "response")
+    String chat(@V("question") String question,
+                @A2AContextId @V("contextId") String contextId,
+                @A2ATaskId @V("taskId") String taskId);
+}
+```
+
+When `null` is passed for `contextId` or `taskId`, the field is omitted from the envelope and the server creates new values.
+
+When the `@A2AContextId` or `@A2ATaskId` parameters also have recognizable names, possibly configured through the `@V` annotation, the server-assigned values from the response are automatically written back to the `AgenticScope` under that name. This enables multi-turn flows where the first call captures the IDs and subsequent calls reuse them.
+
+If the method returns `ResultWithAgenticScope`, the IDs are accessible directly:
+
+```java
+public interface ChatAgent {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", outputKey = "response")
+    ResultWithAgenticScope<String> chat(
+            @V("question") String question,
+            @A2AContextId @V("contextId") String contextId,
+            @A2ATaskId @V("taskId") String taskId);
+}
+
+// First turn — server generates contextId and taskId
+ResultWithAgenticScope<String> first = chatAgent.chat("hello", null, null);
+String contextId = (String) first.agenticScope().readState("contextId");
+String taskId = (String) first.agenticScope().readState("taskId");
+
+// Second turn — reuse the server-generated IDs to continue the conversation
+ResultWithAgenticScope<String> second = chatAgent.chat("follow-up", contextId, taskId);
+```
+
+In this way, when an A2A agent is used in an agentic system, the `contextId` and `taskId` are automatically propagated through the shared `AgenticScope`. This means a sequence of two A2A calls to the same server will naturally form a multi-turn conversation:
+
+```java
+public interface EchoSubAgent {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", outputKey = "response")
+    String echo(@V("question") String question,
+                @A2AContextId @V("contextId") String contextId,
+                @A2ATaskId @V("taskId") String taskId);
+}
+
+public interface MultiTurnWorkflow extends AgenticScopeAccess {
+
+    @Agent
+    ResultWithAgenticScope<String> converse(@V("question") String question);
+}
+
+EchoSubAgent firstTurn = AgenticServices
+        .a2aBuilder("http://localhost:8080", EchoSubAgent.class)
+        .outputKey("firstResponse").build();
+EchoSubAgent secondTurn = AgenticServices
+        .a2aBuilder("http://localhost:8080", EchoSubAgent.class)
+        .outputKey("secondResponse").build();
+
+MultiTurnWorkflow workflow = AgenticServices.sequenceBuilder(MultiTurnWorkflow.class)
+        .subAgents(firstTurn, secondTurn)
+        .outputKey("secondResponse").build();
+
+ResultWithAgenticScope<String> result = workflow.converse("hello");
+```
+
+In this sequence, the first agent sends a message with no `contextId`/`taskId` (they are `null` in the scope). The server creates a new task and context. The response IDs are written to the scope. When the second agent runs, it reads the now-populated `contextId` and `taskId` from the scope and sends them on the message envelope, continuing the same conversation.
+
 ## MCP-based Tool Agents
 
 The additional `langchain4j-agentic-mcp` module allows wrapping a single [MCP](https://modelcontextprotocol.io/) tool as a non-AI agent in the agentic system. Unlike regular agents that use an LLM, an MCP tool agent simply executes the MCP tool directly and returns its result. This makes it possible to compose MCP tools with other agents in larger agentic systems, without involving an LLM for the tool execution itself.
