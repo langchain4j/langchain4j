@@ -2,6 +2,7 @@ package dev.langchain4j.invocation;
 
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -58,6 +59,16 @@ public interface InvocationContext {
     Object chatMemoryId();
 
     /**
+     * Returns the {@link ChatModel} configured on the AI service,
+     * or {@code null} if only a {@link StreamingChatModel} was configured.
+     *
+     * @since 1.14.0
+     */
+    default ChatModel chatModel() {
+        return null;
+    }
+
+    /**
      * The invocation parameters
      */
     InvocationParameters invocationParameters();
@@ -102,6 +113,7 @@ public interface InvocationContext {
         private List<@NonNull Object> methodArguments = new ArrayList<>();
         private UserMessage userMessage;
         private Object chatMemoryId;
+        private ChatModel chatModel;
         private InvocationParameters invocationParameters;
         private Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters;
         private Instant timestamp;
@@ -115,6 +127,7 @@ public interface InvocationContext {
             methodArguments(invocationContext.methodArguments());
             userMessage(invocationContext.userMessage());
             chatMemoryId(invocationContext.chatMemoryId());
+            chatModel(invocationContext.chatModel());
             invocationParameters(invocationContext.invocationParameters());
             managedParameters(invocationContext.managedParameters());
             timestamp(invocationContext.timestamp());
@@ -185,6 +198,14 @@ public interface InvocationContext {
         }
 
         /**
+         * Sets the chat model for the builder.
+         */
+        public Builder chatModel(ChatModel chatModel) {
+            this.chatModel = chatModel;
+            return this;
+        }
+
+        /**
          * Sets the invocation parameters for the builder.
          */
         public Builder invocationParameters(InvocationParameters invocationParameters) {
@@ -246,6 +267,10 @@ public interface InvocationContext {
 
         public Object chatMemoryId() {
             return chatMemoryId;
+        }
+
+        public ChatModel chatModel() {
+            return chatModel;
         }
 
         public InvocationParameters invocationParameters() {

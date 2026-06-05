@@ -1,6 +1,7 @@
 package dev.langchain4j.invocation;
 
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.ChatModel;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +20,7 @@ public class DefaultInvocationContext implements InvocationContext {
     private final List<Object> methodArguments = new ArrayList<>();
     private final UserMessage userMessage;
     private final Object chatMemoryId;
+    private final ChatModel chatModel;
     private final InvocationParameters invocationParameters;
     private final Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managedParameters;
     private final Instant timestamp;
@@ -30,6 +32,7 @@ public class DefaultInvocationContext implements InvocationContext {
         this.methodArguments.addAll(builder.methodArguments());
         this.userMessage = builder.userMessage();
         this.chatMemoryId = builder.chatMemoryId();
+        this.chatModel = builder.chatModel();
         this.invocationParameters = builder.invocationParameters();
         this.managedParameters = builder.managedParameters();
         this.timestamp = builder.timestamp();
@@ -66,6 +69,11 @@ public class DefaultInvocationContext implements InvocationContext {
     }
 
     @Override
+    public ChatModel chatModel() {
+        return chatModel;
+    }
+
+    @Override
     public InvocationParameters invocationParameters() {
         return invocationParameters;
     }
@@ -91,6 +99,7 @@ public class DefaultInvocationContext implements InvocationContext {
                 && Objects.equals(methodArguments, that.methodArguments)
                 && Objects.equals(userMessage, that.userMessage)
                 && Objects.equals(chatMemoryId, that.chatMemoryId)
+                && Objects.equals(chatModel, that.chatModel)
                 && Objects.equals(invocationParameters, that.invocationParameters)
                 && Objects.equals(managedParameters, that.managedParameters)
                 && Objects.equals(timestamp, that.timestamp);
@@ -105,6 +114,7 @@ public class DefaultInvocationContext implements InvocationContext {
                 methodArguments,
                 userMessage,
                 chatMemoryId,
+                chatModel,
                 invocationParameters,
                 managedParameters,
                 timestamp);
@@ -119,6 +129,7 @@ public class DefaultInvocationContext implements InvocationContext {
                 ", methodArguments=" + methodArguments +
                 ", userMessage=" + userMessage +
                 ", chatMemoryId=" + chatMemoryId +
+                ", chatModel=" + chatModel +
                 ", invocationParameters=" + invocationParameters +
                 ", managedParameters=" + managedParameters +
                 ", timestamp=" + timestamp +

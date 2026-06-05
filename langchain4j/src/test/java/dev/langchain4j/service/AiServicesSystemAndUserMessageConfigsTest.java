@@ -556,13 +556,13 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void contextual_system_message_provider_is_called_with_chat_model() {
+    void system_message_provider_with_context_is_called_with_chat_model() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
                 .chatModel(model)
-                .contextualSystemMessageProvider(context -> {
-                    assertThat(context.defaultChatModel()).isSameAs(model);
+                .systemMessageProviderWithContext(invocationContext -> {
+                    assertThat(invocationContext.chatModel()).isSameAs(model);
                     return "Given a name of a country, answer with a name of it's capital";
                 })
                 .build();
@@ -578,12 +578,12 @@ class AiServicesSystemAndUserMessageConfigsTest {
     }
 
     @Test
-    void contextual_system_message_provider_is_overridden_by_annotation() {
+    void system_message_provider_with_context_is_overridden_by_annotation() {
 
         // given
         AiService aiService = AiServices.builder(AiService.class)
                 .chatModel(model)
-                .contextualSystemMessageProvider(context -> "This message should be ignored")
+                .systemMessageProviderWithContext(invocationContext -> "This message should be ignored")
                 .build();
 
         // when-then

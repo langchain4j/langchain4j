@@ -280,20 +280,24 @@ public abstract class AiServices<T> {
 
 
     /**
-     * Configures a {@link SystemMessageProvider} that provides a system message each time an AI service is invoked.
+     * Configures a system message provider that provides a system message each time an AI service is invoked.
      * <p>
-     * This is similar to {@link #systemMessageProvider(Function)}, but the provider receives a
-     * {@link SystemMessageProvider.InvocationContext} that also exposes the {@link dev.langchain4j.model.chat.ChatModel}
+     * This is similar to {@link #systemMessageProvider(Function)}, but the provider receives the full
+     * {@link InvocationContext} which exposes the {@link dev.langchain4j.model.chat.ChatModel}
      * configured on this AI service, allowing the system message to vary based on model capabilities.
      * <p>
      * When both {@code @SystemMessage} and this provider are configured,
      * {@code @SystemMessage} takes precedence.
      *
-     * @param systemMessageProvider the provider to use
+     * @param systemMessageProvider A {@link Function} that accepts an {@link InvocationContext}
+     *                              and returns a system message to be used.
+     *                              The returned {@link String} can be either a complete system message
+     *                              or a system message template containing unresolved template variables (e.g. "{{name}}"),
+     *                              which will be resolved using the values of method parameters annotated with @{@link V}.
      * @return builder
      */
-    public AiServices<T> contextualSystemMessageProvider(SystemMessageProvider systemMessageProvider) {
-        context.contextualSystemMessageProvider = systemMessageProvider;
+    public AiServices<T> systemMessageProviderWithContext(Function<InvocationContext, String> systemMessageProvider) {
+        context.systemMessageProviderWithContext = systemMessageProvider;
         return this;
     }
 
