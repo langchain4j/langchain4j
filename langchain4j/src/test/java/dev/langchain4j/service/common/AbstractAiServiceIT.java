@@ -58,7 +58,9 @@ public abstract class AbstractAiServiceIT {
         // then
         assertThat(result.content()).containsIgnoringCase("Berlin");
 
-        assertTokenUsage(result.tokenUsage(), model);
+        if (assertTokenUsage()) {
+            assertTokenUsage(result.tokenUsage(), model);
+        }
 
         if (assertFinishReason()) {
             assertThat(result.finishReason()).isEqualTo(STOP);
@@ -146,7 +148,9 @@ public abstract class AbstractAiServiceIT {
 //                .build());
 //        verifyNoMoreInteractions(model);
 
-        assertTokenUsage(result.tokenUsage(), model);
+        if (assertTokenUsage()) {
+            assertTokenUsage(result.tokenUsage(), model);
+        }
 
         if (assertToolInteractions()) {
             verify(weatherTools).getWeather("Munich");
