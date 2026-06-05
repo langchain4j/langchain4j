@@ -42,6 +42,7 @@ import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.service.tool.ToolServiceContext;
+import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.service.tool.search.ToolSearchService;
 import java.util.ArrayList;
 import java.util.List;
@@ -401,7 +402,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
                         var outputGuardrailParams = OutputGuardrailRequest.builder()
                                 .responseFromLLM(finalChatResponse)
-                                .chatExecutor(chatExecutor)
+                                .chatExecutor(buildToolAwareRepromptExecutor())
                                 .requestParams(newCommonParams)
                                 .build();
 
@@ -437,6 +438,38 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                         .tokenUsage(tokenUsage.add(completeResponse.metadata().tokenUsage()))
                         .build())
                 .build();
+    }
+
+    private ChatExecutor buildToolAwareRepromptExecutor() {
+        return new ChatExecutor() {
+            @Override
+            public ChatResponse execute() {
+                return chatExecutor.execute();
+            }
+
+            @Override
+            public ChatResponse execute(List<ChatMessage> chatMessages) {
+                ChatResponse initialResponse = chatExecutor.execute(chatMessages);
+
+                if (!initialResponse.aiMessage().hasToolExecutionRequests()) {
+                    return initialResponse;
+                }
+
+                // Tool calls in the reprompt response: run the tool loop without
+                // writing to memory (reprompt intermediates must not persist).
+                ToolServiceResult toolResult = context.toolService.executeInferenceAndToolsLoop(
+                        context,
+                        invocationContext.chatMemoryId(),
+                        initialResponse,
+                        chatRequest.parameters(),
+                        chatMessages,
+                        null,
+                        invocationContext,
+                        toolServiceContext,
+                        false);
+                return toolResult.aggregateResponse();
+            }
+        };
     }
 
     private ToolExecutionResult execute(ToolExecutionRequest toolRequest) {
