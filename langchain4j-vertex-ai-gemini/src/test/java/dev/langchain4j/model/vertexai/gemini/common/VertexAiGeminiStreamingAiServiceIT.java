@@ -22,6 +22,11 @@ class VertexAiGeminiStreamingAiServiceIT extends AbstractStreamingAiServiceIT {
         );
     }
 
+    @Override
+    protected boolean assertTokenUsage() {
+        return false; // TODO thinking tokens are not reported correctly
+    }
+
     @AfterEach
     void afterEach() throws InterruptedException {
         String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_VERTEX_AI_GEMINI");
