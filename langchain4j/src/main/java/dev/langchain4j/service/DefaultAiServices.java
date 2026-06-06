@@ -599,13 +599,15 @@ class DefaultAiServices<T> extends AiServices<T> {
     private Optional<SystemMessage> prepareSystemMessage(
             InvocationContext invocationContext, Method method, Object[] args) {
         return findSystemMessageTemplateAndLenient(invocationContext, method)
-                .map(systemMessageTemplate -> PromptTemplate.from(systemMessageTemplate.template(), systemMessageTemplate.lenient())
+                .map(systemMessageTemplate -> PromptTemplate.from(
+                                systemMessageTemplate.template(), systemMessageTemplate.lenient())
                         .apply(InternalReflectionVariableResolver.findTemplateVariables(
                                 systemMessageTemplate.template(), method, args))
                         .toSystemMessage());
     }
 
-    private Optional<TemplateAndLenient> findSystemMessageTemplateAndLenient(InvocationContext invocationContext, Method method) {
+    private Optional<TemplateAndLenient> findSystemMessageTemplateAndLenient(
+            InvocationContext invocationContext, Method method) {
         dev.langchain4j.service.SystemMessage annotation =
                 method.getAnnotation(dev.langchain4j.service.SystemMessage.class);
         if (annotation != null) {
@@ -617,7 +619,8 @@ class DefaultAiServices<T> extends AiServices<T> {
             return Optional.of(context.systemMessageProviderWithContext.apply(invocationContext))
                     .map(template -> new TemplateAndLenient(template, context.systemMessageLenient));
         } else {
-            return context.systemMessageProvider.apply(invocationContext.chatMemoryId())
+            return context.systemMessageProvider
+                    .apply(invocationContext.chatMemoryId())
                     .map(template -> new TemplateAndLenient(template, context.systemMessageLenient));
         }
     }
