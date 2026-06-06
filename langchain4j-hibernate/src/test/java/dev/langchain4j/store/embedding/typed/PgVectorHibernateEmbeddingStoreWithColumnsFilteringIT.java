@@ -1,7 +1,8 @@
 package dev.langchain4j.store.embedding.typed;
 
+import dev.langchain4j.store.embedding.AbstractPgVectorHibernateEmbeddingStoreIT;
 import dev.langchain4j.store.embedding.hibernate.EmbeddedText;
-import dev.langchain4j.store.embedding.hibernate.Embedding;
+import dev.langchain4j.store.embedding.hibernate.EmbeddingVector;
 import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
 import dev.langchain4j.store.embedding.hibernate.MetadataAttribute;
 import dev.langchain4j.store.embedding.hibernate.UnmappedMetadata;
@@ -19,7 +20,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
-class PgVectorEmbeddingStoreWithColumnsFilteringIT extends PgVectorEmbeddingStoreConfigIT {
+class PgVectorHibernateEmbeddingStoreWithColumnsFilteringIT extends AbstractPgVectorHibernateEmbeddingStoreIT {
 
     @BeforeAll
     static void setup() {
@@ -46,7 +47,7 @@ class PgVectorEmbeddingStoreWithColumnsFilteringIT extends PgVectorEmbeddingStor
         @EmbeddedText
         private String text;
 
-        @Embedding
+        @EmbeddingVector
         @Array(length = 384)
         private float[] embedding;
 

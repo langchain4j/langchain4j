@@ -12,6 +12,7 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.hibernate.EmbeddedText;
+import dev.langchain4j.store.embedding.hibernate.EmbeddingVector;
 import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
 import dev.langchain4j.store.embedding.hibernate.UnmappedMetadata;
 import jakarta.persistence.Entity;
@@ -38,7 +39,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
-class PgVectorEmbeddingStoreFloat16EntityIT {
+class PgVectorHibernateEmbeddingStoreFloat16EntityIT {
 
     @Container
     static PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>("pgvector/pgvector:pg15");
@@ -57,7 +58,7 @@ class PgVectorEmbeddingStoreFloat16EntityIT {
         @EmbeddedText
         private String text;
 
-        @dev.langchain4j.store.embedding.hibernate.Embedding
+        @EmbeddingVector
         @JdbcTypeCode(SqlTypes.VECTOR_FLOAT16)
         @Array(length = 384)
         private float[] embedding;
