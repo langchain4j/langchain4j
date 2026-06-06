@@ -63,7 +63,6 @@ import java.util.concurrent.Executor;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
-import org.jspecify.annotations.NonNull;
 
 public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
@@ -255,13 +254,13 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     @SuppressWarnings("rawtypes")
     public static Class[] interfacesToImplement(Class clazz) {
-        return new Class<?>[]{
-                clazz,
-                InternalAgent.class,
-                AgenticScopeOwner.class,
-                ChatMemoryAccess.class,
-                ChatMessagesAccess.class,
-                AiServiceResponseReceivedListener.class
+        return new Class<?>[] {
+            clazz,
+            InternalAgent.class,
+            AgenticScopeOwner.class,
+            ChatMemoryAccess.class,
+            ChatMessagesAccess.class,
+            AiServiceResponseReceivedListener.class
         };
     }
 
