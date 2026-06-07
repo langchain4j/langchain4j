@@ -70,7 +70,7 @@ class AnthropicMapperTest {
     }
 
     @Test
-    void should_fallback_to_empty_input_when_replaying_malformed_tool_arguments() {
+    void should_preserve_raw_input_when_replaying_malformed_tool_arguments() {
         // given
         String malformedArguments = "{\"value\":\"bad \"quote\"\"}";
         List<ChatMessage> messages = asList(
@@ -112,7 +112,7 @@ class AnthropicMapperTest {
                                         AnthropicToolUseContent.builder()
                                                 .id("call_01")
                                                 .name("updateScene")
-                                                .input("{}")
+                                                .input(malformedArguments)
                                                 .build())),
                         new AnthropicMessage(
                                 USER,
@@ -145,7 +145,28 @@ class AnthropicMapperTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"[]", "\"value\"", "null", "true", "1", "{\"first\":2} true"})
-    void should_fallback_to_empty_input_when_replaying_non_object_tool_arguments(String arguments) {
+    void should_pass_through_non_blank_tool_arguments(String arguments) {
+        // given
+        List<ChatMessage> messages = asList(
+                UserMessage.from("Please calculate"),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("12345")
+                        .name("calculator")
+                        .arguments(arguments)
+                        .build()));
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(messages);
+
+        // then
+        AnthropicToolUseContent toolUseContent =
+                (AnthropicToolUseContent) anthropicMessages.get(1).content.get(0);
+        assertThat(toolUseContent.input).isEqualTo(arguments);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", " ", "\n\t"})
+    void should_fallback_to_empty_input_when_replaying_blank_tool_arguments(String arguments) {
         // given
         List<ChatMessage> messages = asList(
                 UserMessage.from("Please calculate"),

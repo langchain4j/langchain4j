@@ -19,9 +19,6 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static java.util.stream.Collectors.joining;
 
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -61,7 +58,6 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -80,8 +76,6 @@ public class AnthropicMapper {
     public static final String SERVER_TOOL_RESULTS_KEY =
             "server_tool_results"; // do not change, will break backward compatibility!
     public static final String CACHE_CONTROL = "cache_control";
-
-    private static final JsonFactory JSON_FACTORY = new JsonFactory();
 
     public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages) {
         return toAnthropicMessages(messages, false);
@@ -235,19 +229,7 @@ public class AnthropicMapper {
             return "{}";
         }
 
-        return isJsonObject(arguments) ? arguments : "{}";
-    }
-
-    private static boolean isJsonObject(String json) {
-        try (JsonParser parser = JSON_FACTORY.createParser(json)) {
-            if (parser.nextToken() != JsonToken.START_OBJECT) {
-                return false;
-            }
-            parser.skipChildren();
-            return parser.nextToken() == null;
-        } catch (IOException e) {
-            return false;
-        }
+        return arguments;
     }
 
     public static List<AnthropicTextContent> toAnthropicSystemPrompt(
