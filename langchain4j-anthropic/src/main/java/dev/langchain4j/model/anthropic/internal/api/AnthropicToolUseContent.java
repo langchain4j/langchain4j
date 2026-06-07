@@ -16,6 +16,7 @@ public class AnthropicToolUseContent extends AnthropicMessageContent {
 
     public String id;
     public String name;
+
     @JsonRawValue
     public String input;
 

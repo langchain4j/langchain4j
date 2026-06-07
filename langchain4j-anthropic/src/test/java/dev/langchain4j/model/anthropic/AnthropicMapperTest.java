@@ -662,5 +662,4 @@ class AnthropicMapperTest {
         assertThat(second.cacheControl).isNotNull();
         assertThat(second.cacheControl).extracting("type").isEqualTo("ephemeral");
     }
-
 }
