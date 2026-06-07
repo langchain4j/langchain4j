@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
@@ -168,7 +169,15 @@ public class AgentUtil {
         return argumentsFromMethod(method, Map.of());
     }
 
+    public static List<AgentArgument> argumentsFromMethod(Method method, Set<String> optionalArgs) {
+        return argumentsFromMethod(method, Map.of(), optionalArgs);
+    }
+
     public static List<AgentArgument> argumentsFromMethod(Method method, Map<String, Object> defaultValues) {
+        return argumentsFromMethod(method, defaultValues, Set.of());
+    }
+
+    public static List<AgentArgument> argumentsFromMethod(Method method, Map<String, Object> defaultValues, Set<String> optionalArgs) {
         if (method.getDeclaringClass() == UntypedAgent.class) {
             return List.of();
         }
@@ -176,7 +185,7 @@ public class AgentUtil {
                 .map(p -> {
                     String argName = parameterName(p);
                     Object defaultValue = defaultValues.getOrDefault(argName, parameterDefaultValue(p));
-                    return new AgentArgument(p.getParameterizedType(), argName, defaultValue);
+                    return new AgentArgument(p.getParameterizedType(), argName, defaultValue, optionalArgs.contains(argName));
                 })
                 .toList();
     }
@@ -243,6 +252,9 @@ public class AgentUtil {
         if (argValue == null) {
             argValue = arg.defaultValue();
             if (argValue == null) {
+                if (arg.isOptional()) {
+                    return null;
+                }
                 throw new MissingArgumentException(arg.name());
             }
         }

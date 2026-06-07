@@ -19,7 +19,7 @@ class GoogleGenAiChatModelTest {
     void should_build_with_api_key_and_model_name() {
         GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
                 .apiKey("test-key")
-                .modelName("gemini-2.0-flash")
+                .modelName("gemini-3.1-flash-lite")
                 .build();
 
         assertThat(model).isNotNull();
@@ -32,7 +32,7 @@ class GoogleGenAiChatModelTest {
 
         GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
                 .client(client)
-                .modelName("gemini-2.0-flash")
+                .modelName("gemini-3.1-flash-lite")
                 .build();
 
         assertThat(model).isNotNull();
@@ -42,10 +42,12 @@ class GoogleGenAiChatModelTest {
     void should_set_default_request_parameters() {
         GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
                 .apiKey("test-key")
-                .modelName("gemini-2.0-flash")
+                .modelName("gemini-3.1-flash-lite")
                 .temperature(0.7)
                 .topP(0.9)
                 .topK(40)
+                .frequencyPenalty(0.5)
+                .presencePenalty(0.3)
                 .maxOutputTokens(512)
                 .stopSequences(List.of("END"))
                 .build();
@@ -53,6 +55,8 @@ class GoogleGenAiChatModelTest {
         assertThat(model.defaultRequestParameters().temperature()).isEqualTo(0.7);
         assertThat(model.defaultRequestParameters().topP()).isEqualTo(0.9);
         assertThat(model.defaultRequestParameters().topK()).isEqualTo(40);
+        assertThat(model.defaultRequestParameters().frequencyPenalty()).isEqualTo(0.5);
+        assertThat(model.defaultRequestParameters().presencePenalty()).isEqualTo(0.3);
         assertThat(model.defaultRequestParameters().maxOutputTokens()).isEqualTo(512);
         assertThat(model.defaultRequestParameters().stopSequences()).containsExactly("END");
     }
@@ -61,7 +65,7 @@ class GoogleGenAiChatModelTest {
     void should_return_empty_listeners_by_default() {
         GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
                 .apiKey("test-key")
-                .modelName("gemini-2.0-flash")
+                .modelName("gemini-3.1-flash-lite")
                 .build();
 
         assertThat(model.listeners()).isEmpty();
@@ -73,7 +77,7 @@ class GoogleGenAiChatModelTest {
 
         GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
                 .apiKey("test-key")
-                .modelName("gemini-2.0-flash")
+                .modelName("gemini-3.1-flash-lite")
                 .listeners(List.of(listener))
                 .build();
 
@@ -84,7 +88,7 @@ class GoogleGenAiChatModelTest {
     void should_always_advertise_json_schema_capability() {
         GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
                 .apiKey("test-key")
-                .modelName("gemini-2.0-flash")
+                .modelName("gemini-3.1-flash-lite")
                 .build();
 
         assertThat(model.supportedCapabilities()).containsExactly(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
@@ -96,10 +100,12 @@ class GoogleGenAiChatModelTest {
 
         GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
                 .client(client)
-                .modelName("gemini-2.0-flash")
+                .modelName("gemini-3.1-flash-lite")
                 .temperature(0.5)
                 .topP(0.8)
                 .topK(30)
+                .frequencyPenalty(0.5)
+                .presencePenalty(0.3)
                 .maxOutputTokens(1024)
                 .thinkingBudget(500)
                 .seed(42)
@@ -122,7 +128,7 @@ class GoogleGenAiChatModelTest {
     void should_build_with_null_optional_fields() {
         GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
                 .apiKey("test-key")
-                .modelName("gemini-2.0-flash")
+                .modelName("gemini-3.1-flash-lite")
                 .maxRetries(null)
                 .listeners(null)
                 .safetySettings(null)
@@ -141,6 +147,8 @@ class GoogleGenAiChatModelTest {
         assertThat(builder.temperature(0.5)).isSameAs(builder);
         assertThat(builder.topP(0.8)).isSameAs(builder);
         assertThat(builder.topK(40)).isSameAs(builder);
+        assertThat(builder.frequencyPenalty(0.5)).isSameAs(builder);
+        assertThat(builder.presencePenalty(0.3)).isSameAs(builder);
         assertThat(builder.maxOutputTokens(100)).isSameAs(builder);
         assertThat(builder.thinkingBudget(500)).isSameAs(builder);
         assertThat(builder.seed(42)).isSameAs(builder);

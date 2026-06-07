@@ -1573,12 +1573,13 @@ class AiServicesWithToolsIT {
     @ParameterizedTest
     @MethodSource("modelsWithoutParallelToolCalling")
     void should_rewrite_chat_request_using_tool(ChatModel chatModel) {
-        AtomicInteger result = new AtomicInteger();
+        AtomicInteger addResult = new AtomicInteger();
+        AtomicInteger mulResult = new AtomicInteger();
         AiServicesIT.UserMessageTransformer requestTransformer = userMessage -> userMessage.replace("three", "four");
 
         Counter counter = AiServices.builder(Counter.class)
                 .chatModel(chatModel)
-                .tools(new CalculatorTool(result))
+                .tools(new CalculatorTool(addResult, mulResult))
                 .chatRequestTransformer(requestTransformer)
                 .build();
 
@@ -1587,25 +1588,37 @@ class AiServicesWithToolsIT {
         int count = counter.doMath(sentence);
         assertThat(count).isEqualTo(56);
         // check that the tools have been correctly invoked
-        assertThat(result.get()).isEqualTo(56);
+        assertThat(addResult.get()).isEqualTo(14);
+        assertThat(mulResult.get()).isEqualTo(56);
     }
 
-    public static class CalculatorTool {
-        private final AtomicInteger result;
+    public static class AdderTool {
+        private final AtomicInteger addResult;
 
-        public CalculatorTool(final AtomicInteger result) {
-            this.result = result;
+        public AdderTool(final AtomicInteger addResult) {
+            this.addResult = addResult;
         }
 
         @Tool("calculates the sum of two integers")
         public int sum(int first, int second) {
-            return first + second;
+            int sum = first + second;
+            addResult.set(sum);
+            return sum;
+        }
+    }
+
+    public static class CalculatorTool extends AdderTool {
+        private final AtomicInteger mulResult;
+
+        public CalculatorTool(final AtomicInteger addResult, final AtomicInteger mulResult) {
+            super(addResult);
+            this.mulResult = mulResult;
         }
 
         @Tool("calculates the multiplication of two integers")
         public int multiply(int first, int second) {
             int prod = first * second;
-            result.set(prod);
+            mulResult.set(prod);
             return prod;
         }
     }
@@ -1817,13 +1830,59 @@ class AiServicesWithToolsIT {
     }
 
     @Test
-    void should_send_null_as_text_to_LLM_when_tool_returns_null() {
+    void should_send_null_as_text_to_LLM_when_tool_returns_null_instead_of_Integer() {
 
         // given
         class ToolReturningNull {
 
             @Tool("Returns nothing")
             Integer doSomething() {
+                return null;
+            }
+        }
+
+        ToolReturningNull tools = spy(new ToolReturningNull());
+
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("doSomething")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("OK, got null")));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .build();
+
+        // when
+        assistant.chat("Do something");
+
+        // then
+        verify(tools).doSomething();
+
+        verify(chatModel, times(2)).chat(argThat((ChatRequest request) -> {
+            if (request.messages().size() < 3) {
+                return true; // first call
+            }
+            ToolExecutionResultMessage toolResult = request.messages().stream()
+                    .filter(ToolExecutionResultMessage.class::isInstance)
+                    .map(ToolExecutionResultMessage.class::cast)
+                    .findFirst()
+                    .orElse(null);
+            return toolResult != null && toolResult.text().equals("null");
+        }));
+    }
+
+    @Test
+    void should_send_null_as_text_to_LLM_when_tool_returns_null_instead_of_String() {
+
+        // given
+        class ToolReturningNull {
+
+            @Tool("Returns nothing")
+            String doSomething() {
                 return null;
             }
         }
