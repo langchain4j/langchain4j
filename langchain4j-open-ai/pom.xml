@@ -124,6 +124,16 @@
                     <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} -XX:+AllowRedefinitionToAddDeleteMethods</argLine>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration combine.children="append">
+                    <!-- OpenAiStreamingChatModelNonBlockingIT runs BlockHound, which needs this
+                         flag to instrument JDK classes on JDK 13+. Keep the parent's argLine and
+                         the mockito agent. Benign for ITs that don't use BlockHound. -->
+                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} -XX:+AllowRedefinitionToAddDeleteMethods</argLine>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
