@@ -37,7 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiStreamingChatModelNonBlockingIT {
 
-    // TODO similar test for http client and AI Service
+    // TODO similar test for http client, AI Service and other providers?
 
     /**
      * Recorded BlockHound violations. Cleared per test in {@link #resetViolations()}; asserted
@@ -50,7 +50,7 @@ class OpenAiStreamingChatModelNonBlockingIT {
         BlockHound.builder()
                 // The JDK HTTP client threads are where our publisher pipeline runs. If we block
                 // any of these, throughput collapses under concurrency. BlockHound enforces this.
-                .nonBlockingThreadPredicate(prev -> prev.or(t -> t.getName().startsWith("HttpClient-")))
+//                .nonBlockingThreadPredicate(prev -> prev.or(t -> t.getName().startsWith("HttpClient-")))
                 // Pool bookkeeping, not application blocking: idle workers park on the work queue
                 // (getTask), exiting workers acquire the pool's lock to coordinate shutdown
                 // (processWorkerExit).
