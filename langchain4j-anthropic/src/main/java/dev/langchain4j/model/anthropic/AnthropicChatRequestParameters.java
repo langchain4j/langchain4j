@@ -183,7 +183,8 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 sendThinking(getOrDefault(anthropicParameters.sendThinking(), sendThinking));
                 returnThinking(getOrDefault(anthropicParameters.returnThinking(), returnThinking));
                 toolChoiceName(getOrDefault(anthropicParameters.toolChoiceName(), toolChoiceName));
-                disableParallelToolUse(getOrDefault(anthropicParameters.disableParallelToolUse(), disableParallelToolUse));
+                disableParallelToolUse(
+                        getOrDefault(anthropicParameters.disableParallelToolUse(), disableParallelToolUse));
                 userId(getOrDefault(anthropicParameters.userId(), userId));
             }
             return this;

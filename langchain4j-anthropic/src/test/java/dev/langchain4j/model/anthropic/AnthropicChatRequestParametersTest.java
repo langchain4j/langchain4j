@@ -43,7 +43,8 @@ class AnthropicChatRequestParametersTest {
         assertThat(AnthropicChatRequestParameters.EMPTY.sendThinking()).isNull();
         assertThat(AnthropicChatRequestParameters.EMPTY.returnThinking()).isNull();
         assertThat(AnthropicChatRequestParameters.EMPTY.toolChoiceName()).isNull();
-        assertThat(AnthropicChatRequestParameters.EMPTY.disableParallelToolUse()).isNull();
+        assertThat(AnthropicChatRequestParameters.EMPTY.disableParallelToolUse())
+                .isNull();
         assertThat(AnthropicChatRequestParameters.EMPTY.userId()).isNull();
     }
 
@@ -166,14 +167,14 @@ class AnthropicChatRequestParametersTest {
 
         AnthropicChatRequestParameters fallback = AnthropicChatRequestParameters.builder()
                 .cacheSystemMessages(false) // should be ignored as original has it
-                .cacheTools(true)           // should be defaulted from fallback
-                .thinkingType("disabled")   // should be ignored
+                .cacheTools(true) // should be defaulted from fallback
+                .thinkingType("disabled") // should be ignored
                 .thinkingBudgetTokens(1000) // should be defaulted from fallback
-                .sendThinking(false)        // should be ignored
-                .returnThinking(true)       // should be defaulted from fallback
+                .sendThinking(false) // should be ignored
+                .returnThinking(true) // should be defaulted from fallback
                 .toolChoiceName("get_time") // should be ignored
-                .disableParallelToolUse(true)// should be defaulted from fallback
-                .userId("user-2")           // should be ignored
+                .disableParallelToolUse(true) // should be defaulted from fallback
+                .userId("user-2") // should be ignored
                 .build();
 
         AnthropicChatRequestParameters result = original.defaultedBy(fallback);
@@ -220,9 +221,8 @@ class AnthropicChatRequestParametersTest {
 
     @Test
     void maxTokens_should_map_to_maxOutputTokens() {
-        AnthropicChatRequestParameters parameters = AnthropicChatRequestParameters.builder()
-                .maxTokens(500)
-                .build();
+        AnthropicChatRequestParameters parameters =
+                AnthropicChatRequestParameters.builder().maxTokens(500).build();
 
         assertThat(parameters.maxTokens()).isEqualTo(500);
         assertThat(parameters.maxOutputTokens()).isEqualTo(500);

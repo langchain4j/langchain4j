@@ -179,9 +179,7 @@ class AnthropicChatRequestCacheParametersTest {
 
     @Test
     void should_override_user_id_per_request() {
-        AnthropicChatModel model = modelBuilder()
-                .userId("model-user")
-                .build();
+        AnthropicChatModel model = modelBuilder().userId("model-user").build();
 
         ChatRequest request = ChatRequest.builder()
                 .messages(UserMessage.from("Hello"))

@@ -57,9 +57,8 @@ class AnthropicChatModelTest {
                 .returnThinking(true)
                 .build();
 
-        ChatRequest request = ChatRequest.builder()
-                .messages(UserMessage.from("What is 2+2?"))
-                .build();
+        ChatRequest request =
+                ChatRequest.builder().messages(UserMessage.from("What is 2+2?")).build();
 
         // when
         ChatResponse response = model.chat(request);
