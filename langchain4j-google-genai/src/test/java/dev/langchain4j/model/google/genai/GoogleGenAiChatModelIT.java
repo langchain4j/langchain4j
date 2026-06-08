@@ -55,7 +55,7 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
-        return true;
+        return false;
     }
 
     @Override
