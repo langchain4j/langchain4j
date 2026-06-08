@@ -1,9 +1,12 @@
 package dev.langchain4j.mcp.client;
 
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.mutableCopy;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -16,16 +19,28 @@ public class McpPrompt {
     private final String name;
     private final String description;
     private final List<McpPromptArgument> arguments;
+    private final Map<String, Object> metadata;
+    private final List<McpIcon> icons;
+
+    public McpPrompt(
+            @JsonProperty("name") String name,
+            @JsonProperty("description") String description,
+            @JsonProperty("arguments") List<McpPromptArgument> arguments) {
+        this(name, description, arguments, null, null);
+    }
 
     @JsonCreator
     public McpPrompt(
             @JsonProperty("name") String name,
             @JsonProperty("description") String description,
-            @JsonProperty("arguments") List<McpPromptArgument> arguments
-    ) {
+            @JsonProperty("arguments") List<McpPromptArgument> arguments,
+            @JsonProperty("_meta") Map<String, Object> metadata,
+            @JsonProperty("icons") List<McpIcon> icons) {
         this.name = name;
         this.description = description;
         this.arguments = arguments;
+        this.metadata = copy(mutableCopy(metadata));
+        this.icons = icons == null ? List.of() : List.copyOf(icons);
     }
 
     public String name() {
@@ -40,26 +55,38 @@ public class McpPrompt {
         return arguments;
     }
 
+    public Map<String, Object> metadata() {
+        return metadata;
+    }
+
+    public List<McpIcon> icons() {
+        return icons;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
         var that = (McpPrompt) obj;
-        return Objects.equals(this.name, that.name) &&
-                Objects.equals(this.description, that.description) &&
-                Objects.equals(this.arguments, that.arguments);
+        return Objects.equals(this.name, that.name)
+                && Objects.equals(this.description, that.description)
+                && Objects.equals(this.arguments, that.arguments)
+                && Objects.equals(this.metadata, that.metadata)
+                && Objects.equals(this.icons, that.icons);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, description, arguments);
+        return Objects.hash(name, description, arguments, metadata, icons);
     }
 
     @Override
     public String toString() {
-        return "McpPrompt[" +
-                "name=" + name + ", " +
-                "description=" + description + ", " +
-                "arguments=" + arguments + ']';
+        return "McpPrompt[" + "name="
+                + name + ", " + "description="
+                + description + ", " + "arguments="
+                + arguments + ", " + "metadata="
+                + metadata + ", " + "icons="
+                + icons + ']';
     }
 }

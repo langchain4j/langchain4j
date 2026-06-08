@@ -1,6 +1,7 @@
 package dev.langchain4j.mcp.client;
 
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.DESTRUCTIVE_HINT;
+import static dev.langchain4j.mcp.client.McpToolMetadataKeys.ICONS;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.IDEMPOTENT_HINT;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.OPEN_WORLD_HINT;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.OUTPUT_SCHEMA;
@@ -528,6 +529,35 @@ class ToolSpecificationHelperTest {
         assertThat(outputSchema.get("properties")).isInstanceOf(Map.class);
         Map<String, Object> properties = (Map<String, Object>) outputSchema.get("properties");
         assertThat(properties).containsOnlyKeys("temperature", "conditions");
+    }
+
+    @Test
+    void toolWithIcons() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "get_weather",
+                    "inputSchema": {
+                    },
+                    "icons": [
+                      {
+                        "src": "https://example.org/weather.png",
+                        "mimeType": "image/png",
+                        "sizes": ["64x64"],
+                        "theme": "dark"
+                      }
+                    ]
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        Map<String, Object> metadata = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
+                .get(0)
+                .metadata();
+
+        assertThat(metadata.get(ICONS))
+                .isEqualTo(List.of(new McpIcon(
+                        "image/png", List.of("64x64"), "https://example.org/weather.png", McpIconTheme.DARK)));
     }
 
     @Test
