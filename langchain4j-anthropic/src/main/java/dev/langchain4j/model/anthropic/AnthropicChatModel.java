@@ -65,6 +65,8 @@ import org.slf4j.Logger;
  */
 public class AnthropicChatModel implements ChatModel {
 
+    public static final String ANTHROPIC_VERSION = "2023-06-01";
+
     private final AnthropicClient client;
     private final boolean cacheSystemMessages;
     private final boolean cacheTools;
@@ -75,7 +77,7 @@ public class AnthropicChatModel implements ChatModel {
     private final boolean sendThinking;
     private final int maxRetries;
     private final List<ChatModelListener> listeners;
-    private final ChatRequestParameters defaultRequestParameters;
+    private final AnthropicChatRequestParameters defaultRequestParameters;
     private final String toolChoiceName;
     private final Boolean disableParallelToolUse;
     private final List<AnthropicServerTool> serverTools;
@@ -91,7 +93,7 @@ public class AnthropicChatModel implements ChatModel {
                 .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(builder.apiKey)
-                .version(getOrDefault(builder.version, "2023-06-01"))
+                .version(getOrDefault(builder.version, ANTHROPIC_VERSION))
                 .beta(builder.beta)
                 .timeout(builder.timeout)
                 .logRequests(getOrDefault(builder.logRequests, false))
@@ -100,23 +102,9 @@ public class AnthropicChatModel implements ChatModel {
                 .customHeaders(builder.customHeadersSupplier)
                 .build();
 
-        this.cacheSystemMessages = getOrDefault(builder.cacheSystemMessages, false);
-        this.cacheTools = getOrDefault(builder.cacheTools, false);
-        this.thinkingType = builder.thinkingType;
-        this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
-        this.thinkingDisplay = builder.thinkingDisplay;
-        this.returnThinking = getOrDefault(builder.returnThinking, false);
-        this.sendThinking = getOrDefault(builder.sendThinking, true);
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.listeners = copy(builder.listeners);
-        this.toolChoiceName = builder.toolChoiceName;
-        this.disableParallelToolUse = builder.disableParallelToolUse;
-        this.serverTools = copy(builder.serverTools);
         this.returnServerToolResults = getOrDefault(builder.returnServerToolResults, false);
-        this.toolMetadataKeysToSend = copy(builder.toolMetadataKeysToSend);
-        this.userId = builder.userId;
-        this.customParameters = copy(builder.customParameters);
-        this.strictTools = builder.strictTools;
         this.supportedCapabilities = copy(builder.supportedCapabilities);
 
         ChatRequestParameters commonParameters;
@@ -127,7 +115,27 @@ public class AnthropicChatModel implements ChatModel {
             commonParameters = DefaultChatRequestParameters.EMPTY;
         }
 
-        this.defaultRequestParameters = DefaultChatRequestParameters.builder()
+        AnthropicChatRequestParameters anthropicDefaults =
+                commonParameters instanceof AnthropicChatRequestParameters
+                        ? (AnthropicChatRequestParameters) commonParameters
+                        : AnthropicChatRequestParameters.EMPTY;
+
+        this.cacheSystemMessages = getOrDefault(builder.cacheSystemMessages, getOrDefault(anthropicDefaults.cacheSystemMessages(), false));
+        this.cacheTools = getOrDefault(builder.cacheTools, getOrDefault(anthropicDefaults.cacheTools(), false));
+        this.thinkingType = getOrDefault(builder.thinkingType, anthropicDefaults.thinkingType());
+        this.thinkingBudgetTokens = getOrDefault(builder.thinkingBudgetTokens, anthropicDefaults.thinkingBudgetTokens());
+        this.thinkingDisplay = builder.thinkingDisplay;
+        this.returnThinking = getOrDefault(builder.returnThinking, getOrDefault(anthropicDefaults.returnThinking(), false));
+        this.sendThinking = getOrDefault(builder.sendThinking, getOrDefault(anthropicDefaults.sendThinking(), true));
+        this.toolChoiceName = getOrDefault(builder.toolChoiceName, anthropicDefaults.toolChoiceName());
+        this.disableParallelToolUse = getOrDefault(builder.disableParallelToolUse, anthropicDefaults.disableParallelToolUse());
+        this.userId = getOrDefault(builder.userId, anthropicDefaults.userId());
+        this.serverTools = copy(builder.serverTools);
+        this.toolMetadataKeysToSend = copy(builder.toolMetadataKeysToSend);
+        this.customParameters = copy(builder.customParameters);
+        this.strictTools = builder.strictTools;
+
+        this.defaultRequestParameters = AnthropicChatRequestParameters.builder()
                 .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
@@ -138,6 +146,15 @@ public class AnthropicChatModel implements ChatModel {
                 .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
                 .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                .cacheSystemMessages(this.cacheSystemMessages)
+                .cacheTools(this.cacheTools)
+                .thinkingType(this.thinkingType)
+                .thinkingBudgetTokens(this.thinkingBudgetTokens)
+                .sendThinking(this.sendThinking)
+                .returnThinking(this.returnThinking)
+                .toolChoiceName(this.toolChoiceName)
+                .disableParallelToolUse(this.disableParallelToolUse)
+                .userId(this.userId)
                 .build();
     }
 
@@ -747,28 +764,38 @@ public class AnthropicChatModel implements ChatModel {
     public ChatResponse doChat(ChatRequest chatRequest) {
         validate(chatRequest.parameters());
 
+        ChatRequestParameters parameters = chatRequest.parameters();
+        AnthropicChatRequestParameters requestParameters =
+                parameters instanceof AnthropicChatRequestParameters
+                        ? (AnthropicChatRequestParameters) parameters
+                        : AnthropicChatRequestParameters.EMPTY;
+
         AnthropicCreateMessageRequest anthropicRequest = createAnthropicRequest(
                 chatRequest,
-                toThinking(thinkingType, thinkingBudgetTokens, thinkingDisplay),
-                sendThinking,
-                cacheSystemMessages ? EPHEMERAL : NO_CACHE,
-                cacheTools ? EPHEMERAL : NO_CACHE,
+                toThinking(
+                        getOrDefault(requestParameters.thinkingType(), this.thinkingType),
+                        getOrDefault(requestParameters.thinkingBudgetTokens(), this.thinkingBudgetTokens),
+                        this.thinkingDisplay),
+                getOrDefault(requestParameters.sendThinking(), this.sendThinking),
+                getOrDefault(requestParameters.cacheSystemMessages(), this.cacheSystemMessages) ? EPHEMERAL : NO_CACHE,
+                getOrDefault(requestParameters.cacheTools(), this.cacheTools) ? EPHEMERAL : NO_CACHE,
                 false,
-                toolChoiceName,
-                disableParallelToolUse,
-                serverTools,
-                toolMetadataKeysToSend,
-                userId,
-                customParameters,
-                strictTools);
+                getOrDefault(requestParameters.toolChoiceName(), this.toolChoiceName),
+                getOrDefault(requestParameters.disableParallelToolUse(), this.disableParallelToolUse),
+                this.serverTools,
+                this.toolMetadataKeysToSend,
+                getOrDefault(requestParameters.userId(), this.userId),
+                this.customParameters,
+                this.strictTools);
 
         ParsedAndRawResponse response =
                 withRetryMappingExceptions(() -> client.createMessageWithRawResponse(anthropicRequest), maxRetries);
 
-        return createChatResponse(response);
+        boolean returnThinking = getOrDefault(requestParameters.returnThinking(), this.returnThinking);
+        return createChatResponse(response, returnThinking);
     }
 
-    private ChatResponse createChatResponse(ParsedAndRawResponse parsedAndRawResponse) {
+    private ChatResponse createChatResponse(ParsedAndRawResponse parsedAndRawResponse, boolean returnThinking) {
         AnthropicCreateMessageResponse response = parsedAndRawResponse.parsedResponse();
         AnthropicChatResponseMetadata responseMetadata = AnthropicChatResponseMetadata.builder()
                 .id(response.id)
@@ -806,7 +833,7 @@ public class AnthropicChatModel implements ChatModel {
     }
 
     @Override
-    public ChatRequestParameters defaultRequestParameters() {
+    public AnthropicChatRequestParameters defaultRequestParameters() {
         return defaultRequestParameters;
     }
 

@@ -71,7 +71,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     private final boolean returnThinking;
     private final boolean sendThinking;
     private final List<ChatModelListener> listeners;
-    private final ChatRequestParameters defaultRequestParameters;
+    private final AnthropicChatRequestParameters defaultRequestParameters;
     private final String toolChoiceName;
     private final Boolean disableParallelToolUse;
     private final List<AnthropicServerTool> serverTools;
@@ -90,7 +90,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(builder.apiKey)
-                .version(getOrDefault(builder.version, "2023-06-01"))
+                .version(getOrDefault(builder.version, AnthropicChatModel.ANTHROPIC_VERSION))
                 .beta(builder.beta)
                 .timeout(builder.timeout)
                 .logRequests(getOrDefault(builder.logRequests, false))
@@ -99,9 +99,39 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 .customHeaders(builder.customHeadersSupplier)
                 .build();
 
-        ChatRequestParameters commonParameters = DefaultChatRequestParameters.EMPTY;
+        this.listeners = copy(builder.listeners);
+        this.returnServerToolResults = getOrDefault(builder.returnServerToolResults, false);
+        this.supportedCapabilities = copy(builder.supportedCapabilities);
 
-        this.defaultRequestParameters = DefaultChatRequestParameters.builder()
+        ChatRequestParameters commonParameters;
+        if (builder.defaultRequestParameters != null) {
+            validate(builder.defaultRequestParameters);
+            commonParameters = builder.defaultRequestParameters;
+        } else {
+            commonParameters = DefaultChatRequestParameters.EMPTY;
+        }
+
+        AnthropicChatRequestParameters anthropicDefaults =
+                commonParameters instanceof AnthropicChatRequestParameters
+                        ? (AnthropicChatRequestParameters) commonParameters
+                        : AnthropicChatRequestParameters.EMPTY;
+
+        this.cacheSystemMessages = getOrDefault(builder.cacheSystemMessages, getOrDefault(anthropicDefaults.cacheSystemMessages(), false));
+        this.cacheTools = getOrDefault(builder.cacheTools, getOrDefault(anthropicDefaults.cacheTools(), false));
+        this.thinkingType = getOrDefault(builder.thinkingType, anthropicDefaults.thinkingType());
+        this.thinkingBudgetTokens = getOrDefault(builder.thinkingBudgetTokens, anthropicDefaults.thinkingBudgetTokens());
+        this.thinkingDisplay = builder.thinkingDisplay;
+        this.returnThinking = getOrDefault(builder.returnThinking, getOrDefault(anthropicDefaults.returnThinking(), false));
+        this.sendThinking = getOrDefault(builder.sendThinking, getOrDefault(anthropicDefaults.sendThinking(), true));
+        this.toolChoiceName = getOrDefault(builder.toolChoiceName, anthropicDefaults.toolChoiceName());
+        this.disableParallelToolUse = getOrDefault(builder.disableParallelToolUse, anthropicDefaults.disableParallelToolUse());
+        this.userId = getOrDefault(builder.userId, anthropicDefaults.userId());
+        this.serverTools = copy(builder.serverTools);
+        this.toolMetadataKeysToSend = copy(builder.toolMetadataKeysToSend);
+        this.customParameters = copy(builder.customParameters);
+        this.strictTools = builder.strictTools;
+
+        this.defaultRequestParameters = AnthropicChatRequestParameters.builder()
                 .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
@@ -112,25 +142,16 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
                 .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                .cacheSystemMessages(this.cacheSystemMessages)
+                .cacheTools(this.cacheTools)
+                .thinkingType(this.thinkingType)
+                .thinkingBudgetTokens(this.thinkingBudgetTokens)
+                .sendThinking(this.sendThinking)
+                .returnThinking(this.returnThinking)
+                .toolChoiceName(this.toolChoiceName)
+                .disableParallelToolUse(this.disableParallelToolUse)
+                .userId(this.userId)
                 .build();
-
-        this.cacheSystemMessages = getOrDefault(builder.cacheSystemMessages, false);
-        this.cacheTools = getOrDefault(builder.cacheTools, false);
-        this.thinkingType = builder.thinkingType;
-        this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
-        this.thinkingDisplay = builder.thinkingDisplay;
-        this.returnThinking = getOrDefault(builder.returnThinking, false);
-        this.sendThinking = getOrDefault(builder.sendThinking, true);
-        this.listeners = copy(builder.listeners);
-        this.toolChoiceName = builder.toolChoiceName;
-        this.disableParallelToolUse = builder.disableParallelToolUse;
-        this.serverTools = copy(builder.serverTools);
-        this.returnServerToolResults = getOrDefault(builder.returnServerToolResults, false);
-        this.toolMetadataKeysToSend = copy(builder.toolMetadataKeysToSend);
-        this.userId = builder.userId;
-        this.customParameters = copy(builder.customParameters);
-        this.strictTools = builder.strictTools;
-        this.supportedCapabilities = copy(builder.supportedCapabilities);
     }
 
     public static AnthropicStreamingChatModelBuilder builder() {
@@ -164,6 +185,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Boolean logResponses;
         private Logger logger;
         private List<ChatModelListener> listeners;
+        private ChatRequestParameters defaultRequestParameters;
         private ToolChoice toolChoice;
         private String toolChoiceName;
         private Boolean disableParallelToolUse;
@@ -523,6 +545,18 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         }
 
         /**
+         * Sets default {@link ChatRequestParameters} that are merged into every request.
+         * Individual request parameters take precedence over these defaults.
+         *
+         * @param parameters the default request parameters
+         * @return {@code this}
+         */
+        public AnthropicStreamingChatModelBuilder defaultRequestParameters(ChatRequestParameters parameters) {
+            this.defaultRequestParameters = parameters;
+            return this;
+        }
+
+        /**
          * Controls how the model uses tools.
          * <p>
          * Use {@link ToolChoice#AUTO} to let the model decide, {@link ToolChoice#REQUIRED} to force tool use,
@@ -713,20 +747,32 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         ensureNotNull(handler, "handler");
         validate(chatRequest.parameters());
+
+        ChatRequestParameters parameters = chatRequest.parameters();
+        AnthropicChatRequestParameters requestParameters =
+                parameters instanceof AnthropicChatRequestParameters
+                        ? (AnthropicChatRequestParameters) parameters
+                        : AnthropicChatRequestParameters.EMPTY;
+
         AnthropicCreateMessageRequest anthropicRequest = createAnthropicRequest(
                 chatRequest,
-                toThinking(thinkingType, thinkingBudgetTokens, thinkingDisplay),
-                sendThinking,
-                cacheSystemMessages ? EPHEMERAL : NO_CACHE,
-                cacheTools ? EPHEMERAL : NO_CACHE,
+                toThinking(
+                        getOrDefault(requestParameters.thinkingType(), this.thinkingType),
+                        getOrDefault(requestParameters.thinkingBudgetTokens(), this.thinkingBudgetTokens),
+                        this.thinkingDisplay),
+                getOrDefault(requestParameters.sendThinking(), this.sendThinking),
+                getOrDefault(requestParameters.cacheSystemMessages(), this.cacheSystemMessages) ? EPHEMERAL : NO_CACHE,
+                getOrDefault(requestParameters.cacheTools(), this.cacheTools) ? EPHEMERAL : NO_CACHE,
                 true,
-                toolChoiceName,
-                disableParallelToolUse,
-                serverTools,
-                toolMetadataKeysToSend,
-                userId,
-                customParameters,
-                strictTools);
+                getOrDefault(requestParameters.toolChoiceName(), this.toolChoiceName),
+                getOrDefault(requestParameters.disableParallelToolUse(), this.disableParallelToolUse),
+                this.serverTools,
+                this.toolMetadataKeysToSend,
+                getOrDefault(requestParameters.userId(), this.userId),
+                this.customParameters,
+                this.strictTools);
+
+        boolean returnThinking = getOrDefault(requestParameters.returnThinking(), this.returnThinking);
         client.createMessage(
                 anthropicRequest, new AnthropicCreateMessageOptions(returnThinking, returnServerToolResults), handler);
     }
@@ -742,7 +788,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     }
 
     @Override
-    public ChatRequestParameters defaultRequestParameters() {
+    public AnthropicChatRequestParameters defaultRequestParameters() {
         return defaultRequestParameters;
     }
 
