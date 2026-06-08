@@ -12,7 +12,9 @@ import reactor.blockhound.BlockHound;
 import reactor.blockhound.BlockingOperationError;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
@@ -50,7 +52,7 @@ class OpenAiStreamingChatModelNonBlockingIT {
         BlockHound.builder()
                 // The JDK HTTP client threads are where our publisher pipeline runs. If we block
                 // any of these, throughput collapses under concurrency. BlockHound enforces this.
-//                .nonBlockingThreadPredicate(prev -> prev.or(t -> t.getName().startsWith("HttpClient-")))
+                .nonBlockingThreadPredicate(prev -> prev.or(t -> t.getName().startsWith("HttpClient-")))
                 // Pool bookkeeping, not application blocking: idle workers park on the work queue
                 // (getTask), exiting workers acquire the pool's lock to coordinate shutdown
                 // (processWorkerExit).
@@ -90,6 +92,11 @@ class OpenAiStreamingChatModelNonBlockingIT {
         Flow.Publisher<StreamingEvent> publisher = model.chat(request);
         List<StreamingEvent> received = new CopyOnWriteArrayList<>();
         AtomicReference<Throwable> error = new AtomicReference<>();
+        // Names of every thread that delivered an event to us. BlockHound only enforces on threads
+        // its predicate marks non-blocking (here, "HttpClient-*"); if a refactor moved the pipeline
+        // (even partway through the stream) onto an unpoliced pool, the empty-violations assertion
+        // would pass vacuously. Asserting every delivery thread is policed catches that.
+        Set<String> deliveryThreads = ConcurrentHashMap.newKeySet();
         CompletableFuture<Void> done = new CompletableFuture<>();
 
         publisher.subscribe(new Flow.Subscriber<>() {
@@ -100,6 +107,7 @@ class OpenAiStreamingChatModelNonBlockingIT {
 
             @Override
             public void onNext(StreamingEvent event) {
+                deliveryThreads.add(Thread.currentThread().getName());
                 received.add(event);
             }
 
@@ -121,6 +129,12 @@ class OpenAiStreamingChatModelNonBlockingIT {
         // detected on a JDK HTTP thread anywhere in the pipeline.
         assertThat(error.get()).as("subscriber received an error (logging=%s)", logging).isNull();
         assertThat(received).as("no events received (logging=%s)", logging).isNotEmpty();
+        // Guards the assertion below from passing vacuously: every event must be delivered on a
+        // thread BlockHound is actually policing, otherwise an empty violations list proves nothing.
+        assertThat(deliveryThreads)
+                .as("all events must be delivered on BlockHound-policed JDK HTTP threads (logging=%s)", logging)
+                .isNotEmpty()
+                .allSatisfy(name -> assertThat(name).startsWith("HttpClient-"));
         assertThat(violations)
                 .as("BlockHound detected blocking calls on JDK HTTP threads (logging=%s) — see stack(s) below", logging)
                 .isEmpty();
