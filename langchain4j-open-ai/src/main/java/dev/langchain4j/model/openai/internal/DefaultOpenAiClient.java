@@ -191,6 +191,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
         });
     }
 
+    // TODO try to generalize and extract from this module
     private static final class ChatCompletionEventSubscriber implements Subscriber<StreamingHttpEvent> {
 
         private static final String DONE_MARKER = "[DONE]";
