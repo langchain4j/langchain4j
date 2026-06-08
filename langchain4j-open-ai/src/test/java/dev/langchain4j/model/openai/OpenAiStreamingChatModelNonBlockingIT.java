@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * body chunk on the shared {@link java.util.concurrent.ForkJoinPool#commonPool()}, which BlockHound
  * cannot police (its idle workers legitimately park and spin). So this test covers the steady-state
  * delivery threads ({@code HttpClient-*}) — the throughput-critical hot path — but not the brief
- * stream-startup work that runs on the common pool.
+ * stream-startup work that runs on the common pool. TODO
  * <p>
  * Runs against the real OpenAI endpoint to exercise the full HTTPS / HTTP/2 / real-network-pacing
  * stack — these code paths often hide blocking calls that WireMock-based plain HTTP wouldn't reach.
@@ -107,14 +107,15 @@ class OpenAiStreamingChatModelNonBlockingIT {
         // the JDK HTTP worker threads anywhere in the pipeline.
         assertThat(capture.error()).as("subscriber received an error (logging=%s)", logging).isNull();
         assertThat(capture.received()).as("no events received (logging=%s)", logging).isNotEmpty();
-        // Non-vacuity guard: at least one event must have been delivered on a policed worker thread,
-        // otherwise the empty-violations assertion would prove nothing. Some early events may arrive
-        // on the unpoliced common pool; a multi-token response ensures later chunks land on
-        // HttpClient-* workers.
+        // Every event must be delivered on a policed worker thread, so the no-violations assertion
+        // covers the whole pipeline (isNotEmpty guards the vacuous all-match-on-empty case). The real
+        // streaming API flushes headers before the first token, so all body chunks land on
+        // HttpClient-* workers, never on the common-pool sendAsync completion.
         assertThat(capture.deliveryThreads())
-                .as("at least one event must be delivered on a policed JDK HTTP worker thread (logging=%s); "
-                        + "delivered on: %s", logging, capture.deliveryThreads())
-                .anyMatch(name -> name.startsWith("HttpClient-"));
+                .as("every event must be delivered on a policed JDK HTTP worker thread (logging=%s); delivered on: %s",
+                        logging, capture.deliveryThreads())
+                .isNotEmpty()
+                .allMatch(name -> name.startsWith("HttpClient-"));
         assertThat(violations)
                 .as("BlockHound detected blocking calls on JDK HTTP worker threads (logging=%s) — see stack(s) below", logging)
                 .isEmpty();
