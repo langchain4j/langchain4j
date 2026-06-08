@@ -365,23 +365,28 @@ final class PartsAndContentsMapper {
                                         toolParts.add(fromContentToGPart(imageContent, mediaResolutionPerPartEnabled));
                                     } else {
                                         throw new UnsupportedFeatureException(
-                                                "Google AI Gemini does not support content type '"
-                                                        + content.type() + "' in tool results.");
+                                                "Google AI Gemini does not support content type '" + content.type()
+                                                        + "' in tool results.");
                                     }
                                 }
                                 if (responseMap.isEmpty()) {
                                     responseMap.put("response", "");
                                 }
-                                toolParts.add(0, GeminiContent.GeminiPart.builder()
-                                        .functionResponse(new GeminiFunctionResponse(
-                                                toolResultMessage.toolName(), responseMap))
-                                        .build());
+                                toolParts.add(
+                                        0,
+                                        GeminiContent.GeminiPart.builder()
+                                                .functionResponse(new GeminiFunctionResponse(
+                                                        toolResultMessage.id(),
+                                                        toolResultMessage.toolName(),
+                                                        responseMap))
+                                                .build());
                                 return new GeminiContent(toolParts, GeminiRole.USER.toString());
                             }
 
                             return new GeminiContent(
                                     List.of(GeminiContent.GeminiPart.builder()
                                             .functionResponse(new GeminiFunctionResponse(
+                                                    toolResultMessage.id(),
                                                     toolResultMessage.toolName(),
                                                     Map.of("response", toolResultMessage.text())))
                                             .build()),
@@ -422,7 +427,9 @@ final class PartsAndContentsMapper {
             boolean shouldAddThoughtSignature = i == 0 && isNotNullOrEmpty(thoughtSignature);
             GeminiContent.GeminiPart geminiPart = GeminiContent.GeminiPart.builder()
                     .functionCall(new GeminiFunctionCall(
-                            toolExecutionRequest.name(), fromJson(toolExecutionRequest.arguments(), Map.class)))
+                            toolExecutionRequest.id(),
+                            toolExecutionRequest.name(),
+                            fromJson(toolExecutionRequest.arguments(), Map.class)))
                     .thoughtSignature(shouldAddThoughtSignature ? thoughtSignature : null)
                     .build();
             geminiParts.add(geminiPart);

@@ -2,6 +2,7 @@ package dev.langchain4j.model.openai.internal;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -36,6 +37,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.video.Video;
 import dev.langchain4j.exception.ContentFilteredException;
+import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -294,11 +296,12 @@ public class OpenAiUtils {
     }
 
     private static Tool toTool(ToolSpecification toolSpecification, boolean strict) {
+        boolean effectiveStrict = isEffectivelyStrict(toolSpecification, strict);
         Function.Builder functionBuilder = Function.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())
-                .parameters(toOpenAiParameters(toolSpecification.parameters(), strict));
-        if (strict) {
+                .parameters(toOpenAiParameters(toolSpecification.parameters(), effectiveStrict));
+        if (effectiveStrict) {
             functionBuilder.strict(true);
         }
         Function function = functionBuilder.build();
@@ -348,6 +351,14 @@ public class OpenAiUtils {
     }
 
     public static AiMessage aiMessageFrom(ChatCompletionResponse response, boolean returnThinking) {
+        if (isNullOrEmpty(response.choices())) {
+            throw new InternalServerException("Chat completion failed: no choices returned in response");
+        }
+        if (response.choices().size() > 1) {
+            throw new InternalServerException(format(
+                    "Chat completion failed: expected exactly one choice, but got %s choices",
+                    response.choices().size()));
+        }
         AssistantMessage assistantMessage = response.choices().get(0).message();
 
         String refusal = assistantMessage.refusal();

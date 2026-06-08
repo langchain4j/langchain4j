@@ -14,6 +14,7 @@ import static org.mockito.Mockito.verify;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
@@ -27,6 +28,7 @@ import dev.langchain4j.service.UserMessage;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -1966,5 +1968,262 @@ public abstract class AbstractAiServiceWithJsonSchemaIT {
 
     protected boolean supportsRecursion() {
         return false;
+    }
+
+    // Polymorphic types
+
+    sealed interface Animal permits Dog, Cat {}
+
+    record Dog(String name, String breed) implements Animal {}
+
+    record Cat(String name, boolean indoor) implements Animal {}
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_extract_polymorphic_type(ChatModel model) {
+
+        // given
+        interface AnimalExtractor {
+            Animal extractAnimalFrom(String text);
+        }
+
+        model = spy(model);
+
+        AnimalExtractor extractor = AiServices.create(AnimalExtractor.class, model);
+
+        String text = "Rex is a Labrador dog";
+
+        // when
+        Animal animal = extractor.extractAnimalFrom(text);
+
+        // then
+        assertThat(animal).isInstanceOf(Dog.class);
+        Dog dog = (Dog) animal;
+        assertThat(dog.name()).isEqualToIgnoringCase("Rex");
+        assertThat(dog.breed()).containsIgnoringCase("Labrador");
+
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(singletonList(userMessage(text)))
+                        .responseFormat(ResponseFormat.builder()
+                                .type(JSON)
+                                .jsonSchema(JsonSchema.builder()
+                                        .name("Animal")
+                                        .rootElement(JsonObjectSchema.builder()
+                                                .addProperty(
+                                                        "value",
+                                                        JsonAnyOfSchema.builder()
+                                                                .description("Animal")
+                                                                .anyOf(List.of(
+                                                                        JsonObjectSchema.builder()
+                                                                                .description("Dog")
+                                                                                .addProperty(
+                                                                                        "type",
+                                                                                        JsonEnumSchema.builder()
+                                                                                                .enumValues("Dog")
+                                                                                                .build())
+                                                                                .addStringProperty("name")
+                                                                                .addStringProperty("breed")
+                                                                                .required("type")
+                                                                                .build(),
+                                                                        JsonObjectSchema.builder()
+                                                                                .description("Cat")
+                                                                                .addProperty(
+                                                                                        "type",
+                                                                                        JsonEnumSchema.builder()
+                                                                                                .enumValues("Cat")
+                                                                                                .build())
+                                                                                .addStringProperty("name")
+                                                                                .addBooleanProperty("indoor")
+                                                                                .required("type")
+                                                                                .build()))
+                                                                .build())
+                                                .required("value")
+                                                .build())
+                                        .build())
+                                .build())
+                        .build());
+        verify(model).supportedCapabilities();
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_extract_list_of_polymorphic_types(ChatModel model) {
+
+        // given
+        interface AnimalsExtractor {
+            List<Animal> extractAnimalsFrom(String text);
+        }
+
+        model = spy(model);
+
+        AnimalsExtractor extractor = AiServices.create(AnimalsExtractor.class, model);
+
+        String text = "Rex is a Labrador. Whiskers is an indoor cat.";
+
+        // when
+        List<Animal> animals = extractor.extractAnimalsFrom(text);
+
+        // then
+        assertThat(animals).hasSize(2);
+        assertThat(animals).hasAtLeastOneElementOfType(Dog.class);
+        assertThat(animals).hasAtLeastOneElementOfType(Cat.class);
+
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(singletonList(userMessage(text)))
+                        .responseFormat(ResponseFormat.builder()
+                                .type(JSON)
+                                .jsonSchema(JsonSchema.builder()
+                                        .name("List_of_Animal")
+                                        .rootElement(JsonObjectSchema.builder()
+                                                .addProperty(
+                                                        "values",
+                                                        JsonArraySchema.builder()
+                                                                .items(JsonAnyOfSchema.builder()
+                                                                        .description("Animal")
+                                                                        .anyOf(List.of(
+                                                                                JsonObjectSchema.builder()
+                                                                                        .description("Dog")
+                                                                                        .addProperty(
+                                                                                                "type",
+                                                                                                JsonEnumSchema.builder()
+                                                                                                        .enumValues(
+                                                                                                                "Dog")
+                                                                                                        .build())
+                                                                                        .addStringProperty("name")
+                                                                                        .addStringProperty("breed")
+                                                                                        .required("type")
+                                                                                        .build(),
+                                                                                JsonObjectSchema.builder()
+                                                                                        .description("Cat")
+                                                                                        .addProperty(
+                                                                                                "type",
+                                                                                                JsonEnumSchema.builder()
+                                                                                                        .enumValues(
+                                                                                                                "Cat")
+                                                                                                        .build())
+                                                                                        .addStringProperty("name")
+                                                                                        .addBooleanProperty("indoor")
+                                                                                        .required("type")
+                                                                                        .build()))
+                                                                        .build())
+                                                                .build())
+                                                .required("values")
+                                                .build())
+                                        .build())
+                                .build())
+                        .build());
+        verify(model).supportedCapabilities();
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_extract_pojo_with_nested_polymorphic_field(ChatModel model) {
+
+        // given
+        record Owner(String name, Animal pet) {}
+
+        interface OwnerExtractor {
+            Owner extractOwnerFrom(String text);
+        }
+
+        model = spy(model);
+
+        OwnerExtractor extractor = AiServices.create(OwnerExtractor.class, model);
+
+        String text = "Alice owns a Labrador dog named Rex.";
+
+        // when
+        Owner owner = extractor.extractOwnerFrom(text);
+
+        // then
+        assertThat(owner.name()).isEqualToIgnoringCase("Alice");
+        assertThat(owner.pet()).isInstanceOf(Dog.class);
+        Dog dog = (Dog) owner.pet();
+        assertThat(dog.name()).isEqualToIgnoringCase("Rex");
+        assertThat(dog.breed()).containsIgnoringCase("Labrador");
+
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(singletonList(userMessage(text)))
+                        .responseFormat(ResponseFormat.builder()
+                                .type(JSON)
+                                .jsonSchema(JsonSchema.builder()
+                                        .name("Owner")
+                                        .rootElement(JsonObjectSchema.builder()
+                                                .addStringProperty("name")
+                                                .addProperty(
+                                                        "pet",
+                                                        JsonAnyOfSchema.builder()
+                                                                .description("Animal")
+                                                                .anyOf(List.of(
+                                                                        JsonObjectSchema.builder()
+                                                                                .description("Dog")
+                                                                                .addProperty(
+                                                                                        "type",
+                                                                                        JsonEnumSchema.builder()
+                                                                                                .enumValues("Dog")
+                                                                                                .build())
+                                                                                .addStringProperty("name")
+                                                                                .addStringProperty("breed")
+                                                                                .required("type")
+                                                                                .build(),
+                                                                        JsonObjectSchema.builder()
+                                                                                .description("Cat")
+                                                                                .addProperty(
+                                                                                        "type",
+                                                                                        JsonEnumSchema.builder()
+                                                                                                .enumValues("Cat")
+                                                                                                .build())
+                                                                                .addStringProperty("name")
+                                                                                .addBooleanProperty("indoor")
+                                                                                .required("type")
+                                                                                .build()))
+                                                                .build())
+                                                .build())
+                                        .build())
+                                .build())
+                        .build());
+        verify(model).supportedCapabilities();
+    }
+
+    sealed interface ArithmeticExpression permits Constant, Addition {}
+
+    record Constant(int value) implements ArithmeticExpression {}
+
+    record Addition(ArithmeticExpression left, ArithmeticExpression right) implements ArithmeticExpression {}
+
+    @ParameterizedTest
+    @MethodSource("models")
+    @EnabledIf("supportsRecursion")
+    protected void should_extract_recursive_polymorphic_type(ChatModel model) {
+
+        // given
+        interface ExpressionExtractor {
+            ArithmeticExpression extractFrom(String text);
+        }
+
+        ExpressionExtractor extractor = AiServices.create(ExpressionExtractor.class, model);
+
+        // when
+        ArithmeticExpression expression = extractor.extractFrom(
+                "Represent the literal expression 1+2+3 as a syntax tree. Do NOT simplify or evaluate. "
+                        + "Use a left-associative tree: Addition(Addition(Constant(1), Constant(2)), Constant(3)).");
+
+        // then
+        assertThat(expression).isInstanceOf(Addition.class);
+        List<Integer> leaves = new ArrayList<>();
+        collectLeaves(expression, leaves);
+        assertThat(leaves).containsExactlyInAnyOrder(1, 2, 3);
+    }
+
+    private static void collectLeaves(ArithmeticExpression expr, List<Integer> leaves) {
+        if (expr instanceof Constant c) {
+            leaves.add(c.value());
+        } else if (expr instanceof Addition a) {
+            collectLeaves(a.left(), leaves);
+            collectLeaves(a.right(), leaves);
+        }
     }
 }

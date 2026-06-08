@@ -21,11 +21,10 @@ class BedrockCohereEmbeddingResponse {
         public void setFloatEmbeddings(float[][] floatEmbeddings) {
             this.floatEmbeddings = floatEmbeddings;
         }
-
     }
 
     private Embeddings embeddings;
-    private int inputTextTokenCount;
+    private Integer inputTextTokenCount;
 
     public Embeddings getEmbeddings() {
         return embeddings;
@@ -35,11 +34,11 @@ class BedrockCohereEmbeddingResponse {
         this.embeddings = embeddings;
     }
 
-    public int getInputTextTokenCount() {
+    public Integer getInputTextTokenCount() {
         return inputTextTokenCount;
     }
 
-    public void setInputTextTokenCount(int inputTextTokenCount) {
+    public void setInputTextTokenCount(Integer inputTextTokenCount) {
         this.inputTextTokenCount = inputTextTokenCount;
     }
 }
