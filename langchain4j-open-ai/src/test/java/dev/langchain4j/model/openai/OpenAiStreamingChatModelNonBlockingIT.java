@@ -37,6 +37,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiStreamingChatModelNonBlockingIT {
 
+    // TODO similar test for http client and AI Service
+
     /**
      * Recorded BlockHound violations. Cleared per test in {@link #resetViolations()}; asserted
      * empty after each test. Using a list (not a flag) so debugging can show all offending calls.
