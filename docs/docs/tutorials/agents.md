@@ -2207,6 +2207,224 @@ or provide a completely custom strategy:
 
 This custom strategy normalizes all votes to uppercase before counting, handling minor formatting differences between agents (e.g. "Positive" vs "POSITIVE").
 
+### Debate agentic pattern
+
+The patterns discussed so far either dispatch agents once (voting), activate them based on data availability (blackboard, P2P), or sequence them toward a goal (GOAP). None of them supports adversarial refinement — a process where agents see each other's reasoning and iteratively revise their positions. The debate pattern fills this gap: agents generate independent answers in parallel, then enter critique rounds where they can read the full debate history and refine their arguments. Rounds continue until the agents converge on the same answer or a maximum number of rounds is reached, at which point a judge agent renders a final verdict.
+
+This pattern is especially useful for fact-checking, risk assessment, code review, and any domain where exposing agents to competing arguments improves output quality. By forcing agents to confront and respond to each other's reasoning, the debate pattern catches issues that any single agent might miss and filters out false positives through adversarial scrutiny.
+
+The `DebatePlanner` partitions its sub-agents into *debaters* (all but the last) and a *judge* (the last registered sub-agent). It dispatches all debaters in parallel each round, collects their outputs, and checks for convergence:
+
+```java
+public class DebatePlanner implements Planner {
+
+    public static final String DEBATE_CONTEXT_KEY = "debateContext";
+
+    private static final int DEFAULT_MAX_ROUNDS = 3;
+
+    private final int maxRounds;
+    private final ConvergenceStrategy convergenceStrategy;
+
+    private List<AgentInstance> debaters;
+    private AgentInstance judge;
+
+    private int currentRound = 1;
+    private int completedInRound = 0;
+    private final Map<String, Object> lastDebatersMessages = new HashMap<>();
+    private boolean judgePhase = false;
+
+    public DebatePlanner() {
+        this(DEFAULT_MAX_ROUNDS, ConvergenceStrategy.unanimous());
+    }
+
+    public DebatePlanner(int maxRounds, ConvergenceStrategy convergenceStrategy) {
+        this.maxRounds = maxRounds;
+        this.convergenceStrategy = convergenceStrategy;
+    }
+
+    @Override
+    public void init(InitPlanningContext initPlanningContext) {
+        List<AgentInstance> subagents = initPlanningContext.subagents();
+        this.debaters = new ArrayList<>(subagents.subList(0, subagents.size() - 1));
+        this.judge = subagents.get(subagents.size() - 1);
+    }
+
+    @Override
+    public Action firstAction(PlanningContext planningContext) {
+        planningContext.agenticScope().writeState(DEBATE_CONTEXT_KEY, "");
+        return call(debaters);
+    }
+
+    @Override
+    public Action nextAction(PlanningContext planningContext) {
+        if (judgePhase) {
+            return done(planningContext.previousAgentInvocation().output());
+        }
+
+        lastDebatersMessages.put(
+                planningContext.previousAgentInvocation().agentName(),
+                planningContext.previousAgentInvocation().output());
+        completedInRound++;
+
+        if (completedInRound < debaters.size()) {
+            return noOp();
+        }
+
+        AgenticScope scope = planningContext.agenticScope();
+
+        if (convergenceStrategy.hasConverged(lastDebatersMessages.values())) {
+            judgePhase = true;
+        }
+        if (currentRound >= maxRounds) {
+            judgePhase = true;
+        }
+
+        if (judgePhase) {
+            writeDebateContext(scope);
+            return call(judge);
+        }
+
+        currentRound++;
+        completedInRound = 0;
+        writeDebateContext(scope);
+        return call(debaters);
+    }
+
+    private void writeDebateContext(AgenticScope scope) {
+        String debatersContext = lastDebatersMessages.entrySet().stream()
+                .map(e -> e.getKey() + ": \"" + e.getValue() + "\"")
+                .collect(Collectors.joining("\n"));
+        scope.writeState(DEBATE_CONTEXT_KEY, debatersContext);
+    }
+}
+```
+
+In `firstAction`, the planner seeds an empty `debateContext` key in the scope (so that debater agents can reference it without error on round 1) and dispatches all debaters in parallel. Each call records the completed agent's output in a map keyed by agent name. When all debaters have finished, the planner checks for convergence using the `ConvergenceStrategy`. Whether the debaters converge or the maximum number of rounds is reached, the judge agent is always invoked — it receives the debate context (formatted as `AgentName: "response"` entries) and renders a final verdict. If neither condition is met, the planner writes the current debate context into the scope and re-dispatches all debaters for another round.
+
+The `ConvergenceStrategy` is a functional interface that determines whether the debaters' positions have converged:
+
+```java
+@FunctionalInterface
+public interface ConvergenceStrategy {
+
+    boolean hasConverged(Collection<Object> positions);
+}
+```
+
+The default `unanimous()` strategy checks for exact equality across all positions, which works well for label-based decisions (e.g., APPROVE/REJECT). For free-text positions, users should provide a custom strategy based on semantic similarity or keyword matching.
+
+To see this pattern in action, let's build a debate panel where three ethics debaters argue from different philosophical perspectives, and a judge synthesizes their arguments into a final verdict:
+
+```java
+public interface UtilitarianDebater {
+
+    @UserMessage("""
+            You are a utilitarian ethics debater. \
+            Consider the following question and argue from a utilitarian perspective, maximizing overall well-being.
+            If previous debate context is provided, consider the other debaters' arguments and refine your position.
+            Keep your response to 2-3 sentences. End with a one-word verdict: AGREE or DISAGREE.
+            Question: {{question}}
+            Previous debate context: {{debateContext}}
+            """)
+    @Agent(value = "Argues from a utilitarian ethics perspective", name = "Utilitarian")
+    String debate(@V("question") String question, @V(DEBATE_CONTEXT_KEY) String debateContext);
+}
+
+public interface DeontologicalDebater {
+
+    @UserMessage("""
+            You are a deontological ethics debater. \
+            Consider the following question and argue based on moral rules, duties, and rights.
+            If previous debate context is provided, consider the other debaters' arguments and refine your position.
+            Keep your response to 2-3 sentences. End with a one-word verdict: AGREE or DISAGREE.
+            Question: {{question}}
+            Previous debate context: {{debateContext}}
+            """)
+    @Agent(value = "Argues from a deontological ethics perspective", name = "Deontologist")
+    String debate(@V("question") String question, @V(DEBATE_CONTEXT_KEY) String debateContext);
+}
+
+public interface PragmatistDebater {
+
+    @UserMessage("""
+            You are a pragmatist debater. \
+            Consider the following question and argue based on practical consequences and real-world outcomes.
+            If previous debate context is provided, consider the other debaters' arguments and refine your position.
+            Keep your response to 2-3 sentences. End with a one-word verdict: AGREE or DISAGREE.
+            Question: {{question}}
+            Previous debate context: {{debateContext}}
+            """)
+    @Agent(value = "Argues from a pragmatist perspective", name = "Pragmatist")
+    String debate(@V("question") String question, @V(DEBATE_CONTEXT_KEY) String debateContext);
+}
+
+public interface EthicsJudge {
+
+    @UserMessage("""
+            You are an impartial ethics judge. \
+            Review the debate context where multiple debaters have argued about a question from different perspectives.
+            Synthesize their arguments and provide a balanced, well-reasoned final verdict in 3-4 sentences.
+            Debate context: {{debateContext}}
+            """)
+    @Agent(value = "Renders a final verdict by synthesizing debate arguments", name = "Judge")
+    String judge(@V("debateContext") String debateContext);
+}
+```
+
+Each debater takes both a `question` (the original input, stays constant) and a `debateContext` (updated by the planner each round with the debate history). The `@V(DEBATE_CONTEXT_KEY)` references the public constant from `DebatePlanner`, and the explicit `name` on each `@Agent` controls how agents are labeled in the debate context. The judge only receives the `debateContext`, since the original question is embedded in the debate exchanges. Note that each debater must have a distinct `outputKey` to prevent them from overwriting each other.
+
+The top-level planner interface and wiring look like this:
+
+```java
+public interface EthicsPanel {
+
+    @Agent
+    String debate(@V("question") String question);
+}
+
+UtilitarianDebater d1 = AgenticServices.agentBuilder(UtilitarianDebater.class)
+        .chatModel(baseModel())
+        .outputKey("utilitarian")
+        .build();
+
+DeontologicalDebater d2 = AgenticServices.agentBuilder(DeontologicalDebater.class)
+        .chatModel(baseModel())
+        .outputKey("deontological")
+        .build();
+
+PragmatistDebater d3 = AgenticServices.agentBuilder(PragmatistDebater.class)
+        .chatModel(baseModel())
+        .outputKey("pragmatist")
+        .build();
+
+EthicsJudge judge = AgenticServices.agentBuilder(EthicsJudge.class)
+        .chatModel(baseModel())
+        .outputKey("verdict")
+        .build();
+
+EthicsPanel panel = AgenticServices.plannerBuilder(EthicsPanel.class)
+        .subAgents(d1, d2, d3, judge)
+        .outputKey("verdict")
+        .planner(() -> new DebatePlanner(3))
+        .build();
+
+String result = panel.debate(
+        "Is it ethical to use AI-generated art in commercial products without crediting the AI tool?");
+```
+
+The debaters are listed first, and the judge is always the last sub-agent. In round 1, all three debaters produce independent positions. In round 2, each debater sees the others' arguments and can refine, dispute, or expand their position. Whether the debaters converge or the maximum number of rounds is reached, the judge always renders the final verdict based on the full debate context.
+
+To customize the convergence check or the number of rounds:
+
+```java
+.planner(() -> new DebatePlanner(5))  // allow up to 5 rounds
+```
+
+```java
+.planner(() -> new DebatePlanner(positions ->
+        positions.stream().allMatch(p -> p.toString().contains("AGREE"))))  // custom convergence
+```
+
 ## Non-AI agents
 
 All the agents discussed so far are AI agents, meaning that they are based on LLMs and can be invoked to perform tasks that require natural language understanding and generation. However, the `langchain4j-agentic` module also supports non-AI agents, which can be used to perform tasks that do not require natural language processing, like invoking a REST API or executing a command. These non-AI agents are indeed more similar to tools, but in this context it is convenient to model them as agents, so that they can be used in the same way as AI agents, and mixed with them to compose more powerful and complete agentic systems.
