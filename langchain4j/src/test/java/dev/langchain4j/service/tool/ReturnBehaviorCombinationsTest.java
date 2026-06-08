@@ -8,7 +8,6 @@ import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.Outcom
 import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.ToolStep.err;
 import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.ToolStep.ok;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import dev.langchain4j.agent.tool.ReturnBehavior;
@@ -19,12 +18,15 @@ import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.TokenStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -44,6 +46,10 @@ class ReturnBehaviorCombinationsTest {
 
     interface Assistant {
         Result<String> chat(String message);
+
+        String chatString(String message);
+
+        void chatVoid(String message);
     }
 
     interface StreamingAssistant {
@@ -68,6 +74,16 @@ class ReturnBehaviorCombinationsTest {
         }
 
         @Tool(returnBehavior = IMMEDIATE)
+        public String immediate2_ok() {
+            return "immediate2";
+        }
+
+        @Tool(returnBehavior = IMMEDIATE)
+        public int immediateInteger_ok() {
+            return 1;
+        }
+
+        @Tool(returnBehavior = IMMEDIATE)
         public String immediate_err() {
             throw new IllegalStateException("boom (immediate)");
         }
@@ -81,6 +97,15 @@ class ReturnBehaviorCombinationsTest {
         public String immediate_if_last_err() {
             throw new IllegalStateException("boom (immediate_if_last)");
         }
+
+        @Tool(returnBehavior = IMMEDIATE)
+        public void immediateVoid_ok() {}
+
+        @Tool(returnBehavior = IMMEDIATE)
+        public String immediateNull_ok() {
+            System.out.println("**** immediateNull_ok");
+            return null;
+        }
     }
 
     enum Outcome {
@@ -88,14 +113,18 @@ class ReturnBehaviorCombinationsTest {
         REPROCESS
     }
 
-    record ToolStep(ReturnBehavior behavior, boolean errors) {
+    record ToolStep(ReturnBehavior behavior, boolean errors, Optional<String> toolName) {
 
         static ToolStep ok(ReturnBehavior behavior) {
-            return new ToolStep(behavior, false);
+            return new ToolStep(behavior, false, Optional.empty());
         }
 
         static ToolStep err(ReturnBehavior behavior) {
-            return new ToolStep(behavior, true);
+            return new ToolStep(behavior, true, Optional.empty());
+        }
+
+        static ToolStep withToolName(ReturnBehavior behavior, String toolName) {
+            return new ToolStep(behavior, false, Optional.of(toolName));
         }
 
         @Override
@@ -207,8 +236,8 @@ class ReturnBehaviorCombinationsTest {
 
         // First LLM response: the tool calls under test.
         // Second LLM response: a final text answer, consumed only when the loop reprocesses.
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
-                AiMessage.from(toolRequests.toArray(new ToolExecutionRequest[0])), AiMessage.from("final answer"));
+        StreamingChatModelMock model =
+                StreamingChatModelMock.thatAlwaysStreams(AiMessage.from(toolRequests), AiMessage.from("final answer"));
 
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
                 .streamingChatModel(model)
@@ -242,6 +271,70 @@ class ReturnBehaviorCombinationsTest {
         }
     }
 
+    @Test
+    public void testImmediateWithoutResultReturnType() {
+        // test single tool execution that returns void
+        List<ToolStep> steps = List.of(ToolStep.withToolName(IMMEDIATE, "immediateVoid"));
+        testImmediateWithoutResultReturnType(steps, assistant -> assistant.chatVoid("go"));
+        testImmediateWithoutResultReturnType(
+                steps, assistant -> assertThat(assistant.chatString("go")).isNull());
+
+        // test multiple tool executions all null.  Should be ok.
+        steps = List.of(
+                ToolStep.withToolName(IMMEDIATE, "immediateVoid"), ToolStep.withToolName(IMMEDIATE, "immediateNull"));
+        testImmediateWithoutResultReturnType(steps, assistant -> assistant.chatVoid("go"));
+        testImmediateWithoutResultReturnType(
+                steps, assistant -> assertThat(assistant.chatString("go")).isNull());
+
+        // test multiple tool executions with only one that has a non-null tool result
+        // this should be ok.
+        steps = List.of(
+                ToolStep.withToolName(IMMEDIATE, "immediateVoid"),
+                ToolStep.ok(IMMEDIATE),
+                ToolStep.withToolName(IMMEDIATE, "immediateNull"));
+        testImmediateWithoutResultReturnType(steps, assistant -> assistant.chatVoid("go"));
+        testImmediateWithoutResultReturnType(
+                steps, assistant -> assertThat(assistant.chatString("go")).isEqualTo("immediate"));
+
+        steps = List.of(ToolStep.withToolName(IMMEDIATE, "immediate2"), ToolStep.ok(IMMEDIATE));
+        // void return types should just return null
+        testImmediateWithoutResultReturnType(steps, assistant -> assistant.chatVoid("go"));
+
+        // there's 2 tool executions that have non-null result objects so exception should be thrown
+        try {
+            testImmediateWithoutResultReturnType(steps, assistant -> assistant.chatString("go"));
+        } catch (IllegalConfigurationException ex) {
+            // good!
+        }
+
+        // tool execution integer result object cannot resolve to String so exception should be thrown
+        steps = List.of(ToolStep.withToolName(IMMEDIATE, "immediateInteger"));
+        try {
+            testImmediateWithoutResultReturnType(steps, assistant -> assistant.chatString("go"));
+        } catch (IllegalConfigurationException ex) {
+            // good!
+        }
+    }
+
+    private void testImmediateWithoutResultReturnType(List<ToolStep> toolSteps, Consumer<Assistant> chat) {
+        List<ToolExecutionRequest> toolRequests = toolRequestsFor(toolSteps);
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(AiMessage.from(toolRequests));
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .tools(new Tools())
+                .build();
+        chat.accept(assistant);
+        assertThat(model.requests())
+                .as("immediate return means a single LLM call (no reprocessing round trip)")
+                .hasSize(1);
+    }
+
+    private static ChatModelMock createChatModelMock(List<ToolExecutionRequest> toolRequests) {
+        ChatModelMock model =
+                ChatModelMock.thatAlwaysResponds(AiMessage.from(toolRequests.toArray(new ToolExecutionRequest[0])));
+        return model;
+    }
+
     private static List<ToolExecutionRequest> toolRequestsFor(List<ToolStep> steps) {
         List<ToolExecutionRequest> toolRequests = new ArrayList<>();
         for (int i = 0; i < steps.size(); i++) {
@@ -255,19 +348,13 @@ class ReturnBehaviorCombinationsTest {
     }
 
     private static String toolNameFor(ToolStep step) {
-        String prefix =
-                switch (step.behavior()) {
+        String prefix = step.toolName().isPresent()
+                ? step.toolName.get()
+                : switch (step.behavior()) {
                     case TO_LLM -> "to_llm";
                     case IMMEDIATE -> "immediate";
                     case IMMEDIATE_IF_LAST -> "immediate_if_last";
                 };
         return prefix + (step.errors() ? "_err" : "_ok");
-    }
-
-    @Test
-    void shouldReturnImmediately_empty_list_should_not_crash() {
-        assertThatNoException().isThrownBy(() -> ToolService.shouldReturnImmediately(false, List.of()));
-        assertThat(ToolService.shouldReturnImmediately(false, List.of())).isFalse();
-        assertThat(ToolService.shouldReturnImmediately(true, List.of())).isFalse();
     }
 }

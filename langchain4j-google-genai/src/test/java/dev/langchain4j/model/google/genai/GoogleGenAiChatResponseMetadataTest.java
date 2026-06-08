@@ -36,14 +36,14 @@ class GoogleGenAiChatResponseMetadataTest {
 
         GoogleGenAiChatResponseMetadata metadata = GoogleGenAiChatResponseMetadata.builder()
                 .id("test-id")
-                .modelName("gemini-2.0-flash")
+                .modelName("gemini-3.1-flash-lite")
                 .tokenUsage(new TokenUsage(10, 5))
                 .finishReason(FinishReason.STOP)
                 .rawResponse(rawResponse)
                 .build();
 
         assertThat(metadata.id()).isEqualTo("test-id");
-        assertThat(metadata.modelName()).isEqualTo("gemini-2.0-flash");
+        assertThat(metadata.modelName()).isEqualTo("gemini-3.1-flash-lite");
         assertThat(metadata.rawResponse()).isSameAs(rawResponse);
     }
 
@@ -109,13 +109,13 @@ class GoogleGenAiChatResponseMetadataTest {
     void should_have_toString() {
         GoogleGenAiChatResponseMetadata metadata = GoogleGenAiChatResponseMetadata.builder()
                 .id("test-id")
-                .modelName("gemini-2.0-flash")
+                .modelName("gemini-3.1-flash-lite")
                 .finishReason(FinishReason.STOP)
                 .build();
 
         String str = metadata.toString();
         assertThat(str).contains("test-id");
-        assertThat(str).contains("gemini-2.0-flash");
+        assertThat(str).contains("gemini-3.1-flash-lite");
         assertThat(str).contains("STOP");
     }
 }

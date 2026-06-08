@@ -31,7 +31,7 @@ public class InternalOpenAiOfficialTestHelper {
     public static final com.openai.models.embeddings.EmbeddingModel EMBEDDING_MODEL_NAME =
             com.openai.models.embeddings.EmbeddingModel.TEXT_EMBEDDING_3_SMALL;
     public static final com.openai.models.images.ImageModel IMAGE_MODEL_NAME =
-            com.openai.models.images.ImageModel.DALL_E_3;
+            com.openai.models.images.ImageModel.GPT_IMAGE_1;
 
     // TODO add missing models
 

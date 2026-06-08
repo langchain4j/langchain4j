@@ -10,7 +10,7 @@ sidebar_position: 5
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-voyage-ai</artifactId>
-    <version>1.15.0-beta25</version>
+    <version>1.16.1-beta26</version>
 </dependency>
 ```
 

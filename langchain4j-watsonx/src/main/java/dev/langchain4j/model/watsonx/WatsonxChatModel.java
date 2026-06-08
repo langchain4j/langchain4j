@@ -107,7 +107,9 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
         }
 
         FinishReason finishReason = Converter.toFinishReason(choice.finishReason());
-        TokenUsage tokenUsage = new TokenUsage(usage.promptTokens(), usage.completionTokens(), usage.totalTokens());
+        TokenUsage tokenUsage = usage != null
+                ? new TokenUsage(usage.promptTokens(), usage.completionTokens(), usage.totalTokens())
+                : null;
 
         return ChatResponse.builder()
                 .aiMessage(aiMessage.build())

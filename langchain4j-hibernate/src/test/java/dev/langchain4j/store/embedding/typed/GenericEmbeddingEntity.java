@@ -1,7 +1,7 @@
 package dev.langchain4j.store.embedding.typed;
 
 import dev.langchain4j.store.embedding.hibernate.EmbeddedText;
-import dev.langchain4j.store.embedding.hibernate.Embedding;
+import dev.langchain4j.store.embedding.hibernate.EmbeddingVector;
 import dev.langchain4j.store.embedding.hibernate.UnmappedMetadata;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -20,7 +20,7 @@ public class GenericEmbeddingEntity {
     @EmbeddedText
     private String text;
 
-    @Embedding
+    @EmbeddingVector
     @Array(length = 384)
     private float[] embedding;
 

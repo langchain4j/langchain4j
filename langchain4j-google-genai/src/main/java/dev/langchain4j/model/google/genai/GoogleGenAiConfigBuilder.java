@@ -8,12 +8,15 @@ import com.google.genai.types.FunctionDeclaration;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GoogleMaps;
 import com.google.genai.types.GoogleSearch;
+import com.google.genai.types.Retrieval;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.Schema;
 import com.google.genai.types.ThinkingConfig;
+import com.google.genai.types.ThinkingLevel;
 import com.google.genai.types.Tool;
 import com.google.genai.types.ToolConfig;
 import com.google.genai.types.UrlContext;
+import com.google.genai.types.VertexAISearch;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -21,6 +24,7 @@ import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 class GoogleGenAiConfigBuilder {
 
@@ -29,11 +33,15 @@ class GoogleGenAiConfigBuilder {
             Content systemInstruction,
             List<SafetySetting> safetySettings,
             Integer thinkingBudget,
+            String thinkingLevel,
             Integer seed,
             boolean googleSearchEnabled,
             boolean googleMapsEnabled,
             boolean urlContextEnabled,
-            List<String> allowedFunctionNames) {
+            List<String> allowedFunctionNames,
+            String vertexSearchDatastore,
+            Map<String, String> labels,
+            String cachedContent) {
 
         GenerateContentConfig.Builder configBuilder = GenerateContentConfig.builder();
 
@@ -45,6 +53,12 @@ class GoogleGenAiConfigBuilder {
         }
         if (parameters.topK() != null) {
             configBuilder.topK(parameters.topK().floatValue());
+        }
+        if (parameters.frequencyPenalty() != null) {
+            configBuilder.frequencyPenalty(parameters.frequencyPenalty().floatValue());
+        }
+        if (parameters.presencePenalty() != null) {
+            configBuilder.presencePenalty(parameters.presencePenalty().floatValue());
         }
         if (parameters.maxOutputTokens() != null) {
             configBuilder.maxOutputTokens(parameters.maxOutputTokens());
@@ -67,9 +81,19 @@ class GoogleGenAiConfigBuilder {
             }
         }
 
-        if (thinkingBudget != null) {
-            configBuilder.thinkingConfig(
-                    ThinkingConfig.builder().thinkingBudget(thinkingBudget).build());
+        if (thinkingBudget != null && thinkingLevel != null) {
+            throw new IllegalArgumentException("Cannot use both thinkingBudget and thinkingLevel at the same time");
+        }
+
+        if (thinkingBudget != null || thinkingLevel != null) {
+            ThinkingConfig.Builder thinkingBuilder = ThinkingConfig.builder();
+            if (thinkingBudget != null) {
+                thinkingBuilder.thinkingBudget(thinkingBudget);
+            }
+            if (thinkingLevel != null) {
+                thinkingBuilder.thinkingLevel(new ThinkingLevel(thinkingLevel));
+            }
+            configBuilder.thinkingConfig(thinkingBuilder.build());
         }
 
         if (seed != null) {
@@ -80,13 +104,22 @@ class GoogleGenAiConfigBuilder {
             configBuilder.systemInstruction(systemInstruction);
         }
 
+        if (labels != null) {
+            configBuilder.labels(labels);
+        }
+
+        if (cachedContent != null && !cachedContent.trim().isEmpty()) {
+            configBuilder.cachedContent(cachedContent);
+        }
+
         buildTools(
                 configBuilder,
                 parameters,
                 googleSearchEnabled,
                 googleMapsEnabled,
                 urlContextEnabled,
-                allowedFunctionNames);
+                allowedFunctionNames,
+                vertexSearchDatastore);
 
         return configBuilder.build();
     }
@@ -97,7 +130,8 @@ class GoogleGenAiConfigBuilder {
             boolean googleSearchEnabled,
             boolean googleMapsEnabled,
             boolean urlContextEnabled,
-            List<String> allowedFunctionNames) {
+            List<String> allowedFunctionNames,
+            String vertexSearchDatastore) {
 
         List<ToolSpecification> toolSpecs = parameters.toolSpecifications();
 
@@ -127,6 +161,15 @@ class GoogleGenAiConfigBuilder {
         if (urlContextEnabled) {
             requestTools.add(
                     Tool.builder().urlContext(UrlContext.builder().build()).build());
+        }
+        if (vertexSearchDatastore != null && !vertexSearchDatastore.isEmpty()) {
+            requestTools.add(Tool.builder()
+                    .retrieval(Retrieval.builder()
+                            .vertexAiSearch(VertexAISearch.builder()
+                                    .datastore(vertexSearchDatastore)
+                                    .build())
+                            .build())
+                    .build());
         }
 
         if (!requestTools.isEmpty()) {
