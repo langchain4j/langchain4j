@@ -21,35 +21,53 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Experimental
 public class GoogleGenAiChatModel implements ChatModel {
+
+    private static final Logger log = LoggerFactory.getLogger(GoogleGenAiChatModel.class);
 
     private final Client client;
     private final Integer maxRetries;
     private final List<ChatModelListener> listeners;
     private final ChatRequestParameters defaultRequestParameters;
+    private final boolean logRequests;
+    private final boolean logResponses;
 
     private final List<SafetySetting> safetySettings;
     private final Integer thinkingBudget;
+    private final String thinkingLevel;
     private final Integer seed;
     private final boolean googleSearchEnabled;
     private final boolean googleMapsEnabled;
     private final boolean urlContextEnabled;
     private final List<String> allowedFunctionNames;
+    private final String vertexSearchDatastore;
+    private final Map<String, String> labels;
+    private final String cachedContent;
 
     private GoogleGenAiChatModel(Builder builder) {
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
+        this.logRequests = getOrDefault(builder.logRequests, false);
+        this.logResponses = getOrDefault(builder.logResponses, false);
         this.listeners = copy(builder.listeners);
         this.googleSearchEnabled = getOrDefault(builder.googleSearch, false);
         this.googleMapsEnabled = getOrDefault(builder.googleMaps, false);
         this.urlContextEnabled = getOrDefault(builder.urlContext, false);
         this.allowedFunctionNames = copy(builder.allowedFunctionNames);
         this.thinkingBudget = builder.thinkingBudget;
+        this.thinkingLevel = builder.thinkingLevel;
         this.seed = builder.seed;
         this.safetySettings = copy(builder.safetySettings);
+        this.vertexSearchDatastore = builder.vertexSearchDatastore;
+        this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
+        this.cachedContent = builder.cachedContent;
 
         this.client = builder.client != null
                 ? builder.client
@@ -58,7 +76,9 @@ public class GoogleGenAiChatModel implements ChatModel {
                         builder.googleCredentials,
                         builder.projectId,
                         builder.location,
-                        builder.timeout);
+                        builder.timeout,
+                        builder.customHeaders,
+                        builder.apiEndpoint);
 
         ChatRequestParameters commonParameters =
                 getOrDefault(builder.defaultRequestParameters, DefaultChatRequestParameters.EMPTY);
@@ -68,6 +88,8 @@ public class GoogleGenAiChatModel implements ChatModel {
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
                 .topK(getOrDefault(builder.topK, commonParameters.topK()))
+                .frequencyPenalty(getOrDefault(builder.frequencyPenalty, commonParameters.frequencyPenalty()))
+                .presencePenalty(getOrDefault(builder.presencePenalty, commonParameters.presencePenalty()))
                 .maxOutputTokens(getOrDefault(builder.maxOutputTokens, commonParameters.maxOutputTokens()))
                 .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
                 .toolSpecifications(commonParameters.toolSpecifications())
@@ -86,16 +108,34 @@ public class GoogleGenAiChatModel implements ChatModel {
                 systemInstruction,
                 safetySettings,
                 thinkingBudget,
+                thinkingLevel,
                 seed,
                 googleSearchEnabled,
                 googleMapsEnabled,
                 urlContextEnabled,
-                allowedFunctionNames);
+                allowedFunctionNames,
+                vertexSearchDatastore,
+                labels,
+                cachedContent);
+
+        if (logRequests) {
+            log.info(
+                    "Request:\n- model: {}\n- messages: {}\n- config: {}",
+                    chatRequest.modelName(),
+                    chatRequest.messages(),
+                    config);
+        }
 
         var result = withRetryMappingExceptions(
                 () -> client.models.generateContent(chatRequest.modelName(), contents, config), maxRetries);
 
-        return GoogleGenAiContentMapper.toChatResponse(result, chatRequest.modelName());
+        ChatResponse response = GoogleGenAiContentMapper.toChatResponse(result, chatRequest.modelName());
+
+        if (logResponses) {
+            log.info("Response:\n- model: {}\n- response: {}", chatRequest.modelName(), response);
+        }
+
+        return response;
     }
 
     @Override
@@ -133,8 +173,11 @@ public class GoogleGenAiChatModel implements ChatModel {
         private Double temperature;
         private Double topP;
         private Integer topK;
+        private Double frequencyPenalty;
+        private Double presencePenalty;
         private Integer maxOutputTokens;
         private Integer thinkingBudget;
+        private String thinkingLevel;
         private Integer seed;
         private Integer maxRetries;
         private List<String> stopSequences;
@@ -147,6 +190,13 @@ public class GoogleGenAiChatModel implements ChatModel {
         private List<String> allowedFunctionNames;
         private List<ChatModelListener> listeners;
         private ChatRequestParameters defaultRequestParameters;
+        private String vertexSearchDatastore;
+        private Map<String, String> labels;
+        private String apiEndpoint;
+        private Map<String, String> customHeaders;
+        private String cachedContent;
+        private Boolean logRequests;
+        private Boolean logResponses;
 
         public Builder client(Client client) {
             this.client = client;
@@ -198,13 +248,36 @@ public class GoogleGenAiChatModel implements ChatModel {
             return this;
         }
 
+        public Builder frequencyPenalty(Double frequencyPenalty) {
+            this.frequencyPenalty = frequencyPenalty;
+            return this;
+        }
+
+        public Builder presencePenalty(Double presencePenalty) {
+            this.presencePenalty = presencePenalty;
+            return this;
+        }
+
         public Builder maxOutputTokens(Integer maxOutputTokens) {
             this.maxOutputTokens = maxOutputTokens;
             return this;
         }
 
+        /**
+         * The thinking budget to use. This is a legacy parameter. For Gemini 3.x models, use {@link #thinkingLevel(String)} instead.
+         */
         public Builder thinkingBudget(Integer thinkingBudget) {
             this.thinkingBudget = thinkingBudget;
+            return this;
+        }
+
+        /**
+         * The thinking level to use. This is the recommended parameter for Gemini 3.x models.
+         * Allowed values are {@code "MINIMAL"}, {@code "LOW"}, {@code "MEDIUM"}, {@code "HIGH"}.
+         * Note that this cannot be used together with {@link #thinkingBudget(Integer)}.
+         */
+        public Builder thinkingLevel(String thinkingLevel) {
+            this.thinkingLevel = thinkingLevel;
             return this;
         }
 
@@ -260,6 +333,47 @@ public class GoogleGenAiChatModel implements ChatModel {
 
         public Builder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
             this.defaultRequestParameters = defaultRequestParameters;
+            return this;
+        }
+
+        public Builder vertexSearchDatastore(String vertexSearchDatastore) {
+            this.vertexSearchDatastore = vertexSearchDatastore;
+            return this;
+        }
+
+        public Builder labels(Map<String, String> labels) {
+            this.labels = labels;
+            return this;
+        }
+
+        public Builder apiEndpoint(String apiEndpoint) {
+            this.apiEndpoint = apiEndpoint;
+            return this;
+        }
+
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
+            return this;
+        }
+
+        public Builder cachedContent(String cachedContent) {
+            this.cachedContent = cachedContent;
+            return this;
+        }
+
+        public Builder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public Builder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public Builder logRequestsAndResponses(Boolean logRequestsAndResponses) {
+            this.logRequests = logRequestsAndResponses;
+            this.logResponses = logRequestsAndResponses;
             return this;
         }
 

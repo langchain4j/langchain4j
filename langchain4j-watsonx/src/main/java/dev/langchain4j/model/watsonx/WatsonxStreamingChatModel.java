@@ -10,6 +10,7 @@ import com.ibm.watsonx.ai.chat.ChatHandler;
 import com.ibm.watsonx.ai.chat.ChatResponse.ResultChoice;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.ChatParameters;
+import com.ibm.watsonx.ai.chat.model.ChatUsage;
 import com.ibm.watsonx.ai.chat.model.CompletedToolCall;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.PartialChatResponse;
@@ -94,10 +95,10 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
 
                         ResultChoice choice = completeResponse.choices().get(0);
                         FinishReason finishReason = Converter.toFinishReason(choice.finishReason());
-                        TokenUsage tokenUsage = new TokenUsage(
-                                completeResponse.usage().promptTokens(),
-                                completeResponse.usage().completionTokens(),
-                                completeResponse.usage().totalTokens());
+                        ChatUsage completeUsage = completeResponse.usage();
+                        TokenUsage tokenUsage = completeUsage != null
+                                ? new TokenUsage(completeUsage.promptTokens(), completeUsage.completionTokens(), completeUsage.totalTokens())
+                                : null;
 
                         var assistantMessage = completeResponse.toAssistantMessage();
                         var aiMessage = AiMessage.builder();

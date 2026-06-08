@@ -205,4 +205,54 @@ public interface OutputGuardrail extends Guardrail<OutputGuardrailRequest, Outpu
         return new OutputGuardrailResult(
                 Arrays.asList(new OutputGuardrailResult.Failure(message, cause, true, reprompt)), true);
     }
+
+    /**
+     * Produces a non-fatal failure and requests removal of the violating {@link dev.langchain4j.data.message.AiMessage}
+     * from chat memory after the guardrail chain finishes.
+     * This prevents the failed response from polluting future conversations.
+     *
+     * @param message A message describing the failure.
+     * @return The result of a failed output guardrail validation with memory cleanup requested.
+     */
+    default OutputGuardrailResult failureWithMessageRemoval(String message) {
+        return OutputGuardrailResult.failureWithMessageRemoval(message);
+    }
+
+    /**
+     * Produces a non-fatal failure and requests removal of the violating {@link dev.langchain4j.data.message.AiMessage}
+     * from chat memory after the guardrail chain finishes.
+     * This prevents the failed response from polluting future conversations.
+     *
+     * @param message A message describing the failure.
+     * @param cause   The exception that caused this failure.
+     * @return The result of a failed output guardrail validation with memory cleanup requested.
+     */
+    default OutputGuardrailResult failureWithMessageRemoval(String message, Throwable cause) {
+        return OutputGuardrailResult.failureWithMessageRemoval(message, cause);
+    }
+
+    /**
+     * Produces a fatal failure and requests removal of the violating {@link dev.langchain4j.data.message.AiMessage}
+     * from chat memory after the guardrail chain finishes.
+     * This prevents the failed response from polluting future conversations.
+     *
+     * @param message A message describing the failure.
+     * @return The result of a fatally failed output guardrail validation with memory cleanup requested.
+     */
+    default OutputGuardrailResult fatalWithMessageRemoval(String message) {
+        return OutputGuardrailResult.fatalWithMessageRemoval(message);
+    }
+
+    /**
+     * Produces a fatal failure and requests removal of the violating {@link dev.langchain4j.data.message.AiMessage}
+     * from chat memory after the guardrail chain finishes.
+     * This prevents the failed response from polluting future conversations.
+     *
+     * @param message A message describing the failure.
+     * @param cause   The exception that caused this failure.
+     * @return The result of a fatally failed output guardrail validation with memory cleanup requested.
+     */
+    default OutputGuardrailResult fatalWithMessageRemoval(String message, Throwable cause) {
+        return OutputGuardrailResult.fatalWithMessageRemoval(message, cause);
+    }
 }

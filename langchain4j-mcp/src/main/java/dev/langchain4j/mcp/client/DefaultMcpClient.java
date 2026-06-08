@@ -184,7 +184,8 @@ public class DefaultMcpClient implements McpClient {
                         notifyListeners(l -> l.onNotificationProgress(notification));
                     },
                     () -> notifyListeners(l -> l.onServerPing()),
-                    () -> notifyListeners(l -> l.onServerRootsList()));
+                    () -> notifyListeners(l -> l.onServerRootsList()),
+                    (requestId, reason) -> notifyListeners(l -> l.onNotificationCancelled(requestId, reason)));
             ((ObjectNode) RESULT_TIMEOUT)
                     .putObject("result")
                     .putArray("content")
