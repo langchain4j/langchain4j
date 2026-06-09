@@ -254,6 +254,8 @@ The `title` field that exists directly in the MCP tool definition is exposed und
 `McpToolMetadataKeys.TITLE` key in the metadata map to distinguish it from the title
 that is retrieved from annotations - that one is exposed under the `McpToolMetadataKeys.ANNOTATION_TITLE` key.
 
+If the tool has icons, they are exposed under the `McpToolMetadataKeys.ICONS` key in the metadata map.
+
 ## Providing `_meta` fields
 
 The MCP protocol allows clients to attach a `_meta` object to the `params` of every
