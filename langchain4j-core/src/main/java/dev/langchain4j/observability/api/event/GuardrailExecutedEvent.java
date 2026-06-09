@@ -45,6 +45,25 @@ public interface GuardrailExecutedEvent<
     Class<G> guardrailClass();
 
     /**
+     * Retrieves the logical guardrail name exposed to observability consumers.
+     *
+     * <p>By default this returns the simple name of {@link #guardrailClass()},
+     * which matches the behavior before the field was introduced. When a decorator
+     * / wrapper guardrail supplies a logical name via {@link Guardrail#name()},
+     * the executor propagates that name into the event and {@code guardrailName()}
+     * returns it. This allows observability systems and audit logs to see the
+     * logical guardrail identity (e.g. {@code "ProfanityFilter"}) rather than the
+     * adapter class (e.g. {@code "InputGuardrailAdapter"}) — see issue #4938.
+     *
+     * @return the logical guardrail name, or the simple class name if no
+     *         logical name was propagated by the executor
+     */
+    default String guardrailName() {
+        Class<G> clazz = guardrailClass();
+        return clazz != null ? clazz.getSimpleName() : null;
+    }
+
+    /**
      * Retrieves the duration of the guardrail execution.
      *
      * @return the duration of the guardrail validation process.
@@ -62,6 +81,7 @@ public interface GuardrailExecutedEvent<
         private R result;
         private Class<G> guardrailClass;
         private Duration duration;
+        private String guardrailName;
 
         protected GuardrailExecutedEventBuilder() {}
 
@@ -71,6 +91,7 @@ public interface GuardrailExecutedEvent<
             result(src.result());
             guardrailClass(src.guardrailClass());
             duration(src.duration());
+            guardrailName(src.guardrailName());
         }
 
         public Class<G> guardrailClass() {
@@ -87,6 +108,16 @@ public interface GuardrailExecutedEvent<
 
         public Duration duration() {
             return duration;
+        }
+
+        /**
+         * Returns the logical guardrail name that was set via
+         * {@link #guardrailName(String)}, or {@code null} if none was set.
+         * When {@code null}, {@link GuardrailExecutedEvent#guardrailName()} falls
+         * back to the simple name of {@link #guardrailClass()}.
+         */
+        public String guardrailName() {
+            return guardrailName;
         }
 
         public GuardrailExecutedEventBuilder<P, R, G, T> request(P request) {
@@ -110,6 +141,17 @@ public interface GuardrailExecutedEvent<
 
         public GuardrailExecutedEventBuilder<P, R, G, T> duration(Duration duration) {
             this.duration = duration;
+            return this;
+        }
+
+        /**
+         * Sets the logical guardrail name to be exposed via
+         * {@link GuardrailExecutedEvent#guardrailName()}. Callers normally pass
+         * {@code guardrail.name()} so that decorator / wrapper guardrails can
+         * expose the underlying guardrail identity (issue #4938).
+         */
+        public GuardrailExecutedEventBuilder<P, R, G, T> guardrailName(String guardrailName) {
+            this.guardrailName = guardrailName;
             return this;
         }
     }
