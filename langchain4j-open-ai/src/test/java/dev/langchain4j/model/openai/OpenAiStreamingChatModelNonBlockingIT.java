@@ -14,11 +14,7 @@ import reactor.blockhound.BlockingOperationError;
 
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.Flow;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
@@ -31,11 +27,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@link reactor.blockhound.BlockingOperationError} if a registered "non-blocking" thread performs a
  * blocking call (Socket read, InputStream read, Thread.sleep, Object.wait, etc.).
  * <p>
- * Scope/caveat: the JDK completes {@code sendAsync(...)} and delivers the first (already-buffered)
- * body chunk on the shared {@link java.util.concurrent.ForkJoinPool#commonPool()}, which BlockHound
- * cannot police (its idle workers legitimately park and spin). So this test covers the steady-state
- * delivery threads ({@code HttpClient-*}) — the throughput-critical hot path — but not the brief
- * stream-startup work that runs on the common pool. TODO
+ * Scope/caveat: the JDK completes {@code sendAsync(...)} — handling the response headers and
+ * subscribing to the body — on the shared {@link java.util.concurrent.ForkJoinPool#commonPool()},
+ * and may deliver an early, already-buffered body chunk there too (more likely with logging, which
+ * delays the body subscription). BlockHound cannot police the common pool (its idle workers
+ * legitimately park and spin). Subsequent chunks stream in on {@code HttpClient-*} workers — the
+ * throughput-critical hot path this test covers — while the brief common-pool startup/first chunk is
+ * out of scope.
  * <p>
  * Runs against the real OpenAI endpoint to exercise the full HTTPS / HTTP/2 / real-network-pacing
  * stack — these code paths often hide blocking calls that WireMock-based plain HTTP wouldn't reach.
@@ -55,10 +53,15 @@ class OpenAiStreamingChatModelNonBlockingIT {
     // TODO similar test for http client, AI Service and other providers?
 
     /**
-     * Recorded BlockHound violations. Cleared per test in {@link #resetViolations()}; asserted empty
-     * after each test. A list (not a flag) so debugging can show all offending calls.
+     * Blocking calls BlockHound observed on a policed thread.
+     * Cleared before each test by {@link #resetViolations()}.
      */
     private static final List<Throwable> violations = new CopyOnWriteArrayList<>();
+
+    @BeforeEach
+    void resetViolations() {
+        violations.clear();
+    }
 
     @BeforeAll
     static void installBlockHound() {
@@ -69,8 +72,7 @@ class OpenAiStreamingChatModelNonBlockingIT {
                 // ForkJoinPool.commonPool, which cannot be policed and is out of scope here.)
                 .nonBlockingThreadPredicate(prev -> prev.or(t -> t.getName().startsWith("HttpClient-")))
                 // Pool bookkeeping, not application blocking: idle workers park on the work queue
-                // (getTask), exiting workers acquire the pool's lock to coordinate shutdown
-                // (processWorkerExit).
+                // (getTask), exiting workers acquire the pool's lock to coordinate shutdown (processWorkerExit).
                 .allowBlockingCallsInside("java.util.concurrent.ThreadPoolExecutor", "getTask")
                 .allowBlockingCallsInside("java.util.concurrent.ThreadPoolExecutor", "processWorkerExit")
                 // Record (don't throw): a thrown error on a worker thread kills the thread but never
@@ -91,34 +93,26 @@ class OpenAiStreamingChatModelNonBlockingIT {
         awaitStream(newModel(true), request(10));
     }
 
-    @BeforeEach
-    void resetViolations() {
-        violations.clear();
-    }
-
     @ParameterizedTest(name = "logging={0}")
     @ValueSource(booleans = {false, true})
     void publisher_path_does_not_block_jdk_http_threads(boolean logging) throws Exception {
-        // Given: real OpenAI streaming endpoint, a multi-token response so the body arrives in several
-        // network reads (see request()).
+        // Given: real OpenAI streaming endpoint and a multi-token response that exercises the
+        // streaming pipeline across many chunks (see request()).
         StreamCapture capture = awaitStream(newModel(logging), request(50));
 
         // Then: stream completed normally, real events arrived, and no blocking call was detected on
         // the JDK HTTP worker threads anywhere in the pipeline.
-        assertThat(capture.error()).as("subscriber received an error (logging=%s)", logging).isNull();
-        assertThat(capture.received()).as("no events received (logging=%s)", logging).isNotEmpty();
-        // Every event must be delivered on a policed worker thread, so the no-violations assertion
-        // covers the whole pipeline (isNotEmpty guards the vacuous all-match-on-empty case). The real
-        // streaming API flushes headers before the first token, so all body chunks land on
-        // HttpClient-* workers, never on the common-pool sendAsync completion.
-        assertThat(capture.deliveryThreads())
-                .as("every event must be delivered on a policed JDK HTTP worker thread (logging=%s); delivered on: %s",
-                        logging, capture.deliveryThreads())
-                .isNotEmpty()
-                .allMatch(name -> name.startsWith("HttpClient-"));
-        assertThat(violations)
-                .as("BlockHound detected blocking calls on JDK HTTP worker threads (logging=%s) — see stack(s) below", logging)
-                .isEmpty();
+        assertThat(capture.error()).isNull();
+        assertThat(capture.received()).isNotEmpty();
+
+        // Non-vacuity guard: at least one event must be delivered on a policed worker thread, so the
+        // empty-violations assertion below isn't vacuous. The JDK may deliver the first, already-
+        // buffered chunk on the unpoliced common pool — more so with logging, which delays the body
+        // subscription past the first frame's arrival — but a multi-token response guarantees later
+        // chunks land on HttpClient-* workers. (allMatch would be wrong: it flakes on that first chunk.)
+        assertThat(capture.deliveryThreads()).anyMatch(name -> name.startsWith("HttpClient-"));
+
+        assertThat(violations).isEmpty();
     }
 
     /**
@@ -159,10 +153,10 @@ class OpenAiStreamingChatModelNonBlockingIT {
     }
 
     private static ChatRequest request(int n) {
-        // A multi-token response, streamed over time, ensures the body arrives in several network
-        // reads — so events are delivered on the JDK HttpClient-* worker threads, not only on the
-        // first (buffered) chunk that the JDK hands off on ForkJoinPool.commonPool. This keeps the
-        // non-vacuity guard (and thus the blocking check on the worker threads) reliable.
+        // A multi-token response, streamed over time, arrives in several network reads so that later
+        // chunks are delivered on HttpClient-* workers (the JDK may deliver the first, already-buffered
+        // chunk on the common pool). This both exercises the parsing/dispatch pipeline across many
+        // chunks and keeps the non-vacuity guard — and thus the blocking check — reliable.
         return ChatRequest.builder()
                 .messages(UserMessage.from("Count from 1 to %s, one number per line.".formatted(n)))
                 .build();
@@ -172,8 +166,6 @@ class OpenAiStreamingChatModelNonBlockingIT {
         Flow.Publisher<StreamingEvent> publisher = model.chat(request);
         List<StreamingEvent> received = new CopyOnWriteArrayList<>();
         AtomicReference<Throwable> error = new AtomicReference<>();
-        // Names of every thread that delivered an event, so the caller can assert the pipeline ran on
-        // a policed thread (otherwise an empty violations list would prove nothing).
         Set<String> deliveryThreads = ConcurrentHashMap.newKeySet();
         CompletableFuture<Void> done = new CompletableFuture<>();
 
