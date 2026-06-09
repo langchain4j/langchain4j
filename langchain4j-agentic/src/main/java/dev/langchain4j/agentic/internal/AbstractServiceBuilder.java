@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Executor;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -47,6 +48,8 @@ public abstract class AbstractServiceBuilder<T, S> {
     protected final List<AgentExecutor> subagents = new ArrayList<>();
 
     protected Function<ErrorContext, ErrorRecoveryResult> errorHandler;
+
+    protected BiFunction<Class<?>, InvocationHandler, Object> agentInstanceFactory;
 
     protected Executor executor;
 
@@ -137,6 +140,11 @@ public abstract class AbstractServiceBuilder<T, S> {
         return (S) this;
     }
 
+    public S agentInstanceFactory(BiFunction<Class<?>, InvocationHandler, Object> factory) {
+        this.agentInstanceFactory = factory;
+        return (S) this;
+    }
+
     public S executor(Executor executor) {
         this.executor = executor;
         return (S) this;
@@ -160,6 +168,9 @@ public abstract class AbstractServiceBuilder<T, S> {
     }
 
     public T build(InvocationHandler invocationHandler) {
+        if (agentInstanceFactory != null) {
+            return (T) agentInstanceFactory.apply(agentServiceClass, invocationHandler);
+        }
         return buildAgent(agentServiceClass, invocationHandler);
     }
 

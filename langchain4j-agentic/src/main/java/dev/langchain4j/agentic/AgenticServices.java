@@ -28,6 +28,7 @@ import dev.langchain4j.agentic.declarative.ParallelAgent;
 import dev.langchain4j.agentic.declarative.ParallelMapperAgent;
 import dev.langchain4j.agentic.declarative.PlannerAgent;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
+import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.A2AService;
 import dev.langchain4j.agentic.internal.AgentExecutor;
@@ -59,6 +60,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.ServiceLoader;
+import java.lang.reflect.InvocationHandler;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -284,8 +287,11 @@ public class AgenticServices {
             implements DeclarativeAgentCreationContext<T> {}
 
     public record AgentConfigurator(
-            Consumer<DeclarativeAgentCreationContext<?>> configurator, Function<Class<?>, Object> subAgentResolver) {
-        private static final AgentConfigurator EMPTY = new AgentConfigurator(ctx -> {}, null);
+            Consumer<DeclarativeAgentCreationContext<?>> configurator,
+            Function<Class<?>, Object> subAgentResolver,
+            BiFunction<Class<?>, InvocationHandler, Object> agentInstanceFactory) {
+
+        private static final AgentConfigurator EMPTY = new AgentConfigurator(ctx -> {}, null, null);
 
         public static AgentConfigurator empty() {
             return EMPTY;
@@ -397,6 +403,12 @@ public class AgenticServices {
         return null;
     }
 
+    private static void setAgentInstanceFactory(Object builder, AgentConfigurator agentConfigurator) {
+        if (agentConfigurator.agentInstanceFactory() != null) {
+            ((AbstractServiceBuilder<?, ?>) builder).agentInstanceFactory(agentConfigurator.agentInstanceFactory());
+        }
+    }
+
     private static void buildAgentSpecs(
             Method agentMethod, String name, String description, String outputKey, AgenticService<?, ?> builder) {
         if (!isNullOrBlank(name)) {
@@ -418,6 +430,8 @@ public class AgenticServices {
         var builder = sequenceBuilder(agentServiceClass)
                 .subAgents(createSubagents(annotation.subAgents(), chatModel, agentConfigurator));
 
+        setAgentInstanceFactory(builder, agentConfigurator);
+
         buildAgentSpecs(
                 agentMethod,
                 annotation.name(),
@@ -435,6 +449,8 @@ public class AgenticServices {
                 .subAgents(createSubagents(annotation.subAgents(), chatModel, agentConfigurator))
                 .maxIterations(annotation.maxIterations());
 
+        setAgentInstanceFactory(builder, agentConfigurator);
+
         buildAgentSpecs(
                 agentMethod,
                 annotation.name(),
@@ -449,6 +465,8 @@ public class AgenticServices {
             Class<T> agentServiceClass, Method agentMethod, ChatModel chatModel, AgentConfigurator agentConfigurator) {
         ConditionalAgent annotation = agentMethod.getAnnotation(ConditionalAgent.class);
         var builder = conditionalBuilder(agentServiceClass);
+
+        setAgentInstanceFactory(builder, agentConfigurator);
 
         buildAgentSpecs(
                 agentMethod,
@@ -478,6 +496,8 @@ public class AgenticServices {
         var builder = parallelBuilder(agentServiceClass)
                 .subAgents(createSubagents(annotation.subAgents(), chatModel, agentConfigurator));
 
+        setAgentInstanceFactory(builder, agentConfigurator);
+
         buildAgentSpecs(
                 agentMethod,
                 annotation.name(),
@@ -495,6 +515,8 @@ public class AgenticServices {
                 .subAgents(List.of(createSubagent(annotation.subAgent(), chatModel, agentConfigurator)))
                 .itemsProvider(annotation.itemsProvider());
 
+        setAgentInstanceFactory(builder, agentConfigurator);
+
         buildAgentSpecs(
                 agentMethod,
                 annotation.name(),
@@ -510,6 +532,8 @@ public class AgenticServices {
         PlannerAgent annotation = agentMethod.getAnnotation(PlannerAgent.class);
         var builder = new PlannerBasedServiceImpl<>(agentServiceClass, agentMethod)
                 .subAgents(createSubagents(annotation.subAgents(), chatModel, agentConfigurator));
+
+        setAgentInstanceFactory(builder, agentConfigurator);
 
         buildAgentSpecs(
                 agentMethod,
@@ -530,6 +554,8 @@ public class AgenticServices {
                 .contextGenerationStrategy(supervisorAgent.contextStrategy())
                 .responseStrategy(supervisorAgent.responseStrategy())
                 .subAgents(createSubagents(supervisorAgent.subAgents(), chatModel, agentConfigurator));
+
+        setAgentInstanceFactory(builder, agentConfigurator);
 
         if (!isNullOrBlank(supervisorAgent.name())) {
             builder.name(supervisorAgent.name());

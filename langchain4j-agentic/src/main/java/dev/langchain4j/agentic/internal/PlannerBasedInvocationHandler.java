@@ -120,10 +120,15 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
     }
 
     public AgenticScopeOwner withAgenticScope(DefaultAgenticScope agenticScope) {
+        PlannerBasedInvocationHandler newHandler = new PlannerBasedInvocationHandler(
+                service, parent, agentId, plannerSupplier, agenticScope);
+        if (service.agentInstanceFactory != null) {
+            return (AgenticScopeOwner) service.agentInstanceFactory.apply(type, newHandler);
+        }
         return (AgenticScopeOwner) Proxy.newProxyInstance(
                 type.getClassLoader(),
                 new Class<?>[] {type, InternalAgent.class, AgenticScopeOwner.class},
-                new PlannerBasedInvocationHandler(service, parent, agentId, plannerSupplier, agenticScope));
+                newHandler);
     }
 
     @Override
@@ -151,7 +156,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
 
         if (method.getDeclaringClass() == AgentInstance.class || method.getDeclaringClass() == InternalAgent.class) {
             try {
-                return method.invoke(Proxy.getInvocationHandler(proxy), args);
+                return method.invoke(this, args);
             } catch (Exception e) {
                 throw e.getCause() != null ? (Exception) e.getCause() : e;
             }

@@ -75,6 +75,22 @@
           "new": "parameter <T> T dev.langchain4j.agentic.AgenticServices::createAgenticSystem(java.lang.Class<T>, dev.langchain4j.model.chat.ChatModel, ===dev.langchain4j.agentic.AgenticServices.AgentConfigurator===)",
           "parameterIndex": "2",
           "justification": "Not a breaking change, this method is only used by the Quarkus extension"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.numberOfParametersChanged",
+          "old": "method void dev.langchain4j.agentic.AgenticServices.AgentConfigurator::<init>(java.util.function.Consumer<dev.langchain4j.agentic.AgenticServices.DeclarativeAgentCreationContext<?>>, java.util.function.Function<java.lang.Class<?>, java.lang.Object>)",
+          "new": "method void dev.langchain4j.agentic.AgenticServices.AgentConfigurator::<init>(java.util.function.Consumer<dev.langchain4j.agentic.AgenticServices.DeclarativeAgentCreationContext<?>>, java.util.function.Function<java.lang.Class<?>, java.lang.Object>, java.util.function.BiFunction<java.lang.Class<?>, java.lang.reflect.InvocationHandler, java.lang.Object>)",
+          "justification": "Necessary to support agents generated at deployment time from the Quarkus extension"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.visibilityIncreased",
+          "old": "method void dev.langchain4j.agentic.agent.AgentInvocationHandler::<init>(dev.langchain4j.service.AiServiceContext, java.lang.Object, dev.langchain4j.agentic.agent.AgentBuilder<?, ?>, boolean)",
+          "new": "method void dev.langchain4j.agentic.agent.AgentInvocationHandler::<init>(dev.langchain4j.service.AiServiceContext, java.lang.Object, dev.langchain4j.agentic.agent.AgentBuilder<?, ?>, boolean)",
+          "oldVisibility": "package",
+          "newVisibility": "public",
+          "justification": "Necessary to support agents generated at deployment time from the Quarkus extension"
         }
       ]
     }
