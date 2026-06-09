@@ -8,12 +8,16 @@ import java.util.concurrent.Flow;
 
 /**
  * The streaming API a test exercises.
- * Stored on {@link StreamingMetadata} so test bodies can branch on it without resorting to
- * {@code metadata.handler() == null} sentinel checks.
  */
 public enum StreamingMode {
-    /** Use the handler-based {@link StreamingChatModel#chat(ChatRequest, StreamingChatResponseHandler)} API. */
+
+    /**
+     * Use the handler-based {@link StreamingChatModel#chat(ChatRequest, StreamingChatResponseHandler)} API.
+     */
     HANDLER,
-    /** Use the reactive {@link StreamingChatModel#chat(ChatRequest)} API returning a {@link Flow.Publisher}. */
+
+    /**
+     * Use the reactive {@link StreamingChatModel#chat(ChatRequest)} API returning a {@link Flow.Publisher}.
+     */
     PUBLISHER
 }
