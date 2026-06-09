@@ -18,6 +18,21 @@ import java.util.concurrent.Flow;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+/**
+ * An {@link HttpClient} decorator that logs requests and responses.
+ * <p>
+ * <b>Streaming response logging is blocking IO on the delivery thread.</b> For the streaming paths
+ * ({@link #execute(HttpRequest, ServerSentEventListener)},
+ * {@link #execute(HttpRequest, ServerSentEventParser, ServerSentEventListener)} and especially
+ * {@link #executeWithPublisher(HttpRequest, ServerSentEventParser)}), each server-sent event is logged
+ * synchronously on the thread that delivers it — for the publisher path this is the underlying HTTP
+ * client's non-blocking worker thread. Whether that log call actually blocks is decided by the logging
+ * backend's appender, which this client does not control: a <em>synchronous</em> appender (e.g. a plain
+ * file/console appender) performs a blocking write on the worker thread, which under load can stall the
+ * worker and collapse streaming throughput. Therefore, <b>when {@code logResponses} is enabled for
+ * streaming, configure an asynchronous appender</b> (e.g. Logback {@code AsyncAppender}, Log4j2 async
+ * loggers, tinylog {@code writingthread=true}) so log writes happen off the delivery thread.
+ */
 @Internal
 public class LoggingHttpClient implements HttpClient {
 
@@ -148,6 +163,13 @@ public class LoggingHttpClient implements HttpClient {
         });
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * When {@code logResponses} is enabled, each event is logged in {@code onNext}, i.e. synchronously on
+     * the upstream's delivery (worker) thread. See the class-level note: use an asynchronous appender so
+     * this logging does not perform blocking IO on that non-blocking thread.
+     */
     @Override
     public Flow.Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request, ServerSentEventParser parser) {
 
