@@ -168,6 +168,8 @@ class OpenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .build();
     }
 
+    // TODO unify/merge verifyToolCallbacks and verifyToolEvents
+
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
         io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
