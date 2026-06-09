@@ -7,9 +7,9 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.fail;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -41,10 +41,9 @@ import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
-import java.util.Set;
+
+import java.util.*;
+
 import org.assertj.core.api.AbstractThrowableAssert;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -183,6 +182,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 assertThat(threads).hasSize(1);
                 assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
             }
+            // TODO verify publisher events?
         }
     }
 
@@ -733,6 +733,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 inOrder.verifyNoMoreInteractions();
                 verifyNoMoreInteractions(handler);
             } else if (metadata.mode() == StreamingMode.PUBLISHER) {
+                // TODO verify all events and their order
                 verifyToolEvents(metadata, toolExecutionRequest.id());
             }
 
@@ -792,12 +793,81 @@ public abstract class AbstractBaseChatModelIT<M> {
         verifyToolCallbacks(handler, io, id);
     }
 
+    /**
+     * An expected tool call, shared by the two verification styles below ({@link #verifyToolCallbacks}
+     * on the handler API and {@link #verifyToolEvents} on the collected publisher metadata).
+     * {@code id == null} means "any non-blank id".
+     */
+    protected record ExpectedToolCall(int index, String id, String name, String arguments) {}
+
+    protected ExpectedToolCall getWeather(String id) {
+        return new ExpectedToolCall(0, id, "getWeather", "{\"city\":\"Munich\"}");
+    }
+
+    protected ExpectedToolCall getTime(String id) {
+        return new ExpectedToolCall(1, id, "getTime", "{\"country\":\"France\"}");
+    }
+
+    protected ExpectedToolCall getCurrentTime(String id) {
+        return new ExpectedToolCall(0, id, "get_current_time", "{}");
+    }
+
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
-        fail("please override this method");
+        verifyToolCallbacks(handler, io, getWeather(id));
     }
 
     protected void verifyToolEvents(StreamingMetadata metadata, String id) {
-        fail("please override this method to verify tool call content from streaming metadata");
+        verifyToolEvents(metadata, getWeather(id));
+    }
+
+    /** Verifies the handler received the expected tool calls (handler API, via Mockito {@link InOrder}). */
+    protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, ExpectedToolCall... expected) {
+        for (ExpectedToolCall tool : expected) {
+            io.verify(handler, atLeast(1)).onPartialToolCall(argThat(partial -> matches(partial, tool)), any());
+            io.verify(handler).onCompleteToolCall(argThat(complete -> matches(complete, tool)));
+        }
+    }
+
+    /** Verifies the collected streaming metadata contains the expected tool calls (publisher API). */
+    protected void verifyToolEvents(StreamingMetadata metadata, ExpectedToolCall... expected) {
+        // TODO verify order: partial(0), partial(0) ... complete(0), partial(1), partial(1), ... complete(1)
+
+        // Every partial chunk must belong to one of the expected tool calls (no strays)...
+        assertThat(metadata.partialToolCalls())
+                .isNotEmpty()
+                .allSatisfy(partial -> assertThat(expected).anyMatch(tool -> matches(partial, tool)));
+        // ...and each expected tool call must have at least one partial chunk.
+        for (ExpectedToolCall tool : expected) {
+            assertThat(metadata.partialToolCalls())
+                    .as("no partial tool call matched %s", tool)
+                    .anyMatch(partial -> matches(partial, tool));
+        }
+
+        assertThat(metadata.completeToolCalls()).hasSize(expected.length);
+        for (int i = 0; i < expected.length; i++) {
+            CompleteToolCall complete = metadata.completeToolCalls().get(i);
+            assertThat(matches(complete, expected[i]))
+                    .as("complete tool call #%d: expected %s but was %s", i, expected[i], complete.toolExecutionRequest())
+                    .isTrue();
+        }
+    }
+
+    private static boolean matches(PartialToolCall partial, ExpectedToolCall expected) {
+        return partial.index() == expected.index()
+                && Objects.equals(partial.id(), expected.id()) // TODO?
+                && partial.name().equals(expected.name())
+                // tools with empty "{}" arguments may stream blank-but-non-null partial arguments TODO sure?
+                && (expected.arguments().equals("{}")
+                        ? partial.partialArguments() != null
+                        : !partial.partialArguments().isBlank());
+    }
+
+    private static boolean matches(CompleteToolCall complete, ExpectedToolCall expected) {
+        ToolExecutionRequest request = complete.toolExecutionRequest();
+        return complete.index() == expected.index()
+                && Objects.equals(request.id(), expected.id()) // TODO?
+                && request.name().equals(expected.name())
+                && request.arguments().replace(" ", "").equals(expected.arguments());
     }
 
     @ParameterizedTest
@@ -873,7 +943,8 @@ public abstract class AbstractBaseChatModelIT<M> {
                 inOrder.verifyNoMoreInteractions();
                 verifyNoMoreInteractions(handler);
             } else if (metadata.mode() == StreamingMode.PUBLISHER) {
-                verifyToolEvents(metadata);
+                // TODO verify all events and their order
+                verifyToolEvents(metadata, getCurrentTime(toolExecutionRequest.id()));
             }
 
             assertThat(metadata.timesOnCompleteResponseWasCalled()).isEqualTo(1);
@@ -925,10 +996,6 @@ public abstract class AbstractBaseChatModelIT<M> {
                 assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
             }
         }
-    }
-
-    protected void verifyToolEvents(StreamingMetadata metadata) {
-        fail("please override this method to verify tool call content from streaming metadata");
     }
 
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, StreamingChatModel model) {
@@ -1058,6 +1125,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 inOrder.verifyNoMoreInteractions();
                 verifyNoMoreInteractions(handler);
             } else if (metadata.mode() == StreamingMode.PUBLISHER) {
+                // TODO verify all events and their order
                 verifyToolEvents(metadata,
                         toolExecutionRequests.get(0).id(),
                         toolExecutionRequests.get(1).id());
@@ -1124,11 +1192,11 @@ public abstract class AbstractBaseChatModelIT<M> {
     }
 
     protected void verifyToolEvents(StreamingMetadata metadata, String id1, String id2) {
-        fail("please override this method to verify tool call content from streaming metadata");
+        verifyToolEvents(metadata, getWeather(id1), getTime(id2));
     }
 
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
-        fail("please override this method");
+        verifyToolCallbacks(handler, io, getWeather(id1), getTime(id2));
     }
 
     protected static PartialToolCall partial(int index, String id, String name, String args) {

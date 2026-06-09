@@ -106,7 +106,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         return applyModes(List.of(createModelWith(parameters)));
     }
 
-    public abstract StreamingChatModel createModelWith(ChatModelListener listener); // TODO publisher mode
+    public abstract StreamingChatModel createModelWith(ChatModelListener listener); // TODO test with publisher mode?
 
     @ParameterizedTest
     @MethodSource("models")
@@ -162,7 +162,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
     @Override
     protected boolean assertThreads() {
-        return streamingModes().equals(List.of(StreamingMode.HANDLER)); // TODO assert for publisher as well?
+        return streamingModes().equals(List.of(StreamingMode.HANDLER)); // TODO assert for publisher mode as well?
     }
 
     @Test
