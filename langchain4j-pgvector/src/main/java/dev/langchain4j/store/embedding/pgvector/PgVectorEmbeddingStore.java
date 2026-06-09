@@ -177,6 +177,50 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param createTable           Should create table automatically
      * @param dropTableFirst        Should drop table first, usually for testing
      * @param metadataStorageConfig The {@link MetadataStorageConfig} config.
+     * @param searchMode            The search mode to use (null for default)
+     * @param textSearchConfig      PostgreSQL text search configuration (null for default)
+     * @param rrfK                  RRF k parameter (null for default)
+     */
+    protected PgVectorEmbeddingStore(
+            DataSource datasource,
+            String table,
+            Integer dimension,
+            Boolean useIndex,
+            Integer indexListSize,
+            Boolean createTable,
+            Boolean dropTableFirst,
+            MetadataStorageConfig metadataStorageConfig,
+            SearchMode searchMode,
+            String textSearchConfig,
+            Integer rrfK) {
+
+        this(new DatasourceBuilder()
+                .datasource(datasource)
+                .table(table)
+                .dimension(dimension)
+                .useIndex(useIndex)
+                .indexListSize(indexListSize)
+                .createTable(createTable)
+                .dropTableFirst(dropTableFirst)
+                .skipCreateVectorExtension(null)
+                .metadataStorageConfig(metadataStorageConfig)
+                .searchMode(searchMode)
+                .textSearchConfig(textSearchConfig)
+                .rrfK(rrfK)
+                .vectorType(null));
+    }
+
+    /**
+     * Constructor for PgVectorEmbeddingStore Class
+     *
+     * @param datasource            The datasource to use
+     * @param table                 The database table
+     * @param dimension             The vector dimension
+     * @param useIndex              Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
+     * @param indexListSize         The IVFFlat number of lists
+     * @param createTable           Should create table automatically
+     * @param dropTableFirst        Should drop table first, usually for testing
+     * @param metadataStorageConfig The {@link MetadataStorageConfig} config.
      */
     protected PgVectorEmbeddingStore(
             DataSource datasource,
