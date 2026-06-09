@@ -21,12 +21,14 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.Flow.Publisher;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -154,6 +156,73 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         assertThat(streamingHandle.isCancelled()).isTrue();
         streamingHandle.cancel(); // testing idempotency
         assertThat(streamingHandle.isCancelled()).isTrue();
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    @EnabledIf("supportsStreamingCancellation")
+    void should_cancel_streaming_via_publisher_subscription(StreamingChatModel model) throws Exception {
+
+        // Publisher counterpart of should_cancel_streaming: the publisher API has no StreamingHandle;
+        // cancellation is the standard Reactive-Streams mechanism — the subscriber calls
+        // Flow.Subscription.cancel(). After cancellation the publisher must stop and must NOT signal a
+        // terminal event (onComplete/onError); in-flight onNext signals already dispatched are tolerated TODO.
+        Assumptions.assumeTrue(
+                model instanceof StreamingModeAwareModel w && w.mode() == StreamingMode.PUBLISHER,
+                "publisher-mode subscription cancellation");
+
+        // given
+        int eventsBeforeCancellation = 5;
+        AtomicInteger eventCounter = new AtomicInteger();
+        AtomicBoolean cancelled = new AtomicBoolean();
+        AtomicReference<Flow.Subscription> subscriptionReference = new AtomicReference<>();
+        CompletableFuture<Void> cancelledFuture = new CompletableFuture<>();
+        CompletableFuture<Void> terminalSignal = new CompletableFuture<>();
+
+        StreamingChatModel target = ((StreamingModeAwareModel) model).delegate();
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Tell me a long story about animals"))
+                .build();
+
+        // when
+        target.chat(chatRequest).subscribe(new Flow.Subscriber<>() {
+
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                subscriptionReference.set(subscription);
+                subscription.request(Long.MAX_VALUE);
+            }
+
+            @Override
+            public void onNext(StreamingEvent event) {
+                if (cancelled.get()) {
+                    return; // tolerate in-flight events dispatched before cancel() took effect TODO
+                }
+                if (eventCounter.incrementAndGet() == eventsBeforeCancellation) {
+                    cancelled.set(true);
+                    subscriptionReference.get().cancel();
+                    cancelledFuture.complete(null);
+                }
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                terminalSignal.completeExceptionally(throwable);
+            }
+
+            @Override
+            public void onComplete() {
+                terminalSignal.complete(null);
+            }
+        });
+
+        // then
+        cancelledFuture.get(30, SECONDS); // enough events arrived and we cancelled the subscription
+        assertThat(eventCounter).hasValue(eventsBeforeCancellation);
+
+        // After cancellation no terminal signal must arrive: the stream was cut short, not run to
+        // completion. (TimeoutException here means neither onComplete nor onError fired, as required.)
+        assertThatThrownBy(() -> terminalSignal.get(30, SECONDS)).isInstanceOf(TimeoutException.class);
     }
 
     protected boolean supportsStreamingCancellation() {
@@ -461,6 +530,9 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         AtomicInteger timesOnPartialResponseWasCalled = new AtomicInteger();
         AtomicInteger timesOnPartialThinkingWasCalled = new AtomicInteger();
         AtomicInteger timesOnCompleteResponseWasCalled = new AtomicInteger();
+        List<StreamingEvent> events = new CopyOnWriteArrayList<>();
+        Set<Thread> threads = new CopyOnWriteArraySet<>();
+        Thread callerThread = Thread.currentThread();
 
         chatModel.chat(chatRequest).subscribe(new Flow.Subscriber<>() {
 
@@ -473,7 +545,8 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
             @Override
             public void onNext(StreamingEvent event) {
-                // TODO collect all events and verify them (quantity, order, content, etc)
+                events.add(event);
+                threads.add(Thread.currentThread());
                 if (event instanceof PartialResponse partial) {
                     concatenatedPartialResponsesBuilder.append(partial.text());
                     timesOnPartialResponseWasCalled.incrementAndGet();
@@ -493,11 +566,13 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
             @Override
             public void onError(Throwable throwable) {
+                threads.add(Thread.currentThread());
                 futureChatResponse.completeExceptionally(throwable);
             }
 
             @Override
             public void onComplete() {
+                threads.add(Thread.currentThread());
                 futureChatResponse.complete(chatResponse);
             }
         });
@@ -512,6 +587,9 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+        if (chatResponse != null) {
+            verifyPublisherEvents(events, threads, callerThread);
+        }
         String concatenatedPartialResponses = concatenatedPartialResponsesBuilder.toString();
         StreamingMetadata metadata = new StreamingMetadata(
                 concatenatedPartialResponses.isEmpty() ? null : concatenatedPartialResponses,
@@ -520,10 +598,41 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
                 new ArrayList<>(partialToolCalls),
                 new ArrayList<>(completeToolCalls),
                 timesOnCompleteResponseWasCalled.get(),
-                null,
+                threads,
                 null,
                 StreamingMode.PUBLISHER);
         return new ChatResponseAndStreamingMetadata(chatResponse, metadata);
+    }
+
+    /**
+     * Verifies the invariants of a successfully completed publisher stream:
+     * <ul>
+     *     <li>events are delivered asynchronously, off the subscribing (caller) thread;</li>
+     *     <li>the terminal {@link ChatResponse} is emitted exactly once and is the very last event;</li>
+     *     <li>for every tool call, all of its {@link PartialToolCall}s precede its {@link CompleteToolCall}.</li>
+     * </ul>
+     */
+    private static void verifyPublisherEvents(List<StreamingEvent> events, Set<Thread> deliveryThreads, Thread callerThread) {
+        assertThat(deliveryThreads)
+                .as("publisher must deliver events asynchronously, not on the subscribing thread")
+                .isNotEmpty()
+                .doesNotContain(callerThread);
+
+        long completeResponses = events.stream().filter(event -> event instanceof ChatResponse).count();
+        assertThat(completeResponses).as("exactly one terminal ChatResponse event").isEqualTo(1);
+        assertThat(events.get(events.size() - 1))
+                .as("ChatResponse must be the last event")
+                .isInstanceOf(ChatResponse.class);
+
+        for (int i = 0; i < events.size(); i++) {
+            if (events.get(i) instanceof CompleteToolCall complete) {
+                for (int j = i + 1; j < events.size(); j++) {
+                    assertThat(events.get(j) instanceof PartialToolCall partial && partial.index() == complete.index())
+                            .as("PartialToolCall for tool index %s arrived after its CompleteToolCall", complete.index())
+                            .isFalse();
+                }
+            }
+        }
     }
 
     public static final class StreamingModeAwareModel implements StreamingChatModel {
