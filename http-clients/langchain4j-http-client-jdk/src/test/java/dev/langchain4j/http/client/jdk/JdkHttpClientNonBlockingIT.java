@@ -55,6 +55,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class JdkHttpClientNonBlockingIT {
 
+    // TODO similar test for other HttpClient implementations
+
     /**
      * Blocking calls BlockHound observed on a policed thread. Cleared before each test by
      * {@link #resetViolations()}; the streaming test expects none, the self-test expects one.
