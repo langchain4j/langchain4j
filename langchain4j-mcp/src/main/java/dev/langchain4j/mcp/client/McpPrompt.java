@@ -1,7 +1,6 @@
 package dev.langchain4j.mcp.client;
 
 import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.Utils.mutableCopy;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -39,7 +38,7 @@ public class McpPrompt {
         this.name = name;
         this.description = description;
         this.arguments = arguments;
-        this.metadata = copy(mutableCopy(metadata));
+        this.metadata = copy(metadata);
         this.icons = icons == null ? List.of() : List.copyOf(icons);
     }
 
