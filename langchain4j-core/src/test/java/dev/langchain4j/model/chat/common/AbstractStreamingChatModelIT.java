@@ -106,7 +106,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         return applyModes(List.of(createModelWith(parameters)));
     }
 
-    public abstract StreamingChatModel createModelWith(ChatModelListener listener); // TODO test with publisher mode?
+    public abstract StreamingChatModel createModelWith(ChatModelListener listener);
 
     @ParameterizedTest
     @MethodSource("models")
@@ -114,8 +114,9 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
     void should_cancel_streaming(StreamingChatModel model) {
 
         // StreamingHandle.cancel() is part of the handler-based API only — there's no equivalent
-        // visible in the publisher path (callers use Flow.Subscription.cancel() instead, which
-        // a separate test would exercise). Skip publisher-wrapped invocations. TODO
+        // visible in the publisher path (callers use Flow.Subscription.cancel() instead, which is
+        // covered separately by the Reactive Streams TCK and a WireMock mid-stream cancellation test).
+        // Skip publisher-wrapped invocations.
         Assumptions.assumeTrue(
                 !(model instanceof StreamingModeAwareModel w) || w.mode() == StreamingMode.HANDLER,
                 "StreamingHandle cancellation is handler-mode only");
@@ -166,7 +167,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
     }
 
     @Test
-    void should_propagate_user_exceptions_thrown_from_onPartialResponse() throws Exception { // TODO test with publisher as well?
+    void should_propagate_user_exceptions_thrown_from_onPartialResponse() throws Exception {
 
         // given
         AtomicInteger onPartialResponseCalled = new AtomicInteger(0);

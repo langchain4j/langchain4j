@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <em>mid-stream</em> actually stops the pipeline: once the source is actively streaming, {@code cancel()}
  * must make it go quiet and must never deliver a terminal {@code onComplete}/{@code onError}.
  * <p>
- * This complements {@link OpenAiStreamingChatModelTckTest}: the Reactive Streams TCK's cancellation
+ * This complements {@link OpenAiStreamingChatModelPublisherTckTest}: the Reactive Streams TCK's cancellation
  * checks (spec306/307) cancel <em>before</em> any element is requested, so they don't exercise
  * cancellation while the producer is actively reading the SSE body — the realistic, bug-prone case for
  * an SSE reader. WireMock's chunked-dribble delay spreads the response over time so we can cancel in the

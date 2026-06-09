@@ -48,7 +48,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * clears them before each test, which keeps the tests order-independent (they must run sequentially).
  */
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
-class OpenAiStreamingChatModelNonBlockingIT {
+class OpenAiStreamingChatModelPublisherNonBlockingIT {
 
     // TODO similar test for AI Service
     // TODO make abstract, use for other providers

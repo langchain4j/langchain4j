@@ -176,6 +176,13 @@ public interface StreamingChatModel {
      * Registered {@link ChatModelListener}s are invoked: {@code onRequest} on each new subscription
      * (just before the underlying request goes out), {@code onResponse} after the terminal
      * {@link ChatResponse} is emitted, {@code onError} on failure.
+     * <p>
+     * If the {@link Subscriber} throws from {@code onNext} (or any other signal method), it violates the
+     * Reactive Streams contract (Rule 2.13): the stream is cancelled and no further events are delivered,
+     * and no {@link ChatModelListener} callback fires for it — neither {@code onResponse} nor
+     * {@code onError}. This differs from the handler-based
+     * {@link #chat(ChatRequest, StreamingChatResponseHandler)} path, which catches exceptions thrown from
+     * handler callbacks, reports them to {@code onError}, and keeps streaming.
      */
     default Publisher<StreamingEvent> chat(ChatRequest request) {
 

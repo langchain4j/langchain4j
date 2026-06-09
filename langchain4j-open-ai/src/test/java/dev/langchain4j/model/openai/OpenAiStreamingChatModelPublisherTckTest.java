@@ -20,7 +20,7 @@ import static org.reactivestreams.FlowAdapters.toPublisher;
  * {@code JdkHttpClient.StreamingHttpEventPublisher -> DefaultOpenAiClient.chatCompletionPublisher -> downstream}.
  * Uses WireMock to emit deterministic OpenAI-style SSE responses.
  */
-public class OpenAiStreamingChatModelTckTest extends PublisherVerification<StreamingEvent> {
+public class OpenAiStreamingChatModelPublisherTckTest extends PublisherVerification<StreamingEvent> {
 
     private static final long DEFAULT_TIMEOUT_MILLIS = 2_000L;
     private static final long DEFAULT_NO_SIGNALS_TIMEOUT_MILLIS = DEFAULT_TIMEOUT_MILLIS;
@@ -34,7 +34,7 @@ public class OpenAiStreamingChatModelTckTest extends PublisherVerification<Strea
 
     private static WireMockServer wireMockServer;
 
-    public OpenAiStreamingChatModelTckTest() {
+    public OpenAiStreamingChatModelPublisherTckTest() {
         super(
                 new TestEnvironment(DEFAULT_TIMEOUT_MILLIS, DEFAULT_NO_SIGNALS_TIMEOUT_MILLIS, DEFAULT_POLL_TIMEOUT_MILLIS),
                 PUBLISHER_REFERENCE_CLEANUP_TIMEOUT_MILLIS);
