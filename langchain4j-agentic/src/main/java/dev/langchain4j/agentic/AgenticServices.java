@@ -333,6 +333,21 @@ public class AgenticServices {
         T agent = createComposedAgent(agentServiceClass, chatModel, agentConfigurator);
 
         if (agent == null) {
+            // A class annotated only with @A2AClientAgent is not a composed agent,
+            // but it is still a valid root of an agentic system. Detect it here and
+            // delegate to the A2AService SPI so we build the T proxy through the
+            // existing A2A client builder, rather than falling through to the
+            // AgentBuilder path that requires @Agent. See issue #5310.
+            Optional<Method> a2aRootMethod = getAnnotatedMethodOnClass(agentServiceClass, A2AClientAgent.class);
+            if (a2aRootMethod.isPresent()) {
+                A2AClientAgent a2aAnnotation = a2aRootMethod.get().getAnnotation(A2AClientAgent.class);
+                return A2AService.get()
+                        .a2aBuilder(a2aAnnotation.a2aServerUrl(), agentServiceClass)
+                        .outputKey(AgentUtil.outputKey(a2aAnnotation.outputKey(), a2aAnnotation.typedOutputKey()))
+                        .async(a2aAnnotation.async())
+                        .build();
+            }
+
             var agentBuilder = AgentBuilder.withoutDeclarativeConfiguration(agentServiceClass);
             configureAgent(agentServiceClass, chatModel, agentBuilder, agentConfigurator);
             agent = agentBuilder.build();
