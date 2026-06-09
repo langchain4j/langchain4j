@@ -50,7 +50,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiStreamingChatModelNonBlockingIT {
 
-    // TODO similar test for AI Service and other providers?
+    // TODO similar test for AI Service
+    // TODO make abstract, use for other providers
 
     /**
      * Blocking calls BlockHound observed on a policed thread.
