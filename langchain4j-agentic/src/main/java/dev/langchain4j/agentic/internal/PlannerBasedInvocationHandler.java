@@ -123,7 +123,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         PlannerBasedInvocationHandler newHandler = new PlannerBasedInvocationHandler(
                 service, parent, agentId, plannerSupplier, agenticScope);
         if (service.agentInstanceFactory != null) {
-            return (AgenticScopeOwner) service.agentInstanceFactory.apply(type, newHandler);
+            return (AgenticScopeOwner) service.agentInstanceFactory.apply(newHandler);
         }
         return (AgenticScopeOwner) Proxy.newProxyInstance(
                 type.getClassLoader(),

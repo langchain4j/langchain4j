@@ -60,8 +60,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.ServiceLoader;
-import java.lang.reflect.InvocationHandler;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -289,7 +287,7 @@ public class AgenticServices {
     public record AgentConfigurator(
             Consumer<DeclarativeAgentCreationContext<?>> configurator,
             Function<Class<?>, Object> subAgentResolver,
-            BiFunction<Class<?>, InvocationHandler, Object> agentInstanceFactory) {
+            Function<InternalAgent, Object> agentInstanceFactory) {
 
         private static final AgentConfigurator EMPTY = new AgentConfigurator(ctx -> {}, null, null);
 

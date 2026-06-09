@@ -128,7 +128,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     private ToolArgumentsErrorHandler toolArgumentsErrorHandler;
     private ToolExecutionErrorHandler toolExecutionErrorHandler;
 
-    BiFunction<Class<?>, java.lang.reflect.InvocationHandler, Object> agentInstanceFactory;
+    java.util.function.Function<InternalAgent, Object> agentInstanceFactory;
 
     AgentListener agentListener;
 
@@ -234,7 +234,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
         AgentInstance agent;
         if (agentInstanceFactory != null) {
-            agent = (AgentInstance) agentInstanceFactory.apply(agentServiceClass, handler);
+            agent = (AgentInstance) agentInstanceFactory.apply(handler);
         } else {
             agent = (AgentInstance) Proxy.newProxyInstance(
                     agentServiceClass.getClassLoader(),
@@ -575,7 +575,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         return defaultKeyValue(keyName(key), value);
     }
 
-    public B agentInstanceFactory(BiFunction<Class<?>, java.lang.reflect.InvocationHandler, Object> factory) {
+    public B agentInstanceFactory(java.util.function.Function<InternalAgent, Object> factory) {
         this.agentInstanceFactory = factory;
         return (B) this;
     }

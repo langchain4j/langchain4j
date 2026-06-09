@@ -6,6 +6,7 @@ import dev.langchain4j.agentic.AgenticServices.AgentConfigurator;
 import dev.langchain4j.agentic.agent.AgentBuilder;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
+import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -16,7 +17,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 import org.junit.jupiter.api.Test;
 
 class AgentInstanceFactoryTest {
@@ -34,12 +35,12 @@ class AgentInstanceFactoryTest {
     void agentBuilder_uses_factory_when_set() {
         List<Class<?>> factoryCalls = new ArrayList<>();
 
-        BiFunction<Class<?>, InvocationHandler, Object> factory = (clazz, handler) -> {
-            factoryCalls.add(clazz);
+        Function<InternalAgent, Object> factory = internalAgent -> {
+            factoryCalls.add(internalAgent.type());
             return Proxy.newProxyInstance(
-                    clazz.getClassLoader(),
-                    AgentBuilder.interfacesToImplement(clazz),
-                    handler);
+                    internalAgent.type().getClassLoader(),
+                    AgentBuilder.interfacesToImplement(internalAgent.type()),
+                    (InvocationHandler) internalAgent);
         };
 
         SimpleAgent agent = AgenticServices.agentBuilder(SimpleAgent.class)
@@ -65,12 +66,12 @@ class AgentInstanceFactoryTest {
     void agentConfigurator_propagates_factory_to_leaf_agent() {
         List<Class<?>> factoryCalls = new ArrayList<>();
 
-        BiFunction<Class<?>, InvocationHandler, Object> factory = (clazz, handler) -> {
-            factoryCalls.add(clazz);
+        Function<InternalAgent, Object> factory = internalAgent -> {
+            factoryCalls.add(internalAgent.type());
             return Proxy.newProxyInstance(
-                    clazz.getClassLoader(),
-                    AgentBuilder.interfacesToImplement(clazz),
-                    handler);
+                    internalAgent.type().getClassLoader(),
+                    AgentBuilder.interfacesToImplement(internalAgent.type()),
+                    (InvocationHandler) internalAgent);
         };
 
         var configurator = new AgentConfigurator(ctx -> {}, null, factory);
@@ -86,12 +87,12 @@ class AgentInstanceFactoryTest {
     void agentConfigurator_propagates_factory_to_sequence_builder() {
         List<Class<?>> factoryCalls = new ArrayList<>();
 
-        BiFunction<Class<?>, InvocationHandler, Object> factory = (clazz, handler) -> {
-            factoryCalls.add(clazz);
+        Function<InternalAgent, Object> factory = internalAgent -> {
+            factoryCalls.add(internalAgent.type());
             return Proxy.newProxyInstance(
-                    clazz.getClassLoader(),
-                    AgentBuilder.interfacesToImplement(clazz),
-                    handler);
+                    internalAgent.type().getClassLoader(),
+                    AgentBuilder.interfacesToImplement(internalAgent.type()),
+                    (InvocationHandler) internalAgent);
         };
 
         var configurator = new AgentConfigurator(ctx -> {}, null, factory);
