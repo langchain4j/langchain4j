@@ -106,7 +106,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         return applyModes(List.of(createModelWith(parameters)));
     }
 
-    public abstract StreamingChatModel createModelWith(ChatModelListener listener);
+    public abstract StreamingChatModel createModelWith(ChatModelListener listener); // TODO publisher mode
 
     @ParameterizedTest
     @MethodSource("models")
@@ -162,11 +162,11 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
     @Override
     protected boolean assertThreads() {
-        return streamingModes().equals(List.of(StreamingMode.HANDLER));
+        return streamingModes().equals(List.of(StreamingMode.HANDLER)); // TODO assert for publisher as well?
     }
 
     @Test
-    void should_propagate_user_exceptions_thrown_from_onPartialResponse() throws Exception {
+    void should_propagate_user_exceptions_thrown_from_onPartialResponse() throws Exception { // TODO test with publisher as well?
 
         // given
         AtomicInteger onPartialResponseCalled = new AtomicInteger(0);
@@ -473,7 +473,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
             @Override
             public void onNext(StreamingEvent event) {
-                // TODO collect all events and verify them (quantity, oder, content, etc)
+                // TODO collect all events and verify them (quantity, order, content, etc)
                 if (event instanceof PartialResponse partial) {
                     concatenatedPartialResponsesBuilder.append(partial.text());
                     timesOnPartialResponseWasCalled.incrementAndGet();
