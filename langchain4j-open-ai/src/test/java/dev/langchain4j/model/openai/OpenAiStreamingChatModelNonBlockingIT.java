@@ -50,7 +50,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class OpenAiStreamingChatModelNonBlockingIT {
 
-    // TODO similar test for http client, AI Service and other providers?
+    // TODO similar test for AI Service and other providers?
 
     /**
      * Blocking calls BlockHound observed on a policed thread.
@@ -75,6 +75,13 @@ class OpenAiStreamingChatModelNonBlockingIT {
                 // (getTask), exiting workers acquire the pool's lock to coordinate shutdown (processWorkerExit).
                 .allowBlockingCallsInside("java.util.concurrent.ThreadPoolExecutor", "getTask")
                 .allowBlockingCallsInside("java.util.concurrent.ThreadPoolExecutor", "processWorkerExit")
+                // Async test logging (logging=true): LoggingHttpClient logs every streamed event at
+                // DEBUG on the worker thread, and tinylog hands each entry to its writer thread under a
+                // monitor (WritingThread.add → Object.notify()). The worker can briefly contend on that
+                // monitor and park — the logging backend's internal handoff, not our pipeline. Tolerate
+                // it so logging=true doesn't flake. (Only blocking inside WritingThread.add is allowed;
+                // our pipeline is still fully policed.)
+                .allowBlockingCallsInside("org.tinylog.core.WritingThread", "add")
                 // Record (don't throw): a thrown error on a worker thread kills the thread but never
                 // reaches our subscriber, so the test would pass despite the violation. Recording lets
                 // us assert on it after the stream completes.
