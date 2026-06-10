@@ -249,4 +249,31 @@ class JsonParsingUtilsTest {
         assertThat(result.value().name).isEqualTo("Tom");
         assertThat(result.value().age).isEqualTo(18);
     }
+
+    @Test
+    void extract_object_when_suffix_contains_unmatched_closing_bracket() throws Exception {
+        String text = """
+                {"name":"Tom","age":18}
+                Here is a trailing note with a stray closing bracket ]
+                """;
+
+        JsonParsingUtils.ParsedJson<MyPojo> result = JsonParsingUtils.extractAndParseJson(text, MyPojo.class);
+
+        assertThat(result.value().name).isEqualTo("Tom");
+        assertThat(result.value().age).isEqualTo(18);
+    }
+
+    @Test
+    void extract_array_when_suffix_contains_unmatched_closing_brace() throws Exception {
+        String text = """
+                [{"log":"missing '}'"},{"log":"ok"}]
+                Here is a trailing note with a stray closing brace }
+                """;
+
+        JsonParsingUtils.ParsedJson<LogEntry[]> result = JsonParsingUtils.extractAndParseJson(text, LogEntry[].class);
+
+        assertThat(result.value()).hasSize(2);
+        assertThat(result.value()[0].log).isEqualTo("missing '}'");
+        assertThat(result.value()[1].log).isEqualTo("ok");
+    }
 }
