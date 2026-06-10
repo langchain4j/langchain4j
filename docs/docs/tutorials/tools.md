@@ -1614,6 +1614,141 @@ Assistant assistant = AiServices.builder(Assistant.class)
 As with the `ToolArgumentsErrorHandler`, there are two ways to handle errors in `ToolExecutionErrorHandler`:
 throw an exception or return a text message.
 
+### Compensating Tool Actions
+
+When an AI Service uses multiple tools to accomplish a task, a failure in one tool
+can leave the system in an inconsistent state — some tools have already executed
+successfully while others have not. For example, in a bank transfer the LLM might
+credit the recipient's account first and then fail to withdraw from the sender's
+account due to insufficient funds, leaving the recipient with extra money.
+
+To handle this, you can enable **compensation on tool errors**. When enabled,
+if any tool execution fails, all previously successful tool calls that declare a
+compensating action are automatically undone in reverse order.
+
+#### Declaring Compensating Actions with `@CompensateFor`
+
+Use the `@CompensateFor` annotation on a method to declare it as the compensating
+action for a `@Tool`. The `value` must match the name of the tool it compensates for
+(either the `@Tool` method name or its `@Tool(name = ...)` attribute).
+The compensating method must either have the same parameter types as the tool,
+or accept a single `ToolExecution` parameter.
+
+**Option 1: Same parameter types** — the compensating method receives the same
+arguments that were passed to the original tool:
+
+```java
+class BankAccountService {
+
+    @Tool("credits money to a bank account")
+    void credit(String name, double amount) {
+        accounts.merge(name, amount, Double::sum);
+    }
+
+    @CompensateFor("credit")
+    void uncredit(String name, double amount) {
+        accounts.merge(name, -amount, Double::sum);
+    }
+
+    @Tool("withdraws money from a bank account")
+    void withdraw(String name, double amount) {
+        if (accounts.getOrDefault(name, 0.0) < amount) {
+            throw new RuntimeException("Insufficient funds");
+        }
+        accounts.merge(name, -amount, Double::sum);
+    }
+
+    @CompensateFor("withdraw")
+    void unwithdraw(String name, double amount) {
+        accounts.merge(name, amount, Double::sum);
+    }
+}
+```
+
+**Option 2: `ToolExecution` parameter** — the compensating method receives the full
+`ToolExecution`, giving access to both the original arguments and the tool's
+**return value**. This is useful when undoing an action requires information
+produced by the original execution (e.g. a transaction ID):
+
+```java
+class BankAccountService {
+
+    @Tool("credits money to a bank account")
+    String credit(String name, double amount) {
+        accounts.merge(name, amount, Double::sum);
+        return createTransactionRecord(name, amount); // e.g. "TX-42"
+    }
+
+    @CompensateFor("credit")
+    void uncredit(ToolExecution toolExecution) {
+        String transactionId = toolExecution.result(); // "TX-42"
+        reverseTransaction(transactionId);
+    }
+}
+```
+
+#### Enabling Compensation
+
+Call `.compensateOnToolErrors(true)` when building the AI Service:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(model)
+        .tools(new BankAccountService())
+        .compensateOnToolErrors(true)
+        .build();
+```
+
+With this configuration, if the LLM calls `credit("Dmytro", 100)` and then
+`withdraw("Mario", 100)` which fails, the framework will automatically call
+`uncredit("Dmytro", 100)` to undo the credit. Instead of throwing an exception,
+the framework sends informative result messages back to the LLM for each tool:
+rolled-back tools get a message like _"Tool 'credit' was executed successfully but
+was rolled back due to failure of tool 'withdraw'"_, and the failed tool gets its
+normal error message. This keeps the `ChatMemory` consistent and lets the LLM
+decide what to do next — retry, inform the user, or take a different approach.
+
+Without `.compensateOnToolErrors(true)`, the error is sent back to the LLM as usual and no
+compensation occurs — even if `@CompensateFor` annotations are present.
+
+#### Validation
+
+At AI Service build time, each `@CompensateFor` is validated:
+- The referenced tool must exist (by name) on the same object.
+- The compensating method must have exactly the same parameter types as the tool,
+  or accept a single `ToolExecution` parameter.
+
+If either check fails, an `IllegalConfigurationException` is thrown immediately,
+so misconfigurations are caught at startup rather than at runtime.
+
+#### Notes and Limitations
+
+:::note
+Compensation is best-effort: if a compensating action itself throws an exception, it is
+logged at WARN level and the remaining compensating actions continue to execute.
+:::
+
+:::note
+`@CompensateFor` methods are not exposed to the LLM — they are internal compensation
+infrastructure and do not appear in tool specifications.
+:::
+
+:::note
+Compensating actions always run sequentially in reverse order, even when tool
+execution is configured to run in parallel via `.executeToolsConcurrently()`.
+:::
+
+:::note
+`@CompensateFor` only works with `@Tool`-annotated methods. Programmatically or
+dynamically defined tools (e.g. MCP tools, tools registered via `ToolSpecification`)
+are not supported.
+:::
+
+:::note
+Compensating tool actions are currently marked as experimental and may evolve
+in future releases.
+:::
+
 ## Model Context Protocol (MCP)
 
 You can also import [tools from MCP server](https://modelcontextprotocol.io/docs/concepts/tools).
