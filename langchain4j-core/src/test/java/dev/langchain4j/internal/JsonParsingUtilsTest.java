@@ -3,10 +3,9 @@ package dev.langchain4j.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.core.JsonParseException;
 import java.util.List;
 import java.util.Map;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -77,8 +76,7 @@ class JsonParsingUtilsTest {
     @Test
     void extract_array() throws Exception {
         String json = "[{\"name\":\"A\",\"age\":1},{\"name\":\"B\",\"age\":2}]";
-        JsonParsingUtils.ParsedJson<MyPojo[]> result =
-                JsonParsingUtils.extractAndParseJson(json, MyPojo[].class);
+        JsonParsingUtils.ParsedJson<MyPojo[]> result = JsonParsingUtils.extractAndParseJson(json, MyPojo[].class);
         assertThat(result).isNotNull();
         assertThat(result.value().length).isEqualTo(2);
         assertThat(result.value()[0].name).isEqualTo("A");
@@ -93,8 +91,7 @@ class JsonParsingUtilsTest {
     @Test
     void extract_array_with_noise() throws Exception {
         String json = "abc [{\"name\":\"A\",\"age\":1},{\"name\":\"B\",\"age\":2}] xyz";
-        JsonParsingUtils.ParsedJson<MyPojo[]> result =
-                JsonParsingUtils.extractAndParseJson(json, MyPojo[].class);
+        JsonParsingUtils.ParsedJson<MyPojo[]> result = JsonParsingUtils.extractAndParseJson(json, MyPojo[].class);
         assertThat(result).isNotNull();
         assertThat(result.value().length).isEqualTo(2);
     }
@@ -108,8 +105,7 @@ class JsonParsingUtilsTest {
     @Test
     void extract_nested_array() throws Exception {
         String json = "[[{\"name\":\"A\",\"age\":1}],[{\"name\":\"B\",\"age\":2}]]";
-        JsonParsingUtils.ParsedJson<MyPojo[][]> result =
-                JsonParsingUtils.extractAndParseJson(json, MyPojo[][].class);
+        JsonParsingUtils.ParsedJson<MyPojo[][]> result = JsonParsingUtils.extractAndParseJson(json, MyPojo[][].class);
         assertThat(result).isNotNull();
         assertThat(result.value().length).isEqualTo(2);
         assertThat(result.value()[0][0].name).isEqualTo("A");
@@ -194,8 +190,7 @@ class JsonParsingUtilsTest {
     void extract_json_array_with_nested_objects_and_arrays() throws Exception {
         String json =
                 "[{\"name\":\"Tom\",\"age\":18,\"tags\":[\"a\",\"b\"]},{\"name\":\"Jerry\",\"age\":20,\"tags\":[\"x\",\"y\"]}]";
-        JsonParsingUtils.ParsedJson<MyPojo[]> result =
-                JsonParsingUtils.extractAndParseJson(json, MyPojo[].class);
+        JsonParsingUtils.ParsedJson<MyPojo[]> result = JsonParsingUtils.extractAndParseJson(json, MyPojo[].class);
         assertThat(result).isNotNull();
         assertThat(result.value()[1].tags).containsExactly("x", "y");
     }
@@ -211,8 +206,7 @@ class JsonParsingUtilsTest {
                 {"log":"Unexpected character '}' at position 42"}
                 """;
 
-        JsonParsingUtils.ParsedJson<LogEntry> result =
-                JsonParsingUtils.extractAndParseJson(text, LogEntry.class);
+        JsonParsingUtils.ParsedJson<LogEntry> result = JsonParsingUtils.extractAndParseJson(text, LogEntry.class);
 
         assertThat(result.value().log).isEqualTo("Unexpected character '}' at position 42");
     }
@@ -224,8 +218,7 @@ class JsonParsingUtilsTest {
                 {"log":"Error: unexpected ']' found"}
                 """;
 
-        JsonParsingUtils.ParsedJson<LogEntry> result =
-                JsonParsingUtils.extractAndParseJson(text, LogEntry.class);
+        JsonParsingUtils.ParsedJson<LogEntry> result = JsonParsingUtils.extractAndParseJson(text, LogEntry.class);
 
         assertThat(result.value().log).isEqualTo("Error: unexpected ']' found");
     }
@@ -237,11 +230,23 @@ class JsonParsingUtilsTest {
                 [{"log":"missing '}'"},{"log":"ok"}]
                 """;
 
-        JsonParsingUtils.ParsedJson<LogEntry[]> result =
-                JsonParsingUtils.extractAndParseJson(text, LogEntry[].class);
+        JsonParsingUtils.ParsedJson<LogEntry[]> result = JsonParsingUtils.extractAndParseJson(text, LogEntry[].class);
 
         assertThat(result.value()).hasSize(2);
         assertThat(result.value()[0].log).isEqualTo("missing '}'");
         assertThat(result.value()[1].log).isEqualTo("ok");
+    }
+
+    @Test
+    void extract_object_when_suffix_contains_unmatched_closing_brace() throws Exception {
+        String text = """
+                {"name":"Tom","age":18}
+                Here is a trailing note with a stray closing brace }
+                """;
+
+        JsonParsingUtils.ParsedJson<MyPojo> result = JsonParsingUtils.extractAndParseJson(text, MyPojo.class);
+
+        assertThat(result.value().name).isEqualTo("Tom");
+        assertThat(result.value().age).isEqualTo(18);
     }
 }

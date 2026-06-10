@@ -16,7 +16,8 @@ public class JsonParsingUtils {
         return extractAndParseJson(text, s -> Json.fromJson(s, type));
     }
 
-    public static <T> ParsedJson<T> extractAndParseJson(String text, ThrowingFunction<String, T> parser) throws Exception {
+    public static <T> ParsedJson<T> extractAndParseJson(String text, ThrowingFunction<String, T> parser)
+            throws Exception {
         Exception parseException = null;
         try {
             return new ParsedJson<>(parser.apply(text), text);
@@ -35,7 +36,10 @@ public class JsonParsingUtils {
 
             int jsonStart = findJsonStart(text, jsonEnd, text.charAt(jsonEnd));
             if (jsonStart < 0) {
-                throw parseException;
+                // No matching opening bracket for this closing bracket (e.g. a stray
+                // '}' or ']' in trailing text); skip it and keep searching earlier.
+                index = jsonEnd - 1;
+                continue;
             }
 
             try {
