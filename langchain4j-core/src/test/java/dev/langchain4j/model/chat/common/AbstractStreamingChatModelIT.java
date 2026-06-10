@@ -491,9 +491,9 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
                 } else if (event instanceof ChatResponse response) {
                     chatResponse = response;
                     timesOnCompleteResponseWasCalled.incrementAndGet();
-                } else {
-                    throw new IllegalStateException("Unknown event type: " + event);
                 }
+                // Other event types (e.g. RawStreamingEvent, or types introduced later) are intentionally
+                // ignored here: subscribers must tolerate unrecognized StreamingEvent subtypes.
             }
 
             @Override

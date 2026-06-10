@@ -19,9 +19,11 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingEvent;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Flow.Publisher;
 
 @Experimental
 public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
@@ -96,6 +98,14 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         OpenAiResponsesChatRequestParameters parameters =
                 (OpenAiResponsesChatRequestParameters) chatRequest.parameters();
         client.streamingChat(chatRequest, parameters, handler);
+    }
+
+    @Override
+    public Publisher<StreamingEvent> doChat(ChatRequest chatRequest) {
+        validate(chatRequest.parameters());
+        OpenAiResponsesChatRequestParameters parameters =
+                (OpenAiResponsesChatRequestParameters) chatRequest.parameters();
+        return client.streamingChatPublisher(chatRequest, parameters);
     }
 
     private static void validate(final ChatRequestParameters parameters) {

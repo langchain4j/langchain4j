@@ -9,6 +9,7 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
+import dev.langchain4j.model.chat.response.RawStreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingHandle;
@@ -69,6 +70,13 @@ public final class TubeBackedStreamingChatResponseHandler implements StreamingCh
     public void onCompleteToolCall(CompleteToolCall completeToolCall) {
         if (!tube.cancelled()) {
             tube.send(completeToolCall);
+        }
+    }
+
+    @Override
+    public void onRawEvent(RawStreamingEvent rawEvent) {
+        if (!tube.cancelled()) {
+            tube.send(rawEvent);
         }
     }
 

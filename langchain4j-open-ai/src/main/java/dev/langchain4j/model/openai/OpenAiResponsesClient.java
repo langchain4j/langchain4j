@@ -2,10 +2,11 @@ package dev.langchain4j.model.openai;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.*;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,8 +35,8 @@ import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import dev.langchain4j.http.client.sse.StreamingHttpEvent;
 import dev.langchain4j.internal.ExceptionMapper;
-import dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -45,9 +46,12 @@ import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.model.chat.response.DefaultRawStreamingEvent;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingHandle;
+import dev.langchain4j.model.openai.internal.TubeBackedStreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -55,6 +59,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Flow.Publisher;
+import java.util.concurrent.Flow.Subscriber;
+import java.util.concurrent.Flow.Subscription;
+import mutiny.zero.BackpressureStrategy;
+import mutiny.zero.TubeConfiguration;
+import mutiny.zero.ZeroPublisher;
 
 class OpenAiResponsesClient {
 
@@ -212,6 +222,74 @@ class OpenAiResponsesClient {
         } catch (Exception e) {
             withLoggingExceptions(() -> handler.onError(ExceptionMapper.DEFAULT.mapException(e)));
         }
+    }
+
+    Publisher<StreamingEvent> streamingChatPublisher(
+            ChatRequest chatRequest, OpenAiResponsesChatRequestParameters parameters) {
+
+        TubeConfiguration config = new TubeConfiguration()
+                .withBackpressureStrategy(BackpressureStrategy.BUFFER) // TODO configurable
+                .withBufferSize(256); // TODO configurable
+
+        return ZeroPublisher.create(config, tube -> {
+            HttpRequest request;
+            try {
+                Map<String, Object> payload = buildRequestPayload(chatRequest, parameters, true);
+                request = buildHttpRequest(payload, true);
+            } catch (Exception e) {
+                tube.fail(ExceptionMapper.DEFAULT.mapException(e));
+                return;
+            }
+
+            TubeBackedStreamingChatResponseHandler handler = new TubeBackedStreamingChatResponseHandler(tube);
+            ResponsesApiEventListener listener = new ResponsesApiEventListener(handler);
+
+            Publisher<StreamingHttpEvent> upstream =
+                    httpClient.executeWithPublisher(request, new DefaultServerSentEventParser());
+            upstream.subscribe(new Subscriber<>() {
+
+                @Override
+                public void onSubscribe(Subscription subscription) {
+                    if (tube.cancelled()) {
+                        subscription.cancel();
+                        return;
+                    }
+                    tube.whenCancelled(subscription::cancel);
+                    subscription.request(Long.MAX_VALUE);
+                }
+
+                @Override
+                public void onNext(StreamingHttpEvent item) {
+                    if (tube.cancelled()) {
+                        return;
+                    }
+                    try {
+                        if (item instanceof SuccessfulHttpResponse httpResponse) {
+                            listener.onOpen(httpResponse);
+                        } else if (item instanceof ServerSentEvent sse) {
+                            listener.onEvent(sse);
+                        }
+                    } catch (Exception e) {
+                        if (!tube.cancelled()) {
+                            tube.fail(e);
+                        }
+                    }
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    if (!tube.cancelled()) {
+                        listener.onError(throwable);
+                    }
+                }
+
+                @Override
+                public void onComplete() {
+                    // Completion is driven by the response.completed/incomplete event, which invokes
+                    // handler.onCompleteResponse and terminates the tube. Nothing to do here.
+                }
+            });
+        });
     }
 
     private Map<String, Object> buildRequestPayload(
@@ -890,12 +968,12 @@ class OpenAiResponsesClient {
                 if (EVENT_OUTPUT_TEXT_DELTA.equals(type)) {
                     var text = node.path(FIELD_DELTA).asText();
                     if (!text.isEmpty()) {
-                        InternalStreamingChatResponseHandlerUtils.onPartialResponse(handler, text, streamingHandle);
+                        onPartialResponse(handler, text, streamingHandle);
                     }
                 } else if (EVENT_REASONING_TEXT_DELTA.equals(type) || EVENT_REASONING_SUMMARY_TEXT_DELTA.equals(type)) {
                     var thinking = node.path(FIELD_DELTA).asText();
                     if (!thinking.isEmpty()) {
-                        InternalStreamingChatResponseHandlerUtils.onPartialThinking(handler, thinking, streamingHandle);
+                        onPartialThinking(handler, thinking, streamingHandle);
                     }
                 } else if (EVENT_OUTPUT_ITEM_ADDED.equals(type)) {
                     var item = node.path(FIELD_ITEM);
@@ -925,8 +1003,7 @@ class OpenAiResponsesClient {
                                     .name(builder.build().name())
                                     .partialArguments(delta)
                                     .build();
-                            InternalStreamingChatResponseHandlerUtils.onPartialToolCall(
-                                    handler, partialToolCall, streamingHandle);
+                            onPartialToolCall(handler, partialToolCall, streamingHandle);
                         }
                     }
                 } else if (EVENT_FUNCTION_CALL_ARGUMENTS_DONE.equals(type)) {
@@ -942,6 +1019,12 @@ class OpenAiResponsesClient {
                     handleResponseCompleted(node);
                 } else if (EVENT_RESPONSE_FAILED.equals(type) || EVENT_RESPONSE_ERROR.equals(type)) {
                     handleResponseFailure(node);
+                } else if (!isCancelled()) {
+                    // Unmapped provider event (e.g. web search, or a lifecycle event we don't model):
+                    // surface it raw so callers can consume provider-specific data the generic API does
+                    // not model. Callers filter by providerEventType().
+                    // TODO type
+                    handler.onRawEvent(new DefaultRawStreamingEvent(isNullOrBlank(type) ? null : type, data));
                 }
             } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -1063,8 +1146,7 @@ class OpenAiResponsesClient {
             Integer index = toolCallIndices.remove(itemId);
             int safeIndex = index != null ? index : completedToolCalls.size() - 1;
             if (!isCancelled()) {
-                InternalStreamingChatResponseHandlerUtils.onCompleteToolCall(
-                        handler, new CompleteToolCall(safeIndex, toolExecutionRequest));
+                onCompleteToolCall(handler, new CompleteToolCall(safeIndex, toolExecutionRequest));
             }
         }
     }

@@ -1,7 +1,9 @@
 package dev.langchain4j.model.openai.internal;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.internal.ToolCallBuilder;
+import dev.langchain4j.model.chat.response.DefaultRawStreamingEvent;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
@@ -16,6 +18,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 @Internal
@@ -49,18 +52,24 @@ public final class ChatCompletionEventDispatcher {
             return;
         }
 
+        boolean mapped = false;
+
         String content = delta.content();
         if (!isNullOrEmpty(content)) {
+            mapped = true;
             onPartialResponse(handler, content, parsedAndRawResponse.streamingHandle());
         }
 
         String reasoningContent = delta.reasoningContent();
         if (returnThinking && !isNullOrEmpty(reasoningContent)) {
+            mapped = true;
             onPartialThinking(handler, reasoningContent, parsedAndRawResponse.streamingHandle());
         }
 
         List<ToolCall> toolCalls = delta.toolCalls();
         if (toolCalls != null) {
+            mapped = true;
+
             for (ToolCall toolCall : toolCalls) {
 
                 int index;
@@ -95,6 +104,17 @@ public final class ChatCompletionEventDispatcher {
                             .build();
                     onPartialToolCall(handler, partialToolRequest, parsedAndRawResponse.streamingHandle());
                 }
+            }
+        }
+
+        if (!mapped) {
+            // The chunk carried nothing we map to a typed event. Suppress chat-completion plumbing
+            // (the role-only opening delta and the final finish/usage chunk); surface anything else as a
+            // raw provider event so callers can consume data the generic API does not (yet) model.
+            boolean plumbing = !isNullOrBlank(delta.role()) || !isNullOrBlank(chatCompletionChoice.finishReason()); // TODO
+            ServerSentEvent rawServerSentEvent = parsedAndRawResponse.rawServerSentEvent();
+            if (!plumbing && rawServerSentEvent != null) {
+                handler.onRawEvent(new DefaultRawStreamingEvent(null, rawServerSentEvent.data()));
             }
         }
     }

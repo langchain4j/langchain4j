@@ -15,6 +15,7 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
+import dev.langchain4j.model.chat.response.RawStreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingEvent;
 
@@ -108,6 +109,11 @@ public interface StreamingChatModel {
             }
 
             @Override
+            public void onRawEvent(RawStreamingEvent rawEvent) {
+                handler.onRawEvent(rawEvent);
+            }
+
+            @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
                 onResponse(completeResponse, finalChatRequest, provider(), attributes, listeners);
                 handler.onCompleteResponse(completeResponse);
@@ -183,6 +189,11 @@ public interface StreamingChatModel {
      * {@code onError}. This differs from the handler-based
      * {@link #chat(ChatRequest, StreamingChatResponseHandler)} path, which catches exceptions thrown from
      * handler callbacks, reports them to {@code onError}, and keeps streaming.
+     * <p>
+     * Subscribers must be prepared to receive {@link StreamingEvent} subtypes they do not recognize and
+     * ignore them. New event types may be introduced over time (and providers may surface unmapped events
+     * as {@link dev.langchain4j.model.chat.response.RawStreamingEvent}), so consuming this stream with an
+     * exhaustive type switch that lacks a default branch is unsafe.
      */
     default Publisher<StreamingEvent> chat(ChatRequest request) {
 
