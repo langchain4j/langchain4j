@@ -145,6 +145,10 @@ public class DeclarativeUtil {
                     agentBuilder.listener(invokeStatic(listenerMethod));
                 });
 
+        if (agentConfigurator.agentInstanceFactory() != null) {
+            agentBuilder.agentInstanceFactory(agentConfigurator.agentInstanceFactory());
+        }
+
         agentConfigurator.configurator().accept(new DefaultDeclarativeAgentCreationContext(agentType, agentBuilder));
     }
 

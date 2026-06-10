@@ -217,7 +217,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
 
     @Override
     public Class<?> type() {
-        return null;
+        return agentServiceClass;
     }
 
     @Override

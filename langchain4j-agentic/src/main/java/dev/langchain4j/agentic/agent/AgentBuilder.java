@@ -128,6 +128,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     private ToolArgumentsErrorHandler toolArgumentsErrorHandler;
     private ToolExecutionErrorHandler toolExecutionErrorHandler;
 
+    java.util.function.Function<InternalAgent, Object> agentInstanceFactory;
+
     AgentListener agentListener;
 
     public AgentBuilder(Class<T> agentServiceClass) {
@@ -228,10 +230,16 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
         build(agenticScope, context, aiServices);
 
-        AgentInstance agent = (AgentInstance) Proxy.newProxyInstance(
-                agentServiceClass.getClassLoader(),
-                interfacesToImplement(agentServiceClass),
-                new AgentInvocationHandler(context, aiServices.build(), this, agenticScopeDependent));
+        AgentInvocationHandler handler = new AgentInvocationHandler(context, aiServices.build(), this, agenticScopeDependent);
+
+        AgentInstance agent;
+        if (agentInstanceFactory != null) {
+            agent = (AgentInstance) agentInstanceFactory.apply(handler);
+        } else {
+            agent = (AgentInstance) Proxy.newProxyInstance(
+                    agentServiceClass.getClassLoader(),
+                    interfacesToImplement(agentServiceClass), handler);
+        }
 
         aiServices.registerListener((AiServiceResponseReceivedListener) agent);
 
@@ -565,6 +573,11 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     public <K> B defaultKeyValue(Class<? extends TypedKey<K>> key, K value) {
         return defaultKeyValue(keyName(key), value);
+    }
+
+    public B agentInstanceFactory(java.util.function.Function<InternalAgent, Object> factory) {
+        this.agentInstanceFactory = factory;
+        return (B) this;
     }
 
     public B listener(AgentListener agentListener) {
