@@ -161,6 +161,21 @@ public interface TokenStream {
     }
 
     /**
+     * The provided consumer will be invoked when a provider emits a raw streaming event.
+     * <p>
+     * The event type depends on the provider implementation. Implementations using the
+     * {@code dev.langchain4j.http.client.HttpClient} abstraction typically expose
+     * {@code ServerSentEvent}; other implementations can expose provider-specific event objects.
+     *
+     * @param rawEventHandler lambda that consumes raw provider streaming events
+     * @return token stream instance used to configure or start stream processing
+     */
+    @Experimental
+    default TokenStream onRawEvent(Consumer<Object> rawEventHandler) {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    /**
      * The provided consumer will be invoked right after a tool is executed.
      * <p>
      * The invocation happens after the tool method has finished and before any other tool is executed.
