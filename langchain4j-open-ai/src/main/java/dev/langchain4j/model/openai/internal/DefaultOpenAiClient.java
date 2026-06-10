@@ -26,6 +26,7 @@ import dev.langchain4j.model.openai.internal.image.GenerateImagesResponse;
 import dev.langchain4j.model.openai.internal.models.ModelsListResponse;
 import dev.langchain4j.model.openai.internal.moderation.ModerationRequest;
 import dev.langchain4j.model.openai.internal.moderation.ModerationResponse;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -127,6 +128,12 @@ public class DefaultOpenAiClient extends OpenAiClient {
 
     @Override
     public SyncOrAsyncOrStreaming<ChatCompletionResponse> chatCompletion(ChatCompletionRequest request) {
+        return chatCompletion(request, null);
+    }
+
+    @Override
+    public SyncOrAsyncOrStreaming<ChatCompletionResponse> chatCompletion(
+            ChatCompletionRequest request, Duration readTimeout) {
 
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
@@ -136,6 +143,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .addHeaders(buildRequestHeaders())
                 .body(Json.toJson(ChatCompletionRequest.builder().from(request).stream(false)
                         .build()))
+                .readTimeout(readTimeout)
                 .build();
 
         HttpRequest streamingHttpRequest = HttpRequest.builder()
@@ -146,6 +154,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .addHeaders(buildRequestHeaders())
                 .body(Json.toJson(ChatCompletionRequest.builder().from(request).stream(true)
                         .build()))
+                .readTimeout(readTimeout)
                 .build();
 
         return new RequestExecutor<>(httpClient, httpRequest, streamingHttpRequest, ChatCompletionResponse.class);
