@@ -333,6 +333,11 @@ public class AgenticServices {
         T agent = createComposedAgent(agentServiceClass, chatModel, agentConfigurator);
 
         if (agent == null) {
+            Optional<Method> a2aClientMethod = getAnnotatedMethodOnClass(agentServiceClass, A2AClientAgent.class);
+            if (a2aClientMethod.isPresent()) {
+                return createA2AClient(agentServiceClass, a2aClientMethod.get());
+            }
+
             var agentBuilder = AgentBuilder.withoutDeclarativeConfiguration(agentServiceClass);
             configureAgent(agentServiceClass, chatModel, agentBuilder, agentConfigurator);
             agent = agentBuilder.build();
@@ -669,6 +674,10 @@ public class AgenticServices {
     }
 
     private static AgentExecutor createA2AClientAgent(Class<?> agentServiceClass, Method a2aMethod) {
+        return agentToExecutor(createA2AClient(agentServiceClass, a2aMethod));
+    }
+
+    private static <T> T createA2AClient(Class<T> agentServiceClass, Method a2aMethod) {
         var a2aClient = a2aMethod.getAnnotation(A2AClientAgent.class);
         var a2aClientBuilder = a2aBuilder(a2aClient.a2aServerUrl(), agentServiceClass)
                 .inputKeys(Stream.of(a2aMethod.getParameters())
@@ -683,7 +692,7 @@ public class AgenticServices {
                     a2aClientBuilder.listener(invokeStatic(method));
                 });
 
-        return agentToExecutor(a2aClientBuilder.build());
+        return a2aClientBuilder.build();
     }
 
     private static AgentExecutor createMcpClientAgent(Class<?> agentServiceClass, Method mcpMethod) {
