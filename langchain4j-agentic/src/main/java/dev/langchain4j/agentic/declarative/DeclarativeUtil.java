@@ -163,6 +163,10 @@ public class DeclarativeUtil {
             agentBuilder.listener(invokeSupplierWithResolvers(agentType, listenerMethod, AgentListener.class));
         });
 
+        if (agentConfigurator.agentInstanceFactory() != null) {
+            agentBuilder.agentInstanceFactory(agentConfigurator.agentInstanceFactory());
+        }
+
         agentConfigurator.configurator().accept(new DefaultDeclarativeAgentCreationContext(agentType, agentBuilder));
     }
 

@@ -137,7 +137,7 @@ public class AgentUtil {
     }
 
     public static AgentExecutor agentToExecutor(InternalAgent agent) {
-        for (Method method : agent.getClass().getMethods()) {
+        for (Method method : agent.type().getMethods()) {
             Optional<AgentExecutor> executor = McpService.get().methodToAgentExecutor(agent, method);
             if (executor.isPresent()) {
                 return executor.get();
