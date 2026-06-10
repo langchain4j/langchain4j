@@ -1,6 +1,7 @@
 package dev.langchain4j.model.chat.common;
 
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -11,6 +12,7 @@ import dev.langchain4j.model.chat.response.*;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -21,12 +23,15 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.Flow.Publisher;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -329,6 +334,89 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         verifyNoMoreInteractions(listener);
     }
 
+    @ParameterizedTest
+    @MethodSource("models")
+    @DisabledIf("supportsStopSequencesParameter")
+    @Override
+    protected void should_fail_if_stopSequences_parameter_is_not_supported(StreamingChatModel model) {
+
+        // given
+        List<String> stopSequences = List.of("World");
+        ChatRequestParameters parameters =
+                ChatRequestParameters.builder().stopSequences(stopSequences).build();
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Say 'Hello World'"))
+                .parameters(parameters)
+                .build();
+
+        // when-then: the same UnsupportedFeatureException is reported, but HOW it reaches the caller
+        // depends on the streaming mode — thrown synchronously from the handler API (the handler is never
+        // notified), but delivered via Subscriber.onError from the publisher API (a cold publisher does no
+        // work at assembly, so chat(request) itself must not throw).
+        if (model instanceof StreamingModeAwareModel wrapped && wrapped.mode() == StreamingMode.PUBLISHER) {
+
+            AtomicReference<Publisher<StreamingEvent>> publisherReference = new AtomicReference<>();
+            assertThatCode(() -> publisherReference.set(model.chat(chatRequest))).doesNotThrowAnyException();
+
+            AtomicReference<Throwable> error = new AtomicReference<>();
+            AtomicBoolean onNextCalled = new AtomicBoolean();
+            AtomicBoolean onCompleteCalled = new AtomicBoolean();
+            CompletableFuture<Void> terminated = new CompletableFuture<>();
+
+            publisherReference.get().subscribe(new Flow.Subscriber<>() {
+                @Override
+                public void onSubscribe(Flow.Subscription subscription) {
+                    subscription.request(Long.MAX_VALUE);
+                }
+
+                @Override
+                public void onNext(StreamingEvent event) {
+                    onNextCalled.set(true);
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    error.set(throwable);
+                    terminated.complete(null);
+                }
+
+                @Override
+                public void onComplete() {
+                    onCompleteCalled.set(true);
+                    terminated.complete(null);
+                }
+            });
+
+            try {
+                terminated.get(30, SECONDS);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
+            assertThat(error.get())
+                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                    .hasMessageContaining("stopSequences")
+                    .hasMessageContaining("not support");
+            assertThat(onNextCalled).isFalse();
+            assertThat(onCompleteCalled).isFalse();
+        } else {
+            StreamingChatResponseHandler handler = mock(StreamingChatResponseHandler.class);
+            assertThatThrownBy(() -> model.chat(chatRequest, handler))
+                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                    .hasMessageContaining("stopSequences")
+                    .hasMessageContaining("not support");
+            verify(handler, never()).onError(any());
+            verify(handler, never()).onCompleteResponse(any());
+        }
+
+        if (supportsDefaultRequestParameters()) {
+            assertThatThrownBy(() -> createModelWith(parameters))
+                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                    .hasMessageContaining("stopSequences")
+                    .hasMessageContaining("not support");
+        }
+    }
+
     @Override
     protected ChatResponseAndStreamingMetadata chat(StreamingChatModel chatModel, ChatRequest chatRequest) {
         return chat(chatModel, chatRequest, ignored -> {
@@ -436,6 +524,14 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             if (failOnTimeout) {
                 throw new RuntimeException(e);
             }
+        } catch (ExecutionException e) {
+            // Surface the model's exception as-is (e.g. UnsupportedFeatureException delivered via onError
+            // in publisher mode) rather than wrapping it, so callers see the same exception the handler
+            // path throws synchronously.
+            Throwable cause = e.getCause();
+            throw cause instanceof RuntimeException runtimeException
+                    ? runtimeException
+                    : new RuntimeException(cause != null ? cause : e);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -519,6 +615,14 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             if (failOnTimeout) {
                 throw new RuntimeException(e);
             }
+        } catch (ExecutionException e) {
+            // Surface the model's exception as-is (e.g. UnsupportedFeatureException delivered via onError
+            // in publisher mode) rather than wrapping it, so callers see the same exception the handler
+            // path throws synchronously.
+            Throwable cause = e.getCause();
+            throw cause instanceof RuntimeException runtimeException
+                    ? runtimeException
+                    : new RuntimeException(cause != null ? cause : e);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
