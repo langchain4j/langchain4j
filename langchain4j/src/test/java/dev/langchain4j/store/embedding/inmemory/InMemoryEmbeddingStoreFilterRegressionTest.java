@@ -33,8 +33,8 @@ class InMemoryEmbeddingStoreFilterRegressionTest {
 
         // also add a raw non-TextSegment via package-private entries
         @SuppressWarnings({"rawtypes", "unchecked"})
-        InMemoryEmbeddingStore.Entry rawEntry = new InMemoryEmbeddingStore.Entry(
-                "5", dummyEmbedding(), "not-a-text-segment");
+        InMemoryEmbeddingStore.Entry rawEntry =
+                new InMemoryEmbeddingStore.Entry("5", dummyEmbedding(), "not-a-text-segment");
         store.entries.add(rawEntry);
 
         // when
@@ -83,17 +83,17 @@ class InMemoryEmbeddingStoreFilterRegressionTest {
         store.add("3", dummyEmbedding()); // null embedded
 
         @SuppressWarnings({"rawtypes", "unchecked"})
-        InMemoryEmbeddingStore.Entry rawEntry = new InMemoryEmbeddingStore.Entry(
-                "4", dummyEmbedding(), "not-a-text-segment");
+        InMemoryEmbeddingStore.Entry rawEntry =
+                new InMemoryEmbeddingStore.Entry("4", dummyEmbedding(), "not-a-text-segment");
         store.entries.add(rawEntry);
 
         // when: removeAll with filter — should not throw
-        assertThatNoException().isThrownBy(() -> store.removeAll(metadataKey("type").isEqualTo("a")));
+        assertThatNoException()
+                .isThrownBy(() -> store.removeAll(metadataKey("type").isEqualTo("a")));
 
         // then: only the matching TextSegment should be removed; others remain
         assertThat(store.entries).hasSize(3);
-        List<String> remainingIds =
-                store.entries.stream().map(e -> e.id).toList();
+        List<String> remainingIds = store.entries.stream().map(e -> e.id).toList();
         assertThat(remainingIds).containsExactlyInAnyOrder("2", "3", "4");
     }
 
@@ -107,13 +107,13 @@ class InMemoryEmbeddingStoreFilterRegressionTest {
         store.add("2", dummyEmbedding()); // null embedded
 
         @SuppressWarnings({"rawtypes", "unchecked"})
-        InMemoryEmbeddingStore.Entry rawEntry = new InMemoryEmbeddingStore.Entry(
-                "3", dummyEmbedding(), "not-a-text-segment");
+        InMemoryEmbeddingStore.Entry rawEntry =
+                new InMemoryEmbeddingStore.Entry("3", dummyEmbedding(), "not-a-text-segment");
         store.entries.add(rawEntry);
 
         // when: removeAll with filter that matches nothing
-        assertThatNoException().isThrownBy(
-                () -> store.removeAll(metadataKey("type").isEqualTo("no-such-value")));
+        assertThatNoException()
+                .isThrownBy(() -> store.removeAll(metadataKey("type").isEqualTo("no-such-value")));
 
         // then: all entries should remain
         assertThat(store.entries).hasSize(3);
