@@ -56,9 +56,6 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
         }
 
         @Override
-        public void onPartialResponse(String partialResponse) {}
-
-        @Override
         public void onCompleteResponse(ChatResponse completeResponse) {
             response.set(completeResponse);
             this.latch.countDown();

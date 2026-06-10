@@ -37,5 +37,5 @@ public interface RawStreamingEvent extends StreamingEvent { // TODO name
      * The raw provider payload (typically the JSON of the server-sent event), for the caller to parse
      * manually. Its shape is the provider's wire format and is not guaranteed to be stable.
      */
-    String rawData();
+    String rawData(); // TODO type: Object? what about providers that use their own SDKs?
 }

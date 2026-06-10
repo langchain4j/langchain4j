@@ -176,7 +176,7 @@ public interface StreamingChatResponseHandler {
      * @since 1.17.0
      */
     @Experimental
-    default void onRawEvent(RawStreamingEvent rawEvent) {} // TODO
+    default void onRawEvent(RawStreamingEvent rawEvent) {} // TODO names
 
     /**
      * Invoked when the model has finished streaming a response.

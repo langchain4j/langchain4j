@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat.common;
 
+import static dev.langchain4j.MockitoUtils.ignoreInteractions;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
@@ -731,6 +732,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 verifyToolCallbacks(handler, inOrder, toolExecutionRequest.id(), (StreamingChatModel) model);
                 inOrder.verify(handler).onCompleteResponse(chatResponse);
                 inOrder.verifyNoMoreInteractions();
+                ignoreInteractions(handler).onRawEvent(any());
                 verifyNoMoreInteractions(handler);
             } else if (metadata.mode() == StreamingMode.PUBLISHER) {
                 // TODO verify all events and their order
@@ -941,6 +943,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                 verifyToolCallbacks(handler, inOrder, (StreamingChatModel) model);
                 inOrder.verify(handler).onCompleteResponse(chatResponse);
                 inOrder.verifyNoMoreInteractions();
+                ignoreInteractions(handler).onRawEvent(any());
                 verifyNoMoreInteractions(handler);
             } else if (metadata.mode() == StreamingMode.PUBLISHER) {
                 // TODO verify all events and their order
@@ -1123,6 +1126,7 @@ public abstract class AbstractBaseChatModelIT<M> {
                         (StreamingChatModel) model);
                 inOrder.verify(handler).onCompleteResponse(chatResponse);
                 inOrder.verifyNoMoreInteractions();
+                ignoreInteractions(handler).onRawEvent(any());
                 verifyNoMoreInteractions(handler);
             } else if (metadata.mode() == StreamingMode.PUBLISHER) {
                 // TODO verify all events and their order

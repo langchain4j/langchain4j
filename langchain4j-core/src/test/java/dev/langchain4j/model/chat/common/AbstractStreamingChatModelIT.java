@@ -410,6 +410,9 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             }
 
             @Override
+            public void onRawEvent(RawStreamingEvent rawEvent) {}
+
+            @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
                 timesOnCompleteResponseWasCalled.incrementAndGet();
                 threads.add(Thread.currentThread());

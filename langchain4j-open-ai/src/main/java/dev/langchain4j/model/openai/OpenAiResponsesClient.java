@@ -1014,7 +1014,7 @@ class OpenAiResponsesClient {
                         completeToolCall(itemId, builder);
                     }
                 } else if (EVENT_OUTPUT_ITEM_DONE.equals(type)) {
-                    handleOutputItemDone(node);
+                    handleOutputItemDone(node); // TODO here an in other branches
                 } else if (EVENT_RESPONSE_COMPLETED.equals(type) || EVENT_RESPONSE_INCOMPLETE.equals(type)) {
                     handleResponseCompleted(node);
                 } else if (EVENT_RESPONSE_FAILED.equals(type) || EVENT_RESPONSE_ERROR.equals(type)) {
