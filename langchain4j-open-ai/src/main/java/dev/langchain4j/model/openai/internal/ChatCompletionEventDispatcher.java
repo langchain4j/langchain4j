@@ -18,7 +18,6 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 @Internal
@@ -32,44 +31,60 @@ public final class ChatCompletionEventDispatcher {
             StreamingChatResponseHandler handler,
             boolean returnThinking) {
 
+        boolean dispatched = dispatchTyped(parsedAndRawResponse, toolCallBuilder, handler, returnThinking);
+
+        if (!dispatched) {
+            ServerSentEvent rawServerSentEvent = parsedAndRawResponse.rawServerSentEvent();
+            if (rawServerSentEvent != null) {
+                // TODO type
+                handler.onRawEvent(new DefaultRawStreamingEvent(null, rawServerSentEvent.data()));
+            }
+        }
+    }
+
+    /** Dispatches the typed events in the chunk; returns whether at least one typed event was emitted. */
+    private static boolean dispatchTyped(
+            ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse,
+            ToolCallBuilder toolCallBuilder,
+            StreamingChatResponseHandler handler,
+            boolean returnThinking) {
+
         ChatCompletionResponse partialResponse = parsedAndRawResponse.parsedResponse();
         if (partialResponse == null) {
-            return;
+            return false;
         }
 
         List<ChatCompletionChoice> choices = partialResponse.choices();
         if (isNullOrEmpty(choices)) {
-            return;
+            return false;
         }
 
         ChatCompletionChoice chatCompletionChoice = choices.get(0);
         if (chatCompletionChoice == null) {
-            return;
+            return false;
         }
 
         Delta delta = chatCompletionChoice.delta();
         if (delta == null) {
-            return;
+            return false;
         }
 
-        boolean mapped = false;
+        boolean dispatched = false;
 
         String content = delta.content();
         if (!isNullOrEmpty(content)) {
-            mapped = true;
             onPartialResponse(handler, content, parsedAndRawResponse.streamingHandle());
+            dispatched = true;
         }
 
         String reasoningContent = delta.reasoningContent();
         if (returnThinking && !isNullOrEmpty(reasoningContent)) {
-            mapped = true;
             onPartialThinking(handler, reasoningContent, parsedAndRawResponse.streamingHandle());
+            dispatched = true;
         }
 
         List<ToolCall> toolCalls = delta.toolCalls();
         if (toolCalls != null) {
-            mapped = true;
-
             for (ToolCall toolCall : toolCalls) {
 
                 int index;
@@ -86,6 +101,7 @@ public final class ChatCompletionEventDispatcher {
                 }
                 if (toolCallBuilder.index() != index) {
                     onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
+                    dispatched = true;
                     toolCallBuilder.updateIndex(index);
                 }
 
@@ -103,19 +119,11 @@ public final class ChatCompletionEventDispatcher {
                             .partialArguments(partialArguments)
                             .build();
                     onPartialToolCall(handler, partialToolRequest, parsedAndRawResponse.streamingHandle());
+                    dispatched = true;
                 }
             }
         }
 
-        if (!mapped) {
-            // The chunk carried nothing we map to a typed event. Suppress chat-completion plumbing
-            // (the role-only opening delta and the final finish/usage chunk); surface anything else as a
-            // raw provider event so callers can consume data the generic API does not (yet) model.
-            boolean plumbing = !isNullOrBlank(delta.role()) || !isNullOrBlank(chatCompletionChoice.finishReason()); // TODO
-            ServerSentEvent rawServerSentEvent = parsedAndRawResponse.rawServerSentEvent();
-            if (!plumbing && rawServerSentEvent != null) {
-                handler.onRawEvent(new DefaultRawStreamingEvent(null, rawServerSentEvent.data()));
-            }
-        }
+        return dispatched;
     }
 }

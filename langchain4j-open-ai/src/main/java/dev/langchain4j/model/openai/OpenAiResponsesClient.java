@@ -937,8 +937,10 @@ class OpenAiResponsesClient {
             if (isCancelled()) {
                 return;
             }
+
             rawServerSentEvents.add(event);
-            var data = event.data();
+
+            String data = event.data();
 
             if (data == null || data.isEmpty()) {
                 return;
@@ -948,7 +950,7 @@ class OpenAiResponsesClient {
                 return;
             }
 
-            handleDelta(data);
+            handle(data);
         }
 
         @Override
@@ -956,8 +958,9 @@ class OpenAiResponsesClient {
             withLoggingExceptions(() -> handler.onError(ExceptionMapper.DEFAULT.mapException(error)));
         }
 
-        private void handleDelta(String data) {
-            if (!data.trim().startsWith("{") && !data.trim().startsWith("[")) {
+        private void handle(String data) {
+            if (data == null || (!data.trim().startsWith("{") && !data.trim().startsWith("["))) {
+                emitRaw(null, data);
                 return;
             }
 
@@ -965,15 +968,19 @@ class OpenAiResponsesClient {
                 var node = OBJECT_MAPPER.readTree(data);
                 var type = node.has(FIELD_TYPE) ? node.get(FIELD_TYPE).asText() : "";
 
+                boolean dispatched = false;
+
                 if (EVENT_OUTPUT_TEXT_DELTA.equals(type)) {
                     var text = node.path(FIELD_DELTA).asText();
                     if (!text.isEmpty()) {
                         onPartialResponse(handler, text, streamingHandle);
+                        dispatched = true;
                     }
                 } else if (EVENT_REASONING_TEXT_DELTA.equals(type) || EVENT_REASONING_SUMMARY_TEXT_DELTA.equals(type)) {
                     var thinking = node.path(FIELD_DELTA).asText();
                     if (!thinking.isEmpty()) {
                         onPartialThinking(handler, thinking, streamingHandle);
+                        dispatched = true;
                     }
                 } else if (EVENT_OUTPUT_ITEM_ADDED.equals(type)) {
                     var item = node.path(FIELD_ITEM);
@@ -1004,6 +1011,7 @@ class OpenAiResponsesClient {
                                     .partialArguments(delta)
                                     .build();
                             onPartialToolCall(handler, partialToolCall, streamingHandle);
+                            dispatched = true;
                         }
                     }
                 } else if (EVENT_FUNCTION_CALL_ARGUMENTS_DONE.equals(type)) {
@@ -1011,49 +1019,56 @@ class OpenAiResponsesClient {
                     var builder = toolCallBuilders.get(itemId);
                     if (builder != null) {
                         builder.arguments(node.path(FIELD_ARGUMENTS).asText());
-                        completeToolCall(itemId, builder);
+                        dispatched = completeToolCall(itemId, builder);
                     }
                 } else if (EVENT_OUTPUT_ITEM_DONE.equals(type)) {
-                    handleOutputItemDone(node); // TODO here an in other branches
+                    dispatched = handleOutputItemDone(node);
                 } else if (EVENT_RESPONSE_COMPLETED.equals(type) || EVENT_RESPONSE_INCOMPLETE.equals(type)) {
                     handleResponseCompleted(node);
+                    dispatched = true;
                 } else if (EVENT_RESPONSE_FAILED.equals(type) || EVENT_RESPONSE_ERROR.equals(type)) {
                     handleResponseFailure(node);
-                } else if (!isCancelled()) {
-                    // Unmapped provider event (e.g. web search, or a lifecycle event we don't model):
-                    // surface it raw so callers can consume provider-specific data the generic API does
-                    // not model. Callers filter by providerEventType().
-                    // TODO type
-                    handler.onRawEvent(new DefaultRawStreamingEvent(isNullOrBlank(type) ? null : type, data));
+                    dispatched = true;
+                }
+
+                if (!dispatched) {
+                    emitRaw(type, data);
                 }
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         }
 
-        private void handleOutputItemDone(JsonNode node) {
-            var item = node.path(FIELD_ITEM);
-            if (TYPE_FUNCTION_CALL.equals(item.path(FIELD_TYPE).asText())) {
-                var itemId = item.path(FIELD_ID).asText();
-                int outputIndex = node.path(FIELD_OUTPUT_INDEX).asInt(0);
-                var builder = toolCallBuilders.computeIfAbsent(itemId, ignored -> ToolExecutionRequest.builder());
-                assignIndexIfAbsent(itemId, outputIndex);
-
-                var callIdNode = item.get(FIELD_CALL_ID);
-                if (callIdNode != null && !callIdNode.isNull()) {
-                    builder.id(callIdNode.asText());
-                }
-                var nameNode = item.get(FIELD_NAME);
-                if (nameNode != null && !nameNode.isNull()) {
-                    builder.name(nameNode.asText());
-                }
-                var argumentsNode = item.get(FIELD_ARGUMENTS);
-                if (argumentsNode != null && !argumentsNode.isNull()) {
-                    builder.arguments(argumentsNode.asText());
-                }
-
-                completeToolCall(itemId, builder);
+        private void emitRaw(String type, String data) {
+            if (!isCancelled()) {
+                handler.onRawEvent(new DefaultRawStreamingEvent(isNullOrBlank(type) ? null : type, data));
             }
+        }
+
+        private boolean handleOutputItemDone(JsonNode node) {
+            var item = node.path(FIELD_ITEM);
+            if (!TYPE_FUNCTION_CALL.equals(item.path(FIELD_TYPE).asText())) {
+                return false;
+            }
+            var itemId = item.path(FIELD_ID).asText();
+            int outputIndex = node.path(FIELD_OUTPUT_INDEX).asInt(0);
+            var builder = toolCallBuilders.computeIfAbsent(itemId, ignored -> ToolExecutionRequest.builder());
+            assignIndexIfAbsent(itemId, outputIndex);
+
+            var callIdNode = item.get(FIELD_CALL_ID);
+            if (callIdNode != null && !callIdNode.isNull()) {
+                builder.id(callIdNode.asText());
+            }
+            var nameNode = item.get(FIELD_NAME);
+            if (nameNode != null && !nameNode.isNull()) {
+                builder.name(nameNode.asText());
+            }
+            var argumentsNode = item.get(FIELD_ARGUMENTS);
+            if (argumentsNode != null && !argumentsNode.isNull()) {
+                builder.arguments(argumentsNode.asText());
+            }
+
+            return completeToolCall(itemId, builder);
         }
 
         private void handleResponseCompleted(JsonNode node) {
@@ -1135,9 +1150,10 @@ class OpenAiResponsesClient {
             return "Response failed: " + message;
         }
 
-        private void completeToolCall(String itemId, ToolExecutionRequest.Builder builder) {
+        /** @return whether a {@code CompleteToolCall} typed event was emitted. */
+        private boolean completeToolCall(String itemId, ToolExecutionRequest.Builder builder) {
             if (builder == null || completedToolCallItemIds.contains(itemId)) {
-                return;
+                return false;
             }
             ToolExecutionRequest toolExecutionRequest = builder.build();
             completedToolCalls.add(toolExecutionRequest);
@@ -1145,9 +1161,11 @@ class OpenAiResponsesClient {
             toolCallBuilders.remove(itemId);
             Integer index = toolCallIndices.remove(itemId);
             int safeIndex = index != null ? index : completedToolCalls.size() - 1;
-            if (!isCancelled()) {
-                onCompleteToolCall(handler, new CompleteToolCall(safeIndex, toolExecutionRequest));
+            if (isCancelled()) {
+                return false;
             }
+            onCompleteToolCall(handler, new CompleteToolCall(safeIndex, toolExecutionRequest));
+            return true;
         }
     }
 }

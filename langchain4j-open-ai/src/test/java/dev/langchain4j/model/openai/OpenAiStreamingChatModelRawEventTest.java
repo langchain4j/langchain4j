@@ -48,9 +48,9 @@ class OpenAiStreamingChatModelRawEventTest {
     }
 
     @Test
-    void surfaces_unmapped_chunk_as_raw_and_suppresses_plumbing() throws Exception {
-        // role-only delta (plumbing) -> suppressed; content delta -> typed; empty delta (nothing we map,
-        // not plumbing) -> raw; usage-only chunk -> suppressed; finish chunk -> suppressed; [DONE].
+    void surfaces_every_unmapped_chunk_as_raw() throws Exception {
+        // Only the content delta maps to a typed event. The role-only, empty-delta, usage-only and finish
+        // chunks produce no typed event, so each is surfaced raw — nothing is dropped except [DONE].
         String sse =
                 """
                 data: {"choices":[{"index":0,"delta":{"role":"assistant"}}]}
@@ -81,11 +81,15 @@ class OpenAiStreamingChatModelRawEventTest {
                 .messages(UserMessage.from("hi"))
                 .build()));
 
-        // Exactly one raw event: the empty-delta chunk. Role-only, usage and finish chunks are suppressed.
+        // Four raw events: role-only, empty-delta, usage-only and finish chunks (the content delta is typed).
         List<RawStreamingEvent> rawEvents =
                 events.stream().filter(e -> e instanceof RawStreamingEvent).map(e -> (RawStreamingEvent) e).toList();
-        assertThat(rawEvents).hasSize(1);
-        assertThat(rawEvents.get(0).rawData()).contains("\"delta\":{}");
+        assertThat(rawEvents).hasSize(4);
+        assertThat(rawEvents).anyMatch(r -> r.rawData().contains("\"role\":\"assistant\""));
+        assertThat(rawEvents).anyMatch(r -> r.rawData().contains("\"usage\""));
+        assertThat(rawEvents).anyMatch(r -> r.rawData().contains("finish_reason"));
+        // the standalone empty-delta chunk (without a finish_reason)
+        assertThat(rawEvents).anyMatch(r -> r.rawData().contains("\"delta\":{}") && !r.rawData().contains("finish_reason"));
 
         assertThat(events).anyMatch(e -> e instanceof PartialResponse p && "Hi".equals(p.text()));
         assertThat(events.get(events.size() - 1)).isInstanceOf(ChatResponse.class);

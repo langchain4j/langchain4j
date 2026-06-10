@@ -50,14 +50,19 @@ class OpenAiResponsesStreamingChatModelRawEventTest {
     }
 
     @Test
-    void surfaces_unmapped_provider_event_as_raw_streaming_event() throws Exception {
-        // A stream mixing a mapped event (output_text.delta), an unmapped provider event
-        // (web_search_call.searching) and the terminal completed event.
+    void surfaces_unmapped_provider_events_as_raw_streaming_events() throws Exception {
+        // A stream mixing a mapped event (output_text.delta) with unmapped provider events: a top-level
+        // unknown event (web_search_call.searching) and non-function-call output_item.added/.done — all
+        // of which used to be silently dropped — plus the terminal completed event.
         String sse =
                 """
                 data: {"type":"response.output_text.delta","delta":"Hello"}
 
+                data: {"type":"response.output_item.added","item":{"type":"web_search_call","id":"ws_1"}}
+
                 data: {"type":"response.web_search_call.searching","item_id":"ws_1","query":"langchain4j"}
+
+                data: {"type":"response.output_item.done","item":{"type":"web_search_call","id":"ws_1","status":"completed"}}
 
                 data: {"type":"response.completed","response":{"id":"resp_1","model":"gpt-4o-mini","status":"completed","output":[{"type":"message","content":[{"type":"output_text","text":"Hello"}]}]}}
 
@@ -79,12 +84,24 @@ class OpenAiResponsesStreamingChatModelRawEventTest {
                 .messages(UserMessage.from("hi"))
                 .build()));
 
-        // The unmapped web-search event is surfaced raw, with its type and payload preserved.
         List<RawStreamingEvent> rawEvents =
                 events.stream().filter(e -> e instanceof RawStreamingEvent).map(e -> (RawStreamingEvent) e).toList();
-        assertThat(rawEvents).hasSize(1);
-        assertThat(rawEvents.get(0).providerEventType()).isEqualTo("response.web_search_call.searching");
-        assertThat(rawEvents.get(0).rawData()).contains("\"ws_1\"").contains("langchain4j");
+
+        // All three unmapped events are surfaced raw, with type and payload preserved.
+        assertThat(rawEvents).hasSize(3);
+        assertThat(rawEvents).anySatisfy(raw -> {
+            assertThat(raw.providerEventType()).isEqualTo("response.web_search_call.searching");
+            assertThat(raw.rawData()).contains("\"ws_1\"").contains("langchain4j");
+        });
+        // The non-function-call output_item.added / .done used to be dropped; now surfaced raw.
+        assertThat(rawEvents).anySatisfy(raw -> {
+            assertThat(raw.providerEventType()).isEqualTo("response.output_item.added");
+            assertThat(raw.rawData()).contains("web_search_call");
+        });
+        assertThat(rawEvents).anySatisfy(raw -> {
+            assertThat(raw.providerEventType()).isEqualTo("response.output_item.done");
+            assertThat(raw.rawData()).contains("web_search_call");
+        });
 
         // The mapped text delta still arrives as a typed event...
         assertThat(events).anyMatch(e -> e instanceof PartialResponse p && "Hello".equals(p.text()));
