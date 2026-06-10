@@ -414,6 +414,42 @@
     "allPublicFields": true
   },
   {
+      "name": "dev.langchain4j.model.openai.internal.image.ImageUsage",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "allDeclaredFields": true,
+      "allPublicFields": true
+  },
+  {
+      "name": "dev.langchain4j.model.openai.internal.image.ImageUsage$Builder",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "allDeclaredFields": true,
+      "allPublicFields": true
+  },
+  {
+      "name": "dev.langchain4j.model.openai.internal.image.ImageUsage$TokensDetails",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "allDeclaredFields": true,
+      "allPublicFields": true
+  },
+  {
+      "name": "dev.langchain4j.model.openai.internal.image.ImageUsage$TokensDetails$TokensDetailsBuilder",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "allDeclaredFields": true,
+      "allPublicFields": true
+  },
+  {
     "name": "dev.langchain4j.model.openai.internal.moderation.Categories",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true,
