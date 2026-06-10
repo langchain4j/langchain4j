@@ -12,7 +12,6 @@ import static java.util.Comparator.comparingDouble;
 import static java.util.stream.Collectors.toList;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.spi.store.embedding.inmemory.InMemoryEmbeddingStoreJsonCodecFactory;
@@ -132,15 +131,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
 
-        entries.removeIf(entry -> {
-            if (entry.embedded instanceof TextSegment) {
-                return filter.test(((TextSegment) entry.embedded).metadata());
-            } else if (entry.embedded == null) {
-                return false;
-            } else {
-                throw new UnsupportedOperationException("Not supported yet.");
-            }
-        });
+        entries.removeIf(entry -> matchesFilter(entry.embedded, filter));
     }
 
     @Override
@@ -158,11 +149,8 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
 
         for (Entry<Embedded> entry : entries) {
 
-            if (filter != null && entry.embedded instanceof TextSegment) {
-                Metadata metadata = ((TextSegment) entry.embedded).metadata();
-                if (!filter.test(metadata)) {
-                    continue;
-                }
+            if (!matchesFilter(entry.embedded, filter)) {
+                continue;
             }
 
             double cosineSimilarity =
@@ -255,6 +243,16 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     public static <Embedded> InMemoryEmbeddingStore<Embedded> merge(
             InMemoryEmbeddingStore<Embedded> first, InMemoryEmbeddingStore<Embedded> second) {
         return merge(asList(first, second));
+    }
+
+    private static boolean matchesFilter(Object embedded, Filter filter) {
+        if (filter == null) {
+            return true;
+        }
+        if (embedded instanceof TextSegment) {
+            return filter.test(((TextSegment) embedded).metadata());
+        }
+        return false;
     }
 
     static class Entry<Embedded> {
