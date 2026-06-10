@@ -181,7 +181,7 @@ public class DeclarativeAgentIT {
                             if (ctx.agentServiceClass() == StyleEditor.class) {
                                 ctx.agentBuilder().outputKey("styledStory");
                             }
-                        }, null));
+                        }, null, null));
 
         String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
         assertThat(story).isNotBlank();
