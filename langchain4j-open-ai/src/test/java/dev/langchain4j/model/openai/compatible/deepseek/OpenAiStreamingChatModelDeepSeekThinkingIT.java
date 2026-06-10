@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai.compatible.deepseek;
 
 import static dev.langchain4j.JsonTestUtils.jsonify;
+import static dev.langchain4j.MockitoUtils.ignoreInteractions;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
@@ -11,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.util.List;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.HttpRequest;
@@ -32,8 +34,6 @@ import org.mockito.InOrder;
  */
 @EnabledIfEnvironmentVariable(named = "DEEPSEEK_API_KEY", matches = ".+")
 class OpenAiStreamingChatModelDeepSeekThinkingIT {
-
-    private final SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
 
     @Test
     void should_return_thinking() {
@@ -75,6 +75,7 @@ class OpenAiStreamingChatModelDeepSeekThinkingIT {
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
         inOrder1.verify(spyHandler1).getThinking();
         inOrder1.verifyNoMoreInteractions();
+        ignoreInteractions(spyHandler1).onRawEvent(any());
         verifyNoMoreInteractions(spyHandler1);
 
         // given
