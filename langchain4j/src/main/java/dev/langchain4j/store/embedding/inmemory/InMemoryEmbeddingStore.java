@@ -12,6 +12,7 @@ import static java.util.Comparator.comparingDouble;
 import static java.util.stream.Collectors.toList;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.spi.store.embedding.inmemory.InMemoryEmbeddingStoreJsonCodecFactory;
@@ -127,6 +128,14 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         entries.removeIf(entry -> idSet.contains(entry.id));
     }
 
+    /**
+     * Removes all entries whose embedded object matches the given {@link Filter}.
+     * <p>
+     * Filtering is applied only to entries whose embedded object is a {@link TextSegment},
+     * by testing the filter against the segment's {@link Metadata}.
+     * Entries whose embedded object is {@code null} or is not a {@link TextSegment} are considered
+     * non-matching and are therefore never removed.
+     */
     @Override
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
@@ -139,6 +148,16 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         entries.clear();
     }
 
+    /**
+     * Searches for the embeddings most similar to the query embedding, optionally constrained by a {@link Filter}.
+     * <p>
+     * When a filter is present, it is applied only to entries whose embedded object is a {@link TextSegment},
+     * by testing the filter against the segment's {@link Metadata}.
+     * Entries whose embedded object is {@code null} or is not a {@link TextSegment} are considered
+     * non-matching and are therefore excluded from the results.
+     * <p>
+     * When no filter is present, all entries are eligible regardless of their embedded object type.
+     */
     @Override
     public EmbeddingSearchResult<Embedded> search(EmbeddingSearchRequest embeddingSearchRequest) {
 
@@ -245,6 +264,13 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         return merge(asList(first, second));
     }
 
+    /**
+     * Tests whether an embedded object matches the given {@link Filter}.
+     *
+     * @return {@code true} if the filter is {@code null} (no filtering requested), or if the embedded object
+     *         is a {@link TextSegment} whose {@link Metadata} passes the filter;
+     *         {@code false} otherwise, including when the embedded object is {@code null} or not a {@link TextSegment}.
+     */
     private static boolean matchesFilter(Object embedded, Filter filter) {
         if (filter == null) {
             return true;
