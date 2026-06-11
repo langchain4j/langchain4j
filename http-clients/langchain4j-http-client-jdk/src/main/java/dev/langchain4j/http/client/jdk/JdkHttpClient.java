@@ -31,6 +31,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
@@ -80,6 +81,30 @@ public class JdkHttpClient implements HttpClient {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
+        java.net.http.HttpRequest jdkRequest = toJdkRequest(request);
+
+        CompletableFuture<SuccessfulHttpResponse> result = new CompletableFuture<>();
+        delegate.sendAsync(jdkRequest, BodyHandlers.ofString()).whenComplete((jdkResponse, throwable) -> {
+            if (throwable != null) {
+                Throwable cause = throwable instanceof CompletionException && throwable.getCause() != null
+                        ? throwable.getCause()
+                        : throwable;
+                if (cause instanceof HttpTimeoutException) {
+                    result.completeExceptionally(new TimeoutException(cause));
+                } else {
+                    result.completeExceptionally(cause);
+                }
+            } else if (!isSuccessful(jdkResponse)) {
+                result.completeExceptionally(new HttpException(jdkResponse.statusCode(), jdkResponse.body()));
+            } else {
+                result.complete(fromJdkResponse(jdkResponse, jdkResponse.body()));
+            }
+        });
+        return result;
     }
 
     @Override

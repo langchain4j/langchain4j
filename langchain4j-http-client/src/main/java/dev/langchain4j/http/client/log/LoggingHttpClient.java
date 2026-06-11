@@ -13,6 +13,7 @@ import dev.langchain4j.http.client.sse.StreamingHttpEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -74,11 +75,34 @@ public class LoggingHttpClient implements HttpClient {
     }
 
     @Override
+    public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
+
+        if (logRequests) {
+            HttpRequestLogger.log(log, request);
+        }
+
+        CompletableFuture<SuccessfulHttpResponse> future =
+                delegateHttpClient.executeAsync(request);
+
+        if (!logResponses) {
+            return future;
+        }
+
+        return future.whenComplete((response, throwable) -> {
+            if (response != null) {
+                HttpResponseLogger.log(log, response);
+            }
+        });
+    }
+
+    @Override
     public void execute(HttpRequest request, ServerSentEventListener delegateListener) {
 
         if (logRequests) {
             HttpRequestLogger.log(log, request);
         }
+
+        // TODO for logRequests = false do not wrap the delegateListener?
 
         this.delegateHttpClient.execute(request, new ServerSentEventListener() {
 
@@ -124,6 +148,8 @@ public class LoggingHttpClient implements HttpClient {
         if (logRequests) {
             HttpRequestLogger.log(log, request);
         }
+
+        // TODO for logRequests = false do not wrap the delegateListener?
 
         this.delegateHttpClient.execute(request, parser, new ServerSentEventListener() {
 
