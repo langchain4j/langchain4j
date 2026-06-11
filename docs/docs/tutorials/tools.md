@@ -1547,11 +1547,13 @@ Assistant assistant = AiServices.builder(Assistant.class)
         .build();
 ```
 
-Currently, there are two ways to handle errors inside the `ToolArgumentsErrorHandler`:
+There are three ways to handle errors inside the `ToolArgumentsErrorHandler`:
 
-- Throw an exception: this will stop the AI service flow.
 - Return a text message (e.g., an error description) that will be sent back to the LLM,
   allowing it to respond appropriately (for example, by correcting the error and retrying).
+- Throw an exception: this will stop the AI service flow.
+- Return `ToolErrorHandlerResult.propagateException()`: re-throws the original exception
+  out of the AI Service, like throwing directly but letting you inspect the error first.
 
 **Recommended (let the LLM retry):**
 
@@ -1578,6 +1580,25 @@ try {
     // handle e
 }
 ```
+
+**Selective propagation (re-throw only certain exceptions):**
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(tools)
+        .toolArgumentsErrorHandler((error, errorContext) -> {
+            if (errorContext.originalException() instanceof MyCriticalException) {
+                return ToolErrorHandlerResult.propagateException();
+            }
+            return ToolErrorHandlerResult.text(error.getMessage());
+        })
+        .build();
+```
+
+The `error` argument is the unwrapped cause of the exception. Use `errorContext.originalException()`
+to access the original exception as thrown, before cause-unwrapping — useful when the wrapper type
+(not the cause) determines how the error should be handled.
 
 #### Handling Tool Execution Errors
 
@@ -1611,8 +1632,10 @@ Assistant assistant = AiServices.builder(Assistant.class)
         .build();
 ```
 
-As with the `ToolArgumentsErrorHandler`, there are two ways to handle errors in `ToolExecutionErrorHandler`:
-throw an exception or return a text message.
+As with the `ToolArgumentsErrorHandler`, there are three ways to handle errors in `ToolExecutionErrorHandler`:
+return a text message, throw an exception, or return `ToolErrorHandlerResult.propagateException()`
+to re-throw the original exception. You can use `errorContext.originalException()` to inspect
+the original exception before cause-unwrapping.
 
 ## Model Context Protocol (MCP)
 

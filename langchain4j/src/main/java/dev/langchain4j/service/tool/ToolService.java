@@ -288,10 +288,24 @@ public class ToolService {
     }
 
     /**
+     * @since 1.17.0
+     */
+    public Consumer<BeforeToolExecution> beforeToolExecution() {
+        return beforeToolExecution;
+    }
+
+    /**
      * @since 1.11.0
      */
     public void afterToolExecution(Consumer<ToolExecution> afterToolExecution) {
         this.afterToolExecution = afterToolExecution;
+    }
+
+    /**
+     * @since 1.17.0
+     */
+    public Consumer<ToolExecution> afterToolExecution() {
+        return afterToolExecution;
     }
 
     /**
@@ -751,6 +765,7 @@ public class ToolService {
             ToolErrorContext errorContext = ToolErrorContext.builder()
                     .toolExecutionRequest(toolRequest)
                     .invocationContext(invocationContext)
+                    .originalException(e)
                     .build();
 
             ToolErrorHandlerResult errorHandlerResult;
@@ -758,6 +773,13 @@ public class ToolService {
                 errorHandlerResult = argumentsErrorHandler.handle(getCause(e), errorContext);
             } else {
                 errorHandlerResult = executionErrorHandler.handle(getCause(e), errorContext);
+            }
+
+            if (errorHandlerResult.shouldPropagateException()) {
+                if (e instanceof RuntimeException re) {
+                    throw re;
+                }
+                throw new RuntimeException(e);
             }
 
             return ToolExecutionResult.builder()
