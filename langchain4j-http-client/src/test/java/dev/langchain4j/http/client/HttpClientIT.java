@@ -27,11 +27,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InOrder;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
@@ -41,8 +45,44 @@ public abstract class HttpClientIT {
 
     protected abstract List<HttpClient> clients();
 
-    @Test
-    void should_return_successful_http_response_sync() {
+    /** How to invoke a single (non-streaming) request: blocking {@link HttpClient#execute} or
+     * non-blocking {@link HttpClient#executeAsync}. Lets the single-response tests run in both modes. */
+    protected enum ExecutionMode {
+        SYNC,
+        ASYNC
+    }
+
+    /**
+     * Executes the request in the given mode. For {@link ExecutionMode#ASYNC} the {@link CompletableFuture}
+     * is awaited and any {@link ExecutionException} is unwrapped, so callers observe the same exception
+     * (e.g. {@link HttpException}) that the synchronous path throws.
+     */
+    private static SuccessfulHttpResponse execute(HttpRequest request, HttpClient client, ExecutionMode mode) {
+        if (mode == ExecutionMode.SYNC) {
+            return client.execute(request);
+        }
+        try {
+            return client.executeAsync(request).get(30, SECONDS);
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            if (cause instanceof Error error) {
+                throw error;
+            }
+            throw new RuntimeException(cause != null ? cause : e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } catch (TimeoutException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(ExecutionMode.class)
+    void should_return_successful_http_response(ExecutionMode mode) {
 
         for (HttpClient client : clients()) {
 
@@ -67,7 +107,7 @@ public abstract class HttpClientIT {
                     .build();
 
             // when
-            SuccessfulHttpResponse response = client.execute(request);
+            SuccessfulHttpResponse response = execute(request, client, mode);
 
             // then
             assertThat(response.statusCode()).isEqualTo(200);
@@ -77,7 +117,50 @@ public abstract class HttpClientIT {
     }
 
     @Test
-    void should_throw_400_sync() {
+    void should_deliver_response_off_the_calling_thread_executeAsync() throws Exception {
+
+        for (HttpClient client : clients()) {
+
+            // given
+            HttpRequest request = HttpRequest.builder()
+                    .method(POST)
+                    .url("https://api.openai.com/v1/chat/completions")
+                    .addHeader("Authorization", "Bearer " + OPENAI_API_KEY)
+                    .addHeader("Content-Type", "application/json")
+                    .body(
+                            """
+                                    {
+                                        "model": "gpt-4o-mini",
+                                        "messages": [
+                                            {
+                                                "role" : "user",
+                                                "content" : "What is the capital of Germany?"
+                                            }
+                                        ]
+                                    }
+                                    """)
+                    .build();
+
+            Thread callerThread = Thread.currentThread();
+            AtomicReference<Thread> completionThread = new AtomicReference<>();
+
+            // when
+            SuccessfulHttpResponse response = client.executeAsync(request)
+                    .whenComplete((r, t) -> completionThread.set(Thread.currentThread()))
+                    .get(30, SECONDS);
+
+            // then: the response was delivered asynchronously, so the caller was never blocked.
+            assertThat(response.statusCode()).isEqualTo(200);
+            assertThat(completionThread.get())
+                    .as("the response must be delivered off the calling thread")
+                    .isNotNull()
+                    .isNotEqualTo(callerThread);
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(ExecutionMode.class)
+    void should_throw_400(ExecutionMode mode) {
 
         for (HttpClient client : clients()) {
 
@@ -99,7 +182,7 @@ public abstract class HttpClientIT {
 
             // when
             try {
-                client.execute(request);
+                execute(request, client, mode);
                 fail("Should have thrown an exception");
             } catch (Exception e) {
                 // then
@@ -111,8 +194,9 @@ public abstract class HttpClientIT {
         }
     }
 
-    @Test
-    void should_throw_401_sync() {
+    @ParameterizedTest
+    @EnumSource(ExecutionMode.class)
+    void should_throw_401(ExecutionMode mode) {
 
         for (HttpClient client : clients()) {
 
@@ -140,7 +224,7 @@ public abstract class HttpClientIT {
 
             // when
             try {
-                client.execute(request);
+                execute(request, client, mode);
                 fail("Should have thrown an exception");
             } catch (Exception e) {
                 // then
@@ -843,8 +927,9 @@ public abstract class HttpClientIT {
         return "http://banana";
     }
 
-    @Test
-    protected void should_return_successful_http_response_sync_form_data() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExecutionMode.class)
+    protected void should_return_successful_http_response_form_data(ExecutionMode mode) throws Exception {
         byte[] audioBytes;
         try (InputStream is = getClass().getClassLoader().getResourceAsStream("sample.wav")) {
             audioBytes = is.readAllBytes();
@@ -864,7 +949,7 @@ public abstract class HttpClientIT {
                     .build();
 
             // when
-            SuccessfulHttpResponse response = client.execute(request);
+            SuccessfulHttpResponse response = execute(request, client, mode);
 
             // then
             assertThat(response.statusCode()).isEqualTo(200);

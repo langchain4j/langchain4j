@@ -6,8 +6,7 @@ import dev.langchain4j.http.client.sse.StreamingHttpEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
 
-import java.nio.ByteBuffer;
-import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow.Publisher;
 
 /**
@@ -26,6 +25,21 @@ public interface HttpClient {
      * @throws RuntimeException if an unexpected error occurs during request execution (e.g., network issues, timeouts)
      */
     SuccessfulHttpResponse execute(HttpRequest request) throws HttpException, RuntimeException;
+
+    /**
+     * Non-blocking counterpart of {@link #execute(HttpRequest)} for a single (non-streaming) response.
+     * Returns immediately with a {@link CompletableFuture} that completes with the
+     * {@link SuccessfulHttpResponse} once the full response has been received, without blocking the
+     * calling thread. The future completes exceptionally with an {@link HttpException} for non-2XX
+     * responses, or with the underlying error (e.g. a timeout or network failure) otherwise.
+     *
+     * @param request the HTTP request to be executed.
+     * @return a {@link CompletableFuture} of the {@link SuccessfulHttpResponse}.
+     * @since 1.17.0
+     */
+    default CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
 
     /**
      * Executes a given HTTP request asynchronously with server-sent events (SSE) handling.
@@ -79,8 +93,10 @@ public interface HttpClient {
      * the lifetime of the stream.
      * <p>
      * Uses {@link DefaultServerSentEventParser} for SSE parsing.
+     *
+     * @since 1.17.0
      */
-    default Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request) { // TODO name
+    default Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request) { // TODO name (async?)
         return executeWithPublisher(request, new DefaultServerSentEventParser());
     }
 
@@ -90,9 +106,9 @@ public interface HttpClient {
      * to be used here; the publisher path drives parsing in incremental mode so the I/O thread
      * is never blocked.
      *
-     * @since 1.15.0
+     * @since 1.17.0
      */
-    default Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request, ServerSentEventParser parser) { // TODO name
+    default Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request, ServerSentEventParser parser) { // TODO name (async?)
         throw new UnsupportedOperationException("Not implemented");
     }
 }
