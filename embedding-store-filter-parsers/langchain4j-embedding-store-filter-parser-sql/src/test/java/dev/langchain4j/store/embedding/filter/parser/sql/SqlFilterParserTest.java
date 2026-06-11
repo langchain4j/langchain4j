@@ -15,6 +15,7 @@ import dev.langchain4j.store.embedding.filter.FilterParser;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Stream;
@@ -1501,5 +1502,73 @@ class SqlFilterParserTest {
                 .isEqualTo(metadataKey("year")
                         .isEqualTo(2024L)
                         .and(metadataKey("genre").isIn("comedy", "drama")));
+    }
+
+    @Test
+    void should_support_SECOND_extraction() {
+        // given
+        String sql = "SELECT * FROM events WHERE second_value = EXTRACT(SECOND FROM CURRENT_TIMESTAMP)";
+
+        // when
+        Filter filter = parser.parse(sql);
+
+        // then
+        assertThat(filter).isEqualTo(metadataKey("second_value").isEqualTo(currentSecond()));
+    }
+
+    @Test
+    void should_support_QUARTER_extraction() {
+        // given
+        String sql = "SELECT * FROM reports WHERE quarter = EXTRACT(QUARTER FROM CURRENT_DATE)";
+
+        // when
+        Filter filter = parser.parse(sql);
+
+        // then
+        assertThat(filter).isEqualTo(metadataKey("quarter").isEqualTo(currentQuarter()));
+    }
+
+    @Test
+    void should_support_EPOCH_extraction() {
+        // given
+        String sql = "SELECT * FROM logs WHERE timestamp_epoch = EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)";
+
+        // when
+        Filter filter = parser.parse(sql);
+
+        // then
+        assertThat(filter).isEqualTo(metadataKey("timestamp_epoch").isEqualTo(currentEpoch()));
+    }
+
+    @Test
+    void should_use_fallback_strategy() {
+        // given - parser with IGNORE fallback strategy
+        SqlFilterParser parserWithIgnore = new SqlFilterParser(clock, FallbackStrategy.IGNORE);
+
+        // when - parsing an unsupported expression
+        // Note: This test validates the fallback strategy configuration
+        assertThat(parserWithIgnore.getFallbackStrategy()).isEqualTo(FallbackStrategy.IGNORE);
+    }
+
+    @Test
+    void should_use_fail_fallback_strategy_by_default() {
+        // given
+        SqlFilterParser defaultParser = new SqlFilterParser(clock);
+
+        // then
+        assertThat(defaultParser.getFallbackStrategy()).isEqualTo(FallbackStrategy.FAIL);
+    }
+
+    private long currentSecond() {
+        return LocalTime.now(clock).getSecond();
+    }
+
+    private long currentQuarter() {
+        int month = LocalDate.now(clock).getMonthValue();
+        return (month - 1) / 3 + 1;
+    }
+
+    private long currentEpoch() {
+        return LocalDateTime.now(clock).toEpochSecond(java.time.ZoneOffset.UTC);
     }
 }

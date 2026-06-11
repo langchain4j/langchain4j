@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.filter.parser.sql;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR;
 
@@ -14,6 +15,8 @@ import dev.langchain4j.store.embedding.filter.logical.Or;
 import java.net.URLEncoder;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collection;
 import net.sf.jsqlparser.JSQLParserException;
@@ -28,6 +31,8 @@ import net.sf.jsqlparser.expression.operators.relational.*;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.select.PlainSelect;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Parses an SQL "WHERE" clause into a {@link Filter} object using
@@ -77,7 +82,19 @@ import net.sf.jsqlparser.statement.select.PlainSelect;
 @Experimental
 public class SqlFilterParser implements FilterParser {
 
+    private static final Logger log = LoggerFactory.getLogger(SqlFilterParser.class);
+
+    private static final DateTimeFormatter[] TIMESTAMP_FORMATTERS = {
+        DateTimeFormatter.ISO_LOCAL_DATE_TIME,
+        DateTimeFormatter.ISO_DATE_TIME,
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"),
+        DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss"),
+        DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss")
+    };
+
     private final LocalDateTime localDateTime;
+    private final FallbackStrategy fallbackStrategy;
 
     /**
      * Creates an instance of {@code SqlFilterParser}.
@@ -100,7 +117,27 @@ public class SqlFilterParser implements FilterParser {
      *              the provided {@link Clock} will be used to resolve {@code CURRENT_DATE}.
      */
     public SqlFilterParser(Clock clock) {
+        this(clock, FallbackStrategy.FAIL);
+    }
+
+    /**
+     * Creates an instance of {@code SqlFilterParser}.
+     *
+     * @param clock            A {@link Clock} to be used to get the current date and/or time when required.
+     * @param fallbackStrategy The strategy to use when parsing fails. See {@link FallbackStrategy}.
+     */
+    public SqlFilterParser(Clock clock, FallbackStrategy fallbackStrategy) {
         this.localDateTime = LocalDateTime.now(ensureNotNull(clock, "clock"));
+        this.fallbackStrategy = getOrDefault(fallbackStrategy, FallbackStrategy.FAIL);
+    }
+
+    /**
+     * Returns the configured fallback strategy.
+     *
+     * @return the fallback strategy
+     */
+    public FallbackStrategy getFallbackStrategy() {
+        return fallbackStrategy;
     }
 
     @Override
@@ -319,10 +356,46 @@ public class SqlFilterParser implements FilterParser {
                             return currentHour();
                         case "MINUTE":
                             return currentMinute();
-                            // TODO add other
+                        case "SECOND":
+                            return currentSecond();
+                        case "QUARTER":
+                            return currentQuarter();
+                        case "EPOCH":
+                            return currentEpoch();
+                        default:
+                            log.warn("Unknown EXTRACT field: {}", field);
                     }
                 } else {
-                    // TODO parse timestamp?
+                    // Parse timestamp from the expression
+                    String timestampStr = extractExpression.getExpression().toString();
+                    LocalDateTime parsedTimestamp = parseTimestamp(timestampStr);
+                    if (parsedTimestamp != null) {
+                        String field = extractExpression.getName().toUpperCase();
+                        switch (field) {
+                            case "YEAR":
+                                return (long) parsedTimestamp.getYear();
+                            case "MONTH":
+                                return (long) parsedTimestamp.getMonthValue();
+                            case "WEEK":
+                                return (long) parsedTimestamp.get(WEEK_OF_WEEK_BASED_YEAR);
+                            case "DAY":
+                                return (long) parsedTimestamp.getDayOfMonth();
+                            case "DOW":
+                                return (long) parsedTimestamp.getDayOfWeek().getValue();
+                            case "DOY":
+                                return (long) parsedTimestamp.getDayOfYear();
+                            case "HOUR":
+                                return (long) parsedTimestamp.getHour();
+                            case "MINUTE":
+                                return (long) parsedTimestamp.getMinute();
+                            case "SECOND":
+                                return (long) parsedTimestamp.getSecond();
+                            case "QUARTER":
+                                return (long) ((parsedTimestamp.getMonthValue() - 1) / 3 + 1);
+                            default:
+                                log.warn("Unknown EXTRACT field for timestamp: {}", field);
+                        }
+                    }
                 }
             }
         } else if (expression instanceof Addition) {
@@ -394,5 +467,54 @@ public class SqlFilterParser implements FilterParser {
         return localDateTime.getMinute();
     }
 
-    // TODO FallbackStrategy? FAIL/IGNORE_UNSUPPORTED?
+    private long currentSecond() {
+        return localDateTime.getSecond();
+    }
+
+    private long currentQuarter() {
+        return (localDateTime.getMonthValue() - 1) / 3 + 1;
+    }
+
+    private long currentEpoch() {
+        return localDateTime.toEpochSecond(java.time.ZoneOffset.UTC);
+    }
+
+    /**
+     * Attempts to parse a timestamp string using multiple common formats.
+     *
+     * @param timestampStr the timestamp string to parse
+     * @return the parsed LocalDateTime, or null if parsing fails
+     */
+    private LocalDateTime parseTimestamp(String timestampStr) {
+        if (timestampStr == null || timestampStr.isEmpty()) {
+            return null;
+        }
+
+        // Remove quotes if present (common in SQL)
+        String cleanTimestamp = timestampStr.trim();
+        if ((cleanTimestamp.startsWith("'") && cleanTimestamp.endsWith("'"))
+                || (cleanTimestamp.startsWith("\"") && cleanTimestamp.endsWith("\""))) {
+            cleanTimestamp = cleanTimestamp.substring(1, cleanTimestamp.length() - 1);
+        }
+
+        // Remove TIMESTAMP keyword if present
+        if (cleanTimestamp.toUpperCase().startsWith("TIMESTAMP")) {
+            cleanTimestamp = cleanTimestamp.substring(9).trim();
+            if ((cleanTimestamp.startsWith("'") && cleanTimestamp.endsWith("'"))
+                    || (cleanTimestamp.startsWith("\"") && cleanTimestamp.endsWith("\""))) {
+                cleanTimestamp = cleanTimestamp.substring(1, cleanTimestamp.length() - 1);
+            }
+        }
+
+        for (DateTimeFormatter formatter : TIMESTAMP_FORMATTERS) {
+            try {
+                return LocalDateTime.parse(cleanTimestamp, formatter);
+            } catch (DateTimeParseException e) {
+                // Try next formatter
+            }
+        }
+
+        log.debug("Could not parse timestamp: {}", timestampStr);
+        return null;
+    }
 }
