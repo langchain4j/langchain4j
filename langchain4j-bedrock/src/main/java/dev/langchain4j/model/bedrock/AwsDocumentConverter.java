@@ -124,6 +124,7 @@ class AwsDocumentConverter {
             }
         } else {
             schemaMap = JsonSchemaElementUtils.toMap(toolSpecification.parameters(), strict);
+            schemaMap.remove("$defs"); // Bedrock does not support JSON Schema $defs/$ref in tool schemas
         }
 
         try {

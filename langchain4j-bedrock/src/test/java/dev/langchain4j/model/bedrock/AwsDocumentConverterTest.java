@@ -270,6 +270,7 @@ class AwsDocumentConverterTest {
 
         // Then
         Map<String, Document> docMap = document.asMap();
+        // $ref is preserved in properties (dangling reference, Bedrock ignores it)
         assertThat(docMap.get("properties")
                         .asMap()
                         .get("person")
@@ -278,10 +279,9 @@ class AwsDocumentConverterTest {
                         .asString())
                 .isEqualTo("#/$defs/Person");
 
-        Map<String, Document> personDefinition =
-                docMap.get("$defs").asMap().get("Person").asMap();
-        assertThat(personDefinition.get("additionalProperties").asBoolean()).isFalse();
-        assertThat(personDefinition.get("required").asList()).containsExactly(Document.fromString("name"));
+        // $defs is stripped because Bedrock does not support JSON Schema definitions
+        assertThat(docMap).doesNotContainKey("$defs");
+        assertThat(docMap.get("additionalProperties").asBoolean()).isFalse();
     }
 
     @Test
