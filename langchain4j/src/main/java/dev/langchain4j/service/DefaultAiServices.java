@@ -200,11 +200,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     ? Optional.of(SystemMessage.from(transformedSystemMessage))
                                     : Optional.empty();
                         }
-                        var userMessageTemplate = getUserMessageTemplate(memoryId, method, args);
+                        var userMessageResult = getUserMessageTemplateAndLenient(memoryId, method, args);
                         var variables = InternalReflectionVariableResolver.findTemplateVariables(
-                                userMessageTemplate, method, args);
-                        UserMessage originalUserMessage =
-                                prepareUserMessage(method, args, userMessageTemplate, variables);
+                                userMessageResult.template(), method, args);
+                        UserMessage originalUserMessage = prepareUserMessage(
+                                method, args, userMessageResult.template(), variables, userMessageResult.lenient());
 
                         context.eventListenerRegistrar.fireEvent(AiServiceStartedEvent.builder()
                                 .invocationContext(invocationContext)
@@ -234,7 +234,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         var commonGuardrailParam = GuardrailRequestParams.builder()
                                 .chatMemory(chatMemory)
                                 .augmentationResult(augmentationResult)
-                                .userMessageTemplate(userMessageTemplate)
+                                .userMessageTemplate(userMessageResult.template())
                                 .invocationContext(invocationContext)
                                 .aiServiceListenerRegistrar(context.eventListenerRegistrar)
                                 .variables(variables)
@@ -594,31 +594,39 @@ class DefaultAiServices<T> extends AiServices<T> {
         return (T) responseFromLLM;
     }
 
+    private record TemplateAndLenient(String template, boolean lenient) {}
+
     private Optional<SystemMessage> prepareSystemMessage(
             InvocationContext invocationContext, Method method, Object[] args) {
-        return findSystemMessageTemplate(invocationContext, method)
-                .map(systemMessageTemplate -> PromptTemplate.from(systemMessageTemplate)
+        return findSystemMessageTemplateAndLenient(invocationContext, method)
+                .map(systemMessageTemplate -> PromptTemplate.from(
+                                systemMessageTemplate.template(), systemMessageTemplate.lenient())
                         .apply(InternalReflectionVariableResolver.findTemplateVariables(
-                                systemMessageTemplate, method, args))
+                                systemMessageTemplate.template(), method, args))
                         .toSystemMessage());
     }
 
-    private Optional<String> findSystemMessageTemplate(InvocationContext invocationContext, Method method) {
+    private Optional<TemplateAndLenient> findSystemMessageTemplateAndLenient(
+            InvocationContext invocationContext, Method method) {
         dev.langchain4j.service.SystemMessage annotation =
                 method.getAnnotation(dev.langchain4j.service.SystemMessage.class);
         if (annotation != null) {
-            return Optional.of(getTemplate(
-                    method, "System", annotation.fromResource(), annotation.value(), annotation.delimiter()));
+            String template = getTemplate(
+                    method, "System", annotation.fromResource(), annotation.value(), annotation.delimiter());
+            return Optional.of(new TemplateAndLenient(template, annotation.lenient()));
         }
         if (context.systemMessageProviderWithContext != null) {
-            return Optional.of(context.systemMessageProviderWithContext.apply(invocationContext));
+            return Optional.of(context.systemMessageProviderWithContext.apply(invocationContext))
+                    .map(template -> new TemplateAndLenient(template, context.systemMessageLenient));
         } else {
-            return context.systemMessageProvider.apply(invocationContext.chatMemoryId());
+            return context.systemMessageProvider
+                    .apply(invocationContext.chatMemoryId())
+                    .map(template -> new TemplateAndLenient(template, context.systemMessageLenient));
         }
     }
 
     private static UserMessage prepareUserMessage(
-            Method method, Object[] args, String userMessageTemplate, Map<String, Object> variables) {
+            Method method, Object[] args, String userMessageTemplate, Map<String, Object> variables, boolean lenient) {
 
         Optional<String> maybeUserName = findUserName(method.getParameters(), args);
 
@@ -643,46 +651,47 @@ class DefaultAiServices<T> extends AiServices<T> {
                     "Error: The method '%s' does not have a user message defined.", method.getName());
         }
 
-        Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
+        Prompt prompt = PromptTemplate.from(userMessageTemplate, lenient).apply(variables);
 
         return maybeUserName
                 .map(userName -> UserMessage.from(userName, prompt.text()))
                 .orElseGet(prompt::toUserMessage);
     }
 
-    private String getUserMessageTemplate(Object memoryId, Method method, Object[] args) {
+    private TemplateAndLenient getUserMessageTemplateAndLenient(Object memoryId, Method method, Object[] args) {
 
-        Optional<String> templateFromMethodAnnotation = findUserMessageTemplateFromMethodAnnotation(method);
-        Optional<String> templateFromParameterAnnotation =
-                findUserMessageTemplateFromAnnotatedParameter(method.getParameters(), args);
+        Optional<TemplateAndLenient> fromMethodAnnotation = findUserMessageTemplateFromMethodAnnotation(method);
+        Optional<TemplateAndLenient> fromParameterAnnotation =
+                findUserMessageTemplateAndLenientFromAnnotatedParameter(method.getParameters(), args);
 
-        if (templateFromMethodAnnotation.isPresent() && templateFromParameterAnnotation.isPresent()) {
+        if (fromMethodAnnotation.isPresent() && fromParameterAnnotation.isPresent()) {
             throw illegalConfiguration(
                     "Error: The method '%s' has multiple @UserMessage annotations. Please use only one.",
                     method.getName());
         }
 
-        if (templateFromMethodAnnotation.isPresent()) {
-            return templateFromMethodAnnotation.get();
+        if (fromMethodAnnotation.isPresent()) {
+            return fromMethodAnnotation.get();
         }
-        if (templateFromParameterAnnotation.isPresent()) {
-            return templateFromParameterAnnotation.get();
+        if (fromParameterAnnotation.isPresent()) {
+            return fromParameterAnnotation.get();
         }
 
         Optional<String> templateFromTheOnlyArgument =
                 findUserMessageTemplateFromTheOnlyArgument(method.getParameters(), args);
         if (templateFromTheOnlyArgument.isPresent()) {
-            return templateFromTheOnlyArgument.get();
+            return new TemplateAndLenient(templateFromTheOnlyArgument.get(), false);
         }
 
         if (hasContentArgument(method, args)) {
-            return "";
+            return new TemplateAndLenient("", false);
         }
 
-        return context.userMessageProvider
+        String template = context.userMessageProvider
                 .apply(memoryId)
                 .orElseThrow(() -> illegalConfiguration(
                         "Error: The method '%s' does not have a user message defined.", method.getName()));
+        return new TemplateAndLenient(template, context.userMessageLenient);
     }
 
     private static boolean hasContentArgument(Method method, Object[] args) {
@@ -701,18 +710,22 @@ class DefaultAiServices<T> extends AiServices<T> {
         return false;
     }
 
-    private static Optional<String> findUserMessageTemplateFromMethodAnnotation(Method method) {
+    private static Optional<TemplateAndLenient> findUserMessageTemplateFromMethodAnnotation(Method method) {
         return Optional.ofNullable(method.getAnnotation(dev.langchain4j.service.UserMessage.class))
-                .map(a -> getTemplate(method, "User", a.fromResource(), a.value(), a.delimiter()));
+                .map(a -> new TemplateAndLenient(
+                        getTemplate(method, "User", a.fromResource(), a.value(), a.delimiter()), a.lenient()));
     }
 
-    private static Optional<String> findUserMessageTemplateFromAnnotatedParameter(
+    private static Optional<TemplateAndLenient> findUserMessageTemplateAndLenientFromAnnotatedParameter(
             Parameter[] parameters, Object[] args) {
         for (int i = 0; i < parameters.length; i++) {
             if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)
                     && !(args[i] instanceof Content)
                     && !isListOfContents(args[i])) {
-                return Optional.of(InternalReflectionVariableResolver.asString(args[i]));
+                dev.langchain4j.service.UserMessage annotation =
+                        parameters[i].getAnnotation(dev.langchain4j.service.UserMessage.class);
+                return Optional.of(new TemplateAndLenient(
+                        InternalReflectionVariableResolver.asString(args[i]), annotation.lenient()));
             }
         }
         return Optional.empty();

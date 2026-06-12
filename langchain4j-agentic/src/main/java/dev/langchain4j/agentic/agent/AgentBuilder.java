@@ -63,7 +63,6 @@ import java.util.concurrent.Executor;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
-import org.jspecify.annotations.NonNull;
 
 public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
@@ -109,6 +108,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     private Function<Object, String> systemMessageProvider;
     private BiFunction<String, InvocationContext, String> systemMessageTransformer;
     private Function<Object, String> userMessageProvider;
+    private boolean systemMessageLenient = false;
+    private boolean userMessageLenient = false;
 
     private InputGuardrailsConfig inputGuardrailsConfig;
     private OutputGuardrailsConfig outputGuardrailsConfig;
@@ -182,6 +183,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         }
 
         AiServiceContext context = AiServiceContext.create(agentServiceClass);
+        context.systemMessageLenient = this.systemMessageLenient;
+        context.userMessageLenient = this.userMessageLenient;
         AiServices<T> aiServices = AiServices.builder(context);
 
         configureChatModel(aiServices);
@@ -259,13 +262,13 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     @SuppressWarnings("rawtypes")
     public static Class[] interfacesToImplement(Class clazz) {
-        return new Class<?>[]{
-                clazz,
-                InternalAgent.class,
-                AgenticScopeOwner.class,
-                ChatMemoryAccess.class,
-                ChatMessagesAccess.class,
-                AiServiceResponseReceivedListener.class
+        return new Class<?>[] {
+            clazz,
+            InternalAgent.class,
+            AgenticScopeOwner.class,
+            ChatMemoryAccess.class,
+            ChatMessagesAccess.class,
+            AiServiceResponseReceivedListener.class
         };
     }
 
@@ -533,6 +536,16 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     public B userMessageProvider(Function<Object, String> userMessageProvider) {
         this.userMessageProvider = userMessageProvider;
+        return (B) this;
+    }
+
+    public B systemMessageLenient(boolean systemMessageLenient) {
+        this.systemMessageLenient = systemMessageLenient;
+        return (B) this;
+    }
+
+    public B userMessageLenient(boolean userMessageLenient) {
+        this.userMessageLenient = userMessageLenient;
         return (B) this;
     }
 
