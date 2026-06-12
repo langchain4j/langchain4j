@@ -1,13 +1,10 @@
 package dev.langchain4j.service.tool;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.invocation.InvocationContext;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Consumer;
 
 import static dev.langchain4j.service.tool.ToolService.executeWithErrorHandling;
@@ -36,40 +33,10 @@ class ToolServiceTest {
         assertThatNoException().isThrownBy(() -> shouldReturnImmediately(false, List.of()));
     }
 
-    // --- propagateException tests ---
+    // --- error handler returns text ---
 
     @Test
-    void propagateException_rethrows_original_RuntimeException() {
-        RuntimeException original = new IllegalStateException("boom");
-        ToolExecutor executor = (req, ctx) -> { throw original; };
-
-        ToolExecutionErrorHandler handler = (error, ctx) -> ToolErrorHandlerResult.propagateException();
-
-        assertThatThrownBy(() -> executeWithErrorHandling(
-                DUMMY_REQUEST, executor, DUMMY_CONTEXT, DEFAULT_ARGS_HANDLER, handler))
-                .isSameAs(original);
-    }
-
-    @Test
-    void propagateException_wraps_checked_exception() {
-        IOException checked = new IOException("disk error");
-        ToolExecutor executor = (req, ctx) -> { throw new RuntimeException(checked); };
-
-        ToolExecutionErrorHandler handler = (error, ctx) -> ToolErrorHandlerResult.propagateException();
-
-        assertThatThrownBy(() -> executeWithErrorHandling(
-                DUMMY_REQUEST, executor, DUMMY_CONTEXT, DEFAULT_ARGS_HANDLER, handler))
-                .isInstanceOf(RuntimeException.class)
-                .hasCause(checked);
-    }
-
-    @Test
-    void propagateException_false_by_default() {
-        assertThat(ToolErrorHandlerResult.text("err").shouldPropagateException()).isFalse();
-    }
-
-    @Test
-    void text_factory_does_not_propagate() {
+    void text_factory_returns_error_result() {
         RuntimeException original = new RuntimeException("fail");
         ToolExecutor executor = (req, ctx) -> { throw original; };
 
@@ -124,34 +91,17 @@ class ToolServiceTest {
         executeWithErrorHandling(DUMMY_REQUEST, executor, DUMMY_CONTEXT, DEFAULT_ARGS_HANDLER, handler);
     }
 
-    // --- propagateException with ToolArgumentsException ---
-
     @Test
-    void propagateException_works_with_ToolArgumentsException() {
-        ToolArgumentsException original = new ToolArgumentsException("bad args");
+    void rawError_allows_handler_to_throw_directly() {
+        RuntimeException original = new IllegalStateException("critical");
         ToolExecutor executor = (req, ctx) -> { throw original; };
 
-        ToolArgumentsErrorHandler argsHandler = (error, ctx) -> ToolErrorHandlerResult.propagateException();
+        ToolExecutionErrorHandler handler = (error, ctx) -> {
+            throw (RuntimeException) ctx.rawError();
+        };
 
         assertThatThrownBy(() -> executeWithErrorHandling(
-                DUMMY_REQUEST, executor, DUMMY_CONTEXT, argsHandler, DEFAULT_EXEC_HANDLER))
-                .isSameAs(original);
-    }
-
-    // --- propagateException through internalExecuteTool ---
-
-    @Test
-    void propagateException_in_tool_loop() {
-        RuntimeException original = new IllegalStateException("must propagate");
-        ToolExecutor executor = (req, ctx) -> { throw original; };
-
-        ToolService toolService = new ToolService();
-        toolService.executionErrorHandler((error, ctx) -> ToolErrorHandlerResult.propagateException());
-
-        Map<String, ToolExecutor> executors = Map.of("test", executor);
-
-        assertThatThrownBy(() -> toolService.executeTool(
-                DUMMY_CONTEXT, executors, DUMMY_REQUEST, null, null))
+                DUMMY_REQUEST, executor, DUMMY_CONTEXT, DEFAULT_ARGS_HANDLER, handler))
                 .isSameAs(original);
     }
 

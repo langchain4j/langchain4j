@@ -775,13 +775,6 @@ public class ToolService {
                 errorHandlerResult = executionErrorHandler.handle(getCause(e), errorContext);
             }
 
-            if (errorHandlerResult.shouldPropagateException()) {
-                if (e instanceof RuntimeException re) {
-                    throw re;
-                }
-                throw new RuntimeException(e);
-            }
-
             return ToolExecutionResult.builder()
                     .isError(true)
                     .resultText(errorHandlerResult.text())

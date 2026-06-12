@@ -1547,13 +1547,11 @@ Assistant assistant = AiServices.builder(Assistant.class)
         .build();
 ```
 
-There are three ways to handle errors inside the `ToolArgumentsErrorHandler`:
+Currently, there are two ways to handle errors inside the `ToolArgumentsErrorHandler`:
 
 - Return a text message (e.g., an error description) that will be sent back to the LLM,
   allowing it to respond appropriately (for example, by correcting the error and retrying).
 - Throw an exception: this will stop the AI service flow.
-- Return `ToolErrorHandlerResult.propagateException()`: re-throws the original exception
-  out of the AI Service, like throwing directly but letting you inspect the error first.
 
 **Recommended (let the LLM retry):**
 
@@ -1583,23 +1581,23 @@ try {
 
 **Selective propagation (re-throw only certain exceptions):**
 
+When a tool throws an exception that wraps another (e.g. `ToolGuardrailException` wrapping `SecurityException`),
+LangChain4j extracts the inner cause via `getCause()` and passes it as the `error` argument.
+Use `errorContext.rawError()` to access the outer exception as originally thrown — useful when the
+wrapper type (not the cause) determines how the error should be handled.
+
 ```java
 Assistant assistant = AiServices.builder(Assistant.class)
         .chatModel(chatModel)
         .tools(tools)
         .toolArgumentsErrorHandler((error, errorContext) -> {
             if (errorContext.rawError() instanceof MyCriticalException) {
-                return ToolErrorHandlerResult.propagateException();
+                throw (MyCriticalException) errorContext.rawError();
             }
             return ToolErrorHandlerResult.text(error.getMessage());
         })
         .build();
 ```
-
-When a tool throws an exception that wraps another (e.g. `ToolGuardrailException` wrapping `SecurityException`),
-LangChain4j extracts the inner cause via `getCause()` and passes it as the `error` argument.
-Use `errorContext.rawError()` to access the outer exception as originally thrown — useful when the
-wrapper type (not the cause) determines how the error should be handled.
 
 #### Handling Tool Execution Errors
 
@@ -1633,10 +1631,9 @@ Assistant assistant = AiServices.builder(Assistant.class)
         .build();
 ```
 
-As with the `ToolArgumentsErrorHandler`, there are three ways to handle errors in `ToolExecutionErrorHandler`:
-return a text message, throw an exception, or return `ToolErrorHandlerResult.propagateException()`
-to re-throw the raw error. You can use `errorContext.rawError()` to inspect
-the raw error before cause-unwrapping.
+As with the `ToolArgumentsErrorHandler`, there are two ways to handle errors in `ToolExecutionErrorHandler`:
+return a text message or throw an exception. You can use `errorContext.rawError()` to inspect
+the raw error before cause-unwrapping when deciding how to handle it.
 
 ## Model Context Protocol (MCP)
 
