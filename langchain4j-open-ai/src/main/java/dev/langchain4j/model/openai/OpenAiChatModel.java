@@ -22,6 +22,7 @@ import static java.util.Arrays.asList;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
@@ -41,6 +42,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 
@@ -157,6 +160,34 @@ public class OpenAiChatModel implements ChatModel {
 
         ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse = withRetryMappingExceptions(
                 () -> client.chatCompletion(openAiRequest).executeRaw(), maxRetries);
+
+        return toChatResponse(parsedAndRawResponse);
+    }
+
+    @Override
+    public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+
+        OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) chatRequest.parameters();
+        validate(parameters);
+
+        ChatCompletionRequest openAiRequest = toOpenAiChatRequest(
+                        chatRequest, parameters, sendThinking, thinkingFieldName, strictTools, strictJsonSchema)
+                .build();
+
+        // Retries are applied on the synchronous path via withRetryMappingExceptions; the async path
+        // maps provider exceptions to langchain4j exceptions but does not retry yet. TODO retries for async
+        return client.chatCompletion(openAiRequest)
+                .executeRawAsync()
+                .thenApply(this::toChatResponse)
+                .exceptionallyCompose(throwable -> {
+                    Throwable cause = throwable instanceof CompletionException && throwable.getCause() != null
+                            ? throwable.getCause()
+                            : throwable;
+                    return CompletableFuture.failedFuture(ExceptionMapper.DEFAULT.mapException(cause));
+                });
+    }
+
+    private ChatResponse toChatResponse(ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse) {
 
         ChatCompletionResponse openAiResponse = parsedAndRawResponse.parsedResponse();
 

@@ -3,6 +3,7 @@ package dev.langchain4j.model.openai.internal;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 class RequestExecutor<Response> implements SyncOrAsyncOrStreaming<Response> {
@@ -42,6 +43,14 @@ class RequestExecutor<Response> implements SyncOrAsyncOrStreaming<Response> {
     public ParsedAndRawResponse<Response> executeRaw() {
         SyncRequestExecutor<Response> executor = new SyncRequestExecutor<>(httpClient, httpRequest, responseClass);
         return executor.execute();
+    }
+
+    @Override
+    public CompletableFuture<ParsedAndRawResponse<Response>> executeRawAsync() {
+        return httpClient.executeAsync(httpRequest).thenApply(rawHttpResponse -> {
+            Response parsedResponse = Json.fromJson(rawHttpResponse.body(), responseClass);
+            return new ParsedAndRawResponse<>(parsedResponse, rawHttpResponse);
+        });
     }
 
     @Override

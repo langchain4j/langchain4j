@@ -9,8 +9,12 @@ import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
+import dev.langchain4j.http.client.sse.ServerSentEventParsingHandle;
+import dev.langchain4j.http.client.sse.StreamingHttpEvent;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -22,6 +26,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicReference;
+import mutiny.zero.BackpressureStrategy;
+import mutiny.zero.TubeConfiguration;
+import mutiny.zero.ZeroPublisher;
 import org.apache.hc.client5.http.async.methods.SimpleHttpRequest;
 import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
 import org.apache.hc.client5.http.async.methods.SimpleRequestBuilder;
@@ -93,6 +103,94 @@ public class ApacheHttpClient implements HttpClient {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
+        SimpleHttpRequest apacheRequest = toSimpleApacheRequest(request);
+        CompletableFuture<SuccessfulHttpResponse> future = new CompletableFuture<>();
+        asyncClient.execute(apacheRequest, new FutureCallback<>() {
+            @Override
+            public void completed(SimpleHttpResponse apacheResponse) {
+                if (!isSuccessful(apacheResponse)) {
+                    future.completeExceptionally(
+                            new HttpException(apacheResponse.getCode(), apacheResponse.getBodyText()));
+                } else {
+                    future.complete(fromApacheResponse(apacheResponse));
+                }
+            }
+
+            @Override
+            public void failed(Exception ex) {
+                future.completeExceptionally(ex instanceof SocketTimeoutException ? new TimeoutException(ex) : ex);
+            }
+
+            @Override
+            public void cancelled() {
+                future.cancel(true);
+            }
+        });
+        return future;
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Note: the Apache async client buffers the whole response before delivering it, so — unlike the JDK
+     * client — this publisher does not stream incrementally; it emits all parsed events once the body has
+     * arrived. Cancelling the subscription cancels the SSE parsing. TODO
+     */
+    @Override
+    public Flow.Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request, ServerSentEventParser parser) {
+        TubeConfiguration config = new TubeConfiguration()
+                .withBackpressureStrategy(BackpressureStrategy.BUFFER)
+                .withBufferSize(256);
+        return ZeroPublisher.create(config, tube -> {
+            AtomicReference<ServerSentEventParsingHandle> parsingHandle = new AtomicReference<>();
+            tube.whenCancelled(() -> {
+                ServerSentEventParsingHandle handle = parsingHandle.get();
+                if (handle != null) {
+                    handle.cancel();
+                }
+            });
+            execute(request, parser, new ServerSentEventListener() {
+                @Override
+                public void onOpen(SuccessfulHttpResponse response) {
+                    if (!tube.cancelled()) {
+                        tube.send(response);
+                    }
+                }
+
+                @Override
+                public void onEvent(ServerSentEvent event) {
+                    if (!tube.cancelled()) {
+                        tube.send(event);
+                    }
+                }
+
+                @Override
+                public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                    parsingHandle.set(context.parsingHandle());
+                    if (!tube.cancelled()) {
+                        tube.send(event);
+                    }
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    if (!tube.cancelled()) {
+                        tube.fail(throwable);
+                    }
+                }
+
+                @Override
+                public void onClose() {
+                    if (!tube.cancelled()) {
+                        tube.complete();
+                    }
+                }
+            });
+        });
     }
 
     @Override

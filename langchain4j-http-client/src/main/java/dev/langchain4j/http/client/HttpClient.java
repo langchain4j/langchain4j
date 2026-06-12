@@ -27,7 +27,7 @@ public interface HttpClient {
     SuccessfulHttpResponse execute(HttpRequest request) throws HttpException, RuntimeException;
 
     /**
-     * Non-blocking counterpart of {@link #execute(HttpRequest)} for a single (non-streaming) response.
+     * Non-blocking counterpart of {@link #execute(HttpRequest)}.
      * Returns immediately with a {@link CompletableFuture} that completes with the
      * {@link SuccessfulHttpResponse} once the full response has been received, without blocking the
      * calling thread. The future completes exceptionally with an {@link HttpException} for non-2XX
@@ -88,9 +88,10 @@ public interface HttpClient {
 
     /**
      * Executes a streaming HTTP request and exposes the parsed events as a cold
-     * {@link Publisher} of {@link StreamingHttpEvent}s. Each {@code subscribe()} initiates a new
-     * request; the implementation should be fully non-blocking — no thread should be pinned for
-     * the lifetime of the stream.
+     * {@link Publisher} of {@link StreamingHttpEvent}s. Each {@code subscribe()} initiates a new request.
+     * <p>
+     * This interface gives no guarantee about thread-pinning or whether events are delivered incrementally;
+     * such guarantees depend on the implementation. Consult the chosen implementation's javadoc.
      * <p>
      * Uses {@link DefaultServerSentEventParser} for SSE parsing.
      *
@@ -101,10 +102,7 @@ public interface HttpClient {
     }
 
     /**
-     * Like {@link #executeWithPublisher(HttpRequest)}, but with a caller-supplied
-     * {@link ServerSentEventParser}. The parser must implement {@link ServerSentEventParser#incremental()}
-     * to be used here; the publisher path drives parsing in incremental mode so the I/O thread
-     * is never blocked.
+     * Like {@link #executeWithPublisher(HttpRequest)}, but with a caller-supplied {@link ServerSentEventParser}.
      *
      * @since 1.17.0
      */

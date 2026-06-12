@@ -6,8 +6,15 @@ import dev.langchain4j.http.client.FormDataFile;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
+import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
+import dev.langchain4j.http.client.sse.ServerSentEventParsingHandle;
+import dev.langchain4j.http.client.sse.StreamingHttpEvent;
+import mutiny.zero.BackpressureStrategy;
+import mutiny.zero.TubeConfiguration;
+import mutiny.zero.ZeroPublisher;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.MediaType;
@@ -22,7 +29,10 @@ import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -62,6 +72,92 @@ public class OkHttpClient implements HttpClient {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
+        Request okRequest = toOkHttpRequest(request);
+        CompletableFuture<SuccessfulHttpResponse> future = new CompletableFuture<>();
+        client.newCall(okRequest).enqueue(new Callback() {
+            @Override
+            public void onResponse(Call call, Response response) {
+                try (response) {
+                    if (!response.isSuccessful()) {
+                        future.completeExceptionally(new HttpException(response.code(), readBody(response)));
+                    } else {
+                        future.complete(fromOkHttpResponse(response));
+                    }
+                } catch (Exception e) {
+                    future.completeExceptionally(e);
+                }
+            }
+
+            @Override
+            public void onFailure(Call call, IOException e) {
+                future.completeExceptionally(e instanceof SocketTimeoutException ? new TimeoutException(e) : e);
+            }
+        });
+        return future;
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Note: OkHttp reads the response body on a blocking call thread, so — unlike the JDK client — this
+     * publisher pins an OkHttp dispatcher thread for the lifetime of the stream. Cancelling the
+     * subscription cancels the underlying SSE parsing (which closes the stream and frees the thread).
+     */
+    @Override
+    public Flow.Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request, ServerSentEventParser parser) {
+        TubeConfiguration config = new TubeConfiguration()
+                .withBackpressureStrategy(BackpressureStrategy.BUFFER)
+                .withBufferSize(256);
+        return ZeroPublisher.create(config, tube -> {
+            AtomicReference<ServerSentEventParsingHandle> parsingHandle = new AtomicReference<>();
+            tube.whenCancelled(() -> {
+                ServerSentEventParsingHandle handle = parsingHandle.get();
+                if (handle != null) {
+                    handle.cancel();
+                }
+            });
+            execute(request, parser, new ServerSentEventListener() {
+                @Override
+                public void onOpen(SuccessfulHttpResponse response) {
+                    if (!tube.cancelled()) {
+                        tube.send(response);
+                    }
+                }
+
+                @Override
+                public void onEvent(ServerSentEvent event) {
+                    if (!tube.cancelled()) {
+                        tube.send(event);
+                    }
+                }
+
+                @Override
+                public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                    parsingHandle.set(context.parsingHandle());
+                    if (!tube.cancelled()) {
+                        tube.send(event);
+                    }
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    if (!tube.cancelled()) {
+                        tube.fail(throwable);
+                    }
+                }
+
+                @Override
+                public void onClose() {
+                    if (!tube.cancelled()) {
+                        tube.complete();
+                    }
+                }
+            });
+        });
     }
 
     @Override
