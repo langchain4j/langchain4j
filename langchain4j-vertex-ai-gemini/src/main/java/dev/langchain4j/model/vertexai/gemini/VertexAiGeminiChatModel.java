@@ -661,115 +661,266 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
             // This is public so it can be extended
         }
 
+        /**
+         * Sets the Google Cloud project ID.
+         *
+         * @param project the Google Cloud project ID
+         * @return {@code this}
+         */
         public VertexAiGeminiChatModelBuilder project(String project) {
             this.project = project;
             return this;
         }
 
+        /**
+         * Sets the Google Cloud location (region) where the model is deployed,
+         * e.g. {@code "us-central1"}.
+         *
+         * @param location the Google Cloud location
+         * @return {@code this}
+         */
         public VertexAiGeminiChatModelBuilder location(String location) {
             this.location = location;
             return this;
         }
 
+        /**
+         * Sets the Gemini model name to use, e.g. {@code "gemini-2.0-flash"}.
+         *
+         * @param modelName the model name
+         * @return {@code this}
+         */
         public VertexAiGeminiChatModelBuilder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
+        /**
+         * Sets the sampling temperature controlling randomness in the output.
+         * Higher values produce more creative output; lower values produce more deterministic output.
+         *
+         * @param temperature the sampling temperature
+         * @return {@code this}
+         */
         public VertexAiGeminiChatModelBuilder temperature(Float temperature) {
             this.temperature = temperature;
             return this;
         }
 
+        /**
+         * Sets the maximum number of tokens to generate in the response.
+         *
+         * @param maxOutputTokens the maximum number of output tokens
+         * @return {@code this}
+         */
         public VertexAiGeminiChatModelBuilder maxOutputTokens(Integer maxOutputTokens) {
             this.maxOutputTokens = maxOutputTokens;
             return this;
         }
 
+        /**
+         * Sets the top-K sampling parameter, limiting the number of highest-probability tokens
+         * considered at each step.
+         *
+         * @param topK the top-K value
+         * @return {@code this}
+         */
         public VertexAiGeminiChatModelBuilder topK(Integer topK) {
             this.topK = topK;
             return this;
         }
 
+        /**
+         * Sets the nucleus sampling probability mass. Only the tokens comprising the top {@code topP}
+         * probability mass are considered during generation.
+         *
+         * @param topP the nucleus sampling probability
+         * @return {@code this}
+         */
         public VertexAiGeminiChatModelBuilder topP(Float topP) {
             this.topP = topP;
             return this;
         }
 
+        /**
+         * Sets the random seed for deterministic output. Using the same seed and request parameters
+         * produces reproducible results.
+         *
+         * @param seed the random seed
+         * @return {@code this}
+         */
         public VertexAiGeminiChatModelBuilder seed(Integer seed) {
             this.seed = seed;
             return this;
         }
 
+        /**
+         * Sets the maximum number of retries on transient errors. Defaults to {@code 2}.
+         *
+         * @param maxRetries the maximum number of retries
+         * @return {@code this}
+         */
         public VertexAiGeminiChatModelBuilder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
+        /**
+         * Sets the MIME type of the response, e.g. {@code "application/json"} for JSON output
+         * or {@code "text/plain"} for plain text.
+         *
+         * @param responseMimeType the response MIME type
+         * @return {@code this}
+         */
         public VertexAiGeminiChatModelBuilder responseMimeType(String responseMimeType) {
             this.responseMimeType = responseMimeType;
             return this;
         }
 
+        /**
+         * Sets the response schema for structured output. When set, the model will produce
+         * output that conforms to this schema.
+         *
+         * @param responseSchema the response schema
+         * @return {@code this}
+         */
         public VertexAiGeminiChatModelBuilder responseSchema(Schema responseSchema) {
             this.responseSchema = responseSchema;
             return this;
         }
 
+        /**
+         * Sets per-category safety thresholds to control which types of harmful content are blocked.
+         *
+         * @param safetySettings a map of {@link HarmCategory} to {@link SafetyThreshold}
+         * @return {@code this}
+         */
         public VertexAiGeminiChatModelBuilder safetySettings(Map<HarmCategory, SafetyThreshold> safetySettings) {
             this.safetySettings = safetySettings;
             return this;
         }
 
+        /**
+         * Enables Google Search grounding to augment model responses with real-time web search results.
+         *
+         * @param useGoogleSearch {@code true} to enable Google Search grounding
+         * @return {@code this}
+         */
         public VertexAiGeminiChatModelBuilder useGoogleSearch(Boolean useGoogleSearch) {
             this.useGoogleSearch = useGoogleSearch;
             return this;
         }
 
+        /**
+         * Sets the Vertex AI Search datastore resource name for grounding responses with
+         * enterprise data.
+         *
+         * @param vertexSearchDatastore the Vertex AI Search datastore resource name
+         * @return {@code this}
+         */
         public VertexAiGeminiChatModelBuilder vertexSearchDatastore(String vertexSearchDatastore) {
             this.vertexSearchDatastore = vertexSearchDatastore;
             return this;
         }
 
+        /**
+         * Sets the tool calling mode, controlling whether and how the model invokes tools.
+         * Use {@link ToolCallingMode#AUTO} (default), {@link ToolCallingMode#ANY},
+         * or {@link ToolCallingMode#NONE}.
+         *
+         * @param toolCallingMode the tool calling mode
+         * @return {@code this}
+         */
         public VertexAiGeminiChatModelBuilder toolCallingMode(ToolCallingMode toolCallingMode) {
             this.toolCallingMode = toolCallingMode;
             return this;
         }
 
+        /**
+         * Sets the list of function names the model is allowed to call when
+         * {@link ToolCallingMode#ANY} is specified.
+         *
+         * @param allowedFunctionNames the list of allowed function names
+         * @return {@code this}
+         */
         public VertexAiGeminiChatModelBuilder allowedFunctionNames(List<String> allowedFunctionNames) {
             this.allowedFunctionNames = allowedFunctionNames;
             return this;
         }
 
+        /**
+         * Enables debug logging of request bodies sent to the Vertex AI API.
+         *
+         * @param logRequests {@code true} to enable request logging
+         * @return {@code this}
+         */
         public VertexAiGeminiChatModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
+        /**
+         * Enables debug logging of response bodies received from the Vertex AI API.
+         *
+         * @param logResponses {@code true} to enable response logging
+         * @return {@code this}
+         */
         public VertexAiGeminiChatModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
         }
 
+        /**
+         * Sets the list of {@link ChatModelListener} instances for observability and monitoring hooks.
+         *
+         * @param listeners the list of chat model listeners
+         * @return {@code this}
+         */
         public VertexAiGeminiChatModelBuilder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return this;
         }
 
+        /**
+         * Declares the capabilities supported by the model (e.g. vision, tool use).
+         *
+         * @param supportedCapabilities the set of supported capabilities
+         * @return {@code this}
+         */
         public VertexAiGeminiChatModelBuilder supportedCapabilities(Set<Capability> supportedCapabilities) {
             this.supportedCapabilities = supportedCapabilities;
             return this;
         }
 
+        /**
+         * Declares the capabilities supported by the model (e.g. vision, tool use).
+         *
+         * @param supportedCapabilities one or more capabilities to declare
+         * @return {@code this}
+         */
         public VertexAiGeminiChatModelBuilder supportedCapabilities(Capability... supportedCapabilities) {
             return supportedCapabilities(new HashSet<>(asList(supportedCapabilities)));
         }
 
+        /**
+         * Sets the Google credentials for authentication. If not provided, Application Default
+         * Credentials are used.
+         *
+         * @param credentials the Google credentials
+         * @return {@code this}
+         */
         public VertexAiGeminiChatModelBuilder credentials(GoogleCredentials credentials) {
             this.credentials = credentials;
             return this;
         }
 
+        /**
+         * Overrides the Vertex AI API endpoint. Useful when routing requests through a regional
+         * endpoint or a private endpoint.
+         *
+         * @param apiEndpoint the API endpoint URL
+         * @return {@code this}
+         */
         public VertexAiGeminiChatModelBuilder apiEndpoint(String apiEndpoint) {
             this.apiEndpoint = apiEndpoint;
             return this;
