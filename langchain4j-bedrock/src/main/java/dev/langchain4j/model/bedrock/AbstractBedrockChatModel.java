@@ -80,6 +80,11 @@ import software.amazon.awssdk.services.bedrockruntime.model.DocumentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.DocumentFormat;
 import software.amazon.awssdk.services.bedrockruntime.model.DocumentSource;
 import software.amazon.awssdk.services.bedrockruntime.model.GuardrailConfiguration;
+import software.amazon.awssdk.services.bedrockruntime.model.GuardrailConverseContentBlock;
+import software.amazon.awssdk.services.bedrockruntime.model.GuardrailConverseImageBlock;
+import software.amazon.awssdk.services.bedrockruntime.model.GuardrailConverseImageFormat;
+import software.amazon.awssdk.services.bedrockruntime.model.GuardrailConverseImageSource;
+import software.amazon.awssdk.services.bedrockruntime.model.GuardrailConverseTextBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.GuardrailStreamConfiguration;
 import software.amazon.awssdk.services.bedrockruntime.model.GuardrailStreamProcessingMode;
 import software.amazon.awssdk.services.bedrockruntime.model.GuardrailTrace;
@@ -269,6 +274,14 @@ abstract class AbstractBedrockChatModel {
 
     protected List<Message> extractRegularMessages(
             List<ChatMessage> messages, BedrockCachePointPlacement cachePointPlacement, CacheTTL cacheTtl) {
+        return extractRegularMessages(messages, cachePointPlacement, cacheTtl, null);
+    }
+
+    protected List<Message> extractRegularMessages(
+            List<ChatMessage> messages,
+            BedrockCachePointPlacement cachePointPlacement,
+            CacheTTL cacheTtl,
+            BedrockGuardContentPlacement guardContentPlacement) {
         if (messages == null) {
             return new ArrayList<>();
         }
@@ -277,9 +290,10 @@ abstract class AbstractBedrockChatModel {
         List<ContentBlock> currentBlocks = new ArrayList<>();
         boolean firstUserMessageProcessed = false;
 
-        // Find the index of the last user message for AFTER_LAST_USER_MESSAGE placement
+        // Find the index of the last user message for AFTER_LAST_USER_MESSAGE and LAST_USER_MESSAGE placements
         int lastUserMessageIndex = -1;
-        if (cachePointPlacement == BedrockCachePointPlacement.AFTER_LAST_USER_MESSAGE) {
+        if (cachePointPlacement == BedrockCachePointPlacement.AFTER_LAST_USER_MESSAGE
+                || guardContentPlacement == BedrockGuardContentPlacement.LAST_USER_MESSAGE) {
             for (int i = messages.size() - 1; i >= 0; i--) {
                 if (messages.get(i) instanceof UserMessage) {
                     lastUserMessageIndex = i;
@@ -287,6 +301,8 @@ abstract class AbstractBedrockChatModel {
                 }
             }
         }
+
+        boolean shouldUseGuardContent = shouldUseGuardContent(messages, guardContentPlacement, lastUserMessageIndex);
 
         for (int i = 0; i < messages.size(); i++) {
             ChatMessage msg = messages.get(i);
@@ -296,7 +312,11 @@ abstract class AbstractBedrockChatModel {
             if (msg instanceof ToolExecutionResultMessage toolResult) {
                 handleToolResult(toolResult, currentBlocks, bedrockMessages, i, messages);
             } else if ((msg instanceof UserMessage) || (msg instanceof AiMessage)) {
-                Message bedrockMessage = convertToBedRockMessage(msg);
+                boolean shouldApplyGuardContent = shouldUseGuardContent
+                        && shouldApplyGuardContent(msg, guardContentPlacement, i, lastUserMessageIndex);
+                Message bedrockMessage = shouldApplyGuardContent
+                        ? createGuardedUserMessage((UserMessage) msg)
+                        : convertToBedRockMessage(msg);
 
                 boolean shouldAddCachePoint = false;
 
@@ -328,6 +348,90 @@ abstract class AbstractBedrockChatModel {
         }
 
         return bedrockMessages;
+    }
+
+    private boolean shouldUseGuardContent(
+            List<ChatMessage> messages, BedrockGuardContentPlacement guardContentPlacement, int lastUserMessageIndex) {
+        if (guardContentPlacement == null) {
+            return false;
+        }
+
+        String fallbackReason = guardContentFallbackReason(messages, guardContentPlacement, lastUserMessageIndex);
+        if (fallbackReason != null) {
+            log.warn(fallbackReason);
+            return false;
+        }
+        return true;
+    }
+
+    private String guardContentFallbackReason(
+            List<ChatMessage> messages, BedrockGuardContentPlacement guardContentPlacement, int lastUserMessageIndex) {
+        if (guardContentPlacement == null || messages == null) {
+            return null;
+        }
+
+        for (int i = 0; i < messages.size(); i++) {
+            ChatMessage message = messages.get(i);
+            // Avoid partial selective guarding; regular content lets Bedrock apply guardrailConfig to all messages.
+            if (shouldApplyGuardContent(message, guardContentPlacement, i, lastUserMessageIndex)) {
+                String unsupportedContentReason = unsupportedGuardContentReason(((UserMessage) message).contents());
+                if (unsupportedContentReason != null) {
+                    return String.format(
+                            "BedrockGuardContentPlacement.%s is configured but ignored because selected user "
+                                    + "message at index %d contains %s that cannot be represented as guardContent.",
+                            guardContentPlacement, i, unsupportedContentReason);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private String unsupportedGuardContentReason(List<Content> contents) {
+        if (isNullOrEmpty(contents)) {
+            return null;
+        }
+
+        for (Content content : contents) {
+            String unsupportedContentReason = unsupportedGuardContentReason(content);
+            if (unsupportedContentReason != null) {
+                return unsupportedContentReason;
+            }
+        }
+
+        return null;
+    }
+
+    private String unsupportedGuardContentReason(Content content) {
+        if (content == null) {
+            return "null content";
+        }
+        if (content instanceof TextContent) {
+            return null;
+        }
+        if (content instanceof ImageContent imageContent) {
+            String imgFormat = extractAndValidateFormat(imageContent.image());
+            if (isGuardContentImageFormatSupported(imgFormat)) {
+                return null;
+            }
+            return "unsupported image format '" + imgFormat + "'";
+        }
+
+        return "content type '" + content.type() + "'";
+    }
+
+    private boolean shouldApplyGuardContent(
+            ChatMessage message,
+            BedrockGuardContentPlacement guardContentPlacement,
+            int messageIndex,
+            int lastUserMessageIndex) {
+        if (!(message instanceof UserMessage) || guardContentPlacement == null) {
+            return false;
+        }
+
+        return guardContentPlacement == BedrockGuardContentPlacement.ALL_USER_MESSAGES
+                || (guardContentPlacement == BedrockGuardContentPlacement.LAST_USER_MESSAGE
+                        && messageIndex == lastUserMessageIndex);
     }
 
     protected void handleToolResult(
@@ -410,6 +514,13 @@ abstract class AbstractBedrockChatModel {
                 .build();
     }
 
+    protected Message createGuardedUserMessage(UserMessage message) {
+        return Message.builder()
+                .role(ConversationRole.USER)
+                .content(convertContentsWithGuardContent(message.contents()))
+                .build();
+    }
+
     protected Message createAiMessage(AiMessage message) {
         List<ContentBlock> blocks = new ArrayList<>();
 
@@ -459,6 +570,14 @@ abstract class AbstractBedrockChatModel {
         return contents.stream().map(this::convertContent).toList();
     }
 
+    protected List<ContentBlock> convertContentsWithGuardContent(List<Content> contents) {
+        if (isNullOrEmpty(contents)) {
+            return emptyList();
+        }
+
+        return contents.stream().map(this::convertContentWithGuardContent).toList();
+    }
+
     protected ContentBlock convertContent(Content content) {
         if (content instanceof TextContent text) {
             return ContentBlock.builder().text(text.text()).build();
@@ -482,6 +601,22 @@ abstract class AbstractBedrockChatModel {
         throw new IllegalArgumentException("Unsupported content type: " + content.getClass());
     }
 
+    protected ContentBlock convertContentWithGuardContent(Content content) {
+        if (content instanceof TextContent text) {
+            return ContentBlock.builder()
+                    .guardContent(GuardrailConverseContentBlock.builder()
+                            .text(GuardrailConverseTextBlock.builder()
+                                    .text(text.text())
+                                    .build())
+                            .build())
+                    .build();
+        } else if (content instanceof ImageContent image) {
+            return createGuardedImageBlock(image);
+        }
+
+        return convertContent(content);
+    }
+
     protected ContentBlock createImageBlock(ImageContent imageContent) {
         final SdkBytes bytes = fromByteArray(
                 nonNull(imageContent.image().base64Data())
@@ -494,6 +629,43 @@ abstract class AbstractBedrockChatModel {
                         .source(ImageSource.builder().bytes(bytes).build())
                         .build())
                 .build();
+    }
+
+    protected ContentBlock createGuardedImageBlock(ImageContent imageContent) {
+        final SdkBytes bytes = fromByteArray(
+                nonNull(imageContent.image().base64Data())
+                        ? Base64.getDecoder().decode(imageContent.image().base64Data())
+                        : readBytes(String.valueOf(imageContent.image().url())));
+        final String imgFormat = extractAndValidateFormat(imageContent.image());
+
+        return ContentBlock.builder()
+                .guardContent(GuardrailConverseContentBlock.builder()
+                        .image(GuardrailConverseImageBlock.builder()
+                                .format(guardContentImageFormat(imgFormat, imageContent))
+                                .source(GuardrailConverseImageSource.builder()
+                                        .bytes(bytes)
+                                        .build())
+                                .build())
+                        .build())
+                .build();
+    }
+
+    private GuardrailConverseImageFormat guardContentImageFormat(String imgFormat, ImageContent imageContent) {
+        if (GuardrailConverseImageFormat.PNG.toString().equals(imgFormat)) {
+            return GuardrailConverseImageFormat.PNG;
+        }
+        if (GuardrailConverseImageFormat.JPEG.toString().equals(imgFormat)) {
+            return GuardrailConverseImageFormat.JPEG;
+        }
+
+        throw new UnsupportedFeatureException(String.format(
+                "Bedrock guardContent image supports only png | jpeg. Image format: %s, Mime type: %s, URI: %s",
+                imgFormat, imageContent.image().mimeType(), imageContent.image().url()));
+    }
+
+    private boolean isGuardContentImageFormatSupported(String imgFormat) {
+        return GuardrailConverseImageFormat.PNG.toString().equals(imgFormat)
+                || GuardrailConverseImageFormat.JPEG.toString().equals(imgFormat);
     }
 
     protected ToolConfiguration extractToolConfigurationFrom(ChatRequest chatRequest) {
