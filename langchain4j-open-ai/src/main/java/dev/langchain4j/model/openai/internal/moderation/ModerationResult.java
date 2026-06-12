@@ -1,5 +1,7 @@
 package dev.langchain4j.model.openai.internal.moderation;
 
+import static dev.langchain4j.internal.Utils.copy;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -8,7 +10,8 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 @JsonDeserialize(builder = ModerationResult.Builder.class)
@@ -18,14 +21,20 @@ public final class ModerationResult {
 
     @JsonProperty
     private final Categories categories;
+
     @JsonProperty
     private final CategoryScores categoryScores;
+
+    @JsonProperty
+    private final Map<String, List<String>> categoryAppliedInputTypes;
+
     @JsonProperty
     private final Boolean flagged;
 
     public ModerationResult(Builder builder) {
         this.categories = builder.categories;
         this.categoryScores = builder.categoryScores;
+        this.categoryAppliedInputTypes = copy(builder.categoryAppliedInputTypes);
         this.flagged = builder.flagged;
     }
 
@@ -37,6 +46,10 @@ public final class ModerationResult {
         return categoryScores;
     }
 
+    public Map<String, List<String>> categoryAppliedInputTypes() {
+        return categoryAppliedInputTypes;
+    }
+
     public Boolean isFlagged() {
         return flagged;
     }
@@ -45,14 +58,14 @@ public final class ModerationResult {
     @JacocoIgnoreCoverageGenerated
     public boolean equals(Object another) {
         if (this == another) return true;
-        return another instanceof ModerationResult
-                && equalTo((ModerationResult) another);
+        return another instanceof ModerationResult && equalTo((ModerationResult) another);
     }
 
     @JacocoIgnoreCoverageGenerated
     private boolean equalTo(ModerationResult another) {
         return Objects.equals(categories, another.categories)
                 && Objects.equals(categoryScores, another.categoryScores)
+                && Objects.equals(categoryAppliedInputTypes, another.categoryAppliedInputTypes)
                 && Objects.equals(flagged, another.flagged);
     }
 
@@ -62,6 +75,7 @@ public final class ModerationResult {
         int h = 5381;
         h += (h << 5) + Objects.hashCode(categories);
         h += (h << 5) + Objects.hashCode(categoryScores);
+        h += (h << 5) + Objects.hashCode(categoryAppliedInputTypes);
         h += (h << 5) + Objects.hashCode(flagged);
         return h;
     }
@@ -72,6 +86,7 @@ public final class ModerationResult {
         return "ModerationResult{"
                 + "categories=" + categories
                 + ", categoryScores=" + categoryScores
+                + ", categoryAppliedInputTypes=" + categoryAppliedInputTypes
                 + ", flagged=" + flagged
                 + "}";
     }
@@ -87,6 +102,7 @@ public final class ModerationResult {
 
         private Categories categories;
         private CategoryScores categoryScores;
+        private Map<String, List<String>> categoryAppliedInputTypes;
         private Boolean flagged;
 
         public Builder categories(Categories categories) {
@@ -96,6 +112,11 @@ public final class ModerationResult {
 
         public Builder categoryScores(CategoryScores categoryScores) {
             this.categoryScores = categoryScores;
+            return this;
+        }
+
+        public Builder categoryAppliedInputTypes(Map<String, List<String>> categoryAppliedInputTypes) {
+            this.categoryAppliedInputTypes = categoryAppliedInputTypes;
             return this;
         }
 
