@@ -42,12 +42,12 @@ public interface AiServiceInteractionEvent extends AiServiceEvent {
     class AiServiceInteractionEventBuilder extends Builder<AiServiceInteractionEvent> {
         private final List<AiServiceEvent> events = new ArrayList<>();
 
-        public AiServiceInteractionEventBuilder() {}
+        protected AiServiceInteractionEventBuilder() {}
 
         /**
          * Creates a builder initialized from an existing {@link AiServiceInteractionEvent}.
          */
-        public AiServiceInteractionEventBuilder(AiServiceInteractionEvent src) {
+        protected AiServiceInteractionEventBuilder(AiServiceInteractionEvent src) {
             super(src);
             events(src.events());
         }
