@@ -144,7 +144,7 @@ class ClassPathSkillLoaderTest {
                 public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
                     String entryName = "skills/" + sourceDir.relativize(dir) + "/";
                     if (!entryName.equals("skills//")) {
-                        jos.putNextEntry(new JarEntry(entryName));
+                        jos.putNextEntry(new JarEntry(entryName.replaceAll("\\\\", "/")));
                         jos.closeEntry();
                     } else {
                         jos.putNextEntry(new JarEntry("skills/"));
@@ -156,7 +156,7 @@ class ClassPathSkillLoaderTest {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                     String entryName = "skills/" + sourceDir.relativize(file);
-                    jos.putNextEntry(new JarEntry(entryName));
+                    jos.putNextEntry(new JarEntry(entryName.replaceAll("\\\\", "/")));
                     Files.copy(file, jos);
                     jos.closeEntry();
                     return FileVisitResult.CONTINUE;
