@@ -20,6 +20,7 @@ the [AI Vector Search Feature](https://docs.oracle.com/en/database/oracle/oracle
 ## APIs
 
 - `OracleEmbeddingStore`
+- `OracleChatMemoryStore`
 
 
 ## Examples
@@ -130,3 +131,33 @@ OracleEmbeddingStore.builder()
 ```
 
 For more information about Oracle AI Vector Search refer to the [documentation](https://docs.oracle.com/en/database/oracle/oracle-database/23/vecse/overview-ai-vector-search.html).
+
+## Chat Memory
+
+`OracleChatMemoryStore` can be used to persist chat memory in Oracle Database.
+
+Create a table:
+
+```sql
+CREATE TABLE chat_memory (
+    memory_id VARCHAR2(255) PRIMARY KEY,
+    content CLOB NOT NULL
+);
+```
+
+Use it in chat memory:
+
+```java
+ChatMemoryStore store = OracleChatMemoryStore.builder()
+   .dataSource(myDataSource)
+   .tableName("chat_memory")
+   .build();
+
+ChatMemory chatMemory = MessageWindowChatMemory.builder()
+   .id("conversation-1")
+   .maxMessages(10)
+   .chatMemoryStore(store)
+   .build();
+```
+
+`OracleChatMemoryStore` stores one row per memory id, with all messages serialized as JSON in the `content` column.
