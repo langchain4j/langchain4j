@@ -269,7 +269,6 @@ class AwsDocumentConverterTest {
 
         // Then
         Map<String, Document> docMap = document.asMap();
-        // $ref is preserved in properties (dangling reference, Bedrock ignores it)
         assertThat(docMap.get("properties")
                         .asMap()
                         .get("person")
@@ -278,9 +277,78 @@ class AwsDocumentConverterTest {
                         .asString())
                 .isEqualTo("#/$defs/Person");
 
-        // $defs is stripped because Bedrock does not support JSON Schema definitions
-        assertThat(docMap).doesNotContainKey("$defs");
-        assertThat(docMap.get("additionalProperties").asBoolean()).isFalse();
+        Map<String, Document> personDefinition =
+                docMap.get("$defs").asMap().get("Person").asMap();
+        assertThat(personDefinition.get("additionalProperties").asBoolean()).isFalse();
+        assertThat(personDefinition.get("required").asList()).containsExactly(Document.fromString("name"));
+    }
+
+    @Test
+    void convert_tool_specification_with_definitions_to_non_strict_document() {
+        // Given
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("test-tool")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty(
+                                "person",
+                                JsonReferenceSchema.builder()
+                                        .reference("Person")
+                                        .build())
+                        .required("person")
+                        .definitions(Map.of(
+                                "Person",
+                                JsonObjectSchema.builder()
+                                        .addStringProperty("name")
+                                        .required("name")
+                                        .build()))
+                        .build())
+                .build();
+
+        // When
+        Document document = AwsDocumentConverter.convertJsonObjectSchemaToDocument(toolSpec);
+
+        // Then
+        Map<String, Document> docMap = document.asMap();
+        assertThat(docMap.get("properties")
+                        .asMap()
+                        .get("person")
+                        .asMap()
+                        .get("$ref")
+                        .asString())
+                .isEqualTo("#/$defs/Person");
+        assertThat(docMap.get("$defs").asMap()).containsKey("Person");
+        assertThat(docMap.get("$defs").asMap().get("Person").asMap()).doesNotContainKey("additionalProperties");
+    }
+
+    @Test
+    void should_reject_recursive_tool_specification_in_strict_document() {
+        // Given
+        JsonObjectSchema personSchema = JsonObjectSchema.builder()
+                .addStringProperty("name")
+                .addProperty(
+                        "children",
+                        JsonArraySchema.builder()
+                                .items(JsonReferenceSchema.builder()
+                                        .reference("Person")
+                                        .build())
+                                .build())
+                .required("name", "children")
+                .build();
+
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("test-tool")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty("person", personSchema)
+                        .required("person")
+                        .definitions(Map.of("Person", personSchema))
+                        .build())
+                .build();
+
+        // When/Then
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> AwsDocumentConverter.convertJsonObjectSchemaToDocument(toolSpec, true))
+                .withMessageContaining("recursive JSON schemas")
+                .withMessageContaining("ToolSpecification.strict(false)");
     }
 
     @Test
