@@ -50,6 +50,7 @@ public class MessageWindowChatMemory implements ChatMemory {
     private final Function<Object, Integer> maxMessagesProvider;
     private final ChatMemoryStore store;
     private final boolean alwaysKeepSystemMessageFirst;
+    private final boolean autoRecoverOrphanedToolMessages;
 
     private MessageWindowChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
@@ -57,6 +58,7 @@ public class MessageWindowChatMemory implements ChatMemory {
         ensureGreaterThanZero(this.maxMessagesProvider.apply(this.id), "maxMessages");
         this.store = ensureNotNull(builder.store(), "store");
         this.alwaysKeepSystemMessageFirst = getOrDefault(builder.alwaysKeepSystemMessageFirst, false);
+        this.autoRecoverOrphanedToolMessages = getOrDefault(builder.autoRecoverOrphanedToolMessages, false);
     }
 
     @Override
@@ -66,7 +68,7 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     @Override
     public void add(ChatMessage message) {
-        List<ChatMessage> messages = messages();
+        List<ChatMessage> messages = messagesForAdd(message);
 
         if (message instanceof SystemMessage) {
             Optional<SystemMessage> systemMessage = SystemMessage.findFirst(messages);
@@ -92,6 +94,17 @@ public class MessageWindowChatMemory implements ChatMemory {
         store.updateMessages(id, messages);
     }
 
+    private List<ChatMessage> messagesForAdd(ChatMessage message) {
+        if (autoRecoverOrphanedToolMessages) {
+            List<ChatMessage> messages = new LinkedList<>(store.getMessages(id));
+            if (!(message instanceof ToolExecutionResultMessage)) {
+                ChatMemoryUtils.removeOrphanedToolMessages(messages);
+            }
+            return messages;
+        }
+        return messages();
+    }
+
     @Override
     public void set(Iterable<ChatMessage> iter) {
         if (iter instanceof List) {
@@ -115,6 +128,9 @@ public class MessageWindowChatMemory implements ChatMemory {
         Integer maxMessages = this.maxMessagesProvider.apply(this.id);
         ensureGreaterThanZero(maxMessages, "maxMessages");
         List<ChatMessage> messages = new LinkedList<>(store.getMessages(id));
+        if (autoRecoverOrphanedToolMessages) {
+            ChatMemoryUtils.removeOrphanedToolMessages(messages);
+        }
         ensureCapacity(messages, maxMessages);
         return messages;
     }
@@ -154,6 +170,7 @@ public class MessageWindowChatMemory implements ChatMemory {
         private Function<Object, Integer> maxMessagesProvider;
         private ChatMemoryStore store;
         private Boolean alwaysKeepSystemMessageFirst;
+        private Boolean autoRecoverOrphanedToolMessages;
 
         /**
          * @param id The ID of the {@link ChatMemory}.
@@ -206,6 +223,34 @@ public class MessageWindowChatMemory implements ChatMemory {
          */
         public Builder alwaysKeepSystemMessageFirst(Boolean alwaysKeepSystemMessageFirst) {
             this.alwaysKeepSystemMessageFirst = alwaysKeepSystemMessageFirst;
+            return this;
+        }
+
+        /**
+         * When enabled, orphaned tool-related messages are automatically removed
+         * when {@link ChatMemory#messages()} is called. Stale orphaned tool messages
+         * are also removed before adding new non-tool-result messages, so they do not
+         * affect window capacity. In-flight tool blocks are preserved while adding
+         * {@link ToolExecutionResultMessage}(s).
+         * <p>
+         * An {@link AiMessage} with {@link ToolExecutionRequest}(s) is considered orphaned
+         * if it is not immediately followed by the expected number of contiguous
+         * {@link ToolExecutionResultMessage}(s), or when the available tool call IDs do not match.
+         * Standalone {@link ToolExecutionResultMessage}(s) that are not part of a complete tool block
+         * are also removed.
+         * <p>
+         * This typically happens when the application restarts or an error occurs during
+         * tool execution, leaving the chat memory in an inconsistent state that causes
+         * LLM providers (such as OpenAI) to reject subsequent requests.
+         * <p>
+         * Disabled by default for backward compatibility.
+         *
+         * @param autoRecoverOrphanedToolMessages whether to automatically remove orphaned tool messages
+         * @return builder
+         * @since 1.15.0
+         */
+        public Builder autoRecoverOrphanedToolMessages(Boolean autoRecoverOrphanedToolMessages) {
+            this.autoRecoverOrphanedToolMessages = autoRecoverOrphanedToolMessages;
             return this;
         }
 
