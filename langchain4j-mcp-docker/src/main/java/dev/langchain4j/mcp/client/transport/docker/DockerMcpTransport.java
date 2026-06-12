@@ -81,6 +81,13 @@ public class DockerMcpTransport implements McpTransport {
         this.attachTimeout = builder.attachTimeout;
     }
 
+    static DockerHttpClient buildHttpClient(DockerClientConfig config) {
+        return new ApacheDockerHttpClient.Builder()
+                .dockerHost(config.getDockerHost())
+                .sslConfig(config.getSSLConfig())
+                .build();
+    }
+
     @Override
     public void start(McpOperationHandler messageHandler) {
         this.messageHandler = messageHandler;
@@ -97,9 +104,7 @@ public class DockerMcpTransport implements McpTransport {
                 .withRegistryUrl(registryUrl)
                 .withApiVersion(apiVersion)
                 .build();
-        DockerHttpClient httpClient = new ApacheDockerHttpClient.Builder()
-                .dockerHost(config.getDockerHost())
-                .build();
+        DockerHttpClient httpClient = buildHttpClient(config);
         this.dockerClient = DockerClientImpl.getInstance(config, httpClient);
 
         var imageNameWithoutTag = getImageNameWithoutTag(image);

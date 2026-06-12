@@ -21,6 +21,7 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.internal.Json;
+import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.TokenStream;
 import java.lang.annotation.Annotation;
@@ -37,6 +38,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
@@ -45,6 +47,7 @@ public class AgentUtil {
     public static final String MEMORY_ID_ARG_NAME = "@MemoryId";
     public static final String AGENTIC_SCOPE_ARG_NAME = "@AgenticScope";
     public static final String LOOP_COUNTER_ARG_NAME = "@LoopCounter";
+    public static final String INVOCATION_PARAMETERS_ARG_NAME = "@InvocationParameters";
 
     private static final Map<Class<? extends TypedKey<?>>, TypedKey<?>> STATE_INSTANCES = new ConcurrentHashMap<>();
 
@@ -136,7 +139,7 @@ public class AgentUtil {
     }
 
     public static AgentExecutor agentToExecutor(InternalAgent agent) {
-        for (Method method : agent.getClass().getMethods()) {
+        for (Method method : agent.type().getMethods()) {
             Optional<AgentExecutor> executor = McpService.get().methodToAgentExecutor(agent, method);
             if (executor.isPresent()) {
                 return executor.get();
@@ -168,7 +171,15 @@ public class AgentUtil {
         return argumentsFromMethod(method, Map.of());
     }
 
+    public static List<AgentArgument> argumentsFromMethod(Method method, Set<String> optionalArgs) {
+        return argumentsFromMethod(method, Map.of(), optionalArgs);
+    }
+
     public static List<AgentArgument> argumentsFromMethod(Method method, Map<String, Object> defaultValues) {
+        return argumentsFromMethod(method, defaultValues, Set.of());
+    }
+
+    public static List<AgentArgument> argumentsFromMethod(Method method, Map<String, Object> defaultValues, Set<String> optionalArgs) {
         if (method.getDeclaringClass() == UntypedAgent.class) {
             return List.of();
         }
@@ -176,7 +187,7 @@ public class AgentUtil {
                 .map(p -> {
                     String argName = parameterName(p);
                     Object defaultValue = defaultValues.getOrDefault(argName, parameterDefaultValue(p));
-                    return new AgentArgument(p.getParameterizedType(), argName, defaultValue);
+                    return new AgentArgument(p.getParameterizedType(), argName, defaultValue, optionalArgs.contains(argName));
                 })
                 .toList();
     }
@@ -190,6 +201,9 @@ public class AgentUtil {
         }
         if (AgenticScope.class.isAssignableFrom(p.getType())) {
             return AGENTIC_SCOPE_ARG_NAME;
+        }
+        if (InvocationParameters.class.isAssignableFrom(p.getType())) {
+            return INVOCATION_PARAMETERS_ARG_NAME;
         }
         return AgentInvoker.parameterName(p);
     }
@@ -226,6 +240,11 @@ public class AgentUtil {
                 positionalArgs[i++] = agenticScope;
                 continue;
             }
+            if (argName.equals(INVOCATION_PARAMETERS_ARG_NAME)) {
+                InvocationParameters params = agenticScope.executionContextAs(InvocationParameters.class);
+                positionalArgs[i++] = params != null ? params : new InvocationParameters();
+                continue;
+            }
             if (additionalArgs.containsKey(argName)) {
                 positionalArgs[i++] = additionalArgs.get(argName);
                 continue;
@@ -243,6 +262,9 @@ public class AgentUtil {
         if (argValue == null) {
             argValue = arg.defaultValue();
             if (argValue == null) {
+                if (arg.isOptional()) {
+                    return null;
+                }
                 throw new MissingArgumentException(arg.name());
             }
         }

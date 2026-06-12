@@ -8,10 +8,14 @@ import static dev.langchain4j.agentic.observability.ComposedAgentListener.listen
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Arrays.asList;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.TypedKey;
+import dev.langchain4j.agentic.internal.AgentUtil;
+import dev.langchain4j.agentic.internal.AgenticScopeOwner;
+import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AfterAgentToolExecution;
 import dev.langchain4j.agentic.observability.AgentListener;
@@ -19,9 +23,6 @@ import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.observability.MonitoredAgent;
-import dev.langchain4j.agentic.internal.AgentUtil;
-import dev.langchain4j.agentic.internal.AgenticScopeOwner;
-import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
@@ -33,11 +34,13 @@ import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -60,8 +63,26 @@ import java.util.concurrent.Executor;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
+import org.jspecify.annotations.NonNull;
 
 public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
+
+    private static final ChatModel PLACEHOLDER_CHAT_MODEL = new ChatModel() {
+        @Override
+        public ChatResponse doChat(ChatRequest chatRequest) {
+            throw new IllegalStateException("Placeholder ChatModel should never be invoked. "
+                    + "The actual model is provided dynamically via the chatModel(Function) provider.");
+        }
+    };
+
+    private static final StreamingChatModel PLACEHOLDER_STREAMING_CHAT_MODEL = new StreamingChatModel() {
+        @Override
+        public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+            throw new IllegalStateException("Placeholder StreamingChatModel should never be invoked. "
+                    + "The actual model is provided dynamically via the streamingChatModel(Function) provider.");
+        }
+    };
+
     final Class<T> agentServiceClass;
     final Method agenticMethod;
     final Class<?> agentReturnType;
@@ -77,6 +98,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     private ChatModel model;
     private StreamingChatModel streamingChatModel;
+    Function<AgenticScope, ChatModel> chatModelProvider;
+    Function<AgenticScope, StreamingChatModel> streamingChatModelProvider;
     private ChatMemory chatMemory;
     private ChatMemoryProvider chatMemoryProvider;
     private Function<AgenticScope, String> contextProvider;
@@ -98,16 +121,27 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     private Map<ToolSpecification, ToolExecutor> toolsMap;
     private Set<String> immediateReturnToolNames;
     private final List<ToolProvider> toolProviders = new ArrayList<>();
-    private Integer maxSequentialToolsInvocations;
+    private Integer maxToolCallingRoundTrips;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> hallucinatedToolNameStrategy;
     private boolean executeToolsConcurrently;
     private Executor concurrentToolsExecutor;
     private ToolArgumentsErrorHandler toolArgumentsErrorHandler;
     private ToolExecutionErrorHandler toolExecutionErrorHandler;
 
+    java.util.function.Function<InternalAgent, Object> agentInstanceFactory;
+
     AgentListener agentListener;
 
     public AgentBuilder(Class<T> agentServiceClass) {
+        this(agentServiceClass, true);
+    }
+
+    @Internal
+    public static <T> AgentBuilder<T, AgentBuilder<T, ?>> withoutDeclarativeConfiguration(Class<T> agentServiceClass) {
+        return new AgentBuilder<>(agentServiceClass, false);
+    }
+
+    private AgentBuilder(Class<T> agentServiceClass, boolean configureDeclarativeAgent) {
         this.agentServiceClass = agentServiceClass;
         this.agenticMethod = validateAgentClass(agentServiceClass);
         this.agentReturnType = agenticMethod.getReturnType();
@@ -117,7 +151,9 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
             throw new IllegalArgumentException("Method " + agenticMethod + " is not annotated with @Agent");
         }
 
-        configureAgent(agentServiceClass, this);
+        if (configureDeclarativeAgent) {
+            configureAgent(agentServiceClass, this);
+        }
 
         this.name = !isNullOrBlank(agent.name()) ? agent.name() : agenticMethod.getName();
 
@@ -147,16 +183,9 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
         AiServiceContext context = AiServiceContext.create(agentServiceClass);
         AiServices<T> aiServices = AiServices.builder(context);
-        if (model != null && streamingChatModel != null) {
-            throw new AgenticSystemConfigurationException(
-                    "Both chatModel and streamingChatModel are set for agent '" + this.name + "'. Please set only one of them.");
-        }
-        if (model != null) {
-            aiServices.chatModel(model);
-        }
-        if (streamingChatModel != null) {
-            aiServices.streamingChatModel(streamingChatModel);
-        }
+
+        configureChatModel(aiServices);
+
         if (chatMemory != null) {
             aiServices.chatMemory(chatMemory);
         }
@@ -189,8 +218,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
                 aiServices.chatRequestTransformer(
                         new Context.AgenticScopeContextGenerator(agenticScope, contextProvider));
             } else {
-                aiServices.chatRequestTransformer(
-                        new Context.Summarizer(agenticScope, model, contextProvidingAgents));
+                aiServices.chatRequestTransformer(new Context.Summarizer(agenticScope, model, contextProvidingAgents));
             }
         }
 
@@ -202,15 +230,16 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
         build(agenticScope, context, aiServices);
 
-        AgentInstance agent = (AgentInstance) Proxy.newProxyInstance(
-                agentServiceClass.getClassLoader(),
-                new Class<?>[] {
-                    agentServiceClass,
-                    InternalAgent.class, AgenticScopeOwner.class,
-                    ChatMemoryAccess.class, ChatMessagesAccess.class,
-                    AiServiceResponseReceivedListener.class
-                },
-                new AgentInvocationHandler(context, aiServices.build(), this, agenticScopeDependent));
+        AgentInvocationHandler handler = new AgentInvocationHandler(context, aiServices.build(), this, agenticScopeDependent);
+
+        AgentInstance agent;
+        if (agentInstanceFactory != null) {
+            agent = (AgentInstance) agentInstanceFactory.apply(handler);
+        } else {
+            agent = (AgentInstance) Proxy.newProxyInstance(
+                    agentServiceClass.getClassLoader(),
+                    interfacesToImplement(agentServiceClass), handler);
+        }
 
         aiServices.registerListener((AiServiceResponseReceivedListener) agent);
 
@@ -228,7 +257,46 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         return (T) agent;
     }
 
-    protected void build(DefaultAgenticScope agenticScope, AiServiceContext context, AiServices<T> aiServices) { }
+    @SuppressWarnings("rawtypes")
+    public static Class[] interfacesToImplement(Class clazz) {
+        return new Class<?>[]{
+                clazz,
+                InternalAgent.class,
+                AgenticScopeOwner.class,
+                ChatMemoryAccess.class,
+                ChatMessagesAccess.class,
+                AiServiceResponseReceivedListener.class
+        };
+    }
+
+    private void configureChatModel(AiServices<T> aiServices) {
+        validateChatModel();
+        if (model != null) {
+            aiServices.chatModel(model);
+        } else if (streamingChatModel != null) {
+            aiServices.streamingChatModel(streamingChatModel);
+        } else if (chatModelProvider != null) {
+            aiServices.chatModel(PLACEHOLDER_CHAT_MODEL);
+        } else if (streamingChatModelProvider != null) {
+            aiServices.streamingChatModel(PLACEHOLDER_STREAMING_CHAT_MODEL);
+        } else {
+            throw new AgenticSystemConfigurationException("No chat model is configured for agent '" + this.name + "'.");
+        }
+    }
+
+    private void validateChatModel() {
+        int modelConfigCount = (model != null ? 1 : 0)
+                + (streamingChatModel != null ? 1 : 0)
+                + (chatModelProvider != null ? 1 : 0)
+                + (streamingChatModelProvider != null ? 1 : 0);
+        if (modelConfigCount != 1) {
+            throw new AgenticSystemConfigurationException(
+                    "One and only one of chatModel, streamingChatModel, or their Function variants can be set for agent '"
+                            + this.name + "'.");
+        }
+    }
+
+    protected void build(DefaultAgenticScope agenticScope, AiServiceContext context, AiServices<T> aiServices) {}
 
     private void setupGuardrails(AiServices<T> aiServices) {
         if (inputGuardrailsConfig != null) {
@@ -265,8 +333,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         if (!toolProviders.isEmpty()) {
             aiServices.toolProviders(toolProviders);
         }
-        if (maxSequentialToolsInvocations != null) {
-            aiServices.maxSequentialToolsInvocations(maxSequentialToolsInvocations);
+        if (maxToolCallingRoundTrips != null) {
+            aiServices.maxToolCallingRoundTrips(maxToolCallingRoundTrips);
         }
         if (hallucinatedToolNameStrategy != null) {
             aiServices.hallucinatedToolNameStrategy(hallucinatedToolNameStrategy);
@@ -293,6 +361,16 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     public B streamingChatModel(StreamingChatModel streamingChatModel) {
         this.streamingChatModel = streamingChatModel;
+        return (B) this;
+    }
+
+    public B chatModel(Function<AgenticScope, ChatModel> chatModelProvider) {
+        this.chatModelProvider = chatModelProvider;
+        return (B) this;
+    }
+
+    public B streamingChatModel(Function<AgenticScope, StreamingChatModel> streamingChatModelProvider) {
+        this.streamingChatModelProvider = streamingChatModelProvider;
         return (B) this;
     }
 
@@ -344,9 +422,15 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         return toolProviders(asList(toolProviders));
     }
 
-    public B maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
-        this.maxSequentialToolsInvocations = maxSequentialToolsInvocations;
+    public B maxToolCallingRoundTrips(int maxToolCallingRoundTrips) {
+        this.maxToolCallingRoundTrips = maxToolCallingRoundTrips;
         return (B) this;
+    }
+
+    /** @deprecated Use {@link #maxToolCallingRoundTrips(int)} instead. */
+    @Deprecated(since = "1.15.0")
+    public B maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
+        return maxToolCallingRoundTrips(maxSequentialToolsInvocations);
     }
 
     public B hallucinatedToolNameStrategy(
@@ -375,14 +459,12 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         return (B) this;
     }
 
-    public <I extends InputGuardrail> B inputGuardrailClasses(
-            Class<? extends I>... inputGuardrailClasses) {
+    public <I extends InputGuardrail> B inputGuardrailClasses(Class<? extends I>... inputGuardrailClasses) {
         this.inputGuardrailClasses = inputGuardrailClasses;
         return (B) this;
     }
 
-    public <O extends OutputGuardrail> B outputGuardrailClasses(
-            Class<? extends O>... outputGuardrailClasses) {
+    public <O extends OutputGuardrail> B outputGuardrailClasses(Class<? extends O>... outputGuardrailClasses) {
         this.outputGuardrailClasses = outputGuardrailClasses;
         return (B) this;
     }
@@ -493,6 +575,11 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         return defaultKeyValue(keyName(key), value);
     }
 
+    public B agentInstanceFactory(java.util.function.Function<InternalAgent, Object> factory) {
+        this.agentInstanceFactory = factory;
+        return (B) this;
+    }
+
     public B listener(AgentListener agentListener) {
         if (this.agentListener == null) {
             this.agentListener = agentListener;
@@ -503,5 +590,4 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         }
         return (B) this;
     }
-
 }

@@ -26,7 +26,7 @@ LangChain4j provides 3 different integrations with OpenAI for using embedding mo
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.13.1</version>
+    <version>1.16.2</version>
 </dependency>
 ```
 
@@ -35,7 +35,7 @@ LangChain4j provides 3 different integrations with OpenAI for using embedding mo
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.13.1-beta23</version>
+    <version>1.16.2-beta26</version>
 </dependency>
 ```
 
@@ -67,6 +67,20 @@ langchain4j.open-ai.embedding-model.organization-id=...
 langchain4j.open-ai.embedding-model.project-id=...
 langchain4j.open-ai.embedding-model.timeout=...
 langchain4j.open-ai.embedding-model.user=...
+```
+
+## Setting custom embedding request parameters
+
+When using `OpenAiEmbeddingModel`, you can configure custom parameters for the embedding request
+within the HTTP request's JSON body. This is useful for OpenAI-compatible providers that require
+provider-specific embedding parameters:
+```java
+EmbeddingModel model = OpenAiEmbeddingModel.builder()
+        .baseUrl("https://integrate.api.nvidia.com/v1")
+        .apiKey(System.getenv("NVIDIA_API_KEY"))
+        .modelName("nvidia/nv-embedqa-e5-v5")
+        .customParameters(Map.of("input_type", "passage"))
+        .build();
 ```
 
 ## Examples

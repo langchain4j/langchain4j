@@ -1,18 +1,15 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.model.openai.OpenAiImageModelName.GPT_IMAGE_1;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.output.Response;
+import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.net.URI;
-import java.util.List;
-
-import static dev.langchain4j.model.openai.OpenAiImageModelName.DALL_E_2;
-import static dev.langchain4j.model.openai.OpenAiImageModelName.DALL_E_3;
-import static org.assertj.core.api.Assertions.assertThat;
 
 @Disabled("Run manually before release. Expensive to run very often.")
 class OpenAiImageModelIT {
@@ -23,8 +20,7 @@ class OpenAiImageModelIT {
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-            .modelName(DALL_E_2)
-            .size("256x256")
+            .modelName(GPT_IMAGE_1)
             .logRequests(true)
             .logResponses(true);
 
@@ -34,49 +30,65 @@ class OpenAiImageModelIT {
 
         Response<Image> response = model.generate("Beautiful house on country side");
 
-        URI remoteImage = response.content().url();
-        log.info("Your remote image is here: {}", remoteImage);
-        assertThat(remoteImage).isNotNull();
+        Image image = response.content();
+        assertThat(image.base64Data()).isNotNull().isNotBlank();
+        assertThat(image.mimeType()).isNotNull();
     }
 
     @Test
-    void multiple_images_generation_with_base64_works() {
-        OpenAiImageModel model = modelBuilder.responseFormat("b64_json").build();
+    void multiple_images_generation_works() {
+        OpenAiImageModel model = modelBuilder.outputFormat("png").build();
 
         Response<List<Image>> response = model.generate("Cute red parrot sings", 2);
 
         assertThat(response.content()).hasSize(2);
 
-        Image localImage1 = response.content().get(0);
-        assertThat(localImage1.base64Data()).isNotNull().isBase64();
+        Image image1 = response.content().get(0);
+        assertThat(image1.base64Data()).isNotNull().isBase64();
+        assertThat(image1.mimeType()).isEqualTo("image/png");
 
-        Image localImage2 = response.content().get(1);
-        assertThat(localImage2.base64Data()).isNotNull().isBase64();
+        Image image2 = response.content().get(1);
+        assertThat(image2.base64Data()).isNotNull().isBase64();
+        assertThat(image2.mimeType()).isEqualTo("image/png");
     }
 
     @Test
-    void image_generation_with_dalle3_works() {
+    void image_generation_with_quality_works() {
         OpenAiImageModel model = OpenAiImageModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(DALL_E_3)
-                .quality("hd")
+                .modelName(GPT_IMAGE_1)
+                .quality("high")
                 .logRequests(true)
                 .logResponses(true)
                 .build();
 
-        Response<Image> response = model.generate(
-                "Beautiful house on country side, cowboy plays guitar, dog sitting at the door"
-        );
+        Response<Image> response =
+                model.generate("Beautiful house on country side, cowboy plays guitar, dog sitting at the door");
 
-        URI remoteImage = response.content().url();
-        log.info("Your remote image is here: {}", remoteImage);
-        assertThat(remoteImage).isNotNull();
+        Image image = response.content();
+        assertThat(image.base64Data()).isNotNull().isNotBlank();
+    }
 
-        String revisedPrompt = response.content().revisedPrompt();
-        log.info("Your revised prompt: {}", revisedPrompt);
-        assertThat(revisedPrompt).hasSizeGreaterThan(50);
+    @Test
+    void image_generation_with_transparent_background_works() {
+        OpenAiImageModel model = OpenAiImageModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_IMAGE_1)
+                .background("transparent")
+                .outputFormat("png")
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        Response<Image> response = model.generate("A red apple on a white background");
+
+        Image image = response.content();
+        assertThat(image.base64Data()).isNotNull().isNotBlank();
+        assertThat(image.mimeType()).isEqualTo("image/png");
     }
 
     @Test
@@ -87,7 +99,7 @@ class OpenAiImageModelIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(DALL_E_2)
+                .modelName(GPT_IMAGE_1)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -98,8 +110,7 @@ class OpenAiImageModelIT {
         Response<Image> response = model.generate(prompt);
 
         // then
-        URI remoteImage = response.content().url();
-        log.info("Your remote image is here: {}", remoteImage);
-        assertThat(remoteImage).isNotNull();
+        Image image = response.content();
+        assertThat(image.base64Data()).isNotNull().isNotBlank();
     }
 }

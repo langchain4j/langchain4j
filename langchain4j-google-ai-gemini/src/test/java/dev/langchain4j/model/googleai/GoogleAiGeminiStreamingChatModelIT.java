@@ -342,7 +342,7 @@ class GoogleAiGeminiStreamingChatModelIT {
 
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-2.0-flash")
+                .modelName("gemini-2.5-flash")
                 .logRequests(true)
                 .logResponses(true)
                 .responseFormat(ResponseFormat.builder()
