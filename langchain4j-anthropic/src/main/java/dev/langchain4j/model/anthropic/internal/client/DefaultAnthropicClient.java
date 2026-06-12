@@ -626,6 +626,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 .url(baseUrl, "models")
                 .addHeader("x-api-key", apiKey)
                 .addHeader("anthropic-version", version)
+                .addHeader("User-Agent", "langchain4j-anthropic")
                 .addHeaders(customHeadersSupplier.get())
                 .build();
         SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
@@ -668,6 +669,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 .addHeader("Content-Type", "application/json")
                 .addHeader("x-api-key", apiKey)
                 .addHeader("anthropic-version", version)
+                .addHeader("User-Agent", "langchain4j-anthropic")
                 .addHeaders(customHeadersSupplier.get())
                 .body(jsonRequest);
 
