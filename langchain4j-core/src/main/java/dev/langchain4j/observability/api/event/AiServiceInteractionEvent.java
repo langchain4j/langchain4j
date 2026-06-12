@@ -15,6 +15,7 @@ public interface AiServiceInteractionEvent extends AiServiceEvent {
     * Returns all events associated with this AI service invocation, in the order they were fired.
     * 
     * @return a list of events in execution order
+    */
     List<AiServiceEvent> events();
 
     @Override
