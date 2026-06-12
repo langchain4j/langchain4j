@@ -7,6 +7,7 @@ import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.containsToo
 import static dev.langchain4j.service.AiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.assertj.core.data.MapEntry.entry;
@@ -65,6 +66,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
@@ -121,6 +123,8 @@ class AiServicesWithToolsIT {
     interface Assistant {
 
         Result<String> chat(String userMessage);
+
+        CompletableFuture<Result<String>> chatAsync(String userMessage);
     }
 
     static class TransactionService {
@@ -244,6 +248,178 @@ class AiServicesWithToolsIT {
 
         assertThat(toolCalls).hasSize(1).contains("getTransactionAmount");
         assertThat(toolResults).hasSize(1).containsKey("getTransactionAmount").containsValue(11.1);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_execute_a_tool_then_answer_async(ChatModel chatModel) throws Exception {
+
+        TransactionService transactionService = spy(new TransactionService());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        ChatModel spyChatModel = spy(chatModel);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(spyChatModel)
+                .chatMemory(chatMemory)
+                .tools(transactionService)
+                .build();
+
+        String userMessage = "What is the amounts of transaction T001?";
+
+        Result<String> result = assistant.chatAsync(userMessage).get(60, SECONDS);
+
+        assertThat(result.content()).contains("11.1");
+        assertThat(result.finishReason()).isEqualTo(STOP);
+
+        verify(transactionService).getTransactionAmount("T001");
+        verifyNoMoreInteractions(transactionService);
+
+        // without a tool executor, the tool runs on the thread that delivered the model response,
+        // never on the calling thread
+        assertThat(transactionService.threads).hasSize(1);
+        assertThat(transactionService.threads.poll()).isNotEqualTo(Thread.currentThread());
+
+        List<ChatMessage> messages = chatMemory.messages();
+        assertThat(messages).hasSize(4);
+        assertThat(((UserMessage) messages.get(0)).singleText()).isEqualTo(userMessage);
+        AiMessage aiMessage = (AiMessage) messages.get(1);
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+        assertThat(messages.get(2)).isInstanceOf(ToolExecutionResultMessage.class);
+        assertThat(((AiMessage) messages.get(3)).text()).contains("11.1");
+
+        assertThat(result.toolExecutions()).hasSize(1);
+        assertThat(result.toolExecutions().get(0).result()).isEqualTo("11.1");
+
+        assertThat(result.intermediateResponses()).hasSize(1);
+        ChatResponse intermediateResponse = result.intermediateResponses().get(0);
+
+        TokenUsage tokenUsage = result.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount())
+                .isEqualTo(intermediateResponse.tokenUsage().inputTokenCount()
+                        + result.finalResponse().tokenUsage().inputTokenCount());
+        assertThat(tokenUsage.outputTokenCount())
+                .isEqualTo(intermediateResponse.tokenUsage().outputTokenCount()
+                        + result.finalResponse().tokenUsage().outputTokenCount());
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        verify(spyChatModel)
+                .chatAsync(ChatRequest.builder()
+                        .messages(messages.get(0))
+                        .toolSpecifications(EXPECTED_SPECIFICATION)
+                        .build());
+
+        verify(spyChatModel)
+                .chatAsync(ChatRequest.builder()
+                        .messages(messages.get(0), messages.get(1), messages.get(2))
+                        .toolSpecifications(EXPECTED_SPECIFICATION)
+                        .build());
+    }
+
+    @ParameterizedTest
+    @MethodSource("modelsWithoutParallelToolCalling")
+    void should_execute_multiple_tools_sequentially_then_answer_async(ChatModel chatModel) throws Exception {
+
+        TransactionService transactionService = spy(new TransactionService());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .chatMemory(chatMemory)
+                .tools(transactionService)
+                .build();
+
+        String userMessage = "What are the amounts of transactions T001 and T002?";
+
+        Result<String> result = assistant.chatAsync(userMessage).get(60, SECONDS);
+
+        assertThat(result.content()).contains("11.1", "22.2");
+        assertThat(result.finishReason()).isEqualTo(STOP);
+
+        verify(transactionService).getTransactionAmount("T001");
+        verify(transactionService).getTransactionAmount("T002");
+        verifyNoMoreInteractions(transactionService);
+
+        assertThat(result.toolExecutions()).hasSize(2);
+        assertThat(result.intermediateResponses()).hasSize(2);
+
+        TokenUsage tokenUsage = result.tokenUsage();
+        int expectedInputTokenCount = result.intermediateResponses().stream()
+                        .mapToInt(response -> response.tokenUsage().inputTokenCount())
+                        .sum()
+                + result.finalResponse().tokenUsage().inputTokenCount();
+        int expectedOutputTokenCount = result.intermediateResponses().stream()
+                        .mapToInt(response -> response.tokenUsage().outputTokenCount())
+                        .sum()
+                + result.finalResponse().tokenUsage().outputTokenCount();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(expectedInputTokenCount);
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(expectedOutputTokenCount);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+    }
+
+    @ParameterizedTest
+    @MethodSource("executors")
+    void should_execute_multiple_tools_in_parallel_concurrently_then_answer_async(Executor executor)
+            throws Exception {
+
+        // given
+        class Tools {
+
+            static final String CURRENT_TIME = "16:28";
+            static final String CURRENT_TEMPERATURE = "17";
+
+            final Queue<Thread> getCurrentTimeThreads = new ConcurrentLinkedQueue<>();
+            final Queue<Thread> getCurrentTemperatureThreads = new ConcurrentLinkedQueue<>();
+
+            @Tool
+            String getCurrentTime(String city) {
+                getCurrentTimeThreads.add(Thread.currentThread());
+                return CURRENT_TIME;
+            }
+
+            @Tool
+            String getCurrentTemperature(String city) {
+                getCurrentTemperatureThreads.add(Thread.currentThread());
+                return CURRENT_TEMPERATURE;
+            }
+        }
+
+        Tools spyTools = spy(new Tools());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(models().findFirst().get())
+                .chatMemory(chatMemory)
+                .tools(spyTools)
+                .executeToolsConcurrently(executor)
+                .build();
+
+        String userMessage = "What is the current time and temperature in Munich?";
+
+        // when
+        Result<String> result = assistant.chatAsync(userMessage).get(60, SECONDS);
+
+        // then
+        assertThat(result.content()).contains(Tools.CURRENT_TIME, Tools.CURRENT_TEMPERATURE);
+
+        verify(spyTools).getCurrentTime("Munich");
+        verify(spyTools).getCurrentTemperature("Munich");
+        verifyNoMoreInteractions(spyTools);
+
+        assertThat(spyTools.getCurrentTimeThreads).hasSize(1);
+        Thread getCurrentTimeThread = spyTools.getCurrentTimeThreads.poll();
+        assertThat(getCurrentTimeThread).isNotEqualTo(Thread.currentThread());
+
+        assertThat(spyTools.getCurrentTemperatureThreads).hasSize(1);
+        Thread getCurrentTemperatureThread = spyTools.getCurrentTemperatureThreads.poll();
+        assertThat(getCurrentTemperatureThread).isNotEqualTo(Thread.currentThread());
+
+        assertThat(getCurrentTimeThread).isNotEqualTo(getCurrentTemperatureThread);
     }
 
     @ParameterizedTest

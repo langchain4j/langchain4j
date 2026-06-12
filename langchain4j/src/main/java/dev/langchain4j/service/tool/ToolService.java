@@ -440,79 +440,278 @@ public class ToolService {
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults =
                     execute(toolExecutionRequests, toolServiceContext.toolExecutors(), invocationContext);
 
-            boolean anyToolErrored = false;
-            List<ReturnBehavior> returnBehaviors = new ArrayList<>(toolExecutionRequests.size());
+            ToolResultsOutcome outcome = processToolResults(
+                    context,
+                    toolExecutionRequests,
+                    toolResults,
+                    toolExecutions,
+                    chatMemory,
+                    messages,
+                    invocationContext,
+                    toolServiceContext);
 
-            for (ToolExecutionRequest request : toolExecutionRequests) {
-                ToolExecutionResult result = toolResults.get(request);
-                ToolExecutionResultMessage resultMessage = toResultMessage(request, result);
-
-                ToolExecution toolExecution = ToolExecution.builder()
-                        .request(request)
-                        .result(result)
-                        .invocationContext(invocationContext)
-                        .build();
-                toolExecutions.add(toolExecution);
-
-                fireToolExecutedEvent(invocationContext, request, toolExecution, context.eventListenerRegistrar);
-
-                if (chatMemory != null) {
-                    chatMemory.add(resultMessage);
-                } else {
-                    messages.add(resultMessage);
-                }
-
-                anyToolErrored = anyToolErrored || result.isError();
-                returnBehaviors.add(toolServiceContext.returnBehavior(request.name()));
+            if (shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors())) {
+                return immediateToolServiceResult(intermediateResponses, toolExecutions, aggregateTokenUsage);
             }
 
-            if (shouldReturnImmediately(anyToolErrored, returnBehaviors)) {
-                ChatResponse finalResponse = intermediateResponses.remove(intermediateResponses.size() - 1);
-                return ToolServiceResult.builder()
-                        .intermediateResponses(intermediateResponses)
-                        .finalResponse(finalResponse)
-                        .toolExecutions(toolExecutions)
-                        .aggregateTokenUsage(aggregateTokenUsage)
-                        .immediateToolReturn(true)
-                        .build();
-            }
+            NextChatRequest next = prepareNextChatRequest(
+                    context,
+                    memoryId,
+                    chatMemory,
+                    messages,
+                    invocationContext,
+                    toolServiceContext,
+                    toolResults,
+                    parameters);
+            messages = next.messages();
+            toolServiceContext = next.toolServiceContext();
+            parameters = next.parameters();
 
-            if (chatMemory != null) {
-                messages = chatMemory.messages();
-                if (!context.storeRetrievedContentInChatMemory) {
-                    messages = UserMessage.replaceLast(chatMemory.messages(), invocationContext.userMessage());
-                }
-            }
-
-            toolServiceContext = refreshDynamicProviders(toolServiceContext, messages, invocationContext);
-            if (toolSearchService != null) {
-                toolServiceContext = ToolSearchService.addFoundTools(toolServiceContext, toolResults.values());
-            }
-            parameters = parameters.overrideWith(ChatRequestParameters.builder()
-                    .toolSpecifications(toolServiceContext.effectiveTools())
-                    .build());
-
-            ChatRequest chatRequest = context.chatRequestTransformer.apply(
-                    ChatRequest.builder()
-                            .messages(messages)
-                            .parameters(parameters)
-                            .build(),
-                    memoryId);
-
-            fireRequestIssuedEvent(chatRequest, invocationContext, context.eventListenerRegistrar);
-            chatResponse = context.chatModel.chat(chatRequest);
-            fireResponseReceivedEvent(chatRequest, chatResponse, invocationContext, context.eventListenerRegistrar);
+            chatResponse = context.chatModel.chat(next.chatRequest());
+            fireResponseReceivedEvent(
+                    next.chatRequest(), chatResponse, invocationContext, context.eventListenerRegistrar);
             aggregateTokenUsage =
                     TokenUsage.sum(aggregateTokenUsage, chatResponse.metadata().tokenUsage());
         }
 
+        return finalToolServiceResult(chatResponse, intermediateResponses, toolExecutions, aggregateTokenUsage);
+    }
+
+    /**
+     * Non-blocking counterpart of
+     * {@link #executeInferenceAndToolsLoop(AiServiceContext, Object, ChatResponse, ChatRequestParameters, List, ChatMemory, InvocationContext, ToolServiceContext, boolean)}.
+     * <p>
+     * Re-invokes the model via {@link dev.langchain4j.model.chat.ChatModel#chatAsync(ChatRequest)} and composes
+     * tool executions without blocking: no thread waits while a model response is in flight.
+     * When tools are configured to execute concurrently, their results are composed (not joined) as well.
+     * When no tool executor is configured, tools run on the thread that delivered the model response.
+     *
+     * @since 1.17.0
+     */
+    public CompletableFuture<ToolServiceResult> executeInferenceAndToolsLoopAsync(
+            AiServiceContext context,
+            Object memoryId,
+            ChatResponse chatResponse,
+            ChatRequestParameters parameters,
+            List<ChatMessage> messages,
+            ChatMemory chatMemory,
+            InvocationContext invocationContext,
+            ToolServiceContext toolServiceContext) {
+        return executeInferenceAndToolsLoopAsync(
+                context,
+                memoryId,
+                chatResponse,
+                parameters,
+                messages,
+                chatMemory,
+                invocationContext,
+                toolServiceContext,
+                chatResponse.metadata().tokenUsage(),
+                new ArrayList<>(),
+                new ArrayList<>(),
+                maxToolCallingRoundTrips);
+    }
+
+    private CompletableFuture<ToolServiceResult> executeInferenceAndToolsLoopAsync(
+            AiServiceContext context,
+            Object memoryId,
+            ChatResponse chatResponse,
+            ChatRequestParameters parameters,
+            List<ChatMessage> messages,
+            ChatMemory chatMemory,
+            InvocationContext invocationContext,
+            ToolServiceContext toolServiceContext,
+            TokenUsage aggregateTokenUsage,
+            List<ToolExecution> toolExecutions,
+            List<ChatResponse> intermediateResponses,
+            int roundTripsLeft) {
+
+        if (roundTripsLeft == 0) {
+            return CompletableFuture.failedFuture(runtime(
+                    "Something is wrong, exceeded %s tool calling round trips (maxToolCallingRoundTrips)",
+                    maxToolCallingRoundTrips));
+        }
+
+        AiMessage aiMessage = chatResponse.aiMessage();
+
+        if (chatMemory != null) {
+            chatMemory.add(aiMessage);
+        } else {
+            messages = new ArrayList<>(messages);
+            messages.add(aiMessage);
+        }
+
+        if (!aiMessage.hasToolExecutionRequests()) {
+            return CompletableFuture.completedFuture(
+                    finalToolServiceResult(chatResponse, intermediateResponses, toolExecutions, aggregateTokenUsage));
+        }
+
+        intermediateResponses.add(chatResponse);
+
+        List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
+        List<ChatMessage> currentMessages = messages;
+        return executeToolsAsync(toolExecutionRequests, toolServiceContext.toolExecutors(), invocationContext)
+                .thenCompose(toolResults -> {
+                    ToolResultsOutcome outcome = processToolResults(
+                            context,
+                            toolExecutionRequests,
+                            toolResults,
+                            toolExecutions,
+                            chatMemory,
+                            currentMessages,
+                            invocationContext,
+                            toolServiceContext);
+
+                    if (shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors())) {
+                        return CompletableFuture.completedFuture(immediateToolServiceResult(
+                                intermediateResponses, toolExecutions, aggregateTokenUsage));
+                    }
+
+                    NextChatRequest next = prepareNextChatRequest(
+                            context,
+                            memoryId,
+                            chatMemory,
+                            currentMessages,
+                            invocationContext,
+                            toolServiceContext,
+                            toolResults,
+                            parameters);
+
+                    return context.chatModel.chatAsync(next.chatRequest()).thenCompose(nextChatResponse -> {
+                        fireResponseReceivedEvent(
+                                next.chatRequest(),
+                                nextChatResponse,
+                                invocationContext,
+                                context.eventListenerRegistrar);
+                        return executeInferenceAndToolsLoopAsync(
+                                context,
+                                memoryId,
+                                nextChatResponse,
+                                next.parameters(),
+                                next.messages(),
+                                chatMemory,
+                                invocationContext,
+                                next.toolServiceContext(),
+                                TokenUsage.sum(
+                                        aggregateTokenUsage,
+                                        nextChatResponse.metadata().tokenUsage()),
+                                toolExecutions,
+                                intermediateResponses,
+                                roundTripsLeft - 1);
+                    });
+                });
+    }
+
+    private ToolResultsOutcome processToolResults(
+            AiServiceContext context,
+            List<ToolExecutionRequest> toolExecutionRequests,
+            Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+            List<ToolExecution> toolExecutions,
+            ChatMemory chatMemory,
+            List<ChatMessage> messages,
+            InvocationContext invocationContext,
+            ToolServiceContext toolServiceContext) {
+
+        boolean anyToolErrored = false;
+        List<ReturnBehavior> returnBehaviors = new ArrayList<>(toolExecutionRequests.size());
+
+        for (ToolExecutionRequest request : toolExecutionRequests) {
+            ToolExecutionResult result = toolResults.get(request);
+            ToolExecutionResultMessage resultMessage = toResultMessage(request, result);
+
+            ToolExecution toolExecution = ToolExecution.builder()
+                    .request(request)
+                    .result(result)
+                    .invocationContext(invocationContext)
+                    .build();
+            toolExecutions.add(toolExecution);
+
+            fireToolExecutedEvent(invocationContext, request, toolExecution, context.eventListenerRegistrar);
+
+            if (chatMemory != null) {
+                chatMemory.add(resultMessage);
+            } else {
+                messages.add(resultMessage);
+            }
+
+            anyToolErrored = anyToolErrored || result.isError();
+            returnBehaviors.add(toolServiceContext.returnBehavior(request.name()));
+        }
+
+        return new ToolResultsOutcome(anyToolErrored, returnBehaviors);
+    }
+
+    private NextChatRequest prepareNextChatRequest(
+            AiServiceContext context,
+            Object memoryId,
+            ChatMemory chatMemory,
+            List<ChatMessage> messages,
+            InvocationContext invocationContext,
+            ToolServiceContext toolServiceContext,
+            Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+            ChatRequestParameters parameters) {
+
+        if (chatMemory != null) {
+            messages = chatMemory.messages();
+            if (!context.storeRetrievedContentInChatMemory) {
+                messages = UserMessage.replaceLast(chatMemory.messages(), invocationContext.userMessage());
+            }
+        }
+
+        toolServiceContext = refreshDynamicProviders(toolServiceContext, messages, invocationContext);
+        if (toolSearchService != null) {
+            toolServiceContext = ToolSearchService.addFoundTools(toolServiceContext, toolResults.values());
+        }
+        parameters = parameters.overrideWith(ChatRequestParameters.builder()
+                .toolSpecifications(toolServiceContext.effectiveTools())
+                .build());
+
+        ChatRequest chatRequest = context.chatRequestTransformer.apply(
+                ChatRequest.builder()
+                        .messages(messages)
+                        .parameters(parameters)
+                        .build(),
+                memoryId);
+
+        fireRequestIssuedEvent(chatRequest, invocationContext, context.eventListenerRegistrar);
+
+        return new NextChatRequest(chatRequest, messages, toolServiceContext, parameters);
+    }
+
+    private static ToolServiceResult immediateToolServiceResult(
+            List<ChatResponse> intermediateResponses,
+            List<ToolExecution> toolExecutions,
+            TokenUsage aggregateTokenUsage) {
+        ChatResponse finalResponse = intermediateResponses.remove(intermediateResponses.size() - 1);
         return ToolServiceResult.builder()
                 .intermediateResponses(intermediateResponses)
-                .finalResponse(chatResponse)
+                .finalResponse(finalResponse)
+                .toolExecutions(toolExecutions)
+                .aggregateTokenUsage(aggregateTokenUsage)
+                .immediateToolReturn(true)
+                .build();
+    }
+
+    private static ToolServiceResult finalToolServiceResult(
+            ChatResponse finalResponse,
+            List<ChatResponse> intermediateResponses,
+            List<ToolExecution> toolExecutions,
+            TokenUsage aggregateTokenUsage) {
+        return ToolServiceResult.builder()
+                .intermediateResponses(intermediateResponses)
+                .finalResponse(finalResponse)
                 .toolExecutions(toolExecutions)
                 .aggregateTokenUsage(aggregateTokenUsage)
                 .build();
     }
+
+    private record ToolResultsOutcome(boolean anyToolErrored, List<ReturnBehavior> returnBehaviors) {}
+
+    private record NextChatRequest(
+            ChatRequest chatRequest,
+            List<ChatMessage> messages,
+            ToolServiceContext toolServiceContext,
+            ChatRequestParameters parameters) {}
 
     public static boolean shouldReturnImmediately(boolean anyToolErrored, List<ReturnBehavior> returnBehaviors) {
         if (anyToolErrored) {
@@ -633,6 +832,43 @@ public class ToolService {
             // when there is only one tool to execute, it doesn't make sense to do it in a separate thread
             return executeSequentially(toolRequests, toolExecutors, invocationContext);
         }
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #execute(List, Map, InvocationContext)}.
+     * <p>
+     * When a tool executor is configured (see {@link #executeToolsConcurrently()}), every tool
+     * (even a single one) is offloaded to it, so the thread that delivered the model response is never
+     * blocked by tool execution. When no executor is configured, tools run sequentially on the current
+     * thread, mirroring the synchronous path.
+     */
+    private CompletableFuture<Map<ToolExecutionRequest, ToolExecutionResult>> executeToolsAsync(
+            List<ToolExecutionRequest> toolRequests,
+            Map<String, ToolExecutor> toolExecutors,
+            InvocationContext invocationContext) {
+        if (executor == null) {
+            try {
+                return CompletableFuture.completedFuture(
+                        executeSequentially(toolRequests, toolExecutors, invocationContext));
+            } catch (Exception e) {
+                return CompletableFuture.failedFuture(e);
+            }
+        }
+
+        Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> futures = new LinkedHashMap<>();
+        for (ToolExecutionRequest toolRequest : toolRequests) {
+            CompletableFuture<ToolExecutionResult> future = CompletableFuture.supplyAsync(
+                    () -> executeTool(invocationContext, toolExecutors, toolRequest), executor);
+            futures.put(toolRequest, future);
+        }
+
+        return CompletableFuture.allOf(futures.values().toArray(new CompletableFuture[0]))
+                .thenApply(ignored -> {
+                    Map<ToolExecutionRequest, ToolExecutionResult> toolResults = new LinkedHashMap<>();
+                    // getNow never blocks: the allOf barrier guarantees every future has already completed
+                    futures.forEach((toolRequest, future) -> toolResults.put(toolRequest, future.getNow(null)));
+                    return toolResults;
+                });
     }
 
     private Map<ToolExecutionRequest, ToolExecutionResult> executeConcurrently(

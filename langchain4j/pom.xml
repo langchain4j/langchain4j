@@ -99,6 +99,20 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>io.projectreactor.tools</groupId>
+            <artifactId>blockhound</artifactId>
+            <version>1.0.17.RELEASE</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit</artifactId>
+            <version>1.1.0</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <!--  Contains references to a jar file created specifically for the ClasspathFileSystemDocumentLoaderTest tests  -->
@@ -116,6 +130,17 @@
 
     <build>
         <plugins>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration combine.children="append">
+                    <!-- AiServicesNonBlockingTest runs BlockHound, which needs this flag to
+                         instrument JDK classes on JDK 13+. Keep the parent's argLine and the mockito
+                         agent. Benign for tests that don't use BlockHound. -->
+                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} -XX:+AllowRedefinitionToAddDeleteMethods</argLine>
+                </configuration>
+            </plugin>
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

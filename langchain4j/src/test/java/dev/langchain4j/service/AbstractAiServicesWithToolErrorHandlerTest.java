@@ -20,8 +20,15 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Stream;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentMatcher;
 
 public abstract class AbstractAiServicesWithToolErrorHandlerTest {
 
@@ -33,14 +40,30 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
 
     protected abstract void configureGetImageTool(AiServices<?> aiServiceBuilder);
 
+    enum InvocationMode {
+        SYNC,
+        ASYNC
+    }
+
+    static Stream<Arguments> parameters() {
+        return Stream.of(
+                Arguments.of(false, InvocationMode.SYNC),
+                Arguments.of(true, InvocationMode.SYNC),
+                Arguments.of(false, InvocationMode.ASYNC),
+                Arguments.of(true, InvocationMode.ASYNC));
+    }
+
     interface Assistant {
 
         String chat(String userMessage);
+
+        CompletableFuture<String> chatAsync(String userMessage);
     }
 
     @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void should_propagate_error_message_thrown_from_tool_to_LLM_by_default(boolean executeToolsConcurrently) {
+    @MethodSource("parameters")
+    void should_propagate_error_message_thrown_from_tool_to_LLM_by_default(
+            boolean executeToolsConcurrently, InvocationMode invocationMode) {
 
         // given
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
@@ -65,20 +88,21 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         Assistant assistant = assistantBuilder.build();
 
         // when
-        assistant.chat("What is the weather in Munich?");
+        chat(assistant, "What is the weather in Munich?", invocationMode);
 
         // then
-        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
-        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
+        verifyChatRequest(spyModel, invocationMode, chatRequest -> chatRequest.messages().size() == 1);
+        verifyChatRequest(spyModel, invocationMode, chatRequest -> chatRequest.messages().size() == 3
                 && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
-                && toolResult.text().equals(toolErrorMessage)));
+                && toolResult.text().equals(toolErrorMessage));
         ignoreOtherInteractions(spyModel);
         verifyNoMoreInteractions(spyModel);
     }
 
     @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void should_propagate_exception_type_to_LLM_when_exception_without_message_is_thrown_from_tool(boolean executeToolsConcurrently) {
+    @MethodSource("parameters")
+    void should_propagate_exception_type_to_LLM_when_exception_without_message_is_thrown_from_tool(
+            boolean executeToolsConcurrently, InvocationMode invocationMode) {
 
         // given
         RuntimeException exceptionWithoutMessage = new RuntimeException();
@@ -104,20 +128,21 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         Assistant assistant = assistantBuilder.build();
 
         // when
-        assistant.chat("What is the weather in Munich?");
+        chat(assistant, "What is the weather in Munich?", invocationMode);
 
         // then
-        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
-        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
+        verifyChatRequest(spyModel, invocationMode, chatRequest -> chatRequest.messages().size() == 1);
+        verifyChatRequest(spyModel, invocationMode, chatRequest -> chatRequest.messages().size() == 3
                 && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
-                && toolResult.text().equals("java.lang.RuntimeException")));
+                && toolResult.text().equals("java.lang.RuntimeException"));
         ignoreOtherInteractions(spyModel);
         verifyNoMoreInteractions(spyModel);
     }
 
     @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void should_propagate_exception_to_LLM_when_exception_without_cause_is_thrown_from_tool(boolean executeToolsConcurrently) {
+    @MethodSource("parameters")
+    void should_propagate_exception_to_LLM_when_exception_without_cause_is_thrown_from_tool(
+            boolean executeToolsConcurrently, InvocationMode invocationMode) {
 
         // given
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
@@ -140,20 +165,21 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         Assistant assistant = assistantBuilder.build();
 
         // when
-        assistant.chat("Get me an image");
+        chat(assistant, "Get me an image", invocationMode);
 
         // then
-        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
-        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
+        verifyChatRequest(spyModel, invocationMode, chatRequest -> chatRequest.messages().size() == 1);
+        verifyChatRequest(spyModel, invocationMode, chatRequest -> chatRequest.messages().size() == 3
                 && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
-                && toolResult.text().equals("Unsupported content type: \"image\"")));
+                && toolResult.text().equals("Unsupported content type: \"image\""));
         ignoreOtherInteractions(spyModel);
         verifyNoMoreInteractions(spyModel);
     }
 
     @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void should_customize_error_returned_from_tool_before_sending_to_LLM(boolean executeToolsConcurrently) {
+    @MethodSource("parameters")
+    void should_customize_error_returned_from_tool_before_sending_to_LLM(
+            boolean executeToolsConcurrently, InvocationMode invocationMode) {
 
         // given
         String toolErrorMessage = "Weather service is unavailable";
@@ -191,20 +217,20 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         Assistant assistant = assistantBuilder.build();
 
         // when
-        assistant.chat("What is the weather in Munich?");
+        chat(assistant, "What is the weather in Munich?", invocationMode);
 
         // then
-        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
-        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
+        verifyChatRequest(spyModel, invocationMode, chatRequest -> chatRequest.messages().size() == 1);
+        verifyChatRequest(spyModel, invocationMode, chatRequest -> chatRequest.messages().size() == 3
                 && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
-                && toolResult.text().equals(customizedErrorMessage)));
+                && toolResult.text().equals(customizedErrorMessage));
         ignoreOtherInteractions(spyModel);
         verifyNoMoreInteractions(spyModel);
     }
 
     @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void should_fail_when_tool_throws_error(boolean executeToolsConcurrently) {
+    @MethodSource("parameters")
+    void should_fail_when_tool_throws_error(boolean executeToolsConcurrently, InvocationMode invocationMode) {
 
         // given
         String toolErrorMessage = "Weather service is unavailable";
@@ -247,18 +273,19 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         String userMessage = "What is the weather in Munich and Paris?";
 
         // when
-        assertThatThrownBy(() -> assistant.chat(userMessage))
+        assertThatThrownBy(() -> chat(assistant, userMessage, invocationMode))
                 .isSameAs(toolError);
 
         // then
-        verify(spyModel).chat(any(ChatRequest.class));
+        verifyAnyChatRequest(spyModel, invocationMode);
         ignoreOtherInteractions(spyModel);
         verifyNoMoreInteractions(spyModel);
     }
 
     @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void should_fail_when_cannot_parse_tool_arguments_by_default(boolean executeToolsConcurrently) {
+    @MethodSource("parameters")
+    void should_fail_when_cannot_parse_tool_arguments_by_default(
+            boolean executeToolsConcurrently, InvocationMode invocationMode) {
 
         // given
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
@@ -279,20 +306,21 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         Assistant assistant = assistantBuilder.build();
 
         // when
-        assertThatThrownBy(() -> assistant.chat("What is the weather in Munich?"))
+        assertThatThrownBy(() -> chat(assistant, "What is the weather in Munich?", invocationMode))
                 .isExactlyInstanceOf(RuntimeException.class)
                 .hasCauseExactlyInstanceOf(JsonParseException.class)
                 .hasMessageContaining("Unexpected character");
 
         // then
-        verify(spyModel).chat(any(ChatRequest.class));
+        verifyAnyChatRequest(spyModel, invocationMode);
         ignoreOtherInteractions(spyModel);
         verifyNoMoreInteractions(spyModel);
     }
 
     @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void should_customize_argument_parsing_error_before_sending_to_LLM(boolean executeToolsConcurrently) {
+    @MethodSource("parameters")
+    void should_customize_argument_parsing_error_before_sending_to_LLM(
+            boolean executeToolsConcurrently, InvocationMode invocationMode) {
 
         // given
         ToolExecutionRequest toolExecutionRequest1 = ToolExecutionRequest.builder()
@@ -336,21 +364,22 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         Assistant assistant = assistantBuilder.build();
 
         // when
-        assistant.chat("What is the weather in Munich?");
+        chat(assistant, "What is the weather in Munich?", invocationMode);
 
         // then
-        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 1));
-        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 3
+        verifyChatRequest(spyModel, invocationMode, chatRequest -> chatRequest.messages().size() == 1);
+        verifyChatRequest(spyModel, invocationMode, chatRequest -> chatRequest.messages().size() == 3
                 && chatRequest.messages().get(2) instanceof ToolExecutionResultMessage toolResult
-                && toolResult.text().equals(customizedErrorMessage)));
-        verify(spyModel).chat(argThat((ChatRequest chatRequest) -> chatRequest.messages().size() == 5));
+                && toolResult.text().equals(customizedErrorMessage));
+        verifyChatRequest(spyModel, invocationMode, chatRequest -> chatRequest.messages().size() == 5);
         ignoreOtherInteractions(spyModel);
         verifyNoMoreInteractions(spyModel);
     }
 
     @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void should_fail_with_custom_exception_when_tool_arguments_cannot_be_parsed(boolean executeToolsConcurrently) {
+    @MethodSource("parameters")
+    void should_fail_with_custom_exception_when_tool_arguments_cannot_be_parsed(
+            boolean executeToolsConcurrently, InvocationMode invocationMode) {
 
         // given
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
@@ -385,22 +414,60 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
         Assistant assistant = assistantBuilder.build();
 
         // when
-        assertThatThrownBy(() -> assistant.chat("What is the weather in Munich?"))
+        assertThatThrownBy(() -> chat(assistant, "What is the weather in Munich?", invocationMode))
                 .isSameAs(customException);
 
         // then
-        verify(spyModel).chat(any(ChatRequest.class));
+        verifyAnyChatRequest(spyModel, invocationMode);
         ignoreOtherInteractions(spyModel);
         verifyNoMoreInteractions(spyModel);
     }
 
+    private static String chat(Assistant assistant, String userMessage, InvocationMode invocationMode) {
+        if (invocationMode == InvocationMode.SYNC) {
+            return assistant.chat(userMessage);
+        }
+        try {
+            return assistant.chatAsync(userMessage).get(30, TimeUnit.SECONDS);
+        } catch (ExecutionException e) {
+            if (e.getCause() instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new RuntimeException(e.getCause());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } catch (TimeoutException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static void verifyChatRequest(
+            ChatModel spyModel, InvocationMode invocationMode, ArgumentMatcher<ChatRequest> matcher) {
+        if (invocationMode == InvocationMode.SYNC) {
+            verify(spyModel).chat(argThat(matcher));
+        } else {
+            verify(spyModel).chatAsync(argThat(matcher));
+        }
+    }
+
+    private static void verifyAnyChatRequest(ChatModel spyModel, InvocationMode invocationMode) {
+        if (invocationMode == InvocationMode.SYNC) {
+            verify(spyModel).chat(any(ChatRequest.class));
+        } else {
+            verify(spyModel).chatAsync(any(ChatRequest.class));
+        }
+    }
+
     private static void ignoreOtherInteractions(ChatModel model) {
         verify(model, atLeast(0)).doChat(any());
+        verify(model, atLeast(0)).doChatAsync(any());
         verify(model, atLeast(0)).defaultRequestParameters();
         verify(model, atLeast(0)).listeners();
         verify(model, atLeast(0)).provider();
         verify(model, atLeast(0)).supportedCapabilities();
         verify(model, atLeast(0)).chat(any(ChatRequest.class), any(ChatRequestOptions.class));
+        verify(model, atLeast(0)).chatAsync(any(ChatRequest.class), any(ChatRequestOptions.class));
     }
 
     static class CustomToolException extends RuntimeException {

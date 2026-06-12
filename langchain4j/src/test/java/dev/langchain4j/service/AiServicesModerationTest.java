@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.aiMessageFrom;
 import static java.util.Collections.singletonList;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -9,13 +10,18 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.InternalServerException;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.moderation.Moderation;
+import dev.langchain4j.model.moderation.ModerationModel;
+import dev.langchain4j.model.moderation.ModerationRequest;
+import dev.langchain4j.model.moderation.ModerationResponse;
 import dev.langchain4j.model.openai.internal.chat.AssistantMessage;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.FunctionCall;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.Test;
 
 class AiServicesModerationTest {
@@ -90,6 +96,57 @@ class AiServicesModerationTest {
         // When/Then - same future can be checked multiple times
         assertDoesNotThrow(() -> AiServices.verifyModerationIfNeeded(moderationFuture));
         assertDoesNotThrow(() -> AiServices.verifyModerationIfNeeded(moderationFuture));
+    }
+
+    interface AsyncAssistant {
+
+        @Moderate
+        CompletableFuture<String> chat(String userMessage);
+    }
+
+    private static ModerationModel moderationModelReturning(Moderation moderation) {
+        return new ModerationModel() {
+
+            @Override
+            public ModerationResponse doModerate(ModerationRequest moderationRequest) {
+                return ModerationResponse.builder().moderation(moderation).build();
+            }
+        };
+    }
+
+    @Test
+    void should_fail_future_with_ModerationException_when_content_is_flagged() {
+        // Given
+        Moderation flaggedModeration = Moderation.flagged("inappropriate content");
+
+        AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("Hello"))
+                .moderationModel(moderationModelReturning(flaggedModeration))
+                .build();
+
+        // When
+        CompletableFuture<String> future = assistant.chat("inappropriate content");
+
+        // Then
+        assertThatThrownBy(() -> future.get(10, SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .rootCause()
+                .isInstanceOf(ModerationException.class)
+                .hasMessageContaining("violates content policy")
+                .satisfies(cause ->
+                        assertThat(((ModerationException) cause).moderation()).isSameAs(flaggedModeration));
+    }
+
+    @Test
+    void should_complete_future_when_content_is_NOT_flagged() throws Exception {
+        // Given
+        AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("Hello"))
+                .moderationModel(moderationModelReturning(Moderation.notFlagged()))
+                .build();
+
+        // When/Then
+        assertThat(assistant.chat("Hi").get(10, SECONDS)).isEqualTo("Hello");
     }
 
     @Test

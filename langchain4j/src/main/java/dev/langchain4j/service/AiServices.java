@@ -1266,14 +1266,17 @@ public abstract class AiServices<T> {
     public static void verifyModerationIfNeeded(Future<Moderation> moderationFuture) {
         if (moderationFuture != null) {
             try {
-                Moderation moderation = moderationFuture.get();
-                if (moderation.flagged()) {
-                    throw new ModerationException(
-                            String.format("Text \"%s\" violates content policy", moderation.flaggedText()), moderation);
-                }
+                verifyModeration(moderationFuture.get());
             } catch (InterruptedException | ExecutionException e) {
                 throw new RuntimeException(e);
             }
+        }
+    }
+
+    static void verifyModeration(Moderation moderation) {
+        if (moderation.flagged()) {
+            throw new ModerationException(
+                    String.format("Text \"%s\" violates content policy", moderation.flaggedText()), moderation);
         }
     }
 }

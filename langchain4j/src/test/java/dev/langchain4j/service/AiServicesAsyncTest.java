@@ -1,0 +1,462 @@
+package dev.langchain4j.service;
+
+import static java.util.Collections.synchronizedList;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.guardrail.InputGuardrail;
+import dev.langchain4j.guardrail.InputGuardrailException;
+import dev.langchain4j.guardrail.InputGuardrailResult;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.service.guardrail.InputGuardrails;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.Test;
+
+class AiServicesAsyncTest {
+
+    interface Assistant {
+
+        CompletableFuture<String> chat(String userMessage);
+    }
+
+    @Test
+    void should_return_completable_future_without_invoking_blocking_chat() throws Exception {
+
+        ChatModelMock chatModel = spy(ChatModelMock.thatAlwaysResponds("Berlin"));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("What is the capital of Germany?");
+
+        assertThat(future.get(10, SECONDS)).isEqualTo("Berlin");
+        assertThat(chatModel.requests()).hasSize(1);
+        verify(chatModel).doChatAsync(any());
+        verify(chatModel, never()).doChat(any());
+    }
+
+    @Test
+    void should_not_block_the_calling_thread() throws Exception {
+
+        CompletableFuture<ChatResponse> modelFuture = new CompletableFuture<>();
+        ChatModel chatModel = new ChatModel() {
+
+            @Override
+            public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+                return modelFuture;
+            }
+        };
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("Hi");
+
+        assertThat(future).isNotDone();
+
+        modelFuture.complete(ChatResponse.builder()
+                .aiMessage(AiMessage.from("Hello"))
+                .metadata(ChatResponseMetadata.builder().build())
+                .build());
+
+        assertThat(future.get(10, SECONDS)).isEqualTo("Hello");
+    }
+
+    static class Tools {
+
+        final AtomicInteger invocations = new AtomicInteger();
+
+        @Tool
+        String currentTemperature() {
+            invocations.incrementAndGet();
+            return "42";
+        }
+    }
+
+    @Test
+    void should_execute_tools() throws Exception {
+
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("currentTemperature")
+                .arguments("{}")
+                .build();
+        ChatModelMock chatModel = spy(ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(toolExecutionRequest), AiMessage.from("It is 42 degrees")));
+        Tools tools = new Tools();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("What is the temperature?");
+
+        assertThat(future.get(10, SECONDS)).isEqualTo("It is 42 degrees");
+        assertThat(tools.invocations).hasValue(1);
+        assertThat(chatModel.requests()).hasSize(2);
+        assertThat(chatModel.requests().get(1).messages())
+                .filteredOn(message -> message instanceof ToolExecutionResultMessage)
+                .singleElement()
+                .satisfies(message -> assertThat(((ToolExecutionResultMessage) message).text())
+                        .isEqualTo("42"));
+        verify(chatModel, never()).doChat(any());
+    }
+
+    static class ConcurrentTools {
+
+        final List<String> executedTools = synchronizedList(new ArrayList<>());
+
+        @Tool
+        String currentTemperature() {
+            executedTools.add("currentTemperature");
+            return "42";
+        }
+
+        @Tool
+        String currentHumidity() {
+            executedTools.add("currentHumidity");
+            return "69";
+        }
+    }
+
+    @Test
+    void should_execute_multiple_tools_concurrently() throws Exception {
+
+        ToolExecutionRequest temperatureRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("currentTemperature")
+                .arguments("{}")
+                .build();
+        ToolExecutionRequest humidityRequest = ToolExecutionRequest.builder()
+                .id("2")
+                .name("currentHumidity")
+                .arguments("{}")
+                .build();
+        ChatModelMock chatModel = spy(ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(temperatureRequest, humidityRequest), AiMessage.from("42 degrees, 69 percent")));
+        ConcurrentTools tools = new ConcurrentTools();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .executeToolsConcurrently()
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("What is the weather?");
+
+        assertThat(future.get(10, SECONDS)).isEqualTo("42 degrees, 69 percent");
+        assertThat(tools.executedTools).containsExactlyInAnyOrder("currentTemperature", "currentHumidity");
+        assertThat(chatModel.requests()).hasSize(2);
+        assertThat(chatModel.requests().get(1).messages())
+                .filteredOn(message -> message instanceof ToolExecutionResultMessage)
+                .hasSize(2);
+        verify(chatModel, never()).doChat(any());
+    }
+
+    @Test
+    void should_use_chat_memory() throws Exception {
+
+        ChatModelMock chatModel =
+                ChatModelMock.thatAlwaysResponds(AiMessage.from("first answer"), AiMessage.from("second answer"));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+                .build();
+
+        assertThat(assistant.chat("first question").get(10, SECONDS)).isEqualTo("first answer");
+        assertThat(assistant.chat("second question").get(10, SECONDS)).isEqualTo("second answer");
+
+        assertThat(chatModel.requests()).hasSize(2);
+        assertThat(chatModel.requests().get(1).messages()).hasSize(3);
+        assertThat(chatModel.requests().get(1).messages().get(1))
+                .isEqualTo(AiMessage.from("first answer"));
+    }
+
+    interface AssistantReturningResult {
+
+        CompletableFuture<Result<String>> chat(String userMessage);
+    }
+
+    @Test
+    void should_return_result() throws Exception {
+
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
+
+        AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
+                .chatModel(chatModel)
+                .build();
+
+        Result<String> result = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
+
+        assertThat(result.content()).isEqualTo("Berlin");
+        assertThat(result.toolExecutions()).isEmpty();
+    }
+
+    static class Person {
+
+        String name;
+    }
+
+    interface AssistantReturningPojo {
+
+        CompletableFuture<Person> extractPerson(String text);
+    }
+
+    @Test
+    void should_parse_pojo() throws Exception {
+
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("{\"name\": \"Klaus\"}");
+
+        AssistantReturningPojo assistant = AiServices.builder(AssistantReturningPojo.class)
+                .chatModel(chatModel)
+                .build();
+
+        Person person = assistant.extractPerson("My name is Klaus").get(10, SECONDS);
+
+        assertThat(person.name).isEqualTo("Klaus");
+    }
+
+    interface AssistantReturningResultWithPojo {
+
+        CompletableFuture<Result<Person>> extractPerson(String text);
+    }
+
+    @Test
+    void should_return_result_with_pojo() throws Exception {
+
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("{\"name\": \"Klaus\"}");
+
+        AssistantReturningResultWithPojo assistant = AiServices.builder(AssistantReturningResultWithPojo.class)
+                .chatModel(chatModel)
+                .build();
+
+        Result<Person> result = assistant.extractPerson("My name is Klaus").get(10, SECONDS);
+
+        assertThat(result.content().name).isEqualTo("Klaus");
+        assertThat(result.toolExecutions()).isEmpty();
+        assertThat(result.finalResponse().aiMessage().text()).isEqualTo("{\"name\": \"Klaus\"}");
+    }
+
+    @Test
+    void should_fail_future_when_model_fails() {
+
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysThrowsExceptionWithMessage("boom");
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("Hi");
+
+        assertThatThrownBy(() -> future.get(10, SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .hasRootCauseMessage("boom");
+    }
+
+    @Test
+    void should_execute_tools_in_multiple_rounds() throws Exception {
+
+        ToolExecutionRequest firstRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("currentTemperature")
+                .arguments("{}")
+                .build();
+        ToolExecutionRequest secondRequest = ToolExecutionRequest.builder()
+                .id("2")
+                .name("currentTemperature")
+                .arguments("{}")
+                .build();
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(firstRequest), AiMessage.from(secondRequest), AiMessage.from("It is 42 degrees"));
+        Tools tools = new Tools();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(20))
+                .tools(tools)
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("What is the temperature?");
+
+        assertThat(future.get(10, SECONDS)).isEqualTo("It is 42 degrees");
+        assertThat(tools.invocations).hasValue(2);
+        assertThat(chatModel.requests()).hasSize(3);
+        assertThat(chatModel.requests().get(0).messages()).hasSize(1);
+        assertThat(chatModel.requests().get(1).messages()).hasSize(3);
+        assertThat(chatModel.requests().get(2).messages()).hasSize(5);
+    }
+
+    @Test
+    void should_fail_future_when_max_tool_calling_round_trips_exceeded() {
+
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("currentTemperature")
+                .arguments("{}")
+                .build();
+        ChatModelMock chatModel = ChatModelMock.thatResponds(ignored -> AiMessage.from(toolExecutionRequest));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(new Tools())
+                .maxToolCallingRoundTrips(2)
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("What is the temperature?");
+
+        assertThatThrownBy(() -> future.get(10, SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .rootCause()
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("exceeded 2 tool calling round trips");
+    }
+
+    @Test
+    void should_fail_future_when_hallucinated_tool_is_requested() {
+
+        ToolExecutionRequest hallucinatedRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("unknownTool")
+                .arguments("{}")
+                .build();
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(AiMessage.from(hallucinatedRequest));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(new Tools())
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("What is the temperature?");
+
+        assertThatThrownBy(() -> future.get(10, SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .rootCause()
+                .hasMessageContaining("no such tool exists");
+    }
+
+    @Test
+    void should_aggregate_token_usage_across_tool_rounds() throws Exception {
+
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("currentTemperature")
+                .arguments("{}")
+                .build();
+        Queue<ChatResponse> responses = new ConcurrentLinkedQueue<>(List.of(
+                ChatResponse.builder()
+                        .aiMessage(AiMessage.from(toolExecutionRequest))
+                        .metadata(ChatResponseMetadata.builder()
+                                .tokenUsage(new TokenUsage(10, 20))
+                                .build())
+                        .build(),
+                ChatResponse.builder()
+                        .aiMessage(AiMessage.from("It is 42 degrees"))
+                        .metadata(ChatResponseMetadata.builder()
+                                .tokenUsage(new TokenUsage(5, 5))
+                                .build())
+                        .build()));
+        ChatModel chatModel = new ChatModel() {
+
+            @Override
+            public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+                return CompletableFuture.supplyAsync(responses::poll);
+            }
+        };
+
+        AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
+                .chatModel(chatModel)
+                .tools(new Tools())
+                .build();
+
+        Result<String> result = assistant.chat("What is the temperature?").get(10, SECONDS);
+
+        assertThat(result.content()).isEqualTo("It is 42 degrees");
+        assertThat(result.tokenUsage()).isEqualTo(new TokenUsage(15, 25));
+    }
+
+    public static class FailingInputGuardrail implements InputGuardrail {
+
+        @Override
+        public InputGuardrailResult validate(UserMessage userMessage) {
+            return failure("User message is not valid");
+        }
+    }
+
+    interface AssistantWithInputGuardrail {
+
+        @InputGuardrails(FailingInputGuardrail.class)
+        CompletableFuture<String> chat(String userMessage);
+    }
+
+    @Test
+    void should_throw_input_guardrail_exception_synchronously() {
+
+        // Input guardrails run before any I/O is initiated, so a violation is thrown synchronously
+        // from the AI Service method (like a configuration error), not delivered via the future.
+        // This test pins that behavior: changing it to a failed future should be a deliberate decision.
+        AssistantWithInputGuardrail assistant = AiServices.builder(AssistantWithInputGuardrail.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("Berlin"))
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("Hi"))
+                .isInstanceOf(InputGuardrailException.class)
+                .hasMessageContaining("User message is not valid");
+    }
+
+    interface AssistantReturningRawFuture {
+
+        @SuppressWarnings("rawtypes")
+        CompletableFuture chat(String userMessage);
+    }
+
+    @Test
+    void should_fail_when_completable_future_is_not_parameterized() {
+
+        assertThatThrownBy(() -> AiServices.builder(AssistantReturningRawFuture.class)
+                        .chatModel(ChatModelMock.thatAlwaysResponds("Berlin"))
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must be parameterized with a concrete type");
+    }
+
+    interface AssistantReturningWildcardFuture {
+
+        CompletableFuture<?> chat(String userMessage);
+    }
+
+    @Test
+    void should_fail_when_completable_future_is_parameterized_with_wildcard() {
+
+        assertThatThrownBy(() -> AiServices.builder(AssistantReturningWildcardFuture.class)
+                        .chatModel(ChatModelMock.thatAlwaysResponds("Berlin"))
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must be parameterized with a concrete type");
+    }
+}

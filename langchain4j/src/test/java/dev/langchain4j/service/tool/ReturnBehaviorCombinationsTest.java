@@ -47,6 +47,8 @@ class ReturnBehaviorCombinationsTest {
     interface Assistant {
         Result<String> chat(String message);
 
+        CompletableFuture<Result<String>> chatAsync(String message);
+
         String chatString(String message);
 
         void chatVoid(String message);
@@ -210,6 +212,41 @@ class ReturnBehaviorCombinationsTest {
                 .build();
 
         Result<String> result = assistant.chat("go");
+
+        if (expectedOutcome == RETURN_IMMEDIATELY) {
+            assertThat(model.requests())
+                    .as("immediate return means a single LLM call (no reprocessing round trip)")
+                    .hasSize(1);
+            assertThat(result.content())
+                    .as("immediate return means no LLM-generated text content")
+                    .isNull();
+        } else {
+            assertThat(model.requests())
+                    .as("REPROCESS means a second LLM call to consume the tool results")
+                    .hasSize(2);
+            assertThat(result.content())
+                    .as("REPROCESS means the second LLM response wins")
+                    .isEqualTo("final answer");
+        }
+    }
+
+    @ParameterizedTest(name = "{0} -> {1}")
+    @MethodSource("combinations")
+    void should_produce_expected_outcome__async(List<ToolStep> steps, Outcome expectedOutcome) throws Exception {
+
+        List<ToolExecutionRequest> toolRequests = toolRequestsFor(steps);
+
+        // First LLM response: the tool calls under test.
+        // Second LLM response: a final text answer, consumed only when the loop reprocesses.
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(toolRequests.toArray(new ToolExecutionRequest[0])), AiMessage.from("final answer"));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .tools(new Tools())
+                .build();
+
+        Result<String> result = assistant.chatAsync("go").get(10, TimeUnit.SECONDS);
 
         if (expectedOutcome == RETURN_IMMEDIATELY) {
             assertThat(model.requests())
