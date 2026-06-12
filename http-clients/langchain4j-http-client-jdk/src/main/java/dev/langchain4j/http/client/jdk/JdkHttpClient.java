@@ -6,10 +6,11 @@ import static java.util.stream.Collectors.joining;
 
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
+import dev.langchain4j.http.client.FormDataFile;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
-import dev.langchain4j.http.client.FormDataFile;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import java.io.BufferedReader;
@@ -20,7 +21,9 @@ import java.net.URI;
 import java.net.http.HttpRequest.BodyPublisher;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.net.http.HttpResponse.BodySubscribers;
 import java.net.http.HttpTimeoutException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
 
@@ -58,7 +61,7 @@ public class JdkHttpClient implements HttpClient {
         } catch (HttpTimeoutException e) {
             throw new TimeoutException(e);
         } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();  
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -69,6 +72,47 @@ public class JdkHttpClient implements HttpClient {
     public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
         java.net.http.HttpRequest jdkRequest = toJdkRequest(request);
 
+        // The default parser can be driven by a Flow.Subscriber<String> directly, which avoids
+        // pinning a thread of HttpClient#executor() for the entire stream. Custom parsers are
+        // still served by the legacy InputStream-based path because they may rely on it.
+        if (parser instanceof DefaultServerSentEventParser) {
+            executeAsync(jdkRequest, listener);
+        } else {
+            executeBlocking(jdkRequest, parser, listener);
+        }
+    }
+
+    private void executeAsync(java.net.http.HttpRequest jdkRequest, ServerSentEventListener listener) {
+        JdkSseSubscriber subscriber = new JdkSseSubscriber(listener);
+
+        delegate.sendAsync(jdkRequest, responseInfo -> {
+                    if (isSuccessful(responseInfo.statusCode())) {
+                        SuccessfulHttpResponse response = SuccessfulHttpResponse.builder()
+                                .statusCode(responseInfo.statusCode())
+                                .headers(responseInfo.headers().map())
+                                .build();
+                        ignoringExceptions(() -> listener.onOpen(response));
+                        return BodySubscribers.fromLineSubscriber(subscriber);
+                    }
+                    return BodySubscribers.mapping(BodySubscribers.ofString(StandardCharsets.UTF_8), body -> {
+                        HttpException exception = new HttpException(responseInfo.statusCode(), body);
+                        ignoringExceptions(() -> listener.onError(exception));
+                        return null;
+                    });
+                })
+                .exceptionally(throwable -> {
+                    Throwable cause = unwrap(throwable);
+                    if (cause instanceof HttpTimeoutException) {
+                        ignoringExceptions(() -> listener.onError(new TimeoutException(cause)));
+                    } else {
+                        ignoringExceptions(() -> listener.onError(cause));
+                    }
+                    return null;
+                });
+    }
+
+    private void executeBlocking(
+            java.net.http.HttpRequest jdkRequest, ServerSentEventParser parser, ServerSentEventListener listener) {
         delegate.sendAsync(jdkRequest, BodyHandlers.ofInputStream())
                 .thenAccept(jdkResponse -> {
                     if (!isSuccessful(jdkResponse)) {
@@ -88,10 +132,11 @@ public class JdkHttpClient implements HttpClient {
                     }
                 })
                 .exceptionally(throwable -> {
-                    if (throwable.getCause() instanceof HttpTimeoutException) {
-                        ignoringExceptions(() -> listener.onError(new TimeoutException(throwable)));
+                    Throwable cause = unwrap(throwable);
+                    if (cause instanceof HttpTimeoutException) {
+                        ignoringExceptions(() -> listener.onError(new TimeoutException(cause)));
                     } else {
-                        ignoringExceptions(() -> listener.onError(throwable));
+                        ignoringExceptions(() -> listener.onError(cause));
                     }
                     return null;
                 });
@@ -146,8 +191,20 @@ public class JdkHttpClient implements HttpClient {
     }
 
     private static boolean isSuccessful(java.net.http.HttpResponse<?> response) {
-        int statusCode = response.statusCode();
+        return isSuccessful(response.statusCode());
+    }
+
+    private static boolean isSuccessful(int statusCode) {
         return statusCode >= 200 && statusCode < 300;
+    }
+
+    private static Throwable unwrap(Throwable throwable) {
+        if ((throwable instanceof java.util.concurrent.CompletionException
+                        || throwable instanceof java.util.concurrent.ExecutionException)
+                && throwable.getCause() != null) {
+            return throwable.getCause();
+        }
+        return throwable;
     }
 
     private static String readBody(java.net.http.HttpResponse<InputStream> response) {
