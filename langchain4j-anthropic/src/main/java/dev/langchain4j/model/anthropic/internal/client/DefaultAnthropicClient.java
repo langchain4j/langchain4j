@@ -315,7 +315,16 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     streamingHandle = toStreamingHandle(context.parsingHandle());
                 }
 
-                AnthropicStreamingData data = fromJson(event.data(), AnthropicStreamingData.class);
+                // Skip events with null/empty data or data that is not a JSON object.
+                // Some proxies (e.g. Azure) send SSE keep-alive events with array or
+                // other non-object payloads that cannot be deserialized into
+                // AnthropicStreamingData. See https://github.com/langchain4j/langchain4j/issues/5353
+                String rawData = event.data();
+                if (isNullOrEmpty(rawData) || rawData.charAt(0) != '{') {
+                    return;
+                }
+
+                AnthropicStreamingData data = fromJson(rawData, AnthropicStreamingData.class);
 
                 if ("message_start".equals(event.event())) {
                     handleMessageStart(data);
