@@ -2335,6 +2335,264 @@ To customize the convergence check or the number of rounds:
         positions.stream().allMatch(p -> p.toString().contains("AGREE"))))  // custom convergence
 ```
 
+### Hierarchical Task Network (HTN) agentic pattern
+
+All the patterns discussed so far either discover execution order at runtime (GOAP, blackboard, P2P) or assume a flat list of agents (voting, debate). The Hierarchical Task Network (HTN) pattern takes a different approach: the user defines a **task tree** where compound tasks decompose into sub-tasks through **decomposition methods**, and primitive (leaf) tasks map directly to agents. The planner uses **SHOP(Simple Hierarchical Ordered Planner)-style forward decomposition** — it processes tasks in order, evaluates method guards against the current world state, and applies effects for forward reasoning.
+
+HTN is a natural fit when a workflow is inherently hierarchical: producing a report by gathering data, summarizing, charting, and compiling; processing an order through conditional fulfillment paths; or orchestrating a pipeline where some steps have fixed sub-steps, others depend on runtime conditions, and others are determined by an LLM.
+
+| Aspect | GOAP | HTN |
+|--------|------|-----|
+| Direction | Backward (goal → start) | Forward (start → goal) |
+| Structure | Flat action sequence | Hierarchical task tree |
+| Planning | Search via preconditions/effects | Method selection via guards/effects |
+| Preserves | What (goal state) | How (hierarchical structure) |
+| Best for | Dependency-driven pipelines | Naturally hierarchical workflows |
+
+The task tree is built from two node types via the `TaskNode` sealed interface:
+
+- **Primitive tasks** — leaves that reference an agent by class literal, with optional preconditions and effects
+- **Compound tasks** — internal nodes with one or more `DecompositionMethod`s that define how to break the task into subtasks
+
+```java
+public sealed interface TaskNode {
+    String name();
+
+    record PrimitiveTask(Class<?> agentType, AgentInstance agentInstance,
+                         Predicate<AgenticScope> precondition,
+                         Consumer<AgenticScope> effect) implements TaskNode {
+        @Override
+        public String name() {
+            return agentInstance != null ? agentInstance.name() : agentType.getSimpleName();
+        }
+    }
+
+    record CompoundTask(String name, DecompositionMethod... methods) implements TaskNode {}
+}
+```
+
+Primitives can be created either by **class literal** (e.g. `primitive(FindVenues.class)`) — type-safe, refactoring-safe, resolved at planning time or directly by **`AgentInstance`** (e.g. `primitive(myAgent)`). The `primitives(...)` varargs variants return a `List<TaskNode>`, which is convenient in `DecompositionStrategy` lambdas and `DecompositionMethod` factory methods that accept a list.
+
+Primitive tasks can carry a **precondition** (`Predicate<AgenticScope>`) and an **effect** (`Consumer<AgenticScope>`):
+
+- **Preconditions** are checked during tree traversal. A failed precondition causes the planner to report a planning failure.
+- **Effects** are applied during tree traversal to update the scope state, enabling downstream method guards to reason about the state produced by earlier tasks.
+
+This is the key mechanism for SHOP-style forward reasoning — effects let the planner decide which decomposition path to take:
+
+```java
+// The effect writes orderType during traversal, so the "fulfill" decomposition methods
+// can evaluate their guards based on the updated scope state
+primitive(ValidateOrder.class,
+        scope -> scope.writeState("orderType", "DIGITAL"))
+```
+
+#### Decomposition methods
+
+A `DecompositionMethod` pairs a **guard** (`Predicate<AgenticScope>`) with a **`DecompositionStrategy`** that produces the subtasks. Static subtasks are simply strategies that return a fixed list:
+
+```java
+public record DecompositionMethod(Predicate<AgenticScope> guard, DecompositionStrategy strategy) {
+}
+```
+
+When a compound task has multiple decomposition methods, the planner evaluates their guards in order and selects the first matching one. Methods without a guard always match (they act as fallbacks).
+
+A `DecompositionStrategy` is a functional interface for dynamic subtask computation:
+
+```java
+@FunctionalInterface
+public interface DecompositionStrategy {
+    List<TaskNode> decompose(AgenticScope scope, Map<Class<?>, AgentInstance> agentsByType);
+}
+```
+
+#### SHOP-style planning
+
+The `HtnPlanner` implements SHOP-style forward decomposition. On each `nextAction()` call it traverses the tree depth-first from the root and returns the first executable primitive it finds:
+
+1. **Primitive tasks** — the planner checks the precondition against the current scope state. If it passes, the effect is applied and the task is returned as the next action. If it fails, planning stops with an error.
+2. **Compound tasks** — the planner evaluates decomposition method guards in order and expands the first match. If no guard matches, planning stops with an error.
+3. **Completed tasks** — primitives already executed (tracked in the completed set) are skipped, so each call naturally advances to the next unfinished task.
+
+The planner supports duplicate agent names (the same agent can appear multiple times in the tree) by using counter-suffixed keys (e.g. `"queryRevenue#0"`, `"queryRevenue#1"`) in the completed set. For crash recovery, the completed set is persisted via `executionState()`/`restoreExecutionState()`, and on recovery the planner skips already-completed tasks.
+
+#### Static tree example
+
+Here is an example that produces an annual report through a hierarchical workflow of 6 agents across 3 levels:
+
+```java
+TaskNode tree = compound("Produce Annual Report",
+        compound("Gather Financial Data",
+                primitive(QueryRevenue.class),
+                primitive(QueryExpenses.class)
+        ),
+        primitive(WriteSummary.class),
+        compound("Generate Charts",
+                primitive(CreateRevenueChart.class),
+                primitive(CreateExpenseChart.class)
+        ),
+        primitive(CompileAndFormat.class)
+);
+```
+
+Wire it up with `AgenticServices.plannerBuilder()`:
+
+```java
+AnnualReportProducer producer = AgenticServices.plannerBuilder(AnnualReportProducer.class)
+        .subAgents(queryRevenue, queryExpenses, writeSummary,
+                createRevenueChart, createExpenseChart, compileAndFormat)
+        .outputKey("finalReport")
+        .planner(() -> new HtnPlanner(tree))
+        .build();
+
+ResultWithAgenticScope<String> result = producer.produce();
+```
+
+The depth-first walk produces this execution sequence:
+
+```
+1. Decompose "Produce Annual Report" → 4 children
+2. Decompose "Gather Financial Data" → 2 children
+3. Execute queryRevenue           → writes revenue data to scope
+4. Execute queryExpenses          → writes expense data to scope
+5. Execute writeSummary           → writes summary to scope
+6. Decompose "Generate Charts"   → 2 children
+7. Execute createRevenueChart     → writes chart to scope
+8. Execute createExpenseChart     → writes chart to scope
+9. Execute compileAndFormat       → writes final report to scope
+```
+
+#### Conditional decomposition with preconditions and effects
+
+Method guards combined with primitive effects enable rich conditional workflows. Effects on upstream primitives update the scope state before downstream method guards are evaluated, enabling forward reasoning:
+
+```java
+TaskNode tree = compound("Process Order",
+        primitive(ValidateOrder.class,
+                scope -> scope.writeState("orderType", "DIGITAL")),
+        compound("fulfill",
+                decompose(
+                        scope -> scope.readState("orderType", "").contains("DIGITAL"),
+                        primitive(SendDownloadLink.class)),
+                decompose(
+                        scope -> scope.readState("orderType", "").contains("PHYSICAL"),
+                        primitives(CheckInventory.class, ShipOrder.class)),
+                decompose(
+                        primitive(ManualReview.class))),
+        primitive(SendConfirmation.class,
+                scope -> scope.hasState("orderType"), null)
+);
+```
+
+Here the effect on `validateOrder` writes `orderType=DIGITAL` to the scope during traversal, so the planner selects the first method (digital) and returns: `validateOrder → sendDownloadLink → sendConfirmation` across successive `nextAction()` calls. The last method (no guard) acts as a catch-all if neither digital nor physical matches.
+
+The `sendConfirmation` primitive has a precondition requiring `orderType` to be present — this is verified during traversal where the effect already set it.
+
+#### Dynamic decomposition
+
+For workflows where the structure depends on runtime data, use a `DecompositionStrategy` as a lambda:
+
+```java
+TaskNode tree = compound("root",
+        primitive(FetchData.class),
+        compound("process", (scope, agentsByType) -> {
+            boolean useDetailed = scope.readState("useDetailed", false);
+            if (useDetailed) {
+                return primitives(DetailedAnalysis.class, DetailedReport.class);
+            } else {
+                return primitives(QuickSummary.class);
+            }
+        }),
+        primitive(Finalize.class)
+);
+```
+
+When a dynamic strategy returns an empty list, the compound task contributes no children and the traversal continues past it. Since the planner re-traverses the tree on every `nextAction()` call, an empty strategy that later returns results (because upstream agents have now populated the scope) will be expanded on a subsequent call.
+
+#### LLM-driven decomposition
+
+The `DecompositionStrategy` can also delegate decomposition to an LLM, making it a "micro-supervisor" that produces a deterministic plan up front rather than deciding one agent at a time. The `langchain4j-agentic-patterns` module provides `LlmDecompositionStrategy` for this purpose. It takes a `ChatModel`, a scope key containing the context for the decision, and optionally the candidate agent types to consider:
+
+```java
+// Filter by class literal — only these agents are candidates
+new LlmDecompositionStrategy(chatModel, "eventAnalysis",
+        FindVenues.class, PlanCatering.class, ArrangeTransportation.class, DesignActivities.class)
+
+// No filter — all subagents are candidates
+new LlmDecompositionStrategy(chatModel, "eventAnalysis")
+```
+
+When invoked, the strategy reads the context from the scope, builds an agent catalog from the `agentsByType` map (filtering to the specified candidates, or using all agents if none are specified), prompts the LLM via AiServices structured output to select and order the relevant agents, and returns the result as a list of `primitive()` nodes.
+
+If the context key is blank (the upstream agent hasn't produced it yet), the strategy returns an empty list. Since the planner re-traverses the tree on each `nextAction()` call, the strategy will be invoked again after upstream agents have populated the context.
+
+This makes it straightforward to combine fixed hierarchical structure with autonomous agent selection:
+
+```java
+TaskNode tree = compound("Plan Event",
+        primitive(AnalyzeRequest.class),
+        compound("execute-plan", new LlmDecompositionStrategy(
+                chatModel, "eventAnalysis",
+                FindVenues.class, PlanCatering.class,
+                ArrangeTransportation.class, DesignActivities.class)),
+        primitive(CreateBudget.class),
+        primitive(CompilePlan.class)
+);
+```
+
+The outer tree has fixed structure — always analyze first, always budget and compile last — but the middle compound task is fully LLM-driven. Unlike a supervisor, which decides the next agent after each execution, `LlmDecompositionStrategy` commits to a full plan up front, which is then executed deterministically by the HTN planner.
+
+#### Recursive LLM-driven decomposition
+
+For tasks with unknown depth, `LlmDecompositionStrategy` supports recursive decomposition via a `maxDepth` parameter. With `maxDepth > 1`, the LLM can decide not only which agents to invoke but also which parts of the task need further decomposition. At each level the LLM can return either a direct agent invocation (a primitive task) or a subtask that will itself be decomposed by another LLM call at the next level:
+
+```java
+TaskNode tree = compound("Launch Product",
+        primitive(AnalyzeProduct.class),
+        compound("launch-strategy", new LlmDecompositionStrategy(
+                chatModel, "productAnalysis", 3,    // maxDepth = 3 levels
+                DefineAudience.class, CraftMessaging.class,
+                PlanDigitalMarketing.class, CreatePRStrategy.class,
+                PlanLaunchEvent.class)),
+        primitive(CompileLaunchPlan.class)
+);
+```
+
+With `maxDepth=1` (the default), the LLM returns only direct agent invocations. With `maxDepth > 1`, each step can be either a direct invocation or a subtask for further decomposition. For example, given a SaaS product launch the LLM might produce:
+
+```
+Level 0: defineAudience → {subtask: "marketing", description: "..."} → planLaunchEvent
+Level 1 (marketing): craftMessaging → planDigitalMarketing → createPRStrategy
+```
+
+This creates a multi-level task tree autonomously, while the HTN planner still executes each leaf deterministically.
+
+#### Hybrid workflows
+
+The real power of HTN emerges when combining decomposition methods, LLM-driven decomposition, guards, and effects in a single tree. For example, a system design workflow that uses guarded methods for complexity routing and an LLM strategy for the detailed design phase:
+
+```java
+TaskNode tree = compound("Design System",
+        primitive(AnalyzeRequirements.class,
+                scope -> scope.writeState("complexity", "HIGH")),
+        compound("design-phase",
+                decompose(
+                        scope -> scope.readState("complexity", "").contains("HIGH"),
+                        primitive(ArchitectureReview.class),
+                        compound("detailed-design", new LlmDecompositionStrategy(
+                                baseModel(), "requirements",
+                                DesignDatabase.class, DesignAPI.class, DesignUI.class))),
+                decompose(
+                        primitive(QuickDesign.class))),
+        primitive(CreateTimeline.class)
+);
+```
+
+Here the effect on `AnalyzeRequirements` writes `complexity=HIGH` during traversal, causing the planner to select the first method (the complex path). This path includes a static `ArchitectureReview` step followed by an LLM-driven `detailed-design` compound that autonomously selects from the database, API, and UI design agents. If the complexity were LOW, the planner would instead select the second method with just a `QuickDesign` step.
+
+Of course a custom `DecompositionStrategy` can be implemented as a lambda for full control over the decomposition logic.
+
 ## Non-AI agents
 
 All the agents discussed so far are AI agents, meaning that they are based on LLMs and can be invoked to perform tasks that require natural language understanding and generation. However, the `langchain4j-agentic` module also supports non-AI agents, which can be used to perform tasks that do not require natural language processing, like invoking a REST API or executing a command. These non-AI agents are indeed more similar to tools, but in this context it is convenient to model them as agents, so that they can be used in the same way as AI agents, and mixed with them to compose more powerful and complete agentic systems.
