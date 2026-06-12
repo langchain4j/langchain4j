@@ -21,6 +21,7 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.internal.Json;
+import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.TokenStream;
 import java.lang.annotation.Annotation;
@@ -46,6 +47,7 @@ public class AgentUtil {
     public static final String MEMORY_ID_ARG_NAME = "@MemoryId";
     public static final String AGENTIC_SCOPE_ARG_NAME = "@AgenticScope";
     public static final String LOOP_COUNTER_ARG_NAME = "@LoopCounter";
+    public static final String INVOCATION_PARAMETERS_ARG_NAME = "@InvocationParameters";
 
     private static final Map<Class<? extends TypedKey<?>>, TypedKey<?>> STATE_INSTANCES = new ConcurrentHashMap<>();
 
@@ -200,6 +202,9 @@ public class AgentUtil {
         if (AgenticScope.class.isAssignableFrom(p.getType())) {
             return AGENTIC_SCOPE_ARG_NAME;
         }
+        if (InvocationParameters.class.isAssignableFrom(p.getType())) {
+            return INVOCATION_PARAMETERS_ARG_NAME;
+        }
         return AgentInvoker.parameterName(p);
     }
 
@@ -233,6 +238,11 @@ public class AgentUtil {
             }
             if (argName.equals(AGENTIC_SCOPE_ARG_NAME)) {
                 positionalArgs[i++] = agenticScope;
+                continue;
+            }
+            if (argName.equals(INVOCATION_PARAMETERS_ARG_NAME)) {
+                InvocationParameters params = agenticScope.executionContextAs(InvocationParameters.class);
+                positionalArgs[i++] = params != null ? params : new InvocationParameters();
                 continue;
             }
             if (additionalArgs.containsKey(argName)) {
