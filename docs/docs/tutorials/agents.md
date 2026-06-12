@@ -2213,105 +2213,13 @@ The patterns discussed so far either dispatch agents once (voting), activate the
 
 This pattern is especially useful for fact-checking, risk assessment, code review, and any domain where exposing agents to competing arguments improves output quality. By forcing agents to confront and respond to each other's reasoning, the debate pattern catches issues that any single agent might miss and filters out false positives through adversarial scrutiny.
 
-The `DebatePlanner` partitions its sub-agents into *debaters* (all but the last) and a *judge* (the last registered sub-agent). It dispatches all debaters in parallel each round, collects their outputs, and checks for convergence:
+This pattern is implemented through a `DebatePlanner` that partitions its sub-agents into *debaters* (all but the last) and a *judge* (the last registered sub-agent). The planner is configured with two parameters: `maxRounds` (default 3) and a `ConvergenceStrategy` (default `unanimous()`).
 
-```java
-public class DebatePlanner implements Planner {
+During initialization, the planner validates that at least three sub-agents are registered (two debaters and one judge) and splits the list accordingly. The first action seeds an empty `debateContext` key in the `AgenticScope` — this is necessary because debater agents reference this key via `@V(DEBATE_CONTEXT_KEY)`, and without it the first round would fail with a `MissingArgumentException`. It then dispatches all debaters in parallel.
 
-    public static final String DEBATE_CONTEXT_KEY = "debateContext";
+As each debater completes, `nextAction` is called (serialized under the framework's lock). The planner records each output in a map keyed by agent name and returns `noOp()` until all debaters have finished. Once all responses are collected, it checks two conditions: whether the `ConvergenceStrategy` reports convergence, and whether the current round has reached `maxRounds`. In either case, the planner enters the judge phase — it formats the debate context as `AgentName: "response"` entries (one per line), writes it to the scope, and dispatches the judge agent. When the judge completes, the planner returns `done()` with the judge's output as the final result. If neither convergence nor the round limit is reached, the planner writes the current debate context to the scope, increments the round counter, and re-dispatches all debaters for another critique round where they can see and respond to each other's prior arguments.
 
-    private static final int DEFAULT_MAX_ROUNDS = 3;
-
-    private final int maxRounds;
-    private final ConvergenceStrategy convergenceStrategy;
-
-    private List<AgentInstance> debaters;
-    private AgentInstance judge;
-
-    private int currentRound = 1;
-    private int completedInRound = 0;
-    private final Map<String, Object> lastDebatersMessages = new HashMap<>();
-    private boolean judgePhase = false;
-
-    public DebatePlanner() {
-        this(DEFAULT_MAX_ROUNDS, ConvergenceStrategy.unanimous());
-    }
-
-    public DebatePlanner(int maxRounds, ConvergenceStrategy convergenceStrategy) {
-        this.maxRounds = maxRounds;
-        this.convergenceStrategy = convergenceStrategy;
-    }
-
-    @Override
-    public void init(InitPlanningContext initPlanningContext) {
-        List<AgentInstance> subagents = initPlanningContext.subagents();
-        this.debaters = new ArrayList<>(subagents.subList(0, subagents.size() - 1));
-        this.judge = subagents.get(subagents.size() - 1);
-    }
-
-    @Override
-    public Action firstAction(PlanningContext planningContext) {
-        planningContext.agenticScope().writeState(DEBATE_CONTEXT_KEY, "");
-        return call(debaters);
-    }
-
-    @Override
-    public Action nextAction(PlanningContext planningContext) {
-        if (judgePhase) {
-            return done(planningContext.previousAgentInvocation().output());
-        }
-
-        lastDebatersMessages.put(
-                planningContext.previousAgentInvocation().agentName(),
-                planningContext.previousAgentInvocation().output());
-        completedInRound++;
-
-        if (completedInRound < debaters.size()) {
-            return noOp();
-        }
-
-        AgenticScope scope = planningContext.agenticScope();
-
-        if (convergenceStrategy.hasConverged(lastDebatersMessages.values())) {
-            judgePhase = true;
-        }
-        if (currentRound >= maxRounds) {
-            judgePhase = true;
-        }
-
-        if (judgePhase) {
-            writeDebateContext(scope);
-            return call(judge);
-        }
-
-        currentRound++;
-        completedInRound = 0;
-        writeDebateContext(scope);
-        return call(debaters);
-    }
-
-    private void writeDebateContext(AgenticScope scope) {
-        String debatersContext = lastDebatersMessages.entrySet().stream()
-                .map(e -> e.getKey() + ": \"" + e.getValue() + "\"")
-                .collect(Collectors.joining("\n"));
-        scope.writeState(DEBATE_CONTEXT_KEY, debatersContext);
-    }
-}
-```
-
-In `firstAction`, the planner seeds an empty `debateContext` key in the scope (so that debater agents can reference it without error on round 1) and dispatches all debaters in parallel. Each call records the completed agent's output in a map keyed by agent name. When all debaters have finished, the planner checks for convergence using the `ConvergenceStrategy`. Whether the debaters converge or the maximum number of rounds is reached, the judge agent is always invoked — it receives the debate context (formatted as `AgentName: "response"` entries) and renders a final verdict. If neither condition is met, the planner writes the current debate context into the scope and re-dispatches all debaters for another round.
-
-The `ConvergenceStrategy` is a functional interface that determines whether the debaters' positions have converged:
-
-```java
-@FunctionalInterface
-public interface ConvergenceStrategy {
-
-    boolean hasConverged(Collection<Object> positions);
-}
-```
-
-The default `unanimous()` strategy checks for exact equality across all positions, which works well for label-based decisions (e.g., APPROVE/REJECT). For free-text positions, users should provide a custom strategy based on semantic similarity or keyword matching.
+The `ConvergenceStrategy` is a functional interface with a single method `hasConverged(Collection<Object> positions)`. Two built-in strategies are provided: `unanimous()` checks for exact equality across all positions (suitable for label-based decisions like APPROVE/REJECT), and `unanimousLastWord()` extracts the last word from each position, normalizes it to uppercase, and checks that all agents ended with the same verdict. For more nuanced convergence logic — such as semantic similarity or threshold-based agreement — users can supply a custom strategy as a lambda.
 
 To see this pattern in action, let's build a debate panel where three ethics debaters argue from different philosophical perspectives, and a judge synthesizes their arguments into a final verdict:
 
