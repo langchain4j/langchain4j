@@ -135,11 +135,29 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
         private BedrockRuntimeClient client;
         private Integer maxRetries;
 
+        /**
+         * Sets a pre-configured {@link BedrockRuntimeClient} to use for API calls.
+         * <p>
+         * Use this when you need full control over the AWS client configuration
+         * (credentials, region, endpoint overrides, etc.).
+         * When set, the {@link #region(Region)} setting is ignored.
+         *
+         * @param client the Bedrock runtime client
+         * @return {@code this}
+         */
         public Builder client(BedrockRuntimeClient client) {
             this.client = client;
             return this;
         }
 
+        /**
+         * Sets the number of times to retry a request on transient errors (e.g. throttling, server errors).
+         * <p>
+         * Defaults to {@code 2}.
+         *
+         * @param maxRetries the maximum number of retry attempts
+         * @return {@code this}
+         */
         public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
