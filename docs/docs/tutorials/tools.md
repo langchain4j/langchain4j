@@ -1596,9 +1596,10 @@ Assistant assistant = AiServices.builder(Assistant.class)
         .build();
 ```
 
-The `error` argument is the unwrapped cause. Use `errorContext.rawError()`
-to access the raw error as thrown, before cause-unwrapping — useful when the wrapper type
-(not the cause) determines how the error should be handled.
+When a tool throws an exception that wraps another (e.g. `ToolGuardrailException` wrapping `SecurityException`),
+LangChain4j extracts the inner cause via `getCause()` and passes it as the `error` argument.
+Use `errorContext.rawError()` to access the outer exception as originally thrown — useful when the
+wrapper type (not the cause) determines how the error should be handled.
 
 #### Handling Tool Execution Errors
 
