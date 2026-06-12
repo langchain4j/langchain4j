@@ -22,6 +22,7 @@ class ApiKeyInsertingInterceptor implements Interceptor {
         Request request = chain.request()
                 .newBuilder()
                 .addHeader("Authorization", "Bearer " + apiKey)
+                .addHeader("User-Agent", "langchain4j-hugging-face")
                 .build();
 
         return chain.proceed(request);

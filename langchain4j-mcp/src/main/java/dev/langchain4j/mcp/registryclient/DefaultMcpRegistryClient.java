@@ -158,9 +158,10 @@ public class DefaultMcpRegistryClient implements McpRegistryClient {
     }
 
     private Map<String, String> currentHeaders() {
-        Map<String, String> map = headers.get();
+        Map<String, String> map = new HashMap<>(headers.get());
         map.put("Content-Type", "application/json");
         map.put("Accept", "application/json, application/problem+json");
+        map.putIfAbsent("User-Agent", "langchain4j-mcp");
         return map;
     }
 

@@ -15,6 +15,6 @@ import java.util.List;
 public interface OvhAiApi {
 
   @POST("api/batch_text2vec")
-  @Headers({"Content-Type: application/json"})
+  @Headers({"Content-Type: application/json", "User-Agent: langchain4j-ovh-ai"})
   Call<List<float[]>> embed(@Body EmbeddingRequest request, @Header("Authorization") String authorizationHeader);
 }

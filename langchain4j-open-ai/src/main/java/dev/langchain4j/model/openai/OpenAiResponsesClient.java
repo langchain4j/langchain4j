@@ -364,6 +364,7 @@ class OpenAiResponsesClient {
                 .url(baseUrl + "/responses")
                 .method(HttpMethod.POST)
                 .addHeader("Content-Type", "application/json")
+                .addHeader("User-Agent", "langchain4j-openai")
                 .addHeader("Accept", stream ? "text/event-stream" : "application/json");
 
         if (apiKey != null && !apiKey.isBlank()) {
