@@ -646,6 +646,7 @@ Details on how to integrate the Micrometer Observation API library with SpringBo
 ## Third-party Integrations
 
 - [Arize Phoenix](https://github.com/Arize-ai/phoenix)
+- [Future AGI](https://github.com/future-agi/traceAI/tree/main/java/traceai-langchain4j)
 
 ### OpenTelemetry GenAI instrumentation
 
