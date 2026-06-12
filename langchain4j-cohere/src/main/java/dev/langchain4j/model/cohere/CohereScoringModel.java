@@ -1,21 +1,20 @@
 package dev.langchain4j.model.cohere;
 
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.model.scoring.ScoringModel;
-import org.slf4j.Logger;
-
-import java.net.Proxy;
-import java.time.Duration;
-import java.util.List;
-
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
 import static java.util.Comparator.comparingInt;
 import static java.util.stream.Collectors.toList;
+
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.scoring.ScoringModel;
+import java.net.Proxy;
+import java.time.Duration;
+import java.util.List;
+import org.slf4j.Logger;
 
 /**
  * An implementation of a {@link ScoringModel} that uses
@@ -38,8 +37,7 @@ public class CohereScoringModel implements ScoringModel {
             Integer maxRetries,
             Proxy proxy,
             Boolean logRequests,
-            Boolean logResponses
-    ) {
+            Boolean logResponses) {
         this.client = CohereClient.builder()
                 .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
                 .apiKey(ensureNotBlank(apiKey, "apiKey"))
@@ -85,9 +83,7 @@ public class CohereScoringModel implements ScoringModel {
         RerankRequest request = RerankRequest.builder()
                 .model(modelName)
                 .query(query)
-                .documents(segments.stream()
-                        .map(TextSegment::text)
-                        .collect(toList()))
+                .documents(segments.stream().map(TextSegment::text).collect(toList()))
                 .build();
 
         RerankResponse response = withRetryMappingExceptions(() -> client.rerank(request), maxRetries);
@@ -97,7 +93,8 @@ public class CohereScoringModel implements ScoringModel {
                 .map(Result::getRelevanceScore)
                 .collect(toList());
 
-        return Response.from(scores, new TokenUsage(response.getMeta().getBilledUnits().getSearchUnits()));
+        return Response.from(
+                scores, new TokenUsage(response.getMeta().getBilledUnits().getSearchUnits()));
     }
 
     public static class CohereScoringModelBuilder {
@@ -111,44 +108,92 @@ public class CohereScoringModel implements ScoringModel {
         private Boolean logResponses;
         private Logger logger;
 
-        CohereScoringModelBuilder() {
-        }
+        CohereScoringModelBuilder() {}
 
+        /**
+         * Sets the base URL of the Cohere API. Defaults to {@code "https://api.cohere.ai/v1/"}.
+         *
+         * @param baseUrl the base URL
+         * @return {@code this}
+         */
         public CohereScoringModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
 
+        /**
+         * Sets the Cohere API key used to authenticate requests.
+         *
+         * @param apiKey the Cohere API key
+         * @return {@code this}
+         */
         public CohereScoringModelBuilder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
         }
 
+        /**
+         * Sets the reranking model name, e.g. {@code "rerank-english-v3.0"} or
+         * {@code "rerank-multilingual-v3.0"}.
+         *
+         * @param modelName the model name
+         * @return {@code this}
+         */
         public CohereScoringModelBuilder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
+        /**
+         * Sets the HTTP request timeout. Defaults to 60 seconds.
+         *
+         * @param timeout the request timeout
+         * @return {@code this}
+         */
         public CohereScoringModelBuilder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
+        /**
+         * Sets the maximum number of retries on transient errors. Defaults to {@code 2}.
+         *
+         * @param maxRetries the maximum number of retries
+         * @return {@code this}
+         */
         public CohereScoringModelBuilder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
+        /**
+         * Sets the HTTP proxy to use for outbound requests.
+         *
+         * @param proxy the proxy
+         * @return {@code this}
+         */
         public CohereScoringModelBuilder proxy(Proxy proxy) {
             this.proxy = proxy;
             return this;
         }
 
+        /**
+         * Enables debug logging of request bodies sent to the Cohere API.
+         *
+         * @param logRequests {@code true} to enable request logging
+         * @return {@code this}
+         */
         public CohereScoringModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
+        /**
+         * Enables debug logging of response bodies received from the Cohere API.
+         *
+         * @param logResponses {@code true} to enable response logging
+         * @return {@code this}
+         */
         public CohereScoringModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
@@ -168,7 +213,10 @@ public class CohereScoringModel implements ScoringModel {
         }
 
         public String toString() {
-            return "CohereScoringModel.CohereScoringModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", modelName=" + this.modelName + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", proxy=" + this.proxy + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+            return "CohereScoringModel.CohereScoringModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey
+                    + ", modelName=" + this.modelName + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries
+                    + ", proxy=" + this.proxy + ", logRequests=" + this.logRequests + ", logResponses="
+                    + this.logResponses + ")";
         }
     }
 }
