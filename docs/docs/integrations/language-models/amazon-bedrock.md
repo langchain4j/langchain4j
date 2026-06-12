@@ -127,6 +127,15 @@ You can also set `strictTools` in `BedrockChatRequestParameters` when configurin
 or per-request parameters. Individual tools can override the model-level setting with
 `ToolSpecification.builder().strict(true)` or `ToolSpecification.builder().strict(false)`.
 
+Bedrock structured outputs support internal JSON Schema references, but do not support
+recursive schemas. If a strict Bedrock tool uses a recursive POJO schema, LangChain4j
+rejects it before sending the request. Disable strict mode for that tool with
+`ToolSpecification.builder().strict(false)`.
+
+Open map parameters also do not fit Bedrock strict schemas because strict object schemas
+are closed with `additionalProperties=false`. Use per-tool `strict(false)` for tools that
+need arbitrary map keys.
+
 ## Additional Model Request Fields
 
 The field `additionalModelRequestFields` in the `BedrockChatRequestParameters` is a `Map<String, Object>`.

@@ -69,6 +69,19 @@ class BedrockStrictToolsTest {
     }
 
     @Test
+    void per_tool_strict_false_should_leave_open_map_schema_non_strict_when_model_level_true() {
+        ToolConfiguration toolConfiguration = model.toolConfiguration(chatRequest(true, mapToolSpecification(false)));
+
+        software.amazon.awssdk.services.bedrockruntime.model.ToolSpecification toolSpecification =
+                toolConfiguration.tools().get(0).toolSpec();
+        assertThat(toolSpecification.strict()).isNull();
+
+        Map<String, Document> inputSchema = inputSchema(toolSpecification);
+        assertThat(inputSchema).doesNotContainKey("additionalProperties");
+        assertThat(inputSchema.get("properties").asMap().get("ages").asMap()).doesNotContainKey("additionalProperties");
+    }
+
+    @Test
     void per_tool_strict_null_should_fall_back_to_model_level() {
         ToolConfiguration toolConfiguration = model.toolConfiguration(chatRequest(true, toolSpecification(null)));
 
@@ -153,6 +166,22 @@ class BedrockStrictToolsTest {
                                         .required("country")
                                         .build())
                         .required("city")
+                        .build())
+                .strict(strict)
+                .build();
+    }
+
+    private static ToolSpecification mapToolSpecification(Boolean strict) {
+        return ToolSpecification.builder()
+                .name("process_ages")
+                .description("Process ages")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty(
+                                "ages",
+                                JsonObjectSchema.builder()
+                                        .description("map from name to age")
+                                        .build())
+                        .required("ages")
                         .build())
                 .strict(strict)
                 .build();
