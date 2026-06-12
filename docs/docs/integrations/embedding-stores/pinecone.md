@@ -13,7 +13,7 @@ https://www.pinecone.io/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-pinecone</artifactId>
-    <version>1.15.1-beta25</version>
+    <version>1.16.2-beta26</version>
 </dependency>
 ```
 
