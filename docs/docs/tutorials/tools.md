@@ -1579,7 +1579,7 @@ try {
 }
 ```
 
-**Selective propagation (re-throw only certain exceptions):**
+##### Accessing raw exception
 
 When a tool throws an exception that wraps another (e.g. `ToolGuardrailException` wrapping `SecurityException`),
 LangChain4j extracts the inner cause via `getCause()` and passes it as the `error` argument.
