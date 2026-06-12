@@ -7,6 +7,7 @@ import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.a2a.Agents.CreativeWriter;
+import dev.langchain4j.agentic.a2a.Agents.DeclarativeA2ACreativeWriter;
 import dev.langchain4j.agentic.a2a.Agents.StoryCreatorWithReview;
 import dev.langchain4j.agentic.a2a.Agents.StyleEditor;
 import dev.langchain4j.agentic.a2a.Agents.StyleReviewLoop;
@@ -154,6 +155,16 @@ public class A2AAgentIT {
         assertThat(agenticScope.readState("style")).isEqualTo("comedy");
         assertThat(story).isEqualTo(agenticScope.readState("story"));
         assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+    }
+
+    @Test
+    @Disabled("Requires A2A server to be running")
+    void declarative_single_a2a_agent_tests() {
+        DeclarativeA2ACreativeWriter writer =
+                AgenticServices.createAgenticSystem(DeclarativeA2ACreativeWriter.class, baseModel());
+
+        String story = writer.generateStory("dragons and wizards");
+        assertThat(story).isNotBlank();
     }
 
     public interface A2AStyleScorer {
