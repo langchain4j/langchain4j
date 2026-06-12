@@ -66,8 +66,6 @@ import org.slf4j.Logger;
 public class AnthropicChatModel implements ChatModel {
 
     private final AnthropicClient client;
-    private final boolean cacheSystemMessages;
-    private final boolean cacheTools;
     private final String thinkingType;
     private final Integer thinkingBudgetTokens;
     private final String thinkingDisplay;
@@ -75,7 +73,7 @@ public class AnthropicChatModel implements ChatModel {
     private final boolean sendThinking;
     private final int maxRetries;
     private final List<ChatModelListener> listeners;
-    private final ChatRequestParameters defaultRequestParameters;
+    private final AnthropicChatRequestParameters defaultRequestParameters;
     private final String toolChoiceName;
     private final Boolean disableParallelToolUse;
     private final List<AnthropicServerTool> serverTools;
@@ -100,8 +98,6 @@ public class AnthropicChatModel implements ChatModel {
                 .customHeaders(builder.customHeadersSupplier)
                 .build();
 
-        this.cacheSystemMessages = getOrDefault(builder.cacheSystemMessages, false);
-        this.cacheTools = getOrDefault(builder.cacheTools, false);
         this.thinkingType = builder.thinkingType;
         this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
         this.thinkingDisplay = builder.thinkingDisplay;
@@ -127,7 +123,13 @@ public class AnthropicChatModel implements ChatModel {
             commonParameters = DefaultChatRequestParameters.EMPTY;
         }
 
-        this.defaultRequestParameters = DefaultChatRequestParameters.builder()
+        AnthropicChatRequestParameters anthropicParameters = builder.defaultRequestParameters
+                        instanceof AnthropicChatRequestParameters anthropicChatRequestParameters
+                ? anthropicChatRequestParameters
+                : AnthropicChatRequestParameters.EMPTY;
+
+        this.defaultRequestParameters = AnthropicChatRequestParameters.builder()
+                // common parameters
                 .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
@@ -138,6 +140,10 @@ public class AnthropicChatModel implements ChatModel {
                 .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
                 .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                // Anthropic-specific parameters
+                .cacheSystemMessages(
+                        getOrDefault(builder.cacheSystemMessages, anthropicParameters.cacheSystemMessages()))
+                .cacheTools(getOrDefault(builder.cacheTools, anthropicParameters.cacheTools()))
                 .build();
     }
 
@@ -469,11 +475,14 @@ public class AnthropicChatModel implements ChatModel {
         }
 
         /**
-         * Enables prompt caching for {@link SystemMessage}s.
+         * Enables prompt caching for {@link SystemMessage}s by default.
          * <p>
          * When {@code true}, system messages are sent with the {@code cache_control} header to allow
          * Anthropic to cache them across requests, reducing cost and latency for repeated prompts.
          * See the <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching">prompt caching docs</a>.
+         * <p>
+         * Can be overridden per request via
+         * {@link AnthropicChatRequestParameters.Builder#cacheSystemMessages(Boolean)}.
          *
          * @param cacheSystemMessages whether to cache system messages
          * @return {@code this}
@@ -484,11 +493,14 @@ public class AnthropicChatModel implements ChatModel {
         }
 
         /**
-         * Enables prompt caching for {@link ToolSpecification}s.
+         * Enables prompt caching for {@link ToolSpecification}s by default.
          * <p>
          * When {@code true}, tool definitions are sent with the {@code cache_control} header to allow
          * Anthropic to cache them across requests.
          * See the <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching">prompt caching docs</a>.
+         * <p>
+         * Can be overridden per request via
+         * {@link AnthropicChatRequestParameters.Builder#cacheTools(Boolean)}.
          *
          * @param cacheTools whether to cache tool definitions
          * @return {@code this}
@@ -745,14 +757,15 @@ public class AnthropicChatModel implements ChatModel {
 
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
-        validate(chatRequest.parameters());
+        AnthropicChatRequestParameters parameters = (AnthropicChatRequestParameters) chatRequest.parameters();
+        validate(parameters);
 
         AnthropicCreateMessageRequest anthropicRequest = createAnthropicRequest(
                 chatRequest,
                 toThinking(thinkingType, thinkingBudgetTokens, thinkingDisplay),
                 sendThinking,
-                cacheSystemMessages ? EPHEMERAL : NO_CACHE,
-                cacheTools ? EPHEMERAL : NO_CACHE,
+                getOrDefault(parameters.cacheSystemMessages(), false) ? EPHEMERAL : NO_CACHE,
+                getOrDefault(parameters.cacheTools(), false) ? EPHEMERAL : NO_CACHE,
                 false,
                 toolChoiceName,
                 disableParallelToolUse,
@@ -806,7 +819,7 @@ public class AnthropicChatModel implements ChatModel {
     }
 
     @Override
-    public ChatRequestParameters defaultRequestParameters() {
+    public AnthropicChatRequestParameters defaultRequestParameters() {
         return defaultRequestParameters;
     }
 
