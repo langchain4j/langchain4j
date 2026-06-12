@@ -15,6 +15,7 @@ import io.milvus.exception.ParamException;
 import io.milvus.response.QueryResultsWrapper;
 import io.milvus.response.QueryResultsWrapper.RowRecord;
 import io.milvus.response.SearchResultsWrapper;
+import io.milvus.param.MetricType;
 
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
@@ -51,9 +52,10 @@ class Mapper {
     }
 
     static List<JsonObject> toMetadataJsons(List<TextSegment> textSegments, int size) {
-        return isNullOrEmpty(textSegments) ? generateEmptyJsons(size) : textSegments.stream()
-                .map(segment -> GSON.toJsonTree(segment.metadata().toMap()).getAsJsonObject())
-                .collect(toList());
+        return isNullOrEmpty(textSegments) ? generateEmptyJsons(size)
+                : textSegments.stream()
+                        .map(segment -> GSON.toJsonTree(segment.metadata().toMap()).getAsJsonObject())
+                        .collect(toList());
     }
 
     static List<String> textSegmentsToScalars(List<TextSegment> textSegments) {
@@ -63,18 +65,21 @@ class Mapper {
     }
 
     static List<EmbeddingMatch<TextSegment>> toEmbeddingMatches(MilvusServiceClient milvusClient,
-                                                                SearchResultsWrapper resultsWrapper,
-                                                                String collectionName,
-                                                                FieldDefinition fieldDefinition,
-                                                                ConsistencyLevelEnum consistencyLevel,
-                                                                boolean queryForVectorOnSearch) {
+            SearchResultsWrapper resultsWrapper,
+            String collectionName,
+            FieldDefinition fieldDefinition,
+            ConsistencyLevelEnum consistencyLevel,
+            MetricType metricType,
+            boolean queryForVectorOnSearch) {
         List<EmbeddingMatch<TextSegment>> matches = new ArrayList<>();
 
         Map<String, Embedding> idToEmbedding = new HashMap<>();
         if (queryForVectorOnSearch && !resultsWrapper.getRowRecords().isEmpty()) {
             try {
-                List<String> rowIds = (List<String>) resultsWrapper.getFieldWrapper(fieldDefinition.getIdFieldName()).getFieldData();
-                idToEmbedding.putAll(queryEmbeddings(milvusClient, collectionName, fieldDefinition, rowIds, consistencyLevel));
+                List<String> rowIds = (List<String>) resultsWrapper.getFieldWrapper(fieldDefinition.getIdFieldName())
+                        .getFieldData();
+                idToEmbedding.putAll(
+                        queryEmbeddings(milvusClient, collectionName, fieldDefinition, rowIds, consistencyLevel));
             } catch (ParamException e) {
                 // There is no way to check if the result is empty or not.
                 // If the result is empty, the exception will be thrown.
@@ -86,12 +91,18 @@ class Mapper {
             String rowId = resultsWrapper.getIDScore(0).get(i).getStrID();
             Embedding embedding = idToEmbedding.get(rowId);
             TextSegment textSegment = toTextSegment(resultsWrapper.getRowRecords().get(i), fieldDefinition);
+            double relevanceScore;
+            if (metricType == MetricType.L2) {
+                relevanceScore = RelevanceScore.fromL2Distance(score);
+            } else {
+                relevanceScore = RelevanceScore.fromCosineSimilarity(score);
+            }
+
             EmbeddingMatch<TextSegment> embeddingMatch = new EmbeddingMatch<>(
-                    RelevanceScore.fromCosineSimilarity(score),
+                    relevanceScore,
                     rowId,
                     embedding,
-                    textSegment
-            );
+                    textSegment);
             matches.add(embeddingMatch);
         }
 
@@ -118,7 +129,8 @@ class Mapper {
         Map<String, Object> metadataMap = GSON.fromJson(metadata, MAP_TYPE);
         metadataMap.forEach((key, value) -> {
             if (value instanceof BigDecimal) {
-                // It is safe to convert. No information is lost, the "biggest" type allowed in Metadata is double.
+                // It is safe to convert. No information is lost, the "biggest" type allowed in
+                // Metadata is double.
                 metadataMap.put(key, ((BigDecimal) value).doubleValue());
             }
         });
@@ -126,17 +138,16 @@ class Mapper {
     }
 
     private static Map<String, Embedding> queryEmbeddings(MilvusServiceClient milvusClient,
-                                                          String collectionName,
-                                                          FieldDefinition fieldDefinition,
-                                                          List<String> rowIds,
-                                                          ConsistencyLevelEnum consistencyLevel) {
+            String collectionName,
+            FieldDefinition fieldDefinition,
+            List<String> rowIds,
+            ConsistencyLevelEnum consistencyLevel) {
         QueryResultsWrapper queryResultsWrapper = queryForVectors(
                 milvusClient,
                 collectionName,
                 fieldDefinition,
                 rowIds,
-                consistencyLevel
-        );
+                consistencyLevel);
 
         Map<String, Embedding> idToEmbedding = new HashMap<>();
         for (RowRecord row : queryResultsWrapper.getRowRecords()) {
