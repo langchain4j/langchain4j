@@ -4,9 +4,9 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonRawValue;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import java.util.Map;
 import java.util.Objects;
 
 @JsonInclude(NON_NULL)
@@ -16,9 +16,11 @@ public class AnthropicToolUseContent extends AnthropicMessageContent {
 
     public String id;
     public String name;
-    public Map<String, Object> input;
 
-    public AnthropicToolUseContent(String id, String name, Map<String, Object> input) {
+    @JsonRawValue
+    public String input;
+
+    public AnthropicToolUseContent(String id, String name, String input) {
         super("tool_use");
         this.id = id;
         this.name = name;
@@ -54,7 +56,7 @@ public class AnthropicToolUseContent extends AnthropicMessageContent {
 
         private String id;
         private String name;
-        private Map<String, Object> input;
+        private String input;
 
         public Builder id(String id) {
             this.id = id;
@@ -66,7 +68,7 @@ public class AnthropicToolUseContent extends AnthropicMessageContent {
             return this;
         }
 
-        public Builder input(Map<String, Object> input) {
+        public Builder input(String input) {
             this.input = input;
             return this;
         }

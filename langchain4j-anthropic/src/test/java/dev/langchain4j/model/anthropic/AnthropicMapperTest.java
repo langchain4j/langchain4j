@@ -13,10 +13,10 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
-import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -44,7 +44,6 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import java.net.URI;
-import java.util.AbstractMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -53,6 +52,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class AnthropicMapperTest {
 
@@ -67,6 +67,122 @@ class AnthropicMapperTest {
 
         // then
         assertThat(anthropicMessages).containsExactlyElementsOf(expectedAnthropicMessages);
+    }
+
+    @Test
+    void should_preserve_raw_input_when_replaying_malformed_tool_arguments() {
+        // given
+        String malformedArguments = "{\"value\":\"bad \"quote\"\"}";
+        List<ChatMessage> messages = asList(
+                UserMessage.from("Please update the scene"),
+                AiMessage.from(
+                        ToolExecutionRequest.builder()
+                                .id("call_00")
+                                .name("updateScene")
+                                .arguments("{\"sceneId\":\"scene_30\"}")
+                                .build(),
+                        ToolExecutionRequest.builder()
+                                .id("call_01")
+                                .name("updateScene")
+                                .arguments(malformedArguments)
+                                .build()),
+                ToolExecutionResultMessage.from("call_00", "updateScene", "updated"),
+                ToolExecutionResultMessage.builder()
+                        .id("call_01")
+                        .toolName("updateScene")
+                        .text("Something is wrong with tool arguments")
+                        .isError(true)
+                        .build());
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(messages);
+
+        // then
+        assertThat(anthropicMessages)
+                .containsExactly(
+                        new AnthropicMessage(USER, singletonList(new AnthropicTextContent("Please update the scene"))),
+                        new AnthropicMessage(
+                                ASSISTANT,
+                                asList(
+                                        AnthropicToolUseContent.builder()
+                                                .id("call_00")
+                                                .name("updateScene")
+                                                .input("{\"sceneId\":\"scene_30\"}")
+                                                .build(),
+                                        AnthropicToolUseContent.builder()
+                                                .id("call_01")
+                                                .name("updateScene")
+                                                .input(malformedArguments)
+                                                .build())),
+                        new AnthropicMessage(
+                                USER,
+                                asList(
+                                        new AnthropicToolResultContent("call_00", "updated", null),
+                                        new AnthropicToolResultContent(
+                                                "call_01", "Something is wrong with tool arguments", true))));
+    }
+
+    @Test
+    void should_serialize_tool_use_input_as_raw_json_object() throws JsonProcessingException {
+        // given
+        ObjectMapper objectMapper = new ObjectMapper();
+        AnthropicToolUseContent content = AnthropicToolUseContent.builder()
+                .id("12345")
+                .name("calculator")
+                .input("{\"first\": 2, \"second\": 2}")
+                .build();
+
+        // when
+        String json = objectMapper.writeValueAsString(content);
+        JsonNode root = objectMapper.readTree(json);
+
+        // then
+        assertThat(json).doesNotContain("\"input\":\"");
+        assertThat(root.get("input").isObject()).isTrue();
+        assertThat(root.get("input").get("first").asInt()).isEqualTo(2);
+        assertThat(root.get("input").get("second").asInt()).isEqualTo(2);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"[]", "\"value\"", "null", "true", "1", "{\"first\":2} true"})
+    void should_pass_through_non_blank_tool_arguments(String arguments) {
+        // given
+        List<ChatMessage> messages = asList(
+                UserMessage.from("Please calculate"),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("12345")
+                        .name("calculator")
+                        .arguments(arguments)
+                        .build()));
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(messages);
+
+        // then
+        AnthropicToolUseContent toolUseContent =
+                (AnthropicToolUseContent) anthropicMessages.get(1).content.get(0);
+        assertThat(toolUseContent.input).isEqualTo(arguments);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", " ", "\n\t"})
+    void should_fallback_to_empty_input_when_replaying_blank_tool_arguments(String arguments) {
+        // given
+        List<ChatMessage> messages = asList(
+                UserMessage.from("Please calculate"),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("12345")
+                        .name("calculator")
+                        .arguments(arguments)
+                        .build()));
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(messages);
+
+        // then
+        AnthropicToolUseContent toolUseContent =
+                (AnthropicToolUseContent) anthropicMessages.get(1).content.get(0);
+        assertThat(toolUseContent.input).isEqualTo("{}");
     }
 
     static Stream<Arguments> test_toAnthropicMessages() {
@@ -102,7 +218,7 @@ class AnthropicMapperTest {
                                         singletonList(AnthropicToolUseContent.builder()
                                                 .id("12345")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 2), entry("second", 2)))
+                                                .input("{\"first\": 2, \"second\": 2}")
                                                 .build())),
                                 new AnthropicMessage(
                                         USER, singletonList(new AnthropicToolResultContent("12345", "4", null))))),
@@ -127,7 +243,7 @@ class AnthropicMapperTest {
                                                 AnthropicToolUseContent.builder()
                                                         .id("12345")
                                                         .name("calculator")
-                                                        .input(mapOf(entry("first", 2), entry("second", 2)))
+                                                        .input("{\"first\": 2, \"second\": 2}")
                                                         .build())),
                                 new AnthropicMessage(
                                         USER, singletonList(new AnthropicToolResultContent("12345", "4", null))))),
@@ -156,12 +272,12 @@ class AnthropicMapperTest {
                                                 AnthropicToolUseContent.builder()
                                                         .id("12345")
                                                         .name("calculator")
-                                                        .input(mapOf(entry("first", 2), entry("second", 2)))
+                                                        .input("{\"first\": 2, \"second\": 2}")
                                                         .build(),
                                                 AnthropicToolUseContent.builder()
                                                         .id("67890")
                                                         .name("calculator")
-                                                        .input(mapOf(entry("first", 3), entry("second", 3)))
+                                                        .input("{\"first\": 3, \"second\": 3}")
                                                         .build())),
                                 new AnthropicMessage(
                                         USER,
@@ -191,7 +307,7 @@ class AnthropicMapperTest {
                                         singletonList(AnthropicToolUseContent.builder()
                                                 .id("12345")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 2), entry("second", 2)))
+                                                .input("{\"first\": 2, \"second\": 2}")
                                                 .build())),
                                 new AnthropicMessage(
                                         USER, singletonList(new AnthropicToolResultContent("12345", "4", null))),
@@ -200,7 +316,7 @@ class AnthropicMapperTest {
                                         singletonList(AnthropicToolUseContent.builder()
                                                 .id("67890")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 3), entry("second", 3)))
+                                                .input("{\"first\": 3, \"second\": 3}")
                                                 .build())),
                                 new AnthropicMessage(
                                         USER, singletonList(new AnthropicToolResultContent("67890", "6", null))))),
@@ -566,14 +682,5 @@ class AnthropicMapperTest {
         // FIX: Use extracting("type") to access the internal class field safely
         assertThat(second.cacheControl).isNotNull();
         assertThat(second.cacheControl).extracting("type").isEqualTo("ephemeral");
-    }
-
-    @SafeVarargs
-    private static <K, V> Map<K, V> mapOf(Map.Entry<K, V>... entries) {
-        return Stream.of(entries).collect(toMap(Map.Entry::getKey, Map.Entry::getValue));
-    }
-
-    private static <K, V> Map.Entry<K, V> entry(K key, V value) {
-        return new AbstractMap.SimpleEntry<>(key, value);
     }
 }

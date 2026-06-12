@@ -8,6 +8,35 @@
           "code": "java.field.removed",
           "old": "field dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307",
           "justification": "Model no longer exists and was previously deprecated; removed intentionally"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.parameterTypeChanged",
+          "old": "parameter dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent.Builder dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent.Builder::input(===java.util.Map<java.lang.String, java.lang.Object>===)",
+          "new": "parameter dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent.Builder dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent.Builder::input(===java.lang.String===)",
+          "parameterIndex": "0",
+          "justification": "Internal serialize-only request DTO now stores raw JSON to avoid parsing and re-serializing tool arguments"
+        },
+        {
+          "ignore": true,
+          "code": "java.field.typeChanged",
+          "old": "field dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent.input",
+          "new": "field dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent.input",
+          "justification": "Internal serialize-only request DTO now stores raw JSON to avoid parsing and re-serializing tool arguments"
+        },
+        {
+          "ignore": true,
+          "code": "java.annotation.added",
+          "new": "field dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent.input",
+          "justification": "JsonRawValue is required to serialize the internal raw JSON input as a JSON object"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.parameterTypeChanged",
+          "old": "parameter void dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent::<init>(java.lang.String, java.lang.String, ===java.util.Map<java.lang.String, java.lang.Object>===)",
+          "new": "parameter void dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent::<init>(java.lang.String, java.lang.String, ===java.lang.String===)",
+          "parameterIndex": "2",
+          "justification": "Internal serialize-only request DTO now stores raw JSON to avoid parsing and re-serializing tool arguments"
         }
       ]
     }

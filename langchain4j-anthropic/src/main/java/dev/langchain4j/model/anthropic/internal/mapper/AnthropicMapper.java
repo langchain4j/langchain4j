@@ -10,7 +10,6 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTANT;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
-import static dev.langchain4j.model.anthropic.internal.client.Json.fromJson;
 import static dev.langchain4j.model.anthropic.internal.client.Json.toJson;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.OTHER;
@@ -224,13 +223,13 @@ public class AnthropicMapper {
         return contents;
     }
 
-    private static Map<String, Object> toAnthropicInput(ToolExecutionRequest toolExecutionRequest) {
+    private static String toAnthropicInput(ToolExecutionRequest toolExecutionRequest) {
         String arguments = toolExecutionRequest.arguments();
         if (isNullOrBlank(arguments)) {
-            return Map.of();
+            return "{}";
         }
 
-        return fromJson(arguments, Map.class);
+        return arguments;
     }
 
     public static List<AnthropicTextContent> toAnthropicSystemPrompt(
