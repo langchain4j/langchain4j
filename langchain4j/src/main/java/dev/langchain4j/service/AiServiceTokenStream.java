@@ -21,6 +21,7 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.rag.content.Content;
@@ -56,6 +57,7 @@ public class AiServiceTokenStream implements TokenStream {
     private BiConsumer<PartialThinking, PartialThinkingContext> partialThinkingWithContextHandler;
     private Consumer<PartialToolCall> partialToolCallHandler;
     private BiConsumer<PartialToolCall, PartialToolCallContext> partialToolCallWithContextHandler;
+    private Consumer<StreamingHandle> streamingHandleHandler;
     private Consumer<List<Content>> contentsHandler;
     private Consumer<ChatResponse> intermediateResponseHandler;
     private Consumer<BeforeToolExecution> beforeToolExecutionHandler;
@@ -69,6 +71,7 @@ public class AiServiceTokenStream implements TokenStream {
     private int onPartialThinkingWithContextInvoked;
     private int onPartialToolCallInvoked;
     private int onPartialToolCallWithContextInvoked;
+    private int onStreamingHandleInvoked;
     private int onIntermediateResponseInvoked;
     private int onCompleteResponseInvoked;
     private int onRetrievedInvoked;
@@ -136,6 +139,13 @@ public class AiServiceTokenStream implements TokenStream {
     public TokenStream onPartialToolCallWithContext(BiConsumer<PartialToolCall, PartialToolCallContext> handler) {
         this.partialToolCallWithContextHandler = handler;
         this.onPartialToolCallWithContextInvoked++;
+        return this;
+    }
+
+    @Override
+    public TokenStream onStreamingHandle(Consumer<StreamingHandle> handler) {
+        this.streamingHandleHandler = handler;
+        this.onStreamingHandleInvoked++;
         return this;
     }
 
@@ -220,6 +230,7 @@ public class AiServiceTokenStream implements TokenStream {
                 partialThinkingWithContextHandler,
                 partialToolCallHandler,
                 partialToolCallWithContextHandler,
+                streamingHandleHandler,
                 beforeToolExecutionHandler,
                 toolExecutionHandler,
                 intermediateResponseHandler,
@@ -259,6 +270,9 @@ public class AiServiceTokenStream implements TokenStream {
         if (onPartialToolCallInvoked + onPartialToolCallWithContextInvoked > 1) {
             throw new IllegalConfigurationException("One of [onPartialToolCall, onPartialToolCallWithContext] can be "
                     + "invoked on TokenStream at most 1 time");
+        }
+        if (onStreamingHandleInvoked > 1) {
+            throw new IllegalConfigurationException("onStreamingHandle can be invoked on TokenStream at most 1 time");
         }
         if (onIntermediateResponseInvoked > 1) {
             throw new IllegalConfigurationException(
