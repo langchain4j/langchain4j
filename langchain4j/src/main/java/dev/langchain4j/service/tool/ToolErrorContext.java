@@ -14,12 +14,12 @@ public class ToolErrorContext {
 
     private final ToolExecutionRequest toolExecutionRequest;
     private final InvocationContext invocationContext;
-    private final Exception originalException;
+    private final Exception rawError;
 
     public ToolErrorContext(Builder builder) {
         this.toolExecutionRequest = ensureNotNull(builder.toolExecutionRequest, "toolExecutionRequest");
         this.invocationContext = ensureNotNull(builder.invocationContext, "invocationContext");
-        this.originalException = builder.originalException;
+        this.rawError = builder.rawError;
     }
 
     public ToolExecutionRequest toolExecutionRequest() {
@@ -41,13 +41,13 @@ public class ToolErrorContext {
     }
 
     /**
-     * Returns the original exception as thrown by the tool executor, before any
+     * Returns the raw error as thrown by the tool executor, before any
      * cause unwrapping. May be {@code null} if not provided.
      *
      * @since 1.17.0
      */
-    public Exception originalException() {
-        return originalException;
+    public Exception rawError() {
+        return rawError;
     }
 
     public Object memoryId() {
@@ -61,12 +61,12 @@ public class ToolErrorContext {
         ToolErrorContext that = (ToolErrorContext) object;
         return Objects.equals(toolExecutionRequest, that.toolExecutionRequest)
                 && Objects.equals(invocationContext, that.invocationContext)
-                && Objects.equals(originalException, that.originalException);
+                && Objects.equals(rawError, that.rawError);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(toolExecutionRequest, invocationContext, originalException);
+        return Objects.hash(toolExecutionRequest, invocationContext, rawError);
     }
 
     @Override
@@ -74,7 +74,7 @@ public class ToolErrorContext {
         return "ToolErrorContext{" +
                 "toolExecutionRequest=" + toolExecutionRequest +
                 ", invocationContext=" + invocationContext +
-                ", originalException=" + originalException +
+                ", rawError=" + rawError +
                 '}';
     }
 
@@ -86,7 +86,7 @@ public class ToolErrorContext {
 
         private ToolExecutionRequest toolExecutionRequest;
         private InvocationContext invocationContext;
-        private Exception originalException;
+        private Exception rawError;
 
         public Builder toolExecutionRequest(ToolExecutionRequest toolExecutionRequest) {
             this.toolExecutionRequest = toolExecutionRequest;
@@ -99,12 +99,12 @@ public class ToolErrorContext {
         }
 
         /**
-         * Sets the original exception thrown during tool execution.
+         * Sets the raw error thrown during tool execution.
          *
          * @since 1.17.0
          */
-        public Builder originalException(Exception originalException) {
-            this.originalException = originalException;
+        public Builder rawError(Exception rawError) {
+            this.rawError = rawError;
             return this;
         }
 

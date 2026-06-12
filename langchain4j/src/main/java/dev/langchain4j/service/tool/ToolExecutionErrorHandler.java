@@ -14,9 +14,9 @@ import dev.langchain4j.service.AiServices;
  * <p>
  * 2. Throw an exception: this will stop the AI service flow.
  * <p>
- * 3. Return {@link ToolErrorHandlerResult#propagateException()}: re-throws the original exception
- * out of the AI Service. Use {@link ToolErrorContext#originalException()} to inspect the original
- * exception (before cause-unwrapping) when deciding whether to propagate.
+ * 3. Return {@link ToolErrorHandlerResult#propagateException()}: re-throws the raw error
+ * out of the AI Service. Use {@link ToolErrorContext#rawError()} to inspect the raw
+ * error (before cause-unwrapping) when deciding whether to propagate.
  *
  * @see ToolArgumentsErrorHandler
  * @see AiServices#hallucinatedToolNameStrategy(Function)
@@ -30,10 +30,10 @@ public interface ToolExecutionErrorHandler {
      * <p>
      * This method should either throw an exception, return a {@link ToolErrorHandlerResult#text(String)}
      * (which will be sent to the LLM as the result of the tool execution),
-     * or return {@link ToolErrorHandlerResult#propagateException()} to re-throw the original exception.
+     * or return {@link ToolErrorHandlerResult#propagateException()} to re-throw the raw error.
      *
      * @param error   The actual error that occurred (cause-unwrapped).
-     *                Use {@link ToolErrorContext#originalException()} for the original wrapper.
+     *                Use {@link ToolErrorContext#rawError()} for the error before unwrapping.
      * @param context The context in which the error occurred.
      * @return The result of error handling.
      */

@@ -80,15 +80,15 @@ class ToolServiceTest {
         assertThat(result.resultText()).isEqualTo("fail");
     }
 
-    // --- originalException tests ---
+    // --- rawError tests ---
 
     @Test
-    void originalException_available_in_context() {
+    void rawError_available_in_context() {
         RuntimeException original = new RuntimeException("outer", new IllegalArgumentException("inner"));
         ToolExecutor executor = (req, ctx) -> { throw original; };
 
         ToolExecutionErrorHandler handler = (error, ctx) -> {
-            assertThat(ctx.originalException()).isSameAs(original);
+            assertThat(ctx.rawError()).isSameAs(original);
             assertThat(error).isSameAs(original.getCause());
             return ToolErrorHandlerResult.text("handled");
         };
@@ -100,24 +100,24 @@ class ToolServiceTest {
     }
 
     @Test
-    void originalException_null_when_not_set() {
+    void rawError_null_when_not_set() {
         ToolErrorContext ctx = ToolErrorContext.builder()
                 .toolExecutionRequest(DUMMY_REQUEST)
                 .invocationContext(DUMMY_CONTEXT)
                 .build();
 
-        assertThat(ctx.originalException()).isNull();
+        assertThat(ctx.rawError()).isNull();
     }
 
     @Test
-    void originalException_differs_from_cause() {
+    void rawError_differs_from_cause() {
         IllegalArgumentException cause = new IllegalArgumentException("bad arg");
         RuntimeException wrapper = new RuntimeException("wrapper", cause);
         ToolExecutor executor = (req, ctx) -> { throw wrapper; };
 
         ToolExecutionErrorHandler handler = (error, ctx) -> {
             assertThat(error).isSameAs(cause);
-            assertThat(ctx.originalException()).isSameAs(wrapper);
+            assertThat(ctx.rawError()).isSameAs(wrapper);
             return ToolErrorHandlerResult.text("ok");
         };
 

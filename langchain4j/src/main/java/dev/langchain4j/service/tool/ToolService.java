@@ -765,7 +765,7 @@ public class ToolService {
             ToolErrorContext errorContext = ToolErrorContext.builder()
                     .toolExecutionRequest(toolRequest)
                     .invocationContext(invocationContext)
-                    .originalException(e)
+                    .rawError(e)
                     .build();
 
             ToolErrorHandlerResult errorHandlerResult;

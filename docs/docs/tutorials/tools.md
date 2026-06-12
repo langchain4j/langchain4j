@@ -1588,7 +1588,7 @@ Assistant assistant = AiServices.builder(Assistant.class)
         .chatModel(chatModel)
         .tools(tools)
         .toolArgumentsErrorHandler((error, errorContext) -> {
-            if (errorContext.originalException() instanceof MyCriticalException) {
+            if (errorContext.rawError() instanceof MyCriticalException) {
                 return ToolErrorHandlerResult.propagateException();
             }
             return ToolErrorHandlerResult.text(error.getMessage());
@@ -1596,8 +1596,8 @@ Assistant assistant = AiServices.builder(Assistant.class)
         .build();
 ```
 
-The `error` argument is the unwrapped cause of the exception. Use `errorContext.originalException()`
-to access the original exception as thrown, before cause-unwrapping — useful when the wrapper type
+The `error` argument is the unwrapped cause. Use `errorContext.rawError()`
+to access the raw error as thrown, before cause-unwrapping — useful when the wrapper type
 (not the cause) determines how the error should be handled.
 
 #### Handling Tool Execution Errors
@@ -1634,8 +1634,8 @@ Assistant assistant = AiServices.builder(Assistant.class)
 
 As with the `ToolArgumentsErrorHandler`, there are three ways to handle errors in `ToolExecutionErrorHandler`:
 return a text message, throw an exception, or return `ToolErrorHandlerResult.propagateException()`
-to re-throw the original exception. You can use `errorContext.originalException()` to inspect
-the original exception before cause-unwrapping.
+to re-throw the raw error. You can use `errorContext.rawError()` to inspect
+the raw error before cause-unwrapping.
 
 ## Model Context Protocol (MCP)
 
