@@ -414,6 +414,55 @@ class DefaultAnthropicClientTest {
         }
 
         @Test
+        void shouldIgnoreDoneSentinelAndUnknownEventFrames() throws Exception {
+            // Given: a normal stream followed by a trailing "data: [DONE]" sentinel
+            // (emitted by OpenAI-compatible proxies in front of Claude) and a frame
+            // with no event name. Both must be skipped without throwing.
+            List<ServerSentEvent> events = List.of(
+                    createMessageStartEvent(),
+                    createContentBlockStartEvent(),
+                    createContentBlockDeltaEvent(),
+                    createContentBlockStopEvent(),
+                    createMessageDeltaEvent(),
+                    createMessageStopEvent(),
+                    new ServerSentEvent(null, "[DONE]"),
+                    new ServerSentEvent("ping", "{}"));
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(events);
+
+            DefaultAnthropicClient subject = createClient(mockHttpClient);
+
+            AnthropicCreateMessageRequest request = createMessageRequest();
+
+            CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+            StringBuilder partialResponses = new StringBuilder();
+
+            // When
+            subject.createMessage(request, new StreamingChatResponseHandler() {
+                @Override
+                public void onPartialResponse(String partialResponse) {
+                    partialResponses.append(partialResponse);
+                }
+
+                @Override
+                public void onCompleteResponse(ChatResponse completeResponse) {
+                    futureResponse.complete(completeResponse);
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    futureResponse.completeExceptionally(error);
+                }
+            });
+
+            ChatResponse response = futureResponse.get(5, TimeUnit.SECONDS);
+
+            // Then: the stream completes normally and the [DONE] / unknown frames do not
+            // corrupt the aggregated text or trigger an error.
+            assertThat(response).isNotNull();
+            assertThat(partialResponses.toString()).contains("Hello", " world");
+        }
+
+        @Test
         void shouldHandleInterleavedParallelToolCalls() throws Exception {
             // Given: SSE events where two tool calls are interleaved
             // (content_block_start for index=2 arrives before content_block_stop for index=1)
