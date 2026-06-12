@@ -16,6 +16,12 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.mcp.client.guardrail.McpToolInputGuardrail;
+import dev.langchain4j.mcp.client.guardrail.McpToolInputGuardrailRequest;
+import dev.langchain4j.mcp.client.guardrail.McpToolInputGuardrailResult;
+import dev.langchain4j.mcp.client.guardrail.McpToolOutputGuardrail;
+import dev.langchain4j.mcp.client.guardrail.McpToolOutputGuardrailRequest;
+import dev.langchain4j.mcp.client.guardrail.McpToolOutputGuardrailResult;
 import dev.langchain4j.mcp.client.logging.DefaultMcpLogMessageHandler;
 import dev.langchain4j.mcp.client.logging.McpLogMessageHandler;
 import dev.langchain4j.mcp.client.progress.McpProgressHandler;
@@ -114,6 +120,8 @@ public class DefaultMcpClient implements McpClient {
     private final List<McpClientListener> listeners;
     private final McpMetaSupplier metaSupplier;
     private final McpToolResultExtractor toolResultExtractor;
+    private final List<McpToolInputGuardrail> inputGuardrails;
+    private final List<McpToolOutputGuardrail> outputGuardrails;
 
     public DefaultMcpClient(Builder builder) {
         try {
@@ -149,6 +157,8 @@ public class DefaultMcpClient implements McpClient {
             cachePromptList = getOrDefault(builder.cachePromptList, Boolean.TRUE);
             onResourceUpdated = builder.onResourceUpdated;
             toolResultExtractor = getOrDefault(builder.toolResultExtractor, new DefaultMcpToolResultExtractor());
+            inputGuardrails = List.copyOf(getOrDefault(builder.inputGuardrails, List.of()));
+            outputGuardrails = List.copyOf(getOrDefault(builder.outputGuardrails, List.of()));
             RESULT_TIMEOUT = JsonNodeFactory.instance.objectNode();
             messageHandler = new McpOperationHandler(
                     pendingOperations,
@@ -302,6 +312,16 @@ public class DefaultMcpClient implements McpClient {
         } catch (JsonProcessingException e) {
             throw new ToolArgumentsException(e);
         }
+        for (McpToolInputGuardrail guardrail : inputGuardrails) {
+            McpToolInputGuardrailResult guardrailResult =
+                    guardrail.validate(new McpToolInputGuardrailRequest(executionRequest, invocationContext, this));
+            if (!guardrailResult.isSuccess()) {
+                return ToolExecutionResult.builder()
+                        .resultText(guardrailResult.errorMessage())
+                        .isError(true)
+                        .build();
+            }
+        }
         long operationId = idGenerator.getAndIncrement();
         String progressToken = progressHandler != null ? String.valueOf(operationId) : null;
         McpCallToolRequest operation =
@@ -335,7 +355,7 @@ public class DefaultMcpClient implements McpClient {
             ToolExecutionResult toolResult = ToolExecutionHelper.extractResult(finalResult, false, toolResultExtractor);
             notifyListeners(l -> l.afterExecuteTool(
                     context, toolResult, (Map<String, Object>) ToolExecutionHelper.toObject(finalResult)));
-            return toolResult;
+            return applyOutputGuardrails(toolResult, executionRequest, invocationContext);
         } catch (ToolExecutionException e) {
             if (e.errorCode() != null) {
                 // protocol error
@@ -350,6 +370,25 @@ public class DefaultMcpClient implements McpClient {
             }
             throw e;
         }
+    }
+
+    private ToolExecutionResult applyOutputGuardrails(
+            ToolExecutionResult toolResult,
+            ToolExecutionRequest executionRequest,
+            InvocationContext invocationContext) {
+        ToolExecutionResult current = toolResult;
+        for (McpToolOutputGuardrail guardrail : outputGuardrails) {
+            McpToolOutputGuardrailResult guardrailResult = guardrail.validate(
+                    new McpToolOutputGuardrailRequest(executionRequest, current, invocationContext, this));
+            if (!guardrailResult.isSuccess()) {
+                return ToolExecutionResult.builder()
+                        .resultText(guardrailResult.errorMessage())
+                        .isError(true)
+                        .build();
+            }
+            current = guardrailResult.toolExecutionResult();
+        }
+        return current;
     }
 
     @Override
@@ -822,6 +861,8 @@ public class DefaultMcpClient implements McpClient {
         private McpMetaSupplier metaSupplier;
         private BiConsumer<McpClient, String> onResourceUpdated;
         private McpToolResultExtractor toolResultExtractor;
+        private List<McpToolInputGuardrail> inputGuardrails;
+        private List<McpToolOutputGuardrail> outputGuardrails;
 
         /**
          * Sets the transport protocol to use for communicating with the
@@ -1084,6 +1125,26 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder toolResultExtractor(McpToolResultExtractor toolResultExtractor) {
             this.toolResultExtractor = ensureNotNull(toolResultExtractor, "toolResultExtractor");
+            return this;
+        }
+
+        /**
+         * Sets the input guardrails to validate tool execution requests
+         * before they are sent to the MCP server.
+         * Guardrails are executed in the order they appear in the list.
+         */
+        public Builder inputGuardrails(List<McpToolInputGuardrail> inputGuardrails) {
+            this.inputGuardrails = new ArrayList<>(ensureNotNull(inputGuardrails, "inputGuardrails"));
+            return this;
+        }
+
+        /**
+         * Sets the output guardrails to validate or transform tool execution results
+         * after they are received from the MCP server.
+         * Guardrails are executed in the order they appear in the list.
+         */
+        public Builder outputGuardrails(List<McpToolOutputGuardrail> outputGuardrails) {
+            this.outputGuardrails = new ArrayList<>(ensureNotNull(outputGuardrails, "outputGuardrails"));
             return this;
         }
 
