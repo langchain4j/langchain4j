@@ -37,7 +37,7 @@ class TablestoreEmbeddingStoreTest {
                 .as("when Metadata#SUPPORTED_VALUE_TYPES add new types, we should modify:\n"
                         + "1. write logic: rowToMetadata.\n"
                         + "2. read logic: innerAdd")
-                .isEqualTo(10);
+                .isEqualTo(11);
     }
 
     @Test
