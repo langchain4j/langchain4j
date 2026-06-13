@@ -5,6 +5,7 @@ import static dev.langchain4j.service.tool.ToolService.shouldReturnImmediately;
 import static org.assertj.core.api.Assertions.*;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.invocation.InvocationContext;
 import java.util.List;
 import java.util.function.Consumer;
@@ -45,6 +46,26 @@ class ToolServiceTest {
 
         assertThat(result.isError()).isTrue();
         assertThat(result.resultText()).isEqualTo("fail");
+    }
+
+    @Test
+    void propagated_tool_execution_exception_is_unwrapped() {
+        RuntimeException original = new RuntimeException("boom");
+        ToolExecutor executor = (req, ctx) -> {
+            throw new ToolExecutionException(original);
+        };
+
+        ToolExecutionErrorHandler handler = (error, ctx) -> {
+            assertThat(error).isSameAs(original);
+            assertThat(ctx.rawError()).isInstanceOf(ToolExecutionException.class).hasCause(original);
+            return ToolErrorHandlerResult.text(error.getMessage());
+        };
+
+        ToolExecutionResult result =
+                executeWithErrorHandling(DUMMY_REQUEST, executor, DUMMY_CONTEXT, DEFAULT_ARGS_HANDLER, handler);
+
+        assertThat(result.isError()).isTrue();
+        assertThat(result.resultText()).isEqualTo("boom");
     }
 
     // --- rawError tests ---
