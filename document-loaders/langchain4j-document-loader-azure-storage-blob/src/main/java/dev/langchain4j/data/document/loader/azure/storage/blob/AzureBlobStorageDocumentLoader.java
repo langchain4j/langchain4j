@@ -30,7 +30,7 @@ public class AzureBlobStorageDocumentLoader {
         BlobClient blobClient = blobServiceClient.getBlobContainerClient(containerName).getBlobClient(blobName);
         BlobProperties properties = blobClient.getProperties();
         BlobInputStream blobInputStream = blobClient.openInputStream();
-        AzureBlobStorageSource source = new AzureBlobStorageSource(blobInputStream, blobClient.getAccountName(), containerName, blobName, properties);
+        AzureBlobStorageSource source = new AzureBlobStorageSource(blobInputStream, containerName, blobClient.getAccountName(), blobName, properties);
         return DocumentLoader.load(source, parser);
     }
 
