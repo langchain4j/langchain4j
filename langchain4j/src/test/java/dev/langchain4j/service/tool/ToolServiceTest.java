@@ -57,7 +57,9 @@ class ToolServiceTest {
 
         ToolExecutionErrorHandler handler = (error, ctx) -> {
             assertThat(error).isSameAs(original);
-            assertThat(ctx.rawError()).isInstanceOf(ToolExecutionException.class).hasCause(original);
+            assertThat(ctx.rawError())
+                    .isInstanceOf(ToolExecutionException.class)
+                    .hasCause(original);
             return ToolErrorHandlerResult.text(error.getMessage());
         };
 
