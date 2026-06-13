@@ -57,9 +57,13 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Internal
 public class ToolService {
+
+    private static final Logger log = LoggerFactory.getLogger(ToolService.class);
 
     private static final ToolArgumentsErrorHandler DEFAULT_TOOL_ARGUMENTS_ERROR_HANDLER = (error, context) -> {
         if (error instanceof RuntimeException re) {
@@ -772,7 +776,9 @@ public class ToolService {
             if (e instanceof ToolArgumentsException) {
                 errorHandlerResult = argumentsErrorHandler.handle(getCause(e), errorContext);
             } else {
-                errorHandlerResult = executionErrorHandler.handle(getCause(e), errorContext);
+                Throwable cause = getCause(e);
+                log.error("Error executing tool '{}': {}", toolRequest.name(), errorMessage(cause), e);
+                errorHandlerResult = executionErrorHandler.handle(cause, errorContext);
             }
 
             return ToolExecutionResult.builder()
@@ -795,6 +801,15 @@ public class ToolService {
     private static Throwable getCause(Exception e) {
         Throwable cause = e.getCause();
         return cause != null ? cause : e;
+    }
+
+    private static String errorMessage(Throwable throwable) {
+        if (throwable == null) {
+            return "unknown error";
+        }
+
+        String message = throwable.getMessage();
+        return isNullOrBlank(message) ? throwable.getClass().getName() : message;
     }
 
     public ToolExecutionResult applyToolHallucinationStrategy(ToolExecutionRequest toolRequest) {
