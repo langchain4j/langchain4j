@@ -17,9 +17,7 @@ class MapperTest {
 
     @Test
     void non_l2_score_uses_cosine_similarity_conversion() {
-        assertThat(Mapper.toRelevanceScore(0.6, MetricType.COSINE))
-                .isEqualTo(RelevanceScore.fromCosineSimilarity(0.6));
-        assertThat(Mapper.toRelevanceScore(0.6, MetricType.IP))
-                .isEqualTo(RelevanceScore.fromCosineSimilarity(0.6));
+        assertThat(Mapper.toRelevanceScore(0.6, MetricType.COSINE)).isEqualTo(RelevanceScore.fromCosineSimilarity(0.6));
+        assertThat(Mapper.toRelevanceScore(0.6, MetricType.IP)).isEqualTo(RelevanceScore.fromCosineSimilarity(0.6));
     }
 }
