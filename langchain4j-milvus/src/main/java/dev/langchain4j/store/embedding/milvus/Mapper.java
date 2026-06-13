@@ -20,7 +20,7 @@ import dev.langchain4j.store.embedding.RelevanceScore;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.common.clientenum.ConsistencyLevelEnum;
 import io.milvus.exception.ParamException;
-import io.milvus.grpc.MetricType;
+import io.milvus.param.MetricType;
 import io.milvus.response.QueryResultsWrapper;
 import io.milvus.response.QueryResultsWrapper.RowRecord;
 import io.milvus.response.SearchResultsWrapper;
@@ -90,22 +90,20 @@ class Mapper {
             TextSegment textSegment =
                     toTextSegment(resultsWrapper.getRowRecords().get(i), fieldDefinition);
 
-            // Convert raw Milvus score to relevance score based on metric type
-            double relevanceScore;
-            if (metricType == MetricType.L2) {
-                // L2 distance: lower is better, convert to relevance score [0, 1]
-                relevanceScore = 1.0 / (1.0 + score);
-            } else {
-                // COSINE, IP: higher is better, use standard conversion
-                relevanceScore = RelevanceScore.fromCosineSimilarity(score);
-            }
-
             EmbeddingMatch<TextSegment> embeddingMatch =
-                    new EmbeddingMatch<>(relevanceScore, rowId, embedding, textSegment);
+                    new EmbeddingMatch<>(toRelevanceScore(score, metricType), rowId, embedding, textSegment);
             matches.add(embeddingMatch);
         }
 
         return matches;
+    }
+
+    static double toRelevanceScore(double score, MetricType metricType) {
+        if (metricType == MetricType.L2) {
+            return 1.0 / (1.0 + score);
+        }
+
+        return RelevanceScore.fromCosineSimilarity(score);
     }
 
     private static TextSegment toTextSegment(RowRecord rowRecord, FieldDefinition fieldDefinition) {
