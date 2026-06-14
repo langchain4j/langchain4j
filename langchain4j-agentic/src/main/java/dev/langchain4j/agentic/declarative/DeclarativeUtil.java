@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.declarative;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.AGENTIC_SCOPE_ARG_NAME;
 import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
+import static dev.langchain4j.agentic.internal.AgentUtil.argumentFromParameter;
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.getAnnotatedMethodOnClass;
 
@@ -15,6 +16,7 @@ import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgenticService;
+import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -27,12 +29,14 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executor;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -215,6 +219,14 @@ public class DeclarativeUtil {
         buildListener(agentServiceClass, builder);
     }
 
+    public static Optional<Executor> parallelExecutor(Class<?> agentServiceClass) {
+        return selectMethod(
+                        agentServiceClass,
+                        method -> method.isAnnotationPresent(ParallelExecutor.class)
+                                && Executor.class.isAssignableFrom(method.getReturnType()))
+                .map(method -> invokeParallelExecutor(agentServiceClass, method));
+    }
+
     private static <T> Optional<Function<ErrorContext, ErrorRecoveryResult>> buildErrorHandler(
             Class<T> agentServiceClass) {
         return selectMethod(agentServiceClass, method -> method.isAnnotationPresent(ErrorHandler.class))
@@ -275,8 +287,9 @@ public class DeclarativeUtil {
             return agenticScopeFunction(functionMethod, targetClass);
         }
 
-        List<AgentArgument> agentArguments = argumentsFromMethod(functionMethod);
         Parameter[] parameters = functionMethod.getParameters();
+        List<AgentArgument> unresolvedAgentArguments = new ArrayList<>(parameters.length);
+        List<Integer> unresolvedParameterIndexes = new ArrayList<>(parameters.length);
 
         SupplierParameterResolver.Context[] contexts = new SupplierParameterResolver.Context[parameters.length];
         SupplierParameterResolver[] paramResolvers = new SupplierParameterResolver[parameters.length];
@@ -290,24 +303,68 @@ public class DeclarativeUtil {
                     break;
                 }
             }
+            if (paramResolvers[i] == null) {
+                unresolvedAgentArguments.add(argumentFromParameter(parameters[i]));
+                unresolvedParameterIndexes.add(i);
+            }
         }
 
         return agenticScope -> {
             try {
-                Map<String, Object> additionalArgs = new HashMap<>();
-                additionalArgs.put(AGENTIC_SCOPE_ARG_NAME, agenticScope);
+                Object[] args = new Object[parameters.length];
                 for (int i = 0; i < paramResolvers.length; i++) {
                     if (paramResolvers[i] != null) {
-                        additionalArgs.put(agentArguments.get(i).name(), paramResolvers[i].resolve(contexts[i]));
+                        args[i] = paramResolvers[i].resolve(contexts[i]);
                     }
                 }
-                Object[] args = agentInvocationArguments(agenticScope, agentArguments, additionalArgs)
+                Map<String, Object> additionalArgs = new HashMap<>();
+                additionalArgs.put(AGENTIC_SCOPE_ARG_NAME, agenticScope);
+                Object[] unresolvedArgs = agentInvocationArguments(
+                                agenticScope, unresolvedAgentArguments, additionalArgs)
                         .positionalArgs();
+                for (int i = 0; i < unresolvedArgs.length; i++) {
+                    args[unresolvedParameterIndexes.get(i)] = unresolvedArgs[i];
+                }
                 return (T) functionMethod.invoke(null, args);
             } catch (Exception e) {
                 throw new RuntimeException("Error invoking method: " + functionMethod.getName(), e);
             }
         };
+    }
+
+    private static Executor invokeParallelExecutor(Class<?> agentType, Method method) {
+        if (method.getParameterCount() == 0) {
+            return invokeStatic(method);
+        }
+        List<SupplierParameterResolver> resolvers = getSupplierParameterResolvers();
+        if (resolvers.isEmpty()) {
+            throw missingSupplierParameterResolver(method, method.getParameters()[0]);
+        }
+
+        Parameter[] parameters = method.getParameters();
+        Object[] args = new Object[parameters.length];
+        for (int i = 0; i < parameters.length; i++) {
+            SupplierParameterResolver.Context ctx =
+                    new DefaultSupplierParameterResolverContext(agentType, method, parameters[i]);
+            SupplierParameterResolver resolver = null;
+            for (SupplierParameterResolver candidate : resolvers) {
+                if (candidate.supports(ctx)) {
+                    resolver = candidate;
+                    break;
+                }
+            }
+            if (resolver == null) {
+                throw missingSupplierParameterResolver(method, parameters[i]);
+            }
+            args[i] = resolver.resolve(ctx);
+        }
+        return invokeStatic(method, args);
+    }
+
+    private static AgenticSystemConfigurationException missingSupplierParameterResolver(
+            Method method, Parameter parameter) {
+        return new AgenticSystemConfigurationException("No SupplierParameterResolver is registered for parameter "
+                + parameter + " of @ParallelExecutor method " + method + ".");
     }
 
     public static <T> Function<AgenticScope, T> agenticScopeFunction(Method functionMethod, Class<T> targetClass) {

@@ -7,8 +7,10 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 /**
- * Used in combination with {@link ParallelAgent} to specify the executor that will be used to run the sub-agents in parallel.
+ * Used in combination with {@link ParallelAgent} or {@link ParallelMapperAgent} to specify the executor that will be used
+ * to run the sub-agents in parallel.
  * The method annotated with {@link ParallelExecutor} must be static and return an instance of {@link java.util.concurrent.Executor}.
+ * It can optionally declare parameters resolved through {@link SupplierParameterResolver}.
  * <p>
  * Example:
  * <pre>

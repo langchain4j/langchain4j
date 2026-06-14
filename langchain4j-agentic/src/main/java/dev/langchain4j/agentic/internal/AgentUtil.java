@@ -179,17 +179,26 @@ public class AgentUtil {
         return argumentsFromMethod(method, defaultValues, Set.of());
     }
 
-    public static List<AgentArgument> argumentsFromMethod(Method method, Map<String, Object> defaultValues, Set<String> optionalArgs) {
+    public static List<AgentArgument> argumentsFromMethod(
+            Method method, Map<String, Object> defaultValues, Set<String> optionalArgs) {
         if (method.getDeclaringClass() == UntypedAgent.class) {
             return List.of();
         }
         return Stream.of(method.getParameters())
-                .map(p -> {
-                    String argName = parameterName(p);
-                    Object defaultValue = defaultValues.getOrDefault(argName, parameterDefaultValue(p));
-                    return new AgentArgument(p.getParameterizedType(), argName, defaultValue, optionalArgs.contains(argName));
-                })
+                .map(p -> argumentFromParameter(p, defaultValues, optionalArgs))
                 .toList();
+    }
+
+    public static AgentArgument argumentFromParameter(Parameter parameter) {
+        return argumentFromParameter(parameter, Map.of(), Set.of());
+    }
+
+    private static AgentArgument argumentFromParameter(
+            Parameter parameter, Map<String, Object> defaultValues, Set<String> optionalArgs) {
+        String argName = parameterName(parameter);
+        Object defaultValue = defaultValues.getOrDefault(argName, parameterDefaultValue(parameter));
+        return new AgentArgument(
+                parameter.getParameterizedType(), argName, defaultValue, optionalArgs.contains(argName));
     }
 
     private static String parameterName(Parameter p) {
