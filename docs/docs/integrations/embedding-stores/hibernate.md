@@ -249,7 +249,7 @@ or
 MetadataFilterBuilder.metadataKey("author.id").isEqualTo(2L)
 ```
 
-Alternatively, the `HibernateEmbeddingStore` API also provides `search` methods that allow to use the type-safe Hibernate ORM `Restriction` API.
+Alternatively, the `HibernateEmbeddingStore` API also provides `search` methods that allow you to use the type-safe Hibernate ORM `Restriction` API.
 
 ```java
 HibernateEmbeddingStore<Book> embeddingStore = embeddingStore();

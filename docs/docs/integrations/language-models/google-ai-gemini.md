@@ -441,7 +441,7 @@ If you want a guaranteed application of a JSON schema, you should define a respo
 
 ## Python code execution
 
-Beyond function calling, Google AI Gemini allows to create and execute Python code in a sandboxed environment.
+Beyond function calling, Google AI Gemini allows you to create and execute Python code in a sandboxed environment.
 This is particularly interesting for situations where more advanced calculations or logic is needed.
 
 ```java

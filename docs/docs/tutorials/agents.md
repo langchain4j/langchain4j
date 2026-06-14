@@ -361,7 +361,7 @@ EveningPlannerAgent eveningPlannerAgent = AgenticServices
 List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 ```
 
-Here the `output` function of the `AgenticScope` defined in the `EveningPlannerAgent` allows to assemble the outputs of the two subagents, creating a list of `EveningPlan` objects that combine a movie and a meal matching the given mood. The `output` method, even if especially relevant for parallel workflows, can be actually used in any workflow pattern to define how to combine the outputs of the subagents into a single result, instead of simply returning a value from the `AgenticScope`. The `executor` method also allows to optionally provide an `Executor` that will be used to execute the subagents in parallel, otherwise an internal cached thread pool will be used by default.
+Here the `output` function of the `AgenticScope` defined in the `EveningPlannerAgent` allows you to assemble the outputs of the two subagents, creating a list of `EveningPlan` objects that combine a movie and a meal matching the given mood. The `output` method, even if especially relevant for parallel workflows, can be actually used in any workflow pattern to define how to combine the outputs of the subagents into a single result, instead of simply returning a value from the `AgenticScope`. The `executor` method also allows you to optionally provide an `Executor` that will be used to execute the subagents in parallel, otherwise an internal cached thread pool will be used by default.
 
 ### Parallel mapper workflow
 
@@ -698,7 +698,7 @@ The same dynamic selection is also possible for the `streamingChatModel` method.
 
 In a complex agentic system, many things can go wrong, such as an agent failing to produce a result, an external tool not being available, or an unexpected error occurring during the execution of an agent.
 
-For this reason, the `errorHandler` method allows to provide the agentic system with an error handler that is a function transforming an `ErrorContext` defined as
+For this reason, the `errorHandler` method allows you to provide the agentic system with an error handler that is a function transforming an `ErrorContext` defined as
 
 ```java
 record ErrorContext(String agentName, AgenticScope agenticScope, AgentInvocationException exception) { }
@@ -753,7 +753,7 @@ UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
 
 ## Observability
 
-Tracking and logging the agents' invocations can be crucial for debugging and understanding the aggregate behavior of the whole agentic system in which those agents participate. For this reason, the `langchain4j-agentic` module allows to register an `AgentListener` through the `listener` method of the agent builders, that is notified of all agents invocations and their results, and it is defined as follows:
+Tracking and logging the agents' invocations can be crucial for debugging and understanding the aggregate behavior of the whole agentic system in which those agents participate. For this reason, the `langchain4j-agentic` module allows you to register an `AgentListener` through the `listener` method of the agent builders, that is notified of all agents invocations and their results, and it is defined as follows:
 
 ```java
 public interface AgentListener {
@@ -774,7 +774,7 @@ public interface AgentListener {
 }
 ```
 
-Note that all methods of this interface have a default empty implementation, so that it is possible to implement only the methods of interest. This will also allow to add new methods in future releases without breaking existing implementations.
+Note that all methods of this interface have a default empty implementation, so that it is possible to implement only the methods of interest. This will also allow you to add new methods in future releases without breaking existing implementations.
 
 For instance the following configuration of the `CreativeWriter` agent will log to the console when it is invoked and what is the story it generated.
 
@@ -2400,7 +2400,7 @@ public record HumanInTheLoop(Function<AgenticScope, ?> responseProvider) {
 
 This quite naive, but also very generic, implementation is based on the use of a single function that takes the current `AgenticScope` as input, from which it will be possible to extract the context to ask an appropriate question, and returns the response that should be provided to the user.
 
-The `HumanInTheLoop` agent provided out-of-the-box by the `langchain4j-agentic` module allows to define this function together with the agent description, and the output variable where the user's response will be written.
+The `HumanInTheLoop` agent provided out-of-the-box by the `langchain4j-agentic` module allows you to define this function together with the agent description, and the output variable where the user's response will be written.
 
 For instance, having defined an `AstrologyAgent` like:
 
