@@ -18,7 +18,7 @@ This module enables execution of arbitrary Python/JavaScript code via GraalVM an
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-code-execution-engine-graalvm-polyglot</artifactId>
-    <version>1.16.2-beta26</version>
+    <version>1.16.3-beta26</version>
 </dependency>
 ```
 
