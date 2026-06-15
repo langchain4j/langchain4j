@@ -118,7 +118,7 @@ public class DefaultToolExecutor implements ToolExecutor {
                     throw new ToolExecutionException(e2.getCause());
                 } else {
                     Throwable cause = e2.getCause();
-                    log.error("Error executing tool '{}': {}", methodToInvoke.getName(), cause.getMessage(), cause);
+                    log.warn("Error executing tool '{}': {}", request.name(), cause.getMessage(), cause);
                     return ToolExecutionResult.builder()
                             .isError(true)
                             .resultText(errorMessage(cause))
@@ -130,7 +130,7 @@ public class DefaultToolExecutor implements ToolExecutor {
                 throw new ToolExecutionException(e.getCause());
             } else {
                 Throwable cause = e.getCause();
-                log.error("Error executing tool '{}': {}", methodToInvoke.getName(), cause.getMessage(), cause);
+                log.warn("Error executing tool '{}': {}", request.name(), cause.getMessage(), cause);
                 return ToolExecutionResult.builder()
                         .isError(true)
                         .resultText(errorMessage(cause))
