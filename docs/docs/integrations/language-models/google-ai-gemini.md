@@ -38,7 +38,7 @@ https://ai.google.dev/gemini-api/docs
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>1.16.2</version>
+    <version>1.16.3</version>
 </dependency>
 ```
 
