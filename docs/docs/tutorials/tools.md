@@ -1392,12 +1392,6 @@ class CalculatorWithImmediateReturn {
 }
 ```
 
-:::note
-This feature is supported only on AI Services having a `Result<T>` return type.
-Attempting to use it on AI Service with a different return type will produce an `IllegalConfigurationException`.
-See [Return Types](/tutorials/ai-services#return-types) for more information about `Result<T>`.
-:::
-
 In this way, an `Assistant` service like the following
 
 ```java
@@ -1425,6 +1419,18 @@ will produce a `Result` with a `Result.content() == null`,
 while the actual response of `124` will have to be retrieved from the `result.toolExecutions()`.
 Without the immediate return, the LLM would have to reprocess the result of the `add` tool execution request,
 thus returning a response like: `The result of adding 37 and 87 is 124.`
+
+#### Non-`Result` AI Service method Return Types
+
+If your AI Service method signatures do not return a `Result` type, then your
+chat method calls may or may not succeed when there are immediate tool calls based on the following rules:
+
+* If an AI Service method return type is void, the request will succeed.
+* If there are any non-immediate tool calls, the request will fail with a `IllegalConfigurationException` exception.
+* If all tool executions have a null (or void) result and the return type is not a primitive, the request will succeed and the return value will be `null`.
+* If there is one and only one non-null tool execution result, and the result can be resolved to the return type, then the request will succeed and return that tool result.
+* If there are multiple non-null tool execution results, the request will fail with a `IllegalConfigurationException` exception.
+* If there is one tool execution result and it cannot be resolved to the return type, the request will fail with a `IllegalConfigurationException` exception.
 
 #### Immediate-return rule with multiple tool calls in a single response
 
@@ -1543,9 +1549,9 @@ Assistant assistant = AiServices.builder(Assistant.class)
 
 Currently, there are two ways to handle errors inside the `ToolArgumentsErrorHandler`:
 
-- Throw an exception: this will stop the AI service flow.
 - Return a text message (e.g., an error description) that will be sent back to the LLM,
   allowing it to respond appropriately (for example, by correcting the error and retrying).
+- Throw an exception: this will stop the AI service flow.
 
 **Recommended (let the LLM retry):**
 
@@ -1571,6 +1577,26 @@ try {
 } catch (MyCustomException e) {
     // handle e
 }
+```
+
+##### Accessing raw exception
+
+When a tool throws an exception that wraps another (e.g. `ToolGuardrailException` wrapping `SecurityException`),
+LangChain4j extracts the inner cause via `getCause()` and passes it as the `error` argument.
+Use `errorContext.rawError()` to access the outer exception as originally thrown — useful when the
+wrapper type (not the cause) determines how the error should be handled.
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(tools)
+        .toolArgumentsErrorHandler((error, errorContext) -> {
+            if (errorContext.rawError() instanceof MyCriticalException) {
+                throw (MyCriticalException) errorContext.rawError();
+            }
+            return ToolErrorHandlerResult.text(error.getMessage());
+        })
+        .build();
 ```
 
 #### Handling Tool Execution Errors
@@ -1606,7 +1632,8 @@ Assistant assistant = AiServices.builder(Assistant.class)
 ```
 
 As with the `ToolArgumentsErrorHandler`, there are two ways to handle errors in `ToolExecutionErrorHandler`:
-throw an exception or return a text message.
+return a text message or throw an exception. You can use `errorContext.rawError()` to inspect
+the raw error before cause-unwrapping when deciding how to handle it.
 
 ## Model Context Protocol (MCP)
 

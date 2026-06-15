@@ -1,21 +1,18 @@
 package dev.langchain4j.model.watsonx;
 
-import static dev.langchain4j.data.message.ChatMessageType.SYSTEM;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static java.util.Arrays.asList;
 import static java.util.Objects.nonNull;
 
+import com.ibm.watsonx.ai.chat.ChatProvider;
 import com.ibm.watsonx.ai.chat.ChatService;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.Thinking;
 import com.ibm.watsonx.ai.chat.model.ThinkingEffort;
+import com.ibm.watsonx.ai.deployment.DeploymentService;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.exception.InvalidRequestException;
-import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -31,7 +28,7 @@ import java.util.Set;
 @Internal
 abstract class WatsonxChat {
 
-    protected final ChatService chatService;
+    protected final ChatProvider chatProvider;
     protected final List<ChatModelListener> listeners;
     protected final ChatRequestParameters defaultRequestParameters;
     protected final Set<Capability> supportedCapabilities;
@@ -58,6 +55,7 @@ abstract class WatsonxChat {
         var spaceId = getOrDefault(builder.spaceId, watsonxParameters.spaceId());
         var timeout = getOrDefault(builder.timeout, watsonxParameters.timeout());
         var thinking = getOrDefault(builder.thinking, watsonxParameters.thinking());
+        var deploymentId = getOrDefault(builder.deploymentId, watsonxParameters.deploymentId());
 
         defaultRequestParameters = WatsonxChatRequestParameters.builder()
                 // Common parameters
@@ -86,39 +84,44 @@ abstract class WatsonxChat {
                 .guidedRegex(getOrDefault(builder.guidedRegex, watsonxParameters.guidedRegex()))
                 .lengthPenalty(getOrDefault(builder.lengthPenalty, watsonxParameters.lengthPenalty()))
                 .repetitionPenalty(getOrDefault(builder.repetitionPenalty, watsonxParameters.repetitionPenalty()))
+                .deploymentId(deploymentId)
                 .build();
 
-        var chatServiceBuilder = nonNull(builder.authenticator)
-                ? ChatService.builder().authenticator(builder.authenticator)
-                : ChatService.builder().apiKey(builder.apiKey);
+        if (nonNull(deploymentId)) {
 
-        chatService = chatServiceBuilder
-                .baseUrl(builder.baseUrl)
-                .modelId(modelName)
-                .version(builder.version)
-                .projectId(projectId)
-                .spaceId(spaceId)
-                .timeout(timeout)
-                .logRequests(builder.logRequests)
-                .logResponses(builder.logResponses)
-                .httpClient(builder.httpClient)
-                .verifySsl(builder.verifySsl)
-                .build();
-    }
+            var deploymentBuilder = nonNull(builder.authenticator)
+                    ? DeploymentService.builder().authenticator(builder.authenticator)
+                    : DeploymentService.builder().apiKey(builder.apiKey);
 
-    final void validateThinkingIsAllowedForGraniteModel(
-            String modelName, List<ChatMessage> messages, List<ToolSpecification> tools) throws LangChain4jException {
+            chatProvider = deploymentBuilder
+                    .baseUrl(builder.baseUrl)
+                    .version(builder.version)
+                    .timeout(timeout)
+                    .logRequests(builder.logRequests)
+                    .logResponses(builder.logResponses)
+                    .httpClient(builder.httpClient)
+                    .verifySsl(builder.verifySsl)
+                    .build();
 
-        if (!"ibm/granite-3-3-8b-instruct".equals(modelName)) return;
+        } else {
 
-        if (!isNullOrEmpty(tools))
-            throw new InvalidRequestException("The thinking/reasoning cannot be activated when tools are used");
+            var chatServiceBuilder = nonNull(builder.authenticator)
+                    ? ChatService.builder().authenticator(builder.authenticator)
+                    : ChatService.builder().apiKey(builder.apiKey);
 
-        var systemMessageIsPresent = messages.stream().map(ChatMessage::type).anyMatch(SYSTEM::equals);
-
-        if (systemMessageIsPresent)
-            throw new InvalidRequestException(
-                    "The thinking/reasoning cannot be activated when a system message is present");
+            chatProvider = chatServiceBuilder
+                    .baseUrl(builder.baseUrl)
+                    .modelId(modelName)
+                    .version(builder.version)
+                    .projectId(projectId)
+                    .spaceId(spaceId)
+                    .timeout(timeout)
+                    .logRequests(builder.logRequests)
+                    .logResponses(builder.logResponses)
+                    .httpClient(builder.httpClient)
+                    .verifySsl(builder.verifySsl)
+                    .build();
+        }
     }
 
     final void validate(ChatRequestParameters parameters) {
@@ -151,6 +154,7 @@ abstract class WatsonxChat {
         private String guidedGrammar;
         private Double repetitionPenalty;
         private Double lengthPenalty;
+        private String deploymentId;
         private Thinking thinking;
 
         public T modelName(String modelName) {
@@ -252,6 +256,11 @@ abstract class WatsonxChat {
 
         public T defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
             this.defaultRequestParameters = defaultRequestParameters;
+            return (T) this;
+        }
+
+        public T deploymentId(String deploymentId) {
+            this.deploymentId = deploymentId;
             return (T) this;
         }
 

@@ -25,6 +25,9 @@ import dev.langchain4j.agentic.Agents.ReviewedWriter;
 import dev.langchain4j.agentic.Agents.AudienceEditor;
 import dev.langchain4j.agentic.Agents.CategoryRouter;
 import dev.langchain4j.agentic.Agents.ExpertRouterAgent;
+import dev.langchain4j.agentic.scope.AgentInvocation;
+import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.AgenticScopePersister;
 import dev.langchain4j.agentic.StreamingAgents.StreamingCreativeWriter;
 import dev.langchain4j.agentic.StreamingAgents.StreamingAudienceEditor;
@@ -447,6 +450,65 @@ public class StreamingIT {
                     .build();
 
             assertThat(writer.writeStory("session-1", "dragons and wizards", "fantasy"));
+        } finally {
+            AgenticScopePersister.setStore(null);
+        }
+    }
+
+    public interface ScopeAccessibleExpertRouter extends AgenticScopeAccess {
+        @Agent
+        TokenStream ask(@MemoryId String sessionId, @V("request") String request);
+    }
+
+    @Test
+    void streaming_untyped_workflow_with_persistent_scope() {
+        JsonInMemoryAgenticScopeStore store = new JsonInMemoryAgenticScopeStore();
+        AgenticScopePersister.setStore(store);
+        try {
+            CategoryRouter routerAgent = AgenticServices.agentBuilder(CategoryRouter.class)
+                    .chatModel(baseModel())
+                    .outputKey("category")
+                    .build();
+
+            StreamingMedicalExpert medicalExpert = spy(AgenticServices.agentBuilder(StreamingMedicalExpert.class)
+                    .streamingChatModel(streamingBaseModel())
+                    .outputKey("response")
+                    .build());
+            StreamingLegalExpert legalExpert = AgenticServices.agentBuilder(StreamingLegalExpert.class)
+                    .streamingChatModel(streamingBaseModel())
+                    .outputKey("response")
+                    .build();
+            StreamingTechnicalExpert technicalExpert = AgenticServices.agentBuilder(StreamingTechnicalExpert.class)
+                    .streamingChatModel(streamingBaseModel())
+                    .outputKey("response")
+                    .build();
+
+            UntypedAgent expertsAgent = AgenticServices.conditionalBuilder()
+                    .subAgents(
+                            agenticScope ->
+                                    agenticScope.readState("category", Agents.RequestCategory.UNKNOWN) == Agents.RequestCategory.MEDICAL,
+                            medicalExpert)
+                    .subAgents(
+                            agenticScope ->
+                                    agenticScope.readState("category", Agents.RequestCategory.UNKNOWN) == Agents.RequestCategory.LEGAL,
+                            legalExpert)
+                    .subAgents(
+                            agenticScope -> agenticScope.readState("category", Agents.RequestCategory.UNKNOWN)
+                                    == Agents.RequestCategory.TECHNICAL,
+                            technicalExpert)
+                    .build();
+
+            ScopeAccessibleExpertRouter agentInstance = AgenticServices.sequenceBuilder(ScopeAccessibleExpertRouter.class)
+                    .subAgents(routerAgent, expertsAgent)
+                    .outputKey("response")
+                    .build();
+
+            TokenStream tokenStream = agentInstance.ask("session-1", "I broke my leg what should I do");
+            StringBuilder answerBuilder = new StringBuilder();
+            waitCompleteResponse(tokenStream, answerBuilder);
+            String expertResponse = answerBuilder.toString();
+            verify(medicalExpert).medical("I broke my leg what should I do");
+            assertThat(expertResponse).isNotBlank();
         } finally {
             AgenticScopePersister.setStore(null);
         }

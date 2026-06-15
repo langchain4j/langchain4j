@@ -9,14 +9,14 @@ sidebar_position: 25
 ## Maven Dependency
 
 :::note
-Since YugabyteDB support is part of `langchain4j-community`, it will be available starting from version `1.15.1-beta25` or later.
+Since YugabyteDB support is part of `langchain4j-community`, it will be available starting from version `1.16.3-beta26` or later.
 :::
 
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-yugabytedb</artifactId>
-    <version>1.15.1-beta25</version>
+    <version>1.16.3-beta26</version>
 </dependency>
 ```
 

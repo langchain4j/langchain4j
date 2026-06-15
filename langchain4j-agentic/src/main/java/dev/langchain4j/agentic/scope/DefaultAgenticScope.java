@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
@@ -57,7 +58,7 @@ public class DefaultAgenticScope implements AgenticScope {
     private transient Function<ErrorContext, ErrorRecoveryResult> errorHandler = DEFAULT_ERROR_RECOVERY;
 
     private static Predicate<Object> serializableStateFilter = Predicate.not(DefaultAgenticScope::isProxy)
-            .and(Predicate.not(DefaultAgenticScope::isTokenStream));
+            .and(Predicate.not(DefaultAgenticScope::isTokenStream)).and(Predicate.not(DefaultAgenticScope::isFuture));
 
     private static boolean isProxy(Object obj) {
         return Proxy.isProxyClass(obj.getClass());
@@ -65,6 +66,10 @@ public class DefaultAgenticScope implements AgenticScope {
 
     private static boolean isTokenStream(Object obj) {
         return obj instanceof TokenStream;
+    }
+
+    private static boolean isFuture(Object obj) {
+        return obj instanceof Future;
     }
 
     public enum Kind {
