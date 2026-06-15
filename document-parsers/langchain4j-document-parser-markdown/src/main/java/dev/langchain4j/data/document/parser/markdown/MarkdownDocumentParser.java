@@ -8,6 +8,7 @@ import dev.langchain4j.data.document.DocumentParser;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import org.commonmark.node.Node;
 import org.commonmark.parser.Parser;
 import org.commonmark.renderer.text.TextContentRenderer;
@@ -22,7 +23,7 @@ public class MarkdownDocumentParser implements DocumentParser {
     public Document parse(final InputStream inputStream) {
         try {
             Parser parser = Parser.builder().build();
-            final Node node = parser.parseReader(new InputStreamReader(inputStream));
+            final Node node = parser.parseReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
 
             // Renders nodes to plain text
             final TextContentRenderer renderer = TextContentRenderer.builder().build();
