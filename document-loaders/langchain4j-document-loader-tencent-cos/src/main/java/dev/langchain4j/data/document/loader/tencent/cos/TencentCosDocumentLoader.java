@@ -38,6 +38,8 @@ public class TencentCosDocumentLoader {
      * @return A document containing the content of the COS object.
      */
     public Document loadDocument(String bucket, String key, DocumentParser parser) {
+        ensureNotBlank(bucket, "bucket");
+        ensureNotBlank(key, "key");
         GetObjectRequest getObjectRequest = new GetObjectRequest(bucket, key);
         COSObject cosObject = cosClient.getObject(getObjectRequest);
         TencentCosSource source = new TencentCosSource(cosObject.getObjectContent(), bucket, key);
