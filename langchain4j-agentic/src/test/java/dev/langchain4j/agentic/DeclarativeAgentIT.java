@@ -26,6 +26,8 @@ import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
 import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
+import dev.langchain4j.agentic.declarative.SystemMessageProviderSupplier;
+import dev.langchain4j.agentic.declarative.UserMessageProviderSupplier;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
 import dev.langchain4j.agentic.declarative.ErrorHandler;
 import dev.langchain4j.agentic.declarative.ExitCondition;
@@ -987,5 +989,49 @@ public class DeclarativeAgentIT {
     void parallel_mapper_with_ambigous_items_provider_throws_tests() {
         assertThat(assertThrows(AgenticSystemConfigurationException.class, () ->
                 AgenticServices.createAgenticSystem(BatchHoroscopeAgentWith2Lists.class, baseModel())));
+    }
+
+    private static String PROVIDED_SYSTEM_MESSAGE;
+    private static String PROVIDED_USER_MESSAGE;
+
+    public interface AgentWithBothMessageProviders {
+
+        @Agent(description = "An agent with both message providers")
+        String chat(@MemoryId String memoryId, @V("request") String request);
+
+        @SystemMessageProviderSupplier
+        static String systemMessageProvider(Object memoryId) {
+            String systemMessage = "Conversation " + memoryId + ": You are a concise assistant. Reply with exactly one word.";
+            PROVIDED_SYSTEM_MESSAGE = systemMessage;
+            return systemMessage;
+        }
+
+        @UserMessageProviderSupplier
+        static String userMessageProvider(Object memoryId) {
+            String userMessage = "Conversation " + memoryId + ": What color is the sky?";
+            PROVIDED_USER_MESSAGE = userMessage;
+            return userMessage;
+        }
+
+        @ChatMemoryProviderSupplier
+        static ChatMemory chatMemory(Object memoryId) {
+            return MessageWindowChatMemory.withMaxMessages(10);
+        }
+
+        @ChatModelSupplier
+        static ChatModel chatModel() {
+            return baseModel();
+        }
+    }
+
+    @Test
+    void declarative_both_message_providers_tests() {
+        AgentWithBothMessageProviders agent =
+                AgenticServices.createAgenticSystem(AgentWithBothMessageProviders.class);
+
+        String response = agent.chat("abc", "this is ignored");
+        assertThat(response).isNotBlank();
+        assertThat(PROVIDED_SYSTEM_MESSAGE).isEqualTo("Conversation abc: You are a concise assistant. Reply with exactly one word.");
+        assertThat(PROVIDED_USER_MESSAGE).isEqualTo("Conversation abc: What color is the sky?");
     }
 }

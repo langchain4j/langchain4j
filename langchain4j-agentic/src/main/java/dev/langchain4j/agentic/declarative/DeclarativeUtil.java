@@ -163,6 +163,18 @@ public class DeclarativeUtil {
             agentBuilder.listener(invokeSupplierWithResolvers(agentType, listenerMethod, AgentListener.class));
         });
 
+        getAnnotatedMethodOnClass(agentType, SystemMessageProviderSupplier.class).ifPresent(method -> {
+            checkReturnType(method, String.class);
+            checkArguments(method, Object.class);
+            agentBuilder.systemMessageProvider(memoryId -> invokeStatic(method, memoryId));
+        });
+
+        getAnnotatedMethodOnClass(agentType, UserMessageProviderSupplier.class).ifPresent(method -> {
+            checkReturnType(method, String.class);
+            checkArguments(method, Object.class);
+            agentBuilder.userMessageProvider(memoryId -> invokeStatic(method, memoryId));
+        });
+
         if (agentConfigurator.agentInstanceFactory() != null) {
             agentBuilder.agentInstanceFactory(agentConfigurator.agentInstanceFactory());
         }
