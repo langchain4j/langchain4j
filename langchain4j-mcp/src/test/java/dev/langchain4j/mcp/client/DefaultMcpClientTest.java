@@ -54,6 +54,22 @@ public class DefaultMcpClientTest {
     }
 
     @Test
+    public void should_expose_server_instructions_from_initialize_result() throws Exception {
+        // given
+        final McpTransport transport = getMinimalMcpTransportMock();
+        ObjectNode initializeResult = JsonNodeFactory.instance.objectNode();
+        initializeResult.putObject("result").put("instructions", "Use this server for file operations.");
+        when(transport.initialize(any())).thenReturn(CompletableFuture.completedFuture(initializeResult));
+
+        // when
+        final DefaultMcpClient client =
+                new DefaultMcpClient.Builder().transport(transport).build();
+
+        // then
+        assertThat(client.instructions()).isEqualTo("Use this server for file operations.");
+    }
+
+    @Test
     public void should_close_transport_when_client_is_closed() throws Exception {
         // given
         final McpTransport transport = getMinimalMcpTransportMock();

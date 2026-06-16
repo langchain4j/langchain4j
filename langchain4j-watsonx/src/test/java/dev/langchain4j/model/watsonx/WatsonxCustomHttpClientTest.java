@@ -31,8 +31,8 @@ public class WatsonxCustomHttpClientTest {
                 .httpClient(customClient)
                 .build();
 
-        Object chatService = getFieldValue(chatModel, "chatService");
-        Object restclient = getFieldValue(chatService, "client");
+        Object chatProvider = getFieldValue(chatModel, "chatProvider");
+        Object restclient = getFieldValue(chatProvider, "client");
         assertEquals(customClient, getFieldValue(restclient, "httpClient"));
         assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
         assertNotEquals(HttpClientProvider.httpClient(false), getFieldValue(restclient, "httpClient"));
@@ -63,8 +63,8 @@ public class WatsonxCustomHttpClientTest {
                         .verifySsl(verifySsl)
                         .build();
 
-                Object chatService = getFieldValue(chatModel, "chatService");
-                Object restclient = getFieldValue(chatService, "client");
+                Object chatProvider = getFieldValue(chatModel, "chatProvider");
+                Object restclient = getFieldValue(chatProvider, "client");
                 assertNotEquals(customClient, getFieldValue(restclient, "httpClient"));
                 assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(restclient, "httpClient"));
 
@@ -94,8 +94,8 @@ public class WatsonxCustomHttpClientTest {
                 .httpClient(customClient)
                 .build();
 
-        Object chatService = getFieldValue(streamingChatModel, "chatService");
-        Object restclient = getFieldValue(chatService, "client");
+        Object chatProvider = getFieldValue(streamingChatModel, "chatProvider");
+        Object restclient = getFieldValue(chatProvider, "client");
         assertEquals(customClient, getFieldValue(restclient, "httpClient"));
         assertNotEquals(HttpClientProvider.httpClient(true), getFieldValue(restclient, "httpClient"));
         assertNotEquals(HttpClientProvider.httpClient(false), getFieldValue(restclient, "httpClient"));
@@ -126,8 +126,8 @@ public class WatsonxCustomHttpClientTest {
                         .verifySsl(verifySsl)
                         .build();
 
-                Object chatService = getFieldValue(streamingChatModel, "chatService");
-                Object restclient = getFieldValue(chatService, "client");
+                Object chatProvider = getFieldValue(streamingChatModel, "chatProvider");
+                Object restclient = getFieldValue(chatProvider, "client");
                 assertNotEquals(customClient, getFieldValue(restclient, "httpClient"));
                 assertEquals(HttpClientProvider.httpClient(verifySsl), getFieldValue(restclient, "httpClient"));
 

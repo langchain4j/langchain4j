@@ -20,7 +20,7 @@ class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 VertexAiGeminiStreamingChatModel.builder()
                         .project(System.getenv("GCP_PROJECT_ID"))
                         .location(System.getenv("GCP_LOCATION"))
-                        .modelName("gemini-2.0-flash")
+                        .modelName("gemini-2.5-flash")
                         .build()
                 // TODO add more model configs, see OpenAiChatModelIT
         );
@@ -84,6 +84,11 @@ class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected boolean assertThreads() {
         return false; // TODO what to do with it?
+    }
+
+    @Override
+    protected boolean assertTokenUsage() {
+        return false; // TODO thinking tokens are not reported correctly
     }
 
     @Override

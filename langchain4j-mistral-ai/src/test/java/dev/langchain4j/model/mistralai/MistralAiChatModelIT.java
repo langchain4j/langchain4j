@@ -238,13 +238,13 @@ class MistralAiChatModelIT {
 
         UserMessage userMessage = UserMessage.from(
                 TextContent.from("What's the language of the audio?"),
-                AudioContent.from("https://upload.wikimedia.org/wikipedia/commons/2/28/Lorca_la_luna_asoma.ogg"));
+                AudioContent.from("https://samplelib.com/mp3/sample-speech-1m.mp3"));
 
         // when
         ChatResponse chatResponse = chatModel.chat(userMessage);
 
         // then
-        assertThat(chatResponse.aiMessage().text()).contains("Spanish");
+        assertThat(chatResponse.aiMessage().text()).containsIgnoringCase("English");
     }
 
     @Test

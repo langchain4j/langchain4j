@@ -20,7 +20,7 @@ class VertexAiGeminiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
                 VertexAiGeminiChatModel.builder()
                         .project(System.getenv("GCP_PROJECT_ID"))
                         .location(System.getenv("GCP_LOCATION"))
-                        .modelName("gemini-2.0-flash")
+                        .modelName("gemini-2.5-flash")
                         .temperature(0.0f)
                         .logRequests(true)
                         .logResponses(true)

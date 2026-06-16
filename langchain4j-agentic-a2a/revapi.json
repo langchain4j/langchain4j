@@ -1,0 +1,23 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "ignore": true,
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class org.a2aproject.sdk.spec.AgentCard",
+          "justification": "Bump to A2A 1.0.0-CR1"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.returnTypeChanged",
+          "old": "method io.a2a.spec.AgentCard dev.langchain4j.agentic.a2a.A2AClientInstance::agentCard()",
+          "new": "method org.a2aproject.sdk.spec.AgentCard dev.langchain4j.agentic.a2a.A2AClientInstance::agentCard()",
+          "justification": "Bump to A2A 1.0.0-CR1"
+        }
+      ]
+    }
+  }
+]

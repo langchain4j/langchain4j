@@ -4,6 +4,7 @@ import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.internal.Exceptions.runtime;
+import static dev.langchain4j.internal.Utils.allConcreteMethods;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -15,12 +16,12 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.InvocationContext;
@@ -37,7 +38,6 @@ import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.IllegalConfigurationException;
-import dev.langchain4j.service.Result;
 import dev.langchain4j.service.tool.search.ToolSearchService;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import java.lang.reflect.Method;
@@ -57,9 +57,13 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Internal
 public class ToolService {
+
+    private static final Logger log = LoggerFactory.getLogger(ToolService.class);
 
     private static final ToolArgumentsErrorHandler DEFAULT_TOOL_ARGUMENTS_ERROR_HANDLER = (error, context) -> {
         if (error instanceof RuntimeException re) {
@@ -69,8 +73,14 @@ public class ToolService {
         }
     };
     private static final ToolExecutionErrorHandler DEFAULT_TOOL_EXECUTION_ERROR_HANDLER = (error, context) -> {
-        String errorMessage =
-                isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
+        String errorMessage = errorMessage(error);
+        log.warn(
+                "Tool '{}' execution failed. The error message is being returned to the LLM. "
+                        + "To customize this behavior (and silence this log), configure a custom "
+                        + "ToolExecutionErrorHandler via AiServices.toolExecutionErrorHandler(...). Error: {}",
+                context.toolExecutionRequest().name(),
+                errorMessage,
+                error);
         return ToolErrorHandlerResult.text(errorMessage);
     };
 
@@ -162,9 +172,7 @@ public class ToolService {
                 throw illegalConfiguration(
                         "Parameter '%s' of tool '%s.%s' has @P(defaultValue = ...) and is Optional<T>. "
                                 + "Optional<T> already represents \"absent\"; use one mechanism or the other.",
-                        parameter.getName(),
-                        toolMethod.getDeclaringClass().getName(),
-                        toolMethod.getName());
+                        parameter.getName(), toolMethod.getDeclaringClass().getName(), toolMethod.getName());
             }
 
             if (parameter.isAnnotationPresent(ToolMemoryId.class)
@@ -174,9 +182,7 @@ public class ToolService {
                 throw illegalConfiguration(
                         "Parameter '%s' of tool '%s.%s' has @P(defaultValue = ...) but is a framework-injected parameter; "
                                 + "default values are not supported on framework-injected parameters.",
-                        parameter.getName(),
-                        toolMethod.getDeclaringClass().getName(),
-                        toolMethod.getName());
+                        parameter.getName(), toolMethod.getDeclaringClass().getName(), toolMethod.getName());
             }
 
             try {
@@ -226,7 +232,7 @@ public class ToolService {
         }
 
         List<AiServiceTool> result = new ArrayList<>();
-        for (Method method : objectWithTools.getClass().getDeclaredMethods()) {
+        for (Method method : allConcreteMethods(objectWithTools.getClass())) {
             Optional<Method> annotatedMethod = getAnnotatedMethod(method, Tool.class);
             if (annotatedMethod.isPresent()) {
                 Method toolMethod = annotatedMethod.get();
@@ -292,10 +298,24 @@ public class ToolService {
     }
 
     /**
+     * @since 1.17.0
+     */
+    public Consumer<BeforeToolExecution> beforeToolExecution() {
+        return beforeToolExecution;
+    }
+
+    /**
      * @since 1.11.0
      */
     public void afterToolExecution(Consumer<ToolExecution> afterToolExecution) {
         this.afterToolExecution = afterToolExecution;
+    }
+
+    /**
+     * @since 1.17.0
+     */
+    public Consumer<ToolExecution> afterToolExecution() {
+        return afterToolExecution;
     }
 
     /**
@@ -420,7 +440,9 @@ public class ToolService {
         while (true) {
 
             if (roundTripsLeft-- == 0) {
-                throw runtime("Something is wrong, exceeded %s tool calling round trips (maxToolCallingRoundTrips)", maxToolCallingRoundTrips);
+                throw runtime(
+                        "Something is wrong, exceeded %s tool calling round trips (maxToolCallingRoundTrips)",
+                        maxToolCallingRoundTrips);
             }
 
             AiMessage aiMessage = chatResponse.aiMessage();
@@ -469,11 +491,6 @@ public class ToolService {
             }
 
             if (shouldReturnImmediately(anyToolErrored, returnBehaviors)) {
-                if (!isReturnTypeResult) {
-                    throw illegalConfiguration(
-                            "AI Service method must return a %s type to use tools with ReturnBehavior.%s/%s",
-                            Result.class.getName(), IMMEDIATE, IMMEDIATE_IF_LAST);
-                }
                 ChatResponse finalResponse = intermediateResponses.remove(intermediateResponses.size() - 1);
                 return ToolServiceResult.builder()
                         .intermediateResponses(intermediateResponses)
@@ -758,6 +775,7 @@ public class ToolService {
             ToolErrorContext errorContext = ToolErrorContext.builder()
                     .toolExecutionRequest(toolRequest)
                     .invocationContext(invocationContext)
+                    .rawError(e)
                     .build();
 
             ToolErrorHandlerResult errorHandlerResult;
@@ -787,6 +805,15 @@ public class ToolService {
     private static Throwable getCause(Exception e) {
         Throwable cause = e.getCause();
         return cause != null ? cause : e;
+    }
+
+    private static String errorMessage(Throwable throwable) {
+        if (throwable == null) {
+            return "unknown error";
+        }
+
+        String message = throwable.getMessage();
+        return isNullOrBlank(message) ? throwable.getClass().getName() : message;
     }
 
     public ToolExecutionResult applyToolHallucinationStrategy(ToolExecutionRequest toolRequest) {

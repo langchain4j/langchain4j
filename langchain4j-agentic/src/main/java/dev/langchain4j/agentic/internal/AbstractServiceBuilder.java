@@ -48,6 +48,8 @@ public abstract class AbstractServiceBuilder<T, S> {
 
     protected Function<ErrorContext, ErrorRecoveryResult> errorHandler;
 
+    protected Function<InternalAgent, Object> agentInstanceFactory;
+
     protected Executor executor;
 
     protected AbstractServiceBuilder(Class<T> agentServiceClass, Method agenticMethod) {
@@ -137,6 +139,11 @@ public abstract class AbstractServiceBuilder<T, S> {
         return (S) this;
     }
 
+    public S agentInstanceFactory(Function<InternalAgent, Object> factory) {
+        this.agentInstanceFactory = factory;
+        return (S) this;
+    }
+
     public S executor(Executor executor) {
         this.executor = executor;
         return (S) this;
@@ -160,6 +167,9 @@ public abstract class AbstractServiceBuilder<T, S> {
     }
 
     public T build(InvocationHandler invocationHandler) {
+        if (agentInstanceFactory != null) {
+            return (T) agentInstanceFactory.apply((InternalAgent) invocationHandler);
+        }
         return buildAgent(agentServiceClass, invocationHandler);
     }
 

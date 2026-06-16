@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCharSequence;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
@@ -44,6 +45,31 @@ class GoogleAiGeminiStreamingChatModelTest {
             GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
 
             assertThatCharSequence(Json.toJson(result.generationConfig())).doesNotContain("\"seed\"");
+        }
+
+        @Test
+        void cachedContentNameInContentRequest() {
+            GoogleAiGeminiStreamingChatModel chatModel = GoogleAiGeminiStreamingChatModel.builder()
+                    .apiKey("ApiKey")
+                    .modelName("ModelName")
+                    .cachedContentName("cachedContents/abc123")
+                    .build();
+            GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
+
+            assertThat(result.cachedContent()).isEqualTo("cachedContents/abc123");
+            assertThatCharSequence(Json.toJson(result)).contains("\"cachedContent\" : \"cachedContents/abc123\"");
+        }
+
+        @Test
+        void defaultCachedContentNameInContentRequest() {
+            GoogleAiGeminiStreamingChatModel chatModel = GoogleAiGeminiStreamingChatModel.builder()
+                    .apiKey("ApiKey")
+                    .modelName("ModelName")
+                    .build();
+            GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
+
+            assertThat(result.cachedContent()).isNull();
+            assertThatCharSequence(Json.toJson(result)).doesNotContain("\"cachedContent\"");
         }
     }
 }
