@@ -30,36 +30,54 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Experimental
 public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
 
+    private static final Logger log = LoggerFactory.getLogger(GoogleGenAiStreamingChatModel.class);
+
     private final Client client;
     private final List<ChatModelListener> listeners;
     private final ChatRequestParameters defaultRequestParameters;
+    private final boolean logRequests;
+    private final boolean logResponses;
 
     private final List<SafetySetting> safetySettings;
     private final Integer thinkingBudget;
+    private final String thinkingLevel;
     private final Integer seed;
     private final boolean googleSearchEnabled;
     private final boolean googleMapsEnabled;
     private final boolean urlContextEnabled;
     private final List<String> allowedFunctionNames;
+    private final String vertexSearchDatastore;
+    private final Map<String, String> labels;
+    private final String cachedContent;
 
     private final ExecutorService executor;
 
     private GoogleGenAiStreamingChatModel(Builder builder) {
         this.listeners = copy(builder.listeners);
+        this.logRequests = getOrDefault(builder.logRequests, false);
+        this.logResponses = getOrDefault(builder.logResponses, false);
         this.googleSearchEnabled = getOrDefault(builder.googleSearch, false);
         this.googleMapsEnabled = getOrDefault(builder.googleMaps, false);
         this.urlContextEnabled = getOrDefault(builder.urlContext, false);
         this.allowedFunctionNames = copy(builder.allowedFunctionNames);
         this.thinkingBudget = builder.thinkingBudget;
+        this.thinkingLevel = builder.thinkingLevel;
         this.seed = builder.seed;
         this.safetySettings = copy(builder.safetySettings);
+        this.vertexSearchDatastore = builder.vertexSearchDatastore;
+        this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
+        this.cachedContent = builder.cachedContent;
 
         this.client = builder.client != null
                 ? builder.client
@@ -68,7 +86,9 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                         builder.googleCredentials,
                         builder.projectId,
                         builder.location,
-                        builder.timeout);
+                        builder.timeout,
+                        builder.customHeaders,
+                        builder.apiEndpoint);
 
         ChatRequestParameters commonParameters =
                 getOrDefault(builder.defaultRequestParameters, DefaultChatRequestParameters.EMPTY);
@@ -78,6 +98,8 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
                 .topK(getOrDefault(builder.topK, commonParameters.topK()))
+                .frequencyPenalty(getOrDefault(builder.frequencyPenalty, commonParameters.frequencyPenalty()))
+                .presencePenalty(getOrDefault(builder.presencePenalty, commonParameters.presencePenalty()))
                 .maxOutputTokens(getOrDefault(builder.maxOutputTokens, commonParameters.maxOutputTokens()))
                 .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
                 .toolSpecifications(commonParameters.toolSpecifications())
@@ -100,18 +122,32 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 systemInstruction,
                 safetySettings,
                 thinkingBudget,
+                thinkingLevel,
                 seed,
                 googleSearchEnabled,
                 googleMapsEnabled,
                 urlContextEnabled,
-                allowedFunctionNames);
+                allowedFunctionNames,
+                vertexSearchDatastore,
+                labels,
+                cachedContent);
+
+        if (logRequests) {
+            log.info(
+                    "Request:\n- model: {}\n- messages: {}\n- config: {}",
+                    chatRequest.modelName(),
+                    chatRequest.messages(),
+                    config);
+        }
 
         executor.execute(() -> {
-            try (ResponseStream<GenerateContentResponse> stream =
-                         client.models.generateContentStream(modelName, contents, config)) {
+            try {
+                ResponseStream<GenerateContentResponse> stream =
+                        client.models.generateContentStream(modelName, contents, config);
 
                 StringBuilder textBuilder = new StringBuilder();
                 List<ToolExecutionRequest> toolRequests = new ArrayList<>();
+                Map<String, Object> attributes = new java.util.HashMap<>();
                 TokenUsage tokenUsage = new TokenUsage();
                 FinishReason finishReason = null;
                 GenerateContentResponse lastChunk = null;
@@ -122,6 +158,11 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     lastChunk = chunk;
                     ChatResponse partialResponse = GoogleGenAiContentMapper.toChatResponse(chunk, modelName);
                     AiMessage aiMessage = partialResponse.aiMessage();
+
+                    if (aiMessage.attributes() != null
+                            && !aiMessage.attributes().isEmpty()) {
+                        attributes.putAll(aiMessage.attributes());
+                    }
 
                     if (aiMessage.text() != null && !aiMessage.text().isEmpty()) {
                         textBuilder.append(aiMessage.text());
@@ -146,9 +187,11 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     if (partialResponse.tokenUsage() != null) {
                         tokenUsage = partialResponse.tokenUsage();
                     }
-                    if (partialResponse.finishReason() != null
-                            && partialResponse.finishReason() != FinishReason.OTHER) {
-                        finishReason = partialResponse.finishReason();
+                    FinishReason partialReason = partialResponse.finishReason();
+                    if (partialReason != null && partialReason != FinishReason.OTHER) {
+                        if (finishReason != FinishReason.LENGTH && finishReason != FinishReason.CONTENT_FILTER) {
+                            finishReason = partialReason;
+                        }
                     }
                 }
 
@@ -159,6 +202,11 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     finalAiMessage = AiMessage.from(toolRequests);
                 } else {
                     finalAiMessage = AiMessage.from(textBuilder.toString());
+                }
+
+                if (!attributes.isEmpty()) {
+                    finalAiMessage =
+                            finalAiMessage.toBuilder().attributes(attributes).build();
                 }
 
                 GoogleGenAiChatResponseMetadata metadata = GoogleGenAiChatResponseMetadata.builder()
@@ -175,6 +223,10 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                         .aiMessage(finalAiMessage)
                         .metadata(metadata)
                         .build();
+
+                if (logResponses) {
+                    log.info("Response:\n- model: {}\n- response: {}", modelName, finalChatResponse);
+                }
 
                 handler.onCompleteResponse(finalChatResponse);
             } catch (Exception e) {
@@ -212,8 +264,9 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         private Client client;
         private GoogleCredentials googleCredentials;
         private String apiKey, projectId, location, modelName;
-        private Double temperature, topP;
+        private Double temperature, topP, frequencyPenalty, presencePenalty;
         private Integer topK, maxOutputTokens, thinkingBudget, seed;
+        private String thinkingLevel;
         private List<String> stopSequences;
         private Duration timeout;
         private Boolean googleSearch;
@@ -225,6 +278,13 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         private List<ChatModelListener> listeners;
         private ExecutorService executor;
         private ChatRequestParameters defaultRequestParameters;
+        private String vertexSearchDatastore;
+        private Map<String, String> labels;
+        private String apiEndpoint;
+        private Map<String, String> customHeaders;
+        private String cachedContent;
+        private Boolean logRequests;
+        private Boolean logResponses;
 
         public Builder client(Client client) {
             this.client = client;
@@ -276,13 +336,36 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        public Builder frequencyPenalty(Double frequencyPenalty) {
+            this.frequencyPenalty = frequencyPenalty;
+            return this;
+        }
+
+        public Builder presencePenalty(Double presencePenalty) {
+            this.presencePenalty = presencePenalty;
+            return this;
+        }
+
         public Builder maxOutputTokens(Integer maxOutputTokens) {
             this.maxOutputTokens = maxOutputTokens;
             return this;
         }
 
+        /**
+         * The thinking budget to use. This is a legacy parameter. For Gemini 3.x models, use {@link #thinkingLevel(String)} instead.
+         */
         public Builder thinkingBudget(Integer thinkingBudget) {
             this.thinkingBudget = thinkingBudget;
+            return this;
+        }
+
+        /**
+         * The thinking level to use. This is the recommended parameter for Gemini 3.x models.
+         * Allowed values are {@code "MINIMAL"}, {@code "LOW"}, {@code "MEDIUM"}, {@code "HIGH"}.
+         * Note that this cannot be used together with {@link #thinkingBudget(Integer)}.
+         */
+        public Builder thinkingLevel(String thinkingLevel) {
+            this.thinkingLevel = thinkingLevel;
             return this;
         }
 
@@ -347,6 +430,47 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
 
         public Builder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
             this.defaultRequestParameters = defaultRequestParameters;
+            return this;
+        }
+
+        public Builder cachedContent(String cachedContent) {
+            this.cachedContent = cachedContent;
+            return this;
+        }
+
+        public Builder vertexSearchDatastore(String vertexSearchDatastore) {
+            this.vertexSearchDatastore = vertexSearchDatastore;
+            return this;
+        }
+
+        public Builder labels(Map<String, String> labels) {
+            this.labels = labels;
+            return this;
+        }
+
+        public Builder apiEndpoint(String apiEndpoint) {
+            this.apiEndpoint = apiEndpoint;
+            return this;
+        }
+
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
+            return this;
+        }
+
+        public Builder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public Builder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public Builder logRequestsAndResponses(Boolean logRequestsAndResponses) {
+            this.logRequests = logRequestsAndResponses;
+            this.logResponses = logRequestsAndResponses;
             return this;
         }
 
