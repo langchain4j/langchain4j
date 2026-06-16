@@ -55,6 +55,13 @@
         },
         {
           "ignore": true,
+          "code": "java.method.numberOfParametersChanged",
+          "old": "method void dev.langchain4j.agentic.workflow.HumanInTheLoop::<init>(java.lang.String, java.lang.String, boolean, java.util.function.Function<dev.langchain4j.agentic.scope.AgenticScope, ?>, dev.langchain4j.agentic.observability.AgentListener)",
+          "new": "method void dev.langchain4j.agentic.workflow.HumanInTheLoop::<init>(java.lang.String, java.lang.String, boolean, java.util.function.Function<dev.langchain4j.agentic.scope.AgenticScope, ?>, dev.langchain4j.agentic.observability.AgentListener, java.util.List<dev.langchain4j.agentic.planner.AgentArgument>)",
+          "justification": "The HumanInTheLoop is always supposed to be instantiated through the builder, so the constructor is not meant to be used directly and can be considered as a private API."
+        },
+        {
+          "ignore": true,
           "code": "java.method.parameterTypeChanged",
           "old": "parameter <T> T dev.langchain4j.agentic.AgenticServices::createAgenticSystem(java.lang.Class<T>, ===java.util.function.Consumer<dev.langchain4j.agentic.AgenticServices.DeclarativeAgentCreationContext<?>>===)",
           "new": "parameter <T> T dev.langchain4j.agentic.AgenticServices::createAgenticSystem(java.lang.Class<T>, ===dev.langchain4j.agentic.AgenticServices.AgentConfigurator===)",
@@ -68,6 +75,46 @@
           "new": "parameter <T> T dev.langchain4j.agentic.AgenticServices::createAgenticSystem(java.lang.Class<T>, dev.langchain4j.model.chat.ChatModel, ===dev.langchain4j.agentic.AgenticServices.AgentConfigurator===)",
           "parameterIndex": "2",
           "justification": "Not a breaking change, this method is only used by the Quarkus extension"
+        },
+        {
+          "ignore": true,
+          "code": "java.class.removed",
+          "old": "interface dev.langchain4j.agentic.declarative.ChatSupplierParameterResolver",
+          "justification": "Replaced by SupplierParameterResolver. ChatSupplierParameterResolver was deprecated for removal."
+        },
+        {
+          "ignore": true,
+          "code": "java.class.removed",
+          "old": "interface dev.langchain4j.agentic.declarative.ChatSupplierParameterResolver.Context",
+          "justification": "Replaced by SupplierParameterResolver.Context. ChatSupplierParameterResolver was deprecated for removal."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method void dev.langchain4j.agentic.declarative.DeclarativeUtil::addChatSupplierParameterResolver(dev.langchain4j.agentic.declarative.ChatSupplierParameterResolver)",
+          "justification": "Replaced by addSupplierParameterResolver. Deprecated method removed."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method java.util.List<dev.langchain4j.agentic.declarative.ChatSupplierParameterResolver> dev.langchain4j.agentic.declarative.DeclarativeUtil::getChatSupplierParameterResolvers()",
+          "justification": "Replaced by getSupplierParameterResolvers. Deprecated method removed."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.numberOfParametersChanged",
+          "old": "method void dev.langchain4j.agentic.AgenticServices.AgentConfigurator::<init>(java.util.function.Consumer<dev.langchain4j.agentic.AgenticServices.DeclarativeAgentCreationContext<?>>, java.util.function.Function<java.lang.Class<?>, java.lang.Object>)",
+          "new": "method void dev.langchain4j.agentic.AgenticServices.AgentConfigurator::<init>(java.util.function.Consumer<dev.langchain4j.agentic.AgenticServices.DeclarativeAgentCreationContext<?>>, java.util.function.Function<java.lang.Class<?>, java.lang.Object>, java.util.function.BiFunction<java.lang.Class<?>, java.lang.reflect.InvocationHandler, java.lang.Object>)",
+          "justification": "Necessary to support agents generated at deployment time from the Quarkus extension"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.visibilityIncreased",
+          "old": "method void dev.langchain4j.agentic.agent.AgentInvocationHandler::<init>(dev.langchain4j.service.AiServiceContext, java.lang.Object, dev.langchain4j.agentic.agent.AgentBuilder<?, ?>, boolean)",
+          "new": "method void dev.langchain4j.agentic.agent.AgentInvocationHandler::<init>(dev.langchain4j.service.AiServiceContext, java.lang.Object, dev.langchain4j.agentic.agent.AgentBuilder<?, ?>, boolean)",
+          "oldVisibility": "package",
+          "newVisibility": "public",
+          "justification": "Necessary to support agents generated at deployment time from the Quarkus extension"
         }
       ]
     }

@@ -48,7 +48,6 @@ import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClient;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
-import com.azure.core.http.netty.NettyAsyncHttpClientProvider;
 import com.azure.core.http.policy.ExponentialBackoffOptions;
 import com.azure.core.http.policy.HttpLogDetailLevel;
 import com.azure.core.http.policy.HttpLogOptions;
@@ -175,8 +174,7 @@ class InternalAzureOpenAiHelper {
             customHeaders.forEach((name, value) -> headers.add(new Header(name, value)));
         }
         clientOptions.setHeaders(headers);
-        httpClientProvider = getOrDefault(httpClientProvider, NettyAsyncHttpClientProvider::new);
-        HttpClient httpClient = httpClientProvider.createInstance(clientOptions);
+        HttpClient httpClient = createHttpClient(httpClientProvider, clientOptions);
 
         HttpLogOptions httpLogOptions = new HttpLogOptions();
         if (logRequestsAndResponses) {
@@ -204,6 +202,23 @@ class InternalAzureOpenAiHelper {
         }
 
         return openAIClientBuilder;
+    }
+
+    static HttpClient createHttpClient(HttpClientProvider httpClientProvider, HttpClientOptions clientOptions) {
+        if (httpClientProvider != null) {
+            return httpClientProvider.createInstance(clientOptions);
+        }
+        try {
+            // Discover the default HttpClientProvider (e.g. azure-core-http-netty) via the Azure SDK's own
+            // ServiceLoader-based mechanism. Unlike a hard-coded NettyAsyncHttpClientProvider, this lets users
+            // exclude azure-core-http-netty and supply a different implementation, and it honors the Azure SDK
+            // configuration (e.g. AZURE_HTTP_CLIENT_IMPLEMENTATION) when multiple providers are on the classpath.
+            return HttpClient.createDefault(clientOptions);
+        } catch (IllegalStateException e) {
+            throw new IllegalStateException("No HttpClientProvider implementation found on the classpath. "
+                    + "Add 'com.azure:azure-core-http-netty' as a dependency, "
+                    + "or provide a custom HttpClientProvider via .httpClientProvider() on the builder.", e);
+        }
     }
 
     static RetryOptions resolveRetryOptions(Integer maxRetries, RetryOptions retryOptions) {

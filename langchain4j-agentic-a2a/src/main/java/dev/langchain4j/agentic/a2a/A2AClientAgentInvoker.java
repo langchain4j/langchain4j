@@ -10,10 +10,13 @@ import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.internal.AgentInvoker;
-import io.a2a.spec.AgentCard;
+import dev.langchain4j.service.ParameterNameResolver;
+import org.a2aproject.sdk.spec.AgentCard;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.agentic.internal.AgentUtil.agentInvocationArguments;
@@ -40,11 +43,15 @@ public class A2AClientAgentInvoker implements AgentInvoker {
     }
 
     private List<AgentArgument> arguments(A2AClientInstance a2AClientInstance) {
+        Set<String> a2aArgs = Stream.of(method.getParameters())
+                .filter(p -> p.isAnnotationPresent(A2AContextId.class) || p.isAnnotationPresent(A2ATaskId.class))
+                .map(ParameterNameResolver::name)
+                .collect(Collectors.toSet());
         return isUntyped() ?
                 Stream.of(a2AClientInstance.inputKeys())
                         .map(input -> new AgentArgument(Object.class, input))
                         .toList() :
-                argumentsFromMethod(method);
+                argumentsFromMethod(method, a2aArgs);
     }
 
     @Override
