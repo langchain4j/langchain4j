@@ -888,6 +888,48 @@ class AiServicesAsyncTest {
                 });
     }
 
+    static class SynchronouslyThrowingAsyncTools {
+
+        @Tool
+        CompletableFuture<String> currentTemperature() {
+            // throws synchronously (e.g. argument validation) before constructing the future - hits a
+            // different branch (InvocationTargetException) than a returned failed future
+            throw new IllegalArgumentException("Invalid city");
+        }
+    }
+
+    @Test
+    void should_send_error_to_LLM_when_async_tool_throws_synchronously() throws Exception {
+
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("currentTemperature")
+                .arguments("{}")
+                .build();
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(toolExecutionRequest), AiMessage.from("I was not able to get the temperature"));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(new SynchronouslyThrowingAsyncTools())
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("What is the temperature?");
+
+        // a synchronous throw from a future-returning tool routes to the error handler identically to a
+        // returned failed future: the error message is sent to the LLM and the loop reprocesses
+        assertThat(future.get(10, SECONDS)).isEqualTo("I was not able to get the temperature");
+        assertThat(chatModel.requests()).hasSize(2);
+        assertThat(chatModel.requests().get(1).messages())
+                .filteredOn(message -> message instanceof ToolExecutionResultMessage)
+                .singleElement()
+                .satisfies(message -> {
+                    ToolExecutionResultMessage toolResult = (ToolExecutionResultMessage) message;
+                    assertThat(toolResult.text()).isEqualTo("Invalid city");
+                    assertThat(toolResult.isError()).isTrue();
+                });
+    }
+
     interface AssistantReturningRawFuture {
 
         @SuppressWarnings("rawtypes")
