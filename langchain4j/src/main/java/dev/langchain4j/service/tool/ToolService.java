@@ -52,6 +52,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
@@ -486,6 +487,9 @@ public class ToolService {
      * tool executions without blocking: no thread waits while a model response is in flight.
      * When tools are configured to execute concurrently, their results are composed (not joined) as well.
      * When no tool executor is configured, tools run on the thread that delivered the model response.
+     * <p>
+     * The {@code cancellation} future lets the caller stop the loop: once it is cancelled, no further model
+     * call or tool execution is initiated, and any in-flight model call is cancelled.
      *
      * @since 1.17.0
      */
@@ -497,7 +501,8 @@ public class ToolService {
             List<ChatMessage> messages,
             ChatMemory chatMemory,
             InvocationContext invocationContext,
-            ToolServiceContext toolServiceContext) {
+            ToolServiceContext toolServiceContext,
+            CompletableFuture<?> cancellation) {
         return executeInferenceAndToolsLoopAsync(
                 context,
                 memoryId,
@@ -507,6 +512,7 @@ public class ToolService {
                 chatMemory,
                 invocationContext,
                 toolServiceContext,
+                cancellation,
                 chatResponse.metadata().tokenUsage(),
                 new ArrayList<>(),
                 new ArrayList<>(),
@@ -522,10 +528,15 @@ public class ToolService {
             ChatMemory chatMemory,
             InvocationContext invocationContext,
             ToolServiceContext toolServiceContext,
+            CompletableFuture<?> cancellation,
             TokenUsage aggregateTokenUsage,
             List<ToolExecution> toolExecutions,
             List<ChatResponse> intermediateResponses,
             int roundTripsLeft) {
+
+        if (isCancelled(cancellation)) {
+            return CompletableFuture.failedFuture(new CancellationException());
+        }
 
         if (roundTripsLeft == 0) {
             return CompletableFuture.failedFuture(runtime(
@@ -568,6 +579,12 @@ public class ToolService {
                                 intermediateResponses, toolExecutions, aggregateTokenUsage));
                     }
 
+                    // a cancellation may have arrived while the tools were executing - do not start a new
+                    // model call in that case
+                    if (isCancelled(cancellation)) {
+                        return CompletableFuture.<ToolServiceResult>failedFuture(new CancellationException());
+                    }
+
                     NextChatRequest next = prepareNextChatRequest(
                             context,
                             memoryId,
@@ -578,7 +595,9 @@ public class ToolService {
                             toolResults,
                             parameters);
 
-                    return context.chatModel.chatAsync(next.chatRequest()).thenCompose(nextChatResponse -> {
+                    CompletableFuture<ChatResponse> nextModelCall = context.chatModel.chatAsync(next.chatRequest());
+                    propagateCancellation(cancellation, nextModelCall);
+                    return nextModelCall.thenCompose(nextChatResponse -> {
                         fireResponseReceivedEvent(
                                 next.chatRequest(),
                                 nextChatResponse,
@@ -593,6 +612,7 @@ public class ToolService {
                                 chatMemory,
                                 invocationContext,
                                 next.toolServiceContext(),
+                                cancellation,
                                 TokenUsage.sum(
                                         aggregateTokenUsage,
                                         nextChatResponse.metadata().tokenUsage()),
@@ -601,6 +621,21 @@ public class ToolService {
                                 roundTripsLeft - 1);
                     });
                 });
+    }
+
+    private static boolean isCancelled(CompletableFuture<?> cancellation) {
+        return cancellation != null && cancellation.isCancelled();
+    }
+
+    private static void propagateCancellation(CompletableFuture<?> from, CompletableFuture<?> to) {
+        if (from == null) {
+            return;
+        }
+        from.whenComplete((ignored, error) -> {
+            if (from.isCancelled()) {
+                to.cancel(true);
+            }
+        });
     }
 
     private ToolResultsOutcome processToolResults(

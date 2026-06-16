@@ -27,6 +27,8 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
+import dev.langchain4j.observability.api.listener.AiServiceErrorListener;
 import dev.langchain4j.service.guardrail.InputGuardrails;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
@@ -34,9 +36,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
@@ -286,6 +295,125 @@ class AiServicesAsyncTest {
     }
 
     @Test
+    void should_release_caller_immediately_when_future_is_cancelled() {
+
+        AtomicInteger modelCalls = new AtomicInteger();
+        ChatModel chatModel = new ChatModel() {
+
+            @Override
+            public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+                modelCalls.incrementAndGet();
+                return new CompletableFuture<>(); // never completes
+            }
+        };
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("Hi");
+        assertThat(future).isNotDone();
+
+        boolean cancelled = future.cancel(true);
+
+        // the caller is released immediately, without waiting for the (never-completing) model call
+        assertThat(cancelled).isTrue();
+        assertThat(future).isCancelled();
+        assertThatThrownBy(() -> future.get(1, SECONDS)).isInstanceOf(CancellationException.class);
+        assertThat(modelCalls).hasValue(1);
+    }
+
+    @Test
+    void should_stop_tool_loop_when_future_is_cancelled() throws Exception {
+
+        AtomicInteger modelCalls = new AtomicInteger();
+        CountDownLatch secondModelCall = new CountDownLatch(1);
+        CompletableFuture<String> toolGate = new CompletableFuture<>();
+
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("gatedTool")
+                .arguments("{}")
+                .build();
+
+        ChatModel chatModel = new ChatModel() {
+
+            @Override
+            public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+                if (modelCalls.incrementAndGet() == 1) {
+                    return CompletableFuture.completedFuture(ChatResponse.builder()
+                            .aiMessage(AiMessage.from(toolExecutionRequest))
+                            .metadata(ChatResponseMetadata.builder().build())
+                            .build());
+                }
+                secondModelCall.countDown();
+                return CompletableFuture.completedFuture(ChatResponse.builder()
+                        .aiMessage(AiMessage.from("done"))
+                        .metadata(ChatResponseMetadata.builder().build())
+                        .build());
+            }
+        };
+
+        class GatedTools {
+
+            @Tool
+            CompletableFuture<String> gatedTool() {
+                return toolGate; // keeps the tool loop parked until the test completes it
+            }
+        }
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(new GatedTools())
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("go");
+
+        // round 1 completed and the loop is now parked on the gated tool, before the round-2 model call
+        assertThat(modelCalls).hasValue(1);
+        assertThat(future).isNotDone();
+
+        future.cancel(true);
+        toolGate.complete("42"); // release the tool; the loop must NOT proceed to a second model call
+
+        assertThat(future).isCancelled();
+        assertThat(secondModelCall.await(1, SECONDS))
+                .as("no further model call must be issued after cancellation")
+                .isFalse();
+        assertThat(modelCalls).hasValue(1);
+    }
+
+    @Test
+    void should_not_fire_completion_or_error_event_when_future_is_cancelled() {
+
+        AtomicInteger completedEvents = new AtomicInteger();
+        AtomicInteger errorEvents = new AtomicInteger();
+
+        ChatModel chatModel = new ChatModel() {
+
+            @Override
+            public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+                return new CompletableFuture<>(); // never completes
+            }
+        };
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .registerListeners(List.of(
+                        (AiServiceCompletedListener) event -> completedEvents.incrementAndGet(),
+                        (AiServiceErrorListener) event -> errorEvents.incrementAndGet()))
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("Hi");
+        future.cancel(true);
+
+        assertThat(future).isCancelled();
+        // cancellation is neither a successful completion nor an error
+        assertThat(completedEvents).hasValue(0);
+        assertThat(errorEvents).hasValue(0);
+    }
+
+    @Test
     void should_execute_blocking_tools_in_multiple_rounds() throws Exception {
 
         ToolExecutionRequest firstRequest = ToolExecutionRequest.builder()
@@ -473,6 +601,143 @@ class AiServicesAsyncTest {
                 .singleElement()
                 .satisfies(message -> assertThat(((ToolExecutionResultMessage) message).text())
                         .isEqualTo("42"));
+    }
+
+    static class ConcurrentAsyncTools {
+
+        private final Executor executor;
+        final CyclicBarrier bothInFlight = new CyclicBarrier(2);
+        final List<String> executedTools = synchronizedList(new ArrayList<>());
+
+        ConcurrentAsyncTools(Executor executor) {
+            this.executor = executor;
+        }
+
+        @Tool
+        CompletableFuture<String> currentTemperature() {
+            executedTools.add("currentTemperature");
+            return CompletableFuture.supplyAsync(
+                    () -> {
+                        awaitBarrier(bothInFlight);
+                        return "42";
+                    },
+                    executor);
+        }
+
+        @Tool
+        CompletableFuture<String> currentHumidity() {
+            executedTools.add("currentHumidity");
+            return CompletableFuture.supplyAsync(
+                    () -> {
+                        awaitBarrier(bothInFlight);
+                        return "69";
+                    },
+                    executor);
+        }
+    }
+
+    @Test
+    void should_execute_multiple_async_tools_in_parallel() throws Exception {
+
+        // Both async tools complete only after a shared CyclicBarrier(2) trips, which requires both to be
+        // in flight at the same time - a deterministic proof they run in parallel. A sequential tool loop
+        // would never trip the barrier and would time out. A dedicated 2-thread pool guarantees both
+        // futures have a thread to run on (independent of the common pool's size).
+        ExecutorService toolPool = Executors.newFixedThreadPool(2);
+        try {
+            ToolExecutionRequest temperatureRequest = ToolExecutionRequest.builder()
+                    .id("1")
+                    .name("currentTemperature")
+                    .arguments("{}")
+                    .build();
+            ToolExecutionRequest humidityRequest = ToolExecutionRequest.builder()
+                    .id("2")
+                    .name("currentHumidity")
+                    .arguments("{}")
+                    .build();
+            ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+                    AiMessage.from(temperatureRequest, humidityRequest), AiMessage.from("42 degrees, 69 percent"));
+            ConcurrentAsyncTools tools = new ConcurrentAsyncTools(toolPool);
+
+            Assistant assistant = AiServices.builder(Assistant.class)
+                    .chatModel(chatModel)
+                    .tools(tools)
+                    .executeToolsConcurrently()
+                    .build();
+
+            String answer = assistant.chat("What is the weather?").get(10, SECONDS);
+
+            assertThat(answer).isEqualTo("42 degrees, 69 percent");
+            assertThat(tools.executedTools).containsExactlyInAnyOrder("currentTemperature", "currentHumidity");
+            assertThat(chatModel.requests().get(1).messages())
+                    .filteredOn(message -> message instanceof ToolExecutionResultMessage)
+                    .extracting(message -> ((ToolExecutionResultMessage) message).text())
+                    .containsExactlyInAnyOrder("42", "69");
+        } finally {
+            toolPool.shutdownNow();
+        }
+    }
+
+    static class MixedTools {
+
+        final List<String> executedTools = synchronizedList(new ArrayList<>());
+
+        @Tool
+        CompletableFuture<String> currentTemperature() {
+            executedTools.add("currentTemperature");
+            return CompletableFuture.supplyAsync(() -> "42", CompletableFuture.delayedExecutor(50, MILLISECONDS));
+        }
+
+        @Tool
+        String currentHumidity() {
+            executedTools.add("currentHumidity");
+            return "69";
+        }
+    }
+
+    @Test
+    void should_execute_mixed_async_and_sync_tools_in_one_response() throws Exception {
+
+        ToolExecutionRequest temperatureRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("currentTemperature")
+                .arguments("{}")
+                .build();
+        ToolExecutionRequest humidityRequest = ToolExecutionRequest.builder()
+                .id("2")
+                .name("currentHumidity")
+                .arguments("{}")
+                .build();
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(temperatureRequest, humidityRequest), AiMessage.from("42 degrees, 69 percent"));
+        MixedTools tools = new MixedTools();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .executeToolsConcurrently()
+                .build();
+
+        String answer = assistant.chat("What is the weather?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("42 degrees, 69 percent");
+        assertThat(tools.executedTools).containsExactlyInAnyOrder("currentTemperature", "currentHumidity");
+        // both results are delivered, regardless of which tool was async (currentTemperature) vs sync (currentHumidity)
+        assertThat(chatModel.requests().get(1).messages())
+                .filteredOn(message -> message instanceof ToolExecutionResultMessage)
+                .extracting(message -> ((ToolExecutionResultMessage) message).text())
+                .containsExactlyInAnyOrder("42", "69");
+    }
+
+    private static void awaitBarrier(CyclicBarrier barrier) {
+        try {
+            barrier.await(5, SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } catch (BrokenBarrierException | java.util.concurrent.TimeoutException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     interface BlockingAssistant {

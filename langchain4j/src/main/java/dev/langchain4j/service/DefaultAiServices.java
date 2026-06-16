@@ -77,6 +77,7 @@ import java.util.Optional;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
@@ -420,8 +421,15 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .request(chatRequest)
                                 .build());
 
-                        return context.chatModel
-                                .chatAsync(chatRequest)
+                        // The future handed to the caller. Returned separately (rather than the composed
+                        // pipeline) so that cancelling it can be observed and propagated: it is used as the
+                        // cancellation signal for the tool loop and cancels the in-flight model call.
+                        CompletableFuture<Object> result = new CompletableFuture<>();
+
+                        CompletableFuture<ChatResponse> firstModelCall = context.chatModel.chatAsync(chatRequest);
+                        propagateCancellation(result, firstModelCall);
+
+                        firstModelCall
                                 .thenCompose(chatResponse -> {
                                     context.eventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
                                             .invocationContext(invocationContext)
@@ -442,7 +450,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                     messages,
                                                     chatMemory,
                                                     invocationContext,
-                                                    toolServiceContext));
+                                                    toolServiceContext,
+                                                    result));
                                 })
                                 .thenApply(toolServiceResult -> processToolServiceResult(
                                         method,
@@ -455,19 +464,36 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         toolServiceResult,
                                         chatExecutor,
                                         commonGuardrailParam))
-                                .whenComplete((result, error) -> {
+                                .whenComplete((value, error) -> {
                                     if (error != null) {
                                         Throwable cause = error instanceof CompletionException && error.getCause() != null
                                                 ? error.getCause()
                                                 : error;
-                                        context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
-                                                .invocationContext(invocationContext)
-                                                .error(cause instanceof Exception exception
-                                                        ? exception
-                                                        : new RuntimeException(cause))
-                                                .build());
+                                        // cancellation is neither a successful completion nor an error to report
+                                        if (!result.isCancelled() && !(cause instanceof CancellationException)) {
+                                            context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
+                                                    .invocationContext(invocationContext)
+                                                    .error(cause instanceof Exception exception
+                                                            ? exception
+                                                            : new RuntimeException(cause))
+                                                    .build());
+                                        }
+                                        result.completeExceptionally(cause);
+                                    } else {
+                                        result.complete(value);
                                     }
                                 });
+
+                        return result;
+                    }
+
+                    private static void propagateCancellation(
+                            CompletableFuture<?> from, CompletableFuture<?> to) {
+                        from.whenComplete((ignored, error) -> {
+                            if (from.isCancelled()) {
+                                to.cancel(true);
+                            }
+                        });
                     }
 
                     private Object processToolServiceResult(

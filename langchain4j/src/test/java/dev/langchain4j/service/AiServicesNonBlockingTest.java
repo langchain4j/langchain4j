@@ -230,6 +230,12 @@ class AiServicesNonBlockingTest {
             // the policed delivery thread
             return CompletableFuture.supplyAsync(() -> "42", CompletableFuture.delayedExecutor(50, MILLISECONDS));
         }
+
+        @Tool
+        CompletableFuture<String> currentHumidity(String city) {
+            invocations.incrementAndGet();
+            return CompletableFuture.supplyAsync(() -> "69", CompletableFuture.delayedExecutor(50, MILLISECONDS));
+        }
     }
 
     @Test
@@ -248,6 +254,65 @@ class AiServicesNonBlockingTest {
 
         assertThat(answer).isEqualTo("42 degrees");
         assertThat(tools.invocations).hasValue(1);
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void concurrent_async_tools_do_not_block_the_delivery_thread() throws Exception {
+
+        NonBlockingChatModelStub chatModel = new NonBlockingChatModelStub(
+                AiMessage.from(toolRequest("1", "currentTemperature"), toolRequest("2", "currentHumidity")),
+                AiMessage.from("42 degrees, 69 percent"));
+        AsyncWeatherTools tools = new AsyncWeatherTools();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .executeToolsConcurrently()
+                .build();
+
+        String answer = assistant.chat("What is the weather in Munich?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("42 degrees, 69 percent");
+        assertThat(tools.invocations).hasValue(2);
+        assertNoBlockingCalls();
+    }
+
+    static class MixedWeatherTools {
+
+        final AtomicInteger invocations = new AtomicInteger();
+
+        @Tool
+        CompletableFuture<String> currentTemperature(String city) {
+            invocations.incrementAndGet();
+            return CompletableFuture.supplyAsync(() -> "42", CompletableFuture.delayedExecutor(50, MILLISECONDS));
+        }
+
+        @Tool
+        String currentHumidity(String city) {
+            invocations.incrementAndGet();
+            return "69";
+        }
+    }
+
+    @Test
+    void mixed_async_and_sync_tools_do_not_block_the_delivery_thread() throws Exception {
+
+        NonBlockingChatModelStub chatModel = new NonBlockingChatModelStub(
+                AiMessage.from(toolRequest("1", "currentTemperature"), toolRequest("2", "currentHumidity")),
+                AiMessage.from("42 degrees, 69 percent"));
+        MixedWeatherTools tools = new MixedWeatherTools();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .executeToolsConcurrently()
+                .build();
+
+        String answer = assistant.chat("What is the weather in Munich?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("42 degrees, 69 percent");
+        assertThat(tools.invocations).hasValue(2);
         assertNoBlockingCalls();
     }
 
