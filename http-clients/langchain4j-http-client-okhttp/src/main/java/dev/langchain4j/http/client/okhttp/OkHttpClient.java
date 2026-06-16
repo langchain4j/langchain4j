@@ -78,7 +78,8 @@ public class OkHttpClient implements HttpClient {
     public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
         Request okRequest = toOkHttpRequest(request);
         CompletableFuture<SuccessfulHttpResponse> future = new CompletableFuture<>();
-        client.newCall(okRequest).enqueue(new Callback() {
+        Call call = client.newCall(okRequest);
+        call.enqueue(new Callback() {
             @Override
             public void onResponse(Call call, Response response) {
                 try (response) {
@@ -95,6 +96,14 @@ public class OkHttpClient implements HttpClient {
             @Override
             public void onFailure(Call call, IOException e) {
                 future.completeExceptionally(e instanceof SocketTimeoutException ? new TimeoutException(e) : e);
+            }
+        });
+
+        // Forward cancellation to the underlying call: cancelling the returned future aborts the
+        // in-flight request and releases the connection.
+        future.whenComplete((response, error) -> {
+            if (future.isCancelled()) {
+                call.cancel();
             }
         });
         return future;

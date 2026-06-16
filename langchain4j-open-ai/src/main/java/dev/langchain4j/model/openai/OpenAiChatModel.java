@@ -42,6 +42,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.function.Supplier;
@@ -176,15 +177,26 @@ public class OpenAiChatModel implements ChatModel {
 
         // Retries are applied on the synchronous path via withRetryMappingExceptions; the async path
         // maps provider exceptions to langchain4j exceptions but does not retry yet. TODO retries for async
-        return client.chatCompletion(openAiRequest)
-                .executeRawAsync()
-                .thenApply(this::toChatResponse)
+        CompletableFuture<ParsedAndRawResponse<ChatCompletionResponse>> rawFuture =
+                client.chatCompletion(openAiRequest).executeRawAsync();
+        CompletableFuture<ChatResponse> result = rawFuture.thenApply(this::toChatResponse)
                 .exceptionallyCompose(throwable -> {
                     Throwable cause = throwable instanceof CompletionException && throwable.getCause() != null
                             ? throwable.getCause()
                             : throwable;
+                    if (cause instanceof CancellationException) {
+                        // a cancellation is not a provider error - propagate it as-is, do not map it
+                        return CompletableFuture.failedFuture(cause);
+                    }
                     return CompletableFuture.failedFuture(ExceptionMapper.DEFAULT.mapException(cause));
                 });
+        // forward cancellation to the underlying HTTP call
+        result.whenComplete((response, error) -> {
+            if (result.isCancelled()) {
+                rawFuture.cancel(true);
+            }
+        });
+        return result;
     }
 
     private ChatResponse toChatResponse(ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse) {

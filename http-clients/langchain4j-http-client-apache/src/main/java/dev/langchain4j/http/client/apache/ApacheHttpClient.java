@@ -109,25 +109,35 @@ public class ApacheHttpClient implements HttpClient {
     public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
         SimpleHttpRequest apacheRequest = toSimpleApacheRequest(request);
         CompletableFuture<SuccessfulHttpResponse> future = new CompletableFuture<>();
-        asyncClient.execute(apacheRequest, new FutureCallback<>() {
-            @Override
-            public void completed(SimpleHttpResponse apacheResponse) {
-                if (!isSuccessful(apacheResponse)) {
-                    future.completeExceptionally(
-                            new HttpException(apacheResponse.getCode(), apacheResponse.getBodyText()));
-                } else {
-                    future.complete(fromApacheResponse(apacheResponse));
-                }
-            }
+        java.util.concurrent.Future<SimpleHttpResponse> apacheFuture =
+                asyncClient.execute(apacheRequest, new FutureCallback<>() {
+                    @Override
+                    public void completed(SimpleHttpResponse apacheResponse) {
+                        if (!isSuccessful(apacheResponse)) {
+                            future.completeExceptionally(
+                                    new HttpException(apacheResponse.getCode(), apacheResponse.getBodyText()));
+                        } else {
+                            future.complete(fromApacheResponse(apacheResponse));
+                        }
+                    }
 
-            @Override
-            public void failed(Exception ex) {
-                future.completeExceptionally(ex instanceof SocketTimeoutException ? new TimeoutException(ex) : ex);
-            }
+                    @Override
+                    public void failed(Exception ex) {
+                        future.completeExceptionally(
+                                ex instanceof SocketTimeoutException ? new TimeoutException(ex) : ex);
+                    }
 
-            @Override
-            public void cancelled() {
-                future.cancel(true);
+                    @Override
+                    public void cancelled() {
+                        future.cancel(true);
+                    }
+                });
+
+        // Forward cancellation to the underlying request: cancelling the returned future aborts the
+        // in-flight exchange and releases the connection.
+        future.whenComplete((response, error) -> {
+            if (future.isCancelled()) {
+                apacheFuture.cancel(true);
             }
         });
         return future;

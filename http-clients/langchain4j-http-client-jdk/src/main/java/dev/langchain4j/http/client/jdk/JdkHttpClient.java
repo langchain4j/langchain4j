@@ -87,8 +87,11 @@ public class JdkHttpClient implements HttpClient {
     public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
         java.net.http.HttpRequest jdkRequest = toJdkRequest(request);
 
+        CompletableFuture<HttpResponse<String>> sendFuture =
+                delegate.sendAsync(jdkRequest, BodyHandlers.ofString());
+
         CompletableFuture<SuccessfulHttpResponse> result = new CompletableFuture<>();
-        delegate.sendAsync(jdkRequest, BodyHandlers.ofString()).whenComplete((jdkResponse, throwable) -> {
+        sendFuture.whenComplete((jdkResponse, throwable) -> {
             if (throwable != null) {
                 Throwable cause = throwable instanceof CompletionException && throwable.getCause() != null
                         ? throwable.getCause()
@@ -102,6 +105,14 @@ public class JdkHttpClient implements HttpClient {
                 result.completeExceptionally(new HttpException(jdkResponse.statusCode(), jdkResponse.body()));
             } else {
                 result.complete(fromJdkResponse(jdkResponse, jdkResponse.body()));
+            }
+        });
+
+        // Forward cancellation to the underlying HTTP exchange: cancelling the returned future cancels the
+        // JDK send, which aborts the in-flight request and releases the connection.
+        result.whenComplete((response, error) -> {
+            if (result.isCancelled()) {
+                sendFuture.cancel(true);
             }
         });
         return result;

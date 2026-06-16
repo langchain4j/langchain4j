@@ -17,6 +17,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -116,24 +117,36 @@ public interface ChatModel {
 
         onRequest(finalChatRequest, provider(), attributes, listeners);
 
-        CompletableFuture<ChatResponse> future;
+        CompletableFuture<ChatResponse> source;
         try {
-            future = doChatAsync(finalChatRequest);
+            source = doChatAsync(finalChatRequest);
         } catch (Exception error) {
             onError(error, finalChatRequest, provider(), attributes, listeners);
             return CompletableFuture.failedFuture(error);
         }
 
-        return future.whenComplete((chatResponse, error) -> {
+        CompletableFuture<ChatResponse> result = source.whenComplete((chatResponse, error) -> {
             if (error != null) {
                 Throwable cause = error instanceof CompletionException && error.getCause() != null
                         ? error.getCause()
                         : error;
-                onError(cause, finalChatRequest, provider(), attributes, listeners);
+                // a cancellation is not a model error - do not notify listeners
+                if (!(cause instanceof CancellationException)) {
+                    onError(cause, finalChatRequest, provider(), attributes, listeners);
+                }
             } else {
                 onResponse(chatResponse, finalChatRequest, provider(), attributes, listeners);
             }
         });
+
+        // Forward cancellation to the implementation's future so that cancelling the returned future
+        // aborts the in-flight request (if the implementation and HTTP client support it).
+        result.whenComplete((chatResponse, error) -> {
+            if (result.isCancelled()) {
+                source.cancel(true);
+            }
+        });
+        return result;
     }
 
     default CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
