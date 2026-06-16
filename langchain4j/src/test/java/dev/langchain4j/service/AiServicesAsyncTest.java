@@ -21,6 +21,7 @@ import dev.langchain4j.guardrail.InputGuardrailException;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -36,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -276,6 +278,123 @@ class AiServicesAsyncTest {
         assertThat(result.content().name).isEqualTo("Klaus");
         assertThat(result.toolExecutions()).isEmpty();
         assertThat(result.finalResponse().aiMessage().text()).isEqualTo("{\"name\": \"Klaus\"}");
+    }
+
+    interface AssistantReturningList {
+
+        CompletableFuture<List<Person>> extractPeople(String text);
+    }
+
+    /**
+     * A model that reports JSON-schema support and completes off-thread. Needed for return types whose output
+     * parser only supports a JSON schema (e.g. a list of POJOs), where {@link ChatModelMock} (no declared
+     * capabilities) would fall back to text format instructions that such a parser does not provide.
+     */
+    static class JsonSchemaCapableModel implements ChatModel {
+
+        private final String response;
+
+        JsonSchemaCapableModel(String response) {
+            this.response = response;
+        }
+
+        @Override
+        public Set<Capability> supportedCapabilities() {
+            return Set.of(Capability.RESPONSE_FORMAT_JSON_SCHEMA);
+        }
+
+        @Override
+        public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+            return CompletableFuture.supplyAsync(() -> ChatResponse.builder()
+                    .aiMessage(AiMessage.from(response))
+                    .metadata(ChatResponseMetadata.builder().build())
+                    .build());
+        }
+    }
+
+    @Test
+    void should_parse_list_of_pojo__async() throws Exception {
+
+        // CompletableFuture<List<Person>>: the async unwrap must preserve the nested generic (List<Person>,
+        // not raw List) so the output parser can resolve the element type
+        ChatModel chatModel =
+                new JsonSchemaCapableModel("{\"values\":[{\"name\":\"Klaus\"},{\"name\":\"Franny\"}]}");
+
+        AssistantReturningList assistant = AiServices.builder(AssistantReturningList.class)
+                .chatModel(chatModel)
+                .build();
+
+        List<Person> people = assistant.extractPeople("Klaus and Franny").get(10, SECONDS);
+
+        assertThat(people).extracting(person -> person.name).containsExactly("Klaus", "Franny");
+    }
+
+    enum Sentiment {
+        POSITIVE,
+        NEGATIVE
+    }
+
+    interface AssistantReturningEnum {
+
+        CompletableFuture<Sentiment> analyzeSentiment(String text);
+    }
+
+    @Test
+    void should_parse_enum__async() throws Exception {
+
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("POSITIVE");
+
+        AssistantReturningEnum assistant = AiServices.builder(AssistantReturningEnum.class)
+                .chatModel(chatModel)
+                .build();
+
+        assertThat(assistant.analyzeSentiment("I love it!").get(10, SECONDS)).isEqualTo(Sentiment.POSITIVE);
+    }
+
+    interface AssistantReturningBoolean {
+
+        CompletableFuture<Boolean> isPositive(String text);
+    }
+
+    @Test
+    void should_parse_boolean__async() throws Exception {
+
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("true");
+
+        AssistantReturningBoolean assistant = AiServices.builder(AssistantReturningBoolean.class)
+                .chatModel(chatModel)
+                .build();
+
+        assertThat(assistant.isPositive("I love it!").get(10, SECONDS)).isTrue();
+    }
+
+    @Test
+    void should_return_result_with_tool_executions__async() throws Exception {
+
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("currentTemperature")
+                .arguments("{}")
+                .build();
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(toolExecutionRequest), AiMessage.from("It is 42 degrees"));
+
+        AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
+                .chatModel(chatModel)
+                .tools(new Tools())
+                .build();
+
+        Result<String> result = assistant.chat("What is the temperature?").get(10, SECONDS);
+
+        assertThat(result.content()).isEqualTo("It is 42 degrees");
+        assertThat(result.toolExecutions()).singleElement().satisfies(execution -> {
+            assertThat(execution.request().name()).isEqualTo("currentTemperature");
+            assertThat(execution.result()).isEqualTo("42");
+        });
+        assertThat(result.intermediateResponses())
+                .singleElement()
+                .satisfies(response ->
+                        assertThat(response.aiMessage().hasToolExecutionRequests()).isTrue());
     }
 
     @Test
