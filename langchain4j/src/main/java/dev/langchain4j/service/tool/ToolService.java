@@ -73,8 +73,14 @@ public class ToolService {
         }
     };
     private static final ToolExecutionErrorHandler DEFAULT_TOOL_EXECUTION_ERROR_HANDLER = (error, context) -> {
-        String errorMessage =
-                isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
+        String errorMessage = errorMessage(error);
+        log.warn(
+                "Tool '{}' execution failed. The error message is being returned to the LLM. "
+                        + "To customize this behavior (and silence this log), configure a custom "
+                        + "ToolExecutionErrorHandler via AiServices.toolExecutionErrorHandler(...). Error: {}",
+                context.toolExecutionRequest().name(),
+                errorMessage,
+                error);
         return ToolErrorHandlerResult.text(errorMessage);
     };
 
@@ -776,9 +782,7 @@ public class ToolService {
             if (e instanceof ToolArgumentsException) {
                 errorHandlerResult = argumentsErrorHandler.handle(getCause(e), errorContext);
             } else {
-                Throwable cause = getCause(e);
-                log.error("Error executing tool '{}': {}", toolRequest.name(), errorMessage(cause), e);
-                errorHandlerResult = executionErrorHandler.handle(cause, errorContext);
+                errorHandlerResult = executionErrorHandler.handle(getCause(e), errorContext);
             }
 
             return ToolExecutionResult.builder()

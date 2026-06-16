@@ -32,12 +32,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class DefaultToolExecutor implements ToolExecutor {
-
-    private static final Logger log = LoggerFactory.getLogger(DefaultToolExecutor.class);
 
     private final Object object;
     private final Method originalMethod;
@@ -117,11 +113,9 @@ public class DefaultToolExecutor implements ToolExecutor {
                 if (propagateToolExecutionExceptions) {
                     throw new ToolExecutionException(e2.getCause());
                 } else {
-                    Throwable cause = e2.getCause();
-                    log.warn("Error executing tool '{}': {}", request.name(), cause.getMessage(), cause);
                     return ToolExecutionResult.builder()
                             .isError(true)
-                            .resultText(errorMessage(cause))
+                            .resultText(errorMessage(e2.getCause()))
                             .build();
                 }
             }
@@ -129,11 +123,9 @@ public class DefaultToolExecutor implements ToolExecutor {
             if (propagateToolExecutionExceptions) {
                 throw new ToolExecutionException(e.getCause());
             } else {
-                Throwable cause = e.getCause();
-                log.warn("Error executing tool '{}': {}", request.name(), cause.getMessage(), cause);
                 return ToolExecutionResult.builder()
                         .isError(true)
-                        .resultText(errorMessage(cause))
+                        .resultText(errorMessage(e.getCause()))
                         .build();
             }
         }

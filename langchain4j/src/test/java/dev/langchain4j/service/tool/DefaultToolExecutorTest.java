@@ -718,7 +718,7 @@ class DefaultToolExecutorTest implements WithAssertions {
     }
 
     @Test
-    void should_log_exception_when_tool_execution_fails() throws Exception {
+    void should_return_error_result_when_tool_execution_fails() throws Exception {
         ToolWithException tool = new ToolWithException();
         Method method = ToolWithException.class.getMethod("throwingTool", String.class);
 
