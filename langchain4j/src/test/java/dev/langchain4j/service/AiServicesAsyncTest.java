@@ -848,6 +848,148 @@ class AiServicesAsyncTest {
                 .containsExactlyInAnyOrder("42", "69");
     }
 
+    static class SequentialAsyncTools {
+
+        final List<String> executedTools = synchronizedList(new ArrayList<>());
+
+        @Tool
+        CompletableFuture<String> currentTemperature() {
+            executedTools.add("currentTemperature");
+            return CompletableFuture.supplyAsync(() -> "42", CompletableFuture.delayedExecutor(20, MILLISECONDS));
+        }
+
+        @Tool
+        CompletableFuture<String> currentHumidity() {
+            executedTools.add("currentHumidity");
+            return CompletableFuture.supplyAsync(() -> "69", CompletableFuture.delayedExecutor(20, MILLISECONDS));
+        }
+    }
+
+    @Test
+    void should_execute_multiple_async_tools_sequentially_in_one_response() throws Exception {
+
+        ToolExecutionRequest temperatureRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("currentTemperature")
+                .arguments("{}")
+                .build();
+        ToolExecutionRequest humidityRequest = ToolExecutionRequest.builder()
+                .id("2")
+                .name("currentHumidity")
+                .arguments("{}")
+                .build();
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(temperatureRequest, humidityRequest), AiMessage.from("42 degrees, 69 percent"));
+        SequentialAsyncTools tools = new SequentialAsyncTools();
+
+        // no executeToolsConcurrently(): the loop chains the async tools (thenCompose), one after another
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .build();
+
+        String answer = assistant.chat("What is the weather?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("42 degrees, 69 percent");
+        // the chained path initiates the second tool only after the first one's future completes, so the
+        // invocation order is deterministic and matches the request order
+        assertThat(tools.executedTools).containsExactly("currentTemperature", "currentHumidity");
+        // both results are delivered, in request order
+        assertThat(chatModel.requests().get(1).messages())
+                .filteredOn(message -> message instanceof ToolExecutionResultMessage)
+                .extracting(message -> ((ToolExecutionResultMessage) message).text())
+                .containsExactly("42", "69");
+    }
+
+    @Test
+    void should_execute_async_tools_in_multiple_rounds() throws Exception {
+
+        ToolExecutionRequest firstRoundRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("currentTemperature")
+                .arguments("{}")
+                .build();
+        ToolExecutionRequest secondRoundRequest = ToolExecutionRequest.builder()
+                .id("2")
+                .name("currentHumidity")
+                .arguments("{}")
+                .build();
+        // each round the LLM calls a single async tool, then answers
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(firstRoundRequest),
+                AiMessage.from(secondRoundRequest),
+                AiMessage.from("42 degrees, 69 percent"));
+        SequentialAsyncTools tools = new SequentialAsyncTools();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(20))
+                .tools(tools)
+                .build();
+
+        String answer = assistant.chat("What is the weather?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("42 degrees, 69 percent");
+        assertThat(tools.executedTools).containsExactly("currentTemperature", "currentHumidity");
+        assertThat(chatModel.requests()).hasSize(3);
+        assertThat(chatModel.requests().get(0).messages()).hasSize(1);
+        assertThat(chatModel.requests().get(1).messages()).hasSize(3);
+        assertThat(chatModel.requests().get(2).messages()).hasSize(5);
+    }
+
+    static class PartiallyFailingAsyncTools {
+
+        @Tool
+        CompletableFuture<String> currentTemperature() {
+            return CompletableFuture.failedFuture(new RuntimeException("Temperature service is unavailable"));
+        }
+
+        @Tool
+        CompletableFuture<String> currentHumidity() {
+            return CompletableFuture.supplyAsync(() -> "69", CompletableFuture.delayedExecutor(20, MILLISECONDS));
+        }
+    }
+
+    @Test
+    void should_handle_one_async_tool_failing_and_one_succeeding_in_parallel() throws Exception {
+
+        ToolExecutionRequest temperatureRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("currentTemperature")
+                .arguments("{}")
+                .build();
+        ToolExecutionRequest humidityRequest = ToolExecutionRequest.builder()
+                .id("2")
+                .name("currentHumidity")
+                .arguments("{}")
+                .build();
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(temperatureRequest, humidityRequest), AiMessage.from("It is 69 percent humidity"));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(new PartiallyFailingAsyncTools())
+                .executeToolsConcurrently()
+                .build();
+
+        String answer = assistant.chat("What is the weather?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("It is 69 percent humidity");
+        assertThat(chatModel.requests()).hasSize(2);
+
+        // both results reach the LLM, in request order: the failed tool's error message (default non-throwing
+        // handler) followed by the successful tool's value. Order is preserved regardless of completion order.
+        List<ToolExecutionResultMessage> toolResults = chatModel.requests().get(1).messages().stream()
+                .filter(message -> message instanceof ToolExecutionResultMessage)
+                .map(message -> (ToolExecutionResultMessage) message)
+                .toList();
+        assertThat(toolResults).hasSize(2);
+        assertThat(toolResults.get(0).text()).isEqualTo("Temperature service is unavailable");
+        assertThat(toolResults.get(0).isError()).isTrue();
+        assertThat(toolResults.get(1).text()).isEqualTo("69");
+        assertThat(toolResults.get(1).isError()).isFalse();
+    }
+
     private static void awaitBarrier(CyclicBarrier barrier) {
         try {
             barrier.await(5, SECONDS);
