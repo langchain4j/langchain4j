@@ -215,9 +215,11 @@ class InternalAzureOpenAiHelper {
             // configuration (e.g. AZURE_HTTP_CLIENT_IMPLEMENTATION) when multiple providers are on the classpath.
             return HttpClient.createDefault(clientOptions);
         } catch (IllegalStateException e) {
-            throw new IllegalStateException("No HttpClientProvider implementation found on the classpath. "
-                    + "Add 'com.azure:azure-core-http-netty' as a dependency, "
-                    + "or provide a custom HttpClientProvider via .httpClientProvider() on the builder.", e);
+            throw new IllegalStateException(
+                    "No HttpClientProvider implementation found on the classpath. "
+                            + "Add 'com.azure:azure-core-http-netty' as a dependency, "
+                            + "or provide a custom HttpClientProvider via .httpClientProvider() on the builder.",
+                    e);
         }
     }
 
