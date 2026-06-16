@@ -2,10 +2,10 @@ package dev.langchain4j.service.tool;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import java.util.Objects;
-import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
+import java.util.Objects;
 
 /**
  * @since 1.4.0
@@ -71,11 +71,10 @@ public class ToolErrorContext {
 
     @Override
     public String toString() {
-        return "ToolErrorContext{" +
-                "toolExecutionRequest=" + toolExecutionRequest +
-                ", invocationContext=" + invocationContext +
-                ", rawError=" + rawError +
-                '}';
+        return "ToolErrorContext{" + "toolExecutionRequest="
+                + toolExecutionRequest + ", invocationContext="
+                + invocationContext + ", rawError="
+                + rawError + '}';
     }
 
     public static Builder builder() {
@@ -113,9 +112,8 @@ public class ToolErrorContext {
          */
         @Deprecated(since = "1.5.0")
         public Builder memoryId(Object memoryId) {
-            this.invocationContext = InvocationContext.builder()
-                    .chatMemoryId(memoryId)
-                    .build();
+            this.invocationContext =
+                    InvocationContext.builder().chatMemoryId(memoryId).build();
             return this;
         }
 
