@@ -5,6 +5,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -19,6 +20,9 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailException;
 import dev.langchain4j.guardrail.InputGuardrailResult;
+import dev.langchain4j.guardrail.OutputGuardrail;
+import dev.langchain4j.guardrail.OutputGuardrailException;
+import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.Capability;
@@ -31,6 +35,8 @@ import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
 import dev.langchain4j.observability.api.listener.AiServiceErrorListener;
 import dev.langchain4j.service.guardrail.InputGuardrails;
+import dev.langchain4j.service.guardrail.OutputGuardrails;
+import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import java.util.ArrayList;
@@ -41,6 +47,7 @@ import java.util.Set;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
@@ -411,6 +418,102 @@ class AiServicesAsyncTest {
         assertThatThrownBy(() -> future.get(10, SECONDS))
                 .isInstanceOf(ExecutionException.class)
                 .hasRootCauseMessage("boom");
+    }
+
+    // Exception fidelity: future.get() must yield ExecutionException whose direct cause is the original
+    // exception - no CompletionException leaking through from the internal CompletableFuture composition.
+
+    static class CustomException extends RuntimeException {
+
+        CustomException(String message) {
+            super(message);
+        }
+    }
+
+    @Test
+    void model_error_propagates_original_cause_without_completion_exception() {
+
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysThrowsExceptionWithMessage("boom");
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("Hi");
+
+        ExecutionException executionException = assertThrows(ExecutionException.class, () -> future.get(10, SECONDS));
+        assertThat(executionException.getCause())
+                .isNotInstanceOf(CompletionException.class)
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("boom");
+    }
+
+    static class ThrowingTools {
+
+        @Tool
+        String currentTemperature() {
+            throw new IllegalStateException("tool failure");
+        }
+    }
+
+    @Test
+    void tool_error_propagates_original_cause_without_completion_exception() {
+
+        CustomException rethrown = new CustomException("rethrown by handler");
+        ToolExecutionErrorHandler rethrowingHandler = (error, context) -> {
+            throw rethrown;
+        };
+
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("currentTemperature")
+                .arguments("{}")
+                .build();
+        ChatModelMock chatModel =
+                ChatModelMock.thatAlwaysResponds(AiMessage.from(toolExecutionRequest), AiMessage.from("ignored"));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(new ThrowingTools())
+                .toolExecutionErrorHandler(rethrowingHandler)
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("What is the temperature?");
+
+        ExecutionException executionException = assertThrows(ExecutionException.class, () -> future.get(10, SECONDS));
+        assertThat(executionException.getCause())
+                .isNotInstanceOf(CompletionException.class)
+                .isSameAs(rethrown);
+    }
+
+    public static class FailingOutputGuardrail implements OutputGuardrail {
+
+        @Override
+        public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+            return failure("output is not valid");
+        }
+    }
+
+    interface OutputGuardedAssistant {
+
+        @OutputGuardrails(FailingOutputGuardrail.class)
+        CompletableFuture<String> chat(String userMessage);
+    }
+
+    @Test
+    void output_guardrail_error_propagates_original_cause_without_completion_exception() {
+
+        OutputGuardedAssistant assistant = AiServices.builder(OutputGuardedAssistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("Berlin"))
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("What is the capital of Germany?");
+
+        ExecutionException executionException = assertThrows(ExecutionException.class, () -> future.get(10, SECONDS));
+        assertThat(executionException.getCause())
+                .isNotInstanceOf(CompletionException.class)
+                .isInstanceOf(OutputGuardrailException.class)
+                .hasMessageContaining("output is not valid");
     }
 
     @Test
