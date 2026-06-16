@@ -318,6 +318,44 @@ class AiServicesWithToolsIT {
                         .build());
     }
 
+    static class AsyncTransactionService {
+
+        final AtomicInteger invocations = new AtomicInteger();
+
+        @Tool("returns amount of a given transaction")
+        CompletableFuture<Double> getTransactionAmount(@P("ID of a transaction") String id) {
+            invocations.incrementAndGet();
+            return CompletableFuture.supplyAsync(() -> switch (id) {
+                case "T001" -> 11.1;
+                case "T002" -> 22.2;
+                default -> throw new IllegalArgumentException("Unknown transaction ID: " + id);
+            });
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_execute_tool_returning_completable_future_then_answer_async(ChatModel chatModel) throws Exception {
+
+        AsyncTransactionService transactionService = new AsyncTransactionService();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+                .tools(transactionService)
+                .build();
+
+        Result<String> result = assistant.chatAsync("What is the amounts of transaction T001?")
+                .get(60, SECONDS);
+
+        assertThat(result.content()).contains("11.1");
+        assertThat(transactionService.invocations).hasValue(1);
+
+        assertThat(result.toolExecutions()).hasSize(1);
+        // the tool's future is unwrapped: the LLM receives the value, not the future
+        assertThat(result.toolExecutions().get(0).result()).isEqualTo("11.1");
+    }
+
     @ParameterizedTest
     @MethodSource("modelsWithoutParallelToolCalling")
     void should_execute_multiple_tools_sequentially_then_answer_async(ChatModel chatModel) throws Exception {

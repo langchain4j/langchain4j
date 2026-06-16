@@ -53,6 +53,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
@@ -835,40 +836,170 @@ public class ToolService {
     }
 
     /**
-     * Non-blocking counterpart of {@link #execute(List, Map, InvocationContext)}.
+     * Non-blocking counterpart of {@link #execute(List, Map, InvocationContext)}, built on
+     * {@link ToolExecutor#executeAsync(ToolExecutionRequest, InvocationContext)} so that tools backed by
+     * an asynchronous client never hold a thread while their result is in flight.
      * <p>
-     * When a tool executor is configured (see {@link #executeToolsConcurrently()}), every tool
-     * (even a single one) is offloaded to it, so the thread that delivered the model response is never
-     * blocked by tool execution. When no executor is configured, tools run sequentially on the current
-     * thread, mirroring the synchronous path.
+     * When a tool executor is configured (see {@link #executeToolsConcurrently()}), every tool execution
+     * (even a single one) is initiated on it, so the thread that delivered the model response is never
+     * blocked by a synchronous tool. When no executor is configured, tools are executed one after another,
+     * initiated on the current thread, and a failure aborts the remaining ones — mirroring the synchronous
+     * path.
      */
     private CompletableFuture<Map<ToolExecutionRequest, ToolExecutionResult>> executeToolsAsync(
             List<ToolExecutionRequest> toolRequests,
             Map<String, ToolExecutor> toolExecutors,
             InvocationContext invocationContext) {
         if (executor == null) {
-            try {
-                return CompletableFuture.completedFuture(
-                        executeSequentially(toolRequests, toolExecutors, invocationContext));
-            } catch (Exception e) {
-                return CompletableFuture.failedFuture(e);
+            CompletableFuture<Map<ToolExecutionRequest, ToolExecutionResult>> chainedFuture =
+                    CompletableFuture.completedFuture(new LinkedHashMap<>());
+            for (ToolExecutionRequest toolRequest : toolRequests) {
+                chainedFuture = chainedFuture.thenCompose(
+                        toolResults -> executeToolAsync(invocationContext, toolExecutors, toolRequest)
+                                .thenApply(toolResult -> {
+                                    toolResults.put(toolRequest, toolResult);
+                                    return toolResults;
+                                }));
             }
+            return chainedFuture;
         }
 
         Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> futures = new LinkedHashMap<>();
         for (ToolExecutionRequest toolRequest : toolRequests) {
             CompletableFuture<ToolExecutionResult> future = CompletableFuture.supplyAsync(
-                    () -> executeTool(invocationContext, toolExecutors, toolRequest), executor);
+                            () -> executeToolAsync(invocationContext, toolExecutors, toolRequest), executor)
+                    .thenCompose(toolResultFuture -> toolResultFuture);
             futures.put(toolRequest, future);
         }
 
         return CompletableFuture.allOf(futures.values().toArray(new CompletableFuture[0]))
-                .thenApply(ignored -> {
+                // wait for ALL futures to complete (normally or not), then handle failures below,
+                // in request order - allOf alone would surface an arbitrary failure
+                .handle((ignored, ignoredError) -> ignored)
+                .thenCompose(ignored -> {
                     Map<ToolExecutionRequest, ToolExecutionResult> toolResults = new LinkedHashMap<>();
-                    // getNow never blocks: the allOf barrier guarantees every future has already completed
-                    futures.forEach((toolRequest, future) -> toolResults.put(toolRequest, future.getNow(null)));
-                    return toolResults;
+                    for (Map.Entry<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> entry :
+                            futures.entrySet()) {
+                        if (entry.getValue().isCompletedExceptionally()) {
+                            // surface the first failure in request order, mirroring the synchronous path
+                            return entry.getValue().thenApply(ignoredResult -> toolResults);
+                        }
+                        // getNow never blocks: all futures have already completed at this point
+                        toolResults.put(entry.getKey(), entry.getValue().getNow(null));
+                    }
+                    return CompletableFuture.completedFuture(toolResults);
                 });
+    }
+
+    private CompletableFuture<ToolExecutionResult> executeToolAsync(
+            InvocationContext invocationContext,
+            Map<String, ToolExecutor> toolExecutors,
+            ToolExecutionRequest toolRequest) {
+        return internalExecuteToolAsync(
+                invocationContext, toolExecutors, toolRequest, this.beforeToolExecution, this.afterToolExecution);
+    }
+
+    private CompletableFuture<ToolExecutionResult> internalExecuteToolAsync(
+            InvocationContext invocationContext,
+            Map<String, ToolExecutor> toolExecutors,
+            ToolExecutionRequest toolRequest,
+            Consumer<BeforeToolExecution> beforeToolExecution,
+            Consumer<ToolExecution> afterToolExecution) {
+        if (beforeToolExecution != null) {
+            beforeToolExecution.accept(BeforeToolExecution.builder()
+                    .request(toolRequest)
+                    .invocationContext(invocationContext)
+                    .build());
+        }
+
+        LocalDateTime startTime = LocalDateTime.now();
+
+        ToolExecutor toolExecutor = toolExecutors.get(toolRequest.name());
+        CompletableFuture<ToolExecutionResult> futureToolResult;
+        if (toolExecutor == null) {
+            try {
+                futureToolResult = CompletableFuture.completedFuture(applyToolHallucinationStrategy(toolRequest));
+            } catch (Exception e) {
+                futureToolResult = CompletableFuture.failedFuture(e);
+            }
+        } else {
+            futureToolResult = executeWithErrorHandlingAsync(
+                    toolRequest, toolExecutor, invocationContext, argumentsErrorHandler(), executionErrorHandler());
+        }
+
+        if (afterToolExecution != null) {
+            futureToolResult = futureToolResult.thenApply(toolResult -> {
+                afterToolExecution.accept(ToolExecution.builder()
+                        .request(toolRequest)
+                        .result(toolResult)
+                        .startTime(startTime)
+                        .finishTime(LocalDateTime.now())
+                        .invocationContext(invocationContext)
+                        .build());
+                return toolResult;
+            });
+        }
+        return futureToolResult;
+    }
+
+    /**
+     * Non-blocking counterpart of
+     * {@link #executeWithErrorHandling(ToolExecutionRequest, ToolExecutor, InvocationContext, ToolArgumentsErrorHandler, ToolExecutionErrorHandler)}.
+     * Applies the error handlers both to exceptions thrown synchronously from
+     * {@link ToolExecutor#executeAsync(ToolExecutionRequest, InvocationContext)} and to failed futures.
+     */
+    private static CompletableFuture<ToolExecutionResult> executeWithErrorHandlingAsync(
+            ToolExecutionRequest toolRequest,
+            ToolExecutor toolExecutor,
+            InvocationContext invocationContext,
+            ToolArgumentsErrorHandler argumentsErrorHandler,
+            ToolExecutionErrorHandler executionErrorHandler) {
+        CompletableFuture<ToolExecutionResult> futureToolResult;
+        try {
+            futureToolResult = toolExecutor.executeAsync(toolRequest, invocationContext);
+        } catch (UnsupportedOperationException e) {
+            // a configuration gap (the tool executor does not support asynchronous execution), not a tool
+            // failure: fail the AI Service invocation instead of routing it to the tool error handlers,
+            // which would send the message to the LLM and hide the problem from the developer
+            return CompletableFuture.failedFuture(e);
+        } catch (Exception e) {
+            return handleToolError(e, toolRequest, invocationContext, argumentsErrorHandler, executionErrorHandler);
+        }
+        return futureToolResult.exceptionallyCompose(error -> {
+            Throwable cause =
+                    error instanceof CompletionException && error.getCause() != null ? error.getCause() : error;
+            Exception exception = cause instanceof Exception e ? e : new RuntimeException(cause);
+            return handleToolError(
+                    exception, toolRequest, invocationContext, argumentsErrorHandler, executionErrorHandler);
+        });
+    }
+
+    private static CompletableFuture<ToolExecutionResult> handleToolError(
+            Exception e,
+            ToolExecutionRequest toolRequest,
+            InvocationContext invocationContext,
+            ToolArgumentsErrorHandler argumentsErrorHandler,
+            ToolExecutionErrorHandler executionErrorHandler) {
+        try {
+            ToolErrorContext errorContext = ToolErrorContext.builder()
+                    .toolExecutionRequest(toolRequest)
+                    .invocationContext(invocationContext)
+                    .build();
+
+            ToolErrorHandlerResult errorHandlerResult;
+            if (e instanceof ToolArgumentsException) {
+                errorHandlerResult = argumentsErrorHandler.handle(getCause(e), errorContext);
+            } else {
+                errorHandlerResult = executionErrorHandler.handle(getCause(e), errorContext);
+            }
+
+            return CompletableFuture.completedFuture(ToolExecutionResult.builder()
+                    .isError(true)
+                    .resultText(errorHandlerResult.text())
+                    .build());
+        } catch (Exception handlerException) {
+            return CompletableFuture.failedFuture(handlerException);
+        }
     }
 
     private Map<ToolExecutionRequest, ToolExecutionResult> executeConcurrently(

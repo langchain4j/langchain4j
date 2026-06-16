@@ -6,6 +6,7 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Represents a client that can communicate with an MCP server over a given transport protocol,
@@ -39,6 +40,20 @@ public interface McpClient extends AutoCloseable {
      * Currently, this expects a tool execution to only contain text-based results or JSON structured content.
      */
     ToolExecutionResult executeTool(ToolExecutionRequest executionRequest, InvocationContext invocationContext);
+
+    /**
+     * Non-blocking counterpart of {@link #executeTool(ToolExecutionRequest, InvocationContext)}:
+     * executes a tool on the MCP server without holding a thread while the result is in flight.
+     * <p>
+     * The default implementation throws an {@link UnsupportedOperationException}.
+     *
+     * @since 1.17.0
+     */
+    default CompletableFuture<ToolExecutionResult> executeToolAsync(
+            ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
+        throw new UnsupportedOperationException(
+                getClass().getName() + " does not support asynchronous tool execution");
+    }
 
     /**
      * Obtains the current list of resources available on the MCP server.

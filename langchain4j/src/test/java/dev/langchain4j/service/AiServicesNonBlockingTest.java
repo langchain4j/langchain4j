@@ -219,6 +219,38 @@ class AiServicesNonBlockingTest {
         assertNoBlockingCalls();
     }
 
+    static class AsyncWeatherTools {
+
+        final AtomicInteger invocations = new AtomicInteger();
+
+        @Tool
+        CompletableFuture<String> currentTemperature(String city) {
+            invocations.incrementAndGet();
+            // completes later, on an unpoliced thread; while it is pending, nothing may block
+            // the policed delivery thread
+            return CompletableFuture.supplyAsync(() -> "42", CompletableFuture.delayedExecutor(50, MILLISECONDS));
+        }
+    }
+
+    @Test
+    void async_tool_does_not_block_the_delivery_thread() throws Exception {
+
+        NonBlockingChatModelStub chatModel = new NonBlockingChatModelStub(
+                AiMessage.from(toolRequest("1", "currentTemperature")), AiMessage.from("42 degrees"));
+        AsyncWeatherTools tools = new AsyncWeatherTools();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .build();
+
+        String answer = assistant.chat("What is the temperature in Munich?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("42 degrees");
+        assertThat(tools.invocations).hasValue(1);
+        assertNoBlockingCalls();
+    }
+
     static class Person {
 
         String name;

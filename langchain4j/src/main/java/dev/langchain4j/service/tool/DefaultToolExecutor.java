@@ -32,6 +32,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 public class DefaultToolExecutor implements ToolExecutor {
 
@@ -102,23 +105,14 @@ public class DefaultToolExecutor implements ToolExecutor {
         Object[] arguments = prepareArguments(request, context);
 
         try {
-            return execute(arguments);
-        } catch (IllegalAccessException e) {
-            try {
-                methodToInvoke.setAccessible(true);
-                return execute(arguments);
-            } catch (IllegalAccessException e2) {
-                throw new RuntimeException(e2);
-            } catch (InvocationTargetException e2) {
-                if (propagateToolExecutionExceptions) {
-                    throw new ToolExecutionException(e2.getCause());
-                } else {
-                    return ToolExecutionResult.builder()
-                            .isError(true)
-                            .resultText(errorMessage(e2.getCause()))
-                            .build();
-                }
+            Object result = invokeMethod(arguments);
+            if (result instanceof CompletableFuture<?> futureResult) {
+                // an asynchronous tool invoked via the synchronous path: wait for its result (blocking by design)
+                return toToolExecutionResult(joinToolFuture(futureResult), futureValueType());
             }
+            return toToolExecutionResult(result, methodToInvoke.getReturnType());
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e); // TODO?
         } catch (InvocationTargetException e) {
             if (propagateToolExecutionExceptions) {
                 throw new ToolExecutionException(e.getCause());
@@ -131,6 +125,43 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * When the {@code @Tool} method returns a {@link CompletableFuture}, the returned future is composed
+     * instead of waited on: the tool can perform truly asynchronous work without holding a thread.
+     * Other return types execute synchronously on the calling thread, like the default implementation.
+     */
+    @Override
+    public CompletableFuture<ToolExecutionResult> executeAsync(ToolExecutionRequest request, InvocationContext context) {
+        Object[] arguments = prepareArguments(request, context);
+
+        Object result;
+        try {
+            result = invokeMethod(arguments);
+        } catch (IllegalAccessException e) {
+            return CompletableFuture.failedFuture(new RuntimeException(e));
+        } catch (InvocationTargetException e) {
+            return toFailedOrErrorResult(e.getCause());
+        }
+
+        if (result instanceof CompletableFuture<?> futureResult) {
+            return futureResult
+                    .handle((value, error) -> {
+                        if (error != null) {
+                            Throwable cause = error instanceof CompletionException && error.getCause() != null
+                                    ? error.getCause()
+                                    : error;
+                            return toFailedOrErrorResult(cause);
+                        }
+                        return CompletableFuture.completedFuture(toToolExecutionResult(value, futureValueType()));
+                    })
+                    .thenCompose(futureToolResult -> futureToolResult);
+        }
+
+        return CompletableFuture.completedFuture(toToolExecutionResult(result, methodToInvoke.getReturnType()));
+    }
+
     @Override
     public String execute(ToolExecutionRequest request, Object memoryId) {
         InvocationContext invocationContext =
@@ -139,6 +170,53 @@ public class DefaultToolExecutor implements ToolExecutor {
         ToolExecutionResult result = executeWithContext(request, invocationContext);
 
         return result.resultText();
+    }
+
+    private Object invokeMethod(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
+        try {
+            return methodToInvoke.invoke(object, arguments);
+        } catch (IllegalAccessException e) {
+            methodToInvoke.setAccessible(true);
+            return methodToInvoke.invoke(object, arguments);
+        }
+    }
+
+    private static Object joinToolFuture(CompletableFuture<?> futureResult) throws InvocationTargetException {
+        try {
+            return futureResult.join();
+        } catch (CompletionException e) {
+            throw new InvocationTargetException(getOrDefault(e.getCause(), e));
+        } catch (CancellationException e) {
+            throw new InvocationTargetException(e);
+        }
+    }
+
+    private CompletableFuture<ToolExecutionResult> toFailedOrErrorResult(Throwable cause) {
+        if (propagateToolExecutionExceptions) {
+            return CompletableFuture.failedFuture(new ToolExecutionException(cause));
+        }
+        return CompletableFuture.completedFuture(ToolExecutionResult.builder()
+                .isError(true)
+                .resultText(errorMessage(cause))
+                .build());
+    }
+
+    /**
+     * The value type of an asynchronous tool, e.g. {@code String} for {@code CompletableFuture<String>}.
+     * Used to convert the future's value to text the same way as for a synchronous tool returning it directly.
+     */
+    private Class<?> futureValueType() {
+        Type genericReturnType = methodToInvoke.getGenericReturnType();
+        if (genericReturnType instanceof ParameterizedType parameterizedType) {
+            Type valueType = parameterizedType.getActualTypeArguments()[0];
+            if (valueType instanceof Class<?> valueClass) {
+                return valueClass;
+            }
+            if (valueType instanceof ParameterizedType nestedParameterizedType) {
+                return (Class<?>) nestedParameterizedType.getRawType();
+            }
+        }
+        return Object.class;
     }
 
     private Object[] prepareArguments(ToolExecutionRequest toolExecutionRequest, InvocationContext context) {
@@ -154,9 +232,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
     }
 
-    private ToolExecutionResult execute(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
-        Object result = methodToInvoke.invoke(object, arguments);
-
+    private ToolExecutionResult toToolExecutionResult(Object result, Class<?> declaredReturnType) {
         List<Content> resultContents = toContents(result);
         if (resultContents != null) {
             return ToolExecutionResult.builder()
@@ -167,7 +243,7 @@ public class DefaultToolExecutor implements ToolExecutor {
 
         return ToolExecutionResult.builder()
                 .result(result)
-                .resultTextSupplier(() -> toText(result))
+                .resultTextSupplier(() -> toText(result, declaredReturnType))
                 .build();
     }
 
@@ -189,11 +265,10 @@ public class DefaultToolExecutor implements ToolExecutor {
         return null;
     }
 
-    private String toText(Object result) {
-        Class<?> returnType = methodToInvoke.getReturnType();
-        if (returnType == void.class) {
+    private static String toText(Object result, Class<?> declaredReturnType) {
+        if (declaredReturnType == void.class || declaredReturnType == Void.class) {
             return "Success";
-        } else if (returnType == String.class) {
+        } else if (declaredReturnType == String.class) {
             if (result == null) {
                 return "null";
             }
