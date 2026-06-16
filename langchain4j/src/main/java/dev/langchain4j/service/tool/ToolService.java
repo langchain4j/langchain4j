@@ -288,10 +288,24 @@ public class ToolService {
     }
 
     /**
+     * @since 1.17.0
+     */
+    public Consumer<BeforeToolExecution> beforeToolExecution() {
+        return beforeToolExecution;
+    }
+
+    /**
      * @since 1.11.0
      */
     public void afterToolExecution(Consumer<ToolExecution> afterToolExecution) {
         this.afterToolExecution = afterToolExecution;
+    }
+
+    /**
+     * @since 1.17.0
+     */
+    public Consumer<ToolExecution> afterToolExecution() {
+        return afterToolExecution;
     }
 
     /**
@@ -751,6 +765,7 @@ public class ToolService {
             ToolErrorContext errorContext = ToolErrorContext.builder()
                     .toolExecutionRequest(toolRequest)
                     .invocationContext(invocationContext)
+                    .rawError(e)
                     .build();
 
             ToolErrorHandlerResult errorHandlerResult;

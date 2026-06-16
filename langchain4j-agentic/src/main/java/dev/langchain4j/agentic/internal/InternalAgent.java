@@ -11,6 +11,8 @@ public interface InternalAgent extends AgentInstance {
 
     void appendId(String idSuffix);
 
+    default void setAgentId(String agentId) {}
+
     AgentListener listener();
 
     default boolean allowStreamingOutput() {
