@@ -114,6 +114,12 @@ public class WatsonxEmbeddingModel implements EmbeddingModel {
 
         private Builder() {}
 
+        /**
+         * Sets the watsonx.ai embedding model ID, e.g. {@code "ibm/slate-125m-english-rtrvr"}.
+         *
+         * @param modelName the model ID
+         * @return {@code this}
+         */
         public Builder modelName(String modelName) {
             this.modelName = modelName;
             return this;

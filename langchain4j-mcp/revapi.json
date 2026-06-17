@@ -6,6 +6,27 @@
       "differences": [
         {
           "ignore": true,
+          "code": "java.annotation.removed",
+          "old": "method void dev.langchain4j.mcp.client.McpPrompt::<init>(java.lang.String, java.lang.String, java.util.List<dev.langchain4j.mcp.client.McpPromptArgument>)",
+          "new": "method void dev.langchain4j.mcp.client.McpPrompt::<init>(java.lang.String, java.lang.String, java.util.List<dev.langchain4j.mcp.client.McpPromptArgument>)",
+          "justification": "Jackson creator annotation moved to the constructor that also binds MCP _meta and icons fields; the existing constructor is still available for user code."
+        },
+        {
+          "ignore": true,
+          "code": "java.annotation.removed",
+          "old": "method void dev.langchain4j.mcp.client.McpResource::<init>(java.lang.String, java.lang.String, java.lang.String, java.lang.String)",
+          "new": "method void dev.langchain4j.mcp.client.McpResource::<init>(java.lang.String, java.lang.String, java.lang.String, java.lang.String)",
+          "justification": "Jackson creator annotation moved to the constructor that also binds MCP _meta and icons fields; the existing constructor is still available for user code."
+        },
+        {
+          "ignore": true,
+          "code": "java.annotation.removed",
+          "old": "method void dev.langchain4j.mcp.client.McpResourceTemplate::<init>(java.lang.String, java.lang.String, java.lang.String, java.lang.String)",
+          "new": "method void dev.langchain4j.mcp.client.McpResourceTemplate::<init>(java.lang.String, java.lang.String, java.lang.String, java.lang.String)",
+          "justification": "Jackson creator annotation moved to the constructor that also binds MCP _meta and icons fields; the existing constructor is still available for user code."
+        },
+        {
+          "ignore": true,
           "code": "java.method.numberOfParametersChanged",
           "justification": "API is only intended for internal consumption",
           "package": "dev.langchain4j.mcp.client.transport",

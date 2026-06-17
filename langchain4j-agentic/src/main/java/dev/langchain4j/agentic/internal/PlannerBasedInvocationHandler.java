@@ -26,6 +26,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
@@ -120,10 +121,15 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
     }
 
     public AgenticScopeOwner withAgenticScope(DefaultAgenticScope agenticScope) {
+        PlannerBasedInvocationHandler newHandler = new PlannerBasedInvocationHandler(
+                service, parent, agentId, plannerSupplier, agenticScope);
+        if (service.agentInstanceFactory != null) {
+            return (AgenticScopeOwner) service.agentInstanceFactory.apply(newHandler);
+        }
         return (AgenticScopeOwner) Proxy.newProxyInstance(
                 type.getClassLoader(),
                 new Class<?>[] {type, InternalAgent.class, AgenticScopeOwner.class},
-                new PlannerBasedInvocationHandler(service, parent, agentId, plannerSupplier, agenticScope));
+                newHandler);
     }
 
     @Override
@@ -151,7 +157,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
 
         if (method.getDeclaringClass() == AgentInstance.class || method.getDeclaringClass() == InternalAgent.class) {
             try {
-                return method.invoke(Proxy.getInvocationHandler(proxy), args);
+                return method.invoke(this, args);
             } catch (Exception e) {
                 throw e.getCause() != null ? (Exception) e.getCause() : e;
             }
@@ -468,8 +474,14 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
             Parameter[] parameters = method.getParameters();
             for (int i = 0; i < parameters.length; i++) {
                 int index = i;
-                AgentInvoker.optionalParameterName(parameters[i])
-                        .ifPresent(argName -> agenticScope.writeState(argName, args[index]));
+                if (InvocationParameters.class.isAssignableFrom(parameters[i].getType())) {
+                    if (args[index] != null) {
+                        agenticScope.writeExecutionContext(InvocationParameters.class, args[index]);
+                    }
+                } else {
+                    AgentInvoker.optionalParameterName(parameters[i])
+                            .ifPresent(argName -> agenticScope.writeState(argName, args[index]));
+                }
             }
         }
     }

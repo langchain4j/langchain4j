@@ -19,7 +19,7 @@ Since `1.0.0-alpha1`, `langchain4j-vearch` has migrated to `langchain4j-communit
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-vearch</artifactId>
-    <version>1.16.1-beta26</version>
+    <version>1.11.8-beta19</version>
 </dependency>
 ```
 

@@ -57,9 +57,13 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Internal
 public class ToolService {
+
+    private static final Logger log = LoggerFactory.getLogger(ToolService.class);
 
     private static final ToolArgumentsErrorHandler DEFAULT_TOOL_ARGUMENTS_ERROR_HANDLER = (error, context) -> {
         if (error instanceof RuntimeException re) {
@@ -69,8 +73,14 @@ public class ToolService {
         }
     };
     private static final ToolExecutionErrorHandler DEFAULT_TOOL_EXECUTION_ERROR_HANDLER = (error, context) -> {
-        String errorMessage =
-                isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
+        String errorMessage = errorMessage(error);
+        log.warn(
+                "Tool '{}' execution failed. The error message is being returned to the LLM. "
+                        + "To customize this behavior (and silence this log), configure a custom "
+                        + "ToolExecutionErrorHandler via AiServices.toolExecutionErrorHandler(...). Error: {}",
+                context.toolExecutionRequest().name(),
+                errorMessage,
+                error);
         return ToolErrorHandlerResult.text(errorMessage);
     };
 
@@ -288,10 +298,24 @@ public class ToolService {
     }
 
     /**
+     * @since 1.17.0
+     */
+    public Consumer<BeforeToolExecution> beforeToolExecution() {
+        return beforeToolExecution;
+    }
+
+    /**
      * @since 1.11.0
      */
     public void afterToolExecution(Consumer<ToolExecution> afterToolExecution) {
         this.afterToolExecution = afterToolExecution;
+    }
+
+    /**
+     * @since 1.17.0
+     */
+    public Consumer<ToolExecution> afterToolExecution() {
+        return afterToolExecution;
     }
 
     /**
@@ -751,6 +775,7 @@ public class ToolService {
             ToolErrorContext errorContext = ToolErrorContext.builder()
                     .toolExecutionRequest(toolRequest)
                     .invocationContext(invocationContext)
+                    .rawError(e)
                     .build();
 
             ToolErrorHandlerResult errorHandlerResult;
@@ -780,6 +805,15 @@ public class ToolService {
     private static Throwable getCause(Exception e) {
         Throwable cause = e.getCause();
         return cause != null ? cause : e;
+    }
+
+    private static String errorMessage(Throwable throwable) {
+        if (throwable == null) {
+            return "unknown error";
+        }
+
+        String message = throwable.getMessage();
+        return isNullOrBlank(message) ? throwable.getClass().getName() : message;
     }
 
     public ToolExecutionResult applyToolHallucinationStrategy(ToolExecutionRequest toolRequest) {
