@@ -8,13 +8,13 @@ sidebar_position: 34
 LangChain4j integrates with Hazelcast through two modules, split so the open-source path
 stays free of any Enterprise/licensing requirement:
 
-- **`langchain4j-hazelcast`** (open source) — provides `HazelcastChatMemoryStore`, a
+- **`langchain4j-community-hazelcast`** (open source) — provides `HazelcastChatMemoryStore`, a
   `ChatMemoryStore` backed by a Hazelcast `IMap`. Runs against the open-source Community Edition
   with no license.
-- **`langchain4j-hazelcast-enterprise`** (requires Hazelcast Enterprise) — provides
+- **`langchain4j-community-hazelcast-enterprise`** (requires Hazelcast Enterprise) — provides
   `HazelcastEmbeddingStore` (vector search via `VectorCollection`) and
   `HazelcastCPMapChatMemoryStore` (a strongly-consistent, CP-Subsystem-backed chat memory store).
-  This module re-exports `langchain4j-hazelcast`, so Enterprise consumers also get the
+  This module re-exports `langchain4j-community-hazelcast`, so Enterprise consumers also get the
   `IMap`-based store from the single dependency.
 
 ## Maven Dependency
@@ -24,8 +24,8 @@ stays free of any Enterprise/licensing requirement:
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-hazelcast</artifactId>
-    <version>1.11.8-beta19</version>
+    <artifactId>langchain4j-community-hazelcast</artifactId>
+    <version>1.16.0-beta26</version>
 </dependency>
 ```
 
@@ -45,8 +45,8 @@ open-source Community Edition:
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-hazelcast-enterprise</artifactId>
-    <version>1.11.8-beta19</version>
+    <artifactId>langchain4j-community-hazelcast-enterprise</artifactId>
+    <version>1.16.0-beta26</version>
 </dependency>
 ```
 
@@ -57,8 +57,8 @@ Or use the BOM to manage versions consistently:
     <dependencies>
         <dependency>
             <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-bom</artifactId>
-            <version>1.11.8-beta19</version>
+            <artifactId>langchain4j-community-bom</artifactId>
+            <version>1.16.0-beta26</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -69,7 +69,7 @@ Or use the BOM to manage versions consistently:
 :::note
 `HazelcastEmbeddingStore` and `HazelcastCPMapChatMemoryStore` require **Hazelcast Enterprise**.
 `com.hazelcast:hazelcast-enterprise` is not on Maven Central — it is pulled in transitively by
-`langchain4j-hazelcast-enterprise`, but you must add the Hazelcast release repository and a
+`langchain4j-community-hazelcast-enterprise`, but you must add the Hazelcast release repository and a
 valid Enterprise license key:
 
 ```xml
