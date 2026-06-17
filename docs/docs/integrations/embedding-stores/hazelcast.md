@@ -25,7 +25,7 @@ stays free of any Enterprise/licensing requirement:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-hazelcast</artifactId>
-    <version>1.16.0-beta26</version>
+    <version>${latest version here}</version>
 </dependency>
 ```
 
@@ -46,7 +46,7 @@ open-source Community Edition:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-community-hazelcast-enterprise</artifactId>
-    <version>1.16.0-beta26</version>
+    <version>${latest version here}</version>
 </dependency>
 ```
 
@@ -58,7 +58,7 @@ Or use the BOM to manage versions consistently:
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-community-bom</artifactId>
-            <version>1.16.0-beta26</version>
+            <version>${latest version here}</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
