@@ -1,5 +1,9 @@
 package dev.langchain4j.data.document.loader.tencent.cos;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.stream.Collectors.toList;
+
 import com.qcloud.cos.COSClient;
 import com.qcloud.cos.ClientConfig;
 import com.qcloud.cos.auth.COSCredentialsProvider;
@@ -9,15 +13,10 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentLoader;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.source.tencent.cos.TencentCosSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.List;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.stream.Collectors.toList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TencentCosDocumentLoader {
 
@@ -38,7 +37,8 @@ public class TencentCosDocumentLoader {
      * @return A document containing the content of the COS object.
      */
     public Document loadDocument(String bucket, String key, DocumentParser parser) {
-        GetObjectRequest getObjectRequest = new GetObjectRequest(bucket, key);
+        GetObjectRequest getObjectRequest =
+                new GetObjectRequest(ensureNotBlank(bucket, "bucket"), ensureNotBlank(key, "key"));
         COSObject cosObject = cosClient.getObject(getObjectRequest);
         TencentCosSource source = new TencentCosSource(cosObject.getObjectContent(), bucket, key);
 
@@ -149,6 +149,5 @@ public class TencentCosDocumentLoader {
             ClientConfig clientConfig = new ClientConfig(region);
             return new COSClient(cosCredentialsProvider, clientConfig);
         }
-
     }
 }

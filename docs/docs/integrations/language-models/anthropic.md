@@ -4,8 +4,8 @@ sidebar_position: 2
 
 # Anthropic
 
-- [Anthropic Documentation](https://docs.anthropic.com/claude/docs)
-- [Anthropic API Reference](https://docs.anthropic.com/claude/reference)
+- [Anthropic Documentation](https://docs.anthropic.com/en/home)
+- [Anthropic API Reference](https://docs.anthropic.com/en/api/overview)
 
 ## Maven Dependency
 
@@ -66,7 +66,7 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .customParameters(...)
     .build();
 ```
-See the description of some of the parameters above [here](https://docs.anthropic.com/claude/reference/messages_post).
+See the description of some of the parameters above [here](https://docs.anthropic.com/en/api/messages).
 
 ## AnthropicStreamingChatModel
 ```java
@@ -102,7 +102,7 @@ Identical to the `AnthropicChatModel`, see above.
 
 Anthropic supports [tools](/tutorials/tools) in both streaming and non-streaming mode.
 
-Anthropic documentation on tools can be found [here](https://docs.anthropic.com/claude/docs/tool-use).
+Anthropic documentation on tools can be found [here](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview).
 
 
 ## Tool Choice

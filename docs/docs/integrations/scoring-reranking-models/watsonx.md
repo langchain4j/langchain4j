@@ -21,7 +21,7 @@ sidebar_position: 7
 
 Watsonx.ai supports authentication via the `Authenticator` interface.
 
-This allows to use different authentication mechanisms depending on your deployment:
+This allows you to use different authentication mechanisms depending on your deployment:
 
 - **IBMCloudAuthenticator** – authenticates with **IBM Cloud** using an API key. This is the simplest approach and is used when you provide the `apiKey(...)` builder method.
 - **CP4DAuthenticator** – authenticates with **Cloud Pak for Data** deployments.
