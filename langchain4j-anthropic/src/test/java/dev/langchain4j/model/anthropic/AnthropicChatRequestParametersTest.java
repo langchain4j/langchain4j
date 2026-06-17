@@ -220,15 +220,6 @@ class AnthropicChatRequestParametersTest {
     }
 
     @Test
-    void maxTokens_should_map_to_maxOutputTokens() {
-        AnthropicChatRequestParameters parameters =
-                AnthropicChatRequestParameters.builder().maxTokens(500).build();
-
-        assertThat(parameters.maxTokens()).isEqualTo(500);
-        assertThat(parameters.maxOutputTokens()).isEqualTo(500);
-    }
-
-    @Test
     void toBuilder_should_populate_all_fields() {
         AnthropicChatRequestParameters original = AnthropicChatRequestParameters.builder()
                 .temperature(0.7)

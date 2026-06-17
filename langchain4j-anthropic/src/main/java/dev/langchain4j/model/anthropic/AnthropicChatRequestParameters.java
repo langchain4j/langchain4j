@@ -74,10 +74,6 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
         return userId;
     }
 
-    public Integer maxTokens() {
-        return maxOutputTokens();
-    }
-
     @Override
     public AnthropicChatRequestParameters overrideWith(ChatRequestParameters that) {
         return AnthropicChatRequestParameters.builder()
@@ -237,10 +233,6 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
         public Builder userId(String userId) {
             this.userId = userId;
             return this;
-        }
-
-        public Builder maxTokens(Integer maxTokens) {
-            return super.maxOutputTokens(maxTokens);
         }
 
         @Override

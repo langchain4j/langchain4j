@@ -61,6 +61,7 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .logRequests(...)
     .logResponses(...)
     .listeners(...)
+    // You can also specify default chat request parameters using ChatRequestParameters or AnthropicChatRequestParameters
     .defaultRequestParameters(...)
     .userId(...)
     .customParameters(...)
