@@ -38,7 +38,7 @@ https://ai.google.dev/gemini-api/docs
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>1.16.2</version>
+    <version>1.11.8</version>
 </dependency>
 ```
 
@@ -441,7 +441,7 @@ If you want a guaranteed application of a JSON schema, you should define a respo
 
 ## Python code execution
 
-Beyond function calling, Google AI Gemini allows to create and execute Python code in a sandboxed environment.
+Beyond function calling, Google AI Gemini allows you to create and execute Python code in a sandboxed environment.
 This is particularly interesting for situations where more advanced calculations or logic is needed.
 
 ```java

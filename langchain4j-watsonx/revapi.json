@@ -1,0 +1,25 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.watsonx.WatsonxChat.chatService @ dev.langchain4j.model.watsonx.WatsonxChatModel",
+          "justification": "Internal field renamed from chatService to chatProvider to support deployment models; WatsonxChat is @Internal"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.watsonx.WatsonxChat.chatService @ dev.langchain4j.model.watsonx.WatsonxStreamingChatModel",
+          "justification": "Internal field renamed from chatService to chatProvider to support deployment models; WatsonxChat is @Internal"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class com.ibm.watsonx.ai.chat.ChatProvider",
+          "justification": "ChatProvider is an interface from watsonx-ai SDK used internally; WatsonxChat is @Internal and the field is protected"
+        }
+      ]
+    }
+  }
+]

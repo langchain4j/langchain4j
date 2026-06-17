@@ -26,7 +26,7 @@ LangChain4j provides 3 different integrations with OpenAI for using embedding mo
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.16.2</version>
+    <version>1.11.8</version>
 </dependency>
 ```
 
@@ -35,7 +35,7 @@ LangChain4j provides 3 different integrations with OpenAI for using embedding mo
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.16.2-beta26</version>
+    <version>1.11.8-beta19</version>
 </dependency>
 ```
 
