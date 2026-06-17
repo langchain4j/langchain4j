@@ -69,10 +69,10 @@ class PgVectorEmbeddingStoreHalfVecIT extends EmbeddingStoreWithFilteringIT {
         return true;
     }
 
-    @Override
-    protected void assertVectorWithPrecisionBuffer(Embedding actual, Embedding expected) {
-        assertThat(CosineSimilarity.between(actual, expected)).isCloseTo(1.0, withPercentage(0.01));
-    }
+//    @Override
+//    protected void assertVectorWithPrecisionBuffer(Embedding actual, Embedding expected) {
+//        assertThat(CosineSimilarity.between(actual, expected)).isCloseTo(1.0, withPercentage(0.01));
+//    }
 
     /**
      * Verifies the actual PostgreSQL column type is {@code halfvec}, not {@code vector}.
