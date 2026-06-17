@@ -60,6 +60,7 @@ import dev.langchain4j.service.output.ServiceOutputParser;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.ToolServiceResult;
+import dev.langchain4j.spi.services.CompletableFutureAdapter;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
@@ -80,6 +81,7 @@ import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
@@ -88,6 +90,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
     private final Collection<TokenStreamAdapter> tokenStreamAdapters = loadFactories(TokenStreamAdapter.class);
+    private final Collection<CompletableFutureAdapter> completableFutureAdapters =
+            loadFactories(CompletableFutureAdapter.class);
 
     private static final Set<Class<? extends Annotation>> VALID_PARAM_ANNOTATIONS =
             Set.of(dev.langchain4j.service.UserMessage.class, V.class, MemoryId.class, UserName.class);
@@ -247,16 +251,22 @@ class DefaultAiServices<T> extends AiServices<T> {
                         userMessage = invokeInputGuardrails(
                                 context.guardrailService(), method, userMessage, commonGuardrailParam);
 
-                        Type returnType =
+                        Type declaredReturnType =
                                 context.returnType != null ? context.returnType : method.getGenericReturnType();
-                        boolean asyncReturnType = typeHasRawClass(returnType, CompletableFuture.class);
+                        // The async return type, if any: CompletableFuture / CompletionStage (handled natively),
+                        // or a type plugged in via a CompletableFutureAdapter (e.g. Reactor Mono, Mutiny Uni).
+                        CompletableFutureAdapter completableFutureAdapter = findCompletableFutureAdapter(declaredReturnType);
+                        boolean asyncReturnType = typeHasRawClass(declaredReturnType, CompletableFuture.class)
+                                || typeHasRawClass(declaredReturnType, CompletionStage.class)
+                                || completableFutureAdapter != null;
+                        Type returnType = declaredReturnType;
                         if (asyncReturnType) {
-                            returnType = resolveFirstGenericParameterType(returnType);
+                            returnType = resolveFirstGenericParameterType(declaredReturnType);
                         }
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
                         if (asyncReturnType && streaming) {
                             throw illegalConfiguration(
-                                    "The method '%s' cannot return a CompletableFuture of a streaming type. "
+                                    "The method '%s' cannot return an asynchronous wrapper of a streaming type. "
                                             + "Please use the streaming type directly as the return type.",
                                     method.getName());
                         }
@@ -347,7 +357,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         boolean isReturnTypeResult = typeHasRawClass(returnType, Result.class);
 
                         if (asyncReturnType) {
-                            return invokeAsync(
+                            CompletableFuture<Object> resultFuture = invokeAsync(
                                     method,
                                     invocationContext,
                                     memoryId,
@@ -363,6 +373,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     returnType,
                                     returnsImage,
                                     isReturnTypeResult);
+                            // CompletableFuture is assignable to both CompletableFuture and CompletionStage;
+                            // other async types (e.g. Mono, Uni) are produced via their adapter.
+                            return completableFutureAdapter != null
+                                    ? completableFutureAdapter.fromCompletableFuture(declaredReturnType, resultFuture)
+                                    : resultFuture;
                         }
 
                         ChatResponse chatResponse = chatExecutor.execute();
@@ -650,6 +665,15 @@ class DefaultAiServices<T> extends AiServices<T> {
                             }
                         }
                         return false;
+                    }
+
+                    private CompletableFutureAdapter findCompletableFutureAdapter(Type returnType) {
+                        for (CompletableFutureAdapter adapter : completableFutureAdapters) {
+                            if (adapter.canAdapt(returnType)) {
+                                return adapter;
+                            }
+                        }
+                        return null;
                     }
 
                     private Object adapt(TokenStream tokenStream, Type returnType) {

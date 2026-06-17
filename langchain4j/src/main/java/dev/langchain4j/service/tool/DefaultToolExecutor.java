@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.Utils.allConcreteMethods;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
 
 import dev.langchain4j.agent.tool.P;
@@ -19,6 +20,7 @@ import dev.langchain4j.internal.Json;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
+import dev.langchain4j.spi.services.CompletableFutureAdapter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -35,8 +37,12 @@ import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
 
 public class DefaultToolExecutor implements ToolExecutor {
+
+    private static final Collection<CompletableFutureAdapter> COMPLETABLE_FUTURE_ADAPTERS =
+            loadFactories(CompletableFutureAdapter.class);
 
     private final Object object;
     private final Method originalMethod;
@@ -106,7 +112,8 @@ public class DefaultToolExecutor implements ToolExecutor {
 
         try {
             Object result = invokeMethod(arguments);
-            if (result instanceof CompletableFuture<?> futureResult) {
+            CompletableFuture<?> futureResult = toCompletableFuture(result);
+            if (futureResult != null) {
                 // an asynchronous tool invoked via the synchronous path: wait for its result (blocking by design)
                 return toToolExecutionResult(joinToolFuture(futureResult), futureValueType());
             }
@@ -128,9 +135,11 @@ public class DefaultToolExecutor implements ToolExecutor {
     /**
      * {@inheritDoc}
      * <p>
-     * When the {@code @Tool} method returns a {@link CompletableFuture}, the returned future is composed
-     * instead of waited on: the tool can perform truly asynchronous work without holding a thread.
-     * Other return types execute synchronously on the calling thread, like the default implementation.
+     * When the {@code @Tool} method returns a single-value asynchronous type ({@link CompletableFuture},
+     * {@link CompletionStage}, or a type handled by a {@link CompletableFutureAdapter} such as Mutiny {@code Uni}
+     * or Reactor {@code Mono}), the returned value is composed instead of waited on: the tool can
+     * perform truly asynchronous work without holding a thread. Other return types execute synchronously on
+     * the calling thread, like the default implementation.
      */
     @Override
     public CompletableFuture<ToolExecutionResult> executeAsync(ToolExecutionRequest request, InvocationContext context) {
@@ -145,7 +154,8 @@ public class DefaultToolExecutor implements ToolExecutor {
             return toFailedOrErrorResult(e.getCause());
         }
 
-        if (result instanceof CompletableFuture<?> futureResult) {
+        CompletableFuture<?> futureResult = toCompletableFuture(result);
+        if (futureResult != null) {
             return futureResult
                     .handle((value, error) -> {
                         if (error != null) {
@@ -160,6 +170,28 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
 
         return CompletableFuture.completedFuture(toToolExecutionResult(result, methodToInvoke.getReturnType()));
+    }
+
+    /**
+     * If the tool returned a single-value asynchronous type, returns it as a {@link CompletableFuture};
+     * otherwise returns {@code null} (a synchronous result). {@link CompletableFuture} and
+     * {@link CompletionStage} are handled natively; other types via a {@link CompletableFutureAdapter}.
+     */
+    private CompletableFuture<?> toCompletableFuture(Object result) {
+        if (result instanceof CompletableFuture<?> future) {
+            return future;
+        }
+        if (result instanceof CompletionStage<?> stage) {
+            return stage.toCompletableFuture();
+        }
+        if (result != null) {
+            for (CompletableFutureAdapter adapter : COMPLETABLE_FUTURE_ADAPTERS) {
+                if (adapter.canAdapt(methodToInvoke.getGenericReturnType())) {
+                    return adapter.toCompletableFuture(result);
+                }
+            }
+        }
+        return null;
     }
 
     @Override
