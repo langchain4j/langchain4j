@@ -1011,7 +1011,9 @@ In a very similar way, annotating other `static` methods in the agent interface,
 | `@AgentListenerSupplier`      | Returns the `AgentListener` to be used by this agent.                                                                                                         |
 | `@RetrievalAugmentorSupplier` | Returns the `RetrievalAugmentor` to be used by this agent.                                                                                                    |
 | `@ToolsSupplier`              | Returns the tool or set of tools to be used by this agent.<br/> It can return either a single `Object` or a `Object[]`                                        |
-| `@ToolProviderSupplier`       | Returns the `ToolProvider` to be used by this agent.                                                                                                          |
+| `@ToolProviderSupplier`          | Returns the `ToolProvider` to be used by this agent.                                                                                                          |
+| `@SystemMessageProviderSupplier` | Provides a dynamic system message. The method receives the memoryId as an `Object` and returns a `String`.                                                    |
+| `@UserMessageProviderSupplier`   | Provides a dynamic user message. The method receives the memoryId as an `Object` and returns a `String`.                                                      |
 
 To give another example of this declarative API, let's redefine through it the `ExpertsAgent` demonstrated in the conditional workflow section.
 
