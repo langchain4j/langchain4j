@@ -6,7 +6,7 @@ import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2Quantize
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
 
-class InMemoryEmbeddingStoreRemovalTest extends EmbeddingStoreWithRemovalIT {
+class InMemoryEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
     EmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
 
