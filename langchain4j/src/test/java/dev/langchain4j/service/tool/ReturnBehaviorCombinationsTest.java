@@ -8,6 +8,7 @@ import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.Outcom
 import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.ToolStep.err;
 import static dev.langchain4j.service.tool.ReturnBehaviorCombinationsTest.ToolStep.ok;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import dev.langchain4j.agent.tool.ReturnBehavior;
@@ -297,6 +298,15 @@ class ReturnBehaviorCombinationsTest {
                 .tools(new Tools())
                 .build();
 
+        if (steps.stream().anyMatch(ToolStep::errors)) {
+            // new async default (CompletableFuture mode): a tool execution error fails the invocation
+            // instead of being sent to the LLM, so the loop never reprocesses
+            assertThatThrownBy(() -> assistant.chatAsync("go").get(10, TimeUnit.SECONDS))
+                    .hasCauseInstanceOf(IllegalStateException.class);
+            assertThat(model.requests()).hasSize(1);
+            return;
+        }
+
         Result<String> result = assistant.chatAsync("go").get(10, TimeUnit.SECONDS);
 
         if (expectedOutcome == RETURN_IMMEDIATELY) {
@@ -335,6 +345,14 @@ class ReturnBehaviorCombinationsTest {
                 .tools(new AsyncTools())
                 .executeToolsConcurrently()
                 .build();
+
+        if (steps.stream().anyMatch(ToolStep::errors)) {
+            // new async default: a tool execution error fails the invocation instead of going to the LLM
+            assertThatThrownBy(() -> assistant.chatAsync("go").get(10, TimeUnit.SECONDS))
+                    .hasCauseInstanceOf(IllegalStateException.class);
+            assertThat(model.requests()).hasSize(1);
+            return;
+        }
 
         Result<String> result = assistant.chatAsync("go").get(10, TimeUnit.SECONDS);
 

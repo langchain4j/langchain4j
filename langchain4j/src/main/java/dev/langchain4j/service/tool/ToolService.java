@@ -63,18 +63,38 @@ import java.util.function.Function;
 @Internal
 public class ToolService {
 
-    private static final ToolArgumentsErrorHandler DEFAULT_TOOL_ARGUMENTS_ERROR_HANDLER = (error, context) -> {
+    private static final ToolArgumentsErrorHandler RETHROW_ARGUMENTS_ERROR = (error, context) -> {
         if (error instanceof RuntimeException re) {
             throw re;
         } else {
             throw new RuntimeException(error);
         }
     };
-    private static final ToolExecutionErrorHandler DEFAULT_TOOL_EXECUTION_ERROR_HANDLER = (error, context) -> {
-        String errorMessage =
-                isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
-        return ToolErrorHandlerResult.text(errorMessage);
+    private static final ToolExecutionErrorHandler RETHROW_EXECUTION_ERROR = (error, context) -> {
+        if (error instanceof RuntimeException re) {
+            throw re;
+        } else {
+            throw new RuntimeException(error);
+        }
     };
+    private static final ToolArgumentsErrorHandler ARGUMENTS_ERROR_TO_LLM =
+            (error, context) -> ToolErrorHandlerResult.text(errorText(error));
+    private static final ToolExecutionErrorHandler EXECUTION_ERROR_TO_LLM =
+            (error, context) -> ToolErrorHandlerResult.text(errorText(error));
+
+    // Default tool-error handling differs by AI Service mode:
+    //  - Legacy (sync, TokenStream): argument errors fail the invocation; execution errors go to the LLM.
+    //  - New async modes (CompletableFuture, reactive Flow.Publisher): reversed — argument errors (the LLM's
+    //    fault, recoverable) go to the LLM so it can retry; execution errors (a real failure) fail the
+    //    invocation, surfacing the problem instead of hiding it from the developer.
+    private static final ToolArgumentsErrorHandler DEFAULT_TOOL_ARGUMENTS_ERROR_HANDLER = RETHROW_ARGUMENTS_ERROR;
+    private static final ToolExecutionErrorHandler DEFAULT_TOOL_EXECUTION_ERROR_HANDLER = EXECUTION_ERROR_TO_LLM;
+    private static final ToolArgumentsErrorHandler DEFAULT_ASYNC_TOOL_ARGUMENTS_ERROR_HANDLER = ARGUMENTS_ERROR_TO_LLM;
+    private static final ToolExecutionErrorHandler DEFAULT_ASYNC_TOOL_EXECUTION_ERROR_HANDLER = RETHROW_EXECUTION_ERROR;
+
+    private static String errorText(Throwable error) {
+        return isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
+    }
 
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
@@ -360,6 +380,29 @@ public class ToolService {
      */
     public ToolExecutionErrorHandler executionErrorHandler() {
         return getOrDefault(executionErrorHandler, DEFAULT_TOOL_EXECUTION_ERROR_HANDLER);
+    }
+
+    /**
+     * The {@link ToolArgumentsErrorHandler} for the asynchronous AI Service modes ({@code CompletableFuture},
+     * reactive {@code Flow.Publisher}): a user-configured handler if present, otherwise the async default,
+     * which sends the parsing error to the LLM so it can retry with corrected arguments.
+     *
+     * @since 1.17.0
+     */
+    public ToolArgumentsErrorHandler asyncArgumentsErrorHandler() {
+        return getOrDefault(argumentsErrorHandler, DEFAULT_ASYNC_TOOL_ARGUMENTS_ERROR_HANDLER);
+    }
+
+    /**
+     * The {@link ToolExecutionErrorHandler} for the asynchronous AI Service modes ({@code CompletableFuture},
+     * reactive {@code Flow.Publisher}): a user-configured handler if present, otherwise the async default,
+     * which fails the AI Service invocation (rather than hiding the error from the developer by sending it to
+     * the LLM).
+     *
+     * @since 1.17.0
+     */
+    public ToolExecutionErrorHandler asyncExecutionErrorHandler() {
+        return getOrDefault(executionErrorHandler, DEFAULT_ASYNC_TOOL_EXECUTION_ERROR_HANDLER);
     }
 
     /**
@@ -1095,7 +1138,11 @@ public class ToolService {
             }
         } else {
             futureToolResult = executeWithErrorHandlingAsync(
-                    toolRequest, toolExecutor, invocationContext, argumentsErrorHandler(), executionErrorHandler());
+                    toolRequest,
+                    toolExecutor,
+                    invocationContext,
+                    asyncArgumentsErrorHandler(),
+                    asyncExecutionErrorHandler());
         }
 
         if (afterToolExecution != null) {

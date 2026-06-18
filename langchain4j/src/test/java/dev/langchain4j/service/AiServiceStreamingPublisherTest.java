@@ -12,6 +12,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.DefaultRawStreamingEvent;
 import dev.langchain4j.model.chat.response.RawStreamingEvent;
+import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import dev.langchain4j.service.tool.ToolExecutionResult;
@@ -24,6 +25,7 @@ import dev.langchain4j.service.AiServiceStreamingEvent.FinalResponseEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.IntermediateResponseEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.PartialResponseEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.RawEvent;
+import dev.langchain4j.service.AiServiceStreamingEvent.RetrievedContentsEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -407,9 +409,9 @@ class AiServiceStreamingPublisherTest {
     }
 
     @Test
-    void propagates_tool_error_to_llm_by_default() throws Exception {
+    void fails_stream_when_tool_throws_by_default() throws Exception {
         StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
-                AiMessage.from(temperatureRequest()), AiMessage.from("Sorry, could not get the temperature"));
+                AiMessage.from(temperatureRequest()), AiMessage.from("unreachable"));
 
         EventStreamer assistant = AiServices.builder(EventStreamer.class)
                 .streamingChatModel(model)
@@ -418,14 +420,9 @@ class AiServiceStreamingPublisherTest {
 
         Collected<AiServiceStreamingEvent> collected = collect(assistant.chat("What is the temperature in Berlin?"));
 
-        assertThat(collected.error).isNull();
-        assertThat(afterToolExecutions(collected)).singleElement().satisfies(e -> {
-            assertThat(e.toolExecution().hasFailed()).isTrue();
-            assertThat(e.toolExecution().result()).isEqualTo("boom");
-        });
-        // the error message is sent to the LLM as the tool result, so it can recover
-        assertToolResultsSentToLlm(model, 1, "boom");
-        assertThat(finalText(collected)).isEqualTo("Sorry, could not get the temperature");
+        // by default (new async modes), a tool execution failure fails the stream; it is NOT sent to the LLM
+        assertThat(collected.error).isNotNull().hasMessageContaining("boom");
+        assertThat(model.requests()).hasSize(1); // failed before a second model round
     }
 
     @Test
@@ -550,6 +547,92 @@ class AiServiceStreamingPublisherTest {
         // the customized error text is sent to the LLM so it can retry
         assertToolResultsSentToLlm(model, 1, "Invalid JSON, try again");
         assertThat(finalText(collected)).isEqualTo("sunny");
+    }
+
+    @Test
+    void sends_tool_argument_parse_error_to_llm_by_default() throws Exception {
+        ToolExecutionRequest invalidArguments = ToolExecutionRequest.builder()
+                .id("1")
+                .name("getWeather")
+                .arguments("{ invalid json }")
+                .build();
+        StreamingEventChatModelMock model =
+                StreamingEventChatModelMock.thatStreams(AiMessage.from(invalidArguments), AiMessage.from("sunny"));
+
+        // by default (new async modes), an argument-parse error is sent to the LLM so it can retry
+        EventStreamer assistant = AiServices.builder(EventStreamer.class)
+                .streamingChatModel(model)
+                .tools(new WeatherTool())
+                .build();
+
+        Collected<AiServiceStreamingEvent> collected = collect(assistant.chat("What is the weather in Berlin?"));
+
+        assertThat(collected.error).isNull();
+        assertThat(afterToolExecutions(collected))
+                .singleElement()
+                .satisfies(e -> assertThat(e.toolExecution().hasFailed()).isTrue());
+        assertThat(finalText(collected)).isEqualTo("sunny");
+        assertThat(model.requests()).hasSize(2);
+    }
+
+    @Test
+    void fails_stream_when_tool_execution_error_handler_rethrows() throws Exception {
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+                AiMessage.from(temperatureRequest()), AiMessage.from("unreachable"));
+
+        // a handler that rethrows turns a tool failure into a fatal invocation failure (not sent to the LLM)
+        EventStreamer assistant = AiServices.builder(EventStreamer.class)
+                .streamingChatModel(model)
+                .tools(new ThrowingTools())
+                .toolExecutionErrorHandler((error, context) -> {
+                    throw new RuntimeException("fatal: " + error.getMessage());
+                })
+                .build();
+
+        Collected<AiServiceStreamingEvent> collected = collect(assistant.chat("What is the temperature in Berlin?"));
+
+        assertThat(collected.error).isInstanceOf(RuntimeException.class).hasMessageContaining("fatal: boom");
+        assertThat(model.requests()).hasSize(1);
+    }
+
+    @Test
+    void fails_stream_when_hallucinated_tool_is_requested() throws Exception {
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+                AiMessage.from(toolRequest("1", "nonExistentTool")), AiMessage.from("unreachable"));
+
+        EventStreamer assistant = AiServices.builder(EventStreamer.class)
+                .streamingChatModel(model)
+                .tools(new Tools()) // only currentTemperature exists; the model "hallucinates" nonExistentTool
+                .build();
+
+        Collected<AiServiceStreamingEvent> collected = collect(assistant.chat("What is the temperature in Berlin?"));
+
+        assertThat(collected.error).isNotNull();
+        assertThat(model.requests()).hasSize(1);
+    }
+
+    @Test
+    void emits_retrieved_contents_event() throws Exception {
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
+
+        EventStreamer assistant = AiServices.builder(EventStreamer.class)
+                .streamingChatModel(model)
+                .contentRetriever(query -> List.of(Content.from("relevant document")))
+                .build();
+
+        Collected<AiServiceStreamingEvent> collected = collect(assistant.chat("Hi"));
+
+        assertThat(collected.error).isNull();
+        // mirrors TokenStream.onRetrieved: retrieved content is surfaced once, before the response chunks
+        assertThat(collected.items)
+                .filteredOn(e -> e instanceof RetrievedContentsEvent)
+                .singleElement()
+                .satisfies(e -> assertThat(((RetrievedContentsEvent) e).contents())
+                        .extracting(content -> content.textSegment().text())
+                        .contains("relevant document"));
+        int retrievedIndex = indexOfType(collected.items, RetrievedContentsEvent.class);
+        int firstPartialIndex = indexOfType(collected.items, PartialResponseEvent.class);
+        assertThat(retrievedIndex).isGreaterThanOrEqualTo(0).isLessThan(firstPartialIndex);
     }
 
     @Test

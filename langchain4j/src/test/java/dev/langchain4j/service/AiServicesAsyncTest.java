@@ -39,6 +39,8 @@ import dev.langchain4j.service.guardrail.OutputGuardrails;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.service.tool.ToolProviderResult;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -1056,7 +1058,7 @@ class AiServicesAsyncTest {
     }
 
     @Test
-    void should_handle_one_async_tool_failing_and_one_succeeding_in_parallel() throws Exception {
+    void should_fail_invocation_when_a_concurrent_async_tool_fails() throws Exception {
 
         ToolExecutionRequest temperatureRequest = ToolExecutionRequest.builder()
                 .id("1")
@@ -1077,22 +1079,15 @@ class AiServicesAsyncTest {
                 .executeToolsConcurrently()
                 .build();
 
-        String answer = assistant.chat("What is the weather?").get(10, SECONDS);
+        CompletableFuture<String> future = assistant.chat("What is the weather?");
 
-        assertThat(answer).isEqualTo("It is 69 percent humidity");
-        assertThat(chatModel.requests()).hasSize(2);
-
-        // both results reach the LLM, in request order: the failed tool's error message (default non-throwing
-        // handler) followed by the successful tool's value. Order is preserved regardless of completion order.
-        List<ToolExecutionResultMessage> toolResults = chatModel.requests().get(1).messages().stream()
-                .filter(message -> message instanceof ToolExecutionResultMessage)
-                .map(message -> (ToolExecutionResultMessage) message)
-                .toList();
-        assertThat(toolResults).hasSize(2);
-        assertThat(toolResults.get(0).text()).isEqualTo("Temperature service is unavailable");
-        assertThat(toolResults.get(0).isError()).isTrue();
-        assertThat(toolResults.get(1).text()).isEqualTo("69");
-        assertThat(toolResults.get(1).isError()).isFalse();
+        // new async default: a tool execution failure fails the invocation. combineToolResults surfaces the
+        // FIRST failure in request order (the temperature tool), regardless of completion order.
+        ExecutionException executionException = assertThrows(ExecutionException.class, () -> future.get(10, SECONDS));
+        assertThat(executionException.getCause())
+                .isNotInstanceOf(CompletionException.class)
+                .hasMessageContaining("Temperature service is unavailable");
+        assertThat(chatModel.requests()).hasSize(1);
     }
 
     private static void awaitBarrier(CyclicBarrier barrier) {
@@ -1129,6 +1124,84 @@ class AiServicesAsyncTest {
                 .build();
 
         assertThat(assistant.chat("What is the temperature?")).isEqualTo("It is 42 degrees");
+        assertThat(chatModel.requests().get(1).messages())
+                .filteredOn(message -> message instanceof ToolExecutionResultMessage)
+                .singleElement()
+                .satisfies(message -> assertThat(((ToolExecutionResultMessage) message).text())
+                        .isEqualTo("42"));
+    }
+
+    static class WeatherTool {
+
+        @Tool
+        String getWeather(String city) {
+            return "sunny";
+        }
+    }
+
+    @Test
+    void should_send_tool_argument_parse_error_to_LLM_by_default() throws Exception {
+
+        ToolExecutionRequest invalidArguments = ToolExecutionRequest.builder()
+                .id("1")
+                .name("getWeather")
+                .arguments("{ invalid json }")
+                .build();
+        ChatModelMock chatModel =
+                ChatModelMock.thatAlwaysResponds(AiMessage.from(invalidArguments), AiMessage.from("sunny"));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(new WeatherTool())
+                .build();
+
+        // by default (new async modes), an argument-parse error is sent to the LLM so it can retry
+        assertThat(assistant.chat("What is the weather?").get(10, SECONDS)).isEqualTo("sunny");
+        assertThat(chatModel.requests()).hasSize(2);
+        assertThat(chatModel.requests().get(1).messages())
+                .filteredOn(message -> message instanceof ToolExecutionResultMessage)
+                .singleElement()
+                .satisfies(message -> assertThat(((ToolExecutionResultMessage) message).isError())
+                        .isTrue());
+    }
+
+    @Test
+    void should_use_tool_provider() throws Exception {
+
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .name("currentTemperature")
+                .build();
+        ToolExecutor toolExecutor = new ToolExecutor() {
+
+            @Override
+            public String execute(ToolExecutionRequest request, Object memoryId) {
+                return "42";
+            }
+
+            @Override
+            public CompletableFuture<ToolExecutionResult> executeAsync(
+                    ToolExecutionRequest request, InvocationContext context) {
+                return CompletableFuture.completedFuture(
+                        ToolExecutionResult.builder().resultText("42").build());
+            }
+        };
+        ToolProvider toolProvider =
+                request -> ToolProviderResult.builder().add(toolSpecification, toolExecutor).build();
+
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("currentTemperature")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("It is 42 degrees"));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .toolProvider(toolProvider)
+                .build();
+
+        assertThat(assistant.chat("What is the temperature?").get(10, SECONDS)).isEqualTo("It is 42 degrees");
         assertThat(chatModel.requests().get(1).messages())
                 .filteredOn(message -> message instanceof ToolExecutionResultMessage)
                 .singleElement()
@@ -1225,7 +1298,7 @@ class AiServicesAsyncTest {
     }
 
     @Test
-    void should_send_error_to_LLM_when_tool_future_fails() throws Exception {
+    void should_fail_future_when_tool_future_fails_by_default() throws Exception {
 
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
                 .id("1")
@@ -1242,16 +1315,12 @@ class AiServicesAsyncTest {
 
         CompletableFuture<String> future = assistant.chat("What is the temperature?");
 
-        assertThat(future.get(10, SECONDS)).isEqualTo("I was not able to get the temperature");
-        assertThat(chatModel.requests()).hasSize(2);
-        assertThat(chatModel.requests().get(1).messages())
-                .filteredOn(message -> message instanceof ToolExecutionResultMessage)
-                .singleElement()
-                .satisfies(message -> {
-                    ToolExecutionResultMessage toolResult = (ToolExecutionResultMessage) message;
-                    assertThat(toolResult.text()).isEqualTo("Weather service is unavailable");
-                    assertThat(toolResult.isError()).isTrue();
-                });
+        // by default (new async modes), a tool execution failure fails the invocation, it is NOT sent to the LLM
+        ExecutionException executionException = assertThrows(ExecutionException.class, () -> future.get(10, SECONDS));
+        assertThat(executionException.getCause())
+                .isNotInstanceOf(CompletionException.class)
+                .hasMessageContaining("Weather service is unavailable");
+        assertThat(chatModel.requests()).hasSize(1); // failed before a second model round
     }
 
     static class SynchronouslyThrowingAsyncTools {
@@ -1265,7 +1334,7 @@ class AiServicesAsyncTest {
     }
 
     @Test
-    void should_send_error_to_LLM_when_async_tool_throws_synchronously() throws Exception {
+    void should_fail_future_when_async_tool_throws_synchronously_by_default() throws Exception {
 
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
                 .id("1")
@@ -1283,17 +1352,12 @@ class AiServicesAsyncTest {
         CompletableFuture<String> future = assistant.chat("What is the temperature?");
 
         // a synchronous throw from a future-returning tool routes to the error handler identically to a
-        // returned failed future: the error message is sent to the LLM and the loop reprocesses
-        assertThat(future.get(10, SECONDS)).isEqualTo("I was not able to get the temperature");
-        assertThat(chatModel.requests()).hasSize(2);
-        assertThat(chatModel.requests().get(1).messages())
-                .filteredOn(message -> message instanceof ToolExecutionResultMessage)
-                .singleElement()
-                .satisfies(message -> {
-                    ToolExecutionResultMessage toolResult = (ToolExecutionResultMessage) message;
-                    assertThat(toolResult.text()).isEqualTo("Invalid city");
-                    assertThat(toolResult.isError()).isTrue();
-                });
+        // returned failed future: by default it fails the invocation (not sent to the LLM)
+        ExecutionException executionException = assertThrows(ExecutionException.class, () -> future.get(10, SECONDS));
+        assertThat(executionException.getCause())
+                .isNotInstanceOf(CompletionException.class)
+                .hasMessageContaining("Invalid city");
+        assertThat(chatModel.requests()).hasSize(1);
     }
 
     interface AssistantReturningRawFuture {

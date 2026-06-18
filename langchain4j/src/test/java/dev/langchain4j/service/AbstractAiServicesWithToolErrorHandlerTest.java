@@ -53,6 +53,15 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
                 Arguments.of(true, InvocationMode.ASYNC));
     }
 
+    // The DEFAULT tool-error behavior differs between the legacy (sync/TokenStream) and the new async
+    // (CompletableFuture/Publisher) modes: legacy fails on argument errors and sends execution errors to the
+    // LLM, while async reverses both. Tests that rely on the DEFAULT therefore run SYNC-only here; the async
+    // defaults are asserted in AiServicesAsyncTest / AiServiceStreamingPublisherTest. Tests that configure an
+    // explicit handler behave identically in all modes and keep using parameters().
+    static Stream<Arguments> syncModeParameters() {
+        return Stream.of(Arguments.of(false, InvocationMode.SYNC), Arguments.of(true, InvocationMode.SYNC));
+    }
+
     interface Assistant {
 
         String chat(String userMessage);
@@ -61,7 +70,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
     }
 
     @ParameterizedTest
-    @MethodSource("parameters")
+    @MethodSource("syncModeParameters")
     void should_propagate_error_message_thrown_from_tool_to_LLM_by_default(
             boolean executeToolsConcurrently, InvocationMode invocationMode) {
 
@@ -100,7 +109,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
     }
 
     @ParameterizedTest
-    @MethodSource("parameters")
+    @MethodSource("syncModeParameters")
     void should_propagate_exception_type_to_LLM_when_exception_without_message_is_thrown_from_tool(
             boolean executeToolsConcurrently, InvocationMode invocationMode) {
 
@@ -140,7 +149,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
     }
 
     @ParameterizedTest
-    @MethodSource("parameters")
+    @MethodSource("syncModeParameters")
     void should_propagate_exception_to_LLM_when_exception_without_cause_is_thrown_from_tool(
             boolean executeToolsConcurrently, InvocationMode invocationMode) {
 
@@ -283,7 +292,7 @@ public abstract class AbstractAiServicesWithToolErrorHandlerTest {
     }
 
     @ParameterizedTest
-    @MethodSource("parameters")
+    @MethodSource("syncModeParameters")
     void should_fail_when_cannot_parse_tool_arguments_by_default(
             boolean executeToolsConcurrently, InvocationMode invocationMode) {
 
