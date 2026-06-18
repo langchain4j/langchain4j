@@ -67,7 +67,7 @@ First, make sure you have the OpenAI module in your `pom.xml` or Gradle build fi
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.16.1</version>
+    <version>1.11.8</version>
 </dependency>
 ```
 
@@ -76,7 +76,7 @@ First, make sure you have the OpenAI module in your `pom.xml` or Gradle build fi
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.16.1-beta26</version>
+    <version>1.11.8-beta19</version>
 </dependency>
 ```
 
@@ -197,7 +197,7 @@ ChatModel model = OpenAiChatModel.builder()
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-http-client-jdk</artifactId>
-    <version>1.16.1</version>
+    <version>1.11.8</version>
 </dependency>
 ```
 6. Configure LangChain4j and specify the `httpClientBuilder`
