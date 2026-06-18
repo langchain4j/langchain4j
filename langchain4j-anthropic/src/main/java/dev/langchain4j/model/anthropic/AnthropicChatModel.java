@@ -68,22 +68,13 @@ public class AnthropicChatModel implements ChatModel {
     public static final String ANTHROPIC_VERSION = "2023-06-01";
 
     private final AnthropicClient client;
-    private final boolean cacheSystemMessages;
-    private final boolean cacheTools;
-    private final String thinkingType;
-    private final Integer thinkingBudgetTokens;
     private final String thinkingDisplay;
-    private final boolean returnThinking;
-    private final boolean sendThinking;
     private final int maxRetries;
     private final List<ChatModelListener> listeners;
     private final AnthropicChatRequestParameters defaultRequestParameters;
-    private final String toolChoiceName;
-    private final Boolean disableParallelToolUse;
     private final List<AnthropicServerTool> serverTools;
     private final boolean returnServerToolResults;
     private final Set<String> toolMetadataKeysToSend;
-    private final String userId;
     private final Map<String, Object> customParameters;
     private final Boolean strictTools;
     private final Set<Capability> supportedCapabilities;
@@ -119,20 +110,7 @@ public class AnthropicChatModel implements ChatModel {
                 ? (AnthropicChatRequestParameters) commonParameters
                 : AnthropicChatRequestParameters.EMPTY;
 
-        this.cacheSystemMessages =
-                getOrDefault(builder.cacheSystemMessages, getOrDefault(anthropicDefaults.cacheSystemMessages(), false));
-        this.cacheTools = getOrDefault(builder.cacheTools, getOrDefault(anthropicDefaults.cacheTools(), false));
-        this.thinkingType = getOrDefault(builder.thinkingType, anthropicDefaults.thinkingType());
-        this.thinkingBudgetTokens =
-                getOrDefault(builder.thinkingBudgetTokens, anthropicDefaults.thinkingBudgetTokens());
         this.thinkingDisplay = builder.thinkingDisplay;
-        this.returnThinking =
-                getOrDefault(builder.returnThinking, getOrDefault(anthropicDefaults.returnThinking(), false));
-        this.sendThinking = getOrDefault(builder.sendThinking, getOrDefault(anthropicDefaults.sendThinking(), true));
-        this.toolChoiceName = getOrDefault(builder.toolChoiceName, anthropicDefaults.toolChoiceName());
-        this.disableParallelToolUse =
-                getOrDefault(builder.disableParallelToolUse, anthropicDefaults.disableParallelToolUse());
-        this.userId = getOrDefault(builder.userId, anthropicDefaults.userId());
         this.serverTools = copy(builder.serverTools);
         this.toolMetadataKeysToSend = copy(builder.toolMetadataKeysToSend);
         this.customParameters = copy(builder.customParameters);
@@ -149,15 +127,17 @@ public class AnthropicChatModel implements ChatModel {
                 .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
                 .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
-                .cacheSystemMessages(this.cacheSystemMessages)
-                .cacheTools(this.cacheTools)
-                .thinkingType(this.thinkingType)
-                .thinkingBudgetTokens(this.thinkingBudgetTokens)
-                .sendThinking(this.sendThinking)
-                .returnThinking(this.returnThinking)
-                .toolChoiceName(this.toolChoiceName)
-                .disableParallelToolUse(this.disableParallelToolUse)
-                .userId(this.userId)
+                .cacheSystemMessages(getOrDefault(builder.cacheSystemMessages, anthropicDefaults.cacheSystemMessages()))
+                .cacheTools(getOrDefault(builder.cacheTools, anthropicDefaults.cacheTools()))
+                .thinkingType(getOrDefault(builder.thinkingType, anthropicDefaults.thinkingType()))
+                .thinkingBudgetTokens(
+                        getOrDefault(builder.thinkingBudgetTokens, anthropicDefaults.thinkingBudgetTokens()))
+                .sendThinking(getOrDefault(builder.sendThinking, anthropicDefaults.sendThinking()))
+                .returnThinking(getOrDefault(builder.returnThinking, anthropicDefaults.returnThinking()))
+                .toolChoiceName(getOrDefault(builder.toolChoiceName, anthropicDefaults.toolChoiceName()))
+                .disableParallelToolUse(
+                        getOrDefault(builder.disableParallelToolUse, anthropicDefaults.disableParallelToolUse()))
+                .userId(getOrDefault(builder.userId, anthropicDefaults.userId()))
                 .build();
     }
 
@@ -765,35 +745,28 @@ public class AnthropicChatModel implements ChatModel {
 
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
-        validate(chatRequest.parameters());
-
-        ChatRequestParameters parameters = chatRequest.parameters();
-        AnthropicChatRequestParameters requestParameters = parameters instanceof AnthropicChatRequestParameters
-                ? (AnthropicChatRequestParameters) parameters
-                : AnthropicChatRequestParameters.EMPTY;
+        AnthropicChatRequestParameters parameters = (AnthropicChatRequestParameters) chatRequest.parameters();
+        validate(parameters);
 
         AnthropicCreateMessageRequest anthropicRequest = createAnthropicRequest(
                 chatRequest,
-                toThinking(
-                        getOrDefault(requestParameters.thinkingType(), this.thinkingType),
-                        getOrDefault(requestParameters.thinkingBudgetTokens(), this.thinkingBudgetTokens),
-                        this.thinkingDisplay),
-                getOrDefault(requestParameters.sendThinking(), this.sendThinking),
-                getOrDefault(requestParameters.cacheSystemMessages(), this.cacheSystemMessages) ? EPHEMERAL : NO_CACHE,
-                getOrDefault(requestParameters.cacheTools(), this.cacheTools) ? EPHEMERAL : NO_CACHE,
+                toThinking(parameters.thinkingType(), parameters.thinkingBudgetTokens(), this.thinkingDisplay),
+                getOrDefault(parameters.sendThinking(), true),
+                getOrDefault(parameters.cacheSystemMessages(), false) ? EPHEMERAL : NO_CACHE,
+                getOrDefault(parameters.cacheTools(), false) ? EPHEMERAL : NO_CACHE,
                 false,
-                getOrDefault(requestParameters.toolChoiceName(), this.toolChoiceName),
-                getOrDefault(requestParameters.disableParallelToolUse(), this.disableParallelToolUse),
+                parameters.toolChoiceName(),
+                parameters.disableParallelToolUse(),
                 this.serverTools,
                 this.toolMetadataKeysToSend,
-                getOrDefault(requestParameters.userId(), this.userId),
+                parameters.userId(),
                 this.customParameters,
                 this.strictTools);
 
         ParsedAndRawResponse response =
                 withRetryMappingExceptions(() -> client.createMessageWithRawResponse(anthropicRequest), maxRetries);
 
-        boolean returnThinking = getOrDefault(requestParameters.returnThinking(), this.returnThinking);
+        boolean returnThinking = getOrDefault(parameters.returnThinking(), false);
         return createChatResponse(response, returnThinking);
     }
 
