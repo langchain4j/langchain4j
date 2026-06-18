@@ -61,12 +61,43 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .logRequests(...)
     .logResponses(...)
     .listeners(...)
+    // You can also specify default chat request parameters using ChatRequestParameters or AnthropicChatRequestParameters
     .defaultRequestParameters(...)
     .userId(...)
     .customParameters(...)
     .build();
 ```
 See the description of some of the parameters above [here](https://docs.anthropic.com/en/api/messages).
+
+### Per-Request Parameters
+
+The Anthropic-specific options shown above (`cacheSystemMessages`, `cacheTools`, `thinkingType`,
+`thinkingBudgetTokens`, `sendThinking`, `returnThinking`, `toolChoiceName`, `disableParallelToolUse` and `userId`)
+can also be set per request via `AnthropicChatRequestParameters`, overriding the values configured on the model
+builder. This lets a single shared model instance vary these options from one call to the next — for example,
+enabling prompt caching for a long-running agent loop while skipping it for a cheap one-shot completion, without
+building a second model:
+
+```java
+AnthropicChatModel model = AnthropicChatModel.builder()
+    .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+    .modelName(CLAUDE_3_5_SONNET_20240620)
+    .build();
+
+AnthropicChatRequestParameters parameters = AnthropicChatRequestParameters.builder()
+    .cacheSystemMessages(true)
+    .cacheTools(true)
+    .build();
+
+ChatRequest chatRequest = ChatRequest.builder()
+    .messages(systemMessage, userMessage)
+    .parameters(parameters)
+    .build();
+
+ChatResponse chatResponse = model.chat(chatRequest);
+```
+
+Any parameter not set on the request falls back to the value configured on the model builder.
 
 ## AnthropicStreamingChatModel
 ```java
