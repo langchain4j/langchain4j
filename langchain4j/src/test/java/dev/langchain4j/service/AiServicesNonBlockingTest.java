@@ -26,8 +26,10 @@ import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterAll;
@@ -40,11 +42,14 @@ import reactor.blockhound.BlockHound;
 import reactor.blockhound.BlockingOperationError;
 
 /**
- * Verifies that the asynchronous AI Service pipeline ({@code CompletableFuture} return types) never performs
- * a blocking call on the thread that delivers model responses — policed by BlockHound.
+ * Verifies that the asynchronous AI Service pipeline never performs a blocking call on the thread that
+ * delivers model responses — policed by BlockHound. This covers both the {@code CompletableFuture} return
+ * types (single-response path) and the reactive {@code Flow.Publisher} streaming path (whose stub emits all
+ * events on the same policed delivery thread, so its tool loop, chat-memory writes, event firing and
+ * round-to-round resubscription are policed too).
  * <p>
- * The stub model completes its futures on a dedicated thread (named {@code ai-service-delivery}) that
- * BlockHound treats as non-blocking. Because every downstream stage of the async pipeline runs on the
+ * The stub model completes its futures (or emits its stream) on a dedicated thread (named
+ * {@code ai-service-delivery}) that BlockHound treats as non-blocking. Because every downstream stage of the async pipeline runs on the
  * thread that completed the previous stage, the entire post-response pipeline — tool-loop bookkeeping,
  * chat-memory writes, tool result processing, output guardrails, output parsing, {@code Result} building,
  * event firing and the recursive next round — executes on that policed thread. Any hidden
@@ -421,6 +426,97 @@ class AiServicesNonBlockingTest {
         assertThat(answer).isEqualTo("Berlin");
         assertThat(listener.count).hasValue(1);
         assertNoBlockingCalls();
+    }
+
+    interface StreamingAssistant {
+
+        Flow.Publisher<String> chat(String userMessage);
+    }
+
+    @Test
+    void streaming_plain_chat_does_not_block_the_delivery_thread() throws Exception {
+
+        StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(StreamingEventChatModelMock.thatStreamsOn(deliveryExecutor, AiMessage.from("Berlin")))
+                .build();
+
+        assertThat(subscribeAndAwait(assistant.chat("What is the capital of Germany?")))
+                .isEqualTo("Berlin");
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void streaming_tool_loop_does_not_block_the_delivery_thread() throws Exception {
+
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreamsOn(
+                deliveryExecutor,
+                AiMessage.from(toolRequest("1", "currentTemperature")),
+                AiMessage.from("42 degrees"));
+        WeatherTools tools = new WeatherTools();
+
+        StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(model)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(20))
+                .tools(tools)
+                .build();
+
+        assertThat(subscribeAndAwait(assistant.chat("What is the temperature in Munich?")))
+                .isEqualTo("42 degrees");
+        assertThat(tools.invocations).hasValue(1);
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void streaming_async_tool_does_not_block_the_delivery_thread() throws Exception {
+
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreamsOn(
+                deliveryExecutor,
+                AiMessage.from(toolRequest("1", "currentTemperature")),
+                AiMessage.from("42 degrees"));
+        AsyncWeatherTools tools = new AsyncWeatherTools();
+
+        StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(model)
+                .tools(tools)
+                .build();
+
+        assertThat(subscribeAndAwait(assistant.chat("What is the temperature in Munich?")))
+                .isEqualTo("42 degrees");
+        assertThat(tools.invocations).hasValue(1);
+        assertNoBlockingCalls();
+    }
+
+    private static String subscribeAndAwait(Flow.Publisher<String> publisher) throws InterruptedException {
+        List<String> items = new CopyOnWriteArrayList<>();
+        AtomicReference<Throwable> error = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+
+        publisher.subscribe(new Flow.Subscriber<>() {
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                subscription.request(Long.MAX_VALUE);
+            }
+
+            @Override
+            public void onNext(String item) {
+                items.add(item);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                error.set(throwable);
+                latch.countDown();
+            }
+
+            @Override
+            public void onComplete() {
+                latch.countDown();
+            }
+        });
+
+        assertThat(latch.await(10, SECONDS)).isTrue();
+        assertThat(error.get()).isNull();
+        return String.join("", items);
     }
 
     /**

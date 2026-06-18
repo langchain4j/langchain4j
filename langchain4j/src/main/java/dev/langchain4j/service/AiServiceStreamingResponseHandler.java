@@ -3,15 +3,11 @@ package dev.langchain4j.service;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
-import static dev.langchain4j.service.tool.ToolService.refreshDynamicProviders;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
@@ -33,7 +29,6 @@ import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
-import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecution;
@@ -42,8 +37,8 @@ import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.service.tool.ToolServiceContext;
-import dev.langchain4j.service.tool.search.ToolSearchService;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -245,14 +240,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 .build());
     }
 
-    private void fireToolExecutedEvent(ToolRequestResult toolRequestResult) {
-        context.eventListenerRegistrar.fireEvent(ToolExecutedEvent.builder()
-                .invocationContext(invocationContext)
-                .request(toolRequestResult.request())
-                .resultContents(toolRequestResult.result().resultContents())
-                .build());
-    }
-
     private void fireResponseReceivedEvent(ChatResponse chatResponse) {
         context.eventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
                 .invocationContext(invocationContext)
@@ -293,23 +280,14 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 intermediateResponseHandler.accept(chatResponse);
             }
 
-            List<ToolExecutionResult> toolResults = new ArrayList<>();
-            boolean anyToolErrored = false;
-            List<ReturnBehavior> returnBehaviors = new ArrayList<>();
-
+            // Execute tools (blocking on the TokenStream path), collecting one result per request. User-facing
+            // beforeToolExecution/onToolExecuted handlers are delivered by execute(...) as the tools run.
+            Map<ToolExecutionRequest, ToolExecutionResult> toolResults = new LinkedHashMap<>();
             if (toolExecutor != null) {
                 for (Future<ToolRequestResult> toolExecutionFuture : toolExecutionFutures) {
                     try {
                         ToolRequestResult toolRequestResult = toolExecutionFuture.get();
-                        fireToolExecutedEvent(toolRequestResult);
-                        ToolExecutionRequest toolRequest = toolRequestResult.request();
-                        ToolExecutionResult toolResult = toolRequestResult.result();
-                        toolResults.add(toolResult);
-                        ToolExecutionResultMessage toolExecutionResultMessage =
-                                toResultMessage(toolRequest, toolResult);
-                        addToMemory(toolExecutionResultMessage);
-                        anyToolErrored = anyToolErrored || toolResult.isError();
-                        returnBehaviors.add(toolServiceContext.returnBehavior(toolRequest.name()));
+                        toolResults.put(toolRequestResult.request(), toolRequestResult.result());
                     } catch (ExecutionException e) {
                         if (e.getCause() instanceof RuntimeException re) {
                             throw re;
@@ -323,18 +301,23 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 }
             } else {
                 for (ToolExecutionRequest toolRequest : aiMessage.toolExecutionRequests()) {
-                    ToolExecutionResult toolResult = execute(toolRequest);
-                    toolResults.add(toolResult);
-                    ToolRequestResult toolRequestResult = new ToolRequestResult(toolRequest, toolResult);
-                    fireToolExecutedEvent(toolRequestResult);
-                    ToolExecutionResultMessage toolExecutionResultMessage = toResultMessage(toolRequest, toolResult);
-                    addToMemory(toolExecutionResultMessage);
-                    anyToolErrored = anyToolErrored || toolResult.isError();
-                    returnBehaviors.add(toolServiceContext.returnBehavior(toolRequest.name()));
+                    toolResults.put(toolRequest, execute(toolRequest));
                 }
             }
 
-            if (ToolService.shouldReturnImmediately(anyToolErrored, returnBehaviors)) {
+            // Shared per-round bookkeeping (memory writes, ToolExecutedEvent, returnBehavior accumulation),
+            // identical across all AI Service modes (sync, CompletableFuture, TokenStream, Flow.Publisher).
+            ToolService.ToolResultsOutcome outcome = context.toolService.processToolResults(
+                    context,
+                    aiMessage.toolExecutionRequests(),
+                    toolResults,
+                    new ArrayList<>(),
+                    getMemory(),
+                    null,
+                    invocationContext,
+                    toolServiceContext);
+
+            if (ToolService.shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors())) {
                 ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
                 fireInvocationComplete(finalChatResponse);
 
@@ -344,24 +327,22 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 return;
             }
 
-            List<ChatMessage> messages = messagesToSend(invocationContext.chatMemoryId());
-
-            ToolServiceContext updatedToolContext =
-                    refreshDynamicProviders(toolServiceContext, messages, invocationContext);
-            updatedToolContext = ToolSearchService.addFoundTools(updatedToolContext, toolResults);
-
+            // Shared next-request construction (messages-to-send, dynamic providers, tool search, parameter
+            // tool refresh, transformer, request-issued event).
             ChatRequestParameters parameters =
-                    chatRequestParameters(invocationContext.methodArguments(), updatedToolContext.effectiveTools());
-
-            ChatRequest nextChatRequest = context.chatRequestTransformer.apply(
-                    ChatRequest.builder()
-                            .messages(messages)
-                            .parameters(parameters)
-                            .build(),
-                    invocationContext.chatMemoryId());
+                    chatRequestParameters(invocationContext.methodArguments(), toolServiceContext.effectiveTools());
+            ToolService.NextChatRequest next = context.toolService.prepareNextChatRequest(
+                    context,
+                    invocationContext.chatMemoryId(),
+                    getMemory(),
+                    null,
+                    invocationContext,
+                    toolServiceContext,
+                    toolResults,
+                    parameters);
 
             var handler = new AiServiceStreamingResponseHandler(
-                    nextChatRequest,
+                    next.chatRequest(),
                     chatExecutor,
                     context,
                     invocationContext,
@@ -378,7 +359,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     errorHandler,
                     temporaryMemory,
                     TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage()),
-                    updatedToolContext,
+                    next.toolServiceContext(),
                     toolCallingRoundTripsLeft,
                     toolArgumentsErrorHandler,
                     toolExecutionErrorHandler,
@@ -386,8 +367,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     commonGuardrailParams,
                     methodKey);
 
-            fireRequestIssuedEvent(nextChatRequest);
-            context.streamingChatModel.chat(nextChatRequest, handler);
+            context.streamingChatModel.chat(next.chatRequest(), handler);
         } else {
             ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
 
@@ -444,17 +424,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 invocationContext, toolExecutors, toolRequest, beforeToolExecutionHandler, toolExecutionHandler);
     }
 
-    private static ToolExecutionResultMessage toResultMessage(
-            ToolExecutionRequest request, ToolExecutionResult result) {
-        return ToolExecutionResultMessage.builder()
-                .id(request.id())
-                .toolName(request.name())
-                .contents(result.resultContents())
-                .isError(result.isError())
-                .attributes(result.attributes())
-                .build();
-    }
-
     private ChatMemory getMemory() {
         return getMemory(invocationContext.chatMemoryId());
     }
@@ -467,13 +436,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private void addToMemory(ChatMessage chatMessage) {
         getMemory().add(chatMessage);
-    }
-
-    private List<ChatMessage> messagesToSend(Object memoryId) {
-        List<ChatMessage> messages = getMemory(memoryId).messages();
-        return context.storeRetrievedContentInChatMemory
-                ? messages
-                : UserMessage.replaceLast(messages, invocationContext.userMessage());
     }
 
     @Override

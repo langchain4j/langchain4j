@@ -662,6 +662,25 @@ public abstract class AiServices<T> {
     }
 
     /**
+     * Explicitly enables or disables concurrent tool execution, overriding the per-mode default.
+     * <p>
+     * The asynchronous AI Service modes — methods returning a {@link java.util.concurrent.CompletableFuture}
+     * or a reactive {@link java.util.concurrent.Flow.Publisher} — execute tools concurrently (off the model
+     * response thread) <b>by default</b>. Pass {@code false} to force sequential execution on those modes.
+     * The synchronous and {@link TokenStream} modes execute tools sequentially by default; pass {@code true}
+     * (or call {@link #executeToolsConcurrently()}) to enable concurrency there.
+     *
+     * @param concurrent whether tools should be executed concurrently
+     * @return builder
+     * @see #executeToolsConcurrently()
+     * @since 1.17.0
+     */
+    public AiServices<T> executeToolsConcurrently(boolean concurrent) {
+        context.toolService.executeToolsConcurrently(concurrent);
+        return this;
+    }
+
+    /**
      * Sets the maximum number of tool calling round trips (i.e. LLM responses containing tool calls).
      * If this limit is exceeded, an exception is thrown and the AI service invocation is terminated.
      *

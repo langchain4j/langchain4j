@@ -81,6 +81,9 @@ public class ToolService {
     private final Map<String, ReturnBehavior> returnBehaviors = new HashMap<>();
     private final Set<ToolProvider> toolProviders = new LinkedHashSet<>();
     private Executor executor;
+    // The user's explicit concurrent-vs-sequential choice: null = unset (each AI Service mode applies its own
+    // default — async modes concurrent, sync/TokenStream sequential), TRUE = concurrent, FALSE = sequential.
+    private Boolean concurrentToolExecution;
     private int maxToolCallingRoundTrips = 100;
     private ToolArgumentsErrorHandler argumentsErrorHandler;
     private ToolExecutionErrorHandler executionErrorHandler;
@@ -249,6 +252,7 @@ public class ToolService {
      */
     public void executeToolsConcurrently() {
         this.executor = defaultExecutor();
+        this.concurrentToolExecution = true;
     }
 
     /**
@@ -256,6 +260,40 @@ public class ToolService {
      */
     public void executeToolsConcurrently(Executor executor) {
         this.executor = getOrDefault(executor, ToolService::defaultExecutor);
+        this.concurrentToolExecution = true;
+    }
+
+    /**
+     * Explicitly enables or disables concurrent tool execution, overriding the per-mode default. Passing
+     * {@code false} forces sequential execution even on the asynchronous AI Service modes
+     * ({@code CompletableFuture}, reactive {@code Flow.Publisher}), which otherwise execute tools concurrently
+     * by default.
+     *
+     * @since 1.17.0
+     */
+    public void executeToolsConcurrently(boolean concurrent) {
+        if (concurrent) {
+            executeToolsConcurrently();
+        } else {
+            this.executor = null;
+            this.concurrentToolExecution = false;
+        }
+    }
+
+    /**
+     * Resolves the {@link Executor} to run tools on, given a mode-specific default. Returns {@code null} when
+     * tools should run sequentially on the calling thread; a non-null executor when they should be offloaded
+     * (and run concurrently). The user's explicit {@link #executeToolsConcurrently(boolean)} choice, if any,
+     * takes precedence over {@code concurrentByDefault}.
+     *
+     * @since 1.17.0
+     */
+    public Executor effectiveToolExecutor(boolean concurrentByDefault) {
+        boolean concurrent = concurrentToolExecution != null ? concurrentToolExecution : concurrentByDefault;
+        if (!concurrent) {
+            return null;
+        }
+        return getOrDefault(executor, ToolService::defaultExecutor);
     }
 
     private static Executor defaultExecutor() {
@@ -638,7 +676,17 @@ public class ToolService {
         });
     }
 
-    private ToolResultsOutcome processToolResults(
+    /**
+     * Per-round bookkeeping shared by every AI Service mode (sync, {@code CompletableFuture}, {@code TokenStream},
+     * reactive {@code Flow.Publisher}): for each executed tool it records a {@link ToolExecution}, fires the
+     * {@link ToolExecutedEvent}, appends the tool-result message to memory (or to {@code messages} when
+     * {@code chatMemory} is {@code null}), and accumulates {@code anyToolErrored} + the per-tool
+     * {@link ReturnBehavior}s. The tool <i>execution</i> itself and the delivery of intermediate responses are
+     * left to each mode; only this mode-agnostic bookkeeping is shared here.
+     *
+     * @since 1.17.0
+     */
+    public ToolResultsOutcome processToolResults(
             AiServiceContext context,
             List<ToolExecutionRequest> toolExecutionRequests,
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
@@ -677,7 +725,16 @@ public class ToolService {
         return new ToolResultsOutcome(anyToolErrored, returnBehaviors);
     }
 
-    private NextChatRequest prepareNextChatRequest(
+    /**
+     * Builds the next round's {@link ChatRequest}, shared by every AI Service mode: it resolves the messages to
+     * send (from {@code chatMemory} when present, honoring {@code storeRetrievedContentInChatMemory}), refreshes
+     * dynamic tool providers, folds in any tools found by tool search, overrides the tool specifications on the
+     * carried-forward {@code parameters}, applies the chat-request transformer, and fires the
+     * {@link AiServiceRequestIssuedEvent}. Each mode supplies how the returned request is actually dispatched.
+     *
+     * @since 1.17.0
+     */
+    public NextChatRequest prepareNextChatRequest(
             AiServiceContext context,
             Object memoryId,
             ChatMemory chatMemory,
@@ -741,9 +798,9 @@ public class ToolService {
                 .build();
     }
 
-    private record ToolResultsOutcome(boolean anyToolErrored, List<ReturnBehavior> returnBehaviors) {}
+    public record ToolResultsOutcome(boolean anyToolErrored, List<ReturnBehavior> returnBehaviors) {}
 
-    private record NextChatRequest(
+    public record NextChatRequest(
             ChatRequest chatRequest,
             List<ChatMessage> messages,
             ToolServiceContext toolServiceContext,
@@ -885,28 +942,101 @@ public class ToolService {
             List<ToolExecutionRequest> toolRequests,
             Map<String, ToolExecutor> toolExecutors,
             InvocationContext invocationContext) {
+        // CompletableFuture AI Service path: tools run concurrently by default (unless explicitly disabled).
+        return executeToolsAsync(
+                toolRequests, toolExecutors, invocationContext, null, null, effectiveToolExecutor(true));
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #execute(List, Map, InvocationContext)} that additionally routes
+     * {@link BeforeToolExecution} and {@link ToolExecution} notifications to the given external consumers
+     * (in addition to the ones configured on this service). Used by the non-blocking streaming AI Service to
+     * emit these notifications into its reactive stream as the tools run.
+     * <p>
+     * When {@code executor} is non-null, every tool execution (even a single one) is initiated on it, so the
+     * thread that delivered the model response is never blocked by a synchronous tool, and tools run
+     * concurrently. When {@code executor} is null, tools are executed one after another, initiated on the
+     * current thread, and a failure aborts the remaining ones — mirroring the synchronous path.
+     *
+     * @since 1.17.0
+     */
+    public CompletableFuture<Map<ToolExecutionRequest, ToolExecutionResult>> executeToolsAsync(
+            List<ToolExecutionRequest> toolRequests,
+            Map<String, ToolExecutor> toolExecutors,
+            InvocationContext invocationContext,
+            Consumer<BeforeToolExecution> externalBeforeToolExecution,
+            Consumer<ToolExecution> externalAfterToolExecution,
+            Executor executor) {
         if (executor == null) {
             CompletableFuture<Map<ToolExecutionRequest, ToolExecutionResult>> chainedFuture =
                     CompletableFuture.completedFuture(new LinkedHashMap<>());
             for (ToolExecutionRequest toolRequest : toolRequests) {
-                chainedFuture = chainedFuture.thenCompose(
-                        toolResults -> executeToolAsync(invocationContext, toolExecutors, toolRequest)
-                                .thenApply(toolResult -> {
-                                    toolResults.put(toolRequest, toolResult);
-                                    return toolResults;
-                                }));
+                chainedFuture = chainedFuture.thenCompose(toolResults -> executeToolAsync(
+                                invocationContext,
+                                toolExecutors,
+                                toolRequest,
+                                externalBeforeToolExecution,
+                                externalAfterToolExecution)
+                        .thenApply(toolResult -> {
+                            toolResults.put(toolRequest, toolResult);
+                            return toolResults;
+                        }));
             }
             return chainedFuture;
         }
 
         Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> futures = new LinkedHashMap<>();
         for (ToolExecutionRequest toolRequest : toolRequests) {
-            CompletableFuture<ToolExecutionResult> future = CompletableFuture.supplyAsync(
-                            () -> executeToolAsync(invocationContext, toolExecutors, toolRequest), executor)
-                    .thenCompose(toolResultFuture -> toolResultFuture);
-            futures.put(toolRequest, future);
+            futures.put(
+                    toolRequest,
+                    startTool(
+                            toolRequest,
+                            toolExecutors,
+                            invocationContext,
+                            externalBeforeToolExecution,
+                            externalAfterToolExecution,
+                            executor));
         }
 
+        return combineToolResults(futures);
+    }
+
+    /**
+     * Initiates a single tool execution on the given {@code executor}, returning a future of its result. Used
+     * by the non-blocking streaming AI Service to start a tool as soon as its {@code CompleteToolCall} arrives
+     * (rather than waiting for the whole model response), so that concurrent tools overlap each other and the
+     * tail of the model stream.
+     *
+     * @since 1.17.0
+     */
+    public CompletableFuture<ToolExecutionResult> startTool(
+            ToolExecutionRequest toolRequest,
+            Map<String, ToolExecutor> toolExecutors,
+            InvocationContext invocationContext,
+            Consumer<BeforeToolExecution> externalBeforeToolExecution,
+            Consumer<ToolExecution> externalAfterToolExecution,
+            Executor executor) {
+        return CompletableFuture.supplyAsync(
+                        () -> executeToolAsync(
+                                invocationContext,
+                                toolExecutors,
+                                toolRequest,
+                                externalBeforeToolExecution,
+                                externalAfterToolExecution),
+                        executor)
+                .thenCompose(toolResultFuture -> toolResultFuture);
+    }
+
+    /**
+     * Combines a set of in-flight (possibly already-started) tool executions into a single future of their
+     * results, keyed and ordered by request. Waits for all to complete (normally or not), then surfaces the
+     * first failure in iteration order, mirroring the synchronous path. The given map's iteration order
+     * determines the result order, so pass a {@link LinkedHashMap} in request order.
+     *
+     * @since 1.17.0
+     */
+    public static CompletableFuture<Map<ToolExecutionRequest, ToolExecutionResult>> combineToolResults(
+            Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> futures) {
         return CompletableFuture.allOf(futures.values().toArray(new CompletableFuture[0]))
                 // wait for ALL futures to complete (normally or not), then handle failures below,
                 // in request order - allOf alone would surface an arbitrary failure
@@ -929,9 +1059,15 @@ public class ToolService {
     private CompletableFuture<ToolExecutionResult> executeToolAsync(
             InvocationContext invocationContext,
             Map<String, ToolExecutor> toolExecutors,
-            ToolExecutionRequest toolRequest) {
+            ToolExecutionRequest toolRequest,
+            Consumer<BeforeToolExecution> externalBeforeToolExecution,
+            Consumer<ToolExecution> externalAfterToolExecution) {
         return internalExecuteToolAsync(
-                invocationContext, toolExecutors, toolRequest, this.beforeToolExecution, this.afterToolExecution);
+                invocationContext,
+                toolExecutors,
+                toolRequest,
+                nullSafeCombineConsumers(this.beforeToolExecution, externalBeforeToolExecution),
+                nullSafeCombineConsumers(this.afterToolExecution, externalAfterToolExecution));
     }
 
     private CompletableFuture<ToolExecutionResult> internalExecuteToolAsync(
@@ -1169,7 +1305,7 @@ public class ToolService {
         }
     }
 
-    static ToolExecutionResultMessage toResultMessage(ToolExecutionRequest request, ToolExecutionResult result) {
+    public static ToolExecutionResultMessage toResultMessage(ToolExecutionRequest request, ToolExecutionResult result) {
         return ToolExecutionResultMessage.builder()
                 .id(request.id())
                 .toolName(request.name())

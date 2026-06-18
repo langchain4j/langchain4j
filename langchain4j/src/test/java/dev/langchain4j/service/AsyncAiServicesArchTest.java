@@ -21,14 +21,23 @@ import java.util.concurrent.Future;
 import org.junit.jupiter.api.Test;
 
 /**
- * Static gate for the asynchronous AI Service pipeline: the methods composing the async flow
- * ({@code invokeAsync}, {@code executeInferenceAndToolsLoopAsync}, {@code executeToolsAsync} and the
- * lambdas they contain) must compose futures, never block on them. A single {@code Future.get()} or
- * sync {@code chat()} sneaking into this call graph silently turns "non-blocking" into
- * "thread-per-request" — this rule fails the build at the offending line instead.
+ * Static gate for the non-blocking AI Service pipelines: the methods composing them must compose futures and
+ * relay reactive events, never block. A single {@code Future.get()} or sync {@code chat()} sneaking into these
+ * call graphs silently turns "non-blocking" into "thread-per-request" — these rules fail the build at the
+ * offending line instead.
  * <p>
- * Complements {@link AiServicesNonBlockingTest} (runtime detection via BlockHound): this rule cannot see
- * through polymorphic calls into user SPIs, but it catches violations on code paths a test might not execute.
+ * Two flows are covered:
+ * <ul>
+ *   <li>the {@code CompletableFuture} single-response flow ({@code invokeAsync},
+ *       {@code executeInferenceAndToolsLoopAsync}, {@code executeToolsAsync} and the lambdas they contain) —
+ *       policed by name ({@code .*Async.*}) in {@code DefaultAiServices} and {@code ToolService};</li>
+ *   <li>the reactive {@code Flow.Publisher} streaming flow ({@link AiServiceStreamingEventPublisher} and its
+ *       nested/anonymous classes) — whose loop methods are <b>not</b> named {@code .*Async.*}, so the whole
+ *       class is policed.</li>
+ * </ul>
+ * <p>
+ * Complements {@link AiServicesNonBlockingTest} (runtime detection via BlockHound): these rules cannot see
+ * through polymorphic calls into user SPIs, but they catch violations on code paths a test might not execute.
  */
 class AsyncAiServicesArchTest {
 
@@ -38,9 +47,7 @@ class AsyncAiServicesArchTest {
     @Test
     void async_pipeline_must_not_call_blocking_apis() {
 
-        JavaClasses classes = new ClassFileImporter()
-                .withImportOption(new ImportOption.DoNotIncludeTests())
-                .importPackages("dev.langchain4j.service");
+        JavaClasses classes = importProductionServiceClasses();
 
         ArchRule rule = methods()
                 .that()
@@ -52,6 +59,25 @@ class AsyncAiServicesArchTest {
         rule.check(classes);
     }
 
+    @Test
+    void reactive_streaming_pipeline_must_not_call_blocking_apis() {
+
+        JavaClasses classes = importProductionServiceClasses();
+
+        ArchRule rule = methods()
+                .that()
+                .areDeclaredInClassesThat(reactiveStreamingPipelineClasses())
+                .should(notCallBlockingApis());
+
+        rule.check(classes);
+    }
+
+    private static JavaClasses importProductionServiceClasses() {
+        return new ClassFileImporter()
+                .withImportOption(new ImportOption.DoNotIncludeTests())
+                .importPackages("dev.langchain4j.service");
+    }
+
     private static DescribedPredicate<JavaClass> asyncAiServicePipelineClasses() {
         return new DescribedPredicate<>("the AI Service async pipeline classes "
                 + "(DefaultAiServices and ToolService, including their nested/anonymous classes)") {
@@ -61,6 +87,17 @@ class AsyncAiServicesArchTest {
                 String name = javaClass.getFullName();
                 return name.startsWith("dev.langchain4j.service.DefaultAiServices")
                         || name.startsWith("dev.langchain4j.service.tool.ToolService");
+            }
+        };
+    }
+
+    private static DescribedPredicate<JavaClass> reactiveStreamingPipelineClasses() {
+        return new DescribedPredicate<>("the reactive streaming AI Service publisher "
+                + "(AiServiceStreamingEventPublisher, including its nested/anonymous classes)") {
+
+            @Override
+            public boolean test(JavaClass javaClass) {
+                return javaClass.getFullName().startsWith("dev.langchain4j.service.AiServiceStreamingEventPublisher");
             }
         };
     }

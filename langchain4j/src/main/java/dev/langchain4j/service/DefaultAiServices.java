@@ -61,6 +61,7 @@ import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.spi.services.CompletableFutureAdapter;
+import dev.langchain4j.spi.services.PublisherAdapter;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
@@ -83,6 +84,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Flow;
 import java.util.stream.Collectors;
 
 @Internal
@@ -92,6 +94,7 @@ class DefaultAiServices<T> extends AiServices<T> {
     private final Collection<TokenStreamAdapter> tokenStreamAdapters = loadFactories(TokenStreamAdapter.class);
     private final Collection<CompletableFutureAdapter> completableFutureAdapters =
             loadFactories(CompletableFutureAdapter.class);
+    private final Collection<PublisherAdapter> publisherAdapters = loadFactories(PublisherAdapter.class);
 
     private static final Set<Class<? extends Annotation>> VALID_PARAM_ANNOTATIONS =
             Set.of(dev.langchain4j.service.UserMessage.class, V.class, MemoryId.class, UserName.class);
@@ -271,15 +274,30 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     method.getName());
                         }
 
+                        // A truly non-blocking reactive streaming return type: Flow.Publisher (handled natively),
+                        // or a type plugged in via a PublisherAdapter (e.g. Reactor Flux, Mutiny Multi).
+                        PublisherAdapter publisherAdapter = findPublisherAdapter(returnType);
+                        boolean reactiveStreaming =
+                                typeHasRawClass(returnType, Flow.Publisher.class) || publisherAdapter != null;
+                        if (asyncReturnType && reactiveStreaming) {
+                            throw illegalConfiguration(
+                                    "The method '%s' cannot return an asynchronous wrapper of a reactive streaming type. "
+                                            + "Please use the reactive streaming type directly as the return type.",
+                                    method.getName());
+                        }
+
                         // TODO should it be called when returnType==String?
                         boolean supportsJsonSchema = supportsJsonSchema();
                         Optional<JsonSchema> jsonSchema = Optional.empty();
                         boolean returnsImage = isImage(returnType);
 
-                        if (supportsJsonSchema && !streaming && !returnsImage) {
+                        if (supportsJsonSchema && !streaming && !reactiveStreaming && !returnsImage) {
                             jsonSchema = serviceOutputParser.jsonSchema(returnType);
                         }
-                        if ((!supportsJsonSchema || jsonSchema.isEmpty()) && !streaming && !returnsImage) {
+                        if ((!supportsJsonSchema || jsonSchema.isEmpty())
+                                && !streaming
+                                && !reactiveStreaming
+                                && !returnsImage) {
                             userMessage = appendOutputFormatInstructions(returnType, userMessage);
                         }
 
@@ -328,6 +346,40 @@ class DefaultAiServices<T> extends AiServices<T> {
                             } else {
                                 return adapt(tokenStream, returnType);
                             }
+                        }
+
+                        if (reactiveStreaming) {
+                            Type elementType = resolveFirstGenericParameterType(returnType);
+                            if (elementType != AiServiceStreamingEvent.class && elementType != String.class) {
+                                throw illegalConfiguration(
+                                        "The method '%s' returns a reactive stream of an unsupported element type '%s'. "
+                                                + "Supported element types are %s and String.",
+                                        method.getName(), elementType, AiServiceStreamingEvent.class.getName());
+                            }
+
+                            var streamingEventStreamParameters = AiServiceTokenStreamParameters.builder()
+                                    .messages(messages)
+                                    .toolServiceContext(toolServiceContext)
+                                    .toolArgumentsErrorHandler(context.toolService.argumentsErrorHandler())
+                                    .toolExecutionErrorHandler(context.toolService.executionErrorHandler())
+                                    .toolExecutor(context.toolService.executor())
+                                    .retrievedContents(
+                                            augmentationResult != null ? augmentationResult.contents() : null)
+                                    .context(context)
+                                    .invocationContext(invocationContext)
+                                    .commonGuardrailParams(commonGuardrailParam)
+                                    .methodKey(method)
+                                    .build();
+
+                            Flow.Publisher<AiServiceStreamingEvent> events =
+                                    new AiServiceStreamingEventPublisher(streamingEventStreamParameters);
+                            Flow.Publisher<?> mapped = elementType == AiServiceStreamingEvent.class
+                                    ? events
+                                    : AiServiceStreamingEventPublisher.toTextPublisher(events);
+
+                            return publisherAdapter != null
+                                    ? publisherAdapter.fromPublisher(returnType, mapped)
+                                    : mapped;
                         }
 
                         ResponseFormat responseFormat = null;
@@ -669,6 +721,15 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                     private CompletableFutureAdapter findCompletableFutureAdapter(Type returnType) {
                         for (CompletableFutureAdapter adapter : completableFutureAdapters) {
+                            if (adapter.canAdapt(returnType)) {
+                                return adapter;
+                            }
+                        }
+                        return null;
+                    }
+
+                    private PublisherAdapter findPublisherAdapter(Type returnType) {
+                        for (PublisherAdapter adapter : publisherAdapters) {
                             if (adapter.canAdapt(returnType)) {
                                 return adapter;
                             }
