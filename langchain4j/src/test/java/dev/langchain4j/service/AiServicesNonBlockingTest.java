@@ -87,6 +87,22 @@ class AiServicesNonBlockingTest {
                 .install();
     }
 
+    /**
+     * Warms up the async pipeline on the delivery thread once, before any test asserts. The first time JSON
+     * output parsing runs (Jackson, JSON-schema reflection, {@code MethodHandle} linkage, lazy class init), it
+     * can {@code Unsafe.park} on a one-time initialization lock — which BlockHound flags even though it is not
+     * application-level blocking and never recurs. Triggering it here (and clearing the recorded violations
+     * via {@link #resetViolations()} before each test) removes that flakiness without masking real blocking:
+     * any per-call blocking would still be caught by the per-test assertions on a fully warmed-up pipeline.
+     */
+    @BeforeAll
+    static void warmUpDeliveryThread() throws Exception {
+        AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
+                .chatModel(new NonBlockingChatModelStub(AiMessage.from("{\"name\": \"Warmup\"}")))
+                .build();
+        assistant.extractPerson("warm up the parsing pipeline").get(10, SECONDS);
+    }
+
     @AfterAll
     static void shutDownDeliveryExecutor() {
         deliveryExecutor.shutdownNow();
