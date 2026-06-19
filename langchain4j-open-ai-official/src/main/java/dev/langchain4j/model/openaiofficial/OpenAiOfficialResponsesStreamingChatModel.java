@@ -598,7 +598,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 if (pdfFileContent.pdfFile().url() != null) {
                     pdfInput.fileUrl(pdfFileContent.pdfFile().url().toString());
                 } else if (pdfFileContent.pdfFile().base64Data() != null) {
-                    pdfInput.filename("pdf_file");
+                    pdfInput.filename("document.pdf");
                     pdfInput.fileData("data:" + pdfFileContent.pdfFile().mimeType() + ";base64,"
                             + pdfFileContent.pdfFile().base64Data());
                 } else {

@@ -17,7 +17,7 @@ class OutputParserTest implements WithAssertions {
         assertThat(parser.parse("3.14")).isEqualTo(new BigDecimal("3.14"));
         assertThat(parser.parse(" 3.14 ")).isEqualTo(new BigDecimal("3.14"));
 
-        assertThatExceptionOfType(NumberFormatException.class).isThrownBy(() -> parser.parse("3.14.15"));
+        assertThatExceptionOfType(OutputParsingException.class).isThrownBy(() -> parser.parse("3.14.15"));
     }
 
     @Test
@@ -28,7 +28,7 @@ class OutputParserTest implements WithAssertions {
         assertThat(parser.parse("42")).isEqualTo(42);
         assertThat(parser.parse(" 42 ")).isEqualTo(42);
 
-        assertThatExceptionOfType(NumberFormatException.class).isThrownBy(() -> parser.parse("42.0"));
+        assertThatExceptionOfType(OutputParsingException.class).isThrownBy(() -> parser.parse("42.0"));
     }
 
     @Test
@@ -39,8 +39,10 @@ class OutputParserTest implements WithAssertions {
         assertThat(parser.parse("42")).isEqualTo((byte) 42);
         assertThat(parser.parse(" 42 ")).isEqualTo((byte) 42);
         assertThat(parser.parse("-42")).isEqualTo((byte) -42);
+        // A whole number expressed with a trailing ".0" is now accepted, consistent with IntegerOutputParser.
+        assertThat(parser.parse("42.0")).isEqualTo((byte) 42);
 
-        assertThatExceptionOfType(NumberFormatException.class).isThrownBy(() -> parser.parse("42.0"));
+        assertThatExceptionOfType(OutputParsingException.class).isThrownBy(() -> parser.parse("not a byte"));
     }
 
     @Test
@@ -93,7 +95,9 @@ class OutputParserTest implements WithAssertions {
         assertThat(parser.parse("42")).isEqualTo((short) 42);
         assertThat(parser.parse(" 42 ")).isEqualTo((short) 42);
         assertThat(parser.parse("-42")).isEqualTo((short) -42);
+        // A whole number expressed with a trailing ".0" is now accepted, consistent with IntegerOutputParser.
+        assertThat(parser.parse("42.0")).isEqualTo((short) 42);
 
-        assertThatExceptionOfType(NumberFormatException.class).isThrownBy(() -> parser.parse("42.0"));
+        assertThatExceptionOfType(OutputParsingException.class).isThrownBy(() -> parser.parse("not a short"));
     }
 }

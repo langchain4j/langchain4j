@@ -313,6 +313,8 @@ public class AgentUtil {
                 case "long", "java.lang.Long" -> n.longValue();
                 case "double", "java.lang.Double" -> n.doubleValue();
                 case "float", "java.lang.Float" -> n.floatValue();
+                case "short", "java.lang.Short" -> n.shortValue();
+                case "byte", "java.lang.Byte" -> n.byteValue();
                 default -> value;
             };
         }
