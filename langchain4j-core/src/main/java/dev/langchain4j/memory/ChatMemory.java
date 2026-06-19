@@ -3,6 +3,7 @@ package dev.langchain4j.memory;
 import dev.langchain4j.data.message.ChatMessage;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -99,6 +100,66 @@ public interface ChatMemory {
      * @return A list of {@link ChatMessage} objects that represent the current state of the chat memory.
      */
     List<ChatMessage> messages();
+
+    /**
+     * Non-blocking counterpart of {@link #add(ChatMessage)}, used by the asynchronous
+     * ({@link java.util.concurrent.CompletableFuture}/{@link CompletionStage}) and reactive
+     * ({@link java.util.concurrent.Flow.Publisher}) AI Service APIs.
+     * <p>
+     * The default implementation throws {@link UnsupportedOperationException}: a memory backed by a blocking
+     * {@link dev.langchain4j.store.memory.chat.ChatMemoryStore} is <b>not</b> silently offloaded to a worker thread.
+     * Implementations should compose the store's
+     * {@link dev.langchain4j.store.memory.chat.ChatMemoryStore#getMessagesAsync(Object) getMessagesAsync}/
+     * {@link dev.langchain4j.store.memory.chat.ChatMemoryStore#updateMessagesAsync(Object, List) updateMessagesAsync}.
+     * <p>
+     * Callers must not invoke this method concurrently for the same memory: implementations typically read, modify
+     * and write the store, so concurrent calls would race. The AI Service chains its calls sequentially.
+     *
+     * @param message The {@link ChatMessage} to add.
+     * @return A stage that completes when the message has been added.
+     * @since 1.17.0
+     */
+    default CompletionStage<Void> addAsync(ChatMessage message) {
+        throw new UnsupportedOperationException(
+                "addAsync() is not implemented by " + getClass().getName());
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #add(Iterable)} that adds several messages in a single operation, used
+     * by the asynchronous ({@link java.util.concurrent.CompletableFuture}/{@link CompletionStage}) and reactive
+     * ({@link java.util.concurrent.Flow.Publisher}) AI Service APIs.
+     * <p>
+     * Implementations should persist all messages in a single read-modify-write of the underlying
+     * {@link dev.langchain4j.store.memory.chat.ChatMemoryStore} (fewer round trips and an atomic update) rather
+     * than chaining individual {@link #addAsync(ChatMessage)} calls.
+     * <p>
+     * The default implementation throws {@link UnsupportedOperationException}; see {@link #addAsync(ChatMessage)}
+     * for the rationale.
+     *
+     * @param messages The {@link ChatMessage}s to add.
+     * @return A stage that completes when the messages have been added.
+     * @since 1.17.0
+     */
+    default CompletionStage<Void> addAsync(List<ChatMessage> messages) {
+        throw new UnsupportedOperationException(
+                "addAsync(List) is not implemented by " + getClass().getName());
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #messages()}, used by the asynchronous
+     * ({@link java.util.concurrent.CompletableFuture}/{@link CompletionStage}) and reactive
+     * ({@link java.util.concurrent.Flow.Publisher}) AI Service APIs.
+     * <p>
+     * The default implementation throws {@link UnsupportedOperationException}; see {@link #addAsync(ChatMessage)}
+     * for the rationale.
+     *
+     * @return A stage that completes with the current state of the chat memory.
+     * @since 1.17.0
+     */
+    default CompletionStage<List<ChatMessage>> messagesAsync() { // TODO name
+        throw new UnsupportedOperationException(
+                "messagesAsync() is not implemented by " + getClass().getName());
+    }
 
     /**
      * Clears the chat memory.

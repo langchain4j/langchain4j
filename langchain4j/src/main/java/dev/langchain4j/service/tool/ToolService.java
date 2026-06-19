@@ -55,6 +55,7 @@ import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
@@ -528,10 +529,11 @@ public class ToolService {
                     toolExecutionRequests,
                     toolResults,
                     toolExecutions,
-                    chatMemory,
-                    messages,
                     invocationContext,
                     toolServiceContext);
+
+            List<ChatMessage> nextMessages = persistToolResultsAndResolveMessagesSync(
+                    context, chatMemory, messages, outcome.resultMessages(), invocationContext);
 
             if (shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors())) {
                 return immediateToolServiceResult(intermediateResponses, toolExecutions, aggregateTokenUsage);
@@ -540,8 +542,7 @@ public class ToolService {
             NextChatRequest next = prepareNextChatRequest(
                     context,
                     memoryId,
-                    chatMemory,
-                    messages,
+                    nextMessages,
                     invocationContext,
                     toolServiceContext,
                     toolResults,
@@ -629,81 +630,102 @@ public class ToolService {
 
         AiMessage aiMessage = chatResponse.aiMessage();
 
+        // The AI message is written to memory without blocking the delivery thread (addAsync). When no memory is
+        // configured, it is appended to a local accumulator instead.
+        final List<ChatMessage> accumulator;
+        final CompletionStage<Void> aiMessageAdded;
         if (chatMemory != null) {
-            chatMemory.add(aiMessage);
+            aiMessageAdded = chatMemory.addAsync(aiMessage);
+            accumulator = messages;
         } else {
-            messages = new ArrayList<>(messages);
-            messages.add(aiMessage);
+            List<ChatMessage> updated = new ArrayList<>(messages);
+            updated.add(aiMessage);
+            accumulator = updated;
+            aiMessageAdded = CompletableFuture.completedFuture(null);
         }
 
-        if (!aiMessage.hasToolExecutionRequests()) {
-            return CompletableFuture.completedFuture(
-                    finalToolServiceResult(chatResponse, intermediateResponses, toolExecutions, aggregateTokenUsage));
-        }
-
-        intermediateResponses.add(chatResponse);
-
-        List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
-        List<ChatMessage> currentMessages = messages;
-        return executeToolsAsync(toolExecutionRequests, toolServiceContext.toolExecutors(), invocationContext)
-                .thenCompose(toolResults -> {
-                    ToolResultsOutcome outcome = processToolResults(
-                            context,
-                            toolExecutionRequests,
-                            toolResults,
-                            toolExecutions,
-                            chatMemory,
-                            currentMessages,
-                            invocationContext,
-                            toolServiceContext);
-
-                    if (shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors())) {
-                        return CompletableFuture.completedFuture(immediateToolServiceResult(
-                                intermediateResponses, toolExecutions, aggregateTokenUsage));
+        return aiMessageAdded
+                .thenCompose(ignored -> {
+                    if (!aiMessage.hasToolExecutionRequests()) {
+                        return CompletableFuture.completedFuture(finalToolServiceResult(
+                                chatResponse, intermediateResponses, toolExecutions, aggregateTokenUsage));
                     }
 
-                    // a cancellation may have arrived while the tools were executing - do not start a new
-                    // model call in that case
-                    if (isCancelled(cancellation)) {
-                        return CompletableFuture.<ToolServiceResult>failedFuture(new CancellationException());
-                    }
+                    intermediateResponses.add(chatResponse);
 
-                    NextChatRequest next = prepareNextChatRequest(
-                            context,
-                            memoryId,
-                            chatMemory,
-                            currentMessages,
-                            invocationContext,
-                            toolServiceContext,
-                            toolResults,
-                            parameters);
+                    List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
+                    return executeToolsAsync(
+                                    toolExecutionRequests, toolServiceContext.toolExecutors(), invocationContext)
+                            .thenCompose(toolResults -> {
+                                ToolResultsOutcome outcome = processToolResults(
+                                        context,
+                                        toolExecutionRequests,
+                                        toolResults,
+                                        toolExecutions,
+                                        invocationContext,
+                                        toolServiceContext);
 
-                    CompletableFuture<ChatResponse> nextModelCall = context.chatModel.chatAsync(next.chatRequest());
-                    propagateCancellation(cancellation, nextModelCall);
-                    return nextModelCall.thenCompose(nextChatResponse -> {
-                        fireResponseReceivedEvent(
-                                next.chatRequest(),
-                                nextChatResponse,
-                                invocationContext,
-                                context.eventListenerRegistrar);
-                        return executeInferenceAndToolsLoopAsync(
-                                context,
-                                memoryId,
-                                nextChatResponse,
-                                next.parameters(),
-                                next.messages(),
-                                chatMemory,
-                                invocationContext,
-                                next.toolServiceContext(),
-                                cancellation,
-                                TokenUsage.sum(
-                                        aggregateTokenUsage,
-                                        nextChatResponse.metadata().tokenUsage()),
-                                toolExecutions,
-                                intermediateResponses,
-                                roundTripsLeft - 1);
-                    });
-                });
+                                if (shouldReturnImmediately(
+                                        outcome.anyToolErrored(), outcome.returnBehaviors())) {
+                                    return CompletableFuture.completedFuture(immediateToolServiceResult(
+                                            intermediateResponses, toolExecutions, aggregateTokenUsage));
+                                }
+
+                                // a cancellation may have arrived while the tools were executing - do not start a
+                                // new model call in that case
+                                if (isCancelled(cancellation)) {
+                                    return CompletableFuture.<ToolServiceResult>failedFuture(
+                                            new CancellationException());
+                                }
+
+                                return persistToolResultsAndResolveMessages(
+                                                context,
+                                                chatMemory,
+                                                accumulator,
+                                                outcome.resultMessages(),
+                                                invocationContext)
+                                        .thenCompose(nextMessages -> {
+                                            NextChatRequest next = prepareNextChatRequest(
+                                                    context,
+                                                    memoryId,
+                                                    nextMessages,
+                                                    invocationContext,
+                                                    toolServiceContext,
+                                                    toolResults,
+                                                    parameters);
+
+                                            CompletableFuture<ChatResponse> nextModelCall =
+                                                    context.chatModel.chatAsync(next.chatRequest());
+                                            propagateCancellation(cancellation, nextModelCall);
+                                            return nextModelCall.thenCompose(nextChatResponse -> {
+                                                fireResponseReceivedEvent(
+                                                        next.chatRequest(),
+                                                        nextChatResponse,
+                                                        invocationContext,
+                                                        context.eventListenerRegistrar);
+                                                return executeInferenceAndToolsLoopAsync(
+                                                        context,
+                                                        memoryId,
+                                                        nextChatResponse,
+                                                        next.parameters(),
+                                                        next.messages(),
+                                                        chatMemory,
+                                                        invocationContext,
+                                                        next.toolServiceContext(),
+                                                        cancellation,
+                                                        TokenUsage.sum(
+                                                                aggregateTokenUsage,
+                                                                nextChatResponse
+                                                                        .metadata()
+                                                                        .tokenUsage()),
+                                                        toolExecutions,
+                                                        intermediateResponses,
+                                                        roundTripsLeft - 1);
+                                            });
+                                        });
+                            });
+                })
+                .toCompletableFuture();
     }
 
     private static boolean isCancelled(CompletableFuture<?> cancellation) {
@@ -724,10 +746,12 @@ public class ToolService {
     /**
      * Per-round bookkeeping shared by every AI Service mode (sync, {@code CompletableFuture}, {@code TokenStream},
      * reactive {@code Flow.Publisher}): for each executed tool it records a {@link ToolExecution}, fires the
-     * {@link ToolExecutedEvent}, appends the tool-result message to memory (or to {@code messages} when
-     * {@code chatMemory} is {@code null}), and accumulates {@code anyToolErrored} + the per-tool
-     * {@link ReturnBehavior}s. The tool <i>execution</i> itself and the delivery of intermediate responses are
-     * left to each mode; only this mode-agnostic bookkeeping is shared here.
+     * {@link ToolExecutedEvent}, collects the tool-result message (in request order), and accumulates
+     * {@code anyToolErrored} + the per-tool {@link ReturnBehavior}s. This bookkeeping is intentionally free of
+     * memory I/O — persisting the collected result messages (synchronously or composed) is left to each mode via
+     * {@link #persistToolResultsAndResolveMessages} / {@link #persistToolResultsAndResolveMessagesSync}, so memory
+     * work happens on the appropriate thread. The tool <i>execution</i> itself and the delivery of intermediate
+     * responses are likewise left to each mode.
      *
      * @since 1.17.0
      */
@@ -736,17 +760,16 @@ public class ToolService {
             List<ToolExecutionRequest> toolExecutionRequests,
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
             List<ToolExecution> toolExecutions,
-            ChatMemory chatMemory,
-            List<ChatMessage> messages,
             InvocationContext invocationContext,
             ToolServiceContext toolServiceContext) {
 
         boolean anyToolErrored = false;
         List<ReturnBehavior> returnBehaviors = new ArrayList<>(toolExecutionRequests.size());
+        List<ToolExecutionResultMessage> resultMessages = new ArrayList<>(toolExecutionRequests.size());
 
         for (ToolExecutionRequest request : toolExecutionRequests) {
             ToolExecutionResult result = toolResults.get(request);
-            ToolExecutionResultMessage resultMessage = toResultMessage(request, result);
+            resultMessages.add(toResultMessage(request, result));
 
             ToolExecution toolExecution = ToolExecution.builder()
                     .request(request)
@@ -757,44 +780,102 @@ public class ToolService {
 
             fireToolExecutedEvent(invocationContext, request, toolExecution, context.eventListenerRegistrar);
 
-            if (chatMemory != null) {
-                chatMemory.add(resultMessage);
-            } else {
-                messages.add(resultMessage);
-            }
-
             anyToolErrored = anyToolErrored || result.isError();
             returnBehaviors.add(toolServiceContext.returnBehavior(request.name()));
         }
 
-        return new ToolResultsOutcome(anyToolErrored, returnBehaviors);
+        return new ToolResultsOutcome(anyToolErrored, returnBehaviors, resultMessages);
     }
 
     /**
-     * Builds the next round's {@link ChatRequest}, shared by every AI Service mode: it resolves the messages to
-     * send (from {@code chatMemory} when present, honoring {@code storeRetrievedContentInChatMemory}), refreshes
-     * dynamic tool providers, folds in any tools found by tool search, overrides the tool specifications on the
-     * carried-forward {@code parameters}, applies the chat-request transformer, and fires the
-     * {@link AiServiceRequestIssuedEvent}. Each mode supplies how the returned request is actually dispatched.
+     * Persists the tool-result messages and resolves the messages to send in the next request — the memory-touching
+     * counterpart to {@link #processToolResults}, kept out of that shared bookkeeping so that each AI Service mode
+     * can perform the memory I/O on the appropriate thread (synchronously for the sync/{@code TokenStream} modes,
+     * composed for the {@code CompletableFuture}/reactive modes).
+     * <p>
+     * When {@code chatMemory} is {@code null}, the result messages are appended to {@code accumulator} and that
+     * list is returned. When present, each result message is added to memory (sequentially, never concurrently, so
+     * the underlying read-modify-write stays ordered) and the resolved memory view is returned.
+     *
+     * @since 1.17.0
+     */
+    public CompletionStage<List<ChatMessage>> persistToolResultsAndResolveMessages(
+            AiServiceContext context,
+            ChatMemory chatMemory,
+            List<ChatMessage> accumulator,
+            List<ToolExecutionResultMessage> resultMessages,
+            InvocationContext invocationContext) {
+
+        if (chatMemory == null) {
+            accumulator.addAll(resultMessages);
+            return CompletableFuture.completedFuture(accumulator);
+        }
+
+        // Add all tool-result messages in a single batch so a persistent store does one read-modify-write
+        // (atomic, fewer round trips) instead of one per message.
+        List<ChatMessage> messagesToAdd = new ArrayList<>(resultMessages);
+        return chatMemory
+                .addAsync(messagesToAdd)
+                .thenCompose(ignored -> chatMemory.messagesAsync())
+                .thenApply(memoryMessages -> resolveMessagesForNextRequest(memoryMessages, context, invocationContext));
+    }
+
+    /**
+     * Blocking counterpart of {@link #persistToolResultsAndResolveMessages} for the synchronous and
+     * {@code TokenStream} AI Service modes, which use the synchronous {@link ChatMemory} methods (so a memory
+     * backed by a blocking store that only implements the synchronous methods keeps working).
+     *
+     * @since 1.17.0
+     */
+    public List<ChatMessage> persistToolResultsAndResolveMessagesSync(
+            AiServiceContext context,
+            ChatMemory chatMemory,
+            List<ChatMessage> accumulator,
+            List<ToolExecutionResultMessage> resultMessages,
+            InvocationContext invocationContext) {
+
+        if (chatMemory == null) {
+            accumulator.addAll(resultMessages);
+            return accumulator;
+        }
+
+        resultMessages.forEach(chatMemory::add);
+        return resolveMessagesForNextRequest(chatMemory.messages(), context, invocationContext);
+    }
+
+    /**
+     * Resolves the messages to send in the next request from the current memory view, honoring
+     * {@code storeRetrievedContentInChatMemory} (when {@code false}, the last user message is replaced with the
+     * original, un-augmented one so retrieved content is not persisted across rounds).
+     *
+     * @since 1.17.0
+     */
+    public static List<ChatMessage> resolveMessagesForNextRequest(
+            List<ChatMessage> memoryMessages, AiServiceContext context, InvocationContext invocationContext) {
+        if (context.storeRetrievedContentInChatMemory) {
+            return memoryMessages;
+        }
+        return UserMessage.replaceLast(memoryMessages, invocationContext.userMessage());
+    }
+
+    /**
+     * Builds the next round's {@link ChatRequest}, shared by every AI Service mode: given the already-resolved
+     * {@code messages} to send (see {@link #resolveMessagesForNextRequest}), it refreshes dynamic tool providers,
+     * folds in any tools found by tool search, overrides the tool specifications on the carried-forward
+     * {@code parameters}, applies the chat-request transformer, and fires the {@link AiServiceRequestIssuedEvent}.
+     * Reading the messages from memory is left to each mode (synchronously or composed) so this method performs no
+     * memory I/O. Each mode supplies how the returned request is actually dispatched.
      *
      * @since 1.17.0
      */
     public NextChatRequest prepareNextChatRequest(
             AiServiceContext context,
             Object memoryId,
-            ChatMemory chatMemory,
             List<ChatMessage> messages,
             InvocationContext invocationContext,
             ToolServiceContext toolServiceContext,
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
             ChatRequestParameters parameters) {
-
-        if (chatMemory != null) {
-            messages = chatMemory.messages();
-            if (!context.storeRetrievedContentInChatMemory) {
-                messages = UserMessage.replaceLast(chatMemory.messages(), invocationContext.userMessage());
-            }
-        }
 
         toolServiceContext = refreshDynamicProviders(toolServiceContext, messages, invocationContext);
         if (toolSearchService != null) {
@@ -843,7 +924,10 @@ public class ToolService {
                 .build();
     }
 
-    public record ToolResultsOutcome(boolean anyToolErrored, List<ReturnBehavior> returnBehaviors) {}
+    public record ToolResultsOutcome(
+            boolean anyToolErrored,
+            List<ReturnBehavior> returnBehaviors,
+            List<ToolExecutionResultMessage> resultMessages) {}
 
     public record NextChatRequest(
             ChatRequest chatRequest,

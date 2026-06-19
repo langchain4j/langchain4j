@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -17,12 +18,16 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
 import dev.langchain4j.service.guardrail.OutputGuardrails;
+import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Flow;
@@ -72,6 +77,12 @@ class AiServicesNonBlockingTest {
     private static final ExecutorService deliveryExecutor =
             Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "ai-service-delivery"));
 
+    // A non-policed pool that a blocking ChatMemoryStore offloads its (blocking) work to. Named distinctly so
+    // BlockHound does not police it - the point is that the framework offloads memory I/O here and never runs it
+    // on the policed delivery thread.
+    private static final ExecutorService memoryWorker =
+            Executors.newCachedThreadPool(runnable -> new Thread(runnable, "chat-memory-worker"));
+
     @BeforeAll
     static void installBlockHound() {
         BlockHound.builder()
@@ -106,6 +117,143 @@ class AiServicesNonBlockingTest {
     @AfterAll
     static void shutDownDeliveryExecutor() {
         deliveryExecutor.shutdownNow();
+        memoryWorker.shutdownNow();
+    }
+
+    /**
+     * A {@link ChatMemoryStore} whose synchronous methods block (simulating I/O). Its asynchronous methods offload
+     * that blocking work to a non-policed worker pool. If the AI Service ever called the synchronous methods on
+     * the policed delivery thread, BlockHound would flag it; using the async methods keeps the delivery thread
+     * free. When a {@code gate} is supplied, the read blocks until it is released — used to prove the caller
+     * thread is not blocked on memory.
+     */
+    static class BlockingChatMemoryStore implements ChatMemoryStore {
+
+        private final InMemoryChatMemoryStore delegate = new InMemoryChatMemoryStore();
+        private final Executor worker;
+        private final CountDownLatch gate;
+
+        BlockingChatMemoryStore(Executor worker) {
+            this(worker, null);
+        }
+
+        BlockingChatMemoryStore(Executor worker, CountDownLatch gate) {
+            this.worker = worker;
+            this.gate = gate;
+        }
+
+        private void block() {
+            try {
+                if (gate != null) {
+                    gate.await();
+                } else {
+                    Thread.sleep(20);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        @Override
+        public List<ChatMessage> getMessages(Object memoryId) {
+            block();
+            return delegate.getMessages(memoryId);
+        }
+
+        @Override
+        public void updateMessages(Object memoryId, List<ChatMessage> messages) {
+            block();
+            delegate.updateMessages(memoryId, messages);
+        }
+
+        @Override
+        public void deleteMessages(Object memoryId) {
+            delegate.deleteMessages(memoryId);
+        }
+
+        @Override
+        public CompletionStage<List<ChatMessage>> getMessagesAsync(Object memoryId) {
+            return CompletableFuture.supplyAsync(() -> getMessages(memoryId), worker);
+        }
+
+        @Override
+        public CompletionStage<Void> updateMessagesAsync(Object memoryId, List<ChatMessage> messages) {
+            return CompletableFuture.runAsync(() -> updateMessages(memoryId, messages), worker);
+        }
+
+        @Override
+        public CompletionStage<Void> deleteMessagesAsync(Object memoryId) {
+            return CompletableFuture.runAsync(() -> deleteMessages(memoryId), worker);
+        }
+    }
+
+    private static MessageWindowChatMemory blockingMemory(CountDownLatch gate) {
+        return MessageWindowChatMemory.builder()
+                .maxMessages(20)
+                .chatMemoryStore(new BlockingChatMemoryStore(memoryWorker, gate))
+                .build();
+    }
+
+    @Test
+    void blocking_chat_memory_store_does_not_block_the_delivery_thread() throws Exception {
+
+        NonBlockingChatModelStub chatModel = new NonBlockingChatModelStub(
+                AiMessage.from(toolRequest("1", "currentTemperature")), AiMessage.from("42 degrees"));
+        WeatherTools tools = new WeatherTools();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .chatMemory(blockingMemory(null))
+                .tools(tools)
+                .build();
+
+        String answer = assistant.chat("What is the temperature in Munich?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("42 degrees");
+        assertThat(tools.invocations).hasValue(1);
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void streaming_with_blocking_chat_memory_store_does_not_block_the_delivery_thread() throws Exception {
+
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreamsOn(
+                deliveryExecutor,
+                AiMessage.from(toolRequest("1", "currentTemperature")),
+                AiMessage.from("42 degrees"));
+        WeatherTools tools = new WeatherTools();
+
+        StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(model)
+                .chatMemory(blockingMemory(null))
+                .tools(tools)
+                .build();
+
+        assertThat(subscribeAndAwait(assistant.chat("What is the temperature in Munich?")))
+                .isEqualTo("42 degrees");
+        assertThat(tools.invocations).hasValue(1);
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void chat_does_not_block_the_caller_thread_on_chat_memory() throws Exception {
+
+        // The store's read blocks until the gate is released. If the caller thread assembled memory
+        // synchronously, chat() would block here; instead it returns a not-yet-completed future immediately.
+        CountDownLatch gate = new CountDownLatch(1);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
+                .chatMemory(blockingMemory(gate))
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("What is the capital of Germany?");
+
+        assertThat(future).isNotDone();
+
+        gate.countDown();
+
+        assertThat(future.get(10, SECONDS)).isEqualTo("Berlin");
     }
 
     @BeforeEach

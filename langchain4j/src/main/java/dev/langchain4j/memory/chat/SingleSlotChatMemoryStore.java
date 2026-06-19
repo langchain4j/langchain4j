@@ -7,6 +7,8 @@ import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 /**
  * Implementation of {@link ChatMemoryStore} that stores state of {@link ChatMemory} (chat messages) in-memory.
@@ -40,6 +42,23 @@ class SingleSlotChatMemoryStore implements ChatMemoryStore {
     public void deleteMessages(Object memoryId) {
         checkMemoryId(memoryId);
         this.messages = new ArrayList<>();
+    }
+
+    @Override
+    public CompletionStage<List<ChatMessage>> getMessagesAsync(Object memoryId) {
+        return CompletableFuture.completedFuture(getMessages(memoryId));
+    }
+
+    @Override
+    public CompletionStage<Void> updateMessagesAsync(Object memoryId, List<ChatMessage> messages) {
+        updateMessages(memoryId, messages);
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletionStage<Void> deleteMessagesAsync(Object memoryId) {
+        deleteMessages(memoryId);
+        return CompletableFuture.completedFuture(null);
     }
 
     private void checkMemoryId(Object memoryId) {

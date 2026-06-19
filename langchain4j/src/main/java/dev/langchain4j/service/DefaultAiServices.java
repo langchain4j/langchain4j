@@ -99,6 +99,16 @@ class DefaultAiServices<T> extends AiServices<T> {
     private static final Set<Class<? extends Annotation>> VALID_PARAM_ANNOTATIONS =
             Set.of(dev.langchain4j.service.UserMessage.class, V.class, MemoryId.class, UserName.class);
 
+    // Used to satisfy the Reactive Streams contract (onError must be preceded by onSubscribe) when the reactive
+    // publisher fails before any real subscription exists - e.g. if the deferred chat-memory assembly fails.
+    private static final Flow.Subscription NOOP_SUBSCRIPTION = new Flow.Subscription() {
+        @Override
+        public void request(long n) {}
+
+        @Override
+        public void cancel() {}
+    };
+
     DefaultAiServices(AiServiceContext context) {
         super(context);
     }
@@ -311,24 +321,124 @@ class DefaultAiServices<T> extends AiServices<T> {
                             userMessage = appendOutputFormatInstructions(returnType, userMessage);
                         }
 
-                        List<ChatMessage> messages = new ArrayList<>();
-                        if (context.hasChatMemory()) {
-                            systemMessage.ifPresent(chatMemory::add);
-                            messages.addAll(chatMemory.messages());
-                            if (context.storeRetrievedContentInChatMemory) {
-                                chatMemory.add(userMessage);
-                            } else {
-                                chatMemory.add(originalUserMessage);
-                            }
-                            messages.add(userMessage);
-                        } else {
-                            systemMessage.ifPresent(messages::add);
-                            messages.add(userMessage);
-                        }
-
                         invocationContext = invocationContext.toBuilder()
                                 .userMessage(userMessage)
                                 .build();
+
+                        ResponseFormat responseFormat = null;
+                        if (supportsJsonSchema && jsonSchema.isPresent()) {
+                            responseFormat = ResponseFormat.builder()
+                                    .type(JSON)
+                                    .jsonSchema(jsonSchema.get())
+                                    .build();
+                        }
+
+                        boolean isReturnTypeResult = typeHasRawClass(returnType, Result.class);
+
+                        // The asynchronous (CompletableFuture/CompletionStage) path defers the (potentially
+                        // blocking) chat-memory assembly off the caller thread: the future is returned immediately
+                        // and the memory read/writes, request building, model call and tool loop all run composed.
+                        if (asyncReturnType) {
+                            final InvocationContext asyncInvocationContext = invocationContext;
+                            final ResponseFormat asyncResponseFormat = responseFormat;
+                            final UserMessage asyncUserMessage = userMessage;
+                            final AugmentationResult asyncAugmentationResult = augmentationResult;
+                            final Type asyncReturnType2 = returnType;
+                            CompletableFuture<Object> result = new CompletableFuture<>();
+                            assembleMessagesAsync(chatMemory, systemMessage, asyncUserMessage, originalUserMessage)
+                                    .whenComplete((assembledMessages, assemblyError) -> {
+                                        if (assemblyError != null) {
+                                            result.completeExceptionally(unwrapCompletion(assemblyError));
+                                            return;
+                                        }
+                                        try {
+                                            dispatchAsync(
+                                                    result,
+                                                    method,
+                                                    args,
+                                                    asyncInvocationContext,
+                                                    memoryId,
+                                                    chatMemory,
+                                                    assembledMessages,
+                                                    asyncUserMessage,
+                                                    asyncResponseFormat,
+                                                    commonGuardrailParam,
+                                                    asyncAugmentationResult,
+                                                    asyncReturnType2,
+                                                    returnsImage,
+                                                    isReturnTypeResult);
+                                        } catch (Throwable t) {
+                                            result.completeExceptionally(t);
+                                        }
+                                    });
+                            return completableFutureAdapter != null
+                                    ? completableFutureAdapter.fromCompletableFuture(declaredReturnType, result)
+                                    : result;
+                        }
+
+                        // The reactive (Flow.Publisher) path is a cold stream: the (potentially blocking) chat-memory
+                        // assembly is deferred to subscribe time, so building the publisher never blocks the caller.
+                        if (reactiveStreaming) {
+                            Type elementType = resolveFirstGenericParameterType(returnType);
+                            if (elementType != AiServiceStreamingEvent.class && elementType != String.class) {
+                                throw illegalConfiguration(
+                                        "The method '%s' returns a reactive stream of an unsupported element type '%s'. "
+                                                + "Supported element types are %s and String.",
+                                        method.getName(), elementType, AiServiceStreamingEvent.class.getName());
+                            }
+
+                            final InvocationContext reactiveInvocationContext = invocationContext;
+                            final Optional<SystemMessage> reactiveSystemMessage = systemMessage;
+                            final ChatMemory reactiveChatMemory = chatMemory;
+                            final UserMessage reactiveUserMessage = userMessage;
+                            final AugmentationResult reactiveAugmentationResult = augmentationResult;
+
+                            Flow.Publisher<AiServiceStreamingEvent> events = subscriber -> assembleMessagesAsync(
+                                            reactiveChatMemory,
+                                            reactiveSystemMessage,
+                                            reactiveUserMessage,
+                                            originalUserMessage)
+                                    .whenComplete((assembledMessages, assemblyError) -> {
+                                        if (assemblyError != null) {
+                                            subscriber.onSubscribe(NOOP_SUBSCRIPTION);
+                                            subscriber.onError(unwrapCompletion(assemblyError));
+                                            return;
+                                        }
+                                        ToolServiceContext reactiveToolServiceContext =
+                                                context.toolService.createContext(
+                                                        reactiveInvocationContext, reactiveUserMessage, assembledMessages);
+                                        var streamingEventStreamParameters = AiServiceTokenStreamParameters.builder()
+                                                .messages(assembledMessages)
+                                                .toolServiceContext(reactiveToolServiceContext)
+                                                .toolArgumentsErrorHandler(context.toolService.argumentsErrorHandler())
+                                                .toolExecutionErrorHandler(context.toolService.executionErrorHandler())
+                                                .toolExecutor(context.toolService.executor())
+                                                .retrievedContents(
+                                                        reactiveAugmentationResult != null
+                                                                ? reactiveAugmentationResult.contents()
+                                                                : null)
+                                                .context(context)
+                                                .invocationContext(reactiveInvocationContext)
+                                                .commonGuardrailParams(commonGuardrailParam)
+                                                .methodKey(method)
+                                                .build();
+                                        new AiServiceStreamingEventPublisher(streamingEventStreamParameters)
+                                                .subscribe(subscriber);
+                                    });
+
+                            Flow.Publisher<?> mapped = elementType == AiServiceStreamingEvent.class
+                                    ? events
+                                    : AiServiceStreamingEventPublisher.toTextPublisher(events);
+
+                            return publisherAdapter != null
+                                    ? publisherAdapter.fromPublisher(returnType, mapped)
+                                    : mapped;
+                        }
+
+                        // Synchronous and TokenStream modes assemble messages synchronously here (the synchronous
+                        // ChatMemory methods).
+                        List<ChatMessage> messages =
+                                assembleMessages(chatMemory, systemMessage, userMessage, originalUserMessage);
 
                         CompletableFuture<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
@@ -358,48 +468,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                             }
                         }
 
-                        if (reactiveStreaming) {
-                            Type elementType = resolveFirstGenericParameterType(returnType);
-                            if (elementType != AiServiceStreamingEvent.class && elementType != String.class) {
-                                throw illegalConfiguration(
-                                        "The method '%s' returns a reactive stream of an unsupported element type '%s'. "
-                                                + "Supported element types are %s and String.",
-                                        method.getName(), elementType, AiServiceStreamingEvent.class.getName());
-                            }
-
-                            var streamingEventStreamParameters = AiServiceTokenStreamParameters.builder()
-                                    .messages(messages)
-                                    .toolServiceContext(toolServiceContext)
-                                    .toolArgumentsErrorHandler(context.toolService.argumentsErrorHandler())
-                                    .toolExecutionErrorHandler(context.toolService.executionErrorHandler())
-                                    .toolExecutor(context.toolService.executor())
-                                    .retrievedContents(
-                                            augmentationResult != null ? augmentationResult.contents() : null)
-                                    .context(context)
-                                    .invocationContext(invocationContext)
-                                    .commonGuardrailParams(commonGuardrailParam)
-                                    .methodKey(method)
-                                    .build();
-
-                            Flow.Publisher<AiServiceStreamingEvent> events =
-                                    new AiServiceStreamingEventPublisher(streamingEventStreamParameters);
-                            Flow.Publisher<?> mapped = elementType == AiServiceStreamingEvent.class
-                                    ? events
-                                    : AiServiceStreamingEventPublisher.toTextPublisher(events);
-
-                            return publisherAdapter != null
-                                    ? publisherAdapter.fromPublisher(returnType, mapped)
-                                    : mapped;
-                        }
-
-                        ResponseFormat responseFormat = null;
-                        if (supportsJsonSchema && jsonSchema.isPresent()) {
-                            responseFormat = ResponseFormat.builder()
-                                    .type(JSON)
-                                    .jsonSchema(jsonSchema.get())
-                                    .build();
-                        }
-
                         ChatRequestParameters parameters =
                                 chatRequestParameters(method, args, toolServiceContext, responseFormat);
 
@@ -415,32 +483,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .invocationContext(invocationContext)
                                 .eventListenerRegistrar(context.eventListenerRegistrar)
                                 .build();
-
-                        boolean isReturnTypeResult = typeHasRawClass(returnType, Result.class);
-
-                        if (asyncReturnType) {
-                            CompletableFuture<Object> resultFuture = invokeAsync(
-                                    method,
-                                    invocationContext,
-                                    memoryId,
-                                    chatMemory,
-                                    messages,
-                                    chatRequest,
-                                    chatExecutor,
-                                    parameters,
-                                    moderationFuture,
-                                    toolServiceContext,
-                                    commonGuardrailParam,
-                                    augmentationResult,
-                                    returnType,
-                                    returnsImage,
-                                    isReturnTypeResult);
-                            // CompletableFuture is assignable to both CompletableFuture and CompletionStage;
-                            // other async types (e.g. Mono, Uni) are produced via their adapter.
-                            return completableFutureAdapter != null
-                                    ? completableFutureAdapter.fromCompletableFuture(declaredReturnType, resultFuture)
-                                    : resultFuture;
-                        }
 
                         ChatResponse chatResponse = chatExecutor.execute();
 
@@ -562,6 +604,140 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 });
 
                         return result;
+                    }
+
+                    /**
+                     * Builds the request artifacts from the (already assembled) messages and runs the asynchronous
+                     * pipeline, piping the outcome into {@code result}. Invoked off the caller thread once
+                     * {@link #assembleMessagesAsync} has resolved, so no chat-memory I/O blocks the caller.
+                     */
+                    private void dispatchAsync(
+                            CompletableFuture<Object> result,
+                            Method method,
+                            Object[] args,
+                            InvocationContext invocationContext,
+                            Object memoryId,
+                            ChatMemory chatMemory,
+                            List<ChatMessage> messages,
+                            UserMessage userMessage,
+                            ResponseFormat responseFormat,
+                            GuardrailRequestParams commonGuardrailParam,
+                            AugmentationResult augmentationResult,
+                            Type returnType,
+                            boolean returnsImage,
+                            boolean isReturnTypeResult) {
+
+                        if (result.isCancelled()) {
+                            return;
+                        }
+
+                        ToolServiceContext toolServiceContext =
+                                context.toolService.createContext(invocationContext, userMessage, messages);
+                        ChatRequestParameters parameters =
+                                chatRequestParameters(method, args, toolServiceContext, responseFormat);
+                        ChatRequest chatRequest = context.chatRequestTransformer.apply(
+                                ChatRequest.builder()
+                                        .messages(messages)
+                                        .parameters(parameters)
+                                        .build(),
+                                memoryId);
+                        ChatExecutor chatExecutor = ChatExecutor.builder(context.chatModel)
+                                .chatRequest(chatRequest)
+                                .invocationContext(invocationContext)
+                                .eventListenerRegistrar(context.eventListenerRegistrar)
+                                .build();
+
+                        // Moderation is forbidden on asynchronous return types, so no moderation future is needed.
+                        CompletableFuture<Object> inner = invokeAsync(
+                                method,
+                                invocationContext,
+                                memoryId,
+                                chatMemory,
+                                messages,
+                                chatRequest,
+                                chatExecutor,
+                                parameters,
+                                null,
+                                toolServiceContext,
+                                commonGuardrailParam,
+                                augmentationResult,
+                                returnType,
+                                returnsImage,
+                                isReturnTypeResult);
+                        propagateCancellation(result, inner);
+                        inner.whenComplete((value, error) -> {
+                            if (error != null) {
+                                result.completeExceptionally(unwrapCompletion(error));
+                            } else {
+                                result.complete(value);
+                            }
+                        });
+                    }
+
+                    /**
+                     * Assembles the messages to send (system message, prior memory, user message), reading and
+                     * writing chat memory synchronously. Used by the synchronous, {@code TokenStream} and reactive
+                     * modes.
+                     */
+                    private List<ChatMessage> assembleMessages(
+                            ChatMemory chatMemory,
+                            Optional<SystemMessage> systemMessage,
+                            UserMessage userMessage,
+                            UserMessage originalUserMessage) {
+                        List<ChatMessage> messages = new ArrayList<>();
+                        if (context.hasChatMemory()) {
+                            systemMessage.ifPresent(chatMemory::add);
+                            messages.addAll(chatMemory.messages());
+                            if (context.storeRetrievedContentInChatMemory) {
+                                chatMemory.add(userMessage);
+                            } else {
+                                chatMemory.add(originalUserMessage);
+                            }
+                            messages.add(userMessage);
+                        } else {
+                            systemMessage.ifPresent(messages::add);
+                            messages.add(userMessage);
+                        }
+                        return messages;
+                    }
+
+                    /**
+                     * Non-blocking counterpart of {@link #assembleMessages}: reads and writes chat memory via the
+                     * asynchronous {@link ChatMemory} methods so the caller thread is not blocked on (potentially
+                     * I/O-backed) memory. The writes are chained (never concurrent) so the underlying
+                     * read-modify-write stays ordered.
+                     */
+                    private CompletionStage<List<ChatMessage>> assembleMessagesAsync(
+                            ChatMemory chatMemory,
+                            Optional<SystemMessage> systemMessage,
+                            UserMessage userMessage,
+                            UserMessage originalUserMessage) {
+                        if (!context.hasChatMemory()) {
+                            List<ChatMessage> messages = new ArrayList<>();
+                            systemMessage.ifPresent(messages::add);
+                            messages.add(userMessage);
+                            return CompletableFuture.completedFuture(messages);
+                        }
+
+                        CompletionStage<Void> addSystem = systemMessage.isPresent()
+                                ? chatMemory.addAsync(systemMessage.get())
+                                : CompletableFuture.completedFuture(null);
+                        ChatMessage userMessageToStore =
+                                context.storeRetrievedContentInChatMemory ? userMessage : originalUserMessage;
+                        return addSystem.thenCompose(ignored -> chatMemory.messagesAsync())
+                                .thenCompose(history -> {
+                                    List<ChatMessage> messages = new ArrayList<>(history);
+                                    return chatMemory.addAsync(userMessageToStore).thenApply(ignored2 -> {
+                                        messages.add(userMessage);
+                                        return messages;
+                                    });
+                                });
+                    }
+
+                    private static Throwable unwrapCompletion(Throwable error) {
+                        return error instanceof CompletionException && error.getCause() != null
+                                ? error.getCause()
+                                : error;
                     }
 
                     private static void propagateCancellation(

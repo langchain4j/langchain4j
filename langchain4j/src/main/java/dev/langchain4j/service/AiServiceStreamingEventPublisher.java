@@ -319,7 +319,33 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
             fireResponseReceivedEvent(chatRequest, chatResponse);
 
             AiMessage aiMessage = chatResponse.aiMessage();
-            addToMemory(aiMessage);
+
+            // The AI message is written to memory without blocking the delivery thread (addAsync). The rest of the
+            // round is gated on that write so the AI message is persisted before the tool-result messages, keeping
+            // the conversation order intact. Tools may already be running (started eagerly on CompleteToolCall),
+            // independently of this write.
+            getMemory().addAsync(aiMessage).whenComplete((ignored, error) -> {
+                if (error != null) {
+                    fail(error);
+                    return;
+                }
+                if (tube.cancelled()) {
+                    return;
+                }
+                try {
+                    afterAiMessageAdded(currentToolContext, parameters, chatResponse, aiMessage, startedTools);
+                } catch (Throwable t) {
+                    fail(t);
+                }
+            });
+        }
+
+        private void afterAiMessageAdded(
+                ToolServiceContext currentToolContext,
+                ChatRequestParameters parameters,
+                ChatResponse chatResponse,
+                AiMessage aiMessage,
+                Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> startedTools) {
 
             if (!aiMessage.hasToolExecutionRequests()) {
                 emitFinalResponse(chatResponse, aiMessage);
@@ -399,16 +425,14 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 List<ToolExecutionRequest> toolRequests,
                 Map<ToolExecutionRequest, ToolExecutionResult> toolResults) {
 
-            // Shared per-round bookkeeping (memory writes, ToolExecutedEvent, returnBehavior accumulation).
-            // The per-tool BeforeToolExecution/ToolExecution stream events were already emitted by the
+            // Shared per-round bookkeeping (ToolExecutedEvent, returnBehavior accumulation, result-message
+            // collection). The per-tool BeforeToolExecution/ToolExecution stream events were already emitted by the
             // tube::send consumers passed to executeToolsAsync, as the tools ran.
             ToolService.ToolResultsOutcome outcome = context.toolService.processToolResults(
                     context,
                     toolRequests,
                     toolResults,
                     new ArrayList<>(),
-                    getMemory(),
-                    null,
                     invocationContext,
                     currentToolContext);
 
@@ -419,19 +443,30 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
 
             tokenUsage = TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage());
 
-            // Shared next-request construction (messages-to-send, dynamic providers, tool search, transformer,
-            // request-issued event), identical to the sync/async/TokenStream modes.
-            ToolService.NextChatRequest next = context.toolService.prepareNextChatRequest(
-                    context,
-                    invocationContext.chatMemoryId(),
-                    getMemory(),
-                    null,
-                    invocationContext,
-                    currentToolContext,
-                    toolResults,
-                    parameters);
+            // Persist the tool-result messages and resolve the next messages without blocking the delivery thread,
+            // then build and dispatch the next request (shared with the sync/async/TokenStream modes).
+            context.toolService
+                    .persistToolResultsAndResolveMessages(
+                            context, getMemory(), null, outcome.resultMessages(), invocationContext)
+                    .thenAccept(nextMessages -> {
+                        if (tube.cancelled()) {
+                            return;
+                        }
+                        ToolService.NextChatRequest next = context.toolService.prepareNextChatRequest(
+                                context,
+                                invocationContext.chatMemoryId(),
+                                nextMessages,
+                                invocationContext,
+                                currentToolContext,
+                                toolResults,
+                                parameters);
 
-            startRound(next.chatRequest(), next.toolServiceContext(), next.parameters());
+                        startRound(next.chatRequest(), next.toolServiceContext(), next.parameters());
+                    })
+                    .exceptionally(error -> {
+                        fail(error);
+                        return null;
+                    });
         }
 
         private void emitFinalResponse(ChatResponse chatResponse, AiMessage aiMessage) {
@@ -471,10 +506,6 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
             return context.hasChatMemory()
                     ? context.chatMemoryService.getOrCreateChatMemory(invocationContext.chatMemoryId())
                     : temporaryMemory;
-        }
-
-        private void addToMemory(ChatMessage chatMessage) {
-            getMemory().add(chatMessage);
         }
 
         private void emitBeforeToolExecution(BeforeToolExecution beforeToolExecution) {

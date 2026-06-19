@@ -146,6 +146,35 @@ public class AiServicesIT {
         verify(chatModel).chatAsync(chatRequest(userMessage));
     }
 
+    @Test
+    void should_chat_via_completable_future_with_chat_memory() throws Exception {
+
+        // A fresh (non-spy) model + memory so the strict @AfterEach verification of the shared spies is unaffected.
+        ChatModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_4_O_MINI)
+                .temperature(0.0)
+                .build();
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(model)
+                .chatMemory(memory)
+                .build();
+
+        assistant.chat("My name is Klaus. Reply with a single word: OK").get(30, SECONDS);
+
+        String answer =
+                assistant.chat("What is my name? Answer with a single word").get(30, SECONDS);
+
+        assertThat(answer).containsIgnoringCase("Klaus");
+        // two user + two AI messages persisted across the two asynchronous turns
+        assertThat(memory.messages()).hasSizeGreaterThanOrEqualTo(4);
+    }
+
     interface Humorist {
 
         @UserMessage("Tell me a joke about {{it}}")

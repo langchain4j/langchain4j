@@ -312,10 +312,12 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     aiMessage.toolExecutionRequests(),
                     toolResults,
                     new ArrayList<>(),
-                    getMemory(),
-                    null,
                     invocationContext,
                     toolServiceContext);
+
+            // TokenStream uses the synchronous ChatMemory methods (getMemory() is never null).
+            List<ChatMessage> nextMessages = context.toolService.persistToolResultsAndResolveMessagesSync(
+                    context, getMemory(), null, outcome.resultMessages(), invocationContext);
 
             if (ToolService.shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors())) {
                 ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
@@ -334,8 +336,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             ToolService.NextChatRequest next = context.toolService.prepareNextChatRequest(
                     context,
                     invocationContext.chatMemoryId(),
-                    getMemory(),
-                    null,
+                    nextMessages,
                     invocationContext,
                     toolServiceContext,
                     toolResults,
