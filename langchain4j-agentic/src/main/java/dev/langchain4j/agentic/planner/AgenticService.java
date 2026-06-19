@@ -31,7 +31,9 @@ public interface AgenticService<T, A> {
 
     T errorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler);
 
-    T agentsRegistry(AgentsRegistry agentsRegistry);
+    default T agentsRegistry(AgentsRegistry agentsRegistry) {
+        throw new UnsupportedOperationException();
+    }
 
     T listener(AgentListener listeners);
 }

@@ -69,6 +69,27 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
             SupervisorResponseStrategy responseStrategy,
             Function<AgenticScope, String> requestGenerator,
             String outputKey,
+            Function<AgenticScope, Object> output) {
+        this(
+                chatModel,
+                chatMemoryProvider,
+                maxAgentsInvocations,
+                contextStrategy,
+                responseStrategy,
+                requestGenerator,
+                outputKey,
+                output,
+                null);
+    }
+
+    public SupervisorPlanner(
+            ChatModel chatModel,
+            ChatMemoryProvider chatMemoryProvider,
+            int maxAgentsInvocations,
+            SupervisorContextStrategy contextStrategy,
+            SupervisorResponseStrategy responseStrategy,
+            Function<AgenticScope, String> requestGenerator,
+            String outputKey,
             Function<AgenticScope, Object> output,
             AgentsRegistry agentsRegistry) {
         this.chatModel = chatModel;

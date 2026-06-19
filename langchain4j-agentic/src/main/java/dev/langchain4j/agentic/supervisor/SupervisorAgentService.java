@@ -42,7 +42,9 @@ public interface SupervisorAgentService<T> {
 
     SupervisorAgentService<T> errorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler);
 
-    SupervisorAgentService<T> agentsRegistry(AgentsRegistry agentsRegistry);
+    default SupervisorAgentService<T> agentsRegistry(AgentsRegistry agentsRegistry) {
+        throw new UnsupportedOperationException();
+    }
 
     SupervisorAgentService<T> listener(AgentListener agentListener);
 }
