@@ -10,6 +10,16 @@
           "justification": "Model no longer exists and was previously deprecated; removed intentionally"
         },
         {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_OPUS_4_20250514",
+          "justification": "Model no longer exists and was previously deprecated; removed intentionally"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_20250514",
+          "justification": "Model no longer exists and was previously deprecated; removed intentionally"
+        },
+        {
           "code": "java.method.returnTypeChanged",
           "old": "method dev.langchain4j.model.chat.request.ChatRequestParameters dev.langchain4j.model.anthropic.AnthropicChatModel::defaultRequestParameters()",
           "new": "method dev.langchain4j.model.anthropic.AnthropicChatRequestParameters dev.langchain4j.model.anthropic.AnthropicChatModel::defaultRequestParameters()",
