@@ -57,6 +57,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
@@ -605,6 +606,64 @@ class AiServicesAsyncTest {
                 .as("no further model call must be issued after cancellation")
                 .isFalse();
         assertThat(modelCalls).hasValue(1);
+    }
+
+    @Test
+    void should_run_an_already_started_tool_to_completion_when_cancelled() throws Exception {
+
+        CountDownLatch toolStarted = new CountDownLatch(1);
+        CountDownLatch releaseTool = new CountDownLatch(1);
+        AtomicBoolean toolFinished = new AtomicBoolean(false);
+
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("slowTool")
+                .arguments("{}")
+                .build();
+        AtomicInteger modelCalls = new AtomicInteger();
+        ChatModel chatModel = new ChatModel() {
+
+            @Override
+            public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+                modelCalls.incrementAndGet();
+                return CompletableFuture.completedFuture(ChatResponse.builder()
+                        .aiMessage(AiMessage.from(toolExecutionRequest))
+                        .metadata(ChatResponseMetadata.builder().build())
+                        .build());
+            }
+        };
+
+        class SlowTools {
+
+            @Tool
+            String slowTool() {
+                toolStarted.countDown();
+                try {
+                    releaseTool.await(5, SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                toolFinished.set(true);
+                return "42";
+            }
+        }
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(new SlowTools())
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("go");
+        assertThat(toolStarted.await(5, SECONDS)).as("the tool is running").isTrue();
+
+        future.cancel(true);
+        releaseTool.countDown(); // let the already-running tool finish
+
+        // the tool is NOT interrupted: it runs to completion even though the invocation was cancelled
+        Thread.sleep(200);
+        assertThat(toolFinished).as("an already-started tool is not interrupted by cancellation").isTrue();
+        assertThat(future).isCancelled();
+        assertThat(modelCalls).as("the loop must not proceed to a second model round").hasValue(1);
     }
 
     @Test

@@ -286,6 +286,16 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     method.getName());
                         }
 
+                        // Moderation is not supported on the new asynchronous (CompletableFuture/CompletionStage)
+                        // and reactive (Flow.Publisher) return types: fail fast rather than silently skip it.
+                        if ((asyncReturnType || reactiveStreaming) && method.isAnnotationPresent(Moderate.class)) {
+                            throw illegalConfiguration(
+                                    "The method '%s' cannot be annotated with @Moderate when it returns an asynchronous "
+                                            + "(CompletableFuture/CompletionStage) or reactive (Flow.Publisher) type. "
+                                            + "Moderation is supported only for synchronous return types.",
+                                    method.getName());
+                        }
+
                         // TODO should it be called when returnType==String?
                         boolean supportsJsonSchema = supportsJsonSchema();
                         Optional<JsonSchema> jsonSchema = Optional.empty();

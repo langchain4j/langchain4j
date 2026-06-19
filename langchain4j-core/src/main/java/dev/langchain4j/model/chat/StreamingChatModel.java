@@ -2,6 +2,7 @@ package dev.langchain4j.model.chat;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -267,7 +268,7 @@ public interface StreamingChatModel {
     // TODO accepting options
 
     default Publisher<StreamingEvent> doChat(ChatRequest chatRequest) {
-        throw new RuntimeException("Not implemented");
+        throw new UnsupportedFeatureException("Not implemented yet for " + getClass().getName()); // TODO
     }
 
     // TODO more convenience methods accepting String, messages, etc

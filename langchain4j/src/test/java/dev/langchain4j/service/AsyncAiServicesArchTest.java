@@ -49,11 +49,13 @@ class AsyncAiServicesArchTest {
 
         JavaClasses classes = importProductionServiceClasses();
 
+        // ".*Async.*" catches the *Async-named methods; startTool/combineToolResults are part of the same
+        // non-blocking tool-execution path but aren't named *Async*, so they are matched explicitly.
         ArchRule rule = methods()
                 .that()
                 .areDeclaredInClassesThat(asyncAiServicePipelineClasses())
                 .and()
-                .haveNameMatching(".*Async.*")
+                .haveNameMatching(".*Async.*|startTool|combineToolResults")
                 .should(notCallBlockingApis());
 
         rule.check(classes);

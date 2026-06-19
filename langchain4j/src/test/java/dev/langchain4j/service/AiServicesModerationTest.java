@@ -2,7 +2,6 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.aiMessageFrom;
 import static java.util.Collections.singletonList;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -21,7 +20,7 @@ import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.FunctionCall;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Flow;
 import org.junit.jupiter.api.Test;
 
 class AiServicesModerationTest {
@@ -104,6 +103,12 @@ class AiServicesModerationTest {
         CompletableFuture<String> chat(String userMessage);
     }
 
+    interface ReactiveAssistant {
+
+        @Moderate
+        Flow.Publisher<String> chat(String userMessage);
+    }
+
     private static ModerationModel moderationModelReturning(Moderation moderation) {
         return new ModerationModel() {
 
@@ -115,38 +120,29 @@ class AiServicesModerationTest {
     }
 
     @Test
-    void should_fail_future_with_ModerationException_when_content_is_flagged() {
-        // Given
-        Moderation flaggedModeration = Moderation.flagged("inappropriate content");
-
-        AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("Hello"))
-                .moderationModel(moderationModelReturning(flaggedModeration))
-                .build();
-
-        // When
-        CompletableFuture<String> future = assistant.chat("inappropriate content");
-
-        // Then
-        assertThatThrownBy(() -> future.get(10, SECONDS))
-                .isInstanceOf(ExecutionException.class)
-                .rootCause()
-                .isInstanceOf(ModerationException.class)
-                .hasMessageContaining("violates content policy")
-                .satisfies(cause ->
-                        assertThat(((ModerationException) cause).moderation()).isSameAs(flaggedModeration));
-    }
-
-    @Test
-    void should_complete_future_when_content_is_NOT_flagged() throws Exception {
-        // Given
+    void should_reject_moderation_on_async_return_type() {
+        // moderation is not supported on the new asynchronous (CompletableFuture) return type: fail fast
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
                 .chatModel(ChatModelMock.thatAlwaysResponds("Hello"))
                 .moderationModel(moderationModelReturning(Moderation.notFlagged()))
                 .build();
 
-        // When/Then
-        assertThat(assistant.chat("Hi").get(10, SECONDS)).isEqualTo("Hello");
+        assertThatThrownBy(() -> assistant.chat("Hi"))
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessageContaining("@Moderate");
+    }
+
+    @Test
+    void should_reject_moderation_on_reactive_return_type() {
+        // moderation is not supported on the reactive (Flow.Publisher) path: fail fast at invocation time
+        ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
+                .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello")))
+                .moderationModel(moderationModelReturning(Moderation.notFlagged()))
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("Hi"))
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessageContaining("@Moderate");
     }
 
     @Test

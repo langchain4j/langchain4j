@@ -33,6 +33,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
@@ -84,6 +85,19 @@ class AiServiceStreamingPublisherTest {
         @Tool
         CompletableFuture<String> currentTemperature(String city) {
             return CompletableFuture.supplyAsync(() -> "42", CompletableFuture.delayedExecutor(20, TimeUnit.MILLISECONDS));
+        }
+    }
+
+    static class MixedTools {
+
+        @Tool
+        String currentTemperature(String city) {
+            return "42";
+        }
+
+        @Tool
+        CompletableFuture<String> currentHumidity(String city) {
+            return CompletableFuture.supplyAsync(() -> "69", CompletableFuture.delayedExecutor(20, TimeUnit.MILLISECONDS));
         }
     }
 
@@ -387,6 +401,25 @@ class AiServiceStreamingPublisherTest {
     }
 
     @Test
+    void executes_mixed_sync_and_async_tools_in_one_round() throws Exception {
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+                AiMessage.from(temperatureRequest(), humidityRequest()),
+                AiMessage.from("42 degrees, 69 percent"));
+
+        EventStreamer assistant = AiServices.builder(EventStreamer.class)
+                .streamingChatModel(model)
+                .tools(new MixedTools())
+                .build();
+
+        Collected<AiServiceStreamingEvent> collected = collect(assistant.chat("What is the weather in Berlin?"));
+
+        assertThat(collected.error).isNull();
+        assertThat(afterToolExecutions(collected)).hasSize(2);
+        assertThat(finalText(collected)).isEqualTo("42 degrees, 69 percent");
+        assertToolResultsSentToLlm(model, 1, "42", "69");
+    }
+
+    @Test
     void executes_two_sequential_tool_rounds() throws Exception {
         StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
                 AiMessage.from(temperatureRequest()),
@@ -665,6 +698,77 @@ class AiServiceStreamingPublisherTest {
         Collected<AiServiceStreamingEvent> collected = collect(box.publisher());
         assertThat(collected.error).isNull();
         assertThat(collected.items.get(collected.items.size() - 1)).isInstanceOf(FinalResponseEvent.class);
+    }
+
+    @Test
+    void runs_already_started_tool_to_completion_and_emits_nothing_after_cancellation() throws Exception {
+
+        CountDownLatch toolStarted = new CountDownLatch(1);
+        CountDownLatch releaseTool = new CountDownLatch(1);
+        AtomicBoolean toolFinished = new AtomicBoolean(false);
+
+        class SlowTool {
+
+            @Tool
+            String slowTool(String city) {
+                toolStarted.countDown();
+                try {
+                    releaseTool.await(5, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                toolFinished.set(true);
+                return "42";
+            }
+        }
+
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+                AiMessage.from(toolRequest("1", "slowTool")), AiMessage.from("unreachable"));
+
+        EventStreamer assistant = AiServices.builder(EventStreamer.class)
+                .streamingChatModel(model)
+                .tools(new SlowTool())
+                .build();
+
+        List<AiServiceStreamingEvent> items = new CopyOnWriteArrayList<>();
+        AtomicBoolean completed = new AtomicBoolean(false);
+        AtomicReference<Throwable> error = new AtomicReference<>();
+        AtomicReference<Flow.Subscription> subscription = new AtomicReference<>();
+
+        assistant.chat("go").subscribe(new Flow.Subscriber<>() {
+            @Override
+            public void onSubscribe(Flow.Subscription s) {
+                subscription.set(s);
+                s.request(Long.MAX_VALUE);
+            }
+
+            @Override
+            public void onNext(AiServiceStreamingEvent event) {
+                items.add(event);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                error.set(throwable);
+            }
+
+            @Override
+            public void onComplete() {
+                completed.set(true);
+            }
+        });
+
+        assertThat(toolStarted.await(5, TimeUnit.SECONDS)).as("the tool is running").isTrue();
+        subscription.get().cancel();
+        releaseTool.countDown(); // let the already-running tool finish
+
+        Thread.sleep(200);
+        // the tool is NOT interrupted; and after cancellation nothing more is emitted and no further round runs
+        assertThat(toolFinished).as("an already-started tool is not interrupted by cancellation").isTrue();
+        assertThat(model.requests()).hasSize(1);
+        assertThat(items).noneMatch(e -> e instanceof FinalResponseEvent);
+        assertThat(completed.get()).isFalse();
+        assertThat(error.get()).isNull();
     }
 
     @Test

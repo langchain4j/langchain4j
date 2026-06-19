@@ -77,6 +77,14 @@ import mutiny.zero.ZeroPublisher;
  * The semantics mirror the handler-based {@link AiServiceTokenStream}/{@link TokenStream}: events from every
  * round are surfaced in order; no thread is ever blocked or pinned while a model response or a tool result is
  * in flight.
+ * <p>
+ * <b>Cancellation.</b> Cancelling the {@link Flow.Subscription} stops the interaction: the in-flight model
+ * call is cancelled (for providers whose reactive stream supports it, this aborts the underlying HTTP
+ * request), no further round is started, and no more events — including the terminal
+ * {@link AiServiceStreamingEvent.FinalResponseEvent} and {@code onComplete}/{@code onError} — are emitted. A
+ * tool execution that has <b>already started</b> is <b>not</b> interrupted: it runs to completion and its
+ * result is discarded (Java cannot safely interrupt arbitrary tool code; this is a deliberate best-effort
+ * contract, consistent with the {@code CompletableFuture} path).
  *
  * @since 1.17.0
  */

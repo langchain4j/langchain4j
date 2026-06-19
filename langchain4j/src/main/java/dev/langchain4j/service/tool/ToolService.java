@@ -570,7 +570,9 @@ public class ToolService {
      * When no tool executor is configured, tools run on the thread that delivered the model response.
      * <p>
      * The {@code cancellation} future lets the caller stop the loop: once it is cancelled, no further model
-     * call or tool execution is initiated, and any in-flight model call is cancelled.
+     * call or tool execution is initiated, and any in-flight model call is cancelled. A tool execution that
+     * has <b>already started</b> is <b>not</b> interrupted — it runs to completion and its result is simply
+     * discarded (Java cannot safely interrupt arbitrary tool code; this is a deliberate best-effort contract).
      *
      * @since 1.17.0
      */

@@ -14,10 +14,6 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
-import dev.langchain4j.model.moderation.Moderation;
-import dev.langchain4j.model.moderation.ModerationModel;
-import dev.langchain4j.model.moderation.ModerationRequest;
-import dev.langchain4j.model.moderation.ModerationResponse;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
 import dev.langchain4j.service.guardrail.OutputGuardrails;
@@ -363,36 +359,6 @@ class AiServicesNonBlockingTest {
 
         GuardedAssistant assistant = AiServices.builder(GuardedAssistant.class)
                 .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
-                .build();
-
-        String answer = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
-
-        assertThat(answer).isEqualTo("Berlin");
-        assertNoBlockingCalls();
-    }
-
-    interface ModeratedAssistant {
-
-        @Moderate
-        CompletableFuture<String> chat(String userMessage);
-    }
-
-    @Test
-    void moderation_does_not_block_the_delivery_thread() throws Exception {
-
-        ModerationModel moderationModel = new ModerationModel() {
-
-            @Override
-            public ModerationResponse doModerate(ModerationRequest moderationRequest) {
-                return ModerationResponse.builder()
-                        .moderation(Moderation.notFlagged())
-                        .build();
-            }
-        };
-
-        ModeratedAssistant assistant = AiServices.builder(ModeratedAssistant.class)
-                .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
-                .moderationModel(moderationModel)
                 .build();
 
         String answer = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
