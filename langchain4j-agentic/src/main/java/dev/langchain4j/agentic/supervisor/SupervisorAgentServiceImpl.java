@@ -12,6 +12,7 @@ import dev.langchain4j.agentic.declarative.Output;
 import dev.langchain4j.agentic.declarative.SupervisorRequest;
 import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
 import dev.langchain4j.agentic.planner.AgenticService;
+import dev.langchain4j.agentic.planner.AgentsRegistry;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
@@ -34,6 +35,8 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
     private Function<AgenticScope, String> requestGenerator;
     private String supervisorContext;
 
+    private AgentsRegistry agentsRegistry;
+
     public SupervisorAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
         this(agentServiceClass, agenticMethod, null);
     }
@@ -54,7 +57,7 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
 
         return build(() -> new SupervisorPlanner(chatModel, chatMemoryProvider, maxAgentsInvocations,
                 contextStrategy, responseStrategy, requestGenerator,
-                outputKey, output));
+                outputKey, output, agentsRegistry));
     }
 
     public static SupervisorAgentService<SupervisorAgent> builder() {
@@ -103,6 +106,12 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
     @Override
     public SupervisorAgentServiceImpl<T> supervisorContext(String supervisorContext) {
         this.supervisorContext = supervisorContext;
+        return this;
+    }
+
+    @Override
+    public SupervisorAgentServiceImpl<T> agentsRegistry(AgentsRegistry agentsRegistry) {
+        this.agentsRegistry = agentsRegistry;
         return this;
     }
 

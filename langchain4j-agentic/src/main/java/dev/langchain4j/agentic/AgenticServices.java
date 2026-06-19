@@ -39,6 +39,7 @@ import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.internal.McpService;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgenticService;
+import dev.langchain4j.agentic.planner.AgentsRegistry;
 import dev.langchain4j.agentic.planner.PlannerBasedService;
 import dev.langchain4j.agentic.planner.PlannerBasedServiceImpl;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -103,6 +104,13 @@ public class AgenticServices {
 
     private static WorkflowAgentsBuilder workflowAgentsBuilder() {
         return WorkflowBuilderProvider.INSTANCE.workflowAgentsBuilder;
+    }
+
+    /**
+     * Returns the {@link AgentsRegistry} loaded via ServiceLoader, or a no-op instance if none is found.
+     */
+    public static AgentsRegistry agentsRegistry() {
+        return AgentsRegistry.get();
     }
 
     /**

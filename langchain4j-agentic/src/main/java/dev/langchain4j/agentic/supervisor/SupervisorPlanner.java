@@ -2,10 +2,12 @@ package dev.langchain4j.agentic.supervisor;
 
 import static java.util.stream.Collectors.toMap;
 
+import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgentsRegistry;
 import dev.langchain4j.agentic.planner.ChatMemoryAccessProvider;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
@@ -53,6 +55,8 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
 
     private final Function<AgenticScope, Object> output;
 
+    private final AgentsRegistry agentsRegistry;
+
     private Map<String, AgentInstance> agents;
     private String agentsList;
 
@@ -66,7 +70,8 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
             SupervisorResponseStrategy responseStrategy,
             Function<AgenticScope, String> requestGenerator,
             String outputKey,
-            Function<AgenticScope, Object> output) {
+            Function<AgenticScope, Object> output,
+            AgentsRegistry agentsRegistry) {
         this.chatModel = chatModel;
         this.chatMemoryProvider = chatMemoryProvider;
         this.maxAgentsInvocations = maxAgentsInvocations;
@@ -75,13 +80,21 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         this.requestGenerator = requestGenerator;
         this.outputKey = outputKey;
         this.output = output;
+        this.agentsRegistry = agentsRegistry;
     }
 
     @Override
     public void init(final InitPlanningContext initPlanningContext) {
         this.agents =
                 initPlanningContext.subagents().stream().collect(toMap(AgentInstance::agentId, Function.identity()));
-        this.agentsList = initPlanningContext.subagents().stream()
+
+        if (agentsRegistry != null) {
+            for (AgentExecutor discovered : agentsRegistry.discoverAgents()) {
+                agents.putIfAbsent(discovered.agentId(), discovered);
+            }
+        }
+
+        this.agentsList = agents.values().stream()
                 .map(SupervisorPlanner::toCard)
                 .collect(Collectors.joining(", "));
 
