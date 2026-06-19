@@ -20,11 +20,10 @@ public interface AgentsRegistry {
 
         static AgentsRegistry agentsRegistry = loadAgentsRegistry();
 
-        private Provider() { }
+        private Provider() {}
 
         private static AgentsRegistry loadAgentsRegistry() {
-            ServiceLoader<AgentsRegistry> loader =
-                    ServiceLoader.load(AgentsRegistry.class);
+            ServiceLoader<AgentsRegistry> loader = ServiceLoader.load(AgentsRegistry.class);
 
             for (AgentsRegistry registry : loader) {
                 return registry;
@@ -35,7 +34,7 @@ public interface AgentsRegistry {
 
     class NoOpAgentsRegistry implements AgentsRegistry {
 
-        private NoOpAgentsRegistry() { }
+        private NoOpAgentsRegistry() {}
 
         @Override
         public Collection<AgentExecutor> discoverAgents() {

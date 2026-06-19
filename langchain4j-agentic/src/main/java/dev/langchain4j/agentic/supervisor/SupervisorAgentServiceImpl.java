@@ -55,9 +55,16 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
             });
         }
 
-        return build(() -> new SupervisorPlanner(chatModel, chatMemoryProvider, maxAgentsInvocations,
-                contextStrategy, responseStrategy, requestGenerator,
-                outputKey, output, agentsRegistry));
+        return build(() -> new SupervisorPlanner(
+                chatModel,
+                chatMemoryProvider,
+                maxAgentsInvocations,
+                contextStrategy,
+                responseStrategy,
+                requestGenerator,
+                outputKey,
+                output,
+                agentsRegistry));
     }
 
     public static SupervisorAgentService<SupervisorAgent> builder() {
@@ -128,25 +135,25 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
 
     private void configureSupervisor(Class<T> agentServiceClass, ChatModel chatModel) {
         selectMethod(
-                agentServiceClass,
-                method -> method.isAnnotationPresent(SupervisorRequest.class)
-                        && method.getReturnType() == String.class)
+                        agentServiceClass,
+                        method -> method.isAnnotationPresent(SupervisorRequest.class)
+                                && method.getReturnType() == String.class)
                 .map(m -> agenticScopeFunction(m, String.class))
                 .ifPresent(this::requestGenerator);
 
         selectMethod(
-                agentServiceClass,
-                method -> method.isAnnotationPresent(ChatModelSupplier.class)
-                        && method.getReturnType() == ChatModel.class
-                        && method.getParameterCount() == 0)
+                        agentServiceClass,
+                        method -> method.isAnnotationPresent(ChatModelSupplier.class)
+                                && method.getReturnType() == ChatModel.class
+                                && method.getParameterCount() == 0)
                 .map(method -> (ChatModel) invokeStatic(method))
                 .ifPresentOrElse(this::chatModel, () -> this.chatModel(chatModel));
 
         selectMethod(
-                agentServiceClass,
-                method -> method.isAnnotationPresent(ChatMemoryProviderSupplier.class)
-                        && method.getReturnType() == ChatMemory.class
-                        && method.getParameterCount() == 1)
+                        agentServiceClass,
+                        method -> method.isAnnotationPresent(ChatMemoryProviderSupplier.class)
+                                && method.getReturnType() == ChatMemory.class
+                                && method.getParameterCount() == 1)
                 .map(method -> (ChatMemoryProvider) memoryId -> invokeStatic(method, memoryId))
                 .ifPresent(this::chatMemoryProvider);
 

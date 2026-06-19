@@ -94,9 +94,8 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
             }
         }
 
-        this.agentsList = agents.values().stream()
-                .map(SupervisorPlanner::toCard)
-                .collect(Collectors.joining(", "));
+        this.agentsList =
+                agents.values().stream().map(SupervisorPlanner::toCard).collect(Collectors.joining(", "));
 
         this.request = requestGenerator != null
                 ? requestGenerator.apply(initPlanningContext.agenticScope())
