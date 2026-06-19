@@ -1,6 +1,5 @@
 package dev.langchain4j.agentic.planner;
 
-import dev.langchain4j.agentic.internal.AgentExecutor;
 import java.util.Collection;
 import java.util.List;
 import java.util.ServiceLoader;
@@ -10,7 +9,7 @@ import java.util.ServiceLoader;
  */
 public interface AgentsRegistry {
 
-    Collection<AgentExecutor> discoverAgents();
+    Collection<AgentInstance> discoverAgents();
 
     static AgentsRegistry get() {
         return Provider.agentsRegistry;
@@ -37,7 +36,7 @@ public interface AgentsRegistry {
         private NoOpAgentsRegistry() {}
 
         @Override
-        public Collection<AgentExecutor> discoverAgents() {
+        public Collection<AgentInstance> discoverAgents() {
             return List.of();
         }
     }

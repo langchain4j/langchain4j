@@ -2,7 +2,6 @@ package dev.langchain4j.agentic.supervisor;
 
 import static java.util.stream.Collectors.toMap;
 
-import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
@@ -89,7 +88,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
                 initPlanningContext.subagents().stream().collect(toMap(AgentInstance::agentId, Function.identity()));
 
         if (agentsRegistry != null) {
-            for (AgentExecutor discovered : agentsRegistry.discoverAgents()) {
+            for (AgentInstance discovered : agentsRegistry.discoverAgents()) {
                 agents.putIfAbsent(discovered.agentId(), discovered);
             }
         }
