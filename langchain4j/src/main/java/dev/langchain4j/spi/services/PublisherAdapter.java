@@ -1,7 +1,9 @@
 package dev.langchain4j.spi.services;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.model.chat.response.StreamingEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent;
+
 import java.lang.reflect.Type;
 import java.util.ServiceLoader;
 import java.util.concurrent.Flow;
