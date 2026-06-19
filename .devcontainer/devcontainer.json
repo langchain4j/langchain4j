@@ -1,10 +1,12 @@
 {
-  "name": "Java",
+  "name": "LangChain4j",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
   "features": {
     "ghcr.io/devcontainers/features/java:1": {
-      "version": "21-oracle",
-      "jdkDistro": "oracle"
+      "version": "25",
+      "jdkDistro": "tem",
+      "installMaven": true,
+      "mavenVersion": "latest"
     },
     "ghcr.io/devcontainers/features/azure-cli:1": {},
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
@@ -13,13 +15,20 @@
 
   "customizations": {
     "vscode": {
-      "settings": {},
+      "settings": {
+        "java.configuration.updateBuildConfiguration": "automatic",
+        "java.compile.nullAnalysis.mode": "automatic"
+      },
       "extensions": [
         "redhat.vscode-xml",
+        "redhat.vscode-yaml",
         "visualstudioexptteam.vscodeintellicode",
-        "vscjava.vscode-java-pack"
+        "vscjava.vscode-java-pack",
+        "editorconfig.editorconfig"
       ]
     }
   },
+
+  "postCreateCommand": "java -version && mvn -version",
   "remoteUser": "vscode"
 }
