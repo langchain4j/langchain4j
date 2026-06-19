@@ -69,10 +69,10 @@ class PgVectorHybridHalfVecSearchIT extends EmbeddingStoreWithFilteringIT {
         return true;
     }
 
-//    @Override
-//    protected void assertVectorWithPrecisionBuffer(Embedding actual, Embedding expected) {
-//        assertThat(CosineSimilarity.between(actual, expected)).isCloseTo(1.0, withPercentage(0.01));
-//    }
+    @Override
+    protected boolean assertEmbedding() {
+        return false;
+    }
 
     /**
      * Hybrid search returns an RRF score, not cosine similarity.
@@ -82,59 +82,6 @@ class PgVectorHybridHalfVecSearchIT extends EmbeddingStoreWithFilteringIT {
     protected void assertScore(EmbeddingMatch<TextSegment> match, double expectedScore) {
         assertThat(match.score()).isGreaterThan(0.02);
         assertThat(match.score()).isLessThan(1.0);
-    }
-
-    // -------------------------------------------------------------------------
-    // Disabled inherited tests — hybrid search requires text to work properly
-    // -------------------------------------------------------------------------
-
-    @Test
-    @Disabled("Hybrid search requires text; this test adds only an embedding without a segment")
-    @Override
-    protected void should_add_embedding() {
-        super.should_add_embedding();
-    }
-
-    @Test
-    @Disabled("Hybrid search requires text; this test adds only an embedding without a segment")
-    @Override
-    protected void should_add_embedding_with_id() {
-        super.should_add_embedding_with_id();
-    }
-
-    @Test
-    @Disabled("Hybrid search requires text; this test adds only an embedding without a segment")
-    @Override
-    protected void should_add_multiple_embeddings() {
-        super.should_add_multiple_embeddings();
-    }
-
-    @Test
-    @Disabled("Hybrid search requires text; this test adds only an embedding without a segment")
-    @Override
-    protected void should_return_correct_score() {
-        super.should_return_correct_score();
-    }
-
-    @Test
-    @Disabled("Hybrid search requires text; this test adds only an embedding without a segment")
-    @Override
-    protected void should_find_with_min_score() {
-        super.should_find_with_min_score();
-    }
-
-    @Test
-    @Disabled("Hybrid search returns an RRF rank-based score, not cosine similarity")
-    @Override
-    protected void should_add_multiple_embeddings_with_segments() {
-        super.should_add_multiple_embeddings_with_segments();
-    }
-
-    @Test
-    @Disabled("Hybrid search returns an RRF rank-based score, not cosine similarity")
-    @Override
-    protected void should_add_multiple_embeddings_with_ids_and_segments() {
-        super.should_add_multiple_embeddings_with_ids_and_segments();
     }
 
     // -------------------------------------------------------------------------

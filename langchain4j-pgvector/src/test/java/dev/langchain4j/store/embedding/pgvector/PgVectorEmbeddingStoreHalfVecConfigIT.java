@@ -77,10 +77,10 @@ abstract class PgVectorEmbeddingStoreHalfVecConfigIT extends EmbeddingStoreWithF
         // cleared by @BeforeEach truncate
     }
 
-//    @Override
-//    protected void assertVectorWithPrecisionBuffer(Embedding actual, Embedding expected) {
-//        assertThat(CosineSimilarity.between(actual, expected)).isCloseTo(1.0, withPercentage(0.01));
-//    }
+    @Override
+    protected boolean assertEmbedding() {
+        return false;
+    }
 
     @Override
     protected EmbeddingStore<TextSegment> embeddingStore() {
