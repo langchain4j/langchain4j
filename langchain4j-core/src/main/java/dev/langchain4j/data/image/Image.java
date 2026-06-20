@@ -1,9 +1,10 @@
 package dev.langchain4j.data.image;
 
+import static dev.langchain4j.internal.Utils.contentDescription;
+import static dev.langchain4j.internal.Utils.quoted;
+
 import java.net.URI;
 import java.util.Objects;
-
-import static dev.langchain4j.internal.Utils.quoted;
 
 /**
  * Represents an image as a URL or as a Base64-encoded string.
@@ -84,12 +85,11 @@ public final class Image {
 
     @Override
     public String toString() {
-        return "Image {" +
-                " url = " + quoted(url) +
-                ", base64Data = " + quoted(base64Data) +
-                ", mimeType = " + quoted(mimeType) +
-                ", revisedPrompt = " + quoted(revisedPrompt) +
-                " }";
+        return "Image {" + " url = "
+                + quoted(url) + ", base64Data = "
+                + contentDescription(base64Data) + ", mimeType = "
+                + quoted(mimeType) + ", revisedPrompt = "
+                + contentDescription(revisedPrompt) + " }";
     }
 
     /**

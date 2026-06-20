@@ -1,12 +1,11 @@
 package dev.langchain4j.rag.query;
 
-import dev.langchain4j.rag.content.Content;
-
-import java.util.Objects;
-
-import static dev.langchain4j.internal.Utils.quoted;
+import static dev.langchain4j.internal.Utils.contentDescription;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import dev.langchain4j.rag.content.Content;
+import java.util.Objects;
 
 /**
  * Represents a query from the user intended for retrieving relevant {@link Content}s.
@@ -44,8 +43,7 @@ public class Query {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Query that = (Query) o;
-        return Objects.equals(this.text, that.text)
-                && Objects.equals(this.metadata, that.metadata);
+        return Objects.equals(this.text, that.text) && Objects.equals(this.metadata, that.metadata);
     }
 
     @Override
@@ -55,10 +53,7 @@ public class Query {
 
     @Override
     public String toString() {
-        return "Query {" +
-                " text = " + quoted(text) +
-                ", metadata = " + metadata +
-                " }";
+        return "Query {" + " text = " + contentDescription(text) + ", metadata = " + metadata + " }";
     }
 
     public static Query from(String text) {

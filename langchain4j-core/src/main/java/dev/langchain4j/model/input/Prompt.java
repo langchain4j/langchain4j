@@ -1,16 +1,15 @@
 package dev.langchain4j.model.input;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
-
-import java.util.Objects;
-
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.internal.Utils.quoted;
+import static dev.langchain4j.internal.Utils.contentDescription;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
+import java.util.Objects;
 
 /**
  * Represents a prompt (an input text sent to the LLM).
@@ -84,9 +83,7 @@ public class Prompt {
 
     @Override
     public String toString() {
-        return "Prompt {" +
-                " text = " + quoted(text) +
-                " }";
+        return "Prompt {" + " text = " + contentDescription(text) + " }";
     }
 
     /**

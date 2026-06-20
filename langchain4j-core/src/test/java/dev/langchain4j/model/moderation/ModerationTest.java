@@ -16,7 +16,7 @@ class ModerationTest implements WithAssertions {
             Moderation moderation = new Moderation("flaggedText");
             assertThat(moderation.flagged()).isTrue();
             assertThat(moderation.flaggedText()).isEqualTo("flaggedText");
-            assertThat(moderation).hasToString("Moderation { flagged = true, flaggedText = \"flaggedText\" }");
+            assertThat(moderation).hasToString("Moderation { flagged = true, flaggedText = [length=11] }");
         }
     }
 

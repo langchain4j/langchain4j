@@ -177,7 +177,7 @@ class QueryTest {
         String toString = query.toString();
 
         // then
-        assertThat(toString).contains("simple query");
+        assertThat(toString).contains("[length=12]");
         assertThat(toString).contains("metadata = null");
     }
 
