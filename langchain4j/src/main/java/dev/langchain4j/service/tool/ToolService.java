@@ -635,7 +635,7 @@ public class ToolService {
         final List<ChatMessage> accumulator;
         final CompletionStage<Void> aiMessageAdded;
         if (chatMemory != null) {
-            aiMessageAdded = chatMemory.addAsync(aiMessage);
+            aiMessageAdded = chatMemory.addAsync(List.of(aiMessage));
             accumulator = messages;
         } else {
             List<ChatMessage> updated = new ArrayList<>(messages);

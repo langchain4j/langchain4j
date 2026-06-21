@@ -33,8 +33,8 @@ class AsyncChatMemoryTest {
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
-        chatMemory.addAsync(UserMessage.from("Hello")).toCompletableFuture().get(5, SECONDS);
-        chatMemory.addAsync(AiMessage.from("Hi there")).toCompletableFuture().get(5, SECONDS);
+        chatMemory.addAsync(List.of(UserMessage.from("Hello"))).toCompletableFuture().get(5, SECONDS);
+        chatMemory.addAsync(List.of(AiMessage.from("Hi there"))).toCompletableFuture().get(5, SECONDS);
 
         List<ChatMessage> messages =
                 chatMemory.messagesAsync().toCompletableFuture().get(5, SECONDS);
@@ -86,10 +86,6 @@ class AsyncChatMemoryTest {
                 .maxMessages(10)
                 .chatMemoryStore(new SyncOnlyChatMemoryStore())
                 .build();
-
-        assertThatThrownBy(() -> chatMemory.addAsync(UserMessage.from("Hello")))
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessageContaining("getMessagesAsync");
 
         assertThatThrownBy(() -> chatMemory.addAsync(List.of(UserMessage.from("Hello"), AiMessage.from("Hi"))))
                 .isInstanceOf(UnsupportedOperationException.class)

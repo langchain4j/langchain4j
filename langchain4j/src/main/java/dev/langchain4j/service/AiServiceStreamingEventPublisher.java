@@ -324,7 +324,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
             // round is gated on that write so the AI message is persisted before the tool-result messages, keeping
             // the conversation order intact. Tools may already be running (started eagerly on CompleteToolCall),
             // independently of this write.
-            getMemory().addAsync(aiMessage).whenComplete((ignored, error) -> {
+            getMemory().addAsync(List.of(aiMessage)).whenComplete((ignored, error) -> {
                 if (error != null) {
                     fail(error);
                     return;

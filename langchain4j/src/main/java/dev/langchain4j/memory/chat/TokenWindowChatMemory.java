@@ -79,17 +79,6 @@ public class TokenWindowChatMemory implements ChatMemory {
     }
 
     @Override
-    public CompletionStage<Void> addAsync(ChatMessage message) {
-        return store.getMessagesAsync(id).thenCompose(stored -> {
-            List<ChatMessage> messages = windowed(stored);
-            if (appendMessage(messages, message)) {
-                return store.updateMessagesAsync(id, messages);
-            }
-            return CompletableFuture.completedFuture(null);
-        });
-    }
-
-    @Override
     public CompletionStage<Void> addAsync(List<ChatMessage> messagesToAdd) {
         return store.getMessagesAsync(id).thenCompose(stored -> {
             List<ChatMessage> messages = windowed(stored);

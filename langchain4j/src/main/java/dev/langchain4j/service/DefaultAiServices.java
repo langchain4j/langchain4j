@@ -720,14 +720,14 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
 
                         CompletionStage<Void> addSystem = systemMessage.isPresent()
-                                ? chatMemory.addAsync(systemMessage.get())
+                                ? chatMemory.addAsync(List.of(systemMessage.get()))
                                 : CompletableFuture.completedFuture(null);
                         ChatMessage userMessageToStore =
                                 context.storeRetrievedContentInChatMemory ? userMessage : originalUserMessage;
                         return addSystem.thenCompose(ignored -> chatMemory.messagesAsync())
                                 .thenCompose(history -> {
                                     List<ChatMessage> messages = new ArrayList<>(history);
-                                    return chatMemory.addAsync(userMessageToStore).thenApply(ignored2 -> {
+                                    return chatMemory.addAsync(List.of(userMessageToStore)).thenApply(ignored2 -> {
                                         messages.add(userMessage);
                                         return messages;
                                     });
