@@ -3,13 +3,20 @@ package dev.langchain4j.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.data.video.Video;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.response.PartialResponse;
+import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.rag.content.Content;
@@ -47,7 +54,7 @@ class ToStringContentSanitizationTest {
         String secret = "user prompt with sensitive data";
         UserMessage message = UserMessage.from(secret);
 
-        assertThat(message.toString()).doesNotContain(secret);
+        assertThat(message.toString()).doesNotContain(secret).contains("[length=" + secret.length() + "]");
     }
 
     @Test
@@ -97,6 +104,31 @@ class ToStringContentSanitizationTest {
     }
 
     @Test
+    void audio_toString_shouldNotContainBase64Data() {
+        String base64 = "a".repeat(5_000);
+        Audio audio = Audio.builder().base64Data(base64).mimeType("audio/mp3").build();
+
+        assertThat(audio.toString()).doesNotContain(base64).contains("[length=5000]");
+    }
+
+    @Test
+    void pdfFile_toString_shouldNotContainBase64Data() {
+        String base64 = "a".repeat(8_000);
+        PdfFile pdfFile =
+                PdfFile.builder().base64Data(base64).mimeType("application/pdf").build();
+
+        assertThat(pdfFile.toString()).doesNotContain(base64).contains("[length=8000]");
+    }
+
+    @Test
+    void video_toString_shouldNotContainBase64Data() {
+        String base64 = "a".repeat(12_000);
+        Video video = Video.builder().base64Data(base64).mimeType("video/mp4").build();
+
+        assertThat(video.toString()).doesNotContain(base64).contains("[length=12000]");
+    }
+
+    @Test
     void query_toString_shouldNotContainRawText() {
         String secret = "rag query with sensitive data";
         Query query = Query.from(secret);
@@ -130,5 +162,42 @@ class ToStringContentSanitizationTest {
                 .build();
 
         assertThat(request.toString()).doesNotContain(secret).contains("[length=" + secret.length() + "]");
+    }
+
+    @Test
+    void partialToolCall_toString_shouldNotContainPartialArguments() {
+        String secret = "{\"token\":\"secret-value\"}";
+        PartialToolCall partialToolCall = PartialToolCall.builder()
+                .index(0)
+                .id("id")
+                .name("tool")
+                .partialArguments(secret)
+                .build();
+
+        assertThat(partialToolCall.toString()).doesNotContain(secret).contains("[length=" + secret.length() + "]");
+    }
+
+    @Test
+    void partialThinking_toString_shouldNotContainRawText() {
+        String secret = "streaming thinking with sensitive data";
+        PartialThinking partialThinking = new PartialThinking(secret);
+
+        assertThat(partialThinking.toString()).doesNotContain(secret).contains("[length=" + secret.length() + "]");
+    }
+
+    @Test
+    void partialResponse_toString_shouldNotContainRawText() {
+        String secret = "streaming response with sensitive data";
+        PartialResponse partialResponse = new PartialResponse(secret);
+
+        assertThat(partialResponse.toString()).doesNotContain(secret).contains("[length=" + secret.length() + "]");
+    }
+
+    @Test
+    void jsonRawSchema_toString_shouldNotContainRawSchema() {
+        String secret = "{\"type\":\"object\",\"properties\":{\"password\":{\"type\":\"string\"}}}";
+        JsonRawSchema jsonRawSchema = JsonRawSchema.from(secret);
+
+        assertThat(jsonRawSchema.toString()).doesNotContain(secret).contains("[length=" + secret.length() + "]");
     }
 }
