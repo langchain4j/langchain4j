@@ -2,6 +2,7 @@ package dev.langchain4j.model.azure;
 
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.aiMessageFrom;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -30,6 +31,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.output.FinishReason;
 import java.io.IOException;
 import java.time.Duration;
@@ -155,8 +157,7 @@ class InternalAzureOpenAiHelperTest {
         String functionName = "current_time";
         String functionArguments = "{}";
         // language=json
-        String responseJson =
-                """
+        String responseJson = """
                 {
                         "role": "ASSISTANT",
                         "content": "Hello",
@@ -271,6 +272,53 @@ class InternalAzureOpenAiHelperTest {
                 .contains("url")
                 .doesNotContain("data:image")
                 .doesNotContain("base64");
+    }
+
+    @Test
+    void toOpenAiMessages_shouldForwardLowImageDetailLevel() {
+        // Given
+        String imageUrl = "https://example.com/image.png";
+        ImageContent imageContent = ImageContent.from(imageUrl, ImageContent.DetailLevel.LOW);
+        UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
+        List<ChatMessage> messages = List.of(userMessage);
+
+        // When
+        List<ChatRequestMessage> openAiMessages = InternalAzureOpenAiHelper.toOpenAiMessages(messages);
+
+        // Then
+        ChatRequestUserMessage requestMessage = (ChatRequestUserMessage) openAiMessages.get(0);
+        String contentJson = requestMessage.getContent().toString();
+        assertThat(contentJson).contains("\"detail\":\"low\"");
+    }
+
+    @Test
+    void toOpenAiMessages_shouldForwardHighImageDetailLevel() {
+        // Given
+        String imageUrl = "https://example.com/image.png";
+        ImageContent imageContent = ImageContent.from(imageUrl, ImageContent.DetailLevel.HIGH);
+        UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
+        List<ChatMessage> messages = List.of(userMessage);
+
+        // When
+        List<ChatRequestMessage> openAiMessages = InternalAzureOpenAiHelper.toOpenAiMessages(messages);
+
+        // Then
+        ChatRequestUserMessage requestMessage = (ChatRequestUserMessage) openAiMessages.get(0);
+        String contentJson = requestMessage.getContent().toString();
+        assertThat(contentJson).contains("\"detail\":\"high\"").doesNotContain("\"detail\":\"low\"");
+    }
+
+    @Test
+    void toOpenAiMessages_shouldThrowForUnsupportedImageDetailLevel() {
+        // Given - Azure OpenAI SDK only supports AUTO, LOW and HIGH
+        String imageUrl = "https://example.com/image.png";
+        ImageContent imageContent = ImageContent.from(imageUrl, ImageContent.DetailLevel.ULTRA_HIGH);
+        UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
+        List<ChatMessage> messages = List.of(userMessage);
+
+        // When / Then
+        assertThatThrownBy(() -> InternalAzureOpenAiHelper.toOpenAiMessages(messages))
+                .isInstanceOf(UnsupportedFeatureException.class);
     }
 
     @Test
