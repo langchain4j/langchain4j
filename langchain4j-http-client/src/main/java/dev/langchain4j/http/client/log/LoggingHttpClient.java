@@ -25,7 +25,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * <b>Streaming response logging is blocking IO on the delivery thread.</b> For the streaming paths
  * ({@link #execute(HttpRequest, ServerSentEventListener)},
  * {@link #execute(HttpRequest, ServerSentEventParser, ServerSentEventListener)} and especially
- * {@link #executeWithPublisher(HttpRequest, ServerSentEventParser)}), each server-sent event is logged
+ * {@link #stream(HttpRequest, ServerSentEventParser)}), each server-sent event is logged
  * synchronously on the thread that delivers it — for the publisher path this is the underlying HTTP
  * client's non-blocking worker thread. Whether that log call actually blocks is decided by the logging
  * backend's appender, which this client does not control: a <em>synchronous</em> appender (e.g. a plain
@@ -197,9 +197,9 @@ public class LoggingHttpClient implements HttpClient {
      * this logging does not perform blocking IO on that non-blocking thread.
      */
     @Override
-    public Flow.Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request, ServerSentEventParser parser) {
+    public Flow.Publisher<StreamingHttpEvent> stream(HttpRequest request, ServerSentEventParser parser) {
 
-        Flow.Publisher<StreamingHttpEvent> upstream = delegateHttpClient.executeWithPublisher(request, parser);
+        Flow.Publisher<StreamingHttpEvent> upstream = delegateHttpClient.stream(request, parser);
 
         return new Flow.Publisher<StreamingHttpEvent>() {
 

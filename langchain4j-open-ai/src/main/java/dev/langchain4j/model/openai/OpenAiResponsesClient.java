@@ -248,7 +248,7 @@ class OpenAiResponsesClient {
             ResponsesApiEventListener listener = new ResponsesApiEventListener(handler);
 
             Publisher<StreamingHttpEvent> upstream =
-                    httpClient.executeWithPublisher(request, new DefaultServerSentEventParser());
+                    httpClient.stream(request, new DefaultServerSentEventParser());
             upstream.subscribe(new Subscriber<>() {
 
                 @Override

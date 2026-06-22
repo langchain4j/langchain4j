@@ -153,7 +153,7 @@ public class JdkHttpClient implements HttpClient {
     }
 
     @Override
-    public Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request, ServerSentEventParser parser) {
+    public Publisher<StreamingHttpEvent> stream(HttpRequest request, ServerSentEventParser parser) {
         return new StreamingHttpEventPublisher(delegate, toJdkRequest(request), parser, streamingBufferSize);
     }
 

@@ -50,7 +50,7 @@ public class OkHttpClientBuilder implements HttpClientBuilder {
     }
 
     /**
-     * Sets the size of the bounded back-pressure buffer used by the streaming ({@code executeWithPublisher})
+     * Sets the size of the bounded back-pressure buffer used by the streaming ({@code stream})
      * path. Server-sent events are relayed to the subscriber through this buffer; if the subscriber consumes
      * slower than the server produces and the buffer overflows, the stream terminates with an error.
      * <p>

@@ -85,7 +85,7 @@ public abstract class HttpClientIT {
     }
 
     /** Which streaming API to drive: the callback {@link HttpClient#execute(HttpRequest, ServerSentEventParser,
-     * ServerSentEventListener)} (listener) or the {@link HttpClient#executeWithPublisher(HttpRequest)}
+     * ServerSentEventListener)} (listener) or the {@link HttpClient#stream(HttpRequest)}
      * (publisher). Lets the common streaming tests run against both. */
     protected enum StreamingMode {
         LISTENER,
@@ -145,7 +145,7 @@ public abstract class HttpClientIT {
             listenerSpy = spy(listener);
             client.execute(request, new DefaultServerSentEventParser(), listenerSpy);
         } else {
-            client.executeWithPublisher(request).subscribe(new Flow.Subscriber<>() {
+            client.stream(request).subscribe(new Flow.Subscriber<>() {
                 @Override
                 public void onSubscribe(Flow.Subscription subscription) {
                     subscription.request(Long.MAX_VALUE);
@@ -473,7 +473,7 @@ public abstract class HttpClientIT {
                 client.execute(request, new DefaultServerSentEventParser(), listenerSpy);
             } else {
                 AtomicReference<Flow.Subscription> subscription = new AtomicReference<>();
-                client.executeWithPublisher(request).subscribe(new Flow.Subscriber<>() {
+                client.stream(request).subscribe(new Flow.Subscriber<>() {
                     @Override
                     public void onSubscribe(Flow.Subscription s) {
                         subscription.set(s);

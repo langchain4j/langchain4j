@@ -153,7 +153,7 @@ public class ApacheHttpClient implements HttpClient {
      * arrived. Cancelling the subscription cancels the SSE parsing. TODO
      */
     @Override
-    public Flow.Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request, ServerSentEventParser parser) {
+    public Flow.Publisher<StreamingHttpEvent> stream(HttpRequest request, ServerSentEventParser parser) {
         TubeConfiguration config = new TubeConfiguration()
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
                 .withBufferSize(streamingBufferSize);

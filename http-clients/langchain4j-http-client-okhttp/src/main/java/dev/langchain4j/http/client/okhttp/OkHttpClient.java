@@ -119,7 +119,7 @@ public class OkHttpClient implements HttpClient {
      * subscription cancels the underlying SSE parsing (which closes the stream and frees the thread).
      */
     @Override
-    public Flow.Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request, ServerSentEventParser parser) {
+    public Flow.Publisher<StreamingHttpEvent> stream(HttpRequest request, ServerSentEventParser parser) {
         TubeConfiguration config = new TubeConfiguration()
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
                 .withBufferSize(streamingBufferSize);

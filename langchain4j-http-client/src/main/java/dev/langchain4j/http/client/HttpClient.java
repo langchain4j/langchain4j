@@ -97,16 +97,16 @@ public interface HttpClient {
      *
      * @since 1.17.0
      */
-    default Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request) { // TODO name (async?)
-        return executeWithPublisher(request, new DefaultServerSentEventParser());
+    default Publisher<StreamingHttpEvent> stream(HttpRequest request) {
+        return stream(request, new DefaultServerSentEventParser());
     }
 
     /**
-     * Like {@link #executeWithPublisher(HttpRequest)}, but with a caller-supplied {@link ServerSentEventParser}.
+     * Like {@link #stream(HttpRequest)}, but with a caller-supplied {@link ServerSentEventParser}.
      *
      * @since 1.17.0
      */
-    default Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request, ServerSentEventParser parser) { // TODO name (async?)
-        throw new UnsupportedOperationException("Not implemented");
+    default Publisher<StreamingHttpEvent> stream(HttpRequest request, ServerSentEventParser parser) {
+        throw new UnsupportedOperationException("Not implemented yet for " + getClass().getName());
     }
 }

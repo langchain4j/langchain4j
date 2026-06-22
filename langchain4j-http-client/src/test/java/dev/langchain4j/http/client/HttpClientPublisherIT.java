@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Tests for the cold-publisher contract of
- * {@link HttpClient#executeWithPublisher(HttpRequest)}: building the publisher sends nothing, and each
+ * {@link HttpClient#stream(HttpRequest)}: building the publisher sends nothing, and each
  * {@code subscribe()} initiates a new, independent request.
  */
 public abstract class HttpClientPublisherIT {
@@ -63,7 +63,7 @@ public abstract class HttpClientPublisherIT {
                     .build();
 
             // Building the publisher is cold: no request is sent until someone subscribes.
-            Flow.Publisher<StreamingHttpEvent> publisher = client.executeWithPublisher(request);
+            Flow.Publisher<StreamingHttpEvent> publisher = client.stream(request);
             wireMockServer.verify(0, postRequestedFor(urlEqualTo(PATH)));
 
             // First subscription -> one request, events delivered.

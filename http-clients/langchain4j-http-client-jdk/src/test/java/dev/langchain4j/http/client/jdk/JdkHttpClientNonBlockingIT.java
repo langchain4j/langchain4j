@@ -26,7 +26,7 @@ import static dev.langchain4j.http.client.HttpMethod.POST;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Verifies that {@link JdkHttpClient}'s streaming publisher ({@link HttpClient#executeWithPublisher})
+ * Verifies that {@link JdkHttpClient}'s streaming publisher ({@link HttpClient#stream})
  * does not perform blocking calls on the JDK HTTP client's worker threads (named {@code HttpClient-*}),
  * where the SSE body is read, parsed and dispatched. This is the HTTP-client-layer counterpart of
  * {@code OpenAiStreamingChatModelNonBlockingIT} — same BlockHound technique, exercising only the HTTP
@@ -175,7 +175,7 @@ class JdkHttpClientNonBlockingIT {
     }
 
     private static Capture awaitEvents(HttpClient client, HttpRequest request) throws Exception {
-        Flow.Publisher<StreamingHttpEvent> publisher = client.executeWithPublisher(request);
+        Flow.Publisher<StreamingHttpEvent> publisher = client.stream(request);
         List<StreamingHttpEvent> received = new CopyOnWriteArrayList<>();
         AtomicReference<Throwable> error = new AtomicReference<>();
         // Names of every thread that delivered an event, so the caller can assert the pipeline ran on

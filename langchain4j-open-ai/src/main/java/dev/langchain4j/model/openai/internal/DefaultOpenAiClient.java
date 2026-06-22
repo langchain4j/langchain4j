@@ -188,7 +188,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .withBufferSize(streamingBufferSize);
 
         return ZeroPublisher.create(config, tube -> {
-            Publisher<StreamingHttpEvent> upstream = httpClient.executeWithPublisher(httpRequest);
+            Publisher<StreamingHttpEvent> upstream = httpClient.stream(httpRequest);
             upstream.subscribe(new ChatCompletionEventSubscriber(tube, options));
         });
     }
