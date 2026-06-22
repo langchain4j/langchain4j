@@ -60,6 +60,43 @@ internal class DocumentParserExtensionsKtTest {
     }
 
     @Test
+    fun `parseAsync should let source metadata overwrite document metadata on shared keys`() {
+        val documentContent = "parsed document content"
+        runTest {
+            val inputStream = documentContent.byteInputStream()
+            val documentMetadata =
+                Metadata.from(
+                    mapOf(
+                        FILE_NAME to "parser-name.txt",
+                        "title" to "Bar"
+                    )
+                )
+            val fileMetadata =
+                Metadata.from(
+                    mapOf(
+                        ABSOLUTE_DIRECTORY_PATH to "foo",
+                        FILE_NAME to "source-name.txt"
+                    )
+                )
+            val document = Document.from(documentContent, documentMetadata)
+
+            whenever(documentSource.inputStream()).thenReturn(inputStream)
+            whenever(documentParser.parse(inputStream)).thenReturn(document)
+            whenever(documentSource.metadata()).thenReturn(fileMetadata)
+
+            val result = documentParser.parseAsync(documentSource, Dispatchers.IO)
+
+            assertThat(result.text()).isEqualTo(documentContent)
+            assertThat(result.metadata().toMap())
+                .containsOnly(
+                    ABSOLUTE_DIRECTORY_PATH to "foo",
+                    FILE_NAME to "source-name.txt",
+                    "title" to "Bar"
+                )
+        }
+    }
+
+    @Test
     fun `parseAsync should return parser document when no source metadata is present`() {
         val documentContent = "parsed document content"
         runTest {

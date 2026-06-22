@@ -26,12 +26,8 @@ public suspend fun DocumentParser.parseAsync(
         source.inputStream().use { inputStream ->
             return@use parseAsync(inputStream, context)
         }
-    val documentSourceMetadata = source.metadata()
-    return if (documentSourceMetadata.toMap().isNotEmpty()) {
-        Document.from(document.text(), documentSourceMetadata.merge(document.metadata()))
-    } else {
-        document
-    }
+    document.metadata().putAll(source.metadata().toMap())
+    return document
 }
 
 /**
