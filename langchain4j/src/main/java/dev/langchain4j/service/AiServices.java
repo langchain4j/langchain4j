@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.spi.ServiceHelper.loadFactory;
@@ -697,6 +698,25 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> maxToolCallingRoundTrips(int maxToolCallingRoundTrips) {
         context.toolService.maxToolCallingRoundTrips(maxToolCallingRoundTrips);
+        return this;
+    }
+
+    /**
+     * Sets the size of the bounded back-pressure buffer used by the reactive ({@code Flow.Publisher}) streaming
+     * path. Events are relayed to the subscriber through this buffer; if the subscriber consumes slower than the
+     * model produces and the buffer overflows, the stream terminates with an {@link IllegalStateException}.
+     * <p>
+     * The default is {@value AiServiceStreamingEventPublisher#DEFAULT_BUFFER_SIZE}. Raise it for a slow-but-correct
+     * consumer on long responses, or set it to {@link Integer#MAX_VALUE} for an effectively unbounded buffer
+     * (accepting the {@link OutOfMemoryError} risk). Has no effect on the synchronous, {@code CompletableFuture}
+     * or {@code TokenStream} return types.
+     *
+     * @param streamingBufferSize the buffer size; must be greater than zero
+     * @return the builder instance
+     * @since 1.17.0
+     */
+    public AiServices<T> streamingBufferSize(int streamingBufferSize) {
+        context.streamingBufferSize = ensureGreaterThanZero(streamingBufferSize, "streamingBufferSize");
         return this;
     }
 

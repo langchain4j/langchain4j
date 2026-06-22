@@ -48,6 +48,9 @@ public class AiServiceContext {
 
     public boolean storeRetrievedContentInChatMemory = true;
 
+    /** Bounded back-pressure buffer size for the reactive ({@code Flow.Publisher}) streaming path. */
+    public int streamingBufferSize = AiServiceStreamingEventPublisher.DEFAULT_BUFFER_SIZE;
+
     public Function<Object, Optional<String>> userMessageProvider = DEFAULT_USER_MESSAGE_PROVIDER;
     public Function<Object, Optional<String>> systemMessageProvider = DEFAULT_SYSTEM_MESSAGE_PROVIDER;
     public Function<InvocationContext, String> systemMessageProviderWithContext = null;

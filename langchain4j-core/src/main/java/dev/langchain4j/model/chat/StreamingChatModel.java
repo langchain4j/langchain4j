@@ -195,6 +195,16 @@ public interface StreamingChatModel {
      * ignore them. New event types may be introduced over time (and providers may surface unmapped events
      * as {@link dev.langchain4j.model.chat.response.RawStreamingEvent}), so consuming this stream with an
      * exhaustive type switch that lacks a default branch is unsafe.
+     * <p>
+     * <b>Demand and back-pressure.</b> This streams a finite, bounded-rate source — an LLM response over HTTP.
+     * Implementations are <b>not</b> required to propagate subscriber demand to the model: meaningfully
+     * throttling an LLM is impractical (its work and cost are incurred regardless of how fast the response is
+     * read, and stalling the transport to slow it down only risks provider/proxy idle timeouts). An
+     * implementation therefore typically consumes the response eagerly and relays events through a
+     * <b>bounded</b> internal buffer. A subscriber that requests fewer items than are produced may thus cause
+     * buffering and, once the buffer is exhausted, a terminal error. Subscribers should request liberally
+     * (e.g. {@code Long.MAX_VALUE}) and must <b>not</b> block or perform heavy work in {@code onNext} — offload
+     * it to another thread.
      */
     default Publisher<StreamingEvent> chat(ChatRequest request) {
 
@@ -267,6 +277,16 @@ public interface StreamingChatModel {
 
     // TODO accepting options
 
+    /**
+     * Provider-specific implementation of the reactive stream returned by {@link #chat(ChatRequest)} (which wraps
+     * it with {@link ChatModelListener} invocation). Implementations must honor the event ordering and the
+     * demand / back-pressure expectations documented on {@link #chat(ChatRequest)} — in particular, they
+     * typically consume the response eagerly and relay {@link StreamingEvent}s through a bounded buffer rather
+     * than propagating subscriber demand to the model.
+     * <p>
+     * The default implementation throws {@link UnsupportedFeatureException}; a provider that does not support
+     * reactive streaming leaves it unimplemented.
+     */
     default Publisher<StreamingEvent> doChat(ChatRequest chatRequest) {
         throw new UnsupportedFeatureException("Not implemented yet for " + getClass().getName()); // TODO
     }

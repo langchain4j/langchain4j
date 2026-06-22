@@ -1,5 +1,7 @@
 package dev.langchain4j.model.openai.internal;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.chat.response.StreamingEvent;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionRequest;
@@ -25,6 +27,12 @@ import java.util.function.Supplier;
 import org.slf4j.Logger;
 
 public abstract class OpenAiClient {
+
+    /**
+     * Default size of the bounded back-pressure buffer used by the reactive streaming publisher (see
+     * {@code chatCompletionPublisher}); overridable per object via {@code Builder#streamingBufferSize(int)}.
+     */
+    public static final int DEFAULT_STREAMING_BUFFER_SIZE = 16384;
 
     public abstract SyncOrAsyncOrStreaming<CompletionResponse> completion(CompletionRequest request);
 
@@ -74,6 +82,7 @@ public abstract class OpenAiClient {
         public Logger logger;
         public Supplier<Map<String, String>> customHeadersSupplier;
         public Map<String, String> customQueryParams;
+        public int streamingBufferSize = DEFAULT_STREAMING_BUFFER_SIZE;
 
         public abstract T build();
 
@@ -189,6 +198,18 @@ public abstract class OpenAiClient {
          */
         public B customQueryParams(Map<String, String> customQueryParams) {
             this.customQueryParams = customQueryParams;
+            return (B) this;
+        }
+
+        /**
+         * Sets the size of the bounded back-pressure buffer used by the reactive streaming publisher
+         * ({@code chatCompletionPublisher}). Defaults to {@value #DEFAULT_STREAMING_BUFFER_SIZE}.
+         *
+         * @param streamingBufferSize the buffer size; must be greater than zero
+         * @return builder
+         */
+        public B streamingBufferSize(int streamingBufferSize) {
+            this.streamingBufferSize = ensureGreaterThanZero(streamingBufferSize, "streamingBufferSize");
             return (B) this;
         }
     }

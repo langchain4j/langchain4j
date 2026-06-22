@@ -54,6 +54,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
     private final Map<String, String> defaultHeaders;
     private final Supplier<Map<String, String>> customHeadersSupplier;
     private final Map<String, String> customQueryParams;
+    private final int streamingBufferSize;
 
     public DefaultOpenAiClient(Builder builder) {
 
@@ -92,6 +93,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
         this.defaultHeaders = defaultHeaders;
         this.customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, () -> Map::of);
         this.customQueryParams = builder.customQueryParams;
+        this.streamingBufferSize = builder.streamingBufferSize;
     }
 
     public static Builder builder() {
@@ -182,8 +184,8 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .build();
 
         TubeConfiguration config = new TubeConfiguration()
-                .withBackpressureStrategy(BackpressureStrategy.BUFFER) // TODO configurable
-                .withBufferSize(256); // TODO configurable
+                .withBackpressureStrategy(BackpressureStrategy.BUFFER)
+                .withBufferSize(streamingBufferSize);
 
         return ZeroPublisher.create(config, tube -> {
             Publisher<StreamingHttpEvent> upstream = httpClient.executeWithPublisher(httpRequest);

@@ -422,13 +422,14 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                 .commonGuardrailParams(commonGuardrailParam)
                                                 .methodKey(method)
                                                 .build();
-                                        new AiServiceStreamingEventPublisher(streamingEventStreamParameters)
+                                        new AiServiceStreamingEventPublisher(
+                                                        streamingEventStreamParameters, context.streamingBufferSize)
                                                 .subscribe(subscriber);
                                     });
 
                             Flow.Publisher<?> mapped = elementType == AiServiceStreamingEvent.class
                                     ? events
-                                    : AiServiceStreamingEventPublisher.toTextPublisher(events);
+                                    : AiServiceStreamingEventPublisher.toTextPublisher(events, context.streamingBufferSize);
 
                             return publisherAdapter != null
                                     ? publisherAdapter.fromPublisher(returnType, mapped)

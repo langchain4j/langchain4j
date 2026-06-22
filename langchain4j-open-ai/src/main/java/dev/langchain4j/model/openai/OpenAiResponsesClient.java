@@ -51,6 +51,7 @@ import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingHandle;
+import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.TubeBackedStreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import java.util.ArrayList;
@@ -179,6 +180,7 @@ class OpenAiResponsesClient {
     private final String baseUrl;
     private final String apiKey;
     private final String organizationId;
+    private final int streamingBufferSize;
 
     OpenAiResponsesClient(Builder builder) {
         HttpClientBuilder httpClientBuilder =
@@ -192,6 +194,7 @@ class OpenAiResponsesClient {
         this.baseUrl = getOrDefault(builder.baseUrl, DEFAULT_BASE_URL);
         this.apiKey = builder.apiKey;
         this.organizationId = builder.organizationId;
+        this.streamingBufferSize = builder.streamingBufferSize;
     }
 
     static Builder builder() {
@@ -228,8 +231,8 @@ class OpenAiResponsesClient {
             ChatRequest chatRequest, OpenAiResponsesChatRequestParameters parameters) {
 
         TubeConfiguration config = new TubeConfiguration()
-                .withBackpressureStrategy(BackpressureStrategy.BUFFER) // TODO configurable
-                .withBufferSize(256); // TODO configurable
+                .withBackpressureStrategy(BackpressureStrategy.BUFFER)
+                .withBufferSize(streamingBufferSize);
 
         return ZeroPublisher.create(config, tube -> {
             HttpRequest request;
@@ -855,6 +858,7 @@ class OpenAiResponsesClient {
         private String organizationId;
         private boolean logRequests;
         private boolean logResponses;
+        private int streamingBufferSize = OpenAiClient.DEFAULT_STREAMING_BUFFER_SIZE;
 
         Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -887,6 +891,11 @@ class OpenAiResponsesClient {
             if (logResponses != null) {
                 this.logResponses = logResponses;
             }
+            return this;
+        }
+
+        Builder streamingBufferSize(int streamingBufferSize) {
+            this.streamingBufferSize = streamingBufferSize;
             return this;
         }
 

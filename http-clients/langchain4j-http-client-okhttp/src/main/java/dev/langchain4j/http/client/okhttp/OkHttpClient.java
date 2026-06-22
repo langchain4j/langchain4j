@@ -40,6 +40,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 public class OkHttpClient implements HttpClient {
 
     private final okhttp3.OkHttpClient client;
+    private final int streamingBufferSize;
 
     public OkHttpClient(OkHttpClientBuilder builder) {
         okhttp3.OkHttpClient.Builder okBuilder =
@@ -53,6 +54,7 @@ public class OkHttpClient implements HttpClient {
         }
 
         this.client = okBuilder.build();
+        this.streamingBufferSize = builder.streamingBufferSize();
     }
 
     public static OkHttpClientBuilder builder() {
@@ -120,7 +122,7 @@ public class OkHttpClient implements HttpClient {
     public Flow.Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request, ServerSentEventParser parser) {
         TubeConfiguration config = new TubeConfiguration()
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
-                .withBufferSize(256);
+                .withBufferSize(streamingBufferSize);
         return ZeroPublisher.create(config, tube -> {
             AtomicReference<ServerSentEventParsingHandle> parsingHandle = new AtomicReference<>();
             tube.whenCancelled(() -> {

@@ -1,6 +1,7 @@
 package dev.langchain4j.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -872,6 +873,56 @@ class AiServiceStreamingPublisherTest {
             }
         }
         return -1;
+    }
+
+    @Test
+    void streaming_buffer_size_must_be_positive() {
+        assertThatThrownBy(() -> AiServices.builder(EventStreamer.class)
+                        .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hi")))
+                        .streamingBufferSize(0)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void small_buffer_overflows_when_the_subscriber_does_not_keep_up() throws Exception {
+        // A long response (one PartialResponseEvent per character) + a tiny buffer + a subscriber that requests
+        // only once: the bounded back-pressure buffer overflows and the stream fails fast (rather than dropping
+        // events or buffering unbounded).
+        StreamingEventChatModelMock model =
+                StreamingEventChatModelMock.thatStreams(AiMessage.from("This response is far longer than the buffer."));
+
+        EventStreamer assistant = AiServices.builder(EventStreamer.class)
+                .streamingChatModel(model)
+                .streamingBufferSize(4)
+                .build();
+
+        AtomicReference<Throwable> error = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+
+        assistant.chat("Hi").subscribe(new Flow.Subscriber<>() {
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                subscription.request(1); // request once and never again, so the buffer fills up
+            }
+
+            @Override
+            public void onNext(AiServiceStreamingEvent event) {}
+
+            @Override
+            public void onError(Throwable throwable) {
+                error.set(throwable);
+                latch.countDown();
+            }
+
+            @Override
+            public void onComplete() {
+                latch.countDown();
+            }
+        });
+
+        assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+        assertThat(error.get()).isInstanceOf(IllegalStateException.class);
     }
 
     private static <T> Collected<T> collect(Flow.Publisher<T> publisher) throws InterruptedException {

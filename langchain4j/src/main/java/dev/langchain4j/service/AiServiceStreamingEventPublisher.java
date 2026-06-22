@@ -78,6 +78,16 @@ import mutiny.zero.ZeroPublisher;
  * round are surfaced in order; no thread is ever blocked or pinned while a model response or a tool result is
  * in flight.
  * <p>
+ * <b>Back-pressure.</b> The model's streaming response is consumed with unbounded demand and its events are
+ * relayed to the subscriber through a <b>bounded</b> buffer ({@value #DEFAULT_BUFFER_SIZE} entries by default,
+ * overridable per AI Service via {@code AiServices.streamingBufferSize(int)}). The LLM itself is deliberately
+ * not throttled — see {@code onSubscribe} — so a subscriber that consumes slower than the model produces and
+ * overflows the buffer terminates with an {@link IllegalStateException} rather than dropping events (which
+ * would corrupt the assembled response) or buffering unbounded (which risks {@link OutOfMemoryError}).
+ * Consumers must therefore not block in {@code onNext}; offload heavy per-event work. If a slow-but-correct
+ * consumer trips the buffer on a long response, raise it via {@code AiServices.streamingBufferSize(int)}
+ * (or set it to {@link Integer#MAX_VALUE} for an effectively unbounded buffer, accepting the OOM risk).
+ * <p>
  * <b>Cancellation.</b> Cancelling the {@link Flow.Subscription} stops the interaction: the in-flight model
  * call is cancelled (for providers whose reactive stream supports it, this aborts the underlying HTTP
  * request), no further round is started, and no more events — including the terminal
@@ -93,17 +103,22 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
 
     // TODO output guardrails for the reactive streaming path (the handler-based path buffers and validates)
 
-    private static final int BUFFER_SIZE = 256;
+    /**
+     * Default size of the bounded back-pressure buffer (see the class-level "Back-pressure" note), used when an AI
+     * Service does not override it via {@code AiServices.streamingBufferSize(int)}.
+     */
+    public static final int DEFAULT_BUFFER_SIZE = 16384;
 
     private final List<ChatMessage> messages;
     private final ToolServiceContext toolServiceContext;
     private final List<Content> retrievedContents;
     private final AiServiceContext context;
     private final InvocationContext invocationContext;
+    private final int bufferSize;
 
     private final Flow.Publisher<AiServiceStreamingEvent> delegate;
 
-    public AiServiceStreamingEventPublisher(AiServiceTokenStreamParameters parameters) {
+    public AiServiceStreamingEventPublisher(AiServiceTokenStreamParameters parameters, int bufferSize) {
         ensureNotNull(parameters, "parameters");
         this.messages = copy(ensureNotEmpty(parameters.messages(), "messages"));
         this.toolServiceContext = parameters.toolServiceContext();
@@ -111,10 +126,11 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         this.context = ensureNotNull(parameters.context(), "context");
         ensureNotNull(this.context.streamingChatModel, "streamingChatModel");
         this.invocationContext = parameters.invocationContext();
+        this.bufferSize = bufferSize;
 
         TubeConfiguration config = new TubeConfiguration()
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
-                .withBufferSize(BUFFER_SIZE);
+                .withBufferSize(bufferSize);
         this.delegate = ZeroPublisher.create(config, tube -> new Loop(tube).start());
     }
 
@@ -129,10 +145,11 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
      * that return a {@code Publisher<String>} (or a {@code Flux<String>}/{@code Multi<String>} via a
      * {@link dev.langchain4j.spi.services.PublisherAdapter}).
      */
-    public static Flow.Publisher<String> toTextPublisher(Flow.Publisher<AiServiceStreamingEvent> events) {
+    public static Flow.Publisher<String> toTextPublisher(
+            Flow.Publisher<AiServiceStreamingEvent> events, int bufferSize) {
         TubeConfiguration config = new TubeConfiguration()
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
-                .withBufferSize(BUFFER_SIZE);
+                .withBufferSize(bufferSize);
         return ZeroPublisher.create(config, tube -> events.subscribe(new Flow.Subscriber<>() {
 
             @Override

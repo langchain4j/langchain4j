@@ -46,6 +46,7 @@ public class JdkHttpClient implements HttpClient {
 
     private final java.net.http.HttpClient delegate;
     private final Duration readTimeout;
+    private final int streamingBufferSize;
 
     public JdkHttpClient(JdkHttpClientBuilder builder) {
         java.net.http.HttpClient.Builder httpClientBuilder =
@@ -55,6 +56,7 @@ public class JdkHttpClient implements HttpClient {
         }
         this.delegate = httpClientBuilder.build();
         this.readTimeout = builder.readTimeout();
+        this.streamingBufferSize = builder.streamingBufferSize();
     }
 
     public static JdkHttpClientBuilder builder() {
@@ -152,7 +154,7 @@ public class JdkHttpClient implements HttpClient {
 
     @Override
     public Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request, ServerSentEventParser parser) {
-        return new StreamingHttpEventPublisher(delegate, toJdkRequest(request), parser);
+        return new StreamingHttpEventPublisher(delegate, toJdkRequest(request), parser, streamingBufferSize);
     }
 
     java.net.http.HttpRequest toJdkRequest(HttpRequest request) {
@@ -227,18 +229,19 @@ public class JdkHttpClient implements HttpClient {
      */
     static class StreamingHttpEventPublisher implements Publisher<StreamingHttpEvent> {
 
-        private static final int TUBE_BUFFER_SIZE = 1024;
-
         private final java.net.http.HttpClient client;
         private final java.net.http.HttpRequest request;
         private final ServerSentEventParser parser;
+        private final int bufferSize;
 
         StreamingHttpEventPublisher(java.net.http.HttpClient client,
                                     java.net.http.HttpRequest request,
-                                    ServerSentEventParser parser) {
+                                    ServerSentEventParser parser,
+                                    int bufferSize) {
             this.client = ensureNotNull(client, "client");
             this.request = ensureNotNull(request, "request");
             this.parser = ensureNotNull(parser, "parser");
+            this.bufferSize = bufferSize;
         }
 
         @Override
@@ -249,7 +252,7 @@ public class JdkHttpClient implements HttpClient {
 
             TubeConfiguration config = new TubeConfiguration()
                     .withBackpressureStrategy(BackpressureStrategy.BUFFER)
-                    .withBufferSize(TUBE_BUFFER_SIZE);
+                    .withBufferSize(bufferSize);
 
             Publisher<StreamingHttpEvent> publisher = ZeroPublisher.create(config, tube -> {
                 CompletableFuture<HttpResponse<Publisher<List<ByteBuffer>>>> future =

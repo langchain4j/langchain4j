@@ -58,6 +58,7 @@ public class ApacheHttpClient implements HttpClient {
 
     private final CloseableHttpClient syncClient;
     private final CloseableHttpAsyncClient asyncClient;
+    private final int streamingBufferSize;
 
     public ApacheHttpClient(ApacheHttpClientBuilder builder) {
         org.apache.hc.client5.http.impl.classic.HttpClientBuilder syncHttpClientBuilder =
@@ -82,6 +83,7 @@ public class ApacheHttpClient implements HttpClient {
         this.syncClient = syncHttpClientBuilder.build();
         this.asyncClient = asyncHttpClientBuilder.build();
         this.asyncClient.start();
+        this.streamingBufferSize = builder.streamingBufferSize();
     }
 
     public static ApacheHttpClientBuilder builder() {
@@ -154,7 +156,7 @@ public class ApacheHttpClient implements HttpClient {
     public Flow.Publisher<StreamingHttpEvent> executeWithPublisher(HttpRequest request, ServerSentEventParser parser) {
         TubeConfiguration config = new TubeConfiguration()
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
-                .withBufferSize(256);
+                .withBufferSize(streamingBufferSize);
         return ZeroPublisher.create(config, tube -> {
             AtomicReference<ServerSentEventParsingHandle> parsingHandle = new AtomicReference<>();
             tube.whenCancelled(() -> {

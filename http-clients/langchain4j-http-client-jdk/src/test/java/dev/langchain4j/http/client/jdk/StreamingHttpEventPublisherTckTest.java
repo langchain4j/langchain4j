@@ -93,8 +93,8 @@ public class StreamingHttpEventPublisherTckTest extends PublisherVerification<St
                 .build();
 
         java.net.http.HttpRequest jdkRequest = JdkHttpClient.builder().build().toJdkRequest(httpRequest);
-        JdkHttpClient.StreamingHttpEventPublisher publisher =
-                new JdkHttpClient.StreamingHttpEventPublisher(jdkClient, jdkRequest, new DefaultServerSentEventParser());
+        JdkHttpClient.StreamingHttpEventPublisher publisher = new JdkHttpClient.StreamingHttpEventPublisher(
+                jdkClient, jdkRequest, new DefaultServerSentEventParser(), 1024);
         return toPublisher(publisher);
     }
 

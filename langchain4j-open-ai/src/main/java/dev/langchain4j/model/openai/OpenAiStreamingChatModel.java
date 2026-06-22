@@ -78,6 +78,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(builder.customHeadersSupplier)
                 .customQueryParams(builder.customQueryParams)
+                .streamingBufferSize(builder.streamingBufferSize)
                 .build();
 
         ChatRequestParameters commonParameters;
@@ -242,6 +243,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         private Map<String, String> customQueryParams;
         private Map<String, Object> customParameters;
         private List<ChatModelListener> listeners;
+        private int streamingBufferSize = OpenAiClient.DEFAULT_STREAMING_BUFFER_SIZE;
 
         public OpenAiStreamingChatModelBuilder() {
             // This is public so it can be extended
@@ -517,6 +519,17 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
          */
         public OpenAiStreamingChatModelBuilder customQueryParams(Map<String, String> customQueryParams) {
             this.customQueryParams = customQueryParams;
+            return this;
+        }
+
+        /**
+         * Sets the size of the bounded back-pressure buffer for the reactive ({@code Flow.Publisher}) streaming
+         * path. Events from the model are relayed through this buffer; if a subscriber consumes slower than the
+         * model produces and the buffer overflows, the stream terminates with an {@link IllegalStateException}.
+         * Defaults to {@value dev.langchain4j.model.openai.internal.OpenAiClient#DEFAULT_STREAMING_BUFFER_SIZE}.
+         */
+        public OpenAiStreamingChatModelBuilder streamingBufferSize(int streamingBufferSize) {
+            this.streamingBufferSize = streamingBufferSize;
             return this;
         }
 
