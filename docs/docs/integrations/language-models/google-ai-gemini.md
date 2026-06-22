@@ -38,7 +38,7 @@ https://ai.google.dev/gemini-api/docs
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>1.11.7</version>
+    <version>1.11.8</version>
 </dependency>
 ```
 
@@ -441,7 +441,7 @@ If you want a guaranteed application of a JSON schema, you should define a respo
 
 ## Python code execution
 
-Beyond function calling, Google AI Gemini allows to create and execute Python code in a sandboxed environment.
+Beyond function calling, Google AI Gemini allows you to create and execute Python code in a sandboxed environment.
 This is particularly interesting for situations where more advanced calculations or logic is needed.
 
 ```java
@@ -781,7 +781,7 @@ The `GoogleAiBatchChatModel` provides an interface for processing large volumes 
 **Inline batch creation:**
 
 ```java
-GoogleAiBatchChatModel batchModel = GoogleAiBatchChatModel.builder()
+GoogleAiGeminiBatchChatModel batchModel = GoogleAiGeminiBatchChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-2.5-flash")
     .build();
@@ -799,12 +799,15 @@ List<ChatRequest> requests = List.of(
         .build()
 );
 
-// Submit the batch
-BatchResponse response = batchModel.createBatchInline(
-    "Geography Questions Batch",  // display name
-    0L,                            // priority (optional, defaults to 0)
-    requests
-);
+// Submit the batch (generic API, no Gemini-specific options)
+BatchResponse<ChatResponse> response = batchModel.submit(new BatchRequest<>(requests));
+
+// Or, to set a Gemini-specific display name and priority, use GeminiBatchRequest:
+BatchResponse<ChatResponse> response = batchModel.submit(GeminiBatchRequest.from(
+    requests,
+    "Geography Questions Batch", // display name
+    0L                           // priority (optional, defaults to 0)
+));
 ```
 
 **File-based batch creation:**
@@ -829,95 +832,101 @@ while (uploadedFile.isProcessing()) {
 }
 
 // Create batch from file
-BatchResponse response = batchModel.createBatchFromFile(
-    "My Batch Job",
-    uploadedFile
-);
+BatchResponse<ChatResponse> response = batchModel.submit("My Batch Job", uploadedFile);
 ```
 
 ### Handling Batch Responses
 
-The `BatchResponse` is a sealed interface with three possible states:
+A `BatchResponse` exposes the current `state()` together with the per-request `results()` and the
+`responses()` / `errors()` convenience views. Branch on the `state()` (use `state().isTerminal()`
+to tell whether the batch is still in progress):
 
 ```java
-BatchResponse response = batchModel.createBatchInline("My Batch", null, requests);
+BatchResponse<ChatResponse> response = batchModel.submit(new BatchRequest<>(requests));
 
-switch (response) {
-    case BatchIncomplete incomplete -> {
-        System.out.println("Batch is " + incomplete.state());
-        System.out.println("Batch name: " + incomplete.batchName().value());
+if (!response.state().isTerminal()) {
+    System.out.println("Batch is " + response.state());
+    System.out.println("Batch ID: " + response.batchId());
+} else if (response.state() == BatchState.SUCCEEDED) {
+    System.out.println("Batch completed successfully!");
+
+    // Process successful responses
+    for (ChatResponse chatResponse : response.responses()) {
+        System.out.println(chatResponse.aiMessage().text());
     }
-    case BatchSuccess success -> {
-        System.out.println("Batch completed successfully!");
-        
-        // Process successful responses
-        for (ChatResponse chatResponse : success.responses()) {
-            System.out.println(chatResponse.aiMessage().text());
-        }
-        
-        // Check for individual request errors within the batch
-        if (!success.errors().isEmpty()) {
-            System.out.println("Some requests failed:");
-            for (var error : success.errors()) {
-                System.err.println("Error code: " + error.code() + ", message: " + error.message());
-            }
+
+    // Check for individual request errors within the batch
+    if (!response.errors().isEmpty()) {
+        System.out.println("Some requests failed:");
+        for (BatchError error : response.errors()) {
+            System.err.println("Error code: " + error.code() + ", message: " + error.message());
         }
     }
-    case BatchError error -> {
-        System.err.println("Batch failed: " + error.message());
-        System.err.println("Error code: " + error.code());
-        System.err.println("State: " + error.state());
-    }
+} else {
+    System.err.println("Batch " + response.state() + ": " + response.errors());
 }
 ```
 
-**Note:** A `BatchSuccess` response indicates the batch job completed, but individual requests within the batch may have 
-failed. The `success.errors()` list contains any individual request failures (e.g., timeouts, rate limits), 
-while `success.responses()` contains the successful responses. Always check both lists to handle partial failures 
-gracefully.
+**Note:** A batch with `state() == SUCCEEDED` indicates the batch job completed, but individual
+requests within the batch may have failed. The `errors()` list contains any individual request
+failures (e.g., timeouts, rate limits), while `responses()` contains the successful responses.
+Both are convenience views and are never `null` (empty when there is nothing to report), so check
+`!responses().isEmpty()` / `!errors().isEmpty()` to handle partial failures gracefully.
 
+### Correlating Results with Requests
+
+`responses()` and `errors()` are flat views that lose track of which input produced which outcome.
+When you need to map every outcome back to its originating request, use `results()` instead: it
+returns one `BatchItemResult` per request, **in the same order as the submitted requests**, so the
+i-th result corresponds to the i-th request. Each result is either a `BatchItemResult.Success`
+(carrying the `response()`) or a `BatchItemResult.Failure` (carrying the `error()`):
+
+```java
+BatchResponse<ChatResponse> result = batchModel.submit(new BatchRequest<>(requests));
+// ... poll until terminal ...
+
+List<BatchItemResult<ChatResponse>> results = result.results();
+for (int i = 0; i < results.size(); i++) {
+    BatchItemResult<ChatResponse> item = results.get(i);
+    if (item.isSuccess()) {
+        System.out.println("Request #" + i + " -> " + item.response().aiMessage().text());
+    } else {
+        BatchError error = item.error();
+        System.err.println("Request #" + i + " failed: " + error.code() + " - " + error.message());
+    }
+}
+```
 
 ### Polling for Results
 
 Since batch processing is asynchronous, you need to poll for results (results might take up to 24 hours to process):
 
 ```java
-BatchResponse initialResponse = batchModel.createBatchInline(
-    "My Batch",
-    null,
-    requests
-);
+BatchResponse<ChatResponse> result = batchModel.submit(new BatchRequest<>(requests));
+String batchId = result.batchId();
 
-// Extract the batch name for polling
-BatchName batchName = switch (initialResponse) {
-    case BatchIncomplete incomplete -> incomplete.batchName();
-    case BatchSuccess success -> success.batchName();
-    case BatchError error -> throw new RuntimeException("Batch creation failed");
-};
-
-// Poll until completion
-BatchResponse result;
-do {
+// Poll until the batch reaches a terminal state
+while (!result.state().isTerminal()) {
     Thread.sleep(5000); // Wait 5 seconds between polls
-    result = batchModel.retrieveBatchResults(batchName);
-} while (result instanceof BatchIncomplete);
+    result = batchModel.retrieve(batchId);
+}
 
 // Process final result
-if (result instanceof BatchSuccess success) {
-    System.out.println("Successful responses: " + success.responses().size());
-    for (ChatResponse chatResponse : success.responses()) {
+if (result.state() == BatchState.SUCCEEDED) {
+    System.out.println("Successful responses: " + result.responses().size());
+    for (ChatResponse chatResponse : result.responses()) {
         System.out.println(chatResponse.aiMessage().text());
     }
-    
+
     // Handle any individual request failures
-    if (!success.errors().isEmpty()) {
-        System.out.println("Failed requests: " + success.errors().size());
-        for (var error : success.errors()) {
+    if (!result.errors().isEmpty()) {
+        System.out.println("Failed requests: " + result.errors().size());
+        for (BatchError error : result.errors()) {
             System.err.println("Error: " + error.code() + " - " + error.message());
         }
     }
-} else if (result instanceof BatchError error) {
-    System.err.println("Batch failed: " + error.message());
+} else {
+    System.err.println("Batch did not succeed: " + result.state());
 }
 ```
 
@@ -926,10 +935,10 @@ if (result instanceof BatchSuccess success) {
 **Cancel a batch job:**
 
 ```java
-BatchName batchName = // ... obtained from createBatchInline
+String batchId = // ... obtained from submit(...)
 
 try {
-    batchModel.cancelBatchJob(batchName);
+    batchModel.cancel(batchId);
     System.out.println("Batch cancelled successfully");
 } catch (HttpException e) {
     System.err.println("Failed to cancel batch: " + e.getMessage());
@@ -939,7 +948,7 @@ try {
 **Delete a batch job:**
 
 ```java
-batchModel.deleteBatchJob(batchName);
+batchModel.deleteBatchJob(batchId);
 System.out.println("Batch deleted successfully");
 ```
 
@@ -947,15 +956,15 @@ System.out.println("Batch deleted successfully");
 
 ```java
 // List first page of batch jobs
-BatchList<ChatResponse> batchList = batchModel.listBatchJobs(10, null);
+BatchPage<ChatResponse> page = batchModel.list(new BatchPagination(10, null));
 
-for (BatchResponse<ChatResponse> batch : batchList.batches()) {
+for (BatchResponse<ChatResponse> batch : page.batches()) {
     System.out.println("Batch: " + batch);
 }
 
 // Get next page if available
-if (batchList.nextPageToken() != null) {
-    BatchList<ChatResponse> nextPage = batchModel.listBatchJobs(10, batchList.nextPageToken());
+if (page.nextPageToken() != null) {
+    BatchPage<ChatResponse> nextPage = batchModel.list(new BatchPagination(10, page.nextPageToken()));
 }
 ```
 
@@ -988,50 +997,43 @@ GeminiFiles filesApi = GeminiFiles.builder()
 GeminiFile uploadedFile = filesApi.uploadFile(batchFile, "Batch Chat Requests");
 
 // Create batch from file
-BatchResponse response = batchModel.createBatchFromFile(
-    "File-Based Chat Batch",
-    uploadedFile
-);
+BatchResponse<ChatResponse> response = batchModel.submit("File-Based Chat Batch", uploadedFile);
 ```
 
 ### Batch Job States
 
-The `BatchJobState` enum represents the possible states of a batch job:
+The `BatchState` enum represents the possible states of a batch job:
 
-- `BATCH_STATE_PENDING`: Batch is queued and waiting to be processed
-- `BATCH_STATE_RUNNING`: Batch is currently being processed
-- `BATCH_STATE_SUCCEEDED`: Batch completed successfully
-- `BATCH_STATE_FAILED`: Batch processing failed
-- `BATCH_STATE_CANCELLED`: Batch was cancelled by the user
-- `BATCH_STATE_EXPIRED`: Batch expired before completion
+- `PENDING`: Batch is queued and waiting to be processed
+- `RUNNING`: Batch is currently being processed
+- `SUCCEEDED`: Batch completed successfully (terminal)
+- `FAILED`: Batch processing failed (terminal)
+- `CANCELLED`: Batch was cancelled by the user (terminal)
+- `EXPIRED`: Batch expired before completion (terminal)
 - `UNSPECIFIED`: State is unknown or not provided
+
+Use `BatchState.isTerminal()` on `BatchResponse.state()` to detect when polling can stop.
 
 ### Setting Batch Priority
 
-Higher priority batches are processed before lower priority ones:
+Higher priority batches are processed before lower priority ones. Set priority through `GeminiBatchRequest`:
 
 ```java
 // High priority batch
-BatchResponse highPriorityResponse = batchModel.createBatchInline(
-    "Urgent Batch",
-    100L,  // high priority
-    urgentRequests
-);
+BatchResponse<ChatResponse> highPriority = batchModel.submit(GeminiBatchRequest.from(
+    urgentRequests, "Urgent Batch", 100L));
 
 // Low priority batch
-BatchResponse lowPriorityResponse = batchModel.createBatchInline(
-    "Background Batch",
-    -50L,  // low priority
-    backgroundRequests
-);
+BatchResponse<ChatResponse> lowPriority = batchModel.submit(GeminiBatchRequest.from(
+    backgroundRequests, "Background Batch", -50L));
 ```
 
 ### Configuration
 
-The `GoogleAiBatchChatModel` supports the same configuration options as `GoogleAiGeminiChatModel`:
+The `GoogleAiGeminiBatchChatModel` supports the same configuration options as `GoogleAiGeminiChatModel`:
 
 ```java
-GoogleAiBatchChatModel batchModel = GoogleAiBatchChatModel.builder()
+GoogleAiGeminiBatchChatModel batchModel = GoogleAiGeminiBatchChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-2.5-flash")
     .temperature(0.7)
@@ -1056,7 +1058,7 @@ GoogleAiBatchChatModel batchModel = GoogleAiBatchChatModel.builder()
 ### Example: Complete Workflow
 
 ```java
-GoogleAiBatchChatModel batchModel = GoogleAiBatchChatModel.builder()
+GoogleAiGeminiBatchChatModel batchModel = GoogleAiGeminiBatchChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
     .modelName("gemini-2.5-flash")
     .build();
@@ -1070,53 +1072,39 @@ for (int i = 0; i < 50; i++) {
 }
 
 // Submit batch
-BatchResponse response = batchModel.createBatchInline(
-    "Story Ideas Batch",
-    0L,
-    requests
-);
-
-// Get batch name
-BatchName batchName = switch (response) {
-    case BatchIncomplete incomplete -> incomplete.batchName();
-    case BatchSuccess success -> success.batchName();
-    case BatchError error -> throw new RuntimeException("Failed: " + error.message());
-};
+BatchResponse<ChatResponse> result = batchModel.submit(GeminiBatchRequest.from(
+    requests, "Story Ideas Batch", 0L));
+String batchId = result.batchId();
 
 // Poll for completion
-BatchResponse finalResult;
 int attempts = 0;
 int maxAttempts = 720; // 1 hour with 5-second intervals
-
-do {
+while (!result.state().isTerminal()) {
     if (attempts++ >= maxAttempts) {
         throw new RuntimeException("Batch processing timeout");
     }
     Thread.sleep(5000);
-    finalResult = batchModel.retrieveBatchResults(batchName);
-    
-    if (finalResult instanceof BatchIncomplete incomplete) {
-        System.out.println("Status: " + incomplete.state());
-    }
-} while (finalResult instanceof BatchIncomplete);
+    result = batchModel.retrieve(batchId);
+    System.out.println("Status: " + result.state());
+}
 
 // Process results
-if (finalResult instanceof BatchSuccess success) {
-    System.out.println("Generated " + success.responses().size() + " stories");
-    for (int i = 0; i < success.responses().size(); i++) {
-        ChatResponse chatResponse = success.responses().get(i);
+if (result.state() == BatchState.SUCCEEDED) {
+    System.out.println("Generated " + result.responses().size() + " stories");
+    for (int i = 0; i < result.responses().size(); i++) {
+        ChatResponse chatResponse = result.responses().get(i);
         System.out.println("Story #" + i + ": " + chatResponse.aiMessage().text());
     }
-    
+
     // Report any failures
-    if (!success.errors().isEmpty()) {
-        System.err.println(success.errors().size() + " requests failed:");
-        for (var error : success.errors()) {
+    if (!result.errors().isEmpty()) {
+        System.err.println(result.errors().size() + " requests failed:");
+        for (BatchError error : result.errors()) {
             System.err.println("  - Code " + error.code() + ": " + error.message());
         }
     }
-} else if (finalResult instanceof BatchError error) {
-    System.err.println("Batch failed: " + error.message());
+} else {
+    System.err.println("Batch did not succeed: " + result.state());
 }
 ```
 

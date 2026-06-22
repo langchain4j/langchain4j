@@ -2,6 +2,7 @@ package dev.langchain4j.mcp.client;
 
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.*;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -28,6 +29,7 @@ import java.util.stream.StreamSupport;
 class ToolSpecificationHelper {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final TypeReference<List<McpIcon>> MCP_ICON_LIST_TYPE = new TypeReference<>() {};
 
     /**
      * Converts the 'tools' element from a ListToolsResult MCP message
@@ -50,6 +52,12 @@ class ToolSpecificationHelper {
             }
             if (tool.has("title")) {
                 builder.addMetadata(TITLE, tool.get("title").asText());
+            }
+            if (tool.has("outputSchema")) {
+                builder.addMetadata(OUTPUT_SCHEMA, OBJECT_MAPPER.convertValue(tool.get("outputSchema"), Object.class));
+            }
+            if (tool.has("icons")) {
+                builder.addMetadata(ICONS, OBJECT_MAPPER.convertValue(tool.get("icons"), MCP_ICON_LIST_TYPE));
             }
             result.add(builder.build());
         }

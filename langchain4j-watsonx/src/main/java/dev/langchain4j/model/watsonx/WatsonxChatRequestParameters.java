@@ -30,24 +30,26 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
     private final String guidedGrammar;
     private final Double repetitionPenalty;
     private final Double lengthPenalty;
+    private final String deploymentId;
     private final Duration timeout;
 
     private WatsonxChatRequestParameters(Builder builder) {
         super(builder);
-        this.projectId = builder.projectId;
-        this.spaceId = builder.spaceId;
-        this.logitBias = builder.logitBias;
-        this.logprobs = builder.logprobs;
-        this.topLogprobs = builder.topLogprobs;
-        this.seed = builder.seed;
-        this.toolChoiceName = builder.toolChoiceName;
-        this.timeout = builder.timeout;
-        this.thinking = builder.thinking;
-        this.guidedChoice = builder.guidedChoice;
-        this.guidedRegex = builder.guidedRegex;
-        this.guidedGrammar = builder.guidedGrammar;
-        this.repetitionPenalty = builder.repetitionPenalty;
-        this.lengthPenalty = builder.lengthPenalty;
+        projectId = builder.projectId;
+        spaceId = builder.spaceId;
+        logitBias = builder.logitBias;
+        logprobs = builder.logprobs;
+        topLogprobs = builder.topLogprobs;
+        seed = builder.seed;
+        toolChoiceName = builder.toolChoiceName;
+        timeout = builder.timeout;
+        thinking = builder.thinking;
+        guidedChoice = builder.guidedChoice;
+        guidedRegex = builder.guidedRegex;
+        guidedGrammar = builder.guidedGrammar;
+        repetitionPenalty = builder.repetitionPenalty;
+        lengthPenalty = builder.lengthPenalty;
+        deploymentId = builder.deploymentId;
     }
 
     public String projectId() {
@@ -106,6 +108,10 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
         return lengthPenalty;
     }
 
+    public String deploymentId() {
+        return deploymentId;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -140,6 +146,7 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
         private String guidedGrammar;
         private Double repetitionPenalty;
         private Double lengthPenalty;
+        private String deploymentId;
         private Thinking thinking;
 
         @Override
@@ -160,6 +167,7 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
                 guidedGrammar(getOrDefault(watsonxParameters.guidedGrammar(), guidedGrammar));
                 repetitionPenalty(getOrDefault(watsonxParameters.repetitionPenalty(), repetitionPenalty));
                 lengthPenalty(getOrDefault(watsonxParameters.lengthPenalty(), lengthPenalty));
+                deploymentId(getOrDefault(watsonxParameters.deploymentId(), deploymentId));
             }
             return this;
         }
@@ -201,6 +209,11 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
 
         public Builder timeout(Duration timeout) {
             this.timeout = timeout;
+            return this;
+        }
+
+        public Builder deploymentId(String deploymentId) {
+            this.deploymentId = deploymentId;
             return this;
         }
 

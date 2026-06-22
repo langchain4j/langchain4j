@@ -28,7 +28,7 @@ import static org.awaitility.Awaitility.await;
 class OpenSearchEmbeddingStoreAwsIT extends EmbeddingStoreIT {
 
     @Container
-    private static final LocalStackContainer localstack = new LocalStackContainer(DockerImageName.parse("localstack/localstack:3.5.0"))
+    private static final LocalStackContainer localstack = new LocalStackContainer(DockerImageName.parse("localstack/localstack:3.8.1"))
             .withEnv("LOCALSTACK_HOST", "localhost.localstack.cloud");
 
     EmbeddingStore<TextSegment> embeddingStore = OpenSearchEmbeddingStore.builder()

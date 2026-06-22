@@ -180,7 +180,7 @@ class InternalOpenAiOfficialHelper {
                 parts.add(ChatCompletionContentPart.ofFile(ChatCompletionContentPart.File.builder()
                         .file(ChatCompletionContentPart.File.FileObject.builder()
                                 .fileData(fileData)
-                                .filename("pdf_file")
+                                .filename("document.pdf")
                                 .build())
                         .build()));
             } else {

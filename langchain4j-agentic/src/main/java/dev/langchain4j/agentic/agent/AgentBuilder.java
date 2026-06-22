@@ -8,11 +8,9 @@ import static dev.langchain4j.agentic.observability.ComposedAgentListener.listen
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Arrays.asList;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.AgentUtil;
@@ -40,6 +38,9 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.observability.api.listener.AiServiceResponseReceivedListener;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -62,22 +63,23 @@ import java.util.concurrent.Executor;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
+import org.jspecify.annotations.NonNull;
 
 public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     private static final ChatModel PLACEHOLDER_CHAT_MODEL = new ChatModel() {
         @Override
         public ChatResponse doChat(ChatRequest chatRequest) {
-            throw new IllegalStateException("Placeholder ChatModel should never be invoked. " +
-                    "The actual model is provided dynamically via the chatModel(Function) provider.");
+            throw new IllegalStateException("Placeholder ChatModel should never be invoked. "
+                    + "The actual model is provided dynamically via the chatModel(Function) provider.");
         }
     };
 
     private static final StreamingChatModel PLACEHOLDER_STREAMING_CHAT_MODEL = new StreamingChatModel() {
         @Override
         public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-            throw new IllegalStateException("Placeholder StreamingChatModel should never be invoked. " +
-                    "The actual model is provided dynamically via the streamingChatModel(Function) provider.");
+            throw new IllegalStateException("Placeholder StreamingChatModel should never be invoked. "
+                    + "The actual model is provided dynamically via the streamingChatModel(Function) provider.");
         }
     };
 
@@ -126,9 +128,20 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     private ToolArgumentsErrorHandler toolArgumentsErrorHandler;
     private ToolExecutionErrorHandler toolExecutionErrorHandler;
 
+    java.util.function.Function<InternalAgent, Object> agentInstanceFactory;
+
     AgentListener agentListener;
 
     public AgentBuilder(Class<T> agentServiceClass) {
+        this(agentServiceClass, true);
+    }
+
+    @Internal
+    public static <T> AgentBuilder<T, AgentBuilder<T, ?>> withoutDeclarativeConfiguration(Class<T> agentServiceClass) {
+        return new AgentBuilder<>(agentServiceClass, false);
+    }
+
+    private AgentBuilder(Class<T> agentServiceClass, boolean configureDeclarativeAgent) {
         this.agentServiceClass = agentServiceClass;
         this.agenticMethod = validateAgentClass(agentServiceClass);
         this.agentReturnType = agenticMethod.getReturnType();
@@ -138,7 +151,9 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
             throw new IllegalArgumentException("Method " + agenticMethod + " is not annotated with @Agent");
         }
 
-        configureAgent(agentServiceClass, this);
+        if (configureDeclarativeAgent) {
+            configureAgent(agentServiceClass, this);
+        }
 
         this.name = !isNullOrBlank(agent.name()) ? agent.name() : agenticMethod.getName();
 
@@ -215,17 +230,16 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
         build(agenticScope, context, aiServices);
 
-        AgentInstance agent = (AgentInstance) Proxy.newProxyInstance(
-                agentServiceClass.getClassLoader(),
-                new Class<?>[] {
-                    agentServiceClass,
-                    InternalAgent.class,
-                    AgenticScopeOwner.class,
-                    ChatMemoryAccess.class,
-                    ChatMessagesAccess.class,
-                    AiServiceResponseReceivedListener.class
-                },
-                new AgentInvocationHandler(context, aiServices.build(), this, agenticScopeDependent));
+        AgentInvocationHandler handler = new AgentInvocationHandler(context, aiServices.build(), this, agenticScopeDependent);
+
+        AgentInstance agent;
+        if (agentInstanceFactory != null) {
+            agent = (AgentInstance) agentInstanceFactory.apply(handler);
+        } else {
+            agent = (AgentInstance) Proxy.newProxyInstance(
+                    agentServiceClass.getClassLoader(),
+                    interfacesToImplement(agentServiceClass), handler);
+        }
 
         aiServices.registerListener((AiServiceResponseReceivedListener) agent);
 
@@ -241,6 +255,18 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         }
 
         return (T) agent;
+    }
+
+    @SuppressWarnings("rawtypes")
+    public static Class[] interfacesToImplement(Class clazz) {
+        return new Class<?>[]{
+                clazz,
+                InternalAgent.class,
+                AgenticScopeOwner.class,
+                ChatMemoryAccess.class,
+                ChatMessagesAccess.class,
+                AiServiceResponseReceivedListener.class
+        };
     }
 
     private void configureChatModel(AiServices<T> aiServices) {
@@ -259,15 +285,18 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     }
 
     private void validateChatModel() {
-        int modelConfigCount = (model != null ? 1 : 0) + (streamingChatModel != null ? 1 : 0)
-                + (chatModelProvider != null ? 1 : 0) + (streamingChatModelProvider != null ? 1 : 0);
+        int modelConfigCount = (model != null ? 1 : 0)
+                + (streamingChatModel != null ? 1 : 0)
+                + (chatModelProvider != null ? 1 : 0)
+                + (streamingChatModelProvider != null ? 1 : 0);
         if (modelConfigCount != 1) {
             throw new AgenticSystemConfigurationException(
-                    "One and only one of chatModel, streamingChatModel, or their Function variants can be set for agent '" + this.name + "'.");
+                    "One and only one of chatModel, streamingChatModel, or their Function variants can be set for agent '"
+                            + this.name + "'.");
         }
     }
 
-    protected void build(DefaultAgenticScope agenticScope, AiServiceContext context, AiServices<T> aiServices) { }
+    protected void build(DefaultAgenticScope agenticScope, AiServiceContext context, AiServices<T> aiServices) {}
 
     private void setupGuardrails(AiServices<T> aiServices) {
         if (inputGuardrailsConfig != null) {
@@ -544,6 +573,11 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     public <K> B defaultKeyValue(Class<? extends TypedKey<K>> key, K value) {
         return defaultKeyValue(keyName(key), value);
+    }
+
+    public B agentInstanceFactory(java.util.function.Function<InternalAgent, Object> factory) {
+        this.agentInstanceFactory = factory;
+        return (B) this;
     }
 
     public B listener(AgentListener agentListener) {

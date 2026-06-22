@@ -325,7 +325,9 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
                 .queryEmbedding(firstEmbedding)
                 .query("hello")
                 .maxResults(10)
-                .minScore(secondMatch.score())
+                // An exact match might not work with all data stores,
+                // because the min-score is expected to be rounded to 8 decimal places
+                .minScore(secondMatch.score() - 0.00000001)
                 .build();
 
         // when
