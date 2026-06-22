@@ -170,7 +170,8 @@ class AiServiceGuardrailTests {
 
         assistant.chat("Original prompt");
 
-        UserMessage userMessage = (UserMessage) chatModelMock.request().messages().get(0);
+        UserMessage userMessage =
+                (UserMessage) chatModelMock.request().messages().get(0);
         assertThat(userMessage.contents()).containsExactly(TextContent.from("Rewritten prompt"));
         assertThat(userMessage.hasSingleText()).isTrue();
     }
@@ -383,9 +384,7 @@ class AiServiceGuardrailTests {
                 .build());
 
         ChatModelMock model = ChatModelMock.thatAlwaysResponds(
-                AiMessage.from("bad response"),
-                toolCallResponse,
-                AiMessage.from("good response"));
+                AiMessage.from("bad response"), toolCallResponse, AiMessage.from("good response"));
 
         var tools = new Object() {
             @Tool("verify something")
@@ -466,7 +465,8 @@ class AiServiceGuardrailTests {
                 .chatModel(model)
                 .tools(tools)
                 .outputGuardrails(repromptOnBad)
-                .outputGuardrailsConfig(OutputGuardrailsConfig.builder().maxRetries(3).build())
+                .outputGuardrailsConfig(
+                        OutputGuardrailsConfig.builder().maxRetries(3).build())
                 .build();
 
         String result = assistant.chat("Hello");
@@ -487,9 +487,7 @@ class AiServiceGuardrailTests {
                 .build());
 
         ChatModelMock model = ChatModelMock.thatAlwaysResponds(
-                AiMessage.from("bad response"),
-                toolCallResponse,
-                AiMessage.from("recovered"));
+                AiMessage.from("bad response"), toolCallResponse, AiMessage.from("recovered"));
 
         var tools = new Object() {
             @Tool("verify something")
@@ -538,9 +536,7 @@ class AiServiceGuardrailTests {
                 .build());
 
         StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
-                AiMessage.from("bad response"),
-                toolCallResponse,
-                AiMessage.from("good response"));
+                AiMessage.from("bad response"), toolCallResponse, AiMessage.from("good response"));
 
         var tools = new Object() {
             @Tool("verify something")
@@ -571,7 +567,8 @@ class AiServiceGuardrailTests {
                 .build();
 
         CompletableFuture<ChatResponse> future = new CompletableFuture<>();
-        assistant.chat("Hello")
+        assistant
+                .chat("Hello")
                 .onCompleteResponse(future::complete)
                 .onError(future::completeExceptionally)
                 .start();
@@ -626,11 +623,13 @@ class AiServiceGuardrailTests {
                 .streamingChatModel(model)
                 .tools(tools)
                 .outputGuardrails(repromptOnBad)
-                .outputGuardrailsConfig(OutputGuardrailsConfig.builder().maxRetries(3).build())
+                .outputGuardrailsConfig(
+                        OutputGuardrailsConfig.builder().maxRetries(3).build())
                 .build();
 
         CompletableFuture<ChatResponse> future = new CompletableFuture<>();
-        assistant.chat("Hello")
+        assistant
+                .chat("Hello")
                 .onCompleteResponse(future::complete)
                 .onError(future::completeExceptionally)
                 .start();
@@ -652,9 +651,7 @@ class AiServiceGuardrailTests {
                 .build());
 
         StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
-                AiMessage.from("bad response"),
-                toolCallResponse,
-                AiMessage.from("recovered"));
+                AiMessage.from("bad response"), toolCallResponse, AiMessage.from("recovered"));
 
         var tools = new Object() {
             @Tool("verify something")
@@ -685,7 +682,8 @@ class AiServiceGuardrailTests {
                 .build();
 
         CompletableFuture<ChatResponse> future = new CompletableFuture<>();
-        assistant.chat("Hello")
+        assistant
+                .chat("Hello")
                 .onCompleteResponse(future::complete)
                 .onError(future::completeExceptionally)
                 .start();
