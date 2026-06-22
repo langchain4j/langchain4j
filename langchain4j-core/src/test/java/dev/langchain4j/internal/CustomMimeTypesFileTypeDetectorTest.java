@@ -42,6 +42,18 @@ class CustomMimeTypesFileTypeDetectorTest {
     }
 
     @Test
+    void should_return_a_mime_type_for_wmv_from_default_mapping() {
+        // given
+        CustomMimeTypesFileTypeDetector detector = new CustomMimeTypesFileTypeDetector();
+
+        // when
+        String mimeType = detector.probeContentType("video.wmv");
+
+        // then
+        assertThat(mimeType).isEqualTo("video/wmv");
+    }
+
+    @Test
     void should_return_a_mime_type_from_default_mapping_from_string() {
         // given
         CustomMimeTypesFileTypeDetector detector = new CustomMimeTypesFileTypeDetector();
