@@ -1549,9 +1549,9 @@ Assistant assistant = AiServices.builder(Assistant.class)
 
 Currently, there are two ways to handle errors inside the `ToolArgumentsErrorHandler`:
 
-- Throw an exception: this will stop the AI service flow.
 - Return a text message (e.g., an error description) that will be sent back to the LLM,
   allowing it to respond appropriately (for example, by correcting the error and retrying).
+- Throw an exception: this will stop the AI service flow.
 
 **Recommended (let the LLM retry):**
 
@@ -1577,6 +1577,26 @@ try {
 } catch (MyCustomException e) {
     // handle e
 }
+```
+
+##### Accessing raw exception
+
+When a tool throws an exception that wraps another (e.g. `ToolGuardrailException` wrapping `SecurityException`),
+LangChain4j extracts the inner cause via `getCause()` and passes it as the `error` argument.
+Use `errorContext.rawError()` to access the outer exception as originally thrown — useful when the
+wrapper type (not the cause) determines how the error should be handled.
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .tools(tools)
+        .toolArgumentsErrorHandler((error, errorContext) -> {
+            if (errorContext.rawError() instanceof MyCriticalException) {
+                throw (MyCriticalException) errorContext.rawError();
+            }
+            return ToolErrorHandlerResult.text(error.getMessage());
+        })
+        .build();
 ```
 
 #### Handling Tool Execution Errors
@@ -1612,7 +1632,8 @@ Assistant assistant = AiServices.builder(Assistant.class)
 ```
 
 As with the `ToolArgumentsErrorHandler`, there are two ways to handle errors in `ToolExecutionErrorHandler`:
-throw an exception or return a text message.
+return a text message or throw an exception. You can use `errorContext.rawError()` to inspect
+the raw error before cause-unwrapping when deciding how to handle it.
 
 ## Model Context Protocol (MCP)
 

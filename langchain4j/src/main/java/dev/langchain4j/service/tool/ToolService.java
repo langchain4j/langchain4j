@@ -60,9 +60,13 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Internal
 public class ToolService {
+
+    private static final Logger log = LoggerFactory.getLogger(ToolService.class);
 
     private static final ToolArgumentsErrorHandler RETHROW_ARGUMENTS_ERROR = (error, context) -> {
         if (error instanceof RuntimeException re) {
@@ -80,8 +84,17 @@ public class ToolService {
     };
     private static final ToolArgumentsErrorHandler ARGUMENTS_ERROR_TO_LLM =
             (error, context) -> ToolErrorHandlerResult.text(errorText(error));
-    private static final ToolExecutionErrorHandler EXECUTION_ERROR_TO_LLM =
-            (error, context) -> ToolErrorHandlerResult.text(errorText(error));
+    private static final ToolExecutionErrorHandler EXECUTION_ERROR_TO_LLM = (error, context) -> {
+        String errorMessage = errorText(error);
+        log.warn(
+                "Tool '{}' execution failed. The error message is being returned to the LLM. "
+                        + "To customize this behavior (and silence this log), configure a custom "
+                        + "ToolExecutionErrorHandler via AiServices.toolExecutionErrorHandler(...). Error: {}",
+                context.toolExecutionRequest().name(),
+                errorMessage,
+                error);
+        return ToolErrorHandlerResult.text(errorMessage);
+    };
 
     // Default tool-error handling differs by AI Service mode:
     //  - Legacy (sync, TokenStream): argument errors fail the invocation; execution errors go to the LLM.
@@ -349,10 +362,24 @@ public class ToolService {
     }
 
     /**
+     * @since 1.17.0
+     */
+    public Consumer<BeforeToolExecution> beforeToolExecution() {
+        return beforeToolExecution;
+    }
+
+    /**
      * @since 1.11.0
      */
     public void afterToolExecution(Consumer<ToolExecution> afterToolExecution) {
         this.afterToolExecution = afterToolExecution;
+    }
+
+    /**
+     * @since 1.17.0
+     */
+    public Consumer<ToolExecution> afterToolExecution() {
+        return afterToolExecution;
     }
 
     /**
@@ -1288,6 +1315,7 @@ public class ToolService {
             ToolErrorContext errorContext = ToolErrorContext.builder()
                     .toolExecutionRequest(toolRequest)
                     .invocationContext(invocationContext)
+                    .rawError(e)
                     .build();
 
             ToolErrorHandlerResult errorHandlerResult;
@@ -1422,6 +1450,7 @@ public class ToolService {
             ToolErrorContext errorContext = ToolErrorContext.builder()
                     .toolExecutionRequest(toolRequest)
                     .invocationContext(invocationContext)
+                    .rawError(e)
                     .build();
 
             ToolErrorHandlerResult errorHandlerResult;

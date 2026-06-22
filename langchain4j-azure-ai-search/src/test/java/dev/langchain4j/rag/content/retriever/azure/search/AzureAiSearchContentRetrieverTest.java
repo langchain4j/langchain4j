@@ -18,7 +18,6 @@ import com.azure.search.documents.models.SemanticSearchResult;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.ContentMetadata;
@@ -38,7 +37,7 @@ class AzureAiSearchContentRetrieverTest {
         TokenCredential tokenCredential = new BasicAuthenticationCredential("TEST", "TEST");
         int dimensions = 1536;
         SearchIndex index = new SearchIndex("TEST");
-        EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+        EmbeddingModel embeddingModel = textSegments -> Response.from(List.of(Embedding.from(List.of())));
 
         // Test empty endpoint
         try {

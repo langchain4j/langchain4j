@@ -1,6 +1,5 @@
 package dev.langchain4j.model.mistralai.common;
 
-import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_MEDIUM_LATEST;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MISTRAL_7B;
 
 import dev.langchain4j.model.chat.ChatModel;
@@ -9,6 +8,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.mistralai.MistralAiChatModel;
 import dev.langchain4j.model.mistralai.MistralAiChatResponseMetadata;
+
 import java.util.List;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -17,7 +17,7 @@ class MistralAiChatModelIT extends AbstractChatModelIT {
 
     static final ChatModel MISTRAL_CHAT_MODEL = MistralAiChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-            .modelName(MISTRAL_MEDIUM_LATEST)
+            .modelName("mistral-medium-2508")
             .temperature(0.0)
             .logRequests(false) // images are huge in logs
             .logResponses(true)

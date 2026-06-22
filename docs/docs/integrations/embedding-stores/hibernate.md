@@ -15,13 +15,13 @@ RAG, and more.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-hibernate</artifactId>
-    <version>1.16.1-beta26</version>
+    <version>1.11.8-beta19</version>
 </dependency>
 ```
 
 ## Gradle Dependency
 
-```implementation 'dev.langchain4j:langchain4j-hibernate:1.16.1-beta26'```
+```implementation 'dev.langchain4j:langchain4j-hibernate:1.11.8-beta19'```
 
 ## APIs
 
@@ -249,7 +249,7 @@ or
 MetadataFilterBuilder.metadataKey("author.id").isEqualTo(2L)
 ```
 
-Alternatively, the `HibernateEmbeddingStore` API also provides `search` methods that allow to use the type-safe Hibernate ORM `Restriction` API.
+Alternatively, the `HibernateEmbeddingStore` API also provides `search` methods that allow you to use the type-safe Hibernate ORM `Restriction` API.
 
 ```java
 HibernateEmbeddingStore<Book> embeddingStore = embeddingStore();

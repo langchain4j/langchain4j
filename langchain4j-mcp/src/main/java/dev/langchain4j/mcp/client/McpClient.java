@@ -7,6 +7,7 @@ import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Represents a client that can communicate with an MCP server over a given transport protocol,
@@ -18,6 +19,13 @@ public interface McpClient extends AutoCloseable {
      * Returns the unique key of this client.
      */
     String key();
+
+    /**
+     * Returns the server instructions from the initialize result, or null if the server did not provide any.
+     */
+    default @Nullable String instructions() {
+        return null;
+    }
 
     /**
      * Obtains a list of tools from the MCP server.

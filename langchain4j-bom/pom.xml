@@ -546,6 +546,12 @@
                 <version>${langchain4j.beta.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-document-parser-docling</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
             <!-- document transformers -->
 
             <dependency>

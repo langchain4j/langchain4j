@@ -31,6 +31,7 @@ import dev.langchain4j.mcp.protocol.McpGetPromptRequest;
 import dev.langchain4j.mcp.protocol.McpImplementation;
 import dev.langchain4j.mcp.protocol.McpInitializeParams;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
+import dev.langchain4j.mcp.protocol.McpInitializeResult;
 import dev.langchain4j.mcp.protocol.McpListPromptsRequest;
 import dev.langchain4j.mcp.protocol.McpListResourceTemplatesRequest;
 import dev.langchain4j.mcp.protocol.McpListResourcesRequest;
@@ -62,6 +63,7 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -115,6 +117,7 @@ public class DefaultMcpClient implements McpClient {
     private final List<McpClientListener> listeners;
     private final McpMetaSupplier metaSupplier;
     private final McpToolResultExtractor toolResultExtractor;
+    private volatile @Nullable McpInitializeResult initializeResult;
 
     public DefaultMcpClient(Builder builder) {
         try {
@@ -228,6 +231,7 @@ public class DefaultMcpClient implements McpClient {
             JsonNode capabilities =
                     transport.initialize(request).get(initializationTimeout.toMillis(), TimeUnit.MILLISECONDS);
             log.debug("MCP server capabilities: {}", capabilities.get("result"));
+            initializeResult = toInitializeResult(capabilities);
             notifyListeners(l -> l.afterInitialize(context));
         } catch (Exception e) {
             notifyListeners(l -> l.onInitializeError(context, e));
@@ -255,9 +259,48 @@ public class DefaultMcpClient implements McpClient {
         return params;
     }
 
+    private static McpInitializeResult toInitializeResult(JsonNode response) {
+        JsonNode result = response.path("result");
+        JsonNode serverInfo = result.path("serverInfo");
+        JsonNode tools = result.path("capabilities").path("tools");
+
+        McpImplementation implementation = null;
+        if (!serverInfo.isMissingNode() && !serverInfo.isNull()) {
+            implementation = OBJECT_MAPPER.convertValue(serverInfo, McpImplementation.class);
+        }
+
+        McpInitializeResult.Capabilities capabilities = new McpInitializeResult.Capabilities(
+                new McpInitializeResult.Capabilities.Tools(toNullableBoolean(tools.get("listChanged"))));
+
+        return new McpInitializeResult(
+                toNullableLong(response.get("id")),
+                new McpInitializeResult.Result(
+                        result.path("protocolVersion").asText(null),
+                        capabilities,
+                        implementation,
+                        result.path("instructions").asText(null)));
+    }
+
+    private static @Nullable Long toNullableLong(JsonNode node) {
+        return node == null || node.isNull() || !node.canConvertToLong() ? null : node.asLong();
+    }
+
+    private static @Nullable Boolean toNullableBoolean(JsonNode node) {
+        return node == null || node.isNull() ? null : node.asBoolean();
+    }
+
     @Override
     public String key() {
         return key;
+    }
+
+    @Override
+    public @Nullable String instructions() {
+        McpInitializeResult currentInitializeResult = initializeResult;
+        if (currentInitializeResult == null || currentInitializeResult.getResult() == null) {
+            return null;
+        }
+        return currentInitializeResult.getResult().getInstructions();
     }
 
     @Override

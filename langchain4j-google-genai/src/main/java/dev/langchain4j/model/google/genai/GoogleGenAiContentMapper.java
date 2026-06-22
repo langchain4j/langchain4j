@@ -284,13 +284,18 @@ class GoogleGenAiContentMapper {
         AiMessage aiMessage = aiMessageBuilder.build();
 
         TokenUsage usage = response.usageMetadata()
-                .map(meta -> new TokenUsage(
-                        meta.promptTokenCount().isPresent()
-                                ? meta.promptTokenCount().get()
-                                : 0,
-                        meta.candidatesTokenCount().isPresent()
-                                ? meta.candidatesTokenCount().get()
-                                : 0))
+                .map(meta -> {
+                    int promptTokenCount = meta.promptTokenCount().isPresent()
+                            ? meta.promptTokenCount().get()
+                            : 0;
+                    int candidatesTokenCount = meta.candidatesTokenCount().isPresent()
+                            ? meta.candidatesTokenCount().get()
+                            : 0;
+                    int totalTokenCount = meta.totalTokenCount().isPresent()
+                            ? meta.totalTokenCount().get()
+                            : promptTokenCount + candidatesTokenCount;
+                    return new TokenUsage(promptTokenCount, candidatesTokenCount, totalTokenCount);
+                })
                 .orElse(new TokenUsage(0, 0));
 
         FinishReason finishReason = candidate
