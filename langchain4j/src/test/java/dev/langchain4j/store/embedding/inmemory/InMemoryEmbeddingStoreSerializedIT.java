@@ -9,7 +9,7 @@ import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 /**
  * Tests if {@link InMemoryEmbeddingStore} works correctly after being serialized and deserialized back.
  */
-class InMemoryEmbeddingStoreSerializedTest extends EmbeddingStoreWithFilteringIT {
+class InMemoryEmbeddingStoreSerializedIT extends EmbeddingStoreWithFilteringIT {
 
     InMemoryEmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
 

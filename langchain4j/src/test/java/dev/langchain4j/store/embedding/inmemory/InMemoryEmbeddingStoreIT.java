@@ -19,7 +19,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-class InMemoryEmbeddingStoreTest extends EmbeddingStoreWithFilteringIT {
+class InMemoryEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     @TempDir
     Path temporaryDirectory;
