@@ -32,6 +32,7 @@ class LocalAzureBlobStorageDocumentLoaderIT {
                     "0.0.0.0") // remove the version check because of https://github.com/Azure/Azurite/issues/2623
             .withExposedPorts(AZURE_STORAGE_BLOB_PORT);
 
+    private static final String TEST_ACCOUNT = "devstoreaccount1";
     private static final String TEST_CONTAINER = "test-container";
     private static final String TEST_BLOB = "test-file.txt";
     private static final String TEST_BLOB_2 = "test-directory/test-file-2.txt";
@@ -70,7 +71,8 @@ class LocalAzureBlobStorageDocumentLoaderIT {
 
         assertThat(document.text()).isEqualTo(TEST_CONTENT);
         assertThat(document.metadata().toMap()).hasSize(4);
-        assertThat(document.metadata().getString("source")).endsWith("/test-file.txt");
+        assertThat(document.metadata().getString("source"))
+                .isEqualTo("https://" + TEST_ACCOUNT + ".blob.core.windows.net/" + TEST_CONTAINER + "/" + TEST_BLOB);
     }
 
     @Test
@@ -82,11 +84,13 @@ class LocalAzureBlobStorageDocumentLoaderIT {
 
         assertThat(documents.get(0).text()).isEqualTo(TEST_CONTENT_2);
         assertThat(documents.get(0).metadata().toMap()).hasSize(4);
-        assertThat(documents.get(0).metadata().getString("source")).endsWith("/test-directory/test-file-2.txt");
+        assertThat(documents.get(0).metadata().getString("source"))
+                .isEqualTo("https://" + TEST_ACCOUNT + ".blob.core.windows.net/" + TEST_CONTAINER + "/" + TEST_BLOB_2);
 
         assertThat(documents.get(1).text()).isEqualTo(TEST_CONTENT);
         assertThat(documents.get(1).metadata().toMap()).hasSize(4);
-        assertThat(documents.get(1).metadata().getString("source")).endsWith("/test-file.txt");
+        assertThat(documents.get(1).metadata().getString("source"))
+                .isEqualTo("https://" + TEST_ACCOUNT + ".blob.core.windows.net/" + TEST_CONTAINER + "/" + TEST_BLOB);
     }
 
     @AfterAll

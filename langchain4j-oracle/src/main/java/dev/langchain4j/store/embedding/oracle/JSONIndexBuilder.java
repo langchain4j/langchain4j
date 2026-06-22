@@ -10,7 +10,7 @@ import oracle.jdbc.OracleType;
 
 /**
  * <p>
- *   This index builder allows to configure indexes on one or several keys of the
+ *   This index builder allows you to configure indexes on one or several keys of the
  *   metadata column of the {@link EmbeddingTable}.
  * </p>
  * <p>
@@ -85,7 +85,7 @@ public class JSONIndexBuilder extends IndexBuilder<JSONIndexBuilder> {
     }
 
     /**
-     * Adds a column expression to the index expression that allows to index the
+     * Adds a column expression to the index expression that allows you to index the
      * value of a given key of the JSON column.
      *
      * @param key   The key to index.

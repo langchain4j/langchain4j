@@ -834,7 +834,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                                         .comparisonValue()
                                         .replace("\\", "\\\\")
                                         .replace("%", "\\%")
-                                        .replace("?", "\\?")
+                                        .replace("_", "\\_")
                                 + "%",
                         '\\'));
     }
