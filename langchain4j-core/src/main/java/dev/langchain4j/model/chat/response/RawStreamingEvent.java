@@ -25,7 +25,7 @@ import dev.langchain4j.Experimental;
  * @since 1.13.0
  */
 @Experimental
-public interface RawStreamingEvent extends StreamingEvent { // TODO name
+public interface RawStreamingEvent extends StreamingEvent { // TODO name, split between interface and default impl
 
     /**
      * A stable, best-effort discriminator for the kind of provider event (e.g. {@code "web_search"}), when
