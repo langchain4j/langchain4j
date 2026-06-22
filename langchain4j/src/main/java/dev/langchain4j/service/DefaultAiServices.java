@@ -600,15 +600,12 @@ class DefaultAiServices<T> extends AiServices<T> {
 
             @Override
             public ChatResponse execute(List<ChatMessage> chatMessages) {
-                // Delegate to rawChatExecutor to preserve chatRequestTransformer behaviour.
                 ChatResponse initialResponse = rawChatExecutor.execute(chatMessages);
 
                 if (!initialResponse.aiMessage().hasToolExecutionRequests()) {
                     return initialResponse;
                 }
 
-                // Tool calls in the reprompt response: run the tool loop without
-                // writing to memory (reprompt intermediates must not persist).
                 ToolServiceResult toolResult = context.toolService.executeInferenceAndToolsLoop(
                         context,
                         memoryId,

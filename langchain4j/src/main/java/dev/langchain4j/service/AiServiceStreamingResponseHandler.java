@@ -431,6 +431,46 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         }
     }
 
+    private ChatExecutor buildToolAwareRepromptExecutor() {
+        return new ChatExecutor() {
+            @Override
+            public ChatResponse execute() {
+                return chatExecutor.execute();
+            }
+
+            @Override
+            public ChatResponse execute(List<ChatMessage> chatMessages) {
+                ChatResponse response = chatExecutor.execute(chatMessages);
+
+                if (!response.aiMessage().hasToolExecutionRequests()) {
+                    return response;
+                }
+
+                List<ChatMessage> currentMessages = new ArrayList<>(chatMessages);
+                int roundTripsLeft = context.toolService.maxToolCallingRoundTrips();
+
+                while (response.aiMessage().hasToolExecutionRequests()) {
+                    if (roundTripsLeft-- == 0) {
+                        throw runtime(
+                                "Something is wrong, exceeded %s tool calling round trips (maxToolCallingRoundTrips)",
+                                context.toolService.maxToolCallingRoundTrips());
+                    }
+                    currentMessages = new ArrayList<>(currentMessages);
+                    currentMessages.add(response.aiMessage());
+
+                    for (ToolExecutionRequest toolRequest : response.aiMessage().toolExecutionRequests()) {
+                        ToolExecutionResult toolResult = AiServiceStreamingResponseHandler.this.execute(toolRequest);
+                        currentMessages.add(AiServiceStreamingResponseHandler.toResultMessage(toolRequest, toolResult));
+                    }
+
+                    response = chatExecutor.execute(currentMessages);
+                }
+
+                return response;
+            }
+        };
+    }
+
     private ChatResponse finalResponse(ChatResponse completeResponse, AiMessage aiMessage) {
         return ChatResponse.builder()
                 .aiMessage(aiMessage)
