@@ -155,8 +155,7 @@ class InternalAzureOpenAiHelperTest {
         String functionName = "current_time";
         String functionArguments = "{}";
         // language=json
-        String responseJson =
-                """
+        String responseJson = """
                 {
                         "role": "ASSISTANT",
                         "content": "Hello",
@@ -240,6 +239,91 @@ class InternalAzureOpenAiHelperTest {
 
         // The JSON should contain the image URL in data URI format
         assertThat(contentJson).contains(expectedDataUri).contains("image_url").contains("url");
+    }
+
+    @Test
+    void toOpenAiMessages_shouldForwardLowDetailLevel() {
+        // Given
+        String imageUrl = "https://example.com/image.png";
+        ImageContent imageContent = ImageContent.from(imageUrl, ImageContent.DetailLevel.LOW);
+        UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
+        List<ChatMessage> messages = List.of(userMessage);
+
+        // When
+        List<ChatRequestMessage> openAiMessages = InternalAzureOpenAiHelper.toOpenAiMessages(messages);
+
+        // Then
+        ChatRequestUserMessage requestMessage = (ChatRequestUserMessage) openAiMessages.get(0);
+        String contentJson = requestMessage.getContent().toString();
+        assertThat(contentJson).contains("\"detail\":\"low\"");
+    }
+
+    @Test
+    void toOpenAiMessages_shouldForwardHighDetailLevel() {
+        // Given
+        String imageUrl = "https://example.com/image.png";
+        ImageContent imageContent = ImageContent.from(imageUrl, ImageContent.DetailLevel.HIGH);
+        UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
+        List<ChatMessage> messages = List.of(userMessage);
+
+        // When
+        List<ChatRequestMessage> openAiMessages = InternalAzureOpenAiHelper.toOpenAiMessages(messages);
+
+        // Then
+        ChatRequestUserMessage requestMessage = (ChatRequestUserMessage) openAiMessages.get(0);
+        String contentJson = requestMessage.getContent().toString();
+        assertThat(contentJson).contains("\"detail\":\"high\"");
+    }
+
+    @Test
+    void toOpenAiMessages_shouldForwardAutoDetailLevel() {
+        // Given
+        String imageUrl = "https://example.com/image.png";
+        ImageContent imageContent = ImageContent.from(imageUrl, ImageContent.DetailLevel.AUTO);
+        UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
+        List<ChatMessage> messages = List.of(userMessage);
+
+        // When
+        List<ChatRequestMessage> openAiMessages = InternalAzureOpenAiHelper.toOpenAiMessages(messages);
+
+        // Then
+        ChatRequestUserMessage requestMessage = (ChatRequestUserMessage) openAiMessages.get(0);
+        String contentJson = requestMessage.getContent().toString();
+        assertThat(contentJson).contains("\"detail\":\"auto\"");
+    }
+
+    @Test
+    void toOpenAiMessages_shouldMapMediumDetailLevelToLow() {
+        // Given
+        String imageUrl = "https://example.com/image.png";
+        ImageContent imageContent = ImageContent.from(imageUrl, ImageContent.DetailLevel.MEDIUM);
+        UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
+        List<ChatMessage> messages = List.of(userMessage);
+
+        // When
+        List<ChatRequestMessage> openAiMessages = InternalAzureOpenAiHelper.toOpenAiMessages(messages);
+
+        // Then
+        ChatRequestUserMessage requestMessage = (ChatRequestUserMessage) openAiMessages.get(0);
+        String contentJson = requestMessage.getContent().toString();
+        assertThat(contentJson).contains("\"detail\":\"low\"");
+    }
+
+    @Test
+    void toOpenAiMessages_shouldMapUltraHighDetailLevelToHigh() {
+        // Given
+        String imageUrl = "https://example.com/image.png";
+        ImageContent imageContent = ImageContent.from(imageUrl, ImageContent.DetailLevel.ULTRA_HIGH);
+        UserMessage userMessage = UserMessage.from("Describe this image", imageContent);
+        List<ChatMessage> messages = List.of(userMessage);
+
+        // When
+        List<ChatRequestMessage> openAiMessages = InternalAzureOpenAiHelper.toOpenAiMessages(messages);
+
+        // Then
+        ChatRequestUserMessage requestMessage = (ChatRequestUserMessage) openAiMessages.get(0);
+        String contentJson = requestMessage.getContent().toString();
+        assertThat(contentJson).contains("\"detail\":\"high\"");
     }
 
     @Test

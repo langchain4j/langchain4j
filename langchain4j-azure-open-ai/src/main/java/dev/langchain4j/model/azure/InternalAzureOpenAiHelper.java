@@ -30,6 +30,7 @@ import com.azure.ai.openai.models.ChatCompletionsToolDefinition;
 import com.azure.ai.openai.models.ChatCompletionsToolSelection;
 import com.azure.ai.openai.models.ChatCompletionsToolSelectionPreset;
 import com.azure.ai.openai.models.ChatMessageImageContentItem;
+import com.azure.ai.openai.models.ChatMessageImageDetailLevel;
 import com.azure.ai.openai.models.ChatMessageImageUrl;
 import com.azure.ai.openai.models.ChatMessageTextContentItem;
 import com.azure.ai.openai.models.ChatRequestAssistantMessage;
@@ -215,9 +216,11 @@ class InternalAzureOpenAiHelper {
             // configuration (e.g. AZURE_HTTP_CLIENT_IMPLEMENTATION) when multiple providers are on the classpath.
             return HttpClient.createDefault(clientOptions);
         } catch (IllegalStateException e) {
-            throw new IllegalStateException("No HttpClientProvider implementation found on the classpath. "
-                    + "Add 'com.azure:azure-core-http-netty' as a dependency, "
-                    + "or provide a custom HttpClientProvider via .httpClientProvider() on the builder.", e);
+            throw new IllegalStateException(
+                    "No HttpClientProvider implementation found on the classpath. "
+                            + "Add 'com.azure:azure-core-http-netty' as a dependency, "
+                            + "or provide a custom HttpClientProvider via .httpClientProvider() on the builder.",
+                    e);
         }
     }
 
@@ -257,9 +260,8 @@ class InternalAzureOpenAiHelper {
             return chatRequestAssistantMessage;
         } else if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
             if (!toolExecutionResultMessage.hasSingleText()) {
-                throw new UnsupportedFeatureException(
-                        "Azure OpenAI does not support non-text content in tool results. "
-                                + "Only text content is supported.");
+                throw new UnsupportedFeatureException("Azure OpenAI does not support non-text content in tool results. "
+                        + "Only text content is supported.");
             }
             return new ChatRequestToolMessage(toolExecutionResultMessage.text(), toolExecutionResultMessage.id());
         } else if (message instanceof SystemMessage systemMessage) {
@@ -278,6 +280,10 @@ class InternalAzureOpenAiHelper {
                             } else if (content instanceof ImageContent imageContent) {
                                 String imageUrlString = toImageUrl(imageContent.image());
                                 ChatMessageImageUrl imageUrl = new ChatMessageImageUrl(imageUrlString);
+                                ChatMessageImageDetailLevel detail = toAzureDetail(imageContent.detailLevel());
+                                if (detail != null) {
+                                    imageUrl.setDetail(detail);
+                                }
                                 return new ChatMessageImageContentItem(imageUrl);
                             } else {
                                 throw new IllegalArgumentException("Unsupported content type: " + content.type());
@@ -302,6 +308,19 @@ class InternalAzureOpenAiHelper {
         }
 
         return null;
+    }
+
+    private static ChatMessageImageDetailLevel toAzureDetail(ImageContent.DetailLevel detailLevel) {
+        if (detailLevel == null) {
+            return null;
+        }
+        return switch (detailLevel) {
+            case LOW -> ChatMessageImageDetailLevel.LOW;
+            case HIGH -> ChatMessageImageDetailLevel.HIGH;
+            case AUTO -> ChatMessageImageDetailLevel.AUTO;
+            case MEDIUM -> ChatMessageImageDetailLevel.LOW;
+            case ULTRA_HIGH -> ChatMessageImageDetailLevel.HIGH;
+        };
     }
 
     private static String toImageUrl(Image image) {
