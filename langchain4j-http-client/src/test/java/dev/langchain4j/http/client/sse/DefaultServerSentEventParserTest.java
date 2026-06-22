@@ -131,6 +131,48 @@ class DefaultServerSentEventParserTest {
     }
 
     @Test
+    void shouldPreserveAdditionalLeadingWhitespaceInData() {
+
+        // given
+        String input = "data:   indented\n\n";
+        InputStream stream = new ByteArrayInputStream(input.getBytes(UTF_8));
+
+        // when
+        parser.parse(stream, listener);
+
+        // then
+        verify(listener).onEvent(eq(new ServerSentEvent(null, "  indented")), any());
+    }
+
+    @Test
+    void shouldPreserveTrailingWhitespaceInData() {
+
+        // given
+        String input = "data: trailing  \n\n";
+        InputStream stream = new ByteArrayInputStream(input.getBytes(UTF_8));
+
+        // when
+        parser.parse(stream, listener);
+
+        // then
+        verify(listener).onEvent(eq(new ServerSentEvent(null, "trailing  ")), any());
+    }
+
+    @Test
+    void shouldNotRemoveAnyCharacterWhenDataHasNoLeadingSpace() {
+
+        // given
+        String input = "data:nospace\n\n";
+        InputStream stream = new ByteArrayInputStream(input.getBytes(UTF_8));
+
+        // when
+        parser.parse(stream, listener);
+
+        // then
+        verify(listener).onEvent(eq(new ServerSentEvent(null, "nospace")), any());
+    }
+
+    @Test
     void shouldHandleIOException() {
 
         // given
