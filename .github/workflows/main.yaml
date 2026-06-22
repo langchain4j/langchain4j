@@ -53,13 +53,10 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Print Maven version
-        run: mvn --version
-
       - name: Compile and unit test with JDK ${{ matrix.java_version }}
         run: |
           set -o pipefail
-          mvn -B -U -DembeddingsSkipCache -T8C test javadoc:aggregate 2>&1 | tee maven-output.log
+          mvn -B -U -DembeddingsSkipDownload -T8C test javadoc:aggregate 2>&1 | tee maven-output.log
 
       - name: Surface build errors
         if: failure()

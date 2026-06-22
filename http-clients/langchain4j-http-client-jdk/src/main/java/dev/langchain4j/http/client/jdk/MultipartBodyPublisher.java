@@ -1,13 +1,13 @@
 package dev.langchain4j.http.client.jdk;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.http.client.FormDataFile;
-
 import java.net.http.HttpRequest;
 import java.util.ArrayList;
 import java.util.List;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 @Experimental
 class MultipartBodyPublisher {
@@ -30,9 +30,12 @@ class MultipartBodyPublisher {
     }
 
     void addFile(String name, FormDataFile file) {
-        String header = "--" + BOUNDARY + CRLF + "Content-Disposition: form-data; name=\""
-                + name + "\"; filename=\"" + file.fileName() + "\"" + CRLF + "Content-Type: "
-                + file.contentType() + CRLF + CRLF;
+        String header = "--" + BOUNDARY + CRLF + "Content-Disposition: form-data; name=\"" + name + "\"; filename=\""
+                + file.fileName() + "\"" + CRLF;
+        if (!isNullOrBlank(file.contentType())) {
+            header += "Content-Type: " + file.contentType() + CRLF;
+        }
+        header += CRLF;
 
         parts.add(header.getBytes(UTF_8));
         parts.add(file.content());
