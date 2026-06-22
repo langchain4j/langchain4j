@@ -7,6 +7,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -14,6 +15,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.DefaultRawStreamingEvent;
 import dev.langchain4j.model.chat.response.RawStreamingEvent;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import dev.langchain4j.service.tool.ToolExecutionResult;
@@ -923,6 +925,72 @@ class AiServiceStreamingPublisherTest {
 
         assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
         assertThat(error.get()).isInstanceOf(IllegalStateException.class);
+    }
+
+    interface SystemMessagedStringStreamer {
+        @SystemMessage("You are a helpful assistant.")
+        Flow.Publisher<String> chat(String message);
+    }
+
+    static class SyncOnlyChatMemoryStore implements ChatMemoryStore {
+
+        private List<ChatMessage> messages = List.of();
+
+        @Override
+        public List<ChatMessage> getMessages(Object memoryId) {
+            return messages;
+        }
+
+        @Override
+        public void updateMessages(Object memoryId, List<ChatMessage> messages) {
+            this.messages = messages;
+        }
+
+        @Override
+        public void deleteMessages(Object memoryId) {
+            this.messages = List.of();
+        }
+    }
+
+    @Test
+    void reactive_stream_signals_onError_when_store_does_not_support_async() throws Exception {
+        // With a system message, the (deferred, on-subscribe) message assembly calls the store's async methods
+        // synchronously; a store that does not implement them throws synchronously. subscribe() must not throw or
+        // hang - the failure must reach the subscriber as onError after onSubscribe.
+        SystemMessagedStringStreamer assistant = AiServices.builder(SystemMessagedStringStreamer.class)
+                .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hi")))
+                .chatMemory(MessageWindowChatMemory.builder()
+                        .maxMessages(10)
+                        .chatMemoryStore(new SyncOnlyChatMemoryStore())
+                        .build())
+                .build();
+
+        AtomicReference<Throwable> error = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+
+        assistant.chat("Hi").subscribe(new Flow.Subscriber<>() {
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                subscription.request(Long.MAX_VALUE);
+            }
+
+            @Override
+            public void onNext(String item) {}
+
+            @Override
+            public void onError(Throwable throwable) {
+                error.set(throwable);
+                latch.countDown();
+            }
+
+            @Override
+            public void onComplete() {
+                latch.countDown();
+            }
+        });
+
+        assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+        assertThat(error.get()).isInstanceOf(UnsupportedOperationException.class);
     }
 
     private static <T> Collected<T> collect(Flow.Publisher<T> publisher) throws InterruptedException {

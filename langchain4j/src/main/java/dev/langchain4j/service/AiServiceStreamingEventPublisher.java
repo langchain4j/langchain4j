@@ -228,24 +228,28 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 }
             });
 
-            // Mirrors TokenStream.onRetrieved: surface retrieved RAG content once, before the first response.
-            if (retrievedContents != null && !retrievedContents.isEmpty()) {
-                tube.send(new RetrievedContentsEvent(retrievedContents, invocationContext));
+            try {
+                // Mirrors TokenStream.onRetrieved: surface retrieved RAG content once, before the first response.
+                if (retrievedContents != null && !retrievedContents.isEmpty()) {
+                    tube.send(new RetrievedContentsEvent(retrievedContents, invocationContext));
+                }
+
+                List<ToolSpecification> effectiveTools =
+                        toolServiceContext != null ? toolServiceContext.effectiveTools() : null;
+                ChatRequestParameters parameters =
+                        chatRequestParameters(invocationContext.methodArguments(), effectiveTools);
+                ChatRequest chatRequest = context.chatRequestTransformer.apply(
+                        ChatRequest.builder().messages(messages).parameters(parameters).build(),
+                        invocationContext.chatMemoryId());
+
+                // The first round's request-issued event is fired here; subsequent rounds' events are fired by
+                // ToolService.prepareNextChatRequest (shared with the other AI Service modes).
+                fireRequestIssuedEvent(chatRequest);
+
+                startRound(chatRequest, toolServiceContext, parameters);
+            } catch (Throwable error) {
+                fail(error);
             }
-
-            List<ToolSpecification> effectiveTools =
-                    toolServiceContext != null ? toolServiceContext.effectiveTools() : null;
-            ChatRequestParameters parameters =
-                    chatRequestParameters(invocationContext.methodArguments(), effectiveTools);
-            ChatRequest chatRequest = context.chatRequestTransformer.apply(
-                    ChatRequest.builder().messages(messages).parameters(parameters).build(),
-                    invocationContext.chatMemoryId());
-
-            // The first round's request-issued event is fired here; subsequent rounds' events are fired by
-            // ToolService.prepareNextChatRequest (shared with the other AI Service modes).
-            fireRequestIssuedEvent(chatRequest);
-
-            startRound(chatRequest, toolServiceContext, parameters);
         }
 
         private void startRound(

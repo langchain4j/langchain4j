@@ -228,10 +228,9 @@ public interface StreamingChatModel {
 
                 Map<Object, Object> attributes = new ConcurrentHashMap<>();
 
-                onRequest(finalChatRequest, provider, attributes, listeners);
-
                 Publisher<StreamingEvent> innerPublisher;
                 try {
+                    onRequest(finalChatRequest, provider, attributes, listeners);
                     innerPublisher = doChat(finalChatRequest);
                 } catch (Throwable error) {
                     ChatModelListenerUtils.onError(error, finalChatRequest, provider, attributes, listeners);

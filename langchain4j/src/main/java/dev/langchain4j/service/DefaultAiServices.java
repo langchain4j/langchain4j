@@ -404,27 +404,36 @@ class DefaultAiServices<T> extends AiServices<T> {
                                             subscriber.onError(unwrapCompletion(assemblyError));
                                             return;
                                         }
-                                        ToolServiceContext reactiveToolServiceContext =
-                                                context.toolService.createContext(
-                                                        reactiveInvocationContext, reactiveUserMessage, assembledMessages);
-                                        var streamingEventStreamParameters = AiServiceTokenStreamParameters.builder()
-                                                .messages(assembledMessages)
-                                                .toolServiceContext(reactiveToolServiceContext)
-                                                .toolArgumentsErrorHandler(context.toolService.argumentsErrorHandler())
-                                                .toolExecutionErrorHandler(context.toolService.executionErrorHandler())
-                                                .toolExecutor(context.toolService.executor())
-                                                .retrievedContents(
-                                                        reactiveAugmentationResult != null
-                                                                ? reactiveAugmentationResult.contents()
-                                                                : null)
-                                                .context(context)
-                                                .invocationContext(reactiveInvocationContext)
-                                                .commonGuardrailParams(commonGuardrailParam)
-                                                .methodKey(method)
-                                                .build();
-                                        new AiServiceStreamingEventPublisher(
-                                                        streamingEventStreamParameters, context.streamingBufferSize)
-                                                .subscribe(subscriber);
+                                        AiServiceStreamingEventPublisher publisher;
+                                        try {
+                                            ToolServiceContext reactiveToolServiceContext =
+                                                    context.toolService.createContext(
+                                                            reactiveInvocationContext,
+                                                            reactiveUserMessage,
+                                                            assembledMessages);
+                                            var streamingEventStreamParameters = AiServiceTokenStreamParameters.builder()
+                                                    .messages(assembledMessages)
+                                                    .toolServiceContext(reactiveToolServiceContext)
+                                                    .toolArgumentsErrorHandler(context.toolService.argumentsErrorHandler())
+                                                    .toolExecutionErrorHandler(context.toolService.executionErrorHandler())
+                                                    .toolExecutor(context.toolService.executor())
+                                                    .retrievedContents(
+                                                            reactiveAugmentationResult != null
+                                                                    ? reactiveAugmentationResult.contents()
+                                                                    : null)
+                                                    .context(context)
+                                                    .invocationContext(reactiveInvocationContext)
+                                                    .commonGuardrailParams(commonGuardrailParam)
+                                                    .methodKey(method)
+                                                    .build();
+                                            publisher = new AiServiceStreamingEventPublisher(
+                                                    streamingEventStreamParameters, context.streamingBufferSize);
+                                        } catch (Throwable t) {
+                                            subscriber.onSubscribe(NOOP_SUBSCRIPTION);
+                                            subscriber.onError(unwrapCompletion(t));
+                                            return;
+                                        }
+                                        publisher.subscribe(subscriber);
                                     });
 
                             Flow.Publisher<?> mapped = elementType == AiServiceStreamingEvent.class
@@ -720,19 +729,23 @@ class DefaultAiServices<T> extends AiServices<T> {
                             return CompletableFuture.completedFuture(messages);
                         }
 
-                        CompletionStage<Void> addSystem = systemMessage.isPresent()
-                                ? chatMemory.addAsync(List.of(systemMessage.get()))
-                                : CompletableFuture.completedFuture(null);
-                        ChatMessage userMessageToStore =
-                                context.storeRetrievedContentInChatMemory ? userMessage : originalUserMessage;
-                        return addSystem.thenCompose(ignored -> chatMemory.messagesAsync())
-                                .thenCompose(history -> {
-                                    List<ChatMessage> messages = new ArrayList<>(history);
-                                    return chatMemory.addAsync(List.of(userMessageToStore)).thenApply(ignored2 -> {
-                                        messages.add(userMessage);
-                                        return messages;
+                        try {
+                            CompletionStage<Void> addSystem = systemMessage.isPresent()
+                                    ? chatMemory.addAsync(List.of(systemMessage.get()))
+                                    : CompletableFuture.completedFuture(null);
+                            ChatMessage userMessageToStore =
+                                    context.storeRetrievedContentInChatMemory ? userMessage : originalUserMessage;
+                            return addSystem.thenCompose(ignored -> chatMemory.messagesAsync())
+                                    .thenCompose(history -> {
+                                        List<ChatMessage> messages = new ArrayList<>(history);
+                                        return chatMemory.addAsync(List.of(userMessageToStore)).thenApply(ignored2 -> {
+                                            messages.add(userMessage);
+                                            return messages;
+                                        });
                                     });
-                                });
+                        } catch (Throwable t) {
+                            return CompletableFuture.failedFuture(t);
+                        }
                     }
 
                     private static Throwable unwrapCompletion(Throwable error) {

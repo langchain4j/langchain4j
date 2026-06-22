@@ -138,4 +138,30 @@ class AsyncChatMemoryTest {
             throw new RuntimeException(e);
         }
     }
+
+    interface SystemMessagedAssistant {
+
+        @SystemMessage("You are a helpful assistant.")
+        CompletableFuture<String> chat(String userMessage);
+    }
+
+    @Test
+    void completable_future_ai_service_fails_when_store_unsupported_and_a_system_message_is_present() {
+
+        // With a system message the assembly calls addAsync synchronously before any composition, so the
+        // UnsupportedOperationException is thrown synchronously - it must still surface as a failed future
+        // (not thrown out of the AI Service method).
+        SystemMessagedAssistant assistant = AiServices.builder(SystemMessagedAssistant.class)
+                .chatModel(new StubChatModel())
+                .chatMemory(MessageWindowChatMemory.builder()
+                        .maxMessages(10)
+                        .chatMemoryStore(new SyncOnlyChatMemoryStore())
+                        .build())
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("Hi"); // must not throw here
+        assertThatThrownBy(() -> future.get(5, SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .hasCauseInstanceOf(UnsupportedOperationException.class);
+    }
 }
