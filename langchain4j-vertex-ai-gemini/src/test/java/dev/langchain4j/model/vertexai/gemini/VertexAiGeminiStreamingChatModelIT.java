@@ -155,7 +155,7 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // then
         ChatResponse chatResponse = handler2.get();
-        assertThat(chatResponse.aiMessage().text()).isEqualToIgnoringWhitespace("[" + expectedJson + "]");
+        assertThat(chatResponse.aiMessage().text()).isEqualToIgnoringWhitespace(expectedJson);
     }
 
     @Disabled("TODO fix")

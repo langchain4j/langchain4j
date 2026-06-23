@@ -10,7 +10,7 @@ sidebar_position: 1
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-bedrock</artifactId>
-    <version>1.15.1</version>
+    <version>1.11.8</version>
 </dependency>
 ```
 
@@ -124,7 +124,7 @@ int tokenCount = tokenCountEstimator.estimateTokenCountInMessages(messages);
 
 The field `additionalModelRequestFields` in the `BedrockChatRequestParameters` is a `Map<String, Object>`.
 As explained [here](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html#bedrock-runtime_Converse-request-additionalModelRequestFields)
-it allows to add inference parameters for a specific model that is not covered by common `InferenceConfiguration`.
+it allows you to add inference parameters for a specific model that is not covered by common `InferenceConfiguration`.
 
 
 ## Thinking / Reasoning

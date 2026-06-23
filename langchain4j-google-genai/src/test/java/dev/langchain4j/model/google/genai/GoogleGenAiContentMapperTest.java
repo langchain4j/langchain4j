@@ -190,14 +190,29 @@ class GoogleGenAiContentMapperTest {
     }
 
     @Test
-    void should_convert_tool_execution_result_message() {
-        ToolExecutionResultMessage message = ToolExecutionResultMessage.from("call-1", "getWeather", "Sunny, 25C");
+    void should_convert_parallel_tool_execution_result_messages() {
+        List<ChatMessage> messages = List.of(
+                ToolExecutionResultMessage.from("call-1", "getWeather", "Sunny, 25C"),
+                ToolExecutionResultMessage.from("call-2", "getWeather", "Rainy, 15C"));
 
-        Content result = GoogleGenAiContentMapper.toContent(message);
+        List<Content> results = GoogleGenAiContentMapper.toContents(messages);
 
-        assertThat(result.role().get()).isEqualTo("function");
-        assertThat(result.parts().get().get(0).functionResponse().get().name().get())
-                .isEqualTo("getWeather");
+        assertThat(results).hasSize(1);
+        Content result = results.get(0);
+        assertThat(result.role().get()).isEqualTo("user");
+
+        List<Part> parts = result.parts().get();
+        assertThat(parts).hasSize(2);
+
+        assertThat(parts.get(0).functionResponse().get().name().get()).isEqualTo("getWeather");
+        assertThat(parts.get(0).functionResponse().get().response().get().get("result"))
+                .isEqualTo("Sunny, 25C");
+        assertThat(parts.get(0).functionResponse().get().id().get()).isEqualTo("call-1");
+
+        assertThat(parts.get(1).functionResponse().get().name().get()).isEqualTo("getWeather");
+        assertThat(parts.get(1).functionResponse().get().response().get().get("result"))
+                .isEqualTo("Rainy, 15C");
+        assertThat(parts.get(1).functionResponse().get().id().get()).isEqualTo("call-2");
     }
 
     @Test
@@ -248,6 +263,52 @@ class GoogleGenAiContentMapperTest {
         assertThat(result.finishReason()).isEqualTo(FinishReason.STOP);
         assertThat(result.tokenUsage().inputTokenCount()).isEqualTo(10);
         assertThat(result.tokenUsage().outputTokenCount()).isEqualTo(5);
+    }
+
+    @Test
+    void should_use_total_token_count_from_usage_metadata() {
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(Part.builder().text("Hello!").build())
+                                .build())
+                        .build()))
+                .usageMetadata(GenerateContentResponseUsageMetadata.builder()
+                        .promptTokenCount(10)
+                        .candidatesTokenCount(5)
+                        .thoughtsTokenCount(7)
+                        .totalTokenCount(22)
+                        .build())
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
+
+        assertThat(result.tokenUsage().inputTokenCount()).isEqualTo(10);
+        assertThat(result.tokenUsage().outputTokenCount()).isEqualTo(5);
+        assertThat(result.tokenUsage().totalTokenCount()).isEqualTo(22);
+    }
+
+    @Test
+    void should_fall_back_to_prompt_plus_candidates_when_total_token_count_absent() {
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(Part.builder().text("Hello!").build())
+                                .build())
+                        .build()))
+                .usageMetadata(GenerateContentResponseUsageMetadata.builder()
+                        .promptTokenCount(10)
+                        .candidatesTokenCount(5)
+                        .build())
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
+
+        assertThat(result.tokenUsage().inputTokenCount()).isEqualTo(10);
+        assertThat(result.tokenUsage().outputTokenCount()).isEqualTo(5);
+        assertThat(result.tokenUsage().totalTokenCount()).isEqualTo(15);
     }
 
     @Test
@@ -458,5 +519,33 @@ class GoogleGenAiContentMapperTest {
 
         assertThat(result.parts().get()).hasSize(2);
         assertThat(result.parts().get().get(0).text().get()).isEqualTo("Describe this image");
+    }
+
+    @Test
+    void should_map_finish_reason() {
+        assertThat(GoogleGenAiContentMapper.mapFinishReason(
+                        new com.google.genai.types.FinishReason(com.google.genai.types.FinishReason.Known.STOP)))
+                .isEqualTo(FinishReason.STOP);
+
+        assertThat(GoogleGenAiContentMapper.mapFinishReason(
+                        new com.google.genai.types.FinishReason(com.google.genai.types.FinishReason.Known.MAX_TOKENS)))
+                .isEqualTo(FinishReason.LENGTH);
+
+        assertThat(GoogleGenAiContentMapper.mapFinishReason(new com.google.genai.types.FinishReason(
+                        com.google.genai.types.FinishReason.Known.IMAGE_RECITATION)))
+                .isEqualTo(FinishReason.CONTENT_FILTER);
+
+        assertThat(GoogleGenAiContentMapper.mapFinishReason(
+                        new com.google.genai.types.FinishReason(com.google.genai.types.FinishReason.Known.SAFETY)))
+                .isEqualTo(FinishReason.CONTENT_FILTER);
+
+        assertThat(GoogleGenAiContentMapper.mapFinishReason(
+                        new com.google.genai.types.FinishReason(com.google.genai.types.FinishReason.Known.OTHER)))
+                .isEqualTo(FinishReason.OTHER);
+    }
+
+    @Test
+    void should_map_null_finish_reason_to_other() {
+        assertThat(GoogleGenAiContentMapper.mapFinishReason(null)).isEqualTo(FinishReason.OTHER);
     }
 }

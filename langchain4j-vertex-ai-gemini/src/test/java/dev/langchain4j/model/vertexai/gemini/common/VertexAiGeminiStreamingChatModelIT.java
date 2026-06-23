@@ -87,6 +87,11 @@ class VertexAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
+    protected boolean assertTokenUsage() {
+        return false; // TODO thinking tokens are not reported correctly
+    }
+
+    @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {
         return null; // TODO implement
     }

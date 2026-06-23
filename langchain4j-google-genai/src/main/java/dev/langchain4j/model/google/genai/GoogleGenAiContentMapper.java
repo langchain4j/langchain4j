@@ -28,6 +28,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.video.Video;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
@@ -37,6 +38,7 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 class GoogleGenAiContentMapper {
@@ -118,10 +120,54 @@ class GoogleGenAiContentMapper {
     }
 
     static List<Content> toContents(List<ChatMessage> messages) {
-        return messages.stream()
-                .filter(m -> !(m instanceof SystemMessage))
-                .map(GoogleGenAiContentMapper::toContent)
-                .collect(Collectors.toList());
+        List<Content> contents = new ArrayList<>();
+        List<Part> currentFunctionParts = new ArrayList<>();
+
+        for (ChatMessage message : messages) {
+            if (message instanceof SystemMessage) {
+                continue;
+            }
+
+            if (message instanceof ToolExecutionResultMessage toolMsg) {
+                String toolResult;
+                try {
+                    toolResult = toolMsg.text();
+                } catch (IllegalStateException e) {
+                    throw new UnsupportedFeatureException(
+                            "Google Gen AI currently does not support non-text content in tool execution results");
+                }
+                Map<String, Object> responseMap = new HashMap<>();
+                responseMap.put("result", toolResult);
+
+                FunctionResponse.Builder funcRespBuilder =
+                        FunctionResponse.builder().name(toolMsg.toolName()).response(responseMap);
+
+                if (toolMsg.id() != null) {
+                    funcRespBuilder.id(toolMsg.id());
+                }
+
+                currentFunctionParts.add(
+                        Part.builder().functionResponse(funcRespBuilder.build()).build());
+            } else {
+                if (!currentFunctionParts.isEmpty()) {
+                    contents.add(Content.builder()
+                            .role(USER_ROLE)
+                            .parts(currentFunctionParts)
+                            .build());
+                    currentFunctionParts = new ArrayList<>();
+                }
+                contents.add(toContent(message));
+            }
+        }
+
+        if (!currentFunctionParts.isEmpty()) {
+            contents.add(Content.builder()
+                    .role(USER_ROLE)
+                    .parts(currentFunctionParts)
+                    .build());
+        }
+
+        return contents;
     }
 
     static Content toContent(ChatMessage message) {
@@ -143,36 +189,26 @@ class GoogleGenAiContentMapper {
                             throw new RuntimeException(e);
                         }
                     }
-                    parts.add(Part.builder()
-                            .functionCall(FunctionCall.builder()
-                                    .name(req.name())
-                                    .args(args)
-                                    .build())
-                            .build());
+                    FunctionCall.Builder fcBuilder =
+                            FunctionCall.builder().name(req.name()).args(args);
+
+                    if (req.id() != null) {
+                        fcBuilder.id(req.id());
+                    }
+
+                    Part.Builder partBuilder = Part.builder().functionCall(fcBuilder.build());
+
+                    if (req.id() != null) {
+                        String sigBase64 = aiMsg.attribute("thought_signature_" + req.id(), String.class);
+                        if (sigBase64 != null) {
+                            partBuilder.thoughtSignature(Base64.getDecoder().decode(sigBase64));
+                        }
+                    }
+
+                    parts.add(partBuilder.build());
                 }
             }
             return Content.builder().role(MODEL_ROLE).parts(parts).build();
-
-        } else if (message instanceof ToolExecutionResultMessage toolMsg) {
-            String toolResult;
-            try {
-                toolResult = toolMsg.text();
-            } catch (IllegalStateException e) {
-                throw new dev.langchain4j.exception.UnsupportedFeatureException(
-                        "Google Gen AI currently does not support non-text content in tool execution results");
-            }
-            Map<String, Object> responseMap = new HashMap<>();
-            responseMap.put("result", toolResult);
-
-            return Content.builder()
-                    .role(FUNCTION_ROLE)
-                    .parts(Part.builder()
-                            .functionResponse(FunctionResponse.builder()
-                                    .name(toolMsg.toolName())
-                                    .response(responseMap)
-                                    .build())
-                            .build())
-                    .build();
         }
         throw new IllegalArgumentException("Unknown message type: " + message.type());
     }
@@ -196,6 +232,7 @@ class GoogleGenAiContentMapper {
 
         StringBuilder textBuilder = new StringBuilder();
         List<ToolExecutionRequest> toolRequests = new ArrayList<>();
+        Map<String, Object> attributes = new HashMap<>();
 
         if (content != null) {
             List<Part> parts = content.parts().orElse(List.of());
@@ -212,8 +249,16 @@ class GoogleGenAiContentMapper {
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
+                    String id = fc.id().orElseGet(() -> UUID.randomUUID().toString());
+
+                    if (part.thoughtSignature().isPresent()) {
+                        byte[] sig = part.thoughtSignature().get();
+                        attributes.put(
+                                "thought_signature_" + id, Base64.getEncoder().encodeToString(sig));
+                    }
 
                     toolRequests.add(ToolExecutionRequest.builder()
+                            .id(id)
                             .name(fnName)
                             .arguments(jsonArgs)
                             .build());
@@ -222,26 +267,41 @@ class GoogleGenAiContentMapper {
         }
 
         String text = textBuilder.toString();
-        AiMessage aiMessage;
+        AiMessage.Builder aiMessageBuilder = AiMessage.builder();
+
         if (!toolRequests.isEmpty() && !isNullOrEmpty(text)) {
-            aiMessage = new AiMessage(text, toolRequests);
+            aiMessageBuilder.text(text);
+            aiMessageBuilder.toolExecutionRequests(toolRequests);
         } else if (!toolRequests.isEmpty()) {
-            aiMessage = AiMessage.from(toolRequests);
+            aiMessageBuilder.toolExecutionRequests(toolRequests);
         } else {
-            aiMessage = AiMessage.from(text);
+            aiMessageBuilder.text(text);
         }
 
+        if (!attributes.isEmpty()) {
+            aiMessageBuilder.attributes(attributes);
+        }
+        AiMessage aiMessage = aiMessageBuilder.build();
+
         TokenUsage usage = response.usageMetadata()
-                .map(meta -> new TokenUsage(
-                        meta.promptTokenCount().isPresent()
-                                ? meta.promptTokenCount().get()
-                                : 0,
-                        meta.candidatesTokenCount().isPresent()
-                                ? meta.candidatesTokenCount().get()
-                                : 0))
+                .map(meta -> {
+                    int promptTokenCount = meta.promptTokenCount().isPresent()
+                            ? meta.promptTokenCount().get()
+                            : 0;
+                    int candidatesTokenCount = meta.candidatesTokenCount().isPresent()
+                            ? meta.candidatesTokenCount().get()
+                            : 0;
+                    int totalTokenCount = meta.totalTokenCount().isPresent()
+                            ? meta.totalTokenCount().get()
+                            : promptTokenCount + candidatesTokenCount;
+                    return new TokenUsage(promptTokenCount, candidatesTokenCount, totalTokenCount);
+                })
                 .orElse(new TokenUsage(0, 0));
 
-        FinishReason finishReason = !toolRequests.isEmpty() ? FinishReason.TOOL_EXECUTION : FinishReason.STOP;
+        FinishReason finishReason = candidate
+                .finishReason()
+                .map(GoogleGenAiContentMapper::mapFinishReason)
+                .orElseGet(() -> !toolRequests.isEmpty() ? FinishReason.TOOL_EXECUTION : FinishReason.STOP);
 
         GoogleGenAiChatResponseMetadata metadata = GoogleGenAiChatResponseMetadata.builder()
                 .modelName(modelName)
@@ -312,6 +372,35 @@ class GoogleGenAiContentMapper {
 
     static Part fromMimeTypeAndData(String mimeType, URI uri) {
         return Part.fromUri(uri.toString(), mimeType);
+    }
+
+    static FinishReason mapFinishReason(com.google.genai.types.FinishReason finishReason) {
+        if (finishReason == null) {
+            return FinishReason.OTHER;
+        }
+
+        com.google.genai.types.FinishReason.Known known = finishReason.knownEnum();
+        if (known == null) {
+            return FinishReason.OTHER;
+        }
+
+        switch (known) {
+            case STOP:
+                return FinishReason.STOP;
+            case MAX_TOKENS:
+                return FinishReason.LENGTH;
+            case SAFETY:
+            case RECITATION:
+            case BLOCKLIST:
+            case PROHIBITED_CONTENT:
+            case SPII:
+            case IMAGE_SAFETY:
+            case IMAGE_PROHIBITED_CONTENT:
+            case IMAGE_RECITATION:
+                return FinishReason.CONTENT_FILTER;
+            default:
+                return FinishReason.OTHER;
+        }
     }
 
     private GoogleGenAiContentMapper() {}
