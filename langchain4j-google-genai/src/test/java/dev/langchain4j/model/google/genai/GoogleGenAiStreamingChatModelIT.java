@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeast;
 
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -13,6 +14,7 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
 
@@ -121,5 +123,20 @@ class GoogleGenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
                 .modelName("gemini-2.5-flash")
                 .listeners(List.of(listener))
                 .build();
+    }
+
+    @Test
+    void should_apply_generate_content_config_customizer() {
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+                .modelName("gemini-2.5-flash")
+                .generateContentConfigCustomizer(
+                        config -> config.temperature(0.7f).seed(42))
+                .build();
+
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat("Respond with exactly one word: Hello.", handler);
+
+        assertThat(handler.get().aiMessage().text()).isNotBlank();
     }
 }

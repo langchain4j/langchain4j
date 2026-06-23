@@ -1,6 +1,7 @@
 package dev.langchain4j.model.google.genai;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import com.google.genai.Client;
@@ -171,5 +172,20 @@ class GoogleGenAiChatModelTest {
         assertThat(builder.googleCredentials(null)).isSameAs(builder);
         assertThat(builder.projectId("project")).isSameAs(builder);
         assertThat(builder.location("us-central1")).isSameAs(builder);
+    }
+
+    @Test
+    void should_invoke_generate_content_config_customizer_when_building_the_request() {
+        RuntimeException fromCustomizer = new RuntimeException("customizer invoked");
+        GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
+                .apiKey("test-key")
+                .modelName("gemini-2.5-flash")
+                .generateContentConfigCustomizer(config -> {
+                    throw fromCustomizer;
+                })
+                .build();
+
+        // customizer runs before the SDK call, so its exception surfaces without any network access
+        assertThatThrownBy(() -> model.chat("hello")).isSameAs(fromCustomizer);
     }
 }
