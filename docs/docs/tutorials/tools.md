@@ -1734,13 +1734,15 @@ compensation occurs — even if `@CompensateFor` annotations are present.
 
 #### Validation
 
-At AI Service build time, each `@CompensateFor` is validated:
+When `.compensateOnToolErrors(true)` is enabled, each `@CompensateFor` is validated:
 - The referenced tool must exist (by name) on the same object.
 - The compensating method must have exactly the same parameter types as the tool,
   or accept a single `ToolExecution` parameter.
 
 If either check fails, an `IllegalConfigurationException` is thrown immediately,
 so misconfigurations are caught at startup rather than at runtime.
+If `.compensateOnToolErrors(true)` is not enabled, `@CompensateFor` annotations
+are silently ignored and no validation is performed.
 
 #### Notes and Limitations
 
@@ -1757,6 +1759,11 @@ infrastructure and do not appear in tool specifications.
 :::note
 Compensating actions always run sequentially in reverse order, even when tool
 execution is configured to run in parallel via `.executeToolsConcurrently()`.
+:::
+
+:::note
+`@CompensateFor` methods can be inherited from superclasses, consistent with how
+`@Tool` methods are discovered.
 :::
 
 :::note
