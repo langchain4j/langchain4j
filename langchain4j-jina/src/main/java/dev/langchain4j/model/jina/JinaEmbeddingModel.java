@@ -1,5 +1,11 @@
 package dev.langchain4j.model.jina;
 
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.time.Duration.ofSeconds;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
@@ -9,16 +15,9 @@ import dev.langchain4j.model.jina.internal.api.JinaEmbeddingResponse;
 import dev.langchain4j.model.jina.internal.client.JinaClient;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.slf4j.Logger;
-
 import java.time.Duration;
 import java.util.List;
-
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.time.Duration.ofSeconds;
-import static java.util.stream.Collectors.toList;
+import org.slf4j.Logger;
 
 /**
  * An implementation of an {@link EmbeddingModel} that uses
@@ -85,11 +84,10 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
         JinaEmbeddingResponse response = withRetryMappingExceptions(() -> client.embed(request), maxRetries);
 
         List<Embedding> embeddings = response.data == null
-        	    ? List.of()
-        	    : response.data.stream()
-        	        .map(jinaEmbedding -> Embedding.from(jinaEmbedding.embedding))
-        	        .collect(toList());
-
+                ? List.of()
+                : response.data.stream()
+                        .map(jinaEmbedding -> Embedding.from(jinaEmbedding.embedding))
+                        .collect(toList());
 
         TokenUsage tokenUsage = new TokenUsage(response.usage.promptTokens, 0, response.usage.totalTokens);
         return Response.from(embeddings, tokenUsage);
@@ -111,44 +109,93 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Boolean logResponses;
         private Logger logger;
 
-        JinaEmbeddingModelBuilder() {
-        }
+        JinaEmbeddingModelBuilder() {}
 
+        /**
+         * Sets the base URL of the Jina API. Defaults to {@code "https://api.jina.ai/"}.
+         *
+         * @param baseUrl the base URL
+         * @return {@code this}
+         */
         public JinaEmbeddingModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
 
+        /**
+         * Sets the Jina API key used to authenticate requests.
+         *
+         * @param apiKey the Jina API key
+         * @return {@code this}
+         */
         public JinaEmbeddingModelBuilder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
         }
 
+        /**
+         * Sets the embedding model name, e.g. {@code "jina-embeddings-v3"}.
+         *
+         * @param modelName the model name
+         * @return {@code this}
+         */
         public JinaEmbeddingModelBuilder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
+        /**
+         * Sets the HTTP request timeout. Defaults to 60 seconds.
+         *
+         * @param timeout the request timeout
+         * @return {@code this}
+         */
         public JinaEmbeddingModelBuilder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
+        /**
+         * Sets the maximum number of retries on transient errors. Defaults to {@code 2}.
+         *
+         * @param maxRetries the maximum number of retries
+         * @return {@code this}
+         */
         public JinaEmbeddingModelBuilder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
+        /**
+         * Enables late chunking, which applies the model's context window over the entire input
+         * and then performs chunking, improving embedding quality for segmented documents.
+         * Defaults to {@code false}.
+         *
+         * @param lateChunking {@code true} to enable late chunking
+         * @return {@code this}
+         */
         public JinaEmbeddingModelBuilder lateChunking(Boolean lateChunking) {
             this.lateChunking = lateChunking;
             return this;
         }
 
+        /**
+         * Enables debug logging of request bodies sent to the Jina API.
+         *
+         * @param logRequests {@code true} to enable request logging
+         * @return {@code this}
+         */
         public JinaEmbeddingModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
+        /**
+         * Enables debug logging of response bodies received from the Jina API.
+         *
+         * @param logResponses {@code true} to enable response logging
+         * @return {@code this}
+         */
         public JinaEmbeddingModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
@@ -168,7 +215,10 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
         }
 
         public String toString() {
-            return "JinaEmbeddingModel.JinaEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + (this.apiKey == null ? null : "********") + ", modelName=" + this.modelName + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", lateChunking=" + this.lateChunking + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+            return "JinaEmbeddingModel.JinaEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", apiKey="
+                    + (this.apiKey == null ? null : "********") + ", modelName=" + this.modelName + ", timeout="
+                    + this.timeout + ", maxRetries=" + this.maxRetries + ", lateChunking=" + this.lateChunking
+                    + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
         }
     }
 }
