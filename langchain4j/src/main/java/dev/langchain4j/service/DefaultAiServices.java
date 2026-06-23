@@ -350,8 +350,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 messages,
                                 chatMemory,
                                 invocationContext,
-                                toolServiceContext,
-                                isReturnTypeResult);
+                                toolServiceContext);
 
                         if (toolServiceResult.immediateToolReturn()) {
                             if (isReturnTypeResult) {

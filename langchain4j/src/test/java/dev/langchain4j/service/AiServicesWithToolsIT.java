@@ -2549,6 +2549,64 @@ class AiServicesWithToolsIT {
     }
 
     @Test
+    void should_not_double_compensate_after_retry() {
+
+        // given
+        BankAccountService bankService = spy(new BankAccountService());
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                // Round 1: credit succeeds
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("credit")
+                        .arguments("{\"name\": \"Dmytro\", \"amount\": 100.0}")
+                        .build()),
+                // Round 1: withdraw fails (insufficient funds) → rollback undoes credit
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("2")
+                        .name("withdraw")
+                        .arguments("{\"name\": \"Mario\", \"amount\": 100.0}")
+                        .build()),
+                // LLM retries: credit again
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("3")
+                        .name("credit")
+                        .arguments("{\"name\": \"Dmytro\", \"amount\": 100.0}")
+                        .build()),
+                // Retry: withdraw fails again → rollback should only undo the second credit
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("4")
+                        .name("withdraw")
+                        .arguments("{\"name\": \"Mario\", \"amount\": 100.0}")
+                        .build()),
+                AiMessage.from("Transfer failed"));
+
+        interface BankAssistant {
+            String chat(String userMessage);
+        }
+
+        BankAssistant assistant = AiServices.builder(BankAssistant.class)
+                .chatModel(chatModel)
+                .tools(bankService)
+                .compensateOnToolErrors(true)
+                .build();
+
+        // when
+        String response = assistant.chat("Transfer 100 dollars from Mario's account to Dmytro's account");
+
+        // then - uncredit should be called exactly twice (once per failure), not three times
+        verify(bankService, times(2)).credit("Dmytro", 100.0);
+        verify(bankService, times(2)).withdraw("Mario", 100.0);
+        verify(bankService, times(2)).uncredit("Dmytro", 100.0);
+
+        // account balances should be back to their original state
+        assertThat(bankService.accounts.get("Mario")).isEqualTo(50.0);
+        assertThat(bankService.accounts.get("Dmytro")).isEqualTo(100.0);
+
+        assertThat(response).isEqualTo("Transfer failed");
+    }
+
+    @Test
     void should_inform_llm_about_rolled_back_tools() {
 
         // given

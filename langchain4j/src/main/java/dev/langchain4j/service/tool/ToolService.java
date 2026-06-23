@@ -497,8 +497,7 @@ public class ToolService {
             List<ChatMessage> messages,
             ChatMemory chatMemory,
             InvocationContext invocationContext,
-            ToolServiceContext toolServiceContext,
-            boolean isReturnTypeResult) {
+            ToolServiceContext toolServiceContext) {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
@@ -563,6 +562,7 @@ public class ToolService {
 
             if (compensateOnToolErrors && anyToolErrored) {
                 rollback(compensableExecutions, invocationContext);
+                compensableExecutions.clear();
                 for (int i = 0; i < toolExecutionRequests.size(); i++) {
                     ToolExecutionRequest request = toolExecutionRequests.get(i);
                     if (!toolResults.get(request).isError()
