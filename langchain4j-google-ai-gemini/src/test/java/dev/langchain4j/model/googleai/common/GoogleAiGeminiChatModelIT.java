@@ -47,7 +47,7 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
                 .defaultRequestParameters(parameters)
                 .modelName(getOrDefault(parameters.modelName(), "gemini-2.5-flash-lite"))
-                .logRequests(true)
+                .logRequests(false)
                 .logResponses(true)
                 .build();
     }

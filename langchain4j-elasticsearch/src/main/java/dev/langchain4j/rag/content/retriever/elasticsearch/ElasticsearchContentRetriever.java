@@ -129,7 +129,7 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
 
     private List<Content> mapResultsToContentList(EmbeddingSearchResult<TextSegment> searchResult) {
         List<Content> result = searchResult.matches().stream()
-                .filter(f -> f.score() > minScore)
+                .filter(f -> f.score() >= minScore)
                 .map(m -> Content.from(
                         m.embedded(),
                         Map.of(
