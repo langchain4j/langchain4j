@@ -471,7 +471,8 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
         }
         String searchWords = toFullTextScoreArguments(content);
         queryBuilder.append(fullTextRankPredicate("text", searchWords));
-        queryBuilder.append(" ORDER BY RANK FullTextScore(c.text, ")
+        queryBuilder
+                .append(" ORDER BY RANK FullTextScore(c.text, ")
                 .append(searchWords)
                 .append(")");
 

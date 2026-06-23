@@ -310,7 +310,9 @@ class AzureCosmosDBNoSqlContentRetrieverIT {
 
         @Override
         public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-            return Response.from(textSegments.stream().map(textSegment -> embed(textSegment).content()).toList());
+            return Response.from(textSegments.stream()
+                    .map(textSegment -> embed(textSegment).content())
+                    .toList());
         }
 
         @Override
