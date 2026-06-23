@@ -28,9 +28,9 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 public @interface CompensateFor {
 
     /**
-     * The name of the tool that this method compensates for.
-     * This should match either the {@link Tool#name()} or the method name
-     * of the {@code @Tool}-annotated method.
+     * The name of the tool that this method compensates for, as it is exposed to the LLM.
+     * This is the {@link Tool#name()} when it is explicitly set, otherwise the name of the
+     * {@code @Tool}-annotated method (which is used as the tool name by default).
      *
      * @return the name of the tool to compensate for.
      */

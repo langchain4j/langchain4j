@@ -2868,4 +2868,69 @@ class AiServicesWithToolsIT {
 
         assertThat(response).isEqualTo("Transfer complete");
     }
+
+    @Test
+    void should_continue_remaining_compensations_when_one_compensating_action_throws() {
+
+        // given - the compensating action for 'bookHotel' itself throws; the framework should
+        // log it at WARN and still run the remaining compensating action for 'bookFlight'
+        class FaultyCompensationService {
+
+            final List<String> executionLog = new ArrayList<>();
+
+            @Tool("books a flight")
+            void bookFlight(@P(name = "destination", description = "destination city") String destination) {
+                executionLog.add("bookFlight");
+            }
+
+            @CompensateFor("bookFlight")
+            void cancelFlight(String destination) {
+                executionLog.add("cancelFlight");
+            }
+
+            @Tool("books a hotel")
+            void bookHotel(@P(name = "destination", description = "destination city") String destination) {
+                executionLog.add("bookHotel");
+            }
+
+            @CompensateFor("bookHotel")
+            void cancelHotel(String destination) {
+                throw new RuntimeException("hotel cancellation failed");
+            }
+
+            @Tool("rents a car")
+            void rentCar(@P(name = "destination", description = "destination city") String destination) {
+                throw new RuntimeException("No cars available in " + destination);
+            }
+        }
+
+        FaultyCompensationService travelService = new FaultyCompensationService();
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(
+                        ToolExecutionRequest.builder().id("1").name("bookFlight")
+                                .arguments("{\"destination\": \"Paris\"}").build(),
+                        ToolExecutionRequest.builder().id("2").name("bookHotel")
+                                .arguments("{\"destination\": \"Paris\"}").build(),
+                        ToolExecutionRequest.builder().id("3").name("rentCar")
+                                .arguments("{\"destination\": \"Paris\"}").build()),
+                AiMessage.from("Trip booking failed"));
+
+        interface TravelAssistant {
+            String chat(String userMessage);
+        }
+
+        TravelAssistant assistant = AiServices.builder(TravelAssistant.class)
+                .chatModel(chatModel)
+                .tools(travelService)
+                .compensateOnToolErrors(true)
+                .build();
+
+        // when
+        String response = assistant.chat("Book a trip to Paris");
+
+        // then - even though cancelHotel threw, cancelFlight still ran (best-effort, reverse order)
+        assertThat(travelService.executionLog).containsExactly("bookFlight", "bookHotel", "cancelFlight");
+        assertThat(response).isEqualTo("Trip booking failed");
+    }
 }

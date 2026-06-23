@@ -329,6 +329,7 @@ public class ToolService {
                             .object(objectWithTools)
                             .originalMethod(toolMethod)
                             .methodToInvoke(method)
+                            .propagateToolExecutionExceptions(true)
                             .build();
                     compensatingActions.put(toolName, (toolExecution, ctx) ->
                             executor.executeWithContext(toolExecution.request(), ctx));
@@ -661,7 +662,7 @@ public class ToolService {
                                                              ChatMemory chatMemory,
                                                              List<CompensableToolExecution> compensableExecutions,
                                                              String failedToolName) {
-        List<ChatMessage> memoryMessages = chatMemory != null ? chatMemory.messages() : messages;
+        List<ChatMessage> memoryMessages = chatMemory != null ? new ArrayList<>(chatMemory.messages()) : messages;
         for (CompensableToolExecution entry : compensableExecutions) {
             ToolExecutionResultMessage originalMsg = entry.resultMessage();
             ToolExecutionResultMessage replacementMsg = rolledBackResultMessage(originalMsg, failedToolName);

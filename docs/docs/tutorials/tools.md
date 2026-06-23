@@ -1650,8 +1650,9 @@ compensating action are automatically undone in reverse order.
 #### Declaring Compensating Actions with `@CompensateFor`
 
 Use the `@CompensateFor` annotation on a method to declare it as the compensating
-action for a `@Tool`. The `value` must match the name of the tool it compensates for
-(either the `@Tool` method name or its `@Tool(name = ...)` attribute).
+action for a `@Tool`. The `value` must match the name of the tool as exposed to the LLM —
+its `@Tool(name = ...)` attribute when set, otherwise the `@Tool` method name (used as the
+tool name by default).
 The compensating method must either have the same parameter types as the tool,
 or accept a single `ToolExecution` parameter.
 
