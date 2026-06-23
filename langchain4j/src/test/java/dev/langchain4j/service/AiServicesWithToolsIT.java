@@ -2785,4 +2785,85 @@ class AiServicesWithToolsIT {
                 .tools(new MisconfiguredService())
                 .build();
     }
+
+    static class BaseBankAccountService {
+
+        final Map<String, Double> accounts = new HashMap<>();
+
+        BaseBankAccountService() {
+            accounts.put("Mario", 50.0);
+            accounts.put("Dmytro", 100.0);
+        }
+
+        @Tool("credits money to a bank account")
+        void credit(@P(name = "name", description = "account holder name") String name,
+                    @P(name = "amount", description = "amount to credit") double amount) {
+            accounts.merge(name, amount, Double::sum);
+        }
+
+        @CompensateFor("credit")
+        void uncredit(String name, double amount) {
+            accounts.merge(name, -amount, Double::sum);
+        }
+    }
+
+    static class ExtendedBankAccountService extends BaseBankAccountService {
+
+        @Tool("withdraws money from a bank account")
+        void withdraw(@P(name = "name", description = "account holder name") String name,
+                      @P(name = "amount", description = "amount to withdraw") double amount) {
+            if (accounts.getOrDefault(name, 0.0) < amount) {
+                throw new RuntimeException("Insufficient funds in " + name + "'s account");
+            }
+            accounts.merge(name, -amount, Double::sum);
+        }
+
+        @CompensateFor("withdraw")
+        void unwithdraw(String name, double amount) {
+            accounts.merge(name, amount, Double::sum);
+        }
+    }
+
+    @Test
+    void should_rollback_inherited_compensating_actions() {
+
+        // given
+        ExtendedBankAccountService bankService = spy(new ExtendedBankAccountService());
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("credit")
+                        .arguments("{\"name\": \"Dmytro\", \"amount\": 100.0}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("2")
+                        .name("withdraw")
+                        .arguments("{\"name\": \"Mario\", \"amount\": 100.0}")
+                        .build()),
+                AiMessage.from("Transfer complete"));
+
+        interface BankAssistant {
+            String chat(String userMessage);
+        }
+
+        BankAssistant assistant = AiServices.builder(BankAssistant.class)
+                .chatModel(chatModel)
+                .tools(bankService)
+                .compensateOnToolErrors(true)
+                .build();
+
+        // when
+        String response = assistant.chat("Transfer 100 dollars from Mario's account to Dmytro's account");
+
+        // then - the inherited @CompensateFor("credit") should have been discovered and called
+        verify(bankService).credit("Dmytro", 100.0);
+        verify(bankService).withdraw("Mario", 100.0);
+        verify(bankService).uncredit("Dmytro", 100.0);
+
+        assertThat(bankService.accounts.get("Mario")).isEqualTo(50.0);
+        assertThat(bankService.accounts.get("Dmytro")).isEqualTo(100.0);
+
+        assertThat(response).isEqualTo("Transfer complete");
+    }
 }

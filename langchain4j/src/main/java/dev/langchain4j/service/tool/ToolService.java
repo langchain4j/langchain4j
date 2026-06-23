@@ -274,7 +274,7 @@ public class ToolService {
             return compensatingActions;
         }
 
-        for (Method method : objectWithTools.getClass().getDeclaredMethods()) {
+        for (Method method : allConcreteMethods(objectWithTools.getClass())) {
             CompensateFor compensateFor = method.getAnnotation(CompensateFor.class);
             if (compensateFor != null) {
                 String toolName = compensateFor.value();
