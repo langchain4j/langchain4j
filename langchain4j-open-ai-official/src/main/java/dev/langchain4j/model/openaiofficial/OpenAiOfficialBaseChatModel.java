@@ -76,35 +76,39 @@ abstract class OpenAiOfficialBaseChatModel {
             boolean isAsync) {
 
         if (isAsync) {
-            this.asyncClient = setupAsyncClient(
-                    baseUrl,
-                    apiKey,
-                    credential,
-                    microsoftFoundryDeploymentName,
-                    azureOpenAIServiceVersion,
-                    organizationId,
-                    isAzure,
-                    isGitHubModels,
-                    modelName,
-                    timeout,
-                    maxRetries,
-                    proxy,
-                    customHeaders);
+            if (this.asyncClient == null) {
+                this.asyncClient = setupAsyncClient(
+                        baseUrl,
+                        apiKey,
+                        credential,
+                        microsoftFoundryDeploymentName,
+                        azureOpenAIServiceVersion,
+                        organizationId,
+                        isAzure,
+                        isGitHubModels,
+                        modelName,
+                        timeout,
+                        maxRetries,
+                        proxy,
+                        customHeaders);
+            }
         } else {
-            this.client = setupSyncClient(
-                    baseUrl,
-                    apiKey,
-                    credential,
-                    microsoftFoundryDeploymentName,
-                    azureOpenAIServiceVersion,
-                    organizationId,
-                    isAzure,
-                    isGitHubModels,
-                    modelName,
-                    timeout,
-                    maxRetries,
-                    proxy,
-                    customHeaders);
+            if (this.client == null) {
+                this.client = setupSyncClient(
+                        baseUrl,
+                        apiKey,
+                        credential,
+                        microsoftFoundryDeploymentName,
+                        azureOpenAIServiceVersion,
+                        organizationId,
+                        isAzure,
+                        isGitHubModels,
+                        modelName,
+                        timeout,
+                        maxRetries,
+                        proxy,
+                        customHeaders);
+            }
         }
 
         ChatRequestParameters commonParameters;

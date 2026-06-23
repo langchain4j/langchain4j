@@ -331,6 +331,65 @@ class AnthropicMapperTest {
     }
 
     @Test
+    void test_toAnthropicTool_with_definitions() throws JsonProcessingException {
+
+        // given
+        String reference = "Foo";
+        JsonSchemaElement fooSchema = JsonObjectSchema.builder()
+                .addStringProperty("name")
+                .required("name")
+                .build();
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .name("tool")
+                .description("description")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty(
+                                "foo",
+                                JsonReferenceSchema.builder()
+                                        .reference(reference)
+                                        .build())
+                        .required("foo")
+                        .definitions(Map.of(reference, fooSchema))
+                        .build())
+                .build();
+
+        // when
+        AnthropicTool anthropicTool = toAnthropicTool(toolSpecification, AnthropicCacheType.NO_CACHE, Set.of(), null);
+
+        // then
+        assertThat(anthropicTool.inputSchema.defs).isNotNull();
+        assertThat(anthropicTool.inputSchema.defs).containsKey(reference);
+
+        // and the $defs key is serialized as "$defs" (not snake_cased to "defs")
+        String json = new ObjectMapper().writeValueAsString(anthropicTool.inputSchema);
+        assertThat(json).contains("\"$defs\"");
+        assertThat(json).doesNotContain("\"defs\"");
+    }
+
+    @Test
+    void test_toAnthropicTool_without_definitions_omits_defs() throws JsonProcessingException {
+
+        // given
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .name("tool")
+                .description("description")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("parameter")
+                        .required("parameter")
+                        .build())
+                .build();
+
+        // when
+        AnthropicTool anthropicTool = toAnthropicTool(toolSpecification, AnthropicCacheType.NO_CACHE, Set.of(), null);
+
+        // then
+        assertThat(anthropicTool.inputSchema.defs).isNull();
+
+        String json = new ObjectMapper().writeValueAsString(anthropicTool.inputSchema);
+        assertThat(json).doesNotContain("$defs");
+    }
+
+    @Test
     void test_toAnthropicSchema_with_optional_fields() throws JsonProcessingException {
 
         // given
