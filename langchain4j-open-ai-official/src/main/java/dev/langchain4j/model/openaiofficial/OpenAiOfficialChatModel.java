@@ -30,9 +30,8 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
 
     public OpenAiOfficialChatModel(Builder builder) {
 
+        this.client = builder.openAIClient;
         init(
-                builder.openAIClient,
-                null,
                 builder.baseUrl,
                 builder.apiKey,
                 builder.credential,

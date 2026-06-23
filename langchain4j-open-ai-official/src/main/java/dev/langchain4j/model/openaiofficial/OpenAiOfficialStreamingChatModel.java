@@ -42,9 +42,8 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
 
     public OpenAiOfficialStreamingChatModel(Builder builder) {
 
+        this.asyncClient = builder.openAIClientAsync;
         init(
-                null,
-                builder.openAIClientAsync,
                 builder.baseUrl,
                 builder.apiKey,
                 builder.credential,
