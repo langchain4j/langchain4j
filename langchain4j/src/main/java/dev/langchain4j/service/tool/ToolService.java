@@ -516,7 +516,8 @@ public class ToolService {
             List<ChatMessage> messages,
             ChatMemory chatMemory,
             InvocationContext invocationContext,
-            ToolServiceContext toolServiceContext) {
+            ToolServiceContext toolServiceContext,
+            boolean isReturnTypeResult) {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
@@ -651,10 +652,7 @@ public class ToolService {
             ToolExecutionRequest request = toolExecutionRequests.get(i);
             if (!toolResults.get(request).isError()
                     && compensatingExecutors.containsKey(request.name())) {
-                resultMessages.set(i, ToolExecutionResultMessage.toolExecutionResultMessage(
-                        request.id(), request.name(),
-                        "Tool '" + request.name() + "' was executed successfully"
-                                + " but was rolled back due to failure of tool '" + failedToolName + "'"));
+                resultMessages.set(i, rolledBackResultMessage(resultMessages.get(i), failedToolName));
             }
         }
     }
@@ -666,15 +664,7 @@ public class ToolService {
         List<ChatMessage> memoryMessages = chatMemory != null ? chatMemory.messages() : messages;
         for (CompensableToolExecution entry : compensableExecutions) {
             ToolExecutionResultMessage originalMsg = entry.resultMessage();
-            String rolledBackText = "Tool '" + originalMsg.toolName() + "' was executed successfully"
-                    + " but was rolled back due to failure of tool '" + failedToolName + "'";
-            ToolExecutionResultMessage replacementMsg = ToolExecutionResultMessage.builder()
-                    .id(originalMsg.id())
-                    .toolName(originalMsg.toolName())
-                    .contents(List.of(TextContent.from(rolledBackText)))
-                    .isError(true)
-                    .attributes(originalMsg.attributes())
-                    .build();
+            ToolExecutionResultMessage replacementMsg = rolledBackResultMessage(originalMsg, failedToolName);
             for (int j = 0; j < memoryMessages.size(); j++) {
                 if (memoryMessages.get(j) instanceof ToolExecutionResultMessage msg
                         && msg.id().equals(originalMsg.id())) {
@@ -686,6 +676,16 @@ public class ToolService {
         if (chatMemory != null) {
             chatMemory.set(memoryMessages);
         }
+    }
+
+    private static ToolExecutionResultMessage rolledBackResultMessage(
+            ToolExecutionResultMessage original, String failedToolName) {
+        String rolledBackText = "Tool '" + original.toolName() + "' was executed successfully"
+                + " but was rolled back due to failure of tool '" + failedToolName + "'";
+        return original.toBuilder()
+                .contents(List.of(TextContent.from(rolledBackText)))
+                .isError(true)
+                .build();
     }
 
     private record CompensableToolExecution(ToolExecution toolExecution, ToolExecutionResultMessage resultMessage) {}

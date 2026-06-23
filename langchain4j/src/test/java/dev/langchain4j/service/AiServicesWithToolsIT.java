@@ -2650,6 +2650,7 @@ class AiServicesWithToolsIT {
         assertThat(toolResultMessages).hasSize(3);
 
         // bookFlight succeeded but was rolled back
+        assertThat(toolResultMessages.get(0).isError()).isTrue();
         assertThat(toolResultMessages.get(0).text())
                 .contains("bookFlight")
                 .contains("rolled back")
@@ -2660,6 +2661,7 @@ class AiServicesWithToolsIT {
                 .contains("No hotels available");
 
         // rentCar succeeded but was rolled back
+        assertThat(toolResultMessages.get(2).isError()).isTrue();
         assertThat(toolResultMessages.get(2).text())
                 .contains("rentCar")
                 .contains("rolled back")
