@@ -92,6 +92,7 @@ public class ToolService {
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
     private final Map<String, ReturnBehavior> returnBehaviors = new HashMap<>();
     private final Map<String, BiConsumer<ToolExecution, InvocationContext>> compensatingExecutors = new HashMap<>();
+    private IllegalConfigurationException compensatingToolMisconfiguration;
     private final Set<ToolProvider> toolProviders = new LinkedHashSet<>();
     private boolean compensateOnToolErrors;
     private Executor executor;
@@ -141,7 +142,7 @@ public class ToolService {
         for (Object objectWithTools : objectsWithTools) {
             List<AiServiceTool> tools = findTools(objectWithTools);
             addTools(tools, this.toolExecutors, this.toolSpecifications, this.returnBehaviors);
-            this.compensatingExecutors.putAll(findCompensatingActions(objectWithTools, this.toolExecutors));
+            this.compensatingExecutors.putAll(findCompensatingActions(objectWithTools));
         }
     }
 
@@ -261,26 +262,41 @@ public class ToolService {
 
     public void compensateOnToolErrors(boolean compensateOnToolErrors) {
         this.compensateOnToolErrors = compensateOnToolErrors;
+        if (compensateOnToolErrors && compensatingToolMisconfiguration != null) {
+            throw compensatingToolMisconfiguration;
+        }
     }
 
-    static Map<String, BiConsumer<ToolExecution, InvocationContext>> findCompensatingActions(
-            Object objectWithTools, Map<String, ToolExecutor> toolExecutors) {
+    private Map<String, BiConsumer<ToolExecution, InvocationContext>> findCompensatingActions(
+            Object objectWithTools) {
         Map<String, BiConsumer<ToolExecution, InvocationContext>> compensatingActions = new HashMap<>();
+        if (compensatingToolMisconfiguration != null) {
+            return compensatingActions;
+        }
+
         for (Method method : objectWithTools.getClass().getDeclaredMethods()) {
             CompensateFor compensateFor = method.getAnnotation(CompensateFor.class);
             if (compensateFor != null) {
                 String toolName = compensateFor.value();
                 ToolExecutor toolExecutor = toolExecutors.get(toolName);
                 if (toolExecutor == null) {
-                    throw illegalConfiguration(
+                    compensatingToolMisconfiguration = illegalConfiguration(
                             "@CompensateFor(\"%s\") on method '%s.%s' references tool '%s' which does not exist",
                             toolName, objectWithTools.getClass().getName(), method.getName(), toolName);
+                    if (compensateOnToolErrors) {
+                        throw compensatingToolMisconfiguration;
+                    }
+                    break;
                 }
                 if (!(toolExecutor instanceof DefaultToolExecutor)) {
-                    throw illegalConfiguration(
+                    compensatingToolMisconfiguration = illegalConfiguration(
                             "@CompensateFor(\"%s\") on method '%s.%s' references tool '%s' which is not a @Tool-annotated method."
                                     + " Only @Tool-annotated methods support compensating actions",
                             toolName, objectWithTools.getClass().getName(), method.getName(), toolName);
+                    if (compensateOnToolErrors) {
+                        throw compensatingToolMisconfiguration;
+                    }
+                    break;
                 }
                 Method toolMethod = ((DefaultToolExecutor) toolExecutor).originalMethod();
                 Class<?>[] compensatingParams = method.getParameterTypes();
@@ -288,11 +304,15 @@ public class ToolService {
                         && compensatingParams[0] == ToolExecution.class;
                 if (!acceptsToolExecution
                         && !Arrays.equals(toolMethod.getParameterTypes(), compensatingParams)) {
-                    throw illegalConfiguration(
+                    compensatingToolMisconfiguration = illegalConfiguration(
                             "@CompensateFor(\"%s\") on method '%s.%s' must have the same parameter types as tool '%s'"
                                     + " or a single %s parameter",
                             toolName, objectWithTools.getClass().getName(), method.getName(),
                             toolName, ToolExecution.class.getSimpleName());
+                    if (compensateOnToolErrors) {
+                        throw compensatingToolMisconfiguration;
+                    }
+                    break;
                 }
                 if (acceptsToolExecution) {
                     Method compensatingMethod = method;

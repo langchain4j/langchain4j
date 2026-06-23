@@ -2758,8 +2758,31 @@ class AiServicesWithToolsIT {
                 .isThrownBy(() -> AiServices.builder(Assistant.class)
                         .chatModel(ChatModelMock.thatAlwaysResponds("ok"))
                         .tools(new MisconfiguredService())
+                        .compensateOnToolErrors(true)
                         .build())
                 .withMessageContaining("@CompensateFor(\"credit\")")
                 .withMessageContaining("same parameter types");
+    }
+
+    @Test
+    void should_not_validate_compensating_actions_when_compensateOnToolErrors_is_disabled() {
+
+        class MisconfiguredService {
+
+            @Tool("credits money to a bank account")
+            void credit(String name, double amount) {
+            }
+
+            @CompensateFor("credit")
+            void uncredit(String name) {
+            }
+        }
+
+        // Should NOT throw — the user never enabled compensateOnToolErrors,
+        // so the mismatched @CompensateFor should be silently ignored
+        AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("ok"))
+                .tools(new MisconfiguredService())
+                .build();
     }
 }
