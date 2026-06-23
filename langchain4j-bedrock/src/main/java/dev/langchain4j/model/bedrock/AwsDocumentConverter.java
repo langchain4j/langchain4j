@@ -90,7 +90,7 @@ class AwsDocumentConverter {
         } else if (value.isDouble() || value.isFloat() || value.isBigDecimal()) {
             doc = Document.fromNumber(value.asDouble());
         } else if (value.isInt() || value.isLong() || value.isShort() || value.isBigInteger()) {
-            doc = Document.fromNumber(value.asInt());
+            doc = Document.fromNumber(value.bigIntegerValue());
         } else if (value.isArray()) {
             List<Document> list = new ArrayList<>();
             for (JsonNode node : value) {
