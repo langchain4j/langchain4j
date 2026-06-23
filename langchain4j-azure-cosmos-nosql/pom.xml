@@ -23,11 +23,6 @@
                 <scope>import</scope>
             </dependency>
             <dependency>
-                <groupId>com.azure</groupId>
-                <artifactId>azure-core-http-netty</artifactId>
-                <version>1.16.2</version>
-            </dependency>
-            <dependency>
                 <groupId>io.projectreactor</groupId>
                 <artifactId>reactor-core</artifactId>
                 <version>3.7.14</version>
@@ -35,7 +30,12 @@
             <dependency>
                 <groupId>io.projectreactor.netty</groupId>
                 <artifactId>reactor-netty-http</artifactId>
-                <version>1.2.10</version>
+                <version>1.2.13</version>
+            </dependency>
+            <dependency>
+                <groupId>org.hdrhistogram</groupId>
+                <artifactId>HdrHistogram</artifactId>
+                <version>2.2.2</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
