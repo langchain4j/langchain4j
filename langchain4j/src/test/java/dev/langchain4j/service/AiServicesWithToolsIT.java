@@ -2667,6 +2667,80 @@ class AiServicesWithToolsIT {
     }
 
     @Test
+    void should_rollback_prior_round_trip_tools_and_update_chat_memory() {
+
+        // given
+        BankAccountService bankService = spy(new BankAccountService());
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(20);
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                // Round 1: LLM calls credit (succeeds)
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("credit")
+                        .arguments("{\"name\": \"Dmytro\", \"amount\": 100.0}")
+                        .build()),
+                // Round 2: LLM calls withdraw (fails — insufficient funds)
+                // → rollback should undo credit from Round 1
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("2")
+                        .name("withdraw")
+                        .arguments("{\"name\": \"Mario\", \"amount\": 100.0}")
+                        .build()),
+                AiMessage.from("Transfer failed"));
+
+        interface BankAssistant {
+            String chat(String userMessage);
+        }
+
+        BankAssistant assistant = AiServices.builder(BankAssistant.class)
+                .chatModel(chatModel)
+                .tools(bankService)
+                .chatMemory(chatMemory)
+                .compensateOnToolErrors(true)
+                .build();
+
+        // when
+        String response = assistant.chat("Transfer 100 dollars from Mario's account to Dmytro's account");
+
+        // then - credit from round 1 should have been rolled back
+        verify(bankService).credit("Dmytro", 100.0);
+        verify(bankService).withdraw("Mario", 100.0);
+        verify(bankService).uncredit("Dmytro", 100.0);
+
+        // account balances should be back to their original state
+        assertThat(bankService.accounts.get("Mario")).isEqualTo(50.0);
+        assertThat(bankService.accounts.get("Dmytro")).isEqualTo(100.0);
+
+        // ChatMemory should reflect the rollback for the credit from round 1
+        List<ToolExecutionResultMessage> toolResultMessages = chatMemory.messages().stream()
+                .filter(m -> m instanceof ToolExecutionResultMessage)
+                .map(m -> (ToolExecutionResultMessage) m)
+                .toList();
+
+        assertThat(toolResultMessages).hasSize(2);
+
+        // credit was in round 1 but got rolled back due to withdraw failure in round 2
+        // — its message in ChatMemory should say it was rolled back
+        ToolExecutionResultMessage rolledbackCredit = toolResultMessages.get(0);
+        assertThat(rolledbackCredit.toolName()).isEqualTo("credit");
+        assertThat(rolledbackCredit.isError()).isTrue();
+        assertThat(rolledbackCredit.text())
+                .contains("credit")
+                .contains("rolled back")
+                .contains("withdraw");
+
+        // withdraw failed — normal error message
+        ToolExecutionResultMessage rolledbackWithdraw = toolResultMessages.get(1);
+        assertThat(rolledbackWithdraw.toolName()).isEqualTo("withdraw");
+        assertThat(rolledbackWithdraw.isError()).isTrue();
+        assertThat(rolledbackWithdraw.text())
+                .contains("Insufficient funds");
+
+        assertThat(response).isEqualTo("Transfer failed");
+    }
+
+    @Test
     void should_throw_when_compensating_action_has_wrong_signature() {
 
         class MisconfiguredService {

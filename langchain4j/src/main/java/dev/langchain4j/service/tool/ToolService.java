@@ -21,6 +21,7 @@ import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
@@ -62,8 +63,6 @@ import java.util.concurrent.Executor;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Internal
 public class ToolService {
@@ -501,7 +500,7 @@ public class ToolService {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
-        List<ToolExecution> compensableExecutions = compensateOnToolErrors ? new ArrayList<>() : null;
+        List<CompensableToolExecution> compensableExecutions = compensateOnToolErrors ? new ArrayList<>() : null;
 
         int roundTripsLeft = maxToolCallingRoundTrips;
         while (true) {
@@ -538,7 +537,8 @@ public class ToolService {
 
             for (ToolExecutionRequest request : toolExecutionRequests) {
                 ToolExecutionResult result = toolResults.get(request);
-                resultMessages.add(toResultMessage(request, result));
+                ToolExecutionResultMessage toolExecMsg = toResultMessage(request, result);
+                resultMessages.add(toolExecMsg);
 
                 ToolExecution toolExecution = ToolExecution.builder()
                         .request(request)
@@ -550,7 +550,7 @@ public class ToolService {
                 fireToolExecutedEvent(invocationContext, request, toolExecution, context.eventListenerRegistrar);
 
                 if (!result.isError() && compensateOnToolErrors && compensatingExecutors.containsKey(request.name())) {
-                    compensableExecutions.add(toolExecution);
+                    compensableExecutions.add(new CompensableToolExecution(toolExecution, toolExecMsg));
                 }
 
                 if (result.isError() && failedToolName == null) {
@@ -560,19 +560,11 @@ public class ToolService {
                 returnBehaviors.add(toolServiceContext.returnBehavior(request.name()));
             }
 
-            if (compensateOnToolErrors && anyToolErrored) {
-                rollback(compensableExecutions, invocationContext);
+            if (anyToolErrored && compensableExecutions != null && !compensableExecutions.isEmpty()) {
+                compensateToolsActions(compensableExecutions, invocationContext);
+                rewriteChatMemoryForCompensatedTools(messages, chatMemory, compensableExecutions, failedToolName);
                 compensableExecutions.clear();
-                for (int i = 0; i < toolExecutionRequests.size(); i++) {
-                    ToolExecutionRequest request = toolExecutionRequests.get(i);
-                    if (!toolResults.get(request).isError()
-                            && compensatingExecutors.containsKey(request.name())) {
-                        resultMessages.set(i, ToolExecutionResultMessage.toolExecutionResultMessage(
-                                request.id(), request.name(),
-                                "Tool '" + request.name() + "' was executed successfully"
-                                        + " but was rolled back due to failure of tool '" + failedToolName + "'"));
-                    }
-                }
+                rewriteCurrentResults(toolExecutionRequests, toolResults, resultMessages, failedToolName);
             }
 
             for (ToolExecutionResultMessage resultMessage : resultMessages) {
@@ -631,9 +623,56 @@ public class ToolService {
                 .build();
     }
 
-    private void rollback(List<ToolExecution> compensableExecutions, InvocationContext invocationContext) {
+    private void rewriteCurrentResults(List<ToolExecutionRequest> toolExecutionRequests,
+                                       Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+                                       List<ToolExecutionResultMessage> resultMessages,
+                                       String failedToolName) {
+        for (int i = 0; i < toolExecutionRequests.size(); i++) {
+            ToolExecutionRequest request = toolExecutionRequests.get(i);
+            if (!toolResults.get(request).isError()
+                    && compensatingExecutors.containsKey(request.name())) {
+                resultMessages.set(i, ToolExecutionResultMessage.toolExecutionResultMessage(
+                        request.id(), request.name(),
+                        "Tool '" + request.name() + "' was executed successfully"
+                                + " but was rolled back due to failure of tool '" + failedToolName + "'"));
+            }
+        }
+    }
+
+    private static void rewriteChatMemoryForCompensatedTools(List<ChatMessage> messages,
+                                                             ChatMemory chatMemory,
+                                                             List<CompensableToolExecution> compensableExecutions,
+                                                             String failedToolName) {
+        List<ChatMessage> memoryMessages = chatMemory != null ? chatMemory.messages() : messages;
+        for (CompensableToolExecution entry : compensableExecutions) {
+            ToolExecutionResultMessage originalMsg = entry.resultMessage();
+            String rolledBackText = "Tool '" + originalMsg.toolName() + "' was executed successfully"
+                    + " but was rolled back due to failure of tool '" + failedToolName + "'";
+            ToolExecutionResultMessage replacementMsg = ToolExecutionResultMessage.builder()
+                    .id(originalMsg.id())
+                    .toolName(originalMsg.toolName())
+                    .contents(List.of(TextContent.from(rolledBackText)))
+                    .isError(true)
+                    .attributes(originalMsg.attributes())
+                    .build();
+            for (int j = 0; j < memoryMessages.size(); j++) {
+                if (memoryMessages.get(j) instanceof ToolExecutionResultMessage msg
+                        && msg.id().equals(originalMsg.id())) {
+                    memoryMessages.set(j, replacementMsg);
+                    break;
+                }
+            }
+        }
+        if (chatMemory != null) {
+            chatMemory.set(memoryMessages);
+        }
+    }
+
+    private record CompensableToolExecution(ToolExecution toolExecution, ToolExecutionResultMessage resultMessage) {}
+
+    private void compensateToolsActions(List<CompensableToolExecution> compensableExecutions, InvocationContext invocationContext) {
         for (int i = compensableExecutions.size() - 1; i >= 0; i--) {
-            ToolExecution toolExecution = compensableExecutions.get(i);
+            ToolExecution toolExecution = compensableExecutions.get(i).toolExecution();
             String toolName = toolExecution.request().name();
             BiConsumer<ToolExecution, InvocationContext> compensatingAction = compensatingExecutors.get(toolName);
             try {
