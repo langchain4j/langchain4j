@@ -23,6 +23,7 @@ sidebar_position: 0
 | [Couchbase](/integrations/embedding-stores/couchbase)                                 | ✅                |                       | ✅                   |
 | [DuckDB](/integrations/embedding-stores/duckdb)                                       | ✅                | ✅                     | ✅                   |
 | [Elasticsearch](/integrations/embedding-stores/elasticsearch)                         | ✅                | ✅                     | ✅                   |
+| [Hazelcast](/integrations/embedding-stores/hazelcast)                                 | ✅                |                       | ✅                   |
 | [Hibernate](/integrations/embedding-stores/hibernate)                                 | ✅                | ✅                     | ✅                   |
 | [Infinispan](/integrations/embedding-stores/infinispan)                               | ✅                | ✅                     | ✅                   |
 | [JVector](/integrations/embedding-stores/jvector)                                     |                  |                       | ✅                   |

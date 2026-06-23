@@ -104,8 +104,8 @@ public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
         for (Content content : userMessage.contents()) {
             if (content instanceof TextContent) {
                 tokenCount += estimateTokenCountInText(((TextContent) content).text());
-            } else if (content instanceof ImageContent) {
-                tokenCount += 85; // TODO implement for HIGH/AUTO detail level
+            } else if (content instanceof ImageContent imageContent) {
+                tokenCount += estimateImageTokens(imageContent);
             } else {
                 throw illegalArgument("Unknown content type: " + content);
             }
@@ -117,6 +117,27 @@ public class AzureOpenAiTokenCountEstimator implements TokenCountEstimator {
         }
 
         return tokenCount;
+    }
+
+    /**
+     * Estimates tokens for image content based on detail level.
+     * <p>
+     * Based on OpenAI documentation:
+     * <ul>
+     *   <li>LOW: 85 tokens (fixed)</li>
+     *   <li>HIGH: 85 base + 170 tokens per 512x512 tile (typically 765 for 1024x1024)</li>
+     *   <li>AUTO: defaults to HIGH for images larger than 512x512</li>
+     * </ul>
+     * Since we don't have image dimensions, we use conservative estimates for HIGH/AUTO.
+     *
+     * @see <a href="https://platform.openai.com/docs/guides/vision">OpenAI Vision documentation</a>
+     */
+    private int estimateImageTokens(ImageContent imageContent) {
+        return switch (imageContent.detailLevel()) {
+            case LOW -> 85;
+            case MEDIUM -> 400; // conservative estimate between LOW and HIGH
+            case HIGH, ULTRA_HIGH, AUTO -> 765; // typical for 1024x1024 image
+        };
     }
 
     private int estimateTokenCountIn(AiMessage aiMessage) {

@@ -95,9 +95,6 @@ public class GPULlama3ResponseParser {
             String beforeThink = rawResponse.substring(0, thinkStart);
             String afterThink = rawResponse.substring(thinkEnd + 8); // Skip </think>
             actualResponse = (beforeThink + afterThink).trim();
-
-            // Clean up any extra whitespace
-            actualResponse = actualResponse.replaceAll("\\s+", " ").trim();
         }
 
         return new ParsedResponse(thinking, actualResponse);

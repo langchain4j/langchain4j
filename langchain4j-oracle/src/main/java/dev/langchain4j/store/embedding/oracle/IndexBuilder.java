@@ -8,7 +8,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  *   builder implementation exist: {@link IVFIndexBuilder} and {@link
  *   JSONIndexBuilder}. {@link IVFIndexBuilder} can be used to configure an
  *   index on the embedding column of the embedding table and {@link
- *   JSONIndexBuilder} allow to index keys of the metadata column of the
+ *   JSONIndexBuilder} allow you to index keys of the metadata column of the
  *   embedding table.
  * </p>
  * @param <T> The index builder's type.
