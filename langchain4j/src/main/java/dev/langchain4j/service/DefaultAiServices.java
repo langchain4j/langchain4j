@@ -262,12 +262,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                         List<ChatMessage> messages = new ArrayList<>();
                         if (context.hasChatMemory()) {
                             systemMessage.ifPresent(chatMemory::add);
-                            messages.addAll(chatMemory.messages());
-                            if (context.storeRetrievedContentInChatMemory) {
-                                chatMemory.add(userMessage);
-                            } else {
-                                chatMemory.add(originalUserMessage);
-                            }
+                            List<ChatMessage> memoryMessages = new ArrayList<>(chatMemory.messages());
+                            messages.addAll(memoryMessages);
+                            memoryMessages.add(
+                                    context.storeRetrievedContentInChatMemory ? userMessage : originalUserMessage);
+                            chatMemory.set(memoryMessages);
                             messages.add(userMessage);
                         } else {
                             systemMessage.ifPresent(messages::add);
