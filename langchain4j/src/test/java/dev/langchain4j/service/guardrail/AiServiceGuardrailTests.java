@@ -23,12 +23,16 @@ import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.observability.api.event.ToolExecutedEvent;
+import dev.langchain4j.observability.api.listener.ToolExecutedEventListener;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -691,6 +695,65 @@ class AiServiceGuardrailTests {
         ChatResponse response = future.get(5, TimeUnit.SECONDS);
         assertThat(response.aiMessage().text()).isEqualTo("recovered");
         assertThat(toolCallCount.get()).isEqualTo(1);
+    }
+
+    @Test
+    void streaming_output_guardrail_reprompt_tool_loop_should_fire_tool_executed_event() throws Exception {
+        // Guards against the streaming reprompt path skipping observability: tools executed while resolving a
+        // reprompt must still fire ToolExecutedEvent, exactly like the synchronous path.
+        List<ToolExecutedEvent> toolExecutedEvents = new CopyOnWriteArrayList<>();
+
+        var toolCallResponse = AiMessage.from(ToolExecutionRequest.builder()
+                .id("call-1")
+                .name("verify")
+                .arguments("{}")
+                .build());
+
+        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
+                AiMessage.from("bad response"), toolCallResponse, AiMessage.from("good response"));
+
+        var tools = new Object() {
+            @Tool("verify something")
+            public String verify() {
+                return "verified";
+            }
+        };
+
+        OutputGuardrail repromptOnBad = new OutputGuardrail() {
+            @Override
+            public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+                if ("bad response".equals(responseFromLLM.text())) {
+                    return reprompt("Invalid response", "Please try again using the verify tool");
+                }
+                return success();
+            }
+        };
+
+        interface StreamingRepromptAssistant {
+            TokenStream chat(String message);
+        }
+
+        ToolExecutedEventListener listener = toolExecutedEvents::add;
+
+        StreamingRepromptAssistant assistant = AiServices.builder(StreamingRepromptAssistant.class)
+                .streamingChatModel(model)
+                .tools(tools)
+                .outputGuardrails(repromptOnBad)
+                .registerListener(listener)
+                .build();
+
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+        assistant
+                .chat("Hello")
+                .onCompleteResponse(future::complete)
+                .onError(future::completeExceptionally)
+                .start();
+
+        ChatResponse response = future.get(5, TimeUnit.SECONDS);
+        assertThat(response.aiMessage().text()).isEqualTo("good response");
+        assertThat(toolExecutedEvents).hasSize(1);
+        assertThat(toolExecutedEvents.get(0).request().name()).isEqualTo("verify");
+        assertThat(toolExecutedEvents.get(0).resultText()).isEqualTo("verified");
     }
 
     public static class MyChatModel implements ChatModel {

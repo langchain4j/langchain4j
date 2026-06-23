@@ -42,6 +42,7 @@ import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.service.tool.ToolServiceContext;
+import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.service.tool.search.ToolSearchService;
 import java.util.ArrayList;
 import java.util.List;
@@ -439,35 +440,51 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
             @Override
             public ChatResponse execute(List<ChatMessage> chatMessages) {
-                ChatResponse response = chatExecutor.execute(chatMessages);
+                ChatResponse initialResponse = chatExecutor.execute(chatMessages);
 
-                if (!response.aiMessage().hasToolExecutionRequests()) {
-                    return response;
+                if (!initialResponse.aiMessage().hasToolExecutionRequests()) {
+                    return initialResponse;
                 }
 
-                List<ChatMessage> currentMessages = new ArrayList<>(chatMessages);
-                int roundTripsLeft = context.toolService.maxToolCallingRoundTrips();
-
-                while (response.aiMessage().hasToolExecutionRequests()) {
-                    if (roundTripsLeft-- == 0) {
-                        throw runtime(
-                                "Something is wrong, exceeded %s tool calling round trips (maxToolCallingRoundTrips)",
-                                context.toolService.maxToolCallingRoundTrips());
-                    }
-                    currentMessages = new ArrayList<>(currentMessages);
-                    currentMessages.add(response.aiMessage());
-
-                    for (ToolExecutionRequest toolRequest : response.aiMessage().toolExecutionRequests()) {
-                        ToolExecutionResult toolResult = AiServiceStreamingResponseHandler.this.execute(toolRequest);
-                        currentMessages.add(AiServiceStreamingResponseHandler.toResultMessage(toolRequest, toolResult));
-                    }
-
-                    response = chatExecutor.execute(currentMessages);
-                }
-
-                return response;
+                ToolServiceResult toolResult = context.toolService.executeInferenceAndToolsLoop(
+                        context,
+                        invocationContext.chatMemoryId(),
+                        initialResponse,
+                        chatRequest.parameters(),
+                        chatMessages,
+                        null,
+                        invocationContext,
+                        toolServiceContext,
+                        AiServiceStreamingResponseHandler.this::executeSynchronously);
+                return toolResult.aggregateResponse();
             }
         };
+    }
+
+    private ChatResponse executeSynchronously(ChatRequest request) {
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+        context.streamingChatModel.chat(request, new StreamingChatResponseHandler() {
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                future.complete(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                future.completeExceptionally(error);
+            }
+        });
+        try {
+            return future.get();
+        } catch (ExecutionException e) {
+            if (e.getCause() instanceof RuntimeException re) {
+                throw re;
+            }
+            throw new RuntimeException(e.getCause());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        }
     }
 
     private ChatResponse finalResponse(ChatResponse completeResponse, AiMessage aiMessage) {

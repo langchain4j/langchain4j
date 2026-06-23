@@ -432,6 +432,28 @@ public class ToolService {
             InvocationContext invocationContext,
             ToolServiceContext toolServiceContext,
             boolean isReturnTypeResult) {
+        return executeInferenceAndToolsLoop(
+                context,
+                memoryId,
+                chatResponse,
+                parameters,
+                messages,
+                chatMemory,
+                invocationContext,
+                toolServiceContext,
+                context.chatModel::chat);
+    }
+
+    public ToolServiceResult executeInferenceAndToolsLoop(
+            AiServiceContext context,
+            Object memoryId,
+            ChatResponse chatResponse,
+            ChatRequestParameters parameters,
+            List<ChatMessage> messages,
+            ChatMemory chatMemory,
+            InvocationContext invocationContext,
+            ToolServiceContext toolServiceContext,
+            Function<ChatRequest, ChatResponse> chatModelInvoker) {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
@@ -524,7 +546,7 @@ public class ToolService {
                     memoryId);
 
             fireRequestIssuedEvent(chatRequest, invocationContext, context.eventListenerRegistrar);
-            chatResponse = context.chatModel.chat(chatRequest);
+            chatResponse = chatModelInvoker.apply(chatRequest);
             fireResponseReceivedEvent(chatRequest, chatResponse, invocationContext, context.eventListenerRegistrar);
             aggregateTokenUsage =
                     TokenUsage.sum(aggregateTokenUsage, chatResponse.metadata().tokenUsage());
