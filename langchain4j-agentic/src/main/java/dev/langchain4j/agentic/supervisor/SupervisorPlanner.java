@@ -2,10 +2,14 @@ package dev.langchain4j.agentic.supervisor;
 
 import static java.util.stream.Collectors.toMap;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.agentToExecutor;
+
+import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgentRegistry;
 import dev.langchain4j.agentic.planner.ChatMemoryAccessProvider;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
@@ -19,6 +23,8 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -53,6 +59,9 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
 
     private final Function<AgenticScope, Object> output;
 
+    private AgentRegistry agentRegistry;
+
+    private Map<String, AgentInstance> subagents;
     private Map<String, AgentInstance> agents;
     private String agentsList;
 
@@ -79,11 +88,12 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
 
     @Override
     public void init(final InitPlanningContext initPlanningContext) {
-        this.agents =
+        this.agentRegistry = initPlanningContext.agentRegistry();
+        this.subagents =
                 initPlanningContext.subagents().stream().collect(toMap(AgentInstance::agentId, Function.identity()));
-        this.agentsList = initPlanningContext.subagents().stream()
-                .map(SupervisorPlanner::toCard)
-                .collect(Collectors.joining(", "));
+        this.agents = new HashMap<>(subagents);
+        mergeRegistryAgents(initPlanningContext.agenticScope());
+        this.agentsList = buildAgentsList();
 
         this.request = requestGenerator != null
                 ? requestGenerator.apply(initPlanningContext.agenticScope())
@@ -92,6 +102,24 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
             this.responseAgent =
                     AiServices.builder(ResponseAgent.class).chatModel(chatModel).build();
         }
+    }
+
+    private void mergeRegistryAgents(AgenticScope scope) {
+        if (agentRegistry == null) {
+            return;
+        }
+        Collection<AgentInstance> registryAgents = agentRegistry.discoverAgents(scope);
+        if (registryAgents != null) {
+            for (AgentInstance agent : registryAgents) {
+                agents.putIfAbsent(agent.agentId(), agent);
+            }
+        }
+    }
+
+    private String buildAgentsList() {
+        return agents.values().stream()
+                .map(SupervisorPlanner::toCard)
+                .collect(Collectors.joining(", "));
     }
 
     @Override
@@ -143,6 +171,8 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     }
 
     private Action nextSubagent(AgenticScope agenticScope, String lastResponse) {
+        refreshRegistryAgents(agenticScope);
+
         String supervisorContext = agenticScope.hasState(SUPERVISOR_CONTEXT_KEY)
                 ? SUPERVISOR_CONTEXT_PREFIX + "'" + agenticScope.readState(SUPERVISOR_CONTEXT_KEY, "") + "'."
                 : "";
@@ -162,7 +192,24 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         agentInvocation.getArguments().entrySet().stream()
                 .filter(entry -> writeArgumentToScope(agenticScope, agent, entry.getKey(), entry.getValue()))
                 .forEach(entry -> agenticScope.writeState(entry.getKey(), entry.getValue()));
-        return call(agent);
+        return call(agent instanceof AgentExecutor ? agent : agentToExecutor(agent));
+    }
+
+    private void refreshRegistryAgents(AgenticScope agenticScope) {
+        if (agentRegistry == null) {
+            return;
+        }
+        Collection<AgentInstance> registryAgents = agentRegistry.discoverAgents(agenticScope);
+        Map<String, AgentInstance> refreshed = new HashMap<>(subagents);
+        if (registryAgents != null) {
+            for (AgentInstance agent : registryAgents) {
+                refreshed.putIfAbsent(agent.agentId(), agent);
+            }
+        }
+        if (!refreshed.keySet().equals(agents.keySet())) {
+            this.agents = refreshed;
+            this.agentsList = buildAgentsList();
+        }
     }
 
     private static <T> T withAgenticScope(AgenticScope agenticScope, Supplier<T> supplier) {

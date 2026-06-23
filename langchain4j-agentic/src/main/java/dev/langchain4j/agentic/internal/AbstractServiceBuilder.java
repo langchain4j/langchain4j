@@ -15,6 +15,7 @@ import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgentRegistry;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.InvocationHandler;
@@ -47,6 +48,8 @@ public abstract class AbstractServiceBuilder<T, S> {
     protected final List<AgentExecutor> subagents = new ArrayList<>();
 
     protected Function<ErrorContext, ErrorRecoveryResult> errorHandler;
+
+    protected AgentRegistry agentRegistry;
 
     protected Function<InternalAgent, Object> agentInstanceFactory;
 
@@ -125,6 +128,11 @@ public abstract class AbstractServiceBuilder<T, S> {
 
     public S errorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler) {
         this.errorHandler = errorHandler;
+        return (S) this;
+    }
+
+    public S agentRegistry(AgentRegistry agentRegistry) {
+        this.agentRegistry = agentRegistry;
         return (S) this;
     }
 

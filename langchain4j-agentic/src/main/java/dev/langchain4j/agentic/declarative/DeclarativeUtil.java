@@ -15,6 +15,7 @@ import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentRegistry;
 import dev.langchain4j.agentic.planner.AgenticService;
 import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -229,6 +230,7 @@ public class DeclarativeUtil {
     public static void buildAgentFeatures(Class<?> agentServiceClass, AgenticService<?, ?> builder) {
         buildErrorHandler(agentServiceClass).ifPresent(builder::errorHandler);
         buildListener(agentServiceClass, builder);
+        buildAgentRegistry(agentServiceClass, builder);
     }
 
     public static Optional<Executor> parallelExecutor(Class<?> agentServiceClass) {
@@ -250,6 +252,14 @@ public class DeclarativeUtil {
                 .ifPresent(listenerMethod -> {
                     checkReturnType(listenerMethod, AgentListener.class);
                     builder.listener(invokeStatic(listenerMethod));
+                });
+    }
+
+    private static void buildAgentRegistry(Class<?> agentServiceClass, AgenticService<?, ?> builder) {
+        getAnnotatedMethodOnClass(agentServiceClass, AgentRegistrySupplier.class)
+                .ifPresent(method -> {
+                    checkReturnType(method, AgentRegistry.class);
+                    builder.agentRegistry(invokeStatic(method));
                 });
     }
 

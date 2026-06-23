@@ -674,6 +674,43 @@ TokenStream tokenStream = novelCreator.writeStory("dragons and wizards", "young 
 
 the streaming responses of the first two agents are internally fully consumed before the invocation of the subsequent agents can start, and only the streaming response of the last `StyleEditor` agent is propagated as the streaming response of the whole `novelCreator` agent.
 
+## Agent Registry
+
+By default, the sub-agents available to an agentic system are defined statically at build time via the `subAgents` method. The `AgentRegistry` interface enables dynamic agent discovery at runtime, allowing agents to appear or disappear between iterations based on external conditions.
+
+```java
+public interface AgentRegistry {
+    Collection<AgentInstance> discoverAgents(AgenticScope scope);
+}
+```
+
+The registry is queried at each iteration. Agents it returns are merged with the static sub-agents (static sub-agents take precedence on ID collision). Agents that the registry stops returning are automatically removed from subsequent iterations.
+
+A registry can be set on any agentic service builder via the `agentRegistry` method:
+
+```java
+InMemoryAgentRegistry registry = new InMemoryAgentRegistry();
+registry.register(exchangeAgent);
+
+AgenticServices.supervisorBuilder()
+        .subAgents(withdrawAgent, creditAgent)
+        .agentRegistry(registry)
+        ...
+```
+
+The declarative API supports this via the `@AgentRegistrySupplier` annotation on a static method returning an `AgentRegistry`:
+
+```java
+@AgentRegistrySupplier
+static AgentRegistry registry() {
+    InMemoryAgentRegistry registry = new InMemoryAgentRegistry();
+    registry.register(exchangeAgent);
+    return registry;
+}
+```
+
+Since the registry receives the current `AgenticScope`, it can make context-aware decisions about which agents to expose at each iteration.
+
 ## Dynamic chat model selection
 
 By default, an agent is bound to a single `ChatModel` at build time. However, there are scenarios where you may want to dynamically select which model to use at each invocation based on the current state of the agentic system. For example, you might want to use a cheaper, faster model for routine work and switch to a more capable one when quality thresholds demand it.

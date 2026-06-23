@@ -204,7 +204,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         }
 
         Planner planner = plannerSupplier.get();
-        planner.init(new InitPlanningContext(currentScope, this, subagents));
+        planner.init(new InitPlanningContext(currentScope, this, subagents, service.agentRegistry));
         Object result = new PlannerLoop(planner, currentScope, registry).loop();
         Object output = outputKey != null ? currentScope.readState(outputKey) : result;
 

@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.supervisor;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.planner.AgentRegistry;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
@@ -42,4 +43,6 @@ public interface SupervisorAgentService<T> {
     SupervisorAgentService<T> errorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler);
 
     SupervisorAgentService<T> listener(AgentListener agentListener);
+
+    SupervisorAgentService<T> agentRegistry(AgentRegistry agentRegistry);
 }

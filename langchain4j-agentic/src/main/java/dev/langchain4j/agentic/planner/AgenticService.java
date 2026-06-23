@@ -32,4 +32,6 @@ public interface AgenticService<T, A> {
     T errorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler);
 
     T listener(AgentListener listeners);
+
+    T agentRegistry(AgentRegistry agentRegistry);
 }
