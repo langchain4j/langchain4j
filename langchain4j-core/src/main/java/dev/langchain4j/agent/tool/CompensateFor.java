@@ -20,7 +20,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * or dynamically defined tools (e.g. MCP tools, tools registered via {@code ToolSpecification})
  * are not supported.
  *
- * @since 1.15.0
+ * @since 1.17.0
  */
 @Experimental
 @Retention(RUNTIME)
