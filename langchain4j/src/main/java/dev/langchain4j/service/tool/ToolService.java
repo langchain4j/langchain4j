@@ -315,10 +315,10 @@ public class ToolService {
                     break;
                 }
                 if (acceptsToolExecution) {
+                    method.setAccessible(true);
                     Method compensatingMethod = method;
                     compensatingActions.put(toolName, (toolExecution, ctx) -> {
                         try {
-                            compensatingMethod.setAccessible(true);
                             compensatingMethod.invoke(objectWithTools, toolExecution);
                         } catch (Exception e) {
                             throw new RuntimeException(e);
