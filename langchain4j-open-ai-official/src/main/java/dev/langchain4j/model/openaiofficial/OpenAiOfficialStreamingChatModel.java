@@ -44,45 +44,42 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
 
     public OpenAiOfficialStreamingChatModel(Builder builder) {
 
-        if (builder.openAIClientAsync != null) {
-            this.asyncClient = builder.openAIClientAsync;
-        } else {
-            init(
-                    builder.baseUrl,
-                    builder.apiKey,
-                    builder.credential,
-                    builder.microsoftFoundryDeploymentName,
-                    builder.azureOpenAIServiceVersion,
-                    builder.organizationId,
-                    builder.isMicrosoftFoundry,
-                    builder.isGitHubModels,
-                    builder.defaultRequestParameters,
-                    builder.modelName,
-                    builder.temperature,
-                    builder.topP,
-                    builder.stop,
-                    builder.maxCompletionTokens,
-                    builder.presencePenalty,
-                    builder.frequencyPenalty,
-                    builder.logitBias,
-                    builder.responseFormat,
-                    builder.strictJsonSchema,
-                    builder.seed,
-                    builder.user,
-                    builder.strictTools,
-                    builder.parallelToolCalls,
-                    builder.store,
-                    builder.metadata,
-                    builder.serviceTier,
-                    builder.timeout,
-                    builder.maxRetries,
-                    builder.proxy,
-                    builder.tokenCountEstimator,
-                    builder.customHeaders,
-                    builder.listeners,
-                    builder.capabilities,
-                    true);
-        }
+        this.asyncClient = builder.openAIClientAsync;
+        init(
+                builder.baseUrl,
+                builder.apiKey,
+                builder.credential,
+                builder.microsoftFoundryDeploymentName,
+                builder.azureOpenAIServiceVersion,
+                builder.organizationId,
+                builder.isMicrosoftFoundry,
+                builder.isGitHubModels,
+                builder.defaultRequestParameters,
+                builder.modelName,
+                builder.temperature,
+                builder.topP,
+                builder.stop,
+                builder.maxCompletionTokens,
+                builder.presencePenalty,
+                builder.frequencyPenalty,
+                builder.logitBias,
+                builder.responseFormat,
+                builder.strictJsonSchema,
+                builder.seed,
+                builder.user,
+                builder.strictTools,
+                builder.parallelToolCalls,
+                builder.store,
+                builder.metadata,
+                builder.serviceTier,
+                builder.timeout,
+                builder.maxRetries,
+                builder.proxy,
+                builder.tokenCountEstimator,
+                builder.customHeaders,
+                builder.listeners,
+                builder.capabilities,
+                true);
         this.modelName = builder.modelName;
     }
 
