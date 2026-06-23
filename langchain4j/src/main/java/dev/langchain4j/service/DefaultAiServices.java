@@ -351,7 +351,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 chatMemory,
                                 invocationContext,
                                 toolServiceContext,
-                                isReturnTypeResult);
+                                context.chatModel::chat);
 
                         if (toolServiceResult.immediateToolReturn()) {
                             if (isReturnTypeResult) {
@@ -405,14 +405,14 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
 
-                        ChatExecutor toolAwareRepromptExecutor = buildToolAwareRepromptExecutor(
+                        ChatExecutor toolAwareRepromptExecutor = ToolAwareRepromptExecutor.wrap(
                                 chatExecutor,
                                 context,
                                 memoryId,
                                 parameters,
                                 invocationContext,
                                 toolServiceContext,
-                                isReturnTypeResult);
+                                context.chatModel::chat);
 
                         var response = invokeOutputGuardrails(
                                 context.guardrailService(),
@@ -582,43 +582,6 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
 
         return userMessage;
-    }
-
-    private ChatExecutor buildToolAwareRepromptExecutor(
-            ChatExecutor rawChatExecutor,
-            AiServiceContext context,
-            Object memoryId,
-            ChatRequestParameters parameters,
-            InvocationContext invocationContext,
-            ToolServiceContext toolServiceContext,
-            boolean isReturnTypeResult) {
-        return new ChatExecutor() {
-            @Override
-            public ChatResponse execute() {
-                return rawChatExecutor.execute();
-            }
-
-            @Override
-            public ChatResponse execute(List<ChatMessage> chatMessages) {
-                ChatResponse initialResponse = rawChatExecutor.execute(chatMessages);
-
-                if (!initialResponse.aiMessage().hasToolExecutionRequests()) {
-                    return initialResponse;
-                }
-
-                ToolServiceResult toolResult = context.toolService.executeInferenceAndToolsLoop(
-                        context,
-                        memoryId,
-                        initialResponse,
-                        parameters,
-                        chatMessages,
-                        null,
-                        invocationContext,
-                        toolServiceContext,
-                        isReturnTypeResult);
-                return toolResult.aggregateResponse();
-            }
-        };
     }
 
     private <T> T invokeOutputGuardrails(
