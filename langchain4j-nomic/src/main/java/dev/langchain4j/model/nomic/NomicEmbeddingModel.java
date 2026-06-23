@@ -1,21 +1,20 @@
 package dev.langchain4j.model.nomic;
 
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
-import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
-import org.slf4j.Logger;
-
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
+
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
+import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import org.slf4j.Logger;
 
 /**
  * An integration with Nomic Atlas's Text Embeddings API.
@@ -41,8 +40,7 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
             Duration timeout,
             Integer maxRetries,
             Boolean logRequests,
-            Boolean logResponses
-    ) {
+            Boolean logResponses) {
         this.client = NomicClient.builder()
                 .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
                 .apiKey(ensureNotBlank(apiKey, "apiKey"))
@@ -77,9 +75,7 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
-        List<String> texts = textSegments.stream()
-                .map(TextSegment::text)
-                .collect(toList());
+        List<String> texts = textSegments.stream().map(TextSegment::text).collect(toList());
 
         return embedTexts(texts);
     }
@@ -113,9 +109,7 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     private List<Embedding> getEmbeddings(EmbeddingResponse response) {
-        return response.getEmbeddings().stream()
-                .map(Embedding::from)
-                .collect(toList());
+        return response.getEmbeddings().stream().map(Embedding::from).collect(toList());
     }
 
     private Integer getTokenUsage(EmbeddingResponse response) {
@@ -137,49 +131,105 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Boolean logResponses;
         private Logger logger;
 
-        NomicEmbeddingModelBuilder() {
-        }
+        NomicEmbeddingModelBuilder() {}
 
+        /**
+         * Sets the base URL of the Nomic Atlas API. Defaults to {@code "https://api-atlas.nomic.ai/v1/"}.
+         *
+         * @param baseUrl the base URL
+         * @return {@code this}
+         */
         public NomicEmbeddingModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
 
+        /**
+         * Sets the Nomic API key used to authenticate requests.
+         *
+         * @param apiKey the Nomic API key
+         * @return {@code this}
+         */
         public NomicEmbeddingModelBuilder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
         }
 
+        /**
+         * Sets the embedding model name, e.g. {@code "nomic-embed-text-v1.5"}.
+         *
+         * @param modelName the model name
+         * @return {@code this}
+         */
         public NomicEmbeddingModelBuilder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
+        /**
+         * Sets the task type that informs the model how the embeddings will be used.
+         * Common values: {@code "search_query"}, {@code "search_document"},
+         * {@code "classification"}, {@code "clustering"}.
+         *
+         * @param taskType the task type
+         * @return {@code this}
+         */
         public NomicEmbeddingModelBuilder taskType(String taskType) {
             this.taskType = taskType;
             return this;
         }
 
+        /**
+         * Sets the maximum number of text segments per batch request.
+         * Defaults to {@code 500}.
+         *
+         * @param maxSegmentsPerBatch the maximum number of segments per batch
+         * @return {@code this}
+         */
         public NomicEmbeddingModelBuilder maxSegmentsPerBatch(Integer maxSegmentsPerBatch) {
             this.maxSegmentsPerBatch = maxSegmentsPerBatch;
             return this;
         }
 
+        /**
+         * Sets the HTTP request timeout. Defaults to 60 seconds.
+         *
+         * @param timeout the request timeout
+         * @return {@code this}
+         */
         public NomicEmbeddingModelBuilder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
+        /**
+         * Sets the maximum number of retries on transient errors. Defaults to {@code 2}.
+         *
+         * @param maxRetries the maximum number of retries
+         * @return {@code this}
+         */
         public NomicEmbeddingModelBuilder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
+        /**
+         * Enables debug logging of request bodies sent to the Nomic API.
+         *
+         * @param logRequests {@code true} to enable request logging
+         * @return {@code this}
+         */
         public NomicEmbeddingModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
+        /**
+         * Enables debug logging of response bodies received from the Nomic API.
+         *
+         * @param logResponses {@code true} to enable response logging
+         * @return {@code this}
+         */
         public NomicEmbeddingModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
@@ -199,7 +249,10 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
         }
 
         public String toString() {
-            return "NomicEmbeddingModel.NomicEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", modelName=" + this.modelName + ", taskType=" + this.taskType + ", maxSegmentsPerBatch=" + this.maxSegmentsPerBatch + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+            return "NomicEmbeddingModel.NomicEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey
+                    + ", modelName=" + this.modelName + ", taskType=" + this.taskType + ", maxSegmentsPerBatch="
+                    + this.maxSegmentsPerBatch + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries
+                    + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
         }
     }
 }
