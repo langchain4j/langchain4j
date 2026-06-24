@@ -574,7 +574,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 chatMemory,
                                 invocationContext,
                                 toolServiceContext,
-                                isReturnTypeResult);
+                                context.chatModel::chat);
 
                         return processToolServiceResult(
                                 method,
@@ -586,6 +586,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 toolServiceContext,
                                 toolServiceResult,
                                 chatExecutor,
+                                memoryId,
+                                parameters,
                                 commonGuardrailParam);
                     }
 
@@ -842,6 +844,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                             ToolServiceContext toolServiceContext,
                             ToolServiceResult toolServiceResult,
                             ChatExecutor chatExecutor,
+                            Object memoryId,
+                            ChatRequestParameters parameters,
                             GuardrailRequestParams commonGuardrailParam) {
 
                         if (toolServiceResult.immediateToolReturn()) {
@@ -860,11 +864,20 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
 
+                        ChatExecutor toolAwareRepromptExecutor = ToolAwareRepromptExecutor.wrap(
+                                chatExecutor,
+                                context,
+                                memoryId,
+                                parameters,
+                                invocationContext,
+                                toolServiceContext,
+                                context.chatModel::chat);
+
                         var response = invokeOutputGuardrails(
                                 context.guardrailService(),
                                 method,
                                 aggregateResponse,
-                                chatExecutor,
+                                toolAwareRepromptExecutor,
                                 commonGuardrailParam);
 
                         return finishToolServiceResult(

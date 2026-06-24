@@ -382,7 +382,14 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
                         var outputGuardrailParams = OutputGuardrailRequest.builder()
                                 .responseFromLLM(finalChatResponse)
-                                .chatExecutor(chatExecutor)
+                                .chatExecutor(ToolAwareRepromptExecutor.wrap(
+                                        chatExecutor,
+                                        context,
+                                        invocationContext.chatMemoryId(),
+                                        chatRequest.parameters(),
+                                        invocationContext,
+                                        toolServiceContext,
+                                        this::executeSynchronously))
                                 .requestParams(newCommonParams)
                                 .build();
 
@@ -408,6 +415,39 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             } else {
                 fireInvocationComplete(finalChatResponse);
             }
+        }
+    }
+
+    /**
+     * Performs a single, blocking model call against the configured
+     * {@link dev.langchain4j.model.chat.StreamingChatModel}, exposing it as a plain synchronous call so that
+     * {@code executeInferenceAndToolsLoop} can drive the tool loop on a streaming-only AI Service. This is
+     * intentionally a raw model call and does not fire request/response events — those are fired by
+     * {@code executeInferenceAndToolsLoop} itself, mirroring the synchronous path.
+     */
+    private ChatResponse executeSynchronously(ChatRequest request) {
+        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
+        context.streamingChatModel.chat(request, new StreamingChatResponseHandler() {
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                future.complete(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                future.completeExceptionally(error);
+            }
+        });
+        try {
+            return future.get();
+        } catch (ExecutionException e) {
+            if (e.getCause() instanceof RuntimeException re) {
+                throw re;
+            }
+            throw new RuntimeException(e.getCause());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
         }
     }
 
