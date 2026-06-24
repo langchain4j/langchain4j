@@ -89,6 +89,32 @@ public abstract class HttpClientTimeoutIT {
     }
 
     @Test
+    void should_timeout_on_read_sync_when_per_request_timeout_overrides_long_client_default() {
+
+        // given
+        int perRequestReadTimeoutMillis = readTimeoutMillis();
+        int clientDefaultReadTimeoutMillis = perRequestReadTimeoutMillis * 20;
+
+        for (HttpClient client : clients(Duration.ofMillis(clientDefaultReadTimeoutMillis))) {
+
+            wireMockServer.stubFor(WireMock.get("/endpoint")
+                    .willReturn(WireMock.aResponse().withFixedDelay(perRequestReadTimeoutMillis * 2)));
+
+            HttpRequest request = HttpRequest.builder()
+                    .method(GET)
+                    .url(String.format("http://localhost:%s/endpoint", WIREMOCK_PORT))
+                    .readTimeout(Duration.ofMillis(perRequestReadTimeoutMillis))
+                    .build();
+
+            // when-then
+            assertThatThrownBy(() -> client.execute(request))
+                    .isExactlyInstanceOf(TimeoutException.class)
+                    .satisfies(this::assertCause)
+                    .hasMessageContainingAll(readSyncMessageKeywords());
+        }
+    }
+
+    @Test
     void should_timeout_on_read_async() throws Exception {
 
         // given
@@ -152,6 +178,64 @@ public abstract class HttpClientTimeoutIT {
 
             verify(spyListener, times(1)).onError(any());
             verifyNoMoreInteractions(spyListener);
+        }
+    }
+
+    @Test
+    void should_timeout_on_read_async_when_per_request_timeout_overrides_long_client_default() throws Exception {
+
+        // given
+        int perRequestReadTimeoutMillis = readTimeoutMillis();
+        int clientDefaultReadTimeoutMillis = perRequestReadTimeoutMillis * 20;
+
+        for (HttpClient client : clients(Duration.ofMillis(clientDefaultReadTimeoutMillis))) {
+
+            wireMockServer.stubFor(WireMock.get("/endpoint")
+                    .willReturn(WireMock.aResponse().withFixedDelay(perRequestReadTimeoutMillis * 2)));
+
+            HttpRequest request = HttpRequest.builder()
+                    .method(GET)
+                    .url(String.format("http://localhost:%s/endpoint", WIREMOCK_PORT))
+                    .readTimeout(Duration.ofMillis(perRequestReadTimeoutMillis))
+                    .build();
+
+            // when
+            CompletableFuture<Throwable> completableFuture = new CompletableFuture<>();
+
+            ServerSentEventListener listener = new ServerSentEventListener() {
+
+                @Override
+                public void onOpen(SuccessfulHttpResponse successfulHttpResponse) {
+                    completableFuture.completeExceptionally(new IllegalStateException("onOpen() should not be called"));
+                }
+
+                @Override
+                public void onEvent(ServerSentEvent event) {
+                    completableFuture.completeExceptionally(
+                            new IllegalStateException("onEvent() should not be called"));
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    completableFuture.complete(throwable);
+                }
+
+                @Override
+                public void onClose() {
+                    completableFuture.completeExceptionally(
+                            new IllegalStateException("onClose() should not be called"));
+                }
+            };
+            client.execute(request, new DefaultServerSentEventParser(), listener);
+
+            // then — the per-request timeout (perRequestReadTimeoutMillis) should fire well before
+            // the long client default (clientDefaultReadTimeoutMillis) would.
+            Throwable throwable = completableFuture.get(perRequestReadTimeoutMillis * 4L, MILLISECONDS);
+
+            assertThat(throwable)
+                    .isExactlyInstanceOf(TimeoutException.class)
+                    .satisfies(this::assertCause)
+                    .hasMessageContainingAll(readAsyncMessageKeywords());
         }
     }
 

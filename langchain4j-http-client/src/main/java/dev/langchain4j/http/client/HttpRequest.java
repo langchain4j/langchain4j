@@ -12,6 +12,7 @@ import static java.util.stream.Collectors.joining;
 import dev.langchain4j.Experimental;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,6 +26,7 @@ public class HttpRequest {
     private final Map<String, String> formDataFields;
     private final Map<String, FormDataFile> formDataFiles;
     private final String body;
+    private final Duration readTimeout;
 
     public HttpRequest(Builder builder) {
         validate(builder);
@@ -34,6 +36,7 @@ public class HttpRequest {
         this.formDataFields = copy(builder.formDataFields);
         this.formDataFiles = copy(builder.formDataFiles);
         this.body = builder.body;
+        this.readTimeout = builder.readTimeout;
     }
 
     private static void validate(Builder builder) {
@@ -101,6 +104,16 @@ public class HttpRequest {
         return body;
     }
 
+    /**
+     * The read timeout for this specific request, overriding the {@link HttpClient}'s default
+     * read timeout when set. {@code null} means the client's default applies.
+     *
+     * @since 1.14.0
+     */
+    public Duration readTimeout() {
+        return readTimeout;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -114,6 +127,7 @@ public class HttpRequest {
         private Map<String, String> formDataFields;
         private Map<String, FormDataFile> formDataFiles;
         private String body;
+        private Duration readTimeout;
 
         private Builder() {}
 
@@ -257,6 +271,18 @@ public class HttpRequest {
 
         public Builder body(String body) {
             this.body = body;
+            return this;
+        }
+
+        /**
+         * Sets a read timeout for this specific request. When set, it overrides the
+         * {@link HttpClient}'s default read timeout. When unset (or {@code null}), the
+         * client's default applies.
+         *
+         * @since 1.14.0
+         */
+        public Builder readTimeout(Duration readTimeout) {
+            this.readTimeout = readTimeout;
             return this;
         }
 
