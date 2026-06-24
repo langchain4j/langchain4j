@@ -1,10 +1,10 @@
 package dev.langchain4j.agentic.declarative;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
 /**
  * Marks a method as a supplier of the planner for a planner based agent.
@@ -16,11 +16,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  *
  *         @PlannerAgent(
  *                 outputKey = "story",
- *                 subAgents = {
- *                     @SubAgent(type = CreativeWriter.class, outputKey = "story"),
- *                     @SubAgent(type = AudienceEditor.class, outputKey = "story"),
- *                     @SubAgent(type = StyleEditor.class, outputKey = "story")
- *                 })
+ *                 subAgents = { CreativeWriter.class, AudienceEditor.class, StyleEditor.class })
  *         String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
  *
  *         @PlannerSupplier
@@ -33,5 +29,4 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  */
 @Retention(RUNTIME)
 @Target({METHOD})
-public @interface PlannerSupplier {
-}
+public @interface PlannerSupplier {}

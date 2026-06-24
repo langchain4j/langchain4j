@@ -1284,6 +1284,20 @@ public abstract class AiServices<T> {
     }
 
     /**
+     * Enables or disables compensating actions on tool errors.
+     * When enabled, if any tool execution fails, all previously executed tools'
+     * compensating actions (declared via {@link dev.langchain4j.agent.tool.CompensateFor}) are called
+     * in reverse order to undo the effects of the successful tool calls.
+     *
+     * @param compensateOnToolErrors whether to run compensating actions on tool errors
+     * @return builder
+     */
+    public AiServices<T> compensateOnToolErrors(boolean compensateOnToolErrors) {
+        context.toolService.compensateOnToolErrors(compensateOnToolErrors);
+        return this;
+    }
+
+    /**
      * Constructs and returns the AI Service.
      *
      * @return An instance of the AI Service implementing the specified interface.

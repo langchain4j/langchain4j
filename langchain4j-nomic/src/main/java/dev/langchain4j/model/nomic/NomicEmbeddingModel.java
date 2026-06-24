@@ -1,21 +1,20 @@
 package dev.langchain4j.model.nomic;
 
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
-import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
-import org.slf4j.Logger;
-
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
+
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
+import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import org.slf4j.Logger;
 
 /**
  * An integration with Nomic Atlas's Text Embeddings API.
@@ -41,8 +40,7 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
             Duration timeout,
             Integer maxRetries,
             Boolean logRequests,
-            Boolean logResponses
-    ) {
+            Boolean logResponses) {
         this.client = NomicClient.builder()
                 .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
                 .apiKey(ensureNotBlank(apiKey, "apiKey"))
@@ -77,9 +75,7 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
-        List<String> texts = textSegments.stream()
-                .map(TextSegment::text)
-                .collect(toList());
+        List<String> texts = textSegments.stream().map(TextSegment::text).collect(toList());
 
         return embedTexts(texts);
     }
@@ -113,9 +109,7 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     private List<Embedding> getEmbeddings(EmbeddingResponse response) {
-        return response.getEmbeddings().stream()
-                .map(Embedding::from)
-                .collect(toList());
+        return response.getEmbeddings().stream().map(Embedding::from).collect(toList());
     }
 
     private Integer getTokenUsage(EmbeddingResponse response) {
@@ -137,8 +131,7 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Boolean logResponses;
         private Logger logger;
 
-        NomicEmbeddingModelBuilder() {
-        }
+        NomicEmbeddingModelBuilder() {}
 
         public NomicEmbeddingModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -199,7 +192,11 @@ public class NomicEmbeddingModel extends DimensionAwareEmbeddingModel {
         }
 
         public String toString() {
-            return "NomicEmbeddingModel.NomicEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", modelName=" + this.modelName + ", taskType=" + this.taskType + ", maxSegmentsPerBatch=" + this.maxSegmentsPerBatch + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+            return "NomicEmbeddingModel.NomicEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", apiKey="
+                    + (this.apiKey == null ? null : "********") + ", modelName=" + this.modelName + ", taskType="
+                    + this.taskType + ", maxSegmentsPerBatch=" + this.maxSegmentsPerBatch + ", timeout=" + this.timeout
+                    + ", maxRetries=" + this.maxRetries + ", logRequests=" + this.logRequests + ", logResponses="
+                    + this.logResponses + ")";
         }
     }
 }

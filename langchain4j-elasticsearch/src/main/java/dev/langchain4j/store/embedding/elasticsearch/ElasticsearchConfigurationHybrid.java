@@ -4,7 +4,8 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.KnnRetriever;
 import co.elastic.clients.elasticsearch._types.RRFRetrieverEntry;
-import co.elastic.clients.elasticsearch._types.query_dsl.MatchQuery;
+import co.elastic.clients.elasticsearch._types.StandardRetriever;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.SourceConfig;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
@@ -88,8 +89,10 @@ public class ElasticsearchConfigurationHybrid implements ElasticsearchConfigurat
                 .field(VECTOR_FIELD)
                 .queryVector(embeddingSearchRequest.queryEmbedding().vectorAsList());
 
+        Query filter = null;
         if (embeddingSearchRequest.filter() != null) {
-            krb.filter(ElasticsearchMetadataFilterMapper.map(embeddingSearchRequest.filter()));
+            filter = ElasticsearchMetadataFilterMapper.map(embeddingSearchRequest.filter());
+            krb.filter(filter);
         }
 
         // k and numCandidates are required in KnnRetriever, calculating default values similarly to how elasticsearch
@@ -105,8 +108,14 @@ public class ElasticsearchConfigurationHybrid implements ElasticsearchConfigurat
         KnnRetriever knn = krb.build();
 
         // Building full text part of the hybrid query
-        MatchQuery matchQuery =
-                new MatchQuery.Builder().field(TEXT_FIELD).query(textQuery).build();
+        Query matchQuery = Query.of(q -> q.match(m -> m.field(TEXT_FIELD).query(textQuery)));
+        StandardRetriever.Builder srb = new StandardRetriever.Builder().query(matchQuery);
+
+        if (filter != null) {
+            srb.filter(filter);
+        }
+
+        StandardRetriever standard = srb.build();
 
         log.trace("Searching for embeddings in index [{}] with hybrid query [{}], [{}].", indexName, knn, matchQuery);
 
@@ -119,8 +128,7 @@ public class ElasticsearchConfigurationHybrid implements ElasticsearchConfigurat
                         })
                         .index(indexName)
                         .retriever(r -> r.rrf(rf -> rf.retrievers(List.of(
-                                RRFRetrieverEntry.of(
-                                        rre -> rre.retriever(rt -> rt.standard(st -> st.query(matchQuery)))),
+                                RRFRetrieverEntry.of(rre -> rre.retriever(rt -> rt.standard(standard))),
                                 RRFRetrieverEntry.of(rre -> rre.retriever(rt -> rt.knn(knn)))))))
                         .size(embeddingSearchRequest.maxResults())
                         .minScore(embeddingSearchRequest.minScore()),

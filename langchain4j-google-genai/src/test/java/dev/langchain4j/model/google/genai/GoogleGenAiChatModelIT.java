@@ -55,7 +55,7 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected boolean supportsToolsAndJsonResponseFormatWithSchema() {
-        return true;
+        return false;
     }
 
     @Override
@@ -86,6 +86,13 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
     @Override
     protected void assertOutputTokenCount(TokenUsage tokenUsage, Integer maxOutputTokens) {
         assertThat(tokenUsage.outputTokenCount()).isLessThanOrEqualTo(maxOutputTokens); // TODO
+    }
+
+    @Override
+    protected void assertTotalTokenCount(TokenUsage tokenUsage) {
+        // total token count can be more than input+output due to thinking/reasoning
+        assertThat(tokenUsage.totalTokenCount())
+                .isGreaterThanOrEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
     }
 
     @Test

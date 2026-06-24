@@ -351,7 +351,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 chatMemory,
                                 invocationContext,
                                 toolServiceContext,
-                                isReturnTypeResult);
+                                context.chatModel::chat);
 
                         if (toolServiceResult.immediateToolReturn()) {
                             if (isReturnTypeResult) {
@@ -405,11 +405,20 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
 
+                        ChatExecutor toolAwareRepromptExecutor = ToolAwareRepromptExecutor.wrap(
+                                chatExecutor,
+                                context,
+                                memoryId,
+                                parameters,
+                                invocationContext,
+                                toolServiceContext,
+                                context.chatModel::chat);
+
                         var response = invokeOutputGuardrails(
                                 context.guardrailService(),
                                 method,
                                 aggregateResponse,
-                                chatExecutor,
+                                toolAwareRepromptExecutor,
                                 commonGuardrailParam);
 
                         if (response != null) {
