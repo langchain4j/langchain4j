@@ -3,7 +3,6 @@ package dev.langchain4j.store.embedding;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -38,7 +37,32 @@ public class EmbeddingSearchRequest {
      *                       This is an optional parameter. Default: no filtering
      */
     public EmbeddingSearchRequest(Embedding queryEmbedding, Integer maxResults, Double minScore, Filter filter) {
-        this(builder().queryEmbedding(queryEmbedding).maxResults(maxResults).minScore(minScore).filter(filter));
+        this(builder()
+                .queryEmbedding(queryEmbedding)
+                .maxResults(maxResults)
+                .minScore(minScore)
+                .filter(filter));
+    }
+
+    /**
+     * Creates an instance of an EmbeddingSearchRequest with an optional query text.
+     * This constructor supports subclasses that pass query text for sparse/hybrid search,
+     * where queryEmbedding may be null if query text is provided.
+     *
+     * @param queryEmbedding The embedding used as a reference. May be null if query is provided.
+     * @param query          The query text used for sparse/hybrid search. May be null if queryEmbedding is provided.
+     * @param maxResults     The maximum number of embeddings to return. Default: 3
+     * @param minScore       The minimum score, ranging from 0 to 1 (inclusive). Default: 0
+     * @param filter         The filter to be applied to the {@link Metadata} during search.
+     */
+    public EmbeddingSearchRequest(
+            Embedding queryEmbedding, String query, Integer maxResults, Double minScore, Filter filter) {
+        this(builder()
+                .queryEmbedding(queryEmbedding)
+                .query(query)
+                .maxResults(maxResults)
+                .minScore(minScore)
+                .filter(filter));
     }
 
     /**
@@ -47,8 +71,11 @@ public class EmbeddingSearchRequest {
      * @param builder The builder used to create the instance.
      */
     public EmbeddingSearchRequest(EmbeddingSearchRequestBuilder builder) {
+        if (builder.queryEmbedding == null && builder.query == null) {
+            throw new IllegalArgumentException("Either queryEmbedding or query must be provided");
+        }
         this.query = builder.query;
-        this.queryEmbedding = ensureNotNull(builder.queryEmbedding, "queryEmbedding");
+        this.queryEmbedding = builder.queryEmbedding;
         this.maxResults = ensureGreaterThanZero(getOrDefault(builder.maxResults, 3), "maxResults");
         this.minScore = ensureBetween(getOrDefault(builder.minScore, 0.0), 0.0, 1.0, "minScore");
         this.filter = builder.filter;
@@ -92,13 +119,12 @@ public class EmbeddingSearchRequest {
 
     @Override
     public String toString() {
-        return "EmbeddingSearchRequest{" +
-                "query='" + query + '\'' +
-                ", queryEmbedding=" + queryEmbedding +
-                ", maxResults=" + maxResults +
-                ", minScore=" + minScore +
-                ", filter=" + filter +
-                '}';
+        return "EmbeddingSearchRequest{" + "query='"
+                + query + '\'' + ", queryEmbedding="
+                + queryEmbedding + ", maxResults="
+                + maxResults + ", minScore="
+                + minScore + ", filter="
+                + filter + '}';
     }
 
     public static EmbeddingSearchRequestBuilder builder() {
