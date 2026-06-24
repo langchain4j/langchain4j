@@ -263,12 +263,12 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     @SuppressWarnings("rawtypes")
     public static Class[] interfacesToImplement(Class clazz) {
         return new Class<?>[] {
-                clazz,
-                InternalAgent.class,
-                AgenticScopeOwner.class,
-                ChatMemoryAccess.class,
-                ChatMessagesAccess.class,
-                AiServiceResponseReceivedListener.class
+            clazz,
+            InternalAgent.class,
+            AgenticScopeOwner.class,
+            ChatMemoryAccess.class,
+            ChatMessagesAccess.class,
+            AiServiceResponseReceivedListener.class
         };
     }
 
