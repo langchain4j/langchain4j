@@ -199,10 +199,10 @@ public class EmbeddingStoreIngestor {
         log.debug("Finished embedding {} text segments", segments.size());
 
         log.debug("Starting to store {} text segments into the embedding store", segments.size());
-        embeddingStore.addAll(embeddingsResponse.content(), segments);
+        List<String> embeddingStoreId = embeddingStore.addAll(embeddingsResponse.content(), segments);
         log.debug("Finished storing {} text segments into the embedding store", segments.size());
 
-        return new IngestionResult(embeddingsResponse.tokenUsage());
+        return new IngestionResult(embeddingsResponse.tokenUsage(), segments, embeddingStoreId);
     }
 
     /**
