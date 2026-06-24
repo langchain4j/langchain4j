@@ -2,13 +2,12 @@ package dev.langchain4j.data.message;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.image.Image;
+import java.util.List;
+import java.util.Map;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import java.util.List;
-import java.util.Map;
 
 class ToolExecutionResultMessageTest implements WithAssertions {
 
@@ -210,7 +209,8 @@ class ToolExecutionResultMessageTest implements WithAssertions {
     void builder_contents_with_list() {
         List<Content> contents = List.of(
                 TextContent.from("text"),
-                ImageContent.from(Image.builder().base64Data("abc").mimeType("image/png").build()));
+                ImageContent.from(
+                        Image.builder().base64Data("abc").mimeType("image/png").build()));
 
         ToolExecutionResultMessage message = ToolExecutionResultMessage.builder()
                 .id("id")
@@ -225,11 +225,11 @@ class ToolExecutionResultMessageTest implements WithAssertions {
     @Test
     void builder_should_fail_when_both_text_and_contents_set() {
         assertThatThrownBy(() -> ToolExecutionResultMessage.builder()
-                .id("id")
-                .toolName("tool")
-                .text("hello")
-                .contents(TextContent.from("world"))
-                .build())
+                        .id("id")
+                        .toolName("tool")
+                        .text("hello")
+                        .contents(TextContent.from("world"))
+                        .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("not both");
     }
@@ -237,9 +237,9 @@ class ToolExecutionResultMessageTest implements WithAssertions {
     @Test
     void builder_should_fail_when_neither_text_nor_contents_set() {
         assertThatThrownBy(() -> ToolExecutionResultMessage.builder()
-                .id("id")
-                .toolName("tool")
-                .build())
+                        .id("id")
+                        .toolName("tool")
+                        .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Either text or contents must be provided");
     }
