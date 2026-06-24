@@ -4,14 +4,13 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.StreamingChatModelHelper;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.StreamingEvent;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
@@ -50,42 +49,7 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
 
     @Override
     protected CompletableFuture<ChatResponse> executeAsync(ChatRequest chatRequest) {
-        CompletableFuture<ChatResponse> future = new CompletableFuture<>();
-        this.streamingChatModel.chat(chatRequest).subscribe(new Flow.Subscriber<>() {
-
-            private ChatResponse response;
-
-            @Override
-            public void onSubscribe(Flow.Subscription subscription) {
-                subscription.request(Long.MAX_VALUE);
-            }
-
-            @Override
-            public void onNext(StreamingEvent event) {
-                if (event instanceof ChatResponse chatResponse) {
-                    this.response = chatResponse;
-                }
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                if (errorHandler != null) {
-                    try {
-                        errorHandler.accept(error);
-                    } catch (Exception e) {
-                        StreamingToSyncResponseHandler.LOG.error("While handling the following error...", error);
-                        StreamingToSyncResponseHandler.LOG.error("...the following error happened", e);
-                    }
-                }
-                future.completeExceptionally(error);
-            }
-
-            @Override
-            public void onComplete() {
-                future.complete(response);
-            }
-        });
-        return future;
+        return StreamingChatModelHelper.chatAsync(this.streamingChatModel, chatRequest, errorHandler);
     }
 
     private static class StreamingToSyncResponseHandler implements StreamingChatResponseHandler {

@@ -671,33 +671,17 @@ public class ToolService {
 
             List<ToolExecutionResultMessage> resultMessages = outcome.resultMessages();
 
-            // Tool compensation: if any tool errored, roll back the successful compensable tools executed so far
-            // in this invocation and reflect the rollback in chat memory and in this round's result messages,
-            // before they are persisted.
-            if (compensateOnToolErrors) {
-                String failedToolName = null;
-                for (int i = 0; i < toolExecutionRequests.size(); i++) {
-                    ToolExecutionRequest request = toolExecutionRequests.get(i);
-                    ToolExecutionResult result = toolResults.get(request);
-                    if (!result.isError() && compensatingExecutors.containsKey(request.name())) {
-                        ToolExecution toolExecution = ToolExecution.builder()
-                                .request(request)
-                                .result(result)
-                                .invocationContext(invocationContext)
-                                .build();
-                        compensableExecutions.add(new CompensableToolExecution(toolExecution, resultMessages.get(i)));
-                    }
-                    if (result.isError() && failedToolName == null) {
-                        failedToolName = request.name();
-                    }
-                }
-                if (outcome.anyToolErrored() && !compensableExecutions.isEmpty()) {
-                    compensateToolsActions(compensableExecutions, invocationContext);
-                    rewriteChatMemoryForCompensatedTools(messages, chatMemory, compensableExecutions, failedToolName);
-                    compensableExecutions.clear();
-                    rewriteCurrentResults(toolExecutionRequests, toolResults, resultMessages, failedToolName);
-                }
-            }
+            // Tool compensation (synchronous path): if any tool errored, roll back the successful compensable tools
+            // executed so far in this invocation, rewriting chat memory and this round's result messages in place.
+            compensateIfNeeded(
+                    toolExecutionRequests,
+                    toolResults,
+                    resultMessages,
+                    compensableExecutions,
+                    outcome.anyToolErrored(),
+                    chatMemory,
+                    messages,
+                    invocationContext);
 
             List<ChatMessage> nextMessages = persistToolResultsAndResolveMessagesSync(
                     context, chatMemory, messages, resultMessages, invocationContext);
@@ -764,10 +748,45 @@ public class ToolService {
                 invocationContext,
                 toolServiceContext,
                 cancellation,
+                context.chatModel::chatAsync);
+    }
+
+    /**
+     * As {@link #executeInferenceAndToolsLoopAsync(AiServiceContext, Object, ChatResponse, ChatRequestParameters,
+     * List, ChatMemory, InvocationContext, ToolServiceContext, CompletableFuture)}, but with a caller-supplied
+     * asynchronous model invoker. Lets a streaming-only AI Service drive the same loop by bridging its
+     * {@code StreamingChatModel} to a {@code CompletableFuture<ChatResponse>}, instead of requiring a
+     * {@code ChatModel}.
+     *
+     * @since 1.17.0
+     */
+    public CompletableFuture<ToolServiceResult> executeInferenceAndToolsLoopAsync(
+            AiServiceContext context,
+            Object memoryId,
+            ChatResponse chatResponse,
+            ChatRequestParameters parameters,
+            List<ChatMessage> messages,
+            ChatMemory chatMemory,
+            InvocationContext invocationContext,
+            ToolServiceContext toolServiceContext,
+            CompletableFuture<?> cancellation,
+            Function<ChatRequest, CompletableFuture<ChatResponse>> chatModelInvoker) {
+        return executeInferenceAndToolsLoopAsync(
+                context,
+                memoryId,
+                chatResponse,
+                parameters,
+                messages,
+                chatMemory,
+                invocationContext,
+                toolServiceContext,
+                cancellation,
                 chatResponse.metadata().tokenUsage(),
                 new ArrayList<>(),
                 new ArrayList<>(),
-                maxToolCallingRoundTrips);
+                newCompensableExecutionsAccumulator(),
+                maxToolCallingRoundTrips,
+                chatModelInvoker);
     }
 
     private CompletableFuture<ToolServiceResult> executeInferenceAndToolsLoopAsync(
@@ -783,7 +802,9 @@ public class ToolService {
             TokenUsage aggregateTokenUsage,
             List<ToolExecution> toolExecutions,
             List<ChatResponse> intermediateResponses,
-            int roundTripsLeft) {
+            List<CompensableToolExecution> compensableExecutions,
+            int roundTripsLeft,
+            Function<ChatRequest, CompletableFuture<ChatResponse>> chatModelInvoker) {
 
         if (isCancelled(cancellation)) {
             return CompletableFuture.failedFuture(new CancellationException());
@@ -832,26 +853,44 @@ public class ToolService {
                                         invocationContext,
                                         toolServiceContext);
 
-                                if (shouldReturnImmediately(
-                                        outcome.anyToolErrored(), outcome.returnBehaviors())) {
-                                    return CompletableFuture.completedFuture(immediateToolServiceResult(
-                                            intermediateResponses, toolExecutions, aggregateTokenUsage));
-                                }
+                                // Tool compensation runs off the delivery thread: the compensating actions (which
+                                // may perform blocking I/O and have no asynchronous SPI) and the synchronous
+                                // chat-memory rewrite execute on the shared virtual-thread executor.
+                                CompletableFuture<Void> compensated = compensationEnabled()
+                                        ? CompletableFuture.runAsync(
+                                                () -> compensateIfNeeded(
+                                                        toolExecutionRequests,
+                                                        toolResults,
+                                                        outcome.resultMessages(),
+                                                        compensableExecutions,
+                                                        outcome.anyToolErrored(),
+                                                        chatMemory,
+                                                        accumulator,
+                                                        invocationContext),
+                                                DefaultExecutorProvider.getDefaultExecutorService())
+                                        : CompletableFuture.completedFuture(null);
 
-                                // a cancellation may have arrived while the tools were executing - do not start a
-                                // new model call in that case
-                                if (isCancelled(cancellation)) {
-                                    return CompletableFuture.<ToolServiceResult>failedFuture(
-                                            new CancellationException());
-                                }
+                                return compensated.thenCompose(ignoredCompensation -> {
+                                    if (shouldReturnImmediately(
+                                            outcome.anyToolErrored(), outcome.returnBehaviors())) {
+                                        return CompletableFuture.completedFuture(immediateToolServiceResult(
+                                                intermediateResponses, toolExecutions, aggregateTokenUsage));
+                                    }
 
-                                return persistToolResultsAndResolveMessages(
-                                                context,
-                                                chatMemory,
-                                                accumulator,
-                                                outcome.resultMessages(),
-                                                invocationContext)
-                                        .thenCompose(nextMessages -> {
+                                    // a cancellation may have arrived while the tools were executing - do not start
+                                    // a new model call in that case
+                                    if (isCancelled(cancellation)) {
+                                        return CompletableFuture.<ToolServiceResult>failedFuture(
+                                                new CancellationException());
+                                    }
+
+                                    return persistToolResultsAndResolveMessages(
+                                                    context,
+                                                    chatMemory,
+                                                    accumulator,
+                                                    outcome.resultMessages(),
+                                                    invocationContext)
+                                            .thenCompose(nextMessages -> {
                                             NextChatRequest next = prepareNextChatRequest(
                                                     context,
                                                     memoryId,
@@ -862,7 +901,7 @@ public class ToolService {
                                                     parameters);
 
                                             CompletableFuture<ChatResponse> nextModelCall =
-                                                    context.chatModel.chatAsync(next.chatRequest());
+                                                    chatModelInvoker.apply(next.chatRequest());
                                             propagateCancellation(cancellation, nextModelCall);
                                             return nextModelCall.thenCompose(nextChatResponse -> {
                                                 fireResponseReceivedEvent(
@@ -887,9 +926,12 @@ public class ToolService {
                                                                         .tokenUsage()),
                                                         toolExecutions,
                                                         intermediateResponses,
-                                                        roundTripsLeft - 1);
+                                                        compensableExecutions,
+                                                        roundTripsLeft - 1,
+                                                        chatModelInvoker);
                                             });
                                         });
+                                });
                             });
                 })
                 .toCompletableFuture();
@@ -1102,6 +1144,77 @@ public class ToolService {
             ToolServiceContext toolServiceContext,
             ChatRequestParameters parameters) {}
 
+    /**
+     * Runs tool compensation when enabled. Collects this round's successful compensable tools into
+     * {@code compensableExecutions} (accumulated across rounds); then, if any tool in this round errored, rolls
+     * back every compensable tool accumulated so far — running their compensating actions, rewriting the chat
+     * memory, and rewriting this round's {@code resultMessages} in place — before the result messages are
+     * persisted. Uses the synchronous {@link ChatMemory} methods and runs the (possibly blocking) compensating
+     * actions inline, so the asynchronous/reactive modes invoke it on a worker thread (there is no asynchronous
+     * compensating-action SPI). Returns immediately when compensation is disabled.
+     *
+     * @since 1.17.0
+     */
+    public void compensateIfNeeded(
+            List<ToolExecutionRequest> toolExecutionRequests,
+            Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+            List<ToolExecutionResultMessage> resultMessages,
+            List<CompensableToolExecution> compensableExecutions,
+            boolean anyToolErrored,
+            ChatMemory chatMemory,
+            List<ChatMessage> messages,
+            InvocationContext invocationContext) {
+
+        if (!compensateOnToolErrors) {
+            return;
+        }
+
+        String failedToolName = null;
+        for (int i = 0; i < toolExecutionRequests.size(); i++) {
+            ToolExecutionRequest request = toolExecutionRequests.get(i);
+            ToolExecutionResult result = toolResults.get(request);
+            if (!result.isError() && compensatingExecutors.containsKey(request.name())) {
+                ToolExecution toolExecution = ToolExecution.builder()
+                        .request(request)
+                        .result(result)
+                        .invocationContext(invocationContext)
+                        .build();
+                compensableExecutions.add(new CompensableToolExecution(toolExecution, resultMessages.get(i)));
+            }
+            if (result.isError() && failedToolName == null) {
+                failedToolName = request.name();
+            }
+        }
+
+        if (anyToolErrored && !compensableExecutions.isEmpty()) {
+            compensateToolsActions(compensableExecutions, invocationContext);
+            rewriteChatMemoryForCompensatedTools(messages, chatMemory, compensableExecutions, failedToolName);
+            compensableExecutions.clear();
+            rewriteCurrentResults(toolExecutionRequests, toolResults, resultMessages, failedToolName);
+        }
+    }
+
+    /**
+     * Whether tool compensation is enabled for this service (i.e. {@code @CompensateFor} actions are registered
+     * and compensation was switched on). Lets the asynchronous/reactive modes skip the worker-thread offload when
+     * there is nothing to compensate.
+     *
+     * @since 1.17.0
+     */
+    public boolean compensationEnabled() {
+        return compensateOnToolErrors;
+    }
+
+    /**
+     * Creates the accumulator the {@code compensableExecutions} are collected into across tool-calling rounds, or
+     * {@code null} when compensation is disabled.
+     *
+     * @since 1.17.0
+     */
+    public List<CompensableToolExecution> newCompensableExecutionsAccumulator() {
+        return compensateOnToolErrors ? new ArrayList<>() : null;
+    }
+
     private void rewriteCurrentResults(List<ToolExecutionRequest> toolExecutionRequests,
                                        Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
                                        List<ToolExecutionResultMessage> resultMessages,
@@ -1146,7 +1259,7 @@ public class ToolService {
                 .build();
     }
 
-    private record CompensableToolExecution(ToolExecution toolExecution, ToolExecutionResultMessage resultMessage) {}
+    public record CompensableToolExecution(ToolExecution toolExecution, ToolExecutionResultMessage resultMessage) {}
 
     private void compensateToolsActions(List<CompensableToolExecution> compensableExecutions, InvocationContext invocationContext) {
         for (int i = compensableExecutions.size() - 1; i >= 0; i--) {

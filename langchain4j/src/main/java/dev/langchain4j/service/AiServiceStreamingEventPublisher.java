@@ -15,9 +15,11 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
+import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.StreamingChatModelHelper;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -204,6 +206,11 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         private final AtomicReference<Flow.Subscription> modelSubscription = new AtomicReference<>();
         private final AtomicReference<CompletableFuture<?>> toolsFuture = new AtomicReference<>();
         private final AtomicReference<CompletableFuture<?>> guardrailsFuture = new AtomicReference<>();
+
+        // Accumulates this invocation's successful compensable tool executions across rounds (null when tool
+        // compensation is disabled), so a later tool failure can roll them back.
+        private final List<ToolService.CompensableToolExecution> compensableExecutions =
+                context.toolService.newCompensableExecutionsAccumulator();
 
         // Output guardrails for the reactive path mirror the handler-based path's buffer-then-validate: while
         // output guardrails are configured, partial responses are buffered (not streamed) until the assembled
@@ -408,7 +415,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> startedTools) {
 
             if (!aiMessage.hasToolExecutionRequests()) {
-                emitFinalResponse(chatResponse, aiMessage);
+                emitFinalResponse(chatResponse, aiMessage, currentToolContext, parameters);
                 return;
             }
 
@@ -496,40 +503,70 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     invocationContext,
                     currentToolContext);
 
-            if (shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors())) {
-                emitFinalResponse(chatResponse, aiMessage);
-                return;
-            }
+            // Tool compensation runs off the model-delivery thread (compensating actions may perform blocking I/O
+            // and have no asynchronous SPI; the chat-memory rewrite is synchronous). A no-op unless compensation
+            // is enabled and a tool errored.
+            CompletableFuture<Void> compensated = context.toolService.compensationEnabled()
+                    ? CompletableFuture.runAsync(
+                            () -> context.toolService.compensateIfNeeded(
+                                    toolRequests,
+                                    toolResults,
+                                    outcome.resultMessages(),
+                                    compensableExecutions,
+                                    outcome.anyToolErrored(),
+                                    getMemory(),
+                                    messages,
+                                    invocationContext),
+                            DefaultExecutorProvider.getDefaultExecutorService())
+                    : CompletableFuture.completedFuture(null);
 
-            tokenUsage = TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage());
+            compensated.whenComplete((ignoredCompensation, compensationError) -> {
+                if (compensationError != null) {
+                    fail(compensationError);
+                    return;
+                }
+                if (tube.cancelled()) {
+                    return;
+                }
+                if (shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors())) {
+                    emitFinalResponse(chatResponse, aiMessage, currentToolContext, parameters);
+                    return;
+                }
 
-            // Persist the tool-result messages and resolve the next messages without blocking the delivery thread,
-            // then build and dispatch the next request (shared with the sync/async/TokenStream modes).
-            context.toolService
-                    .persistToolResultsAndResolveMessages(
-                            context, getMemory(), null, outcome.resultMessages(), invocationContext)
-                    .thenAccept(nextMessages -> {
-                        if (tube.cancelled()) {
-                            return;
-                        }
-                        ToolService.NextChatRequest next = context.toolService.prepareNextChatRequest(
-                                context,
-                                invocationContext.chatMemoryId(),
-                                nextMessages,
-                                invocationContext,
-                                currentToolContext,
-                                toolResults,
-                                parameters);
+                tokenUsage = TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage());
 
-                        startRound(next.chatRequest(), next.toolServiceContext(), next.parameters());
-                    })
-                    .exceptionally(error -> {
-                        fail(error);
-                        return null;
-                    });
+                // Persist the tool-result messages and resolve the next messages without blocking the delivery
+                // thread, then build and dispatch the next request (shared with the sync/async/TokenStream modes).
+                context.toolService
+                        .persistToolResultsAndResolveMessages(
+                                context, getMemory(), null, outcome.resultMessages(), invocationContext)
+                        .thenAccept(nextMessages -> {
+                            if (tube.cancelled()) {
+                                return;
+                            }
+                            ToolService.NextChatRequest next = context.toolService.prepareNextChatRequest(
+                                    context,
+                                    invocationContext.chatMemoryId(),
+                                    nextMessages,
+                                    invocationContext,
+                                    currentToolContext,
+                                    toolResults,
+                                    parameters);
+
+                            startRound(next.chatRequest(), next.toolServiceContext(), next.parameters());
+                        })
+                        .exceptionally(error -> {
+                            fail(error);
+                            return null;
+                        });
+            });
         }
 
-        private void emitFinalResponse(ChatResponse chatResponse, AiMessage aiMessage) {
+        private void emitFinalResponse(
+                ChatResponse chatResponse,
+                AiMessage aiMessage,
+                ToolServiceContext currentToolContext,
+                ChatRequestParameters parameters) {
             ChatResponse finalChatResponse = ChatResponse.builder()
                     .aiMessage(aiMessage)
                     .metadata(chatResponse.metadata().toBuilder()
@@ -547,9 +584,21 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
 
             GuardrailRequestParams guardrailParams =
                     commonGuardrailParams.toBuilder().chatMemory(getMemory()).build();
+
+            // Output-guardrail reprompts go through a tool-aware executor driven by the streaming model: when a
+            // reprompt's response requests tools, they are resolved (via the async tool loop, re-calling the
+            // streaming model) so the guardrail only ever sees a final textual response.
+            ChatExecutor toolAwareRepromptExecutor = ToolAwareRepromptExecutor.wrapAsync(
+                    chatExecutor,
+                    context,
+                    invocationContext.chatMemoryId(),
+                    parameters,
+                    invocationContext,
+                    currentToolContext,
+                    request -> StreamingChatModelHelper.chatAsync(context.streamingChatModel, request));
             OutputGuardrailRequest request = OutputGuardrailRequest.builder()
                     .responseFromLLM(finalChatResponse)
-                    .chatExecutor(chatExecutor)
+                    .chatExecutor(toolAwareRepromptExecutor)
                     .requestParams(guardrailParams)
                     .build();
 

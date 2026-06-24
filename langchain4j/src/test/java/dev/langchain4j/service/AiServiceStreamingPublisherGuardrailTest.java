@@ -2,6 +2,8 @@ package dev.langchain4j.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
@@ -15,6 +17,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
@@ -127,6 +130,63 @@ class AiServiceStreamingPublisherGuardrailTest {
         // A failed validation must not leak a final response, and the buffered partials must not be flushed.
         assertThat(collected.items).noneMatch(e -> e instanceof FinalResponseEvent);
         assertThat(collected.items).noneMatch(e -> e instanceof PartialResponseEvent);
+    }
+
+    public static class RepromptOnBadOutputGuardrail implements OutputGuardrail {
+        @Override
+        public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+            if (responseFromLLM.text().contains("bad")) {
+                return reprompt("unacceptable answer", "Please give a good answer");
+            }
+            return success();
+        }
+
+        @Override
+        public CompletableFuture<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
+            return CompletableFuture.completedFuture(validate(request));
+        }
+    }
+
+    static class WeatherTool {
+        final AtomicInteger calls = new AtomicInteger();
+
+        @Tool
+        String weather(String city) {
+            calls.incrementAndGet();
+            return "sunny in " + city;
+        }
+    }
+
+    interface ToolAwareRepromptEventStreamer {
+        @OutputGuardrails(RepromptOnBadOutputGuardrail.class)
+        Flow.Publisher<AiServiceStreamingEvent> chat(String message);
+    }
+
+    @Test
+    void reactive_output_guardrail_reprompt_resolves_tools_before_revalidating() throws Exception {
+        // The first answer is rejected; the reprompt asks the (streaming) model again and it responds with a tool
+        // call. The tool-aware reprompt executor must resolve that tool — re-calling the streaming model via the
+        // async tool loop — so the guardrail only ever sees the final textual answer.
+        WeatherTool tool = new WeatherTool();
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+                AiMessage.from("bad answer"),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("weather")
+                        .arguments("{\"arg0\": \"Paris\"}")
+                        .build()),
+                AiMessage.from("good answer"));
+
+        ToolAwareRepromptEventStreamer assistant = AiServices.builder(ToolAwareRepromptEventStreamer.class)
+                .streamingChatModel(model)
+                .tools(tool)
+                .build();
+
+        Collected collected = collect(assistant.chat("What is the weather?"));
+
+        assertThat(collected.error).isNull();
+        assertThat(finalText(collected)).isEqualTo("good answer");
+        assertThat(tool.calls).hasValue(1);
     }
 
     private static String partialText(Collected collected) {

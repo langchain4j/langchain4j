@@ -526,6 +526,66 @@ class AiServicesAsyncTest {
                 .hasMessageContaining("output is not valid");
     }
 
+    public static class RepromptOnBadOutputGuardrail implements OutputGuardrail {
+
+        @Override
+        public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+            if (responseFromLLM.text().contains("bad")) {
+                return reprompt("unacceptable answer", "Please give a good answer");
+            }
+            return success();
+        }
+
+        @Override
+        public CompletableFuture<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
+            return CompletableFuture.completedFuture(validate(request));
+        }
+    }
+
+    static class RepromptWeatherTool {
+
+        final AtomicInteger calls = new AtomicInteger();
+
+        @Tool
+        String weather(String city) {
+            calls.incrementAndGet();
+            return "sunny in " + city;
+        }
+    }
+
+    interface ToolAwareRepromptAssistant {
+
+        @OutputGuardrails(RepromptOnBadOutputGuardrail.class)
+        CompletableFuture<String> chat(String userMessage);
+    }
+
+    @Test
+    void async_output_guardrail_reprompt_resolves_tools_before_revalidating() throws Exception {
+
+        // The first answer is rejected; the reprompt asks the model again and it responds with a tool call. The
+        // tool-aware reprompt executor must resolve that tool (via the async tool loop) so the guardrail only ever
+        // sees the final textual answer, not the intermediate tool-calling message.
+        RepromptWeatherTool tool = new RepromptWeatherTool();
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from("bad answer"),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("weather")
+                        .arguments("{\"arg0\": \"Paris\"}")
+                        .build()),
+                AiMessage.from("good answer"));
+
+        ToolAwareRepromptAssistant assistant = AiServices.builder(ToolAwareRepromptAssistant.class)
+                .chatModel(chatModel)
+                .tools(tool)
+                .build();
+
+        String answer = assistant.chat("What is the weather?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("good answer");
+        assertThat(tool.calls).hasValue(1);
+    }
+
     @Test
     void should_release_caller_immediately_when_future_is_cancelled() {
 

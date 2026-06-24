@@ -659,6 +659,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         toolServiceContext,
                                         toolServiceResult,
                                         chatExecutor,
+                                        memoryId,
+                                        parameters,
                                         commonGuardrailParam))
                                 .whenComplete((value, error) -> {
                                     if (error != null) {
@@ -906,6 +908,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                             ToolServiceContext toolServiceContext,
                             ToolServiceResult toolServiceResult,
                             ChatExecutor chatExecutor,
+                            Object memoryId,
+                            ChatRequestParameters parameters,
                             GuardrailRequestParams commonGuardrailParam) {
 
                         if (toolServiceResult.immediateToolReturn()) {
@@ -924,12 +928,24 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
 
+                        // Output-guardrail reprompts go through a tool-aware executor: when a reprompt's response
+                        // requests tools, they are resolved (via the async tool loop) so the guardrail only ever
+                        // sees a final textual response.
+                        ChatExecutor toolAwareRepromptExecutor = ToolAwareRepromptExecutor.wrapAsync(
+                                chatExecutor,
+                                context,
+                                memoryId,
+                                parameters,
+                                invocationContext,
+                                toolServiceContext,
+                                context.chatModel::chatAsync);
+
                         return DefaultAiServices.this
                                 .<Object>invokeOutputGuardrailsAsync(
                                         context.guardrailService(),
                                         method,
                                         aggregateResponse,
-                                        chatExecutor,
+                                        toolAwareRepromptExecutor,
                                         commonGuardrailParam)
                                 .thenApply(response -> finishToolServiceResult(
                                         response,

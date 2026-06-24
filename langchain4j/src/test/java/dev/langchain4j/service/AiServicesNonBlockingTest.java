@@ -4,6 +4,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -24,6 +25,7 @@ import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
 import dev.langchain4j.service.guardrail.InputGuardrails;
 import dev.langchain4j.service.guardrail.OutputGuardrails;
+import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
 import java.util.List;
@@ -877,6 +879,101 @@ class AiServicesNonBlockingTest {
         Thread.sleep(200);
         assertThat(future).isCancelled();
         assertThat(modelCalls).as("model must not be called after cancellation").hasValue(0);
+    }
+
+    /**
+     * Tools with a compensating ({@code @CompensateFor}) action whose rollback blocks (simulating a remote undo
+     * call). The rollback must run off the model-delivery thread.
+     */
+    public static class CompensatingBankTools {
+
+        final List<String> calls = new CopyOnWriteArrayList<>();
+
+        @Tool
+        String credit(String name, double amount) {
+            calls.add("credit:" + name);
+            return "credited";
+        }
+
+        @CompensateFor("credit")
+        void uncredit(String name, double amount) {
+            try {
+                Thread.sleep(20);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            calls.add("uncredit:" + name);
+        }
+
+        @Tool
+        String withdraw(String name, double amount) {
+            calls.add("withdraw:" + name);
+            throw new RuntimeException("insufficient funds");
+        }
+    }
+
+    interface CompensatingAssistant {
+
+        CompletableFuture<String> chat(String userMessage);
+    }
+
+    interface CompensatingStreamingAssistant {
+
+        Flow.Publisher<String> chat(String userMessage);
+    }
+
+    private static ToolExecutionRequest bankToolRequest(String id, String tool) {
+        return ToolExecutionRequest.builder()
+                .id(id)
+                .name(tool)
+                .arguments("{\"arg0\": \"Mario\", \"arg1\": 100.0}")
+                .build();
+    }
+
+    @Test
+    void cf_tool_compensation_rolls_back_and_does_not_block_the_delivery_thread() throws Exception {
+
+        CompensatingBankTools tools = new CompensatingBankTools();
+        NonBlockingChatModelStub chatModel = new NonBlockingChatModelStub(
+                AiMessage.from(bankToolRequest("1", "credit")),
+                AiMessage.from(bankToolRequest("2", "withdraw")),
+                AiMessage.from("done"));
+
+        CompensatingAssistant assistant = AiServices.builder(CompensatingAssistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .compensateOnToolErrors(true)
+                .toolExecutionErrorHandler((error, ctx) -> ToolErrorHandlerResult.text(error.getMessage()))
+                .build();
+
+        String answer = assistant.chat("transfer").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("done");
+        // the failed withdraw triggered a rollback of the earlier successful credit
+        assertThat(tools.calls).containsExactly("credit:Mario", "withdraw:Mario", "uncredit:Mario");
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void streaming_tool_compensation_rolls_back_and_does_not_block_the_delivery_thread() throws Exception {
+
+        CompensatingBankTools tools = new CompensatingBankTools();
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreamsOn(
+                deliveryExecutor,
+                AiMessage.from(bankToolRequest("1", "credit")),
+                AiMessage.from(bankToolRequest("2", "withdraw")),
+                AiMessage.from("done"));
+
+        CompensatingStreamingAssistant assistant = AiServices.builder(CompensatingStreamingAssistant.class)
+                .streamingChatModel(model)
+                .tools(tools)
+                .compensateOnToolErrors(true)
+                .toolExecutionErrorHandler((error, ctx) -> ToolErrorHandlerResult.text(error.getMessage()))
+                .build();
+
+        assertThat(subscribeAndAwait(assistant.chat("transfer"))).isEqualTo("done");
+        assertThat(tools.calls).containsExactly("credit:Mario", "withdraw:Mario", "uncredit:Mario");
+        assertNoBlockingCalls();
     }
 
     static class CountingCompletedListener implements AiServiceCompletedListener {
