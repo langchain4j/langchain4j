@@ -10,9 +10,11 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailException;
+import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailException;
+import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
@@ -43,6 +45,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -763,12 +766,22 @@ class AiServicesObservabilityTests {
         public InputGuardrailResult validate(UserMessage userMessage) {
             return successWith("Success!!");
         }
+
+        @Override
+        public CompletionStage<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
+            return CompletableFuture.completedFuture(validate(request));
+        }
     }
 
     public static class FailureInputGuardrail implements InputGuardrail {
         @Override
         public InputGuardrailResult validate(UserMessage userMessage) {
             return failure("User message is not valid");
+        }
+
+        @Override
+        public CompletionStage<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
+            return CompletableFuture.completedFuture(validate(request));
         }
     }
 
@@ -777,12 +790,22 @@ class AiServicesObservabilityTests {
         public OutputGuardrailResult validate(AiMessage responseFromLLM) {
             return successWith("Success!!");
         }
+
+        @Override
+        public CompletionStage<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
+            return CompletableFuture.completedFuture(validate(request));
+        }
     }
 
     public static class FailureOutputGuardrail implements OutputGuardrail {
         @Override
         public OutputGuardrailResult validate(AiMessage responseFromLLM) {
             return failure("LLM response is not valid");
+        }
+
+        @Override
+        public CompletionStage<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
+            return CompletableFuture.completedFuture(validate(request));
         }
     }
 

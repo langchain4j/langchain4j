@@ -6,6 +6,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import java.util.concurrent.CompletionStage;
 
 /**
  * A concrete implementation of the {@link ChatExecutor} interface that executes
@@ -30,5 +31,10 @@ final class SynchronousChatExecutor extends AbstractChatExecutor {
     @Override
     protected ChatResponse execute(ChatRequest chatRequest) {
         return this.chatModel.chat(chatRequest);
+    }
+
+    @Override
+    protected CompletionStage<ChatResponse> executeAsync(ChatRequest chatRequest) {
+        return this.chatModel.chatAsync(chatRequest);
     }
 }

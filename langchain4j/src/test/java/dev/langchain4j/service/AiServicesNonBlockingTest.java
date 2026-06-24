@@ -8,7 +8,12 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.guardrail.InputGuardrail;
+import dev.langchain4j.guardrail.InputGuardrailRequest;
+import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
+import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -17,6 +22,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
+import dev.langchain4j.service.guardrail.InputGuardrails;
 import dev.langchain4j.service.guardrail.OutputGuardrails;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
@@ -83,6 +89,12 @@ class AiServicesNonBlockingTest {
     private static final ExecutorService memoryWorker =
             Executors.newCachedThreadPool(runnable -> new Thread(runnable, "chat-memory-worker"));
 
+    // A non-policed pool that a blocking guardrail offloads its (blocking) validation to via validateAsync.
+    // Named distinctly so BlockHound does not police it - the point is that an I/O guardrail offloads its work
+    // here and never runs it on the policed delivery thread.
+    private static final ExecutorService guardrailWorker =
+            Executors.newCachedThreadPool(runnable -> new Thread(runnable, "guardrail-worker"));
+
     @BeforeAll
     static void installBlockHound() {
         BlockHound.builder()
@@ -118,6 +130,7 @@ class AiServicesNonBlockingTest {
     static void shutDownDeliveryExecutor() {
         deliveryExecutor.shutdownNow();
         memoryWorker.shutdownNow();
+        guardrailWorker.shutdownNow();
     }
 
     /**
@@ -510,6 +523,12 @@ class AiServicesNonBlockingTest {
         public OutputGuardrailResult validate(AiMessage responseFromLLM) {
             return success();
         }
+
+        @Override
+        public CompletionStage<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
+            // Non-blocking (CPU-only) guardrail: wrap the synchronous validation in a completed stage.
+            return CompletableFuture.completedFuture(validate(request));
+        }
     }
 
     interface GuardedAssistant {
@@ -528,6 +547,241 @@ class AiServicesNonBlockingTest {
         String answer = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
 
         assertThat(answer).isEqualTo("Berlin");
+        assertNoBlockingCalls();
+    }
+
+    /**
+     * An output guardrail whose validation blocks (simulating a remote moderation/PII call). Because it does
+     * blocking I/O, it overrides {@link #validateAsync} to offload that work to a non-policed worker pool, keeping
+     * the model-delivery thread free — exactly what an I/O guardrail must do on the non-blocking AI Service paths.
+     */
+    public static class BlockingOutputGuardrail implements OutputGuardrail {
+
+        @Override
+        public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+            try {
+                Thread.sleep(20);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return success();
+        }
+
+        @Override
+        public CompletionStage<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
+            return CompletableFuture.supplyAsync(() -> validate(request), guardrailWorker);
+        }
+    }
+
+    /**
+     * An output guardrail that reprompts the model once (when the response still contains "retry") and then
+     * passes. Its (blocking) validation is offloaded via {@link #validateAsync}; the reprompt re-calls the model
+     * via {@link ChatExecutor#executeAsync(java.util.List)}. Neither must touch the delivery thread.
+     */
+    public static class RepromptOnceOutputGuardrail implements OutputGuardrail {
+
+        @Override
+        public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+            try {
+                Thread.sleep(20);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            if (responseFromLLM.text().contains("retry")) {
+                return reprompt("Unacceptable answer", "Please answer the question properly");
+            }
+            return success();
+        }
+
+        @Override
+        public CompletionStage<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
+            return CompletableFuture.supplyAsync(() -> validate(request), guardrailWorker);
+        }
+    }
+
+    interface BlockingGuardedAssistant {
+
+        @OutputGuardrails(BlockingOutputGuardrail.class)
+        CompletableFuture<String> chat(String userMessage);
+    }
+
+    interface BlockingGuardedStreamingAssistant {
+
+        @OutputGuardrails(BlockingOutputGuardrail.class)
+        Flow.Publisher<String> chat(String userMessage);
+    }
+
+    interface RepromptGuardedAssistant {
+
+        @OutputGuardrails(RepromptOnceOutputGuardrail.class)
+        CompletableFuture<String> chat(String userMessage);
+    }
+
+    /**
+     * Delivers the first response asynchronously on the policed delivery thread (like
+     * {@link NonBlockingChatModelStub}), but — unlike it — also implements the blocking {@link #doChat} used by
+     * output-guardrail reprompts. Reprompts run on a virtual thread off the delivery thread, so blocking there
+     * is acceptable.
+     */
+    static class RepromptingChatModelStub implements ChatModel {
+
+        private final Queue<AiMessage> responses;
+
+        RepromptingChatModelStub(AiMessage... aiMessages) {
+            this.responses = new ConcurrentLinkedQueue<>(List.of(aiMessages));
+        }
+
+        @Override
+        public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+            return CompletableFuture.supplyAsync(
+                    this::nextResponse, CompletableFuture.delayedExecutor(10, MILLISECONDS, deliveryExecutor));
+        }
+
+        @Override
+        public ChatResponse doChat(ChatRequest chatRequest) {
+            return nextResponse();
+        }
+
+        private ChatResponse nextResponse() {
+            return ChatResponse.builder()
+                    .aiMessage(responses.poll())
+                    .metadata(ChatResponseMetadata.builder().build())
+                    .build();
+        }
+    }
+
+    @Test
+    void cf_blocking_output_guardrail_does_not_block_the_delivery_thread() throws Exception {
+
+        BlockingGuardedAssistant assistant = AiServices.builder(BlockingGuardedAssistant.class)
+                .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
+                .build();
+
+        String answer = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("Berlin");
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void streaming_blocking_output_guardrail_does_not_block_the_delivery_thread() throws Exception {
+
+        BlockingGuardedStreamingAssistant assistant = AiServices.builder(BlockingGuardedStreamingAssistant.class)
+                .streamingChatModel(StreamingEventChatModelMock.thatStreamsOn(deliveryExecutor, AiMessage.from("Berlin")))
+                .build();
+
+        assertThat(subscribeAndAwait(assistant.chat("What is the capital of Germany?")))
+                .isEqualTo("Berlin");
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void cf_output_guardrail_reprompt_does_not_block_the_delivery_thread() throws Exception {
+
+        RepromptingChatModelStub model =
+                new RepromptingChatModelStub(AiMessage.from("please retry"), AiMessage.from("Berlin"));
+
+        RepromptGuardedAssistant assistant = AiServices.builder(RepromptGuardedAssistant.class)
+                .chatModel(model)
+                .build();
+
+        String answer = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("Berlin");
+        assertNoBlockingCalls();
+    }
+
+    /**
+     * An input guardrail whose validation blocks (simulating a remote moderation/PII call); like its output
+     * sibling it offloads via {@link #validateAsync} to a non-policed worker so the caller and delivery threads
+     * stay free.
+     */
+    public static class BlockingInputGuardrail implements InputGuardrail {
+
+        @Override
+        public InputGuardrailResult validate(UserMessage userMessage) {
+            try {
+                Thread.sleep(20);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return success();
+        }
+
+        @Override
+        public CompletionStage<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
+            return CompletableFuture.supplyAsync(() -> validate(request), guardrailWorker);
+        }
+    }
+
+    /**
+     * An input guardrail whose validation blocks until a shared {@code gate} is released, used to prove the
+     * caller thread is not blocked while input guardrails run.
+     */
+    public static class GatedInputGuardrail implements InputGuardrail {
+
+        static volatile CountDownLatch gate;
+
+        @Override
+        public InputGuardrailResult validate(UserMessage userMessage) {
+            try {
+                gate.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return success();
+        }
+
+        @Override
+        public CompletionStage<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
+            return CompletableFuture.supplyAsync(() -> validate(request), guardrailWorker);
+        }
+    }
+
+    interface BlockingInputGuardedAssistant {
+
+        @InputGuardrails(BlockingInputGuardrail.class)
+        CompletableFuture<String> chat(String userMessage);
+    }
+
+    interface GatedInputGuardedAssistant {
+
+        @InputGuardrails(GatedInputGuardrail.class)
+        CompletableFuture<String> chat(String userMessage);
+    }
+
+    @Test
+    void cf_blocking_input_guardrail_does_not_block_the_delivery_thread() throws Exception {
+
+        BlockingInputGuardedAssistant assistant = AiServices.builder(BlockingInputGuardedAssistant.class)
+                .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
+                .build();
+
+        String answer = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("Berlin");
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void chat_does_not_block_the_caller_thread_on_input_guardrails() throws Exception {
+
+        // The input guardrail blocks until the gate is released. If input guardrails ran on the caller thread,
+        // chat() would block here; instead it returns a not-yet-completed future immediately.
+        CountDownLatch gate = new CountDownLatch(1);
+        GatedInputGuardrail.gate = gate;
+
+        GatedInputGuardedAssistant assistant = AiServices.builder(GatedInputGuardedAssistant.class)
+                .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("What is the capital of Germany?");
+
+        assertThat(future).isNotDone();
+
+        gate.countDown();
+
+        assertThat(future.get(10, SECONDS)).isEqualTo("Berlin");
         assertNoBlockingCalls();
     }
 

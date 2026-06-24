@@ -12,6 +12,9 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.guardrail.ChatExecutor;
+import dev.langchain4j.guardrail.GuardrailRequestParams;
+import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -51,6 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
@@ -101,8 +105,6 @@ import mutiny.zero.ZeroPublisher;
 @Internal
 public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServiceStreamingEvent> {
 
-    // TODO output guardrails for the reactive streaming path (the handler-based path buffers and validates)
-
     /**
      * Default size of the bounded back-pressure buffer (see the class-level "Back-pressure" note), used when an AI
      * Service does not override it via {@code AiServices.streamingBufferSize(int)}.
@@ -114,6 +116,8 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
     private final List<Content> retrievedContents;
     private final AiServiceContext context;
     private final InvocationContext invocationContext;
+    private final GuardrailRequestParams commonGuardrailParams;
+    private final Object methodKey;
     private final int bufferSize;
 
     private final Flow.Publisher<AiServiceStreamingEvent> delegate;
@@ -126,6 +130,8 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         this.context = ensureNotNull(parameters.context(), "context");
         ensureNotNull(this.context.streamingChatModel, "streamingChatModel");
         this.invocationContext = parameters.invocationContext();
+        this.commonGuardrailParams = parameters.commonGuardrailParams();
+        this.methodKey = parameters.methodKey();
         this.bufferSize = bufferSize;
 
         TubeConfiguration config = new TubeConfiguration()
@@ -199,6 +205,18 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         private final AtomicReference<Flow.Subscription> modelSubscription = new AtomicReference<>();
         private final AtomicReference<CompletableFuture<?>> toolsFuture = new AtomicReference<>();
 
+        // Output guardrails for the reactive path mirror the handler-based path's buffer-then-validate: while
+        // output guardrails are configured, partial responses are buffered (not streamed) until the assembled
+        // final response has passed the guardrails, so a guardrail that rewrites or reprompts is never visible
+        // to the subscriber as already-emitted tokens. The guardrails (and any reprompt round-trips to the
+        // model) run off the model-delivery thread via GuardrailService.executeGuardrailsAsync.
+        private final boolean hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
+        private final List<PartialResponse> bufferedPartialResponses = new ArrayList<>();
+
+        // Built lazily in start() (it needs the first ChatRequest) and reused for output-guardrail reprompts,
+        // mirroring the handler-based path.
+        private ChatExecutor chatExecutor;
+
         // The reactive Publisher path runs tools concurrently by default (off the model delivery thread),
         // unless the user explicitly disabled it via executeToolsConcurrently(false). When concurrent, each
         // tool is started as soon as its CompleteToolCall arrives (rather than waiting for the whole model
@@ -241,6 +259,14 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 ChatRequest chatRequest = context.chatRequestTransformer.apply(
                         ChatRequest.builder().messages(messages).parameters(parameters).build(),
                         invocationContext.chatMemoryId());
+
+                // Used by output guardrails to reprompt the model (bridged from streaming to synchronous, run
+                // off the delivery thread). Built once with the first request, mirroring the handler-based path.
+                chatExecutor = ChatExecutor.builder(context.streamingChatModel)
+                        .chatRequest(chatRequest)
+                        .invocationContext(invocationContext)
+                        .eventListenerRegistrar(context.eventListenerRegistrar)
+                        .build();
 
                 // The first round's request-issued event is fired here; subsequent rounds' events are fired by
                 // ToolService.prepareNextChatRequest (shared with the other AI Service modes).
@@ -289,7 +315,14 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     if (event instanceof ChatResponse chatResponse) {
                         this.roundResponse = chatResponse;
                     } else if (event instanceof PartialResponse partialResponse) {
-                        tube.send(new PartialResponseEvent(partialResponse, invocationContext));
+                        // While output guardrails are configured, hold partial responses back until the final
+                        // response has passed validation (see emitFinalResponse). Other event types still flow
+                        // immediately, mirroring the handler-based path which buffers only partial responses.
+                        if (hasOutputGuardrails) {
+                            bufferedPartialResponses.add(partialResponse);
+                        } else {
+                            tube.send(new PartialResponseEvent(partialResponse, invocationContext));
+                        }
                     } else if (event instanceof PartialThinking partialThinking) {
                         tube.send(new PartialThinkingEvent(partialThinking, invocationContext));
                     } else if (event instanceof PartialToolCall partialToolCall) {
@@ -497,6 +530,53 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                             .tokenUsage(tokenUsage.add(chatResponse.metadata().tokenUsage()))
                             .build())
                     .build();
+
+            if (!hasOutputGuardrails || commonGuardrailParams == null) {
+                // No output guardrails (or no params to run them with): flush any buffered partials and finish.
+                // bufferedPartialResponses is empty unless hasOutputGuardrails, so this is a no-op in that case.
+                flushBufferedPartialResponses();
+                completeWithFinalResponse(finalChatResponse);
+                return;
+            }
+
+            GuardrailRequestParams guardrailParams =
+                    commonGuardrailParams.toBuilder().chatMemory(getMemory()).build();
+            OutputGuardrailRequest request = OutputGuardrailRequest.builder()
+                    .responseFromLLM(finalChatResponse)
+                    .chatExecutor(chatExecutor)
+                    .requestParams(guardrailParams)
+                    .build();
+
+            // Output guardrails (and any reprompt round-trips to the model) run on the virtual-thread executor,
+            // never on the model-delivery thread: a blocking guardrail or a reprompt blocks a virtual thread
+            // (non-pinning), not the delivery thread.
+            CompletionStage<ChatResponse> guarded =
+                    context.guardrailService().executeGuardrailsAsync(methodKey, request);
+            guarded.whenComplete((guardedResponse, error) -> {
+                if (error != null) {
+                    fail(error);
+                    return;
+                }
+                if (tube.cancelled()) {
+                    return;
+                }
+                try {
+                    flushBufferedPartialResponses();
+                    completeWithFinalResponse(guardedResponse);
+                } catch (Throwable t) {
+                    fail(t);
+                }
+            });
+        }
+
+        private void flushBufferedPartialResponses() {
+            for (PartialResponse partialResponse : bufferedPartialResponses) {
+                tube.send(new PartialResponseEvent(partialResponse, invocationContext));
+            }
+            bufferedPartialResponses.clear();
+        }
+
+        private void completeWithFinalResponse(ChatResponse finalChatResponse) {
             fireInvocationComplete(finalChatResponse);
             tube.send(new FinalResponseEvent(finalChatResponse, invocationContext));
             tube.complete();

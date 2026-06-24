@@ -19,9 +19,11 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailException;
+import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailException;
+import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -50,6 +52,7 @@ import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
@@ -495,6 +498,11 @@ class AiServicesAsyncTest {
         public OutputGuardrailResult validate(AiMessage responseFromLLM) {
             return failure("output is not valid");
         }
+
+        @Override
+        public CompletionStage<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
+            return CompletableFuture.completedFuture(validate(request));
+        }
     }
 
     interface OutputGuardedAssistant {
@@ -823,6 +831,11 @@ class AiServicesAsyncTest {
         public InputGuardrailResult validate(UserMessage userMessage) {
             return failure("User message is not valid");
         }
+
+        @Override
+        public CompletionStage<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
+            return CompletableFuture.completedFuture(validate(request));
+        }
     }
 
     interface AssistantWithInputGuardrail {
@@ -832,16 +845,20 @@ class AiServicesAsyncTest {
     }
 
     @Test
-    void should_throw_input_guardrail_exception_synchronously() {
+    void should_deliver_input_guardrail_exception_via_the_future() throws Exception {
 
-        // Input guardrails run before any I/O is initiated, so a violation is thrown synchronously
-        // from the AI Service method (like a configuration error), not delivered via the future.
-        // This test pins that behavior: changing it to a failed future should be a deliberate decision.
+        // On the asynchronous path the input guardrails run off the caller thread (the whole execution is
+        // non-blocking), so a violation is delivered via the returned future rather than thrown synchronously
+        // from the AI Service method.
         AssistantWithInputGuardrail assistant = AiServices.builder(AssistantWithInputGuardrail.class)
                 .chatModel(ChatModelMock.thatAlwaysResponds("Berlin"))
                 .build();
 
-        assertThatThrownBy(() -> assistant.chat("Hi"))
+        CompletableFuture<String> future = assistant.chat("Hi");
+
+        ExecutionException executionException = assertThrows(ExecutionException.class, () -> future.get(10, SECONDS));
+        assertThat(executionException.getCause())
+                .isNotInstanceOf(CompletionException.class)
                 .isInstanceOf(InputGuardrailException.class)
                 .hasMessageContaining("User message is not valid");
     }

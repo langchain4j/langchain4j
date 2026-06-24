@@ -14,6 +14,8 @@ import dev.langchain4j.guardrail.OutputGuardrailResult;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -61,11 +63,29 @@ public abstract class AbstractGuardrailService implements GuardrailService {
     }
 
     @Override
+    public <MethodKey> CompletionStage<InputGuardrailResult> executeInputGuardrailsAsync(
+            MethodKey method, InputGuardrailRequest request) {
+        return Optional.ofNullable(method)
+                .map(this.inputGuardrails::get)
+                .map(executor -> executor.executeAsync(request))
+                .orElseGet(() -> CompletableFuture.completedFuture(InputGuardrailResult.success()));
+    }
+
+    @Override
     public <MethodKey> OutputGuardrailResult executeOutputGuardrails(MethodKey method, OutputGuardrailRequest request) {
         return Optional.ofNullable(method)
                 .map(this.outputGuardrails::get)
                 .map(executor -> executor.execute(request))
                 .orElseGet(OutputGuardrailResult::success);
+    }
+
+    @Override
+    public <MethodKey> CompletionStage<OutputGuardrailResult> executeOutputGuardrailsAsync(
+            MethodKey method, OutputGuardrailRequest request) {
+        return Optional.ofNullable(method)
+                .map(this.outputGuardrails::get)
+                .map(executor -> executor.executeAsync(request))
+                .orElseGet(() -> CompletableFuture.completedFuture(OutputGuardrailResult.success()));
     }
 
     @Override

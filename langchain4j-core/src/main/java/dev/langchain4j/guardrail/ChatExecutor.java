@@ -12,6 +12,8 @@ import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.function.Consumer;
 
 /**
@@ -32,6 +34,35 @@ public interface ChatExecutor {
      * @return A response object containing the AI's response and additional metadata.
      */
     ChatResponse execute(List<ChatMessage> chatMessages);
+
+    /**
+     * Non-blocking counterpart of {@link #execute()}.
+     * <p>
+     * The default implementation runs the blocking {@link #execute()} on the calling thread; the
+     * built-in executors override it to call the model without blocking (via the async/reactive model APIs). Used
+     * by output-guardrail reprompts on the non-blocking AI Service paths.
+     *
+     * @return a {@link CompletionStage} that completes with the response
+     * @since 1.17.0
+     */
+    default CompletionStage<ChatResponse> executeAsync() {
+        return CompletableFuture.completedFuture(execute());
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #execute(List)}.
+     * <p>
+     * The default implementation runs the blocking {@link #execute(List)} on the calling thread; the
+     * built-in executors override it to call the model without blocking (via the async/reactive model APIs). Used
+     * by output-guardrail reprompts on the non-blocking AI Service paths.
+     *
+     * @param chatMessages The chat messages containing the context of the conversation.
+     * @return a {@link CompletionStage} that completes with the response
+     * @since 1.17.0
+     */
+    default CompletionStage<ChatResponse> executeAsync(List<ChatMessage> chatMessages) {
+        return CompletableFuture.completedFuture(execute(chatMessages));
+    }
 
     /**
      * Creates a new {@link SynchronousBuilder} instance for constructing {@link ChatExecutor} objects

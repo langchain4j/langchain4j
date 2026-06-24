@@ -12,6 +12,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
 
 /**
  * Abstract base class for {@link GuardrailExecutor}s.
@@ -159,6 +162,76 @@ public abstract sealed class AbstractGuardrailExecutor<
         }
 
         return accumulatedResult;
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #validate(GuardrailRequest, Guardrail)}: runs a single guardrail's
+     * {@link Guardrail#validateAsync(GuardrailRequest)} and wraps any failure in a {@link GuardrailException},
+     * mirroring the synchronous error handling.
+     */
+    protected CompletionStage<R> validateAsync(P request, G guardrail) {
+        ensureNotNull(request, "request");
+        ensureNotNull(guardrail, "guardrail");
+
+        try {
+            return guardrail.validateAsync(request).handle((result, error) -> {
+                if (error != null) {
+                    Throwable cause = unwrap(error);
+                    throw createGuardrailException(cause.getMessage(), cause);
+                }
+                return result.validatedBy(guardrail.getClass());
+            });
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(createGuardrailException(e.getMessage(), e));
+        }
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #executeGuardrails(GuardrailRequest)}: runs the configured guardrails
+     * sequentially (each guardrail sees the result of any rewrite by the previous one), firing the observability
+     * event and short-circuiting on a fatal result, without blocking the calling thread.
+     */
+    protected CompletionStage<R> executeGuardrailsAsync(P request) {
+        ensureNotNull(request, "request");
+        return executeGuardrailsAsync(request, request, createSuccess(), 0);
+    }
+
+    private CompletionStage<R> executeGuardrailsAsync(
+            P originalRequest, P accumulatedRequest, R accumulatedResult, int index) {
+
+        if (index >= this.guardrails.size()) {
+            return CompletableFuture.completedFuture(accumulatedResult);
+        }
+
+        var guardrail = this.guardrails.get(index);
+        if (guardrail == null) {
+            return executeGuardrailsAsync(originalRequest, accumulatedRequest, accumulatedResult, index + 1);
+        }
+
+        var before = System.nanoTime();
+        var currentRequest = accumulatedRequest;
+        return validateAsync(currentRequest, guardrail).thenCompose(result -> {
+            var after = System.nanoTime();
+            fireObservabilityEvent(
+                    originalRequest.requestParams().invocationContext(),
+                    currentRequest,
+                    result,
+                    guardrail,
+                    Duration.ofNanos(after - before));
+
+            if (result.isFatal()) {
+                return CompletableFuture.completedFuture(handleFatalResult(accumulatedResult, result));
+            }
+
+            var nextRequest =
+                    result.hasRewrittenResult() ? currentRequest.withText(result.successfulText()) : currentRequest;
+            var nextResult = composeResult(accumulatedResult, result);
+            return executeGuardrailsAsync(originalRequest, nextRequest, nextResult, index + 1);
+        });
+    }
+
+    private static Throwable unwrap(Throwable error) {
+        return (error instanceof CompletionException && error.getCause() != null) ? error.getCause() : error;
     }
 
     protected R composeResult(R oldResult, R newResult) {
