@@ -17,6 +17,7 @@ import kotlin.coroutines.CoroutineContext
  * defaults to [Dispatchers.IO].
  * @return The parsed [dev.langchain4j.data.document.Document],
  * potentially with merged metadata from the document source.
+ * @throws IllegalArgumentException if the document and source metadata share one or more keys.
  */
 public suspend fun DocumentParser.parseAsync(
     source: DocumentSource,
@@ -26,8 +27,12 @@ public suspend fun DocumentParser.parseAsync(
         source.inputStream().use { inputStream ->
             return@use parseAsync(inputStream, context)
         }
-    document.metadata().putAll(source.metadata().toMap())
-    return document
+    val sourceMetadata = source.metadata()
+    return if (sourceMetadata.toMap().isEmpty()) {
+        document
+    } else {
+        Document.from(document.text(), document.metadata().merge(sourceMetadata))
+    }
 }
 
 /**

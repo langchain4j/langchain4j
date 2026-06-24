@@ -11,6 +11,8 @@ import dev.langchain4j.data.document.DocumentParser
 import dev.langchain4j.data.document.DocumentSource
 import dev.langchain4j.data.document.Metadata
 import dev.langchain4j.kotlin.data.document.parseAsync
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeSameInstanceAs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
@@ -60,7 +62,7 @@ internal class DocumentParserExtensionsKtTest {
     }
 
     @Test
-    fun `parseAsync should let source metadata overwrite document metadata on shared keys`() {
+    fun `parseAsync should throw when document and source metadata share keys`() {
         val documentContent = "parsed document content"
         runTest {
             val inputStream = documentContent.byteInputStream()
@@ -84,15 +86,11 @@ internal class DocumentParserExtensionsKtTest {
             whenever(documentParser.parse(inputStream)).thenReturn(document)
             whenever(documentSource.metadata()).thenReturn(fileMetadata)
 
-            val result = documentParser.parseAsync(documentSource, Dispatchers.IO)
-
-            assertThat(result.text()).isEqualTo(documentContent)
-            assertThat(result.metadata().toMap())
-                .containsOnly(
-                    ABSOLUTE_DIRECTORY_PATH to "foo",
-                    FILE_NAME to "source-name.txt",
-                    "title" to "Bar"
-                )
+            val exception =
+                shouldThrow<IllegalArgumentException> {
+                    documentParser.parseAsync(documentSource, Dispatchers.IO)
+                }
+            exception.message shouldContain "Metadata keys are not unique"
         }
     }
 
