@@ -6,9 +6,9 @@ import static java.util.stream.Collectors.joining;
 
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
+import dev.langchain4j.http.client.FormDataFile;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
-import dev.langchain4j.http.client.FormDataFile;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
@@ -58,7 +58,7 @@ public class JdkHttpClient implements HttpClient {
         } catch (HttpTimeoutException e) {
             throw new TimeoutException(e);
         } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();  
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -116,6 +116,9 @@ public class JdkHttpClient implements HttpClient {
             }
         } else {
             bodyPublisher = ofMultipartData(request.formDataFields(), request.formDataFiles());
+            // The multipart body is delimited by a boundary that the server needs in the Content-Type header to
+            // parse it; the OkHttp and Apache clients do the same.
+            builder.setHeader("Content-Type", MultipartBodyPublisher.contentType());
         }
         builder.method(request.method().name(), bodyPublisher);
 
