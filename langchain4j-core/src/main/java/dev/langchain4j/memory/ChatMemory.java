@@ -128,6 +128,25 @@ public interface ChatMemory {
     }
 
     /**
+     * Non-blocking counterpart of {@link #set(Iterable)}, used by the asynchronous
+     * ({@link java.util.concurrent.CompletableFuture}/{@link CompletionStage}) and reactive
+     * ({@link java.util.concurrent.Flow.Publisher}) AI Service APIs (e.g. to rewrite memory for tool
+     * compensation without blocking the model-delivery thread).
+     * <p>
+     * Replaces the entire message history with {@code messages}. Like the other async methods, callers must not
+     * invoke it concurrently for the same memory. The default implementation throws
+     * {@link UnsupportedOperationException}; see {@link #addAsync(List)} for the rationale.
+     *
+     * @param messages The {@link ChatMessage}s to set.
+     * @return A stage that completes when the messages have been set.
+     * @since 1.17.0
+     */
+    default CompletionStage<Void> setAsync(List<ChatMessage> messages) {
+        throw new UnsupportedOperationException(
+                "setAsync() is not implemented by " + getClass().getName());
+    }
+
+    /**
      * Non-blocking counterpart of {@link #messages()}, used by the asynchronous
      * ({@link java.util.concurrent.CompletableFuture}/{@link CompletionStage}) and reactive
      * ({@link java.util.concurrent.Flow.Publisher}) AI Service APIs.

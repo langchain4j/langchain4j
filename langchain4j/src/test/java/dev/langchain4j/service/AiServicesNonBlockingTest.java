@@ -883,7 +883,8 @@ class AiServicesNonBlockingTest {
 
     /**
      * Tools with a compensating ({@code @CompensateFor}) action whose rollback blocks (simulating a remote undo
-     * call). The rollback must run off the model-delivery thread.
+     * call). Because it does blocking I/O, the rollback returns a {@link CompletableFuture} that offloads the work
+     * to a non-policed worker, so it never runs on the model-delivery thread.
      */
     public static class CompensatingBankTools {
 
@@ -896,13 +897,17 @@ class AiServicesNonBlockingTest {
         }
 
         @CompensateFor("credit")
-        void uncredit(String name, double amount) {
-            try {
-                Thread.sleep(20);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-            calls.add("uncredit:" + name);
+        CompletableFuture<Void> uncredit(String name, double amount) {
+            return CompletableFuture.runAsync(
+                    () -> {
+                        try {
+                            Thread.sleep(20);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                        calls.add("uncredit:" + name);
+                    },
+                    guardrailWorker);
         }
 
         @Tool

@@ -143,6 +143,15 @@ public class TokenWindowChatMemory implements ChatMemory {
     }
 
     @Override
+    public CompletionStage<Void> setAsync(List<ChatMessage> messages) {
+        Integer maxTokens = maxTokensProvider.apply(id);
+        ensureGreaterThanZero(maxTokens, "maxTokens");
+        List<ChatMessage> windowed = new ArrayList<>(messages);
+        ensureCapacity(windowed, maxTokens, tokenCountEstimator);
+        return store.updateMessagesAsync(id, windowed);
+    }
+
+    @Override
     public List<ChatMessage> messages() {
         return windowed(store.getMessages(id));
     }

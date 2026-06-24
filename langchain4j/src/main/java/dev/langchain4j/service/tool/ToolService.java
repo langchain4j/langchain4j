@@ -63,7 +63,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -117,7 +117,8 @@ public class ToolService {
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
     private final Map<String, ReturnBehavior> returnBehaviors = new HashMap<>();
-    private final Map<String, BiConsumer<ToolExecution, InvocationContext>> compensatingExecutors = new HashMap<>();
+    private final Map<String, BiFunction<ToolExecution, InvocationContext, CompletableFuture<Void>>>
+            compensatingExecutors = new HashMap<>();
     private IllegalConfigurationException compensatingToolMisconfiguration;
     private final Set<ToolProvider> toolProviders = new LinkedHashSet<>();
     private boolean compensateOnToolErrors;
@@ -296,9 +297,10 @@ public class ToolService {
         }
     }
 
-    private Map<String, BiConsumer<ToolExecution, InvocationContext>> findCompensatingActions(
-            Object objectWithTools) {
-        Map<String, BiConsumer<ToolExecution, InvocationContext>> compensatingActions = new HashMap<>();
+    private Map<String, BiFunction<ToolExecution, InvocationContext, CompletableFuture<Void>>>
+            findCompensatingActions(Object objectWithTools) {
+        Map<String, BiFunction<ToolExecution, InvocationContext, CompletableFuture<Void>>> compensatingActions =
+                new HashMap<>();
         if (compensatingToolMisconfiguration != null) {
             return compensatingActions;
         }
@@ -346,11 +348,14 @@ public class ToolService {
                 if (acceptsToolExecution) {
                     method.setAccessible(true);
                     Method compensatingMethod = method;
+                    // The compensating method may return void (synchronous) or a CompletableFuture/CompletionStage
+                    // (asynchronous) — a blocking compensating action should return a future to stay off the
+                    // delivery thread, mirroring async @Tool methods and guardrails.
                     compensatingActions.put(toolName, (toolExecution, ctx) -> {
                         try {
-                            compensatingMethod.invoke(objectWithTools, toolExecution);
+                            return toVoidFuture(compensatingMethod.invoke(objectWithTools, toolExecution));
                         } catch (Exception e) {
-                            throw new RuntimeException(e);
+                            return CompletableFuture.failedFuture(e);
                         }
                     });
                 } else {
@@ -360,8 +365,10 @@ public class ToolService {
                             .methodToInvoke(method)
                             .propagateToolExecutionExceptions(true)
                             .build();
-                    compensatingActions.put(toolName, (toolExecution, ctx) ->
-                            executor.executeWithContext(toolExecution.request(), ctx));
+                    // executeAsync handles both synchronous and CompletableFuture-returning compensating methods.
+                    compensatingActions.put(toolName, (toolExecution, ctx) -> executor.executeAsync(
+                                    toolExecution.request(), ctx)
+                            .thenApply(result -> (Void) null));
                 }
             }
         }
@@ -853,22 +860,18 @@ public class ToolService {
                                         invocationContext,
                                         toolServiceContext);
 
-                                // Tool compensation runs off the delivery thread: the compensating actions (which
-                                // may perform blocking I/O and have no asynchronous SPI) and the synchronous
-                                // chat-memory rewrite execute on the shared virtual-thread executor.
-                                CompletableFuture<Void> compensated = compensationEnabled()
-                                        ? CompletableFuture.runAsync(
-                                                () -> compensateIfNeeded(
-                                                        toolExecutionRequests,
-                                                        toolResults,
-                                                        outcome.resultMessages(),
-                                                        compensableExecutions,
-                                                        outcome.anyToolErrored(),
-                                                        chatMemory,
-                                                        accumulator,
-                                                        invocationContext),
-                                                DefaultExecutorProvider.getDefaultExecutorService())
-                                        : CompletableFuture.completedFuture(null);
+                                // Tool compensation runs without blocking the delivery thread: a compensating
+                                // action that performs blocking I/O returns a CompletableFuture, and the chat-memory
+                                // rewrite uses ChatMemory.setAsync.
+                                CompletableFuture<Void> compensated = compensateIfNeededAsync(
+                                        toolExecutionRequests,
+                                        toolResults,
+                                        outcome.resultMessages(),
+                                        compensableExecutions,
+                                        outcome.anyToolErrored(),
+                                        chatMemory,
+                                        accumulator,
+                                        invocationContext);
 
                                 return compensated.thenCompose(ignoredCompensation -> {
                                     if (shouldReturnImmediately(
@@ -1145,13 +1148,11 @@ public class ToolService {
             ChatRequestParameters parameters) {}
 
     /**
-     * Runs tool compensation when enabled. Collects this round's successful compensable tools into
-     * {@code compensableExecutions} (accumulated across rounds); then, if any tool in this round errored, rolls
-     * back every compensable tool accumulated so far — running their compensating actions, rewriting the chat
-     * memory, and rewriting this round's {@code resultMessages} in place — before the result messages are
-     * persisted. Uses the synchronous {@link ChatMemory} methods and runs the (possibly blocking) compensating
-     * actions inline, so the asynchronous/reactive modes invoke it on a worker thread (there is no asynchronous
-     * compensating-action SPI). Returns immediately when compensation is disabled.
+     * Synchronous tool compensation, used by the synchronous / {@code TokenStream} modes. Collects this round's
+     * successful compensable tools (accumulated across rounds) and, if any tool in this round errored, rolls them
+     * all back — running their compensating actions, rewriting the chat memory (synchronously), and rewriting this
+     * round's {@code resultMessages} in place — before the result messages are persisted. A compensating action
+     * that returns a {@link CompletableFuture} is awaited. Returns immediately when compensation is disabled.
      *
      * @since 1.17.0
      */
@@ -1168,6 +1169,61 @@ public class ToolService {
         if (!compensateOnToolErrors) {
             return;
         }
+        String failedToolName =
+                collectCompensable(toolExecutionRequests, toolResults, resultMessages, compensableExecutions, invocationContext);
+        if (anyToolErrored && !compensableExecutions.isEmpty()) {
+            compensateToolsActions(compensableExecutions, invocationContext).join();
+            rewriteChatMemoryForCompensatedTools(messages, chatMemory, compensableExecutions, failedToolName);
+            compensableExecutions.clear();
+            rewriteCurrentResults(toolExecutionRequests, toolResults, resultMessages, failedToolName);
+        }
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #compensateIfNeeded}, used by the {@code CompletableFuture} and reactive
+     * modes. The compensating actions and the chat-memory rewrite run without blocking the model-delivery thread: a
+     * compensating action that performs blocking I/O should return a {@link CompletableFuture}, and the rewrite uses
+     * {@link ChatMemory#setAsync(List)}.
+     *
+     * @since 1.17.0
+     */
+    public CompletableFuture<Void> compensateIfNeededAsync(
+            List<ToolExecutionRequest> toolExecutionRequests,
+            Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+            List<ToolExecutionResultMessage> resultMessages,
+            List<CompensableToolExecution> compensableExecutions,
+            boolean anyToolErrored,
+            ChatMemory chatMemory,
+            List<ChatMessage> messages,
+            InvocationContext invocationContext) {
+
+        if (!compensateOnToolErrors) {
+            return CompletableFuture.completedFuture(null);
+        }
+        String failedToolName =
+                collectCompensable(toolExecutionRequests, toolResults, resultMessages, compensableExecutions, invocationContext);
+        if (anyToolErrored && !compensableExecutions.isEmpty()) {
+            return compensateToolsActions(compensableExecutions, invocationContext)
+                    .thenCompose(ignored -> rewriteChatMemoryForCompensatedToolsAsync(
+                            messages, chatMemory, compensableExecutions, failedToolName))
+                    .thenRun(() -> {
+                        compensableExecutions.clear();
+                        rewriteCurrentResults(toolExecutionRequests, toolResults, resultMessages, failedToolName);
+                    });
+        }
+        return CompletableFuture.completedFuture(null);
+    }
+
+    /**
+     * Collects this round's successful compensable tool executions into {@code compensableExecutions} (which
+     * accumulates across rounds), and returns the name of the first tool in this round that errored (or null).
+     */
+    private String collectCompensable(
+            List<ToolExecutionRequest> toolExecutionRequests,
+            Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+            List<ToolExecutionResultMessage> resultMessages,
+            List<CompensableToolExecution> compensableExecutions,
+            InvocationContext invocationContext) {
 
         String failedToolName = null;
         for (int i = 0; i < toolExecutionRequests.size(); i++) {
@@ -1185,24 +1241,14 @@ public class ToolService {
                 failedToolName = request.name();
             }
         }
-
-        if (anyToolErrored && !compensableExecutions.isEmpty()) {
-            compensateToolsActions(compensableExecutions, invocationContext);
-            rewriteChatMemoryForCompensatedTools(messages, chatMemory, compensableExecutions, failedToolName);
-            compensableExecutions.clear();
-            rewriteCurrentResults(toolExecutionRequests, toolResults, resultMessages, failedToolName);
-        }
+        return failedToolName;
     }
 
-    /**
-     * Whether tool compensation is enabled for this service (i.e. {@code @CompensateFor} actions are registered
-     * and compensation was switched on). Lets the asynchronous/reactive modes skip the worker-thread offload when
-     * there is nothing to compensate.
-     *
-     * @since 1.17.0
-     */
-    public boolean compensationEnabled() {
-        return compensateOnToolErrors;
+    private static CompletableFuture<Void> toVoidFuture(Object result) {
+        if (result instanceof CompletionStage<?> stage) {
+            return stage.thenApply(ignored -> (Void) null).toCompletableFuture();
+        }
+        return CompletableFuture.completedFuture(null);
     }
 
     /**
@@ -1233,6 +1279,32 @@ public class ToolService {
                                                              List<CompensableToolExecution> compensableExecutions,
                                                              String failedToolName) {
         List<ChatMessage> memoryMessages = chatMemory != null ? new ArrayList<>(chatMemory.messages()) : messages;
+        replaceCompensatedMessages(memoryMessages, compensableExecutions, failedToolName);
+        if (chatMemory != null) {
+            chatMemory.set(memoryMessages);
+        }
+    }
+
+    private static CompletableFuture<Void> rewriteChatMemoryForCompensatedToolsAsync(
+            List<ChatMessage> messages,
+            ChatMemory chatMemory,
+            List<CompensableToolExecution> compensableExecutions,
+            String failedToolName) {
+        if (chatMemory == null) {
+            replaceCompensatedMessages(messages, compensableExecutions, failedToolName);
+            return CompletableFuture.completedFuture(null);
+        }
+        return chatMemory.messagesAsync().toCompletableFuture().thenCompose(memoryMessages -> {
+            List<ChatMessage> rewritten = new ArrayList<>(memoryMessages);
+            replaceCompensatedMessages(rewritten, compensableExecutions, failedToolName);
+            return chatMemory.setAsync(rewritten).toCompletableFuture();
+        });
+    }
+
+    private static void replaceCompensatedMessages(
+            List<ChatMessage> memoryMessages,
+            List<CompensableToolExecution> compensableExecutions,
+            String failedToolName) {
         for (CompensableToolExecution entry : compensableExecutions) {
             ToolExecutionResultMessage originalMsg = entry.resultMessage();
             ToolExecutionResultMessage replacementMsg = rolledBackResultMessage(originalMsg, failedToolName);
@@ -1243,9 +1315,6 @@ public class ToolService {
                     break;
                 }
             }
-        }
-        if (chatMemory != null) {
-            chatMemory.set(memoryMessages);
         }
     }
 
@@ -1261,17 +1330,34 @@ public class ToolService {
 
     public record CompensableToolExecution(ToolExecution toolExecution, ToolExecutionResultMessage resultMessage) {}
 
-    private void compensateToolsActions(List<CompensableToolExecution> compensableExecutions, InvocationContext invocationContext) {
+    /**
+     * Runs the compensating actions in reverse order, composed into a single future. Each action runs after the
+     * previous one completes (compensation order matters); a failing action is logged and does not abort the rest,
+     * mirroring the previous synchronous behavior. A {@code void} compensating method completes immediately; a
+     * {@code CompletableFuture}-returning one runs without blocking. The synchronous mode awaits the result.
+     */
+    private CompletableFuture<Void> compensateToolsActions(
+            List<CompensableToolExecution> compensableExecutions, InvocationContext invocationContext) {
+        CompletableFuture<Void> chain = CompletableFuture.completedFuture(null);
         for (int i = compensableExecutions.size() - 1; i >= 0; i--) {
             ToolExecution toolExecution = compensableExecutions.get(i).toolExecution();
             String toolName = toolExecution.request().name();
-            BiConsumer<ToolExecution, InvocationContext> compensatingAction = compensatingExecutors.get(toolName);
-            try {
-                compensatingAction.accept(toolExecution, invocationContext);
-            } catch (Exception e) {
-                log.warn("Compensating action failed for tool '{}': {}", toolName, e.getMessage(), e);
-            }
+            BiFunction<ToolExecution, InvocationContext, CompletableFuture<Void>> compensatingAction =
+                    compensatingExecutors.get(toolName);
+            chain = chain.thenCompose(ignored -> {
+                CompletableFuture<Void> action;
+                try {
+                    action = compensatingAction.apply(toolExecution, invocationContext);
+                } catch (Exception e) {
+                    action = CompletableFuture.failedFuture(e);
+                }
+                return action.exceptionally(error -> {
+                    log.warn("Compensating action failed for tool '{}': {}", toolName, error.getMessage(), error);
+                    return null;
+                });
+            });
         }
+        return chain;
     }
 
     public static boolean shouldReturnImmediately(boolean anyToolErrored, List<ReturnBehavior> returnBehaviors) {

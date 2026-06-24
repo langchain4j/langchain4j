@@ -139,6 +139,15 @@ public class MessageWindowChatMemory implements ChatMemory {
     }
 
     @Override
+    public CompletionStage<Void> setAsync(List<ChatMessage> messages) {
+        Integer maxMessages = this.maxMessagesProvider.apply(this.id);
+        ensureGreaterThanZero(maxMessages, "maxMessages");
+        List<ChatMessage> windowed = new ArrayList<>(messages);
+        ensureCapacity(windowed, maxMessages);
+        return store.updateMessagesAsync(id, windowed);
+    }
+
+    @Override
     public List<ChatMessage> messages() {
         return windowed(store.getMessages(id));
     }

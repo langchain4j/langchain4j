@@ -15,7 +15,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
-import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -503,22 +502,18 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     invocationContext,
                     currentToolContext);
 
-            // Tool compensation runs off the model-delivery thread (compensating actions may perform blocking I/O
-            // and have no asynchronous SPI; the chat-memory rewrite is synchronous). A no-op unless compensation
-            // is enabled and a tool errored.
-            CompletableFuture<Void> compensated = context.toolService.compensationEnabled()
-                    ? CompletableFuture.runAsync(
-                            () -> context.toolService.compensateIfNeeded(
-                                    toolRequests,
-                                    toolResults,
-                                    outcome.resultMessages(),
-                                    compensableExecutions,
-                                    outcome.anyToolErrored(),
-                                    getMemory(),
-                                    messages,
-                                    invocationContext),
-                            DefaultExecutorProvider.getDefaultExecutorService())
-                    : CompletableFuture.completedFuture(null);
+            // Tool compensation runs without blocking the model-delivery thread: a compensating action that
+            // performs blocking I/O returns a CompletableFuture, and the chat-memory rewrite uses
+            // ChatMemory.setAsync. A no-op unless compensation is enabled and a tool errored.
+            CompletableFuture<Void> compensated = context.toolService.compensateIfNeededAsync(
+                    toolRequests,
+                    toolResults,
+                    outcome.resultMessages(),
+                    compensableExecutions,
+                    outcome.anyToolErrored(),
+                    getMemory(),
+                    messages,
+                    invocationContext);
 
             compensated.whenComplete((ignoredCompensation, compensationError) -> {
                 if (compensationError != null) {
