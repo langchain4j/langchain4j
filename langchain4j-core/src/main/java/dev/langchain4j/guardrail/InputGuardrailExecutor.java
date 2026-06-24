@@ -8,7 +8,7 @@ import dev.langchain4j.observability.api.event.InputGuardrailExecutedEvent;
 import dev.langchain4j.spi.guardrail.InputGuardrailExecutorBuilderFactory;
 import java.util.List;
 import java.util.ServiceLoader;
-import java.util.concurrent.CompletionStage;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * The {@link GuardrailExecutor} for {@link InputGuardrail}s.
@@ -73,7 +73,7 @@ public non-sealed class InputGuardrailExecutor
     }
 
     @Override
-    public CompletionStage<InputGuardrailResult> executeAsync(InputGuardrailRequest request) {
+    public CompletableFuture<InputGuardrailResult> executeAsync(InputGuardrailRequest request) {
         return executeGuardrailsAsync(request).thenApply(result -> {
             if (!result.isSuccess()) {
                 throw new InputGuardrailException(result.toString(), result.getFirstFailureException());

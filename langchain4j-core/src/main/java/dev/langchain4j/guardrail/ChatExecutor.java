@@ -13,7 +13,6 @@ import dev.langchain4j.observability.api.event.AiServiceEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Consumer;
 
 /**
@@ -42,10 +41,10 @@ public interface ChatExecutor {
      * built-in executors override it to call the model without blocking (via the async/reactive model APIs). Used
      * by output-guardrail reprompts on the non-blocking AI Service paths.
      *
-     * @return a {@link CompletionStage} that completes with the response
+     * @return a {@link CompletableFuture} that completes with the response
      * @since 1.17.0
      */
-    default CompletionStage<ChatResponse> executeAsync() {
+    default CompletableFuture<ChatResponse> executeAsync() {
         return CompletableFuture.completedFuture(execute());
     }
 
@@ -57,10 +56,10 @@ public interface ChatExecutor {
      * by output-guardrail reprompts on the non-blocking AI Service paths.
      *
      * @param chatMessages The chat messages containing the context of the conversation.
-     * @return a {@link CompletionStage} that completes with the response
+     * @return a {@link CompletableFuture} that completes with the response
      * @since 1.17.0
      */
-    default CompletionStage<ChatResponse> executeAsync(List<ChatMessage> chatMessages) {
+    default CompletableFuture<ChatResponse> executeAsync(List<ChatMessage> chatMessages) {
         return CompletableFuture.completedFuture(execute(chatMessages));
     }
 

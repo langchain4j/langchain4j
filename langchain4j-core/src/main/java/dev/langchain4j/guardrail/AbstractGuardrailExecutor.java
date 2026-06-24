@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.CompletionStage;
 
 /**
  * Abstract base class for {@link GuardrailExecutor}s.
@@ -169,7 +168,7 @@ public abstract sealed class AbstractGuardrailExecutor<
      * {@link Guardrail#validateAsync(GuardrailRequest)} and wraps any failure in a {@link GuardrailException},
      * mirroring the synchronous error handling.
      */
-    protected CompletionStage<R> validateAsync(P request, G guardrail) {
+    protected CompletableFuture<R> validateAsync(P request, G guardrail) {
         ensureNotNull(request, "request");
         ensureNotNull(guardrail, "guardrail");
 
@@ -191,12 +190,12 @@ public abstract sealed class AbstractGuardrailExecutor<
      * sequentially (each guardrail sees the result of any rewrite by the previous one), firing the observability
      * event and short-circuiting on a fatal result, without blocking the calling thread.
      */
-    protected CompletionStage<R> executeGuardrailsAsync(P request) {
+    protected CompletableFuture<R> executeGuardrailsAsync(P request) {
         ensureNotNull(request, "request");
         return executeGuardrailsAsync(request, request, createSuccess(), 0);
     }
 
-    private CompletionStage<R> executeGuardrailsAsync(
+    private CompletableFuture<R> executeGuardrailsAsync(
             P originalRequest, P accumulatedRequest, R accumulatedResult, int index) {
 
         if (index >= this.guardrails.size()) {

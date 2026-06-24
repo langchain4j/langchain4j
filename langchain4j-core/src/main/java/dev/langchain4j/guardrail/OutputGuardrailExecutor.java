@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
 /**
@@ -118,7 +117,7 @@ public non-sealed class OutputGuardrailExecutor
      * thread is never blocked while the model produces the reprompted response.
      */
     @Override
-    public CompletionStage<OutputGuardrailResult> executeAsync(OutputGuardrailRequest request) {
+    public CompletableFuture<OutputGuardrailResult> executeAsync(OutputGuardrailRequest request) {
         var maxAttempts = config().maxRetries();
 
         if (maxAttempts == 0) {
@@ -130,7 +129,7 @@ public non-sealed class OutputGuardrailExecutor
         return attemptAsync(request, request, 0, maxAttempts);
     }
 
-    private CompletionStage<OutputGuardrailResult> attemptAsync(
+    private CompletableFuture<OutputGuardrailResult> attemptAsync(
             OutputGuardrailRequest request, OutputGuardrailRequest accumulatedRequest, int attempt, int maxAttempts) {
 
         return executeGuardrailsAsync(accumulatedRequest).thenCompose(rawResult -> {

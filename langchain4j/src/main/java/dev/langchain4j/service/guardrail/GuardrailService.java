@@ -13,7 +13,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Optional;
 import java.util.ServiceLoader;
-import java.util.concurrent.CompletionStage;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Defines a service for executing guardrails associated with methods in an AI service.
@@ -43,11 +43,11 @@ public interface GuardrailService {
      *
      * @param method The method whose input guardrails are to be executed.
      * @param request The parameters to validate against the input guardrails. Must not be null.
-     * @return A {@link CompletionStage} that completes with the {@link InputGuardrailResult}.
+     * @return A {@link CompletableFuture} that completes with the {@link InputGuardrailResult}.
      * @param <MethodKey> The type of the method key, representing a unique identifier for methods.
      * @since 1.17.0
      */
-    <MethodKey> CompletionStage<InputGuardrailResult> executeInputGuardrailsAsync(
+    <MethodKey> CompletableFuture<InputGuardrailResult> executeInputGuardrailsAsync(
             MethodKey method, InputGuardrailRequest request);
 
     /**
@@ -72,7 +72,7 @@ public interface GuardrailService {
      *
      * @since 1.17.0
      */
-    default <MethodKey> CompletionStage<UserMessage> executeGuardrailsAsync(
+    default <MethodKey> CompletableFuture<UserMessage> executeGuardrailsAsync(
             MethodKey method, InputGuardrailRequest request) {
         return executeInputGuardrailsAsync(method, request).thenApply(result -> result.userMessage(request));
     }
@@ -93,11 +93,11 @@ public interface GuardrailService {
      *
      * @param method The method whose output guardrails are to be executed.
      * @param request The parameters to validate against the output guardrails. Must not be null.
-     * @return A {@link CompletionStage} that completes with the {@link OutputGuardrailResult}.
+     * @return A {@link CompletableFuture} that completes with the {@link OutputGuardrailResult}.
      * @param <MethodKey> The type of the method key, representing a unique identifier for methods.
      * @since 1.17.0
      */
-    <MethodKey> CompletionStage<OutputGuardrailResult> executeOutputGuardrailsAsync(
+    <MethodKey> CompletableFuture<OutputGuardrailResult> executeOutputGuardrailsAsync(
             MethodKey method, OutputGuardrailRequest request);
 
     /**
@@ -138,7 +138,7 @@ public interface GuardrailService {
      *
      * @since 1.17.0
      */
-    default <MethodKey, T> CompletionStage<T> executeGuardrailsAsync(MethodKey method, OutputGuardrailRequest request) {
+    default <MethodKey, T> CompletableFuture<T> executeGuardrailsAsync(MethodKey method, OutputGuardrailRequest request) {
         return executeOutputGuardrailsAsync(method, request).thenApply(result -> result.response(request));
     }
 

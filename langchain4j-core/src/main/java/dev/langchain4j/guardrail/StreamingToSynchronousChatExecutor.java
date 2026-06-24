@@ -10,7 +10,6 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingEvent;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
@@ -50,7 +49,7 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
     }
 
     @Override
-    protected CompletionStage<ChatResponse> executeAsync(ChatRequest chatRequest) {
+    protected CompletableFuture<ChatResponse> executeAsync(ChatRequest chatRequest) {
         CompletableFuture<ChatResponse> future = new CompletableFuture<>();
         this.streamingChatModel.chat(chatRequest).subscribe(new Flow.Subscriber<>() {
 

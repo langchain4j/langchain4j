@@ -10,7 +10,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import java.util.List;
-import java.util.concurrent.CompletionStage;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Abstract base class for chat executors that provides a common structure and shared functionality
@@ -68,17 +68,17 @@ abstract class AbstractChatExecutor implements ChatExecutor {
     }
 
     @Override
-    public CompletionStage<ChatResponse> executeAsync(List<ChatMessage> chatMessages) {
+    public CompletableFuture<ChatResponse> executeAsync(List<ChatMessage> chatMessages) {
         var newChatRequest = this.chatRequest.toBuilder().messages(chatMessages).build();
         return executeInternalAsync(newChatRequest);
     }
 
     @Override
-    public CompletionStage<ChatResponse> executeAsync() {
+    public CompletableFuture<ChatResponse> executeAsync() {
         return executeInternalAsync(this.chatRequest);
     }
 
-    private CompletionStage<ChatResponse> executeInternalAsync(ChatRequest chatRequest) {
+    private CompletableFuture<ChatResponse> executeInternalAsync(ChatRequest chatRequest) {
         fireRequestIssuedEvent(chatRequest);
         return executeAsync(chatRequest);
     }
@@ -95,7 +95,7 @@ abstract class AbstractChatExecutor implements ChatExecutor {
      * Non-blocking counterpart of {@link #execute(ChatRequest)}.
      *
      * @param chatRequest the chat request to process, containing the input messages and any necessary configurations
-     * @return a {@link CompletionStage} that completes with the chat response
+     * @return a {@link CompletableFuture} that completes with the chat response
      */
-    protected abstract CompletionStage<ChatResponse> executeAsync(ChatRequest chatRequest);
+    protected abstract CompletableFuture<ChatResponse> executeAsync(ChatRequest chatRequest);
 }

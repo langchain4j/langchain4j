@@ -345,12 +345,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                             final boolean asyncAppendOutputFormat = appendOutputFormat;
                             CompletableFuture<Object> result = new CompletableFuture<>();
                             // Input guardrails run off the caller thread; the user-message-dependent prelude, memory
-                            // assembly, model call and tool loop then all run composed.
-                            invokeInputGuardrailsAsync(
-                                            context.guardrailService(),
-                                            method,
-                                            asyncInputUserMessage,
-                                            commonGuardrailParam)
+                            // assembly, model call and tool loop then all run composed. Cancelling the returned future
+                            // cancels the in-flight input guardrails (best-effort); the model call and the output
+                            // guardrails are cancelled via propagateCancellation on the inner loop future.
+                            CompletableFuture<UserMessage> inputGuardrails = invokeInputGuardrailsAsync(
+                                    context.guardrailService(), method, asyncInputUserMessage, commonGuardrailParam);
+                            propagateCancellation(result, inputGuardrails);
+                            inputGuardrails
                                     .thenApply(guardedUserMessage -> prepareGuardedInput(
                                             guardedUserMessage,
                                             baseInvocationContext,
@@ -882,7 +883,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                      * model-delivery thread is never blocked; the (CPU-bound) output parsing then runs in the
                      * completion stage.
                      */
-                    private CompletionStage<Object> processToolServiceResultAsync(
+                    private CompletableFuture<Object> processToolServiceResultAsync(
                             Method method,
                             InvocationContext invocationContext,
                             Type returnType,
@@ -1201,7 +1202,7 @@ class DefaultAiServices<T> extends AiServices<T> {
         return userMessage;
     }
 
-    private CompletionStage<UserMessage> invokeInputGuardrailsAsync(
+    private CompletableFuture<UserMessage> invokeInputGuardrailsAsync(
             GuardrailService guardrailService,
             Method method,
             UserMessage userMessage,
@@ -1243,7 +1244,7 @@ class DefaultAiServices<T> extends AiServices<T> {
         return (T) responseFromLLM;
     }
 
-    private <T> CompletionStage<T> invokeOutputGuardrailsAsync(
+    private <T> CompletableFuture<T> invokeOutputGuardrailsAsync(
             GuardrailService guardrailService,
             Method method,
             ChatResponse responseFromLLM,

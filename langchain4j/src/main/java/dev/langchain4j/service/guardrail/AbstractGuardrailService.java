@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -63,7 +62,7 @@ public abstract class AbstractGuardrailService implements GuardrailService {
     }
 
     @Override
-    public <MethodKey> CompletionStage<InputGuardrailResult> executeInputGuardrailsAsync(
+    public <MethodKey> CompletableFuture<InputGuardrailResult> executeInputGuardrailsAsync(
             MethodKey method, InputGuardrailRequest request) {
         return Optional.ofNullable(method)
                 .map(this.inputGuardrails::get)
@@ -80,7 +79,7 @@ public abstract class AbstractGuardrailService implements GuardrailService {
     }
 
     @Override
-    public <MethodKey> CompletionStage<OutputGuardrailResult> executeOutputGuardrailsAsync(
+    public <MethodKey> CompletableFuture<OutputGuardrailResult> executeOutputGuardrailsAsync(
             MethodKey method, OutputGuardrailRequest request) {
         return Optional.ofNullable(method)
                 .map(this.outputGuardrails::get)

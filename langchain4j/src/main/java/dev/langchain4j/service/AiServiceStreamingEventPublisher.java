@@ -54,7 +54,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
@@ -204,6 +203,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         private final ChatMemory temporaryMemory;
         private final AtomicReference<Flow.Subscription> modelSubscription = new AtomicReference<>();
         private final AtomicReference<CompletableFuture<?>> toolsFuture = new AtomicReference<>();
+        private final AtomicReference<CompletableFuture<?>> guardrailsFuture = new AtomicReference<>();
 
         // Output guardrails for the reactive path mirror the handler-based path's buffer-then-validate: while
         // output guardrails are configured, partial responses are buffered (not streamed) until the assembled
@@ -243,6 +243,12 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 CompletableFuture<?> tools = toolsFuture.get();
                 if (tools != null) {
                     tools.cancel(true);
+                }
+                // Best-effort: cancel an in-flight output-guardrail validation (and any reprompt model round-trip
+                // that honors cancellation). Won't interrupt a guardrail already running on a worker thread.
+                CompletableFuture<?> guardrails = guardrailsFuture.get();
+                if (guardrails != null) {
+                    guardrails.cancel(true);
                 }
             });
 
@@ -550,8 +556,9 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
             // Output guardrails (and any reprompt round-trips to the model) run on the virtual-thread executor,
             // never on the model-delivery thread: a blocking guardrail or a reprompt blocks a virtual thread
             // (non-pinning), not the delivery thread.
-            CompletionStage<ChatResponse> guarded =
+            CompletableFuture<ChatResponse> guarded =
                     context.guardrailService().executeGuardrailsAsync(methodKey, request);
+            guardrailsFuture.set(guarded);
             guarded.whenComplete((guardedResponse, error) -> {
                 if (error != null) {
                     fail(error);

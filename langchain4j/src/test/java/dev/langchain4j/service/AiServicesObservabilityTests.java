@@ -45,7 +45,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -768,7 +767,7 @@ class AiServicesObservabilityTests {
         }
 
         @Override
-        public CompletionStage<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
+        public CompletableFuture<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
             return CompletableFuture.completedFuture(validate(request));
         }
     }
@@ -780,7 +779,7 @@ class AiServicesObservabilityTests {
         }
 
         @Override
-        public CompletionStage<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
+        public CompletableFuture<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
             return CompletableFuture.completedFuture(validate(request));
         }
     }
@@ -792,7 +791,7 @@ class AiServicesObservabilityTests {
         }
 
         @Override
-        public CompletionStage<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
+        public CompletableFuture<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
             return CompletableFuture.completedFuture(validate(request));
         }
     }
@@ -804,7 +803,7 @@ class AiServicesObservabilityTests {
         }
 
         @Override
-        public CompletionStage<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
+        public CompletableFuture<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
             return CompletableFuture.completedFuture(validate(request));
         }
     }

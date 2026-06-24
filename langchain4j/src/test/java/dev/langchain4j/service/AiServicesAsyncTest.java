@@ -52,7 +52,6 @@ import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
@@ -500,7 +499,7 @@ class AiServicesAsyncTest {
         }
 
         @Override
-        public CompletionStage<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
+        public CompletableFuture<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
             return CompletableFuture.completedFuture(validate(request));
         }
     }
@@ -833,7 +832,7 @@ class AiServicesAsyncTest {
         }
 
         @Override
-        public CompletionStage<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
+        public CompletableFuture<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
             return CompletableFuture.completedFuture(validate(request));
         }
     }

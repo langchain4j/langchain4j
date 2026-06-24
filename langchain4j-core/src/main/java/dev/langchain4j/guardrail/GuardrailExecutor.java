@@ -3,7 +3,7 @@ package dev.langchain4j.guardrail;
 import dev.langchain4j.guardrail.config.GuardrailsConfig;
 import dev.langchain4j.observability.api.event.GuardrailExecutedEvent;
 import java.util.List;
-import java.util.concurrent.CompletionStage;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Represents a mechanism to execute a set of guardrails on given parameters.
@@ -53,8 +53,8 @@ public sealed interface GuardrailExecutor<
      * blocking the calling thread.
      *
      * @param request The {@link GuardrailRequest} to validate
-     * @return A {@link CompletionStage} that completes with the {@link GuardrailResult} of the validation
+     * @return A {@link CompletableFuture} that completes with the {@link GuardrailResult} of the validation
      * @since 1.17.0
      */
-    CompletionStage<R> executeAsync(P request);
+    CompletableFuture<R> executeAsync(P request);
 }

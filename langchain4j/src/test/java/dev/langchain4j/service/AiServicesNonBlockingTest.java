@@ -525,7 +525,7 @@ class AiServicesNonBlockingTest {
         }
 
         @Override
-        public CompletionStage<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
+        public CompletableFuture<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
             // Non-blocking (CPU-only) guardrail: wrap the synchronous validation in a completed stage.
             return CompletableFuture.completedFuture(validate(request));
         }
@@ -568,7 +568,7 @@ class AiServicesNonBlockingTest {
         }
 
         @Override
-        public CompletionStage<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
+        public CompletableFuture<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
             return CompletableFuture.supplyAsync(() -> validate(request), guardrailWorker);
         }
     }
@@ -594,7 +594,7 @@ class AiServicesNonBlockingTest {
         }
 
         @Override
-        public CompletionStage<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
+        public CompletableFuture<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
             return CompletableFuture.supplyAsync(() -> validate(request), guardrailWorker);
         }
     }
@@ -709,7 +709,7 @@ class AiServicesNonBlockingTest {
         }
 
         @Override
-        public CompletionStage<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
+        public CompletableFuture<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
             return CompletableFuture.supplyAsync(() -> validate(request), guardrailWorker);
         }
     }
@@ -733,7 +733,7 @@ class AiServicesNonBlockingTest {
         }
 
         @Override
-        public CompletionStage<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
+        public CompletableFuture<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
             return CompletableFuture.supplyAsync(() -> validate(request), guardrailWorker);
         }
     }
@@ -783,6 +783,82 @@ class AiServicesNonBlockingTest {
 
         assertThat(future.get(10, SECONDS)).isEqualTo("Berlin");
         assertNoBlockingCalls();
+    }
+
+    /**
+     * An input guardrail that signals when its (offloaded) validation has started and then blocks until released,
+     * so a test can cancel the AI Service future while the guardrail is in flight.
+     */
+    public static class CancellableInputGuardrail implements InputGuardrail {
+
+        static volatile CountDownLatch entered;
+        static volatile CountDownLatch release;
+
+        @Override
+        public InputGuardrailResult validate(UserMessage userMessage) {
+            entered.countDown();
+            try {
+                release.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return success();
+        }
+
+        @Override
+        public CompletableFuture<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
+            return CompletableFuture.supplyAsync(() -> validate(request), guardrailWorker);
+        }
+    }
+
+    interface CancellableInputGuardedAssistant {
+
+        @InputGuardrails(CancellableInputGuardrail.class)
+        CompletableFuture<String> chat(String userMessage);
+    }
+
+    @Test
+    void cancelling_the_future_during_input_guardrails_skips_the_model_call() throws Exception {
+
+        // Cancelling the returned future while an input guardrail is in flight must short-circuit the pipeline:
+        // the model is never called. (The guardrail validation itself runs to completion — best-effort, like a
+        // started tool.)
+        CountDownLatch entered = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        CancellableInputGuardrail.entered = entered;
+        CancellableInputGuardrail.release = release;
+
+        AtomicInteger modelCalls = new AtomicInteger();
+        ChatModel chatModel = new ChatModel() {
+
+            @Override
+            public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+                modelCalls.incrementAndGet();
+                return CompletableFuture.completedFuture(ChatResponse.builder()
+                        .aiMessage(AiMessage.from("Berlin"))
+                        .metadata(ChatResponseMetadata.builder().build())
+                        .build());
+            }
+
+            @Override
+            public ChatResponse doChat(ChatRequest chatRequest) {
+                throw new AssertionError("blocking chat() must not be called");
+            }
+        };
+
+        CancellableInputGuardedAssistant assistant = AiServices.builder(CancellableInputGuardedAssistant.class)
+                .chatModel(chatModel)
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("What is the capital of Germany?");
+
+        assertThat(entered.await(5, SECONDS)).as("input guardrail should start").isTrue();
+        future.cancel(true);
+        release.countDown();
+
+        Thread.sleep(200);
+        assertThat(future).isCancelled();
+        assertThat(modelCalls).as("model must not be called after cancellation").hasValue(0);
     }
 
     static class CountingCompletedListener implements AiServiceCompletedListener {
