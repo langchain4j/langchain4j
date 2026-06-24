@@ -45,6 +45,22 @@ class QdrantFilterConverterTest {
         assertThat(convertedFilter.getMust(0).getField().getKey()).isEqualTo("bool-value");
         assertThat(convertedFilter.getMust(0).getField().getMatch().getBoolean())
                 .isEqualTo(true);
+
+        filter = new IsEqualTo("double-value", 9.99);
+        convertedFilter = QdrantFilterConverter.convertExpression(filter);
+        assertThat(convertedFilter).isNotNull();
+        assertThat(convertedFilter.getMustCount()).isEqualTo(1);
+        assertThat(convertedFilter.getMust(0).getField().getKey()).isEqualTo("double-value");
+        assertThat(convertedFilter.getMust(0).getField().getRange().getGte()).isEqualTo(9.99);
+        assertThat(convertedFilter.getMust(0).getField().getRange().getLte()).isEqualTo(9.99);
+
+        filter = new IsEqualTo("float-value", 1.5f);
+        convertedFilter = QdrantFilterConverter.convertExpression(filter);
+        assertThat(convertedFilter).isNotNull();
+        assertThat(convertedFilter.getMustCount()).isEqualTo(1);
+        assertThat(convertedFilter.getMust(0).getField().getKey()).isEqualTo("float-value");
+        assertThat(convertedFilter.getMust(0).getField().getRange().getGte()).isEqualTo(1.5);
+        assertThat(convertedFilter.getMust(0).getField().getRange().getLte()).isEqualTo(1.5);
     }
 
     @Test
@@ -108,6 +124,55 @@ class QdrantFilterConverterTest {
                         .getMatch()
                         .getBoolean())
                 .isEqualTo(true);
+
+        filter = new IsNotEqualTo("double-value", 9.99);
+        convertedFilter = QdrantFilterConverter.convertExpression(filter);
+        assertThat(convertedFilter).isNotNull();
+        assertThat(convertedFilter.getMustCount()).isEqualTo(1);
+        assertThat(convertedFilter
+                        .getMust(0)
+                        .getFilter()
+                        .getMustNot(0)
+                        .getField()
+                        .getKey())
+                .isEqualTo("double-value");
+        assertThat(convertedFilter
+                        .getMust(0)
+                        .getFilter()
+                        .getMustNot(0)
+                        .getField()
+                        .getRange()
+                        .getGte())
+                .isEqualTo(9.99);
+        assertThat(convertedFilter
+                        .getMust(0)
+                        .getFilter()
+                        .getMustNot(0)
+                        .getField()
+                        .getRange()
+                        .getLte())
+                .isEqualTo(9.99);
+
+        filter = new IsNotEqualTo("float-value", 1.5f);
+        convertedFilter = QdrantFilterConverter.convertExpression(filter);
+        assertThat(convertedFilter).isNotNull();
+        assertThat(convertedFilter.getMustCount()).isEqualTo(1);
+        assertThat(convertedFilter
+                        .getMust(0)
+                        .getFilter()
+                        .getMustNot(0)
+                        .getField()
+                        .getRange()
+                        .getGte())
+                .isEqualTo(1.5);
+        assertThat(convertedFilter
+                        .getMust(0)
+                        .getFilter()
+                        .getMustNot(0)
+                        .getField()
+                        .getRange()
+                        .getLte())
+                .isEqualTo(1.5);
     }
 
     @Test
