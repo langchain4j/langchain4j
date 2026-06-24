@@ -744,6 +744,12 @@ class AiServicesNonBlockingTest {
         CompletableFuture<String> chat(String userMessage);
     }
 
+    interface BlockingInputGuardedStreamingAssistant {
+
+        @InputGuardrails(BlockingInputGuardrail.class)
+        Flow.Publisher<String> chat(String userMessage);
+    }
+
     interface GatedInputGuardedAssistant {
 
         @InputGuardrails(GatedInputGuardrail.class)
@@ -760,6 +766,18 @@ class AiServicesNonBlockingTest {
         String answer = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
 
         assertThat(answer).isEqualTo("Berlin");
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void streaming_blocking_input_guardrail_does_not_block_the_delivery_thread() throws Exception {
+
+        BlockingInputGuardedStreamingAssistant assistant = AiServices.builder(BlockingInputGuardedStreamingAssistant.class)
+                .streamingChatModel(StreamingEventChatModelMock.thatStreamsOn(deliveryExecutor, AiMessage.from("Berlin")))
+                .build();
+
+        assertThat(subscribeAndAwait(assistant.chat("What is the capital of Germany?")))
+                .isEqualTo("Berlin");
         assertNoBlockingCalls();
     }
 
