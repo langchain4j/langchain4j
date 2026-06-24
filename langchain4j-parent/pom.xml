@@ -557,6 +557,10 @@
                                         <justification>Dependencies are not checked, so their classes are expectedly missing</justification>
                                     </item>
                                     <item>
+                                        <code>java.class.externalClassExposedInAPI</code>
+                                        <justification>Dependencies are not checked (checkDependencies=false), so a dependency class surfaced in a module's public API (e.g. langchain4j-core types such as the streaming response/event classes, or the mutiny-zero reactive types used by @Internal plumbing) is expectedly reported as external/missing. Exposing our own core types in module APIs is intentional and not a break for consumers.</justification>
+                                    </item>
+                                    <item>
                                         <code>java.field.enumConstantOrderChanged</code>
                                         <justification>Enum constant order is not part of our API contract; callers must not rely on ordinal()</justification>
                                     </item>

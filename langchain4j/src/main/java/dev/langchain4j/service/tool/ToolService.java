@@ -1865,7 +1865,7 @@ public class ToolService {
         }
     }
 
-    public static ToolExecutionResultMessage toResultMessage(ToolExecutionRequest request, ToolExecutionResult result) {
+    static ToolExecutionResultMessage toResultMessage(ToolExecutionRequest request, ToolExecutionResult result) {
         return ToolExecutionResultMessage.builder()
                 .id(request.id())
                 .toolName(request.name())
