@@ -238,7 +238,7 @@ class MistralAiChatModelIT {
 
         UserMessage userMessage = UserMessage.from(
                 TextContent.from("What's the language of the audio?"),
-                AudioContent.from("https://samplelib.com/mp3/sample-speech-1m.mp3"));
+                AudioContent.from("https://storage.googleapis.com/cloud-samples-data/generative-ai/audio/pixel.mp3"));
 
         // when
         ChatResponse chatResponse = chatModel.chat(userMessage);

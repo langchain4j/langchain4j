@@ -11,9 +11,11 @@ import dev.langchain4j.data.image.Image;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.image.EditImageRequest;
 import dev.langchain4j.model.openai.internal.image.GenerateImagesRequest;
 import dev.langchain4j.model.openai.internal.image.GenerateImagesResponse;
 import dev.langchain4j.model.openai.internal.image.ImageData;
+import dev.langchain4j.model.openai.internal.image.ImageFile;
 import dev.langchain4j.model.openai.spi.OpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
@@ -96,6 +98,27 @@ public class OpenAiImageModel implements ImageModel {
         return Response.from(response.data().stream()
                 .map(data -> fromImageData(data, responseOutputFormat))
                 .collect(Collectors.toList()));
+    }
+
+    @Override
+    public Response<Image> edit(Image image, String prompt) {
+        EditImageRequest request = editRequestBuilder(image, prompt).build();
+
+        GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesEdit(request), maxRetries)
+                .execute();
+
+        return Response.from(fromImageData(response.data().get(0), response.outputFormat()));
+    }
+
+    @Override
+    public Response<Image> edit(Image image, Image mask, String prompt) {
+        EditImageRequest request =
+                editRequestBuilder(image, prompt).mask(ImageFile.from(mask)).build();
+
+        GenerateImagesResponse response = withRetryMappingExceptions(() -> client.imagesEdit(request), maxRetries)
+                .execute();
+
+        return Response.from(fromImageData(response.data().get(0), response.outputFormat()));
     }
 
     public static OpenAiImageModelBuilder builder() {
@@ -282,5 +305,18 @@ public class OpenAiImageModel implements ImageModel {
                 .outputFormat(outputFormat)
                 .outputCompression(outputCompression)
                 .moderation(moderation);
+    }
+
+    private EditImageRequest.Builder editRequestBuilder(Image image, String prompt) {
+        return EditImageRequest.builder()
+                .image(ImageFile.from(image))
+                .model(modelName)
+                .prompt(prompt)
+                .size(size)
+                .quality(quality)
+                .user(user)
+                .background(background)
+                .outputFormat(outputFormat)
+                .outputCompression(outputCompression);
     }
 }

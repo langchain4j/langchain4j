@@ -2,11 +2,13 @@ package dev.langchain4j.data.message;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.image.Image;
-import java.util.List;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+
+import java.util.List;
+import java.util.Map;
 
 class ToolExecutionResultMessageTest implements WithAssertions {
 
@@ -208,8 +210,7 @@ class ToolExecutionResultMessageTest implements WithAssertions {
     void builder_contents_with_list() {
         List<Content> contents = List.of(
                 TextContent.from("text"),
-                ImageContent.from(
-                        Image.builder().base64Data("abc").mimeType("image/png").build()));
+                ImageContent.from(Image.builder().base64Data("abc").mimeType("image/png").build()));
 
         ToolExecutionResultMessage message = ToolExecutionResultMessage.builder()
                 .id("id")
@@ -224,11 +225,11 @@ class ToolExecutionResultMessageTest implements WithAssertions {
     @Test
     void builder_should_fail_when_both_text_and_contents_set() {
         assertThatThrownBy(() -> ToolExecutionResultMessage.builder()
-                        .id("id")
-                        .toolName("tool")
-                        .text("hello")
-                        .contents(TextContent.from("world"))
-                        .build())
+                .id("id")
+                .toolName("tool")
+                .text("hello")
+                .contents(TextContent.from("world"))
+                .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("not both");
     }
@@ -236,9 +237,9 @@ class ToolExecutionResultMessageTest implements WithAssertions {
     @Test
     void builder_should_fail_when_neither_text_nor_contents_set() {
         assertThatThrownBy(() -> ToolExecutionResultMessage.builder()
-                        .id("id")
-                        .toolName("tool")
-                        .build())
+                .id("id")
+                .toolName("tool")
+                .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Either text or contents must be provided");
     }
@@ -259,5 +260,49 @@ class ToolExecutionResultMessageTest implements WithAssertions {
         assertThat(message.text()).isEmpty();
         assertThat(message.contents()).containsExactly(TextContent.from(""));
         assertThat(message.hasSingleText()).isTrue();
+    }
+
+    @Test
+    void to_builder_preserves_all_fields() {
+        ToolExecutionResultMessage original = ToolExecutionResultMessage.builder()
+                .id("id")
+                .toolName("toolName")
+                .text("result")
+                .isError(true)
+                .attributes(Map.of("key", "value"))
+                .build();
+
+        ToolExecutionResultMessage copy = original.toBuilder().build();
+
+        assertThat(copy).isEqualTo(original);
+        assertThat(copy.id()).isEqualTo("id");
+        assertThat(copy.toolName()).isEqualTo("toolName");
+        assertThat(copy.text()).isEqualTo("result");
+        assertThat(copy.isError()).isTrue();
+        assertThat(copy.attributes()).containsEntry("key", "value");
+    }
+
+    @Test
+    void to_builder_overriding_contents_preserves_other_fields() {
+        ToolExecutionResultMessage original = ToolExecutionResultMessage.builder()
+                .id("id")
+                .toolName("toolName")
+                .text("original result")
+                .isError(false)
+                .attributes(Map.of("key", "value"))
+                .build();
+
+        ToolExecutionResultMessage modified = original.toBuilder()
+                .contents(List.of(TextContent.from("rolled back")))
+                .isError(true)
+                .build();
+
+        // overridden fields
+        assertThat(modified.text()).isEqualTo("rolled back");
+        assertThat(modified.isError()).isTrue();
+        // preserved fields
+        assertThat(modified.id()).isEqualTo("id");
+        assertThat(modified.toolName()).isEqualTo("toolName");
+        assertThat(modified.attributes()).containsEntry("key", "value");
     }
 }
