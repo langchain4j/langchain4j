@@ -64,8 +64,12 @@ public class AgentMonitor implements AgentListener {
      * Ongoing executions are not affected.
      */
     public void clear() {
-        successfulExecutions.clear();
-        failedExecutions.clear();
+        synchronized (successfulExecutions) {
+            successfulExecutions.clear();
+        }
+        synchronized (failedExecutions) {
+            failedExecutions.clear();
+        }
     }
 
     private static void trimToSize(Map<Object, ?> map, int maxSize) {
@@ -79,12 +83,12 @@ public class AgentMonitor implements AgentListener {
     }
 
     private Map<Object, List<MonitoredExecution>> createBoundedMap() {
-        return Collections.synchronizedMap(new LinkedHashMap<>() {
+        return new LinkedHashMap<>() {
             @Override
             protected boolean removeEldestEntry(Map.Entry<Object, List<MonitoredExecution>> eldest) {
                 return size() > maxRetainedSessions;
             }
-        });
+        };
     }
 
     @Internal
@@ -113,9 +117,11 @@ public class AgentMonitor implements AgentListener {
         execution.afterAgentInvocation(agentResponse);
         if (execution.done()) {
             ongoingExecutions.remove(memoryId, execution);
-            successfulExecutions
-                    .computeIfAbsent(memoryId, k -> Collections.synchronizedList(new ArrayList<>()))
-                    .add(execution);
+            synchronized (successfulExecutions) {
+                successfulExecutions
+                        .computeIfAbsent(memoryId, k -> new ArrayList<>())
+                        .add(execution);
+            }
         }
     }
 
@@ -125,9 +131,11 @@ public class AgentMonitor implements AgentListener {
         MonitoredExecution execution = ongoingExecutions.remove(memoryId);
         if (execution != null) {
             execution.onAgentInvocationError(agentInvocationError);
-            failedExecutions
-                    .computeIfAbsent(memoryId, k -> Collections.synchronizedList(new ArrayList<>()))
-                    .add(execution);
+            synchronized (failedExecutions) {
+                failedExecutions
+                        .computeIfAbsent(memoryId, k -> new ArrayList<>())
+                        .add(execution);
+            }
         }
     }
 
@@ -168,7 +176,9 @@ public class AgentMonitor implements AgentListener {
     }
 
     public List<MonitoredExecution> successfulExecutionsFor(Object memoryId) {
-        return successfulExecutions.getOrDefault(memoryId, List.of());
+        synchronized (successfulExecutions) {
+            return List.copyOf(successfulExecutions.getOrDefault(memoryId, List.of()));
+        }
     }
 
     public List<MonitoredExecution> failedExecutions() {
@@ -182,7 +192,9 @@ public class AgentMonitor implements AgentListener {
     }
 
     public List<MonitoredExecution> failedExecutionsFor(Object memoryId) {
-        return failedExecutions.getOrDefault(memoryId, List.of());
+        synchronized (failedExecutions) {
+            return List.copyOf(failedExecutions.getOrDefault(memoryId, List.of()));
+        }
     }
 
     /**
