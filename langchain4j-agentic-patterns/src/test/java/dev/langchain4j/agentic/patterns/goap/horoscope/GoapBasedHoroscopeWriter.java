@@ -44,7 +44,7 @@ public class GoapBasedHoroscopeWriter {
                 .subAgents(horoscopeGenerator, personExtractor, signExtractor, writer, storyFinder)
                 .outputKey("writeup")
                 .planner(GoalOrientedPlanner::new)
-                .listener(monitor)
+                .listener(monitor.asListener())
                 .build();
 
         Map<String, Object> input = Map.of("prompt", "My name is Mario and my zodiac sign is pisces");

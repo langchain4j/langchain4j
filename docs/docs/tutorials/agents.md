@@ -804,7 +804,7 @@ These listener methods receive as argument respectively an `AgentRequest` and an
 
 ### Monitoring
 
-Leveraging the observability features provided by the `AgentListener` interface, the `langchain4j-agentic` module also provides a built-in implementation of this interface, configured to be inherited by all subagents, named `AgentMonitor`, having the goal of recording all agents invocations in an in-memory tree structure, allowing to inspect the sequence of invocations and their results during or after the execution of the agentic system. This monitor can be registered as a listener to the root agent of the agentic system using the `listener` method of the agent builder.
+Leveraging the observability features provided by the `AgentListener` interface, the `langchain4j-agentic` module also provides a built-in `AgentMonitor` class, having the goal of recording all agents invocations in an in-memory tree structure, allowing to inspect the sequence of invocations and their results during or after the execution of the agentic system. The monitor exposes its internal `AgentListener` (configured to be inherited by all subagents) via the `asListener()` method, so it can be registered to the root agent of the agentic system using the `listener` method of the agent builder.
 
 To provide a more comprehensive example, let's reconsider the loop workflow intended to generate and iteratively refine a story until it meets the required style quality, and register a few listeners on it, including an `AgentMonitor`.
 
@@ -841,7 +841,7 @@ UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
 
 UntypedAgent styledWriter = AgenticServices.sequenceBuilder()
         .subAgents(creativeWriter, styleReviewLoop)
-        .listener(monitor)
+        .listener(monitor.asListener())
         .listener(new AgentListener() {
             @Override
             public void afterAgentInvocation(AgentResponse response) {
@@ -856,7 +856,7 @@ UntypedAgent styledWriter = AgenticServices.sequenceBuilder()
 
 Here a first listener is registered directly on the `creativeWriter` agent, so that it logs the request topic for the story to be generated only when that agent is invoked. A second listener is registered on the top level `styledWriter` agent, so that it will be also invoked for all subagents in the hierarchy of that agent at any level. That is why the `afterAgentInvocation` method of that listener checks if the agent being invoked is the `styleScorer`, and only in that case it logs the current score assigned to the style of the generated story.
 
-Finally, the `AgentMonitor` instance is also registered, and automatically composed with the other 2 listeners, as a further listener to the `styledWriter` top level agent, so that it can track all agents invocations in the whole agentic system. 
+Finally, the `AgentMonitor`'s listener, obtained via `asListener()`, is also registered, and automatically composed with the other 2 listeners, as a further listener to the `styledWriter` top level agent, so that it can track all agents invocations in the whole agentic system. 
 
 When invoking the `styledWriter` agent as follows:
 
@@ -908,6 +908,22 @@ HtmlReportGenerator.generateExecution(monitor, Path.of("execution.html"));
 ```
 
 This last method also supports filtering by memory id, for instance `HtmlReportGenerator.generateExecution(monitor, memoryId, path)`, while all methods have overloads that return the HTML as a `String` instead of writing to a file.
+
+By default, `AgentMonitor` retains up to 100 completed executions per outcome (successful and failed, independently). When the limit is exceeded, the oldest entries are evicted automatically. This makes it safe to attach a monitor to a long-lived singleton agent without risking unbounded memory growth.
+
+The retention limit can be changed at any time via `setMaxRetainedExecutions`. If the new limit is lower than the current number of retained executions, excess entries are evicted immediately:
+
+```java
+monitor.setMaxRetainedExecutions(20);
+```
+
+Setting it to `0` disables retention entirely — listener callbacks still fire, but nothing is kept in memory. To explicitly remove all retained executions, use the `clear()` method:
+
+```java
+monitor.clear();
+```
+
+Both operations leave ongoing (in-flight) executions unaffected.
 
 Another alternative to manually creating an `AgentMonitor` and registering it as a listener, is making your agent service interface to extend the `MonitoredAgent` one. When doing so, the builder automatically creates and registers an `AgentMonitor` as a listener, and this monitor becomes accessible directly from the agent instance via the `agentMonitor()` method.
 

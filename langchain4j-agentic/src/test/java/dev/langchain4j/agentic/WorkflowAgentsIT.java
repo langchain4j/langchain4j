@@ -667,7 +667,7 @@ public class WorkflowAgentsIT {
                 .subAgents(creativeWriter, styleReviewLoop)
                 .listener(topLevelListener)
                 .listener(allLevelsListener)
-                .listener(monitor)
+                .listener(monitor.asListener())
                 .outputKey("story")
                 .build();
 
@@ -741,7 +741,7 @@ public class WorkflowAgentsIT {
 
         UntypedAgent styledWriter = AgenticServices.sequenceBuilder()
                 .subAgents(creativeWriter, styleReviewLoop)
-                .listener(monitor)
+                .listener(monitor.asListener())
                 .outputKey("story")
                 .build();
 
@@ -1108,7 +1108,7 @@ public class WorkflowAgentsIT {
         ExpertRouterAgentWithMemory expertRouterAgent = AgenticServices.sequenceBuilder(
                         ExpertRouterAgentWithMemory.class)
                 .subAgents(routerAgent, expertsAgent)
-                .listener(monitor)
+                .listener(monitor.asListener())
                 .outputKey("response")
                 .build();
 

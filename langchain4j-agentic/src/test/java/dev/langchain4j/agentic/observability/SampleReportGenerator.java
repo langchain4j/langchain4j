@@ -190,25 +190,25 @@ public class SampleReportGenerator {
             String category,
             String response)
             throws Exception {
-        monitor.beforeAgentInvocation(new AgentRequest(scope, sequence, inputs));
+        monitor.asListener().beforeAgentInvocation(new AgentRequest(scope, sequence, inputs));
         Thread.sleep(5);
 
-        monitor.beforeAgentInvocation(new AgentRequest(scope, classify, inputs));
+        monitor.asListener().beforeAgentInvocation(new AgentRequest(scope, classify, inputs));
         Thread.sleep(35);
-        monitor.afterAgentInvocation(new AgentResponse(scope, classify, inputs, category));
+        monitor.asListener().afterAgentInvocation(new AgentResponse(scope, classify, inputs, category));
 
-        monitor.beforeAgentInvocation(new AgentRequest(scope, router, Map.of("category", category)));
+        monitor.asListener().beforeAgentInvocation(new AgentRequest(scope, router, Map.of("category", category)));
         Thread.sleep(3);
 
-        monitor.beforeAgentInvocation(new AgentRequest(scope, expert, inputs));
+        monitor.asListener().beforeAgentInvocation(new AgentRequest(scope, expert, inputs));
         Thread.sleep(55);
-        monitor.afterAgentInvocation(new AgentResponse(scope, expert, inputs, response));
+        monitor.asListener().afterAgentInvocation(new AgentResponse(scope, expert, inputs, response));
 
         Thread.sleep(2);
-        monitor.afterAgentInvocation(new AgentResponse(scope, router, Map.of("category", category), response));
+        monitor.asListener().afterAgentInvocation(new AgentResponse(scope, router, Map.of("category", category), response));
 
         Thread.sleep(1);
-        monitor.afterAgentInvocation(new AgentResponse(scope, sequence, inputs, response));
+        monitor.asListener().afterAgentInvocation(new AgentResponse(scope, sequence, inputs, response));
     }
 
     private static void simulateLegalExecution(
@@ -226,39 +226,39 @@ public class SampleReportGenerator {
             List<Double> scores,
             String finalResponse)
             throws Exception {
-        monitor.beforeAgentInvocation(new AgentRequest(scope, sequence, inputs));
+        monitor.asListener().beforeAgentInvocation(new AgentRequest(scope, sequence, inputs));
         Thread.sleep(5);
 
-        monitor.beforeAgentInvocation(new AgentRequest(scope, classify, inputs));
+        monitor.asListener().beforeAgentInvocation(new AgentRequest(scope, classify, inputs));
         Thread.sleep(30);
-        monitor.afterAgentInvocation(new AgentResponse(scope, classify, inputs, category));
+        monitor.asListener().afterAgentInvocation(new AgentResponse(scope, classify, inputs, category));
 
-        monitor.beforeAgentInvocation(new AgentRequest(scope, router, Map.of("category", category)));
+        monitor.asListener().beforeAgentInvocation(new AgentRequest(scope, router, Map.of("category", category)));
         Thread.sleep(3);
 
-        monitor.beforeAgentInvocation(new AgentRequest(scope, loop, inputs));
+        monitor.asListener().beforeAgentInvocation(new AgentRequest(scope, loop, inputs));
         Thread.sleep(2);
 
         // Loop iterations
         for (int i = 0; i < drafts.size(); i++) {
-            monitor.beforeAgentInvocation(new AgentRequest(scope, writer, inputs));
+            monitor.asListener().beforeAgentInvocation(new AgentRequest(scope, writer, inputs));
             Thread.sleep(40);
-            monitor.afterAgentInvocation(new AgentResponse(scope, writer, inputs, drafts.get(i)));
+            monitor.asListener().afterAgentInvocation(new AgentResponse(scope, writer, inputs, drafts.get(i)));
 
-            monitor.beforeAgentInvocation(new AgentRequest(scope, scorer, Map.of("response", drafts.get(i))));
+            monitor.asListener().beforeAgentInvocation(new AgentRequest(scope, scorer, Map.of("response", drafts.get(i))));
             Thread.sleep(20);
-            monitor.afterAgentInvocation(
+            monitor.asListener().afterAgentInvocation(
                     new AgentResponse(scope, scorer, Map.of("response", drafts.get(i)), scores.get(i)));
         }
 
         Thread.sleep(2);
-        monitor.afterAgentInvocation(new AgentResponse(scope, loop, inputs, finalResponse));
+        monitor.asListener().afterAgentInvocation(new AgentResponse(scope, loop, inputs, finalResponse));
 
         Thread.sleep(1);
-        monitor.afterAgentInvocation(new AgentResponse(scope, router, Map.of("category", category), finalResponse));
+        monitor.asListener().afterAgentInvocation(new AgentResponse(scope, router, Map.of("category", category), finalResponse));
 
         Thread.sleep(1);
-        monitor.afterAgentInvocation(new AgentResponse(scope, sequence, inputs, finalResponse));
+        monitor.asListener().afterAgentInvocation(new AgentResponse(scope, sequence, inputs, finalResponse));
     }
 
     // ---------- Mock implementations ----------

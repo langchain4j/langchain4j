@@ -115,6 +115,56 @@
           "oldVisibility": "package",
           "newVisibility": "public",
           "justification": "Necessary to support agents generated at deployment time from the Quarkus extension"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.visibilityReduced",
+          "old": "method void dev.langchain4j.agentic.observability.AgentMonitor::afterAgentInvocation(dev.langchain4j.agentic.observability.AgentResponse)",
+          "new": "method void dev.langchain4j.agentic.observability.AgentMonitor::afterAgentInvocation(dev.langchain4j.agentic.observability.AgentResponse)",
+          "oldVisibility": "public",
+          "newVisibility": "private",
+          "justification": "AgentMonitor no longer implements AgentListener, so these methods are not part of the public API anymore"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.visibilityReduced",
+          "old": "method void dev.langchain4j.agentic.observability.AgentMonitor::afterAgentToolExecution(dev.langchain4j.agentic.observability.AfterAgentToolExecution)",
+          "new": "method void dev.langchain4j.agentic.observability.AgentMonitor::afterAgentToolExecution(dev.langchain4j.agentic.observability.AfterAgentToolExecution)",
+          "oldVisibility": "public",
+          "newVisibility": "private",
+          "justification": "AgentMonitor no longer implements AgentListener, so these methods are not part of the public API anymore"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.visibilityReduced",
+          "old": "method void dev.langchain4j.agentic.observability.AgentMonitor::beforeAgentInvocation(dev.langchain4j.agentic.observability.AgentRequest)",
+          "new": "method void dev.langchain4j.agentic.observability.AgentMonitor::beforeAgentInvocation(dev.langchain4j.agentic.observability.AgentRequest)",
+          "oldVisibility": "public",
+          "newVisibility": "private",
+          "justification": "AgentMonitor no longer implements AgentListener, so these methods are not part of the public API anymore"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method boolean dev.langchain4j.agentic.observability.AgentMonitor::inheritedBySubagents()",
+          "justification": "AgentMonitor no longer implements AgentListener, so these methods are not part of the public API anymore"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.visibilityReduced",
+          "old": "method void dev.langchain4j.agentic.observability.AgentMonitor::onAgentInvocationError(dev.langchain4j.agentic.observability.AgentInvocationError)",
+          "new": "method void dev.langchain4j.agentic.observability.AgentMonitor::onAgentInvocationError(dev.langchain4j.agentic.observability.AgentInvocationError)",
+          "oldVisibility": "public",
+          "newVisibility": "private",
+          "justification": "AgentMonitor no longer implements AgentListener, so these methods are not part of the public API anymore"
+        },
+        {
+          "ignore": true,
+          "code": "java.class.noLongerImplementsInterface",
+          "old": "class dev.langchain4j.agentic.observability.AgentMonitor",
+          "new": "class dev.langchain4j.agentic.observability.AgentMonitor",
+          "interface": "dev.langchain4j.agentic.observability.AgentListener",
+          "justification": "AgentMonitor no longer implements AgentListener"
         }
       ]
     }
