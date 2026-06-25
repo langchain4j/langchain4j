@@ -116,8 +116,6 @@ public class JdkHttpClient implements HttpClient {
             }
         } else {
             bodyPublisher = ofMultipartData(request.formDataFields(), request.formDataFiles());
-            // The multipart body is delimited by a boundary that the server needs in the Content-Type header to
-            // parse it; the OkHttp and Apache clients do the same.
             builder.setHeader("Content-Type", MultipartBodyPublisher.contentType());
         }
         builder.method(request.method().name(), bodyPublisher);
