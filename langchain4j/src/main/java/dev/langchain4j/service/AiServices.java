@@ -316,7 +316,7 @@ public abstract class AiServices<T> {
      *
      * @param systemMessageLenient whether to use lenient mode for system message templates
      * @return builder
-     * @since 1.12.0
+     * @since 1.17.0
      */
     public AiServices<T> systemMessageLenient(boolean systemMessageLenient) {
         context.systemMessageLenient = systemMessageLenient;
@@ -336,7 +336,7 @@ public abstract class AiServices<T> {
      *
      * @param userMessageLenient whether to use lenient mode for user message templates
      * @return builder
-     * @since 1.12.0
+     * @since 1.17.0
      */
     public AiServices<T> userMessageLenient(boolean userMessageLenient) {
         context.userMessageLenient = userMessageLenient;

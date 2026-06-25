@@ -689,7 +689,7 @@ class DefaultAiServices<T> extends AiServices<T> {
         Optional<String> templateFromTheOnlyArgument =
                 findUserMessageTemplateFromTheOnlyArgument(method.getParameters(), args);
         if (templateFromTheOnlyArgument.isPresent()) {
-            return new TemplateAndLenient(templateFromTheOnlyArgument.get(), false);
+            return new TemplateAndLenient(templateFromTheOnlyArgument.get(), context.userMessageLenient);
         }
 
         if (hasContentArgument(method, args)) {

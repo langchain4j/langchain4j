@@ -220,4 +220,40 @@ public class AiServicesLenientTest {
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("extra");
     }
+
+    interface UserMessageFromOnlyArgument {
+
+        String chat(String userMessage);
+    }
+
+    @Test
+    void user_message_only_argument_lenient_true_should_keep_placeholders() {
+
+        // given
+        UserMessageFromOnlyArgument aiService = AiServices.builder(UserMessageFromOnlyArgument.class)
+                .chatModel(model)
+                .userMessageLenient(true)
+                .build();
+
+        // when-then
+        assertThat(aiService.chat("You are a {{role}} assistant. {{extra}}")).containsIgnoringCase("Berlin");
+        verify(model)
+                .chat(ChatRequest.builder()
+                        .messages(userMessage("You are a {{role}} assistant. {{extra}}"))
+                        .build());
+    }
+
+    @Test
+    void user_message_only_argument_lenient_false_default_should_throw_on_unresolved_variables() {
+
+        // given
+        UserMessageFromOnlyArgument aiService = AiServices.builder(UserMessageFromOnlyArgument.class)
+                .chatModel(model)
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> aiService.chat("You are a {{role}} assistant. {{extra}}"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("role");
+    }
 }
