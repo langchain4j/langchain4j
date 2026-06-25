@@ -14,12 +14,12 @@ class AgentMonitorRetentionTest {
 
     private static AgentMonitor monitorWithMax(int max) {
         AgentMonitor monitor = new AgentMonitor();
-        monitor.setMaxRetainedExecutions(max);
+        monitor.setMaxRetainedSessions(max);
         return monitor;
     }
 
     @Test
-    void evicts_oldest_executions_when_max_is_exceeded() {
+    void evicts_oldest_sessions_when_max_is_exceeded() {
         int max = 5;
         AgentMonitor monitor = monitorWithMax(max);
         AgentInstance agent = stubAgent("root");
@@ -115,7 +115,7 @@ class AgentMonitorRetentionTest {
     }
 
     @Test
-    void setMaxRetainedExecutions_takes_effect_on_subsequent_additions() {
+    void setMaxRetainedSessions_trims_and_takes_effect_on_subsequent_additions() {
         AgentMonitor monitor = monitorWithMax(10);
         AgentInstance agent = stubAgent("root");
 
@@ -124,7 +124,7 @@ class AgentMonitorRetentionTest {
         }
         assertThat(monitor.successfulExecutions()).hasSize(10);
 
-        monitor.setMaxRetainedExecutions(3);
+        monitor.setMaxRetainedSessions(3);
 
         // existing entries beyond new max are evicted as new ones arrive
         playOneRun(monitor, agent, "session-10");
@@ -132,9 +132,9 @@ class AgentMonitorRetentionTest {
     }
 
     @Test
-    void setMaxRetainedExecutions_negative_throws() {
+    void setMaxRetainedSessions_negative_throws() {
         AgentMonitor monitor = new AgentMonitor();
-        assertThatThrownBy(() -> monitor.setMaxRetainedExecutions(-1))
+        assertThatThrownBy(() -> monitor.setMaxRetainedSessions(-1))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

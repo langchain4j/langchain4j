@@ -909,15 +909,15 @@ HtmlReportGenerator.generateExecution(monitor, Path.of("execution.html"));
 
 This last method also supports filtering by memory id, for instance `HtmlReportGenerator.generateExecution(monitor, memoryId, path)`, while all methods have overloads that return the HTML as a `String` instead of writing to a file.
 
-By default, `AgentMonitor` retains up to 100 completed executions per outcome (successful and failed, independently). When the limit is exceeded, the oldest entries are evicted automatically. This makes it safe to attach a monitor to a long-lived singleton agent without risking unbounded memory growth.
+By default, `AgentMonitor` retains up to 100 sessions (distinct memory IDs) per outcome (successful and failed, independently). When the limit is exceeded, the oldest sessions are evicted automatically. This makes it safe to attach a monitor to a long-lived singleton agent without risking unbounded memory growth.
 
-The retention limit can be changed at any time via `setMaxRetainedExecutions`. If the new limit is lower than the current number of retained executions, excess entries are evicted immediately:
+The retention limit can be changed at any time via `setMaxRetainedSessions`. If the new limit is lower than the current number of retained sessions, excess entries are evicted immediately:
 
 ```java
-monitor.setMaxRetainedExecutions(20);
+monitor.setMaxRetainedSessions(20);
 ```
 
-Setting it to `0` disables retention entirely — listener callbacks still fire, but nothing is kept in memory. To explicitly remove all retained executions, use the `clear()` method:
+Setting it to `0` disables retention entirely — listener callbacks still fire, but nothing is kept in memory. To explicitly remove all retained sessions, use the `clear()` method:
 
 ```java
 monitor.clear();

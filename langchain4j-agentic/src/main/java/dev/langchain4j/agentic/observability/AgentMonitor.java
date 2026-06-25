@@ -25,9 +25,9 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class AgentMonitor implements AgentListener {
 
-    private static final int DEFAULT_MAX_RETAINED_EXECUTIONS = 100;
+    private static final int DEFAULT_MAX_RETAINED_SESSIONS = 100;
 
-    private volatile int maxRetainedExecutions = DEFAULT_MAX_RETAINED_EXECUTIONS;
+    private volatile int maxRetainedSessions = DEFAULT_MAX_RETAINED_SESSIONS;
     private AgentInstance rootAgent;
 
     private final Map<Object, List<MonitoredExecution>> successfulExecutions;
@@ -40,23 +40,23 @@ public class AgentMonitor implements AgentListener {
     }
 
     /**
-     * Sets the maximum number of completed executions (per outcome: successful or failed)
-     * retained by this monitor. When the limit is exceeded, the oldest entries are evicted
-     * automatically. If the new limit is lower than the current number of retained executions,
+     * Sets the maximum number of sessions (distinct memory IDs, per outcome: successful or failed)
+     * retained by this monitor. When the limit is exceeded, the oldest sessions are evicted
+     * automatically. If the new limit is lower than the current number of retained sessions,
      * excess entries are evicted immediately.
      *
      * <p>Defaults to 100.
      *
-     * @param maxRetainedExecutions the maximum number of retained executions per outcome, must be &ge; 0
-     * @throws IllegalArgumentException if {@code maxRetainedExecutions} is negative
+     * @param maxRetainedSessions the maximum number of retained sessions per outcome, must be &ge; 0
+     * @throws IllegalArgumentException if {@code maxRetainedSessions} is negative
      */
-    public void setMaxRetainedExecutions(int maxRetainedExecutions) {
-        if (maxRetainedExecutions < 0) {
-            throw new IllegalArgumentException("maxRetainedExecutions must be >= 0");
+    public void setMaxRetainedSessions(int maxRetainedSessions) {
+        if (maxRetainedSessions < 0) {
+            throw new IllegalArgumentException("maxRetainedSessions must be >= 0");
         }
-        this.maxRetainedExecutions = maxRetainedExecutions;
-        trimToSize(successfulExecutions, maxRetainedExecutions);
-        trimToSize(failedExecutions, maxRetainedExecutions);
+        this.maxRetainedSessions = maxRetainedSessions;
+        trimToSize(successfulExecutions, maxRetainedSessions);
+        trimToSize(failedExecutions, maxRetainedSessions);
     }
 
     /**
@@ -82,7 +82,7 @@ public class AgentMonitor implements AgentListener {
         return Collections.synchronizedMap(new LinkedHashMap<>() {
             @Override
             protected boolean removeEldestEntry(Map.Entry<Object, List<MonitoredExecution>> eldest) {
-                return size() > maxRetainedExecutions;
+                return size() > maxRetainedSessions;
             }
         });
     }
