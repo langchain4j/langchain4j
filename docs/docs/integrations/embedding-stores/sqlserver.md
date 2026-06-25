@@ -148,9 +148,9 @@ To overcome this limitation, SQL Server supports half-precision (`float16`) vect
 
 The `halfPrecision` parameter on `EmbeddingTable` controls whether half-precision vectors are used:
 
-- `HalfPrecisionConfiguration.AUTO` (**Default**): Uses `float32` by default, but automatically switches to `float16` if the configured dimension exceeds 1998.
+- `HalfPrecisionConfiguration.OFF` (**Default**): Forces the use of `float32` vectors. Note that the table creation will fail if the dimension is greater than 1998.
 - `HalfPrecisionConfiguration.ON`: Forces the use of `float16` vectors.
-- `HalfPrecisionConfiguration.OFF`: Forces the use of `float32` vectors. Table creation will fail if the dimension exceeds 1998.
+- `HalfPrecisionConfiguration.AUTO`: Uses `float32` by default, but automatically switches to `float16` if the configured dimension is greater than 1998.
 
 ```java
 EmbeddingStore<TextSegment> embeddingStore = SQLServerEmbeddingStore.dataSourceBuilder()
