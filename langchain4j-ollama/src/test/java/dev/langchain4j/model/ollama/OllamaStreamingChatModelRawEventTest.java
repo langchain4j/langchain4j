@@ -47,7 +47,7 @@ class OllamaStreamingChatModelRawEventTest {
             }
 
             @Override
-            public void onRawEvent(Object rawEvent) {
+            public void onUnmappedRawEvent(Object rawEvent) {
                 rawEvents.add(rawEvent);
             }
 
@@ -65,7 +65,7 @@ class OllamaStreamingChatModelRawEventTest {
         future.get(5, TimeUnit.SECONDS);
 
         // Then: the content chunk was exposed via onPartialResponse and is NOT repeated as a raw event;
-        // only the empty chunk (no typed callback) is surfaced via onRawEvent.
+        // only the empty chunk (no typed callback) is surfaced via onUnmappedRawEvent.
         assertThat(partialResponses.toString()).isEqualTo("Hi");
         assertThat(rawEvents).containsExactly(emptyEvent);
     }

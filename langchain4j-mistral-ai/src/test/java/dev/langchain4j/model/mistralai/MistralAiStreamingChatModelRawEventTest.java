@@ -52,7 +52,7 @@ class MistralAiStreamingChatModelRawEventTest {
             }
 
             @Override
-            public void onRawEvent(Object rawEvent) {
+            public void onUnmappedRawEvent(Object rawEvent) {
                 rawEvents.add(rawEvent);
             }
 
@@ -70,7 +70,7 @@ class MistralAiStreamingChatModelRawEventTest {
         future.get(5, TimeUnit.SECONDS);
 
         // Then: the text delta was exposed via onPartialResponse and is NOT repeated as a raw event;
-        // only the finish event (no typed callback) is surfaced via onRawEvent.
+        // only the finish event (no typed callback) is surfaced via onUnmappedRawEvent.
         assertThat(partialResponses.toString()).isEqualTo("Hi");
         assertThat(rawEvents).containsExactly(finishEvent);
     }

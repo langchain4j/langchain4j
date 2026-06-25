@@ -179,7 +179,7 @@ public interface TokenStream {
      * @since 1.17.0
      */
     @Experimental
-    default TokenStream onRawEvent(Consumer<Object> rawEventHandler) {
+    default TokenStream onUnmappedRawEvent(Consumer<Object> rawEventHandler) {
         throw new UnsupportedOperationException("not implemented");
     }
 

@@ -4,7 +4,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onRawEvent;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.finishReasonFrom;
@@ -133,9 +133,8 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                                     textBuilder,
                                     toolCallBuilder);
 
-                            // Surface only chunks that were not already exposed to the user via a typed callback.
                             if (!trackingHandler.wasExposed()) {
-                                onRawEvent(trackingHandler, completion);
+                                onUnmappedRawEvent(trackingHandler, completion);
                             }
                         }
 

@@ -8,7 +8,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onRawEvent;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
@@ -273,8 +273,6 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
         ServerSentEventListener eventListener = new ServerSentEventListener() {
 
-            // Wraps the user handler so we can detect whether an SSE frame was already delivered
-            // to the user via a typed callback; if not, it is additionally surfaced via onRawEvent.
             final ExposureTrackingStreamingChatResponseHandler handler =
                     new ExposureTrackingStreamingChatResponseHandler(targetHandler);
 
@@ -358,10 +356,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
                 rawServerSentEvents.add(event);
 
-                // Surface only events that were not already exposed to the user via a typed callback
-                // (e.g., server-tool result content blocks).
                 if (!handler.wasExposed()) {
-                    onRawEvent(handler, event);
+                    onUnmappedRawEvent(handler, event);
                 }
             }
 

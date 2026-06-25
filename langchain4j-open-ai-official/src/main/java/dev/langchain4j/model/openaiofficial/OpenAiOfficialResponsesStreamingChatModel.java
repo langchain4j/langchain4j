@@ -3,7 +3,7 @@ package dev.langchain4j.model.openaiofficial;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onRawEvent;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.copy;
@@ -1115,10 +1115,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                     handleIncomplete(event.asIncomplete());
                 }
 
-                // Only surface events that were not already exposed to the user via a typed callback
-                // (e.g., server-tool lifecycle events such as web_search_call.in_progress).
                 if (!handler.wasExposed()) {
-                    onRawEvent(handler, event);
+                    onUnmappedRawEvent(handler, event);
                 }
             } catch (RuntimeException e) {
                 throw e;

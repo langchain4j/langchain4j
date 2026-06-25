@@ -33,7 +33,7 @@ public interface StreamingChatResponseHandler {
 
     default void onCompleteToolCall(CompleteToolCall completeToolCall) {}
 
-    default void onRawEvent(Object rawEvent) {}
+    default void onUnmappedRawEvent(Object rawEvent) {}
 
     void onCompleteResponse(ChatResponse completeResponse);
 
@@ -53,7 +53,7 @@ Depending on the LLM provider, partial thinking text can consist of a single or 
 or `onPartialToolCall(PartialToolCall, PartialToolCallContext)` is invoked (you can implement either of these methods).
 - When the LLM has completed streaming for a single tool call: `onCompleteToolCall(CompleteToolCall)` is invoked.
 - When the provider emits a raw streaming event that is not already exposed through one of the typed callbacks
-above: `onRawEvent(Object)` is invoked. See [Raw Provider Events](#raw-provider-events) below.
+above: `onUnmappedRawEvent(Object)` is invoked. See [Raw Provider Events](#raw-provider-events) below.
 - When the LLM has completed generation: `onCompleteResponse(ChatResponse)` is invoked.
 The `ChatResponse` object contains the complete response (`AiMessage`) as well as `ChatResponseMetadata`.
 - When an error occurs: `onError(Throwable error)` is invoked.
@@ -133,7 +133,7 @@ the lifecycle events of OpenAI server-side tools such as `web_search`
 (`response.web_search_call.in_progress`, `response.web_search_call.searching`,
 `response.web_search_call.completed`).
 
-The `onRawEvent(Object rawEvent)` callback is an escape hatch that gives you access to such events
+The `onUnmappedRawEvent(Object rawEvent)` callback is an escape hatch that gives you access to such events
 without having to drop down to the provider's native SDK. It is invoked **only** for events that are
 **not** already exposed through one of the typed callbacks
 (`onPartialResponse`, `onPartialThinking`, `onPartialToolCall`, `onCompleteToolCall`, `onCompleteResponse`).
@@ -160,7 +160,7 @@ model.chat(userMessage, new StreamingChatResponseHandler() {
     }
 
     @Override
-    public void onRawEvent(Object rawEvent) {
+    public void onUnmappedRawEvent(Object rawEvent) {
         if (rawEvent instanceof ServerSentEvent sse) {
             System.out.println("Raw SSE event: " + sse.event() + " -> " + sse.data());
         }
@@ -179,7 +179,7 @@ model.chat(userMessage, new StreamingChatResponseHandler() {
 ```
 
 When using [AI Services](/tutorials/ai-services#streaming), the same events are available via the
-`TokenStream.onRawEvent(Consumer<Object>)` callback.
+`TokenStream.onUnmappedRawEvent(Consumer<Object>)` callback.
 
 ## Streaming Cancellation
 

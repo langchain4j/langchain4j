@@ -101,8 +101,8 @@ public interface StreamingChatModel {
             }
 
             @Override
-            public void onRawEvent(Object rawEvent) {
-                handler.onRawEvent(rawEvent);
+            public void onUnmappedRawEvent(Object rawEvent) {
+                handler.onUnmappedRawEvent(rawEvent);
             }
 
             @Override

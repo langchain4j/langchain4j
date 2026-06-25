@@ -44,7 +44,7 @@ class StreamingChatModelTest implements WithAssertions {
         public void onPartialResponse(String partialResponse) {}
 
         @Override
-        public void onRawEvent(Object rawEvent) {
+        public void onUnmappedRawEvent(Object rawEvent) {
             rawEvents.add(rawEvent);
         }
 
@@ -96,7 +96,7 @@ class StreamingChatModelTest implements WithAssertions {
         StreamingChatModel model = new StreamingChatModel() {
             @Override
             public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-                handler.onRawEvent(rawEvent);
+                handler.onUnmappedRawEvent(rawEvent);
                 handler.onCompleteResponse(
                         ChatResponse.builder().aiMessage(new AiMessage("done")).build());
             }

@@ -1,6 +1,6 @@
 package dev.langchain4j.model.google.genai;
 
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onRawEvent;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
@@ -200,9 +200,8 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                         }
                     }
 
-                    // Surface only chunks that were not already exposed to the user via a typed callback.
                     if (!trackingHandler.wasExposed()) {
-                        onRawEvent(trackingHandler, chunk);
+                        onUnmappedRawEvent(trackingHandler, chunk);
                     }
                 }
 

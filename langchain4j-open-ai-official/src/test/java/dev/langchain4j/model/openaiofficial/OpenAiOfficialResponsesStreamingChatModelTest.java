@@ -181,7 +181,7 @@ class OpenAiOfficialResponsesStreamingChatModelTest {
         private final List<Object> rawEvents = new ArrayList<>();
 
         @Override
-        public void onRawEvent(Object rawEvent) {
+        public void onUnmappedRawEvent(Object rawEvent) {
             rawEvents.add(rawEvent);
         }
 

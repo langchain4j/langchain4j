@@ -5,7 +5,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onRawEvent;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -167,9 +167,8 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                     openAiResponseBuilder.append(parsedAndRawResponse);
                     handle(parsedAndRawResponse, toolCallBuilder, trackingHandler);
 
-                    // Surface only events that were not already exposed to the user via a typed callback.
                     if (!trackingHandler.wasExposed()) {
-                        onRawEvent(trackingHandler, parsedAndRawResponse.rawServerSentEvent());
+                        onUnmappedRawEvent(trackingHandler, parsedAndRawResponse.rawServerSentEvent());
                     }
                 })
                 .onComplete(() -> {

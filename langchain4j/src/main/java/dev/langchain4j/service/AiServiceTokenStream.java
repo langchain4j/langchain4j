@@ -74,7 +74,7 @@ public class AiServiceTokenStream implements TokenStream {
     private int onCompleteResponseInvoked;
     private int onRetrievedInvoked;
     private int beforeToolExecutionInvoked;
-    private int onRawEventInvoked;
+    private int onUnmappedRawEventInvoked;
     private int onToolExecutedInvoked;
     private int onErrorInvoked;
     private int ignoreErrorsInvoked;
@@ -163,9 +163,9 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     @Override
-    public TokenStream onRawEvent(Consumer<Object> rawEventHandler) {
+    public TokenStream onUnmappedRawEvent(Consumer<Object> rawEventHandler) {
         this.rawEventHandler = rawEventHandler;
-        this.onRawEventInvoked++;
+        this.onUnmappedRawEventInvoked++;
         return this;
     }
 
@@ -283,8 +283,8 @@ public class AiServiceTokenStream implements TokenStream {
         if (beforeToolExecutionInvoked > 1) {
             throw new IllegalConfigurationException("beforeToolExecution can be invoked on TokenStream at most 1 time");
         }
-        if (onRawEventInvoked > 1) {
-            throw new IllegalConfigurationException("onRawEvent can be invoked on TokenStream at most 1 time");
+        if (onUnmappedRawEventInvoked > 1) {
+            throw new IllegalConfigurationException("onUnmappedRawEvent can be invoked on TokenStream at most 1 time");
         }
         if (onToolExecutedInvoked > 1) {
             throw new IllegalConfigurationException("onToolExecuted can be invoked on TokenStream at most 1 time");

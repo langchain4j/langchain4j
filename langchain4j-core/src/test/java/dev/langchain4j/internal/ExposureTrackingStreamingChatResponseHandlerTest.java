@@ -32,7 +32,7 @@ class ExposureTrackingStreamingChatResponseHandlerTest {
         handler.resetExposureTracking();
         Object rawEvent = "raw";
 
-        handler.onRawEvent(rawEvent);
+        handler.onUnmappedRawEvent(rawEvent);
 
         assertThat(handler.wasExposed()).isFalse();
         assertThat(delegate.rawEvents).containsExactly(rawEvent);
@@ -75,7 +75,7 @@ class ExposureTrackingStreamingChatResponseHandlerTest {
         }
 
         @Override
-        public void onRawEvent(Object rawEvent) {
+        public void onUnmappedRawEvent(Object rawEvent) {
             rawEvents.add(rawEvent);
         }
 

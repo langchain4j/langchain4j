@@ -370,7 +370,7 @@ class DefaultAnthropicClientTest {
                 }
 
                 @Override
-                public void onRawEvent(Object rawEvent) {
+                public void onUnmappedRawEvent(Object rawEvent) {
                     rawEvents.add(rawEvent);
                 }
 
@@ -388,7 +388,7 @@ class DefaultAnthropicClientTest {
             futureResponse.get(5, TimeUnit.SECONDS);
 
             // Then: text frames were delivered via onPartialResponse and are NOT repeated as raw events;
-            // only the frames with no typed callback are surfaced via onRawEvent.
+            // only the frames with no typed callback are surfaced via onUnmappedRawEvent.
             assertThat(partialResponses.toString()).isEqualTo("Hello world");
             assertThat(rawEvents).containsExactly(messageStart, contentBlockStop, messageDelta);
         }

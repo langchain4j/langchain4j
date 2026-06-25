@@ -662,7 +662,7 @@ tokenStream
      // This will be invoked right after a tool is executed. ToolExecution contains ToolExecutionRequest and tool execution result.
     .onToolExecuted((ToolExecution toolExecution) -> System.out.println(toolExecution))
      // This will be invoked for raw provider streaming events that are not already exposed via the typed callbacks above (e.g. server-tool lifecycle events). See the "Raw Provider Events" section of Response Streaming.
-    .onRawEvent((Object rawEvent) -> System.out.println(rawEvent))
+    .onUnmappedRawEvent((Object rawEvent) -> System.out.println(rawEvent))
     .onCompleteResponse((ChatResponse response) -> futureResponse.complete(response))
     .onError((Throwable error) -> futureResponse.completeExceptionally(error))
     .start();

@@ -385,7 +385,7 @@ class GeminiServiceTest {
                 }
 
                 @Override
-                public void onRawEvent(Object rawEvent) {
+                public void onUnmappedRawEvent(Object rawEvent) {
                     rawEvents.add(rawEvent);
                 }
 
@@ -403,7 +403,7 @@ class GeminiServiceTest {
             futureResponse.get(5, TimeUnit.SECONDS);
 
             // Then: the text event was exposed via onPartialResponse and must NOT be repeated as a raw event;
-            // only the metadata-only event is surfaced via onRawEvent.
+            // only the metadata-only event is surfaced via onUnmappedRawEvent.
             assertThat(partialResponses.toString()).isEqualTo("Hi");
             assertThat(rawEvents).containsExactly(metadataEvent);
         }

@@ -47,7 +47,7 @@ class OpenAiResponsesStreamingChatModelRawEventTest {
             }
 
             @Override
-            public void onRawEvent(Object rawEvent) {
+            public void onUnmappedRawEvent(Object rawEvent) {
                 rawEvents.add(rawEvent);
             }
 
@@ -65,7 +65,7 @@ class OpenAiResponsesStreamingChatModelRawEventTest {
         futureResponse.get(5, TimeUnit.SECONDS);
 
         // Then: the text delta was exposed via onPartialResponse and is NOT repeated as a raw event;
-        // only the unmapped server-tool event is surfaced via onRawEvent.
+        // only the unmapped server-tool event is surfaced via onUnmappedRawEvent.
         assertThat(partialResponses.toString()).isEqualTo("Hello");
         assertThat(rawEvents).containsExactly(webSearchEvent);
     }

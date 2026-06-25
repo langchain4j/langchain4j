@@ -47,7 +47,7 @@ class OpenAiStreamingChatModelRawEventTest {
             }
 
             @Override
-            public void onRawEvent(Object rawEvent) {
+            public void onUnmappedRawEvent(Object rawEvent) {
                 rawEvents.add(rawEvent);
             }
 
@@ -65,7 +65,7 @@ class OpenAiStreamingChatModelRawEventTest {
         futureResponse.get(5, TimeUnit.SECONDS);
 
         // Then: the content chunk was exposed via onPartialResponse and is NOT repeated as a raw event;
-        // only the role-only chunk is surfaced via onRawEvent.
+        // only the role-only chunk is surfaced via onUnmappedRawEvent.
         assertThat(partialResponses.toString()).isEqualTo("Hello");
         assertThat(rawEvents).containsExactly(roleEvent);
     }

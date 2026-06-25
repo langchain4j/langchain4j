@@ -17,9 +17,9 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
  * or error) while processing a single provider streaming event.
  * <p>
  * Providers use this to decide whether to additionally surface a raw event via
- * {@link StreamingChatResponseHandler#onRawEvent(Object)}: a raw event should only be emitted for events that
+ * {@link StreamingChatResponseHandler#onUnmappedRawEvent(Object)}: a raw event should only be emitted for events that
  * are <b>not</b> already exposed to the user through one of the typed callbacks. Forwarding a raw event (via
- * {@link #onRawEvent(Object)}) does not count as exposure.
+ * {@link #onUnmappedRawEvent(Object)}) does not count as exposure.
  * <p>
  * Not thread-safe: it assumes a provider processes streaming events one at a time and calls
  * {@link #resetExposureTracking()} before each event.
@@ -92,8 +92,8 @@ public class ExposureTrackingStreamingChatResponseHandler implements StreamingCh
     }
 
     @Override
-    public void onRawEvent(Object rawEvent) {
-        delegate.onRawEvent(rawEvent);
+    public void onUnmappedRawEvent(Object rawEvent) {
+        delegate.onUnmappedRawEvent(rawEvent);
     }
 
     @Override

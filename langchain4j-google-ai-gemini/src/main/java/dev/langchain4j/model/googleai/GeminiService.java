@@ -8,7 +8,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onRawEvent;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.firstNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -217,8 +217,6 @@ class GeminiService {
 
         httpClient.execute(httpRequest, new ServerSentEventListener() {
 
-            // Wraps the user handler so we can detect whether an SSE frame was already delivered
-            // to the user via a typed callback; if not, it is additionally surfaced via onRawEvent.
             final ExposureTrackingStreamingChatResponseHandler handler =
                     new ExposureTrackingStreamingChatResponseHandler(targetHandler);
 
@@ -256,10 +254,8 @@ class GeminiService {
                     toolIndex.incrementAndGet();
                 }
 
-                // Surface only events that were not already exposed to the user via a typed callback
-                // (e.g., grounding/search metadata chunks).
                 if (!handler.wasExposed()) {
-                    onRawEvent(handler, event);
+                    onUnmappedRawEvent(handler, event);
                 }
             }
 

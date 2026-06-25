@@ -4,7 +4,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onRawEvent;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
@@ -89,8 +89,6 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
         ConverseStreamResponseHandler converseStreamResponseHandler = ConverseStreamResponseHandler.builder()
                 .onEventStream(publisher -> publisher.subscribe(new Subscriber<ConverseStreamOutput>() {
 
-                    // Wraps the user handler so we can detect whether a stream event was already delivered
-                    // to the user via a typed callback; if not, it is additionally surfaced via onRawEvent.
                     final ExposureTrackingStreamingChatResponseHandler handler =
                             new ExposureTrackingStreamingChatResponseHandler(targetHandler);
 
@@ -166,9 +164,8 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                             onCompleteResponse(handler, response);
                         }
 
-                        // Surface only events that were not already exposed to the user via a typed callback.
                         if (!handler.wasExposed()) {
-                            onRawEvent(handler, output);
+                            onUnmappedRawEvent(handler, output);
                         }
 
                         subscription.request(1);

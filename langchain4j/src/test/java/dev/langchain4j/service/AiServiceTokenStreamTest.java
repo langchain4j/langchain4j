@@ -148,22 +148,22 @@ class AiServiceTokenStreamTest {
     }
 
     @Test
-    void start_onRawEventInvoked_shouldNotThrowException() {
-        tokenStream.onRawEvent(DUMMY_RAW_EVENT_HANDLER).ignoreErrors();
+    void start_onUnmappedRawEventInvoked_shouldNotThrowException() {
+        tokenStream.onUnmappedRawEvent(DUMMY_RAW_EVENT_HANDLER).ignoreErrors();
 
         assertThatNoException().isThrownBy(() -> tokenStream.start());
     }
 
     @Test
-    void start_onRawEventInvokedMultipleTimes_shouldThrowException() {
+    void start_onUnmappedRawEventInvokedMultipleTimes_shouldThrowException() {
         tokenStream
-                .onRawEvent(DUMMY_RAW_EVENT_HANDLER)
-                .onRawEvent(DUMMY_RAW_EVENT_HANDLER)
+                .onUnmappedRawEvent(DUMMY_RAW_EVENT_HANDLER)
+                .onUnmappedRawEvent(DUMMY_RAW_EVENT_HANDLER)
                 .ignoreErrors();
 
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage("onRawEvent can be invoked on TokenStream at most 1 time");
+                .hasMessage("onUnmappedRawEvent can be invoked on TokenStream at most 1 time");
     }
 
     @Test
@@ -173,7 +173,7 @@ class AiServiceTokenStreamTest {
         List<Object> rawEvents = new ArrayList<>();
         Object rawEvent = "raw.event";
 
-        tokenStream.onRawEvent(rawEvents::add).ignoreErrors();
+        tokenStream.onUnmappedRawEvent(rawEvents::add).ignoreErrors();
 
         tokenStream.start();
 
@@ -182,7 +182,7 @@ class AiServiceTokenStreamTest {
         verify(streamingModel).chat(any(ChatRequest.class), handlerCaptor.capture());
         StreamingChatResponseHandler handler = handlerCaptor.getValue();
 
-        handler.onRawEvent(rawEvent);
+        handler.onUnmappedRawEvent(rawEvent);
 
         assertThat(rawEvents).containsExactly(rawEvent);
     }

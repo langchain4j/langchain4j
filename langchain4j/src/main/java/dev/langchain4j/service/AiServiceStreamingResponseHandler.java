@@ -242,7 +242,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     @Override
-    public void onRawEvent(Object rawEvent) {
+    public void onUnmappedRawEvent(Object rawEvent) {
         if (rawEventHandler != null) {
             rawEventHandler.accept(rawEvent);
         }

@@ -874,10 +874,8 @@ class OpenAiResponsesClient {
             handler.resetExposureTracking();
             handleDelta(data);
 
-            // Surface only events that were not already exposed to the user via a typed callback
-            // (e.g., server-tool lifecycle events such as web_search_call.in_progress).
             if (!handler.wasExposed()) {
-                InternalStreamingChatResponseHandlerUtils.onRawEvent(handler, event);
+                InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent(handler, event);
             }
         }
 

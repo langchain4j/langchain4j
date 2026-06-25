@@ -186,7 +186,7 @@ public interface StreamingChatResponseHandler {
      * @since 1.17.0
      */
     @Experimental
-    default void onRawEvent(Object rawEvent) {}
+    default void onUnmappedRawEvent(Object rawEvent) {}
 
     /**
      * Invoked when the model has finished streaming a response.

@@ -130,9 +130,9 @@ public class InternalStreamingChatResponseHandlerUtils {
         }
     }
 
-    public static void onRawEvent(StreamingChatResponseHandler handler, Object rawEvent) {
+    public static void onUnmappedRawEvent(StreamingChatResponseHandler handler, Object rawEvent) {
         try {
-            handler.onRawEvent(rawEvent);
+            handler.onUnmappedRawEvent(rawEvent);
         } catch (Exception e) {
             withLoggingExceptions(() -> handler.onError(e));
         }
