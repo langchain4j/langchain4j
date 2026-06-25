@@ -42,6 +42,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgentInvocation;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentError;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentInvocation;
@@ -153,7 +154,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         }
 
         if (method.getDeclaringClass() == MonitoredAgent.class) {
-            return AgentMonitor.from(agentListener);
+            return listenerOfType(agentListener, AgentMonitor.class);
         }
 
         if (method.getDeclaringClass() == Object.class) {

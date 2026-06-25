@@ -4,6 +4,7 @@ import static dev.langchain4j.agentic.declarative.DeclarativeUtil.configureAgent
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Arrays.asList;
 
@@ -220,10 +221,10 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
             }
         }
 
-        AgentMonitor monitor = AgentMonitor.from(agentListener);
+        AgentMonitor monitor = listenerOfType(agentListener, AgentMonitor.class);
         if (MonitoredAgent.class.isAssignableFrom(agentServiceClass) && monitor == null) {
             monitor = new AgentMonitor();
-            listener(monitor.asListener());
+            listener(monitor);
         }
 
         build(agenticScope, context, aiServices);

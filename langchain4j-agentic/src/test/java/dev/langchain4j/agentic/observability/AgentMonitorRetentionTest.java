@@ -91,7 +91,7 @@ class AgentMonitorRetentionTest {
         AgentMonitor monitor = new AgentMonitor();
         AgentInstance agent = stubAgent("root");
         AgenticScope scope = stubScope("ongoing");
-        monitor.asListener().beforeAgentInvocation(new AgentRequest(scope, agent, Map.of()));
+        monitor.beforeAgentInvocation(new AgentRequest(scope, agent, Map.of()));
 
         monitor.clear();
 
@@ -139,19 +139,17 @@ class AgentMonitorRetentionTest {
     }
 
     private static void playOneRun(AgentMonitor monitor, AgentInstance agent, Object memoryId) {
-        AgentListener listener = monitor.asListener();
         AgenticScope scope = stubScope(memoryId);
         Map<String, Object> inputs = Map.of();
-        listener.beforeAgentInvocation(new AgentRequest(scope, agent, inputs));
-        listener.afterAgentInvocation(new AgentResponse(scope, agent, inputs, "ok", null, null));
+        monitor.beforeAgentInvocation(new AgentRequest(scope, agent, inputs));
+        monitor.afterAgentInvocation(new AgentResponse(scope, agent, inputs, "ok", null, null));
     }
 
     private static void playOneFailedRun(AgentMonitor monitor, AgentInstance agent, Object memoryId) {
-        AgentListener listener = monitor.asListener();
         AgenticScope scope = stubScope(memoryId);
         Map<String, Object> inputs = Map.of();
-        listener.beforeAgentInvocation(new AgentRequest(scope, agent, inputs));
-        listener.onAgentInvocationError(new AgentInvocationError(scope, agent, inputs, new RuntimeException("boom")));
+        monitor.beforeAgentInvocation(new AgentRequest(scope, agent, inputs));
+        monitor.onAgentInvocationError(new AgentInvocationError(scope, agent, inputs, new RuntimeException("boom")));
     }
 
     private static AgentInstance stubAgent(String agentId) {

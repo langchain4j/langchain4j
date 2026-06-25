@@ -45,8 +45,8 @@ class AgentMonitorConcurrencyTest {
                     AgentRequest request = new AgentRequest(scope, agent, Map.of());
                     AgentResponse response = new AgentResponse(scope, agent, Map.of(), "ok", null, null);
                     awaitStart(start);
-                    monitor.asListener().beforeAgentInvocation(request);
-                    monitor.asListener().afterAgentInvocation(response);
+                    monitor.beforeAgentInvocation(request);
+                    monitor.afterAgentInvocation(response);
                 }));
             }
 
@@ -75,7 +75,7 @@ class AgentMonitorConcurrencyTest {
         // Set up the root invocation first, single-threaded — mirrors how the agentic
         // framework opens a top-level invocation before fanning out sub-agents.
         AgentRequest rootRequest = new AgentRequest(scope, root, Map.of());
-        monitor.asListener().beforeAgentInvocation(rootRequest);
+        monitor.beforeAgentInvocation(rootRequest);
 
         ExecutorService pool = Executors.newFixedThreadPool(THREADS);
         CountDownLatch start = new CountDownLatch(1);
@@ -88,8 +88,8 @@ class AgentMonitorConcurrencyTest {
                 AgentResponse subResponse = new AgentResponse(scope, sub, Map.of(), "ok", null, null);
                 futures.add(pool.submit(() -> {
                     awaitStart(start);
-                    monitor.asListener().beforeAgentInvocation(subRequest);
-                    monitor.asListener().afterAgentInvocation(subResponse);
+                    monitor.beforeAgentInvocation(subRequest);
+                    monitor.afterAgentInvocation(subResponse);
                 }));
             }
 
@@ -102,7 +102,7 @@ class AgentMonitorConcurrencyTest {
         }
 
         AgentResponse rootResponse = new AgentResponse(scope, root, Map.of(), "ok", null, null);
-        monitor.asListener().afterAgentInvocation(rootResponse);
+        monitor.afterAgentInvocation(rootResponse);
 
         List<MonitoredExecution> successful = monitor.successfulExecutionsFor(memoryId);
         assertThat(successful).hasSize(1).doesNotContainNull();

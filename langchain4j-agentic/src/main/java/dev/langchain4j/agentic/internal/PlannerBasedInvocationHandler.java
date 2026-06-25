@@ -4,6 +4,7 @@ import static dev.langchain4j.agentic.internal.AgentUtil.agenticSystemDataTypes;
 import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.rawType;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgentInvocation;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentInvocation;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgenticScopeCreated;
@@ -163,7 +164,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         }
 
         if (method.getDeclaringClass() == MonitoredAgent.class) {
-            return AgentMonitor.from(agentListener);
+            return listenerOfType(agentListener, AgentMonitor.class);
         }
 
         if (method.getDeclaringClass() == Object.class) {

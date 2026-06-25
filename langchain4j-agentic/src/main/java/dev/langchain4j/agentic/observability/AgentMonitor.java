@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>A waterfall timeline of execution traces grouped by memory/session ID</li>
  * </ul>
  */
-public class AgentMonitor {
+public class AgentMonitor implements AgentListener {
 
     private static final int DEFAULT_MAX_RETAINED_EXECUTIONS = 100;
 
@@ -33,21 +33,10 @@ public class AgentMonitor {
     private final Map<Object, List<MonitoredExecution>> successfulExecutions;
     private final Map<Object, List<MonitoredExecution>> failedExecutions;
     private final Map<Object, MonitoredExecution> ongoingExecutions = new ConcurrentHashMap<>();
-    private final MonitoringListener listener = new MonitoringListener(this);
 
     public AgentMonitor() {
         this.successfulExecutions = createBoundedMap();
         this.failedExecutions = createBoundedMap();
-    }
-
-    public AgentListener asListener() {
-        return listener;
-    }
-
-    @Internal
-    public static AgentMonitor from(AgentListener listener) {
-        MonitoringListener ml = ComposedAgentListener.listenerOfType(listener, MonitoringListener.class);
-        return ml != null ? ml.monitor : null;
     }
 
     /**
@@ -107,7 +96,8 @@ public class AgentMonitor {
         return rootAgent;
     }
 
-    private void beforeAgentInvocation(AgentRequest agentRequest) {
+    @Override
+    public void beforeAgentInvocation(AgentRequest agentRequest) {
         Object memoryId = agentRequest.agenticScope().memoryId();
         MonitoredExecution candidate = new MonitoredExecution(agentRequest);
         MonitoredExecution existing = ongoingExecutions.putIfAbsent(memoryId, candidate);
@@ -116,7 +106,8 @@ public class AgentMonitor {
         }
     }
 
-    private void afterAgentInvocation(AgentResponse agentResponse) {
+    @Override
+    public void afterAgentInvocation(AgentResponse agentResponse) {
         Object memoryId = agentResponse.agenticScope().memoryId();
         MonitoredExecution execution = ongoingExecutions.get(memoryId);
         execution.afterAgentInvocation(agentResponse);
@@ -128,7 +119,8 @@ public class AgentMonitor {
         }
     }
 
-    private void onAgentInvocationError(AgentInvocationError agentInvocationError) {
+    @Override
+    public void onAgentInvocationError(AgentInvocationError agentInvocationError) {
         Object memoryId = agentInvocationError.agenticScope().memoryId();
         MonitoredExecution execution = ongoingExecutions.remove(memoryId);
         if (execution != null) {
@@ -139,12 +131,18 @@ public class AgentMonitor {
         }
     }
 
-    private void afterAgentToolExecution(AfterAgentToolExecution afterAgentToolExecution) {
+    @Override
+    public void afterAgentToolExecution(AfterAgentToolExecution afterAgentToolExecution) {
         Object memoryId = afterAgentToolExecution.agenticScope().memoryId();
         MonitoredExecution execution = ongoingExecutions.get(memoryId);
         if (execution != null) {
             execution.afterToolExecution(afterAgentToolExecution);
         }
+    }
+
+    @Override
+    public boolean inheritedBySubagents() {
+        return true;
     }
 
     public Map<Object, MonitoredExecution> ongoingExecutions() {
@@ -221,39 +219,5 @@ public class AgentMonitor {
             all.add(ongoing);
         }
         return all;
-    }
-
-    static class MonitoringListener implements AgentListener {
-
-        private final AgentMonitor monitor;
-
-        MonitoringListener(AgentMonitor monitor) {
-            this.monitor = monitor;
-        }
-
-        @Override
-        public void beforeAgentInvocation(AgentRequest agentRequest) {
-            monitor.beforeAgentInvocation(agentRequest);
-        }
-
-        @Override
-        public void afterAgentInvocation(AgentResponse agentResponse) {
-            monitor.afterAgentInvocation(agentResponse);
-        }
-
-        @Override
-        public void onAgentInvocationError(AgentInvocationError agentInvocationError) {
-            monitor.onAgentInvocationError(agentInvocationError);
-        }
-
-        @Override
-        public void afterAgentToolExecution(AfterAgentToolExecution afterAgentToolExecution) {
-            monitor.afterAgentToolExecution(afterAgentToolExecution);
-        }
-
-        @Override
-        public boolean inheritedBySubagents() {
-            return true;
-        }
     }
 }

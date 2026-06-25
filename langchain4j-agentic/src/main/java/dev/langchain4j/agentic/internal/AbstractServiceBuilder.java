@@ -3,6 +3,7 @@ package dev.langchain4j.agentic.internal;
 import static dev.langchain4j.agentic.internal.AgentUtil.agentsToExecutors;
 import static dev.langchain4j.agentic.internal.AgentUtil.buildAgent;
 import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import dev.langchain4j.agentic.Agent;
@@ -153,10 +154,10 @@ public abstract class AbstractServiceBuilder<T, S> {
     }
 
     public T build(Supplier<Planner> plannerSupplier) {
-        AgentMonitor monitor = AgentMonitor.from(agentListener);
+        AgentMonitor monitor = listenerOfType(agentListener, AgentMonitor.class);
         if (MonitoredAgent.class.isAssignableFrom(agentServiceClass) && monitor == null) {
             monitor = new AgentMonitor();
-            listener(monitor.asListener());
+            listener(monitor);
         }
         AgentInstance agent = (AgentInstance) build(new PlannerBasedInvocationHandler(this, plannerSupplier));
         if (monitor != null) {
