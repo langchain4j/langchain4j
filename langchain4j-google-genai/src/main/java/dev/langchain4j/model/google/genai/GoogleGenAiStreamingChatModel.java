@@ -1,5 +1,6 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
@@ -15,6 +16,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.DefaultExecutorProvider;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -140,6 +142,9 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     config);
         }
 
+        MappingTrackingStreamingChatResponseHandler trackingHandler =
+                new MappingTrackingStreamingChatResponseHandler(handler);
+
         executor.execute(() -> {
             try {
                 ResponseStream<GenerateContentResponse> stream =
@@ -155,6 +160,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 int toolIndex = 0;
 
                 for (GenerateContentResponse chunk : stream) {
+                    trackingHandler.resetMappingTracking();
                     lastChunk = chunk;
                     ChatResponse partialResponse = GoogleGenAiContentMapper.toChatResponse(chunk, modelName);
                     AiMessage aiMessage = partialResponse.aiMessage();
@@ -167,9 +173,9 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     if (aiMessage.text() != null && !aiMessage.text().isEmpty()) {
                         textBuilder.append(aiMessage.text());
                         try {
-                            handler.onPartialResponse(aiMessage.text());
+                            trackingHandler.onPartialResponse(aiMessage.text());
                         } catch (Exception userException) {
-                            handler.onError(userException);
+                            trackingHandler.onError(userException);
                         }
                     }
 
@@ -177,9 +183,9 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                         for (ToolExecutionRequest req : aiMessage.toolExecutionRequests()) {
                             toolRequests.add(req);
                             try {
-                                handler.onCompleteToolCall(new CompleteToolCall(toolIndex++, req));
+                                trackingHandler.onCompleteToolCall(new CompleteToolCall(toolIndex++, req));
                             } catch (Exception userException) {
-                                handler.onError(userException);
+                                trackingHandler.onError(userException);
                             }
                         }
                     }
@@ -192,6 +198,10 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                         if (finishReason != FinishReason.LENGTH && finishReason != FinishReason.CONTENT_FILTER) {
                             finishReason = partialReason;
                         }
+                    }
+
+                    if (!trackingHandler.wasMapped()) {
+                        onUnmappedRawEvent(trackingHandler, chunk);
                     }
                 }
 
@@ -228,9 +238,9 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     log.info("Response:\n- model: {}\n- response: {}", modelName, finalChatResponse);
                 }
 
-                handler.onCompleteResponse(finalChatResponse);
+                trackingHandler.onCompleteResponse(finalChatResponse);
             } catch (Exception e) {
-                handler.onError(e);
+                trackingHandler.onError(e);
             }
         });
     }

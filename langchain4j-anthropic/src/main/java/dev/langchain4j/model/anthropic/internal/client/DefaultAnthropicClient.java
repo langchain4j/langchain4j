@@ -8,6 +8,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
@@ -37,6 +38,7 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.anthropic.AnthropicChatResponseMetadata;
 import dev.langchain4j.model.anthropic.AnthropicServerToolResult;
@@ -267,7 +269,12 @@ public class DefaultAnthropicClient extends AnthropicClient {
             AnthropicCreateMessageOptions options,
             StreamingChatResponseHandler handler) {
 
+        StreamingChatResponseHandler targetHandler = handler;
+
         ServerSentEventListener eventListener = new ServerSentEventListener() {
+
+            final MappingTrackingStreamingChatResponseHandler handler =
+                    new MappingTrackingStreamingChatResponseHandler(targetHandler);
 
             final List<String> contents = synchronizedList(new ArrayList<>());
             final StringBuffer contentBuilder = new StringBuffer();
@@ -315,6 +322,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     streamingHandle = toStreamingHandle(context.parsingHandle());
                 }
 
+                handler.resetMappingTracking();
+
                 String eventName = event.event();
                 String eventData = event.data();
 
@@ -346,6 +355,10 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 }
 
                 rawServerSentEvents.add(event);
+
+                if (!handler.wasMapped()) {
+                    onUnmappedRawEvent(handler, event);
+                }
             }
 
             private static boolean isSkippableSseFrame(String eventName, String eventData) {
