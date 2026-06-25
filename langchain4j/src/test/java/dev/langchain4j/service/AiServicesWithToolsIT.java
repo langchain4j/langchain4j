@@ -1123,7 +1123,8 @@ class AiServicesWithToolsIT {
         String includeToolsKey = "includeTools";
 
         ToolProvider toolProvider = request -> {
-            if (Boolean.TRUE.equals(request.invocationContext().invocationParameters().get(includeToolsKey))) {
+            if (Boolean.TRUE.equals(
+                request.invocationContext().invocationParameters().get(includeToolsKey))) {
                 ToolSpecification toolSpecification = ToolSpecification.builder()
                         .name("xyz")
                         .parameters(JsonObjectSchema.builder()
