@@ -86,6 +86,22 @@ class VoyageAiClient {
         return fromJson(successfulHttpResponse.body(), EmbeddingResponse.class);
     }
 
+    ContextualizedEmbeddingResponse contextualizedEmbed(ContextualizedEmbeddingRequest request) {
+
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl + "contextualizedembeddings")
+                .body(toJson(request))
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Accept", "application/json")
+                .addHeaders(buildRequestHeaders())
+                .build();
+
+        SuccessfulHttpResponse successfulHttpResponse = httpClient.execute(httpRequest);
+
+        return fromJson(successfulHttpResponse.body(), ContextualizedEmbeddingResponse.class);
+    }
+
     RerankResponse rerank(RerankRequest request) {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
