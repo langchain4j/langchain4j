@@ -2,6 +2,7 @@ package dev.langchain4j.store.embedding.qdrant;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -45,6 +46,10 @@ class ValueMapFactory {
 			return value((Map<String, Object>) value);
 		}
 
+        if (value instanceof Collection collection) {
+            return value(collection.toArray());
+        }
+
 		switch (value.getClass().getSimpleName()) {
       case "UUID":
         return ValueFactory.value(value.toString());
@@ -66,7 +71,7 @@ class ValueMapFactory {
 	}
 
 	private static Value value(Object[] elements) {
-		List<Value> values = new ArrayList<Value>(elements.length);
+		List<Value> values = new ArrayList<>(elements.length);
 
 		for (Object element : elements) {
 			values.add(value(element));
