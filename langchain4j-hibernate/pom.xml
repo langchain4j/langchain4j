@@ -18,7 +18,7 @@
         <oracle.version>23.26.2.0.0</oracle.version>
         <mariadb.version>3.5.5</mariadb.version>
         <mssql.version>13.4.0.jre11</mssql.version>
-        <hibernate.version>7.2.5.Final</hibernate.version>
+        <hibernate.version>7.4.2.Final</hibernate.version>
         <!-- TODO: remove enforcer.skipRules -->
         <enforcer.skipRules>dependencyConvergence,requireUpperBoundDeps</enforcer.skipRules>
     </properties>
