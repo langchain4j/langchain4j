@@ -3,6 +3,7 @@ package dev.langchain4j.model.openaiofficial;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.copy;
@@ -72,6 +73,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.ExposureTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolSpecificationUtils;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
@@ -1052,9 +1054,10 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     /**
      * Event handler for Responses API streaming.
      */
-    private static class ResponsesEventHandler {
+    // visible for testing
+    static class ResponsesEventHandler {
 
-        private final StreamingChatResponseHandler handler;
+        private final ExposureTrackingStreamingChatResponseHandler handler;
         private final AtomicReference<String> responseIdRef;
         private final String modelName;
         private final StreamingHandle streamingHandle;
@@ -1072,7 +1075,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 AtomicReference<String> responseIdRef,
                 String modelName,
                 StreamingHandle streamingHandle) {
-            this.handler = handler;
+            this.handler = new ExposureTrackingStreamingChatResponseHandler(handler);
             this.responseIdRef = responseIdRef;
             this.modelName = modelName;
             this.streamingHandle = streamingHandle;
@@ -1084,6 +1087,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             }
 
             try {
+                handler.resetExposureTracking();
+
                 if (event.isCreated()) {
                     handleCreated(event.asCreated());
                 } else if (event.isOutputTextDelta()) {
@@ -1108,6 +1113,12 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                     handleFailed(event.asFailed());
                 } else if (event.isIncomplete()) {
                     handleIncomplete(event.asIncomplete());
+                }
+
+                // Only surface events that were not already exposed to the user via a typed callback
+                // (e.g., server-tool lifecycle events such as web_search_call.in_progress).
+                if (!handler.wasExposed()) {
+                    onRawEvent(handler, event);
                 }
             } catch (RuntimeException e) {
                 throw e;

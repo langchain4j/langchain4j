@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -23,6 +24,7 @@ import static java.util.Arrays.asList;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.ExposureTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -156,18 +158,27 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 new OpenAiStreamingResponseBuilder(returnThinking, accumulateToolCallId);
         ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
 
+        ExposureTrackingStreamingChatResponseHandler trackingHandler =
+                new ExposureTrackingStreamingChatResponseHandler(handler);
+
         client.chatCompletion(openAiRequest)
                 .onRawPartialResponse(parsedAndRawResponse -> {
+                    trackingHandler.resetExposureTracking();
                     openAiResponseBuilder.append(parsedAndRawResponse);
-                    handle(parsedAndRawResponse, toolCallBuilder, handler);
+                    handle(parsedAndRawResponse, toolCallBuilder, trackingHandler);
+
+                    // Surface only events that were not already exposed to the user via a typed callback.
+                    if (!trackingHandler.wasExposed()) {
+                        onRawEvent(trackingHandler, parsedAndRawResponse.rawServerSentEvent());
+                    }
                 })
                 .onComplete(() -> {
                     if (toolCallBuilder.hasRequests()) {
-                        onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
+                        onCompleteToolCall(trackingHandler, toolCallBuilder.buildAndReset());
                     }
 
                     ChatResponse completeResponse = openAiResponseBuilder.build();
-                    onCompleteResponse(handler, completeResponse);
+                    onCompleteResponse(trackingHandler, completeResponse);
                 })
                 .onError(throwable -> {
                     RuntimeException mappedException = ExceptionMapper.DEFAULT.mapException(throwable);

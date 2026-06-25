@@ -8,6 +8,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
@@ -33,6 +34,7 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.ExposureTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -174,8 +176,14 @@ class OllamaClient {
                 .body(toJson(ollamaChatRequest))
                 .build();
 
+        StreamingChatResponseHandler targetHandler = handler;
+
         httpClient.execute(httpRequest, new OllamaServerSentEventParser(), new ServerSentEventListener() {
 
+            // Wraps the user handler so we can detect whether an event was already delivered
+            // to the user via a typed callback; if not, it is additionally surfaced via onRawEvent.
+            final ExposureTrackingStreamingChatResponseHandler handler =
+                    new ExposureTrackingStreamingChatResponseHandler(targetHandler);
             final ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
             final OllamaStreamingResponseBuilder responseBuilder =
                     new OllamaStreamingResponseBuilder(toolCallBuilder, returnThinking);
@@ -192,6 +200,8 @@ class OllamaClient {
                     streamingHandle = toStreamingHandle(context.parsingHandle());
                 }
 
+                handler.resetExposureTracking();
+
                 OllamaChatResponse ollamaChatResponse = fromJson(event.data(), OllamaChatResponse.class);
 
                 String error = ollamaChatResponse.getError();
@@ -204,6 +214,8 @@ class OllamaClient {
 
                 Message message = ollamaChatResponse.getMessage();
                 if (message == null) {
+                    // Event not exposed via any typed callback -> surface it as a raw event.
+                    onRawEvent(handler, event);
                     return;
                 }
 
@@ -245,6 +257,11 @@ class OllamaClient {
 
                     ChatResponse completeResponse = responseBuilder.build(ollamaChatResponse);
                     onCompleteResponse(handler, completeResponse);
+                }
+
+                // Surface only events that were not already exposed to the user via a typed callback.
+                if (!handler.wasExposed()) {
+                    onRawEvent(handler, event);
                 }
             }
 

@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -21,6 +22,7 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.ExposureTrackingStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -49,7 +51,7 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
     private final StringBuffer thinkingBuilder;
     private final boolean returnThinking;
 
-    private final StreamingChatResponseHandler handler;
+    private final ExposureTrackingStreamingChatResponseHandler handler;
 
     private List<ToolExecutionRequest> toolExecutionRequests;
     private TokenUsage tokenUsage;
@@ -66,7 +68,7 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
         this.textBuilder = new StringBuffer();
         this.thinkingBuilder = returnThinking ? new StringBuffer() : null;
         this.returnThinking = returnThinking;
-        this.handler = handler;
+        this.handler = new ExposureTrackingStreamingChatResponseHandler(handler);
     }
 
     @Override
@@ -86,6 +88,7 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
         }
 
         rawServerSentEvents.add(event);
+        handler.resetExposureTracking();
 
         String data = event.data();
         if ("[DONE]".equals(data)) {
@@ -142,6 +145,11 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
             if (finishReasonString != null) {
                 this.finishReason = finishReasonFrom(finishReasonString);
             }
+        }
+
+        // Surface only events that were not already exposed to the user via a typed callback.
+        if (!handler.wasExposed()) {
+            onRawEvent(handler, event);
         }
     }
 

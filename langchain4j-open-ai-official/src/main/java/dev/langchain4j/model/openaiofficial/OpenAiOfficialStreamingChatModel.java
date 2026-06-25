@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.finishReasonFrom;
@@ -20,6 +21,7 @@ import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import com.openai.models.chat.completions.ChatCompletionStreamOptions;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.ExposureTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.TokenCountEstimator;
@@ -111,6 +113,9 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
             ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
             AtomicReference<StreamingHandle> streamingHandle = new AtomicReference<>();
 
+            ExposureTrackingStreamingChatResponseHandler trackingHandler =
+                    new ExposureTrackingStreamingChatResponseHandler(handler);
+
             AsyncStreamResponse<ChatCompletionChunk> asyncStreamResponse = asyncClient
                     .chat()
                     .completions()
@@ -119,13 +124,19 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
 
                         @Override
                         public void onNext(ChatCompletionChunk completion) {
+                            trackingHandler.resetExposureTracking();
                             manageChatCompletionChunks(
                                     completion,
-                                    handler,
+                                    trackingHandler,
                                     streamingHandle.get(),
                                     responseMetadataBuilder,
                                     textBuilder,
                                     toolCallBuilder);
+
+                            // Surface only chunks that were not already exposed to the user via a typed callback.
+                            if (!trackingHandler.wasExposed()) {
+                                onRawEvent(trackingHandler, completion);
+                            }
                         }
 
                         @Override
@@ -135,10 +146,10 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                             }
 
                             if (error.isPresent()) {
-                                withLoggingExceptions(() -> handler.onError(error.get()));
+                                withLoggingExceptions(() -> trackingHandler.onError(error.get()));
                             } else {
                                 if (toolCallBuilder.hasRequests()) {
-                                    onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
+                                    onCompleteToolCall(trackingHandler, toolCallBuilder.buildAndReset());
                                 }
 
                                 String text = textBuilder.toString();
@@ -153,7 +164,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                                         .metadata(responseMetadataBuilder.build())
                                         .build();
 
-                                onCompleteResponse(handler, chatResponse);
+                                onCompleteResponse(trackingHandler, chatResponse);
                             }
                         }
                     });

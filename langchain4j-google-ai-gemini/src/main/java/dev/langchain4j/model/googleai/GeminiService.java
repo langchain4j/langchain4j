@@ -8,6 +8,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.firstNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -26,6 +27,7 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.ExposureTrackingStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -211,7 +213,14 @@ class GeminiService {
         GeminiStreamingResponseBuilder responseBuilder =
                 new GeminiStreamingResponseBuilder(includeCodeExecutionOutput, returnThinking);
 
+        StreamingChatResponseHandler targetHandler = handler;
+
         httpClient.execute(httpRequest, new ServerSentEventListener() {
+
+            // Wraps the user handler so we can detect whether an SSE frame was already delivered
+            // to the user via a typed callback; if not, it is additionally surfaced via onRawEvent.
+            final ExposureTrackingStreamingChatResponseHandler handler =
+                    new ExposureTrackingStreamingChatResponseHandler(targetHandler);
 
             AtomicInteger toolIndex = new AtomicInteger(0);
             volatile StreamingHandle streamingHandle;
@@ -226,6 +235,8 @@ class GeminiService {
                 if (streamingHandle == null) {
                     streamingHandle = toStreamingHandle(context.parsingHandle());
                 }
+
+                handler.resetExposureTracking();
 
                 GeminiGenerateContentResponse response = fromJson(event.data(), GeminiGenerateContentResponse.class);
                 GeminiStreamingResponseBuilder.TextAndTools textAndTools = responseBuilder.append(response);
@@ -243,6 +254,12 @@ class GeminiService {
                     CompleteToolCall completeToolCall = new CompleteToolCall(toolIndex.get(), tool);
                     onCompleteToolCall(handler, completeToolCall);
                     toolIndex.incrementAndGet();
+                }
+
+                // Surface only events that were not already exposed to the user via a typed callback
+                // (e.g., grounding/search metadata chunks).
+                if (!handler.wasExposed()) {
+                    onRawEvent(handler, event);
                 }
             }
 
