@@ -33,6 +33,28 @@
           "old": "parameter dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent.Builder dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent.Builder::input(===java.util.Map<java.lang.String, java.lang.Object>===)",
           "new": "parameter dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent.Builder dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent.Builder::input(===java.lang.String===)",
           "justification": "Internal API not exposed to users. tool_use input is now a raw JSON String to preserve malformed arguments for replay (#5227)."
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_OPUS_4_20250514",
+          "justification": "Model no longer exists and was previously deprecated; removed intentionally"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_20250514",
+          "justification": "Model no longer exists and was previously deprecated; removed intentionally"
+        },
+        {
+          "code": "java.method.returnTypeChanged",
+          "old": "method dev.langchain4j.model.chat.request.ChatRequestParameters dev.langchain4j.model.anthropic.AnthropicChatModel::defaultRequestParameters()",
+          "new": "method dev.langchain4j.model.anthropic.AnthropicChatRequestParameters dev.langchain4j.model.anthropic.AnthropicChatModel::defaultRequestParameters()",
+          "justification": "Narrowing the return type to the Anthropic-specific AnthropicChatRequestParameters subtype is source- and binary-compatible"
+        },
+        {
+          "code": "java.method.returnTypeChanged",
+          "old": "method dev.langchain4j.model.chat.request.ChatRequestParameters dev.langchain4j.model.anthropic.AnthropicStreamingChatModel::defaultRequestParameters()",
+          "new": "method dev.langchain4j.model.anthropic.AnthropicChatRequestParameters dev.langchain4j.model.anthropic.AnthropicStreamingChatModel::defaultRequestParameters()",
+          "justification": "Narrowing the return type to the Anthropic-specific AnthropicChatRequestParameters subtype is source- and binary-compatible"
         }
       ]
     }

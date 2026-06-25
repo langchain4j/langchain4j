@@ -8,10 +8,8 @@ import static java.util.Collections.singletonList;
 
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.TokenCredential;
-import com.azure.core.util.Context;
 import com.azure.search.documents.indexes.models.SearchIndex;
 import com.azure.search.documents.models.*;
-import com.azure.search.documents.util.SearchPagedIterable;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -172,7 +170,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         }
 
         List<IndexingResult> indexingResults =
-                searchClient.uploadDocuments(documents).getResults();
+                searchClient.indexDocuments(toUploadBatch(documents)).getResults();
         for (IndexingResult indexingResult : indexingResults) {
             if (!indexingResult.isSucceeded()) {
                 throw new AzureAiSearchRuntimeException("Failed to add content: " + indexingResult.getErrorMessage());
@@ -220,7 +218,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
 
     private List<Content> findRelevantWithFullText(String content, int maxResults, double minScore) {
         SearchPagedIterable searchResults = searchClient.search(
-                content, new SearchOptions().setTop(maxResults).setFilter(searchFilter), Context.NONE);
+                new SearchOptions().setSearchText(content).setTop(maxResults).setFilter(searchFilter));
 
         return mapResultsToContentList(searchResults, AzureAiSearchQueryType.FULL_TEXT, minScore);
     }
@@ -231,15 +229,13 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
 
         VectorizedQuery vectorizedQuery = new VectorizedQuery(vector)
                 .setFields(DEFAULT_FIELD_CONTENT_VECTOR)
-                .setKNearestNeighborsCount(maxResults);
+                .setKNearestNeighbors(maxResults);
 
-        SearchPagedIterable searchResults = searchClient.search(
-                content,
-                new SearchOptions()
-                        .setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery))
-                        .setTop(maxResults)
-                        .setFilter(searchFilter),
-                Context.NONE);
+        SearchPagedIterable searchResults = searchClient.search(new SearchOptions()
+                .setSearchText(content)
+                .setVectorQueries(vectorizedQuery)
+                .setTop(maxResults)
+                .setFilter(searchFilter));
 
         return mapResultsToContentList(searchResults, AzureAiSearchQueryType.HYBRID, minScore);
     }
@@ -250,18 +246,15 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
 
         VectorizedQuery vectorizedQuery = new VectorizedQuery(vector)
                 .setFields(DEFAULT_FIELD_CONTENT_VECTOR)
-                .setKNearestNeighborsCount(maxResults);
+                .setKNearestNeighbors(maxResults);
 
-        SearchPagedIterable searchResults = searchClient.search(
-                content,
-                new SearchOptions()
-                        .setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery))
-                        .setSemanticSearchOptions(
-                                new SemanticSearchOptions().setSemanticConfigurationName(SEMANTIC_SEARCH_CONFIG_NAME))
-                        .setQueryType(com.azure.search.documents.models.QueryType.SEMANTIC)
-                        .setTop(maxResults)
-                        .setFilter(searchFilter),
-                Context.NONE);
+        SearchPagedIterable searchResults = searchClient.search(new SearchOptions()
+                .setSearchText(content)
+                .setVectorQueries(vectorizedQuery)
+                .setSemanticConfigurationName(SEMANTIC_SEARCH_CONFIG_NAME)
+                .setQueryType(com.azure.search.documents.models.QueryType.SEMANTIC)
+                .setTop(maxResults)
+                .setFilter(searchFilter));
 
         return mapResultsToContentList(searchResults, AzureAiSearchQueryType.HYBRID_WITH_RERANKING, minScore);
     }

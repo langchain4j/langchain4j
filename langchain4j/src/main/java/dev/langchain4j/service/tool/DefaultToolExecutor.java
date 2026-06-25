@@ -1,6 +1,7 @@
 package dev.langchain4j.service.tool;
 
 import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
+import static dev.langchain4j.internal.Utils.allConcreteMethods;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -65,10 +66,14 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.propagateToolExecutionExceptions = false;
     }
 
+    public Method originalMethod() {
+        return originalMethod;
+    }
+
     private Method findMethod(Object object, ToolExecutionRequest toolExecutionRequest) {
         String requestedMethodName = toolExecutionRequest.name();
 
-        for (Method method : object.getClass().getDeclaredMethods()) {
+        for (Method method : allConcreteMethods(object.getClass())) {
             if (method.getName().equals(requestedMethodName)) {
                 return method;
             }
@@ -171,6 +176,9 @@ public class DefaultToolExecutor implements ToolExecutor {
     }
 
     private List<Content> toContents(Object result) {
+        if (result == null) {
+            return null;
+        }
         if (result instanceof Image image) {
             return List.of(ImageContent.from(image));
         } else if (result instanceof Content content) {
@@ -190,6 +198,9 @@ public class DefaultToolExecutor implements ToolExecutor {
         if (returnType == void.class) {
             return "Success";
         } else if (returnType == String.class) {
+            if (result == null) {
+                return "null";
+            }
             return (String) result;
         } else {
             return Json.toJson(result);
@@ -237,8 +248,8 @@ public class DefaultToolExecutor implements ToolExecutor {
             } else {
                 P pAnnotation = parameter.getAnnotation(P.class);
                 if (pAnnotation != null && !P.NO_DEFAULT.equals(pAnnotation.defaultValue())) {
-                    arguments[i] = parseDefaultValue(
-                            pAnnotation.defaultValue(), parameterName, parameterClass, parameterType);
+                    arguments[i] =
+                            parseDefaultValue(pAnnotation.defaultValue(), parameterName, parameterClass, parameterType);
                 } else if (parameterClass.isPrimitive()) {
                     throw new IllegalArgumentException(String.format(
                             "Required parameter \"%s\" of tool \"%s\" is missing", parameterName, toolName));

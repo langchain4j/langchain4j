@@ -1807,8 +1807,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         if (maxOutputTokens != null) {
             assertOutputTokenCount(tokenUsage, maxOutputTokens);
         }
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+        assertTotalTokenCount(tokenUsage);
     }
 
     protected Class<? extends TokenUsage> tokenUsageType(M model) {
@@ -1817,5 +1816,10 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     protected void assertOutputTokenCount(TokenUsage tokenUsage, Integer maxOutputTokens) {
         assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxOutputTokens);
+    }
+
+    protected void assertTotalTokenCount(TokenUsage tokenUsage) {
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
     }
 }

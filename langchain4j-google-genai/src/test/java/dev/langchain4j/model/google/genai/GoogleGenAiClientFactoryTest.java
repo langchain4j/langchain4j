@@ -10,21 +10,22 @@ class GoogleGenAiClientFactoryTest {
 
     @Test
     void should_create_client_with_api_key() {
-        Client client = GoogleGenAiClientFactory.createClient("test-api-key", null, null, null, null);
+        Client client = GoogleGenAiClientFactory.createClient("test-api-key", null, null, null, null, null, null);
 
         assertThat(client).isNotNull();
     }
 
     @Test
     void should_create_client_with_timeout() {
-        Client client = GoogleGenAiClientFactory.createClient("test-api-key", null, null, null, Duration.ofSeconds(30));
+        Client client = GoogleGenAiClientFactory.createClient(
+                "test-api-key", null, null, null, Duration.ofSeconds(30), null, null);
 
         assertThat(client).isNotNull();
     }
 
     @Test
     void should_create_client_without_timeout() {
-        Client client = GoogleGenAiClientFactory.createClient("test-api-key", null, null, null, null);
+        Client client = GoogleGenAiClientFactory.createClient("test-api-key", null, null, null, null, null, null);
 
         assertThat(client).isNotNull();
     }

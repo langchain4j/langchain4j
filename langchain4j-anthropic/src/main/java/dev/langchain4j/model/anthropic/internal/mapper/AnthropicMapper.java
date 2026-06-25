@@ -412,15 +412,19 @@ public class AnthropicMapper {
 
         boolean strict = isEffectivelyStrict(toolSpecification, Boolean.TRUE.equals(strictTools));
 
+        AnthropicToolSchema.Builder inputSchemaBuilder = AnthropicToolSchema.builder()
+                .properties(parameters != null ? toMap(parameters.properties(), strict) : emptyMap())
+                .required(parameters != null ? parameters.required() : emptyList())
+                .additionalProperties(strict ? Boolean.FALSE : null);
+        if (parameters != null && !parameters.definitions().isEmpty()) {
+            inputSchemaBuilder.defs(mapDefs(parameters.definitions()));
+        }
+
         AnthropicTool.Builder toolBuilder = AnthropicTool.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())
                 .strict(strict ? Boolean.TRUE : null)
-                .inputSchema(AnthropicToolSchema.builder()
-                        .properties(parameters != null ? toMap(parameters.properties(), strict) : emptyMap())
-                        .required(parameters != null ? parameters.required() : emptyList())
-                        .additionalProperties(strict ? Boolean.FALSE : null)
-                        .build());
+                .inputSchema(inputSchemaBuilder.build());
 
         if (cacheToolsPrompt != AnthropicCacheType.NO_CACHE) {
             toolBuilder.cacheControl(cacheToolsPrompt.cacheControl());

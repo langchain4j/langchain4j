@@ -108,6 +108,13 @@ class GoogleGenAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
+    protected void assertTotalTokenCount(TokenUsage tokenUsage) {
+        // total token count can be more than input+output due to thinking/reasoning
+        assertThat(tokenUsage.totalTokenCount())
+                .isGreaterThanOrEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+    }
+
+    @Override
     public StreamingChatModel createModelWith(ChatModelListener listener) {
         return GoogleGenAiStreamingChatModel.builder()
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))

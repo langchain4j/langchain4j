@@ -75,6 +75,28 @@ class AgentUtilTest {
     }
 
     @Test
+    void should_coerce_integer_to_short() throws Exception {
+        DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
+        scope.writeState("count", 42);
+
+        AgentInvocationArguments args =
+                AgentUtil.agentInvocationArguments(scope, List.of(new AgentArgument(short.class, "count")));
+
+        assertThat(args.positionalArgs()[0]).isEqualTo((short) 42);
+    }
+
+    @Test
+    void should_coerce_integer_to_byte() throws Exception {
+        DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
+        scope.writeState("count", 42);
+
+        AgentInvocationArguments args =
+                AgentUtil.agentInvocationArguments(scope, List.of(new AgentArgument(byte.class, "count")));
+
+        assertThat(args.positionalArgs()[0]).isEqualTo((byte) 42);
+    }
+
+    @Test
     void should_throw_when_json_string_is_invalid_for_target_type() {
         DefaultAgenticScope scope = DefaultAgenticScope.ephemeralAgenticScope();
         scope.writeState("person", "not-valid-json");

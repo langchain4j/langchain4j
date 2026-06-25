@@ -315,25 +315,53 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     streamingHandle = toStreamingHandle(context.parsingHandle());
                 }
 
-                AnthropicStreamingData data = fromJson(event.data(), AnthropicStreamingData.class);
+                String eventName = event.event();
+                String eventData = event.data();
 
-                if ("message_start".equals(event.event())) {
+                // OpenAI-compatible gateways in front of Claude may emit a trailing
+                // "data: [DONE]" sentinel or frames with an unknown/missing event name.
+                // Skip them gracefully instead of attempting to deserialize as
+                // AnthropicStreamingData, which would throw MismatchedInputException.
+                if (isSkippableSseFrame(eventName, eventData)) {
+                    rawServerSentEvents.add(event);
+                    return;
+                }
+
+                AnthropicStreamingData data = fromJson(eventData, AnthropicStreamingData.class);
+
+                if ("message_start".equals(eventName)) {
                     handleMessageStart(data);
-                } else if ("content_block_start".equals(event.event())) {
+                } else if ("content_block_start".equals(eventName)) {
                     handleContentBlockStart(data, streamingHandle);
-                } else if ("content_block_delta".equals(event.event())) {
+                } else if ("content_block_delta".equals(eventName)) {
                     handleContentBlockDelta(data, streamingHandle);
-                } else if ("content_block_stop".equals(event.event())) {
+                } else if ("content_block_stop".equals(eventName)) {
                     handleContentBlockStop(data, streamingHandle);
-                } else if ("message_delta".equals(event.event())) {
+                } else if ("message_delta".equals(eventName)) {
                     handleMessageDelta(data);
-                } else if ("message_stop".equals(event.event())) {
+                } else if ("message_stop".equals(eventName)) {
                     handleMessageStop();
-                } else if ("error".equals(event.event())) {
+                } else if ("error".equals(eventName)) {
                     handleError(data);
                 }
 
                 rawServerSentEvents.add(event);
+            }
+
+            private static boolean isSkippableSseFrame(String eventName, String eventData) {
+                if (eventName == null) {
+                    return true;
+                }
+                if (eventData == null) {
+                    return true;
+                }
+                String trimmed = eventData.trim();
+                if (trimmed.isEmpty() || "[DONE]".equals(trimmed)) {
+                    return true;
+                }
+                // Anthropic SSE payloads are JSON objects; anything else (arrays, scalars)
+                // cannot be deserialized into AnthropicStreamingData.
+                return !trimmed.startsWith("{");
             }
 
             private void handleMessageStart(AnthropicStreamingData data) {

@@ -4,7 +4,6 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.net.HttpURLConnection.HTTP_OK;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.Collections.unmodifiableCollection;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
@@ -14,6 +13,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.net.HttpURLConnection;
 import java.net.URI;
@@ -25,6 +25,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
@@ -551,6 +552,61 @@ public class Utils {
             }
         }
         return Optional.empty();
+    }
+
+    private record MethodSignature(String name, List<Class<?>> params) {}
+
+    /**
+     * Returns all concrete methods from the given class, its superclasses (excluding {@link Object}),
+     * and default/static methods from implemented interfaces.
+     * If a subclass overrides a method, only the subclass version is included.
+     * Bridge and synthetic methods are filtered out.
+     */
+    public static List<Method> allConcreteMethods(Class<?> clazz) {
+        List<Method> allMethods = new ArrayList<>();
+        Set<MethodSignature> seen = new HashSet<>();
+        Class<?> current = clazz;
+        while (current != null && current != Object.class) {
+            collectConcreteMethods(current, seen, allMethods);
+            current = current.getSuperclass();
+        }
+        collectInterfaceMethods(clazz, seen, allMethods, new HashSet<>());
+        return List.copyOf(allMethods);
+    }
+
+    private static void collectConcreteMethods(Class<?> clazz, Set<MethodSignature> seen, List<Method> result) {
+        for (Method method : clazz.getDeclaredMethods()) {
+            if (method.isBridge() || method.isSynthetic()) {
+                continue;
+            }
+            MethodSignature sig = new MethodSignature(method.getName(), List.of(method.getParameterTypes()));
+            if (seen.add(sig)) {
+                result.add(method);
+            }
+        }
+    }
+
+    private static void collectInterfaceMethods(Class<?> clazz, Set<MethodSignature> seen,
+                                                List<Method> result, Set<Class<?>> visited) {
+        if (clazz == null) {
+            return;
+        }
+        for (Class<?> iface : clazz.getInterfaces()) {
+            if (!visited.add(iface)) {
+                continue;
+            }
+            for (Method method : iface.getDeclaredMethods()) {
+                if (method.isBridge() || method.isSynthetic() || Modifier.isAbstract(method.getModifiers())) {
+                    continue;
+                }
+                MethodSignature sig = new MethodSignature(method.getName(), List.of(method.getParameterTypes()));
+                if (seen.add(sig)) {
+                    result.add(method);
+                }
+            }
+            collectInterfaceMethods(iface, seen, result, visited);
+        }
+        collectInterfaceMethods(clazz.getSuperclass(), seen, result, visited);
     }
 
     /**
