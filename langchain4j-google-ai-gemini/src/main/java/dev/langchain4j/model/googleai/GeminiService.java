@@ -27,7 +27,7 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
-import dev.langchain4j.internal.ExposureTrackingStreamingChatResponseHandler;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -217,8 +217,8 @@ class GeminiService {
 
         httpClient.execute(httpRequest, new ServerSentEventListener() {
 
-            final ExposureTrackingStreamingChatResponseHandler handler =
-                    new ExposureTrackingStreamingChatResponseHandler(targetHandler);
+            final MappingTrackingStreamingChatResponseHandler handler =
+                    new MappingTrackingStreamingChatResponseHandler(targetHandler);
 
             AtomicInteger toolIndex = new AtomicInteger(0);
             volatile StreamingHandle streamingHandle;
@@ -234,7 +234,7 @@ class GeminiService {
                     streamingHandle = toStreamingHandle(context.parsingHandle());
                 }
 
-                handler.resetExposureTracking();
+                handler.resetMappingTracking();
 
                 GeminiGenerateContentResponse response = fromJson(event.data(), GeminiGenerateContentResponse.class);
                 GeminiStreamingResponseBuilder.TextAndTools textAndTools = responseBuilder.append(response);
@@ -254,7 +254,7 @@ class GeminiService {
                     toolIndex.incrementAndGet();
                 }
 
-                if (!handler.wasExposed()) {
+                if (!handler.wasMapped()) {
                     onUnmappedRawEvent(handler, event);
                 }
             }

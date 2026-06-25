@@ -38,7 +38,7 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
-import dev.langchain4j.internal.ExposureTrackingStreamingChatResponseHandler;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.anthropic.AnthropicChatResponseMetadata;
 import dev.langchain4j.model.anthropic.AnthropicServerToolResult;
@@ -273,8 +273,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
         ServerSentEventListener eventListener = new ServerSentEventListener() {
 
-            final ExposureTrackingStreamingChatResponseHandler handler =
-                    new ExposureTrackingStreamingChatResponseHandler(targetHandler);
+            final MappingTrackingStreamingChatResponseHandler handler =
+                    new MappingTrackingStreamingChatResponseHandler(targetHandler);
 
             final List<String> contents = synchronizedList(new ArrayList<>());
             final StringBuffer contentBuilder = new StringBuffer();
@@ -322,7 +322,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     streamingHandle = toStreamingHandle(context.parsingHandle());
                 }
 
-                handler.resetExposureTracking();
+                handler.resetMappingTracking();
 
                 String eventName = event.event();
                 String eventData = event.data();
@@ -356,7 +356,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
                 rawServerSentEvents.add(event);
 
-                if (!handler.wasExposed()) {
+                if (!handler.wasMapped()) {
                     onUnmappedRawEvent(handler, event);
                 }
             }

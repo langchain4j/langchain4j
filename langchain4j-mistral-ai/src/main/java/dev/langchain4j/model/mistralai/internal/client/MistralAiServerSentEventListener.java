@@ -22,7 +22,7 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
-import dev.langchain4j.internal.ExposureTrackingStreamingChatResponseHandler;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -51,7 +51,7 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
     private final StringBuffer thinkingBuilder;
     private final boolean returnThinking;
 
-    private final ExposureTrackingStreamingChatResponseHandler handler;
+    private final MappingTrackingStreamingChatResponseHandler handler;
 
     private List<ToolExecutionRequest> toolExecutionRequests;
     private TokenUsage tokenUsage;
@@ -68,7 +68,7 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
         this.textBuilder = new StringBuffer();
         this.thinkingBuilder = returnThinking ? new StringBuffer() : null;
         this.returnThinking = returnThinking;
-        this.handler = new ExposureTrackingStreamingChatResponseHandler(handler);
+        this.handler = new MappingTrackingStreamingChatResponseHandler(handler);
     }
 
     @Override
@@ -88,7 +88,7 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
         }
 
         rawServerSentEvents.add(event);
-        handler.resetExposureTracking();
+        handler.resetMappingTracking();
 
         String data = event.data();
         if ("[DONE]".equals(data)) {
@@ -147,7 +147,7 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
             }
         }
 
-        if (!handler.wasExposed()) {
+        if (!handler.wasMapped()) {
             onUnmappedRawEvent(handler, event);
         }
     }

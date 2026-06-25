@@ -14,80 +14,81 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 /**
  * Delegating {@link StreamingChatResponseHandler} that records whether the underlying handler received
  * any typed, user-facing callback (partial response/thinking/tool call, complete tool call, complete response
- * or error) while processing a single provider streaming event.
+ * or error) while processing a single provider streaming event - i.e. whether the event was mapped to a
+ * typed callback.
  * <p>
  * Providers use this to decide whether to additionally surface a raw event via
- * {@link StreamingChatResponseHandler#onUnmappedRawEvent(Object)}: a raw event should only be emitted for events that
- * are <b>not</b> already exposed to the user through one of the typed callbacks. Forwarding a raw event (via
- * {@link #onUnmappedRawEvent(Object)}) does not count as exposure.
+ * {@link StreamingChatResponseHandler#onUnmappedRawEvent(Object)}: a raw event should only be emitted for events
+ * that were <b>not</b> mapped to a typed callback. Forwarding a raw event (via {@link #onUnmappedRawEvent(Object)})
+ * does not count as a mapping.
  * <p>
  * Not thread-safe: it assumes a provider processes streaming events one at a time and calls
- * {@link #resetExposureTracking()} before each event.
+ * {@link #resetMappingTracking()} before each event.
  */
 @Internal
-public class ExposureTrackingStreamingChatResponseHandler implements StreamingChatResponseHandler {
+public class MappingTrackingStreamingChatResponseHandler implements StreamingChatResponseHandler {
 
     private final StreamingChatResponseHandler delegate;
-    private boolean exposed;
+    private boolean mapped;
 
-    public ExposureTrackingStreamingChatResponseHandler(StreamingChatResponseHandler delegate) {
+    public MappingTrackingStreamingChatResponseHandler(StreamingChatResponseHandler delegate) {
         this.delegate = delegate;
     }
 
     /**
-     * Resets exposure tracking. Must be called before processing each provider streaming event.
+     * Resets mapping tracking. Must be called before processing each provider streaming event.
      */
-    public void resetExposureTracking() {
-        this.exposed = false;
+    public void resetMappingTracking() {
+        this.mapped = false;
     }
 
     /**
      * @return {@code true} if a typed, user-facing callback was invoked since the last
-     * {@link #resetExposureTracking()}.
+     * {@link #resetMappingTracking()}.
      */
-    public boolean wasExposed() {
-        return exposed;
+    public boolean wasMapped() {
+        return mapped;
     }
 
     @Override
     public void onPartialResponse(String partialResponse) {
-        exposed = true;
+        mapped = true;
         delegate.onPartialResponse(partialResponse);
     }
 
     @Override
     public void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {
-        exposed = true;
+        mapped = true;
         delegate.onPartialResponse(partialResponse, context);
     }
 
     @Override
     public void onPartialThinking(PartialThinking partialThinking) {
-        exposed = true;
+        mapped = true;
         delegate.onPartialThinking(partialThinking);
     }
 
     @Override
     public void onPartialThinking(PartialThinking partialThinking, PartialThinkingContext context) {
-        exposed = true;
+        mapped = true;
         delegate.onPartialThinking(partialThinking, context);
     }
 
     @Override
     public void onPartialToolCall(PartialToolCall partialToolCall) {
-        exposed = true;
+        mapped = true;
         delegate.onPartialToolCall(partialToolCall);
     }
 
     @Override
     public void onPartialToolCall(PartialToolCall partialToolCall, PartialToolCallContext context) {
-        exposed = true;
+        mapped = true;
         delegate.onPartialToolCall(partialToolCall, context);
     }
 
     @Override
     public void onCompleteToolCall(CompleteToolCall completeToolCall) {
-        exposed = true;
+        mapped = true;
         delegate.onCompleteToolCall(completeToolCall);
     }
 
@@ -98,13 +99,13 @@ public class ExposureTrackingStreamingChatResponseHandler implements StreamingCh
 
     @Override
     public void onCompleteResponse(ChatResponse completeResponse) {
-        exposed = true;
+        mapped = true;
         delegate.onCompleteResponse(completeResponse);
     }
 
     @Override
     public void onError(Throwable error) {
-        exposed = true;
+        mapped = true;
         delegate.onError(error);
     }
 }

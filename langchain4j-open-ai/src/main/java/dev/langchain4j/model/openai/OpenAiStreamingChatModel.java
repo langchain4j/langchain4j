@@ -24,7 +24,7 @@ import static java.util.Arrays.asList;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ExceptionMapper;
-import dev.langchain4j.internal.ExposureTrackingStreamingChatResponseHandler;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -158,16 +158,16 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 new OpenAiStreamingResponseBuilder(returnThinking, accumulateToolCallId);
         ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
 
-        ExposureTrackingStreamingChatResponseHandler trackingHandler =
-                new ExposureTrackingStreamingChatResponseHandler(handler);
+        MappingTrackingStreamingChatResponseHandler trackingHandler =
+                new MappingTrackingStreamingChatResponseHandler(handler);
 
         client.chatCompletion(openAiRequest)
                 .onRawPartialResponse(parsedAndRawResponse -> {
-                    trackingHandler.resetExposureTracking();
+                    trackingHandler.resetMappingTracking();
                     openAiResponseBuilder.append(parsedAndRawResponse);
                     handle(parsedAndRawResponse, toolCallBuilder, trackingHandler);
 
-                    if (!trackingHandler.wasExposed()) {
+                    if (!trackingHandler.wasMapped()) {
                         onUnmappedRawEvent(trackingHandler, parsedAndRawResponse.rawServerSentEvent());
                     }
                 })

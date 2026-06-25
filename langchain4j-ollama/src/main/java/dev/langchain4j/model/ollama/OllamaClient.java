@@ -34,7 +34,7 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
-import dev.langchain4j.internal.ExposureTrackingStreamingChatResponseHandler;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -180,8 +180,8 @@ class OllamaClient {
 
         httpClient.execute(httpRequest, new OllamaServerSentEventParser(), new ServerSentEventListener() {
 
-            final ExposureTrackingStreamingChatResponseHandler handler =
-                    new ExposureTrackingStreamingChatResponseHandler(targetHandler);
+            final MappingTrackingStreamingChatResponseHandler handler =
+                    new MappingTrackingStreamingChatResponseHandler(targetHandler);
             final ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
             final OllamaStreamingResponseBuilder responseBuilder =
                     new OllamaStreamingResponseBuilder(toolCallBuilder, returnThinking);
@@ -198,7 +198,7 @@ class OllamaClient {
                     streamingHandle = toStreamingHandle(context.parsingHandle());
                 }
 
-                handler.resetExposureTracking();
+                handler.resetMappingTracking();
 
                 OllamaChatResponse ollamaChatResponse = fromJson(event.data(), OllamaChatResponse.class);
 
@@ -256,7 +256,7 @@ class OllamaClient {
                     onCompleteResponse(handler, completeResponse);
                 }
 
-                if (!handler.wasExposed()) {
+                if (!handler.wasMapped()) {
                     onUnmappedRawEvent(handler, event);
                 }
             }

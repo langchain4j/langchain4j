@@ -16,7 +16,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.DefaultExecutorProvider;
-import dev.langchain4j.internal.ExposureTrackingStreamingChatResponseHandler;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -142,8 +142,8 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     config);
         }
 
-        ExposureTrackingStreamingChatResponseHandler trackingHandler =
-                new ExposureTrackingStreamingChatResponseHandler(handler);
+        MappingTrackingStreamingChatResponseHandler trackingHandler =
+                new MappingTrackingStreamingChatResponseHandler(handler);
 
         executor.execute(() -> {
             try {
@@ -160,7 +160,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 int toolIndex = 0;
 
                 for (GenerateContentResponse chunk : stream) {
-                    trackingHandler.resetExposureTracking();
+                    trackingHandler.resetMappingTracking();
                     lastChunk = chunk;
                     ChatResponse partialResponse = GoogleGenAiContentMapper.toChatResponse(chunk, modelName);
                     AiMessage aiMessage = partialResponse.aiMessage();
@@ -200,7 +200,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                         }
                     }
 
-                    if (!trackingHandler.wasExposed()) {
+                    if (!trackingHandler.wasMapped()) {
                         onUnmappedRawEvent(trackingHandler, chunk);
                     }
                 }

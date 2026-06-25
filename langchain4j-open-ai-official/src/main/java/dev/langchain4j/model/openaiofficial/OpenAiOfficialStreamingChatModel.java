@@ -21,7 +21,7 @@ import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import com.openai.models.chat.completions.ChatCompletionStreamOptions;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.internal.ExposureTrackingStreamingChatResponseHandler;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.TokenCountEstimator;
@@ -113,8 +113,8 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
             ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
             AtomicReference<StreamingHandle> streamingHandle = new AtomicReference<>();
 
-            ExposureTrackingStreamingChatResponseHandler trackingHandler =
-                    new ExposureTrackingStreamingChatResponseHandler(handler);
+            MappingTrackingStreamingChatResponseHandler trackingHandler =
+                    new MappingTrackingStreamingChatResponseHandler(handler);
 
             AsyncStreamResponse<ChatCompletionChunk> asyncStreamResponse = asyncClient
                     .chat()
@@ -124,7 +124,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
 
                         @Override
                         public void onNext(ChatCompletionChunk completion) {
-                            trackingHandler.resetExposureTracking();
+                            trackingHandler.resetMappingTracking();
                             manageChatCompletionChunks(
                                     completion,
                                     trackingHandler,
@@ -133,7 +133,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                                     textBuilder,
                                     toolCallBuilder);
 
-                            if (!trackingHandler.wasExposed()) {
+                            if (!trackingHandler.wasMapped()) {
                                 onUnmappedRawEvent(trackingHandler, completion);
                             }
                         }

@@ -73,7 +73,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.internal.ExceptionMapper;
-import dev.langchain4j.internal.ExposureTrackingStreamingChatResponseHandler;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolSpecificationUtils;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
@@ -1057,7 +1057,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     // visible for testing
     static class ResponsesEventHandler {
 
-        private final ExposureTrackingStreamingChatResponseHandler handler;
+        private final MappingTrackingStreamingChatResponseHandler handler;
         private final AtomicReference<String> responseIdRef;
         private final String modelName;
         private final StreamingHandle streamingHandle;
@@ -1075,7 +1075,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 AtomicReference<String> responseIdRef,
                 String modelName,
                 StreamingHandle streamingHandle) {
-            this.handler = new ExposureTrackingStreamingChatResponseHandler(handler);
+            this.handler = new MappingTrackingStreamingChatResponseHandler(handler);
             this.responseIdRef = responseIdRef;
             this.modelName = modelName;
             this.streamingHandle = streamingHandle;
@@ -1087,7 +1087,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             }
 
             try {
-                handler.resetExposureTracking();
+                handler.resetMappingTracking();
 
                 if (event.isCreated()) {
                     handleCreated(event.asCreated());
@@ -1115,7 +1115,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                     handleIncomplete(event.asIncomplete());
                 }
 
-                if (!handler.wasExposed()) {
+                if (!handler.wasMapped()) {
                     onUnmappedRawEvent(handler, event);
                 }
             } catch (RuntimeException e) {
