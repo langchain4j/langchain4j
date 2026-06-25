@@ -46,6 +46,7 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
     private final boolean sendThinking;
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
+    private final boolean strictJsonSchema;
     private final ChatRequestParameters defaultRequestParameters;
 
     @SuppressWarnings({"unchecked"})
@@ -66,6 +67,7 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
         this.sendThinking = getOrDefault(builder.sendThinking, false);
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
+        this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.defaultRequestParameters = initDefaultRequestParameters(builder);
     }
 
@@ -98,7 +100,7 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
         validate(chatRequest.parameters());
 
         MistralAiChatCompletionRequest request =
-                createMistralAiRequest(chatRequest, safePrompt, randomSeed, true, sendThinking, false);
+                createMistralAiRequest(chatRequest, safePrompt, randomSeed, true, sendThinking, strictJsonSchema);
         client.streamingChatCompletion(request, handler, returnThinking);
     }
 
@@ -153,6 +155,7 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
         private Logger logger;
         private List<ChatModelListener> listeners;
         private Set<Capability> supportedCapabilities;
+        private Boolean strictJsonSchema;
         private ChatRequestParameters defaultRequestParameters;
         private Supplier<Map<String, String>> customHeadersSupplier;
 
@@ -325,6 +328,11 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
 
         public MistralAiStreamingChatModelBuilder supportedCapabilities(Set<Capability> supportedCapabilities) {
             this.supportedCapabilities = Set.copyOf(supportedCapabilities);
+            return this;
+        }
+
+        public MistralAiStreamingChatModelBuilder strictJsonSchema(Boolean strictJsonSchema) {
+            this.strictJsonSchema = strictJsonSchema;
             return this;
         }
 
