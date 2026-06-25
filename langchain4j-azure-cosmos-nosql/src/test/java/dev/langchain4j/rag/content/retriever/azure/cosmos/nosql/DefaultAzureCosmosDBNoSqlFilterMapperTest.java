@@ -140,6 +140,27 @@ class DefaultAzureCosmosDBNoSqlFilterMapperTest {
     }
 
     @Test
+    void map_escapesDoubleQuotesInValue() {
+        IsEqualTo filter = new IsEqualTo("size", "12\"display");
+        String result = mapper.map(filter);
+        assertThat(result).isEqualTo("c.size = \"12\\\"display\"");
+    }
+
+    @Test
+    void map_escapesBackslashInValue() {
+        IsEqualTo filter = new IsEqualTo("path", "a\\b");
+        String result = mapper.map(filter);
+        assertThat(result).isEqualTo("c.path = \"a\\\\b\"");
+    }
+
+    @Test
+    void map_escapesDoubleQuotesInContainsString() {
+        ContainsString filter = new ContainsString("desc", "a\"b");
+        String result = mapper.map(filter);
+        assertThat(result).isEqualTo("CONTAINS(c.desc, \"a\\\"b\")");
+    }
+
+    @Test
     void map_throwsExceptionForUnsupportedFilter() {
         Filter unsupportedFilter = new Filter() {
             @Override
