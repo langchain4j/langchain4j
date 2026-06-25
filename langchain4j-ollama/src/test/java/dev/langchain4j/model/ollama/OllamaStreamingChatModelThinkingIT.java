@@ -96,7 +96,10 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
         boolean think = true;
         boolean returnThinking = false;
 
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+
         StreamingChatModel model = OllamaStreamingChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(MODEL_NAME)
 
@@ -127,7 +130,10 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
         verify(spyHandler).get();
         verifyNoMoreInteractions(spyHandler);
 
-        // TODO verify that raw SSE events contain "thinking" field and that it is not sent back on the follow-up request
+        // verify that raw SSE events contain "thinking" field
+        List<String> sseEvents = spyingHttpClient.sseEvents();
+        assertThat(sseEvents).isNotEmpty();
+        assertThat(sseEvents.stream().anyMatch(e -> e.contains("thinking"))).isTrue();
     }
 
     @Test
@@ -136,7 +142,10 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
         // given
         boolean think = false;
 
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+
         StreamingChatModel model = OllamaStreamingChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
                 .baseUrl(ollamaBaseUrl(ollama))
                 .modelName(MODEL_NAME)
 
@@ -166,7 +175,10 @@ class OllamaStreamingChatModelThinkingIT extends AbstractOllamaThinkingModelInfr
         verify(spyHandler).get();
         verifyNoMoreInteractions(spyHandler);
 
-        // TODO verify that raw SSE events do not contain "thinking" field
+        // verify that raw SSE events do not contain "thinking" field
+        List<String> sseEvents = spyingHttpClient.sseEvents();
+        assertThat(sseEvents).isNotEmpty();
+        assertThat(sseEvents.stream().noneMatch(e -> e.contains("thinking"))).isTrue();
     }
 
     @Test
