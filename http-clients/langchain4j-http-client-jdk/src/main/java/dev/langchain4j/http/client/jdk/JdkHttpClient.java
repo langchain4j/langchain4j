@@ -21,6 +21,7 @@ import java.net.http.HttpRequest.BodyPublisher;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.net.http.HttpTimeoutException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
 
@@ -51,7 +52,8 @@ public class JdkHttpClient implements HttpClient {
             java.net.http.HttpResponse<byte[]> jdkResponse = delegate.send(jdkRequest, BodyHandlers.ofByteArray());
 
             if (!isSuccessful(jdkResponse)) {
-                throw new HttpException(jdkResponse.statusCode(), new String(jdkResponse.body()));
+                throw new HttpException(
+                        jdkResponse.statusCode(), new String(jdkResponse.body(), StandardCharsets.UTF_8));
             }
 
             return fromJdkResponse(jdkResponse, jdkResponse.body());

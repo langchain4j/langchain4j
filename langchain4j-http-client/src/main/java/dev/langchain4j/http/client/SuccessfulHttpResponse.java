@@ -3,6 +3,7 @@ package dev.langchain4j.http.client;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -12,7 +13,6 @@ public class SuccessfulHttpResponse {
     private final int statusCode;
     private final Map<String, List<String>> headers;
     private final byte[] body;
-    private String cachedStringBody;
 
     public SuccessfulHttpResponse(Builder builder) {
         this.statusCode = ensureBetween(builder.statusCode, 200, 299, "statusCode");
@@ -29,10 +29,7 @@ public class SuccessfulHttpResponse {
     }
 
     public String body() {
-        if (cachedStringBody == null) {
-            cachedStringBody = new String(body);
-        }
-        return cachedStringBody;
+        return new String(body, StandardCharsets.UTF_8);
     }
 
     public byte[] bodyBytes() {
