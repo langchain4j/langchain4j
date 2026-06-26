@@ -27,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @Internal
@@ -79,7 +80,10 @@ class InternalAnthropicHelper {
     }
 
     private static AnthropicContainer toAnthropicContainer(List<AnthropicSkill> skills) {
+        // Drop nulls and duplicates: the API rejects duplicate skill entries, and a null would NPE below.
         List<AnthropicContainerSkill> containerSkills = skills.stream()
+                .filter(Objects::nonNull)
+                .distinct()
                 .map(skill -> new AnthropicContainerSkill(ANTHROPIC_SKILL_TYPE, skill.skillId(), SKILL_VERSION_LATEST))
                 .toList();
         return new AnthropicContainer(containerSkills);
@@ -94,8 +98,16 @@ class InternalAnthropicHelper {
                 .build();
     }
 
+    /**
+     * Detects an already-configured code execution server tool by its {@code type}
+     * (e.g. {@code code_execution_20250825}) rather than by name, so a regular tool that happens to be named
+     * {@code code_execution} does not suppress the server tool that Skills require.
+     */
     private static boolean hasCodeExecutionTool(List<AnthropicTool> tools) {
-        return tools.stream().anyMatch(tool -> CODE_EXECUTION_TOOL_NAME.equals(tool.name));
+        return tools.stream()
+                .anyMatch(tool -> tool.customParameters() != null
+                        && tool.customParameters().get("type") instanceof String type
+                        && type.startsWith(CODE_EXECUTION_TOOL_NAME));
     }
 
     static void validate(ChatRequestParameters parameters) {
@@ -159,9 +171,12 @@ class InternalAnthropicHelper {
                     chatRequest.toolSpecifications(), toolsCacheType, toolMetadataKeysToSend, strictTools));
         }
         if (!isNullOrEmpty(skills)) {
-            requestBuilder.container(toAnthropicContainer(skills));
-            if (!hasCodeExecutionTool(tools)) {
-                tools.add(codeExecutionTool());
+            AnthropicContainer container = toAnthropicContainer(skills);
+            if (!isNullOrEmpty(container.skills)) {
+                requestBuilder.container(container);
+                if (!hasCodeExecutionTool(tools)) {
+                    tools.add(codeExecutionTool());
+                }
             }
         }
         if (!tools.isEmpty()) {

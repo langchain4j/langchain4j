@@ -4,8 +4,10 @@ import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.addSkillsB
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createAnthropicRequest;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.NO_CACHE;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContainer.AnthropicContainerSkill;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
@@ -13,6 +15,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
 import dev.langchain4j.model.anthropic.internal.client.Json;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -78,6 +81,63 @@ class AnthropicSkillsTest {
                 null);
 
         assertThat(request.tools).extracting(tool -> tool.name).containsExactly("code_execution");
+    }
+
+    @Test
+    void skills_shouldStillAddServerToolWhenRegularToolIsNamedCodeExecution() {
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Create a spreadsheet"))
+                .parameters(ChatRequestParameters.builder()
+                        .modelName("claude-opus-4-8")
+                        .maxOutputTokens(4096)
+                        .toolSpecifications(ToolSpecification.builder()
+                                .name("code_execution")
+                                .description("a user-defined tool that merely shares the name")
+                                .build())
+                        .build())
+                .build();
+
+        AnthropicCreateMessageRequest request = createAnthropicRequest(
+                chatRequest,
+                null,
+                true,
+                NO_CACHE,
+                NO_CACHE,
+                false,
+                null,
+                null,
+                null,
+                emptySet(),
+                null,
+                List.of(AnthropicSkill.XLSX),
+                null,
+                null);
+
+        // the regular tool name must not suppress the required code_execution server tool
+        assertThat(request.tools)
+                .anyMatch(tool -> "code_execution".equals(tool.name)
+                        && tool.customParameters() != null
+                        && "code_execution_20250825"
+                                .equals(tool.customParameters().get("type")));
+    }
+
+    @Test
+    void skills_shouldDeduplicate() {
+        AnthropicCreateMessageRequest request =
+                requestWithSkills(List.of(AnthropicSkill.PDF, AnthropicSkill.PDF, AnthropicSkill.DOCX));
+
+        assertThat(request.container.skills)
+                .containsExactly(
+                        new AnthropicContainerSkill("anthropic", "pdf", "latest"),
+                        new AnthropicContainerSkill("anthropic", "docx", "latest"));
+    }
+
+    @Test
+    void skills_shouldIgnoreNullEntries() {
+        AnthropicCreateMessageRequest request = requestWithSkills(Arrays.asList(AnthropicSkill.XLSX, null));
+
+        assertThat(request.container.skills)
+                .containsExactly(new AnthropicContainerSkill("anthropic", "xlsx", "latest"));
     }
 
     @Test
