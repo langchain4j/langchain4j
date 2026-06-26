@@ -86,8 +86,9 @@ class QdrantFilterConverter {
             return ConditionFactory.match(key, lValue);
         } else if (value instanceof Float || value instanceof Double) {
             // Qdrant's Match proto has no float/double field, so equality is expressed as a Range
-            // where gte == lte == value.
-            double dValue = Double.parseDouble(value.toString());
+            // where gte == lte == value. Convert via doubleValue() (not the string form) so the bound
+            // matches how a Float is stored: ValueMapFactory widens it through ValueFactory.value(double).
+            double dValue = ((Number) value).doubleValue();
             return ConditionFactory.range(
                     key, Common.Range.newBuilder().setGte(dValue).setLte(dValue).build());
         }
@@ -114,8 +115,9 @@ class QdrantFilterConverter {
                     Common.Filter.newBuilder().addMustNot(condition).build());
         } else if (value instanceof Float || value instanceof Double) {
             // Qdrant's Match proto has no float/double field, so inequality is expressed as a
-            // must_not Range where gte == lte == value.
-            double dValue = Double.parseDouble(value.toString());
+            // must_not Range where gte == lte == value. Convert via doubleValue() (not the string form)
+            // so the bound matches how a Float is stored: widened through ValueFactory.value(double).
+            double dValue = ((Number) value).doubleValue();
             Condition condition = ConditionFactory.range(
                     key, Common.Range.newBuilder().setGte(dValue).setLte(dValue).build());
             return ConditionFactory.filter(
