@@ -1,7 +1,6 @@
 package dev.langchain4j.model.openai.internal;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -16,7 +15,6 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
@@ -25,24 +23,14 @@ public final class ChatCompletionEventDispatcher {
 
     private ChatCompletionEventDispatcher() {}
 
+    /**
+     * Dispatches the typed events contained in a single streaming chunk to {@code handler}. It does not surface
+     * unmapped/raw events: callers wrap {@code handler} in a
+     * {@link dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler} and, when nothing was mapped,
+     * emit the raw event themselves (see
+     * {@link dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils#onUnmappedRawEvent}).
+     */
     public static void handle(
-            ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse,
-            ToolCallBuilder toolCallBuilder,
-            StreamingChatResponseHandler handler,
-            boolean returnThinking) {
-
-        boolean dispatched = dispatchTyped(parsedAndRawResponse, toolCallBuilder, handler, returnThinking);
-
-        if (!dispatched) {
-            ServerSentEvent rawServerSentEvent = parsedAndRawResponse.rawServerSentEvent();
-            if (rawServerSentEvent != null) {
-                onUnmappedRawEvent(handler, rawServerSentEvent);
-            }
-        }
-    }
-
-    /** Dispatches the typed events in the chunk; returns whether at least one typed event was emitted. */
-    private static boolean dispatchTyped(
             ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse,
             ToolCallBuilder toolCallBuilder,
             StreamingChatResponseHandler handler,
@@ -50,36 +38,32 @@ public final class ChatCompletionEventDispatcher {
 
         ChatCompletionResponse partialResponse = parsedAndRawResponse.parsedResponse();
         if (partialResponse == null) {
-            return false;
+            return;
         }
 
         List<ChatCompletionChoice> choices = partialResponse.choices();
         if (isNullOrEmpty(choices)) {
-            return false;
+            return;
         }
 
         ChatCompletionChoice chatCompletionChoice = choices.get(0);
         if (chatCompletionChoice == null) {
-            return false;
+            return;
         }
 
         Delta delta = chatCompletionChoice.delta();
         if (delta == null) {
-            return false;
+            return;
         }
-
-        boolean dispatched = false;
 
         String content = delta.content();
         if (!isNullOrEmpty(content)) {
             onPartialResponse(handler, content, parsedAndRawResponse.streamingHandle());
-            dispatched = true;
         }
 
         String reasoningContent = delta.reasoningContent();
         if (returnThinking && !isNullOrEmpty(reasoningContent)) {
             onPartialThinking(handler, reasoningContent, parsedAndRawResponse.streamingHandle());
-            dispatched = true;
         }
 
         List<ToolCall> toolCalls = delta.toolCalls();
@@ -100,7 +84,6 @@ public final class ChatCompletionEventDispatcher {
                 }
                 if (toolCallBuilder.index() != index) {
                     onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
-                    dispatched = true;
                     toolCallBuilder.updateIndex(index);
                 }
 
@@ -118,11 +101,8 @@ public final class ChatCompletionEventDispatcher {
                             .partialArguments(partialArguments)
                             .build();
                     onPartialToolCall(handler, partialToolRequest, parsedAndRawResponse.streamingHandle());
-                    dispatched = true;
                 }
             }
         }
-
-        return dispatched;
     }
 }

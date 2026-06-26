@@ -5,6 +5,7 @@ import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.openai.internal.ChatCompletionEventDispatcher.handle;
 import static java.time.Duration.ofSeconds;
@@ -17,6 +18,7 @@ import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.StreamingHttpEvent;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.chat.response.StreamingEvent;
 import dev.langchain4j.model.openai.OpenAiStreamingResponseBuilder;
@@ -201,7 +203,8 @@ public class DefaultOpenAiClient extends OpenAiClient {
         private static final String DONE_MARKER = "[DONE]";
 
         private final Tube<StreamingEvent> tube;
-        private final TubeBackedStreamingChatResponseHandler handler;
+        private final TubeBackedStreamingChatResponseHandler tubeHandler;
+        private final MappingTrackingStreamingChatResponseHandler handler;
         private final ChatCompletionOptions options;
         private final ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
         private final OpenAiStreamingResponseBuilder responseBuilder;
@@ -209,7 +212,8 @@ public class DefaultOpenAiClient extends OpenAiClient {
 
         ChatCompletionEventSubscriber(Tube<StreamingEvent> tube, ChatCompletionOptions options) {
             this.tube = ensureNotNull(tube, "tube");
-            this.handler = new TubeBackedStreamingChatResponseHandler(tube);
+            this.tubeHandler = new TubeBackedStreamingChatResponseHandler(tube);
+            this.handler = new MappingTrackingStreamingChatResponseHandler(tubeHandler);
             this.options = ensureNotNull(options, "options");
             this.responseBuilder = new OpenAiStreamingResponseBuilder(options.returnThinking(), options.accumulateToolCallId());
         }
@@ -245,10 +249,14 @@ public class DefaultOpenAiClient extends OpenAiClient {
                                 .parsedResponse(parsed)
                                 .rawHttpResponse(rawHttpResponse)
                                 .rawServerSentEvent(sse)
-                                .streamingHandle(handler.streamingHandle())
+                                .streamingHandle(tubeHandler.streamingHandle())
                                 .build();
+                handler.resetMappingTracking();
                 responseBuilder.append(parsedAndRaw);
                 handle(parsedAndRaw, toolCallBuilder, handler, options.returnThinking());
+                if (!handler.wasMapped()) {
+                    onUnmappedRawEvent(handler, sse);
+                }
             } catch (Exception e) {
                 tube.fail(e);
             }

@@ -2,6 +2,7 @@ package dev.langchain4j.model.openai;
 
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -19,6 +20,7 @@ import static java.util.Arrays.asList;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -146,18 +148,25 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 new OpenAiStreamingResponseBuilder(returnThinking, accumulateToolCallId);
         ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
 
+        MappingTrackingStreamingChatResponseHandler trackingHandler =
+                new MappingTrackingStreamingChatResponseHandler(handler);
+
         client.chatCompletion(openAiRequest)
                 .onRawPartialResponse(parsedAndRawResponse -> {
+                    trackingHandler.resetMappingTracking();
                     openAiResponseBuilder.append(parsedAndRawResponse);
-                    handle(parsedAndRawResponse, toolCallBuilder, handler, returnThinking);
+                    handle(parsedAndRawResponse, toolCallBuilder, trackingHandler, returnThinking);
+                    if (!trackingHandler.wasMapped()) {
+                        onUnmappedRawEvent(trackingHandler, parsedAndRawResponse.rawServerSentEvent());
+                    }
                 })
                 .onComplete(() -> {
                     if (toolCallBuilder.hasRequests()) {
-                        onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
+                        onCompleteToolCall(trackingHandler, toolCallBuilder.buildAndReset());
                     }
 
                     ChatResponse completeResponse = openAiResponseBuilder.build();
-                    onCompleteResponse(handler, completeResponse);
+                    onCompleteResponse(trackingHandler, completeResponse);
                 })
                 .onError(throwable -> {
                     RuntimeException mappedException = ExceptionMapper.DEFAULT.mapException(throwable);
