@@ -61,7 +61,7 @@
         },
         {
           "code": "java.class.externalClassExposedInAPI",
-          "new": "missing-class dev.langchain4j.model.audio.speech.AudioSpeechRequest",
+          "new": "missing-class dev.langchain4j.model.audio.request.AudioSpeechRequest",
           "justification": "AudioSpeechRequest is intentionally exposed by OpenAiAudioSpeechModel because it implements the core AudioSpeechModel API"
         },
         {
