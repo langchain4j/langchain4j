@@ -58,6 +58,11 @@
           "code": "java.field.removed",
           "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_TURBO_PREVIEW",
           "justification": "Deprecated OpenAI model removed"
+        },
+        {
+          "code": "java.method.addedToInterface",
+          "new": "method byte[] dev.langchain4j.model.openai.internal.SyncOrAsync<ResponseContent>::executeInputStream()",
+          "justification": "SyncOrAsync is an internal interface (dev.langchain4j.model.openai.internal); new method added to support audio speech streaming responses"
         }
       ]
     }

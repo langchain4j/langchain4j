@@ -1,9 +1,10 @@
-package dev.langchain4j.model.audio.speech;
+package dev.langchain4j.model.audio;
 
 import static dev.langchain4j.model.ModelProvider.OTHER;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.ModelProvider;
+import dev.langchain4j.model.audio.request.AudioSpeechRequest;
 
 /**
  * A model that can generate audio from text.

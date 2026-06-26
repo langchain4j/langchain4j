@@ -1,4 +1,4 @@
-package dev.langchain4j.model.audio.speech;
+package dev.langchain4j.model.audio.request;
 
 import dev.langchain4j.Experimental;
 

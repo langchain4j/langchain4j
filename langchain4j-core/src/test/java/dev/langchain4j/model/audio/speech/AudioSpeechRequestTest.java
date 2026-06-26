@@ -2,6 +2,7 @@ package dev.langchain4j.model.audio.speech;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.model.audio.request.AudioSpeechRequest;
 import org.junit.jupiter.api.Test;
 
 class AudioSpeechRequestTest {
