@@ -323,6 +323,13 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
             // This is public so it can be extended
         }
 
+        /**
+         * Sets a custom {@link HttpClientBuilder} for the underlying HTTP client.
+         * Use this to configure timeouts, proxies, or other HTTP-level settings.
+         *
+         * @param httpClientBuilder the HTTP client builder
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
             return this;
@@ -339,76 +346,191 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        /**
+         * Sets the model to use for streaming chat completions, specified as a string model ID.
+         * <p>
+         * See {@link OpenAiChatModelName} for available model constants.
+         *
+         * @param modelName the model ID, e.g. {@code "gpt-4o"}
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
+        /**
+         * Sets the model to use for streaming chat completions using a type-safe enum constant.
+         *
+         * @param modelName the model name enum value
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder modelName(OpenAiChatModelName modelName) {
             this.modelName = modelName.toString();
             return this;
         }
 
+        /**
+         * Sets the base URL of the OpenAI-compatible API endpoint.
+         * <p>
+         * Defaults to {@code https://api.openai.com/v1}.
+         * Override this to use OpenAI-compatible providers (e.g. Azure, Ollama, DeepSeek).
+         *
+         * @param baseUrl the base URL
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
 
+        /**
+         * Sets the OpenAI API key used to authenticate requests.
+         * <p>
+         * Alternatively, set the {@code OPENAI_API_KEY} environment variable.
+         *
+         * @param apiKey the API key
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
         }
 
+        /**
+         * Sets the OpenAI organization ID sent in the {@code OpenAI-Organization} request header.
+         * <p>
+         * Required only when your API key belongs to multiple organizations.
+         *
+         * @param organizationId the organization ID
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder organizationId(String organizationId) {
             this.organizationId = organizationId;
             return this;
         }
 
+        /**
+         * Sets the OpenAI project ID sent in the {@code OpenAI-Project} request header.
+         *
+         * @param projectId the project ID
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder projectId(String projectId) {
             this.projectId = projectId;
             return this;
         }
 
+        /**
+         * Sets the sampling temperature in the range {@code [0.0, 2.0]}.
+         * Higher values produce more random output; lower values produce more deterministic output.
+         * <p>
+         * Cannot be used together with {@link #topP(Double)}.
+         *
+         * @param temperature the sampling temperature
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
+        /**
+         * Sets the nucleus sampling probability (top-p).
+         * Only the tokens whose cumulative probability exceeds this threshold are considered.
+         * <p>
+         * Cannot be used together with {@link #temperature(Double)}.
+         *
+         * @param topP the nucleus sampling threshold
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
+        /**
+         * Sets sequences that, when generated, will cause the model to stop generating further tokens.
+         *
+         * @param stop the list of stop sequences
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder stop(List<String> stop) {
             this.stop = stop;
             return this;
         }
 
+        /**
+         * Sets the maximum number of tokens to generate in the response.
+         * <p>
+         * Prefer {@link #maxCompletionTokens(Integer)} for newer models (o-series and later).
+         *
+         * @param maxTokens the maximum number of output tokens
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder maxTokens(Integer maxTokens) {
             this.maxTokens = maxTokens;
             return this;
         }
 
+        /**
+         * Sets the maximum number of tokens that can be generated for a completion, including visible
+         * output tokens and reasoning tokens.
+         * <p>
+         * Use this instead of {@link #maxTokens(Integer)} for o-series reasoning models.
+         *
+         * @param maxCompletionTokens the maximum number of completion tokens
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder maxCompletionTokens(Integer maxCompletionTokens) {
             this.maxCompletionTokens = maxCompletionTokens;
             return this;
         }
 
+        /**
+         * Sets the presence penalty in the range {@code [-2.0, 2.0]}.
+         * Positive values penalize tokens that have already appeared, increasing the model's
+         * likelihood to talk about new topics.
+         *
+         * @param presencePenalty the presence penalty
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder presencePenalty(Double presencePenalty) {
             this.presencePenalty = presencePenalty;
             return this;
         }
 
+        /**
+         * Sets the frequency penalty in the range {@code [-2.0, 2.0]}.
+         * Positive values penalize tokens based on their frequency in the text so far, reducing
+         * the model's likelihood to repeat the same words verbatim.
+         *
+         * @param frequencyPenalty the frequency penalty
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder frequencyPenalty(Double frequencyPenalty) {
             this.frequencyPenalty = frequencyPenalty;
             return this;
         }
 
+        /**
+         * Sets the logit bias to adjust the likelihood of specified tokens appearing in the response.
+         * Map token IDs (as strings) to bias values in the range {@code [-100, 100]}.
+         *
+         * @param logitBias a map of token ID to bias value
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder logitBias(Map<String, Integer> logitBias) {
             this.logitBias = logitBias;
             return this;
         }
 
+        /**
+         * Sets the response format, enabling structured output such as JSON mode or JSON Schema.
+         *
+         * @param responseFormat the desired response format
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
             return this;
@@ -422,46 +544,112 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        /**
+         * Enables strict JSON schema validation for structured outputs.
+         * When {@code true}, the model strictly follows the JSON schema defined in the response format.
+         * See the <a href="https://platform.openai.com/docs/guides/structured-outputs">structured outputs docs</a>.
+         *
+         * @param strictJsonSchema whether to enable strict JSON schema validation
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder strictJsonSchema(Boolean strictJsonSchema) {
             this.strictJsonSchema = strictJsonSchema;
             return this;
         }
 
+        /**
+         * Sets the random seed for deterministic sampling.
+         * Requests with the same seed and parameters should return the same result.
+         *
+         * @param seed the random seed
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder seed(Integer seed) {
             this.seed = seed;
             return this;
         }
 
+        /**
+         * Sets a unique identifier representing the end-user, used by OpenAI to monitor and detect abuse.
+         * See the <a href="https://platform.openai.com/docs/guides/safety-best-practices">safety best practices</a>.
+         *
+         * @param user the end-user identifier
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder user(String user) {
             this.user = user;
             return this;
         }
 
+        /**
+         * Enables strict JSON schema validation for tool input parameters.
+         * When {@code true}, the model enforces the exact schema defined in tool specifications.
+         *
+         * @param strictTools whether to enable strict tool schema validation
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder strictTools(Boolean strictTools) {
             this.strictTools = strictTools;
             return this;
         }
 
+        /**
+         * Controls whether the model may call multiple tools in parallel within a single response.
+         * <p>
+         * Defaults to {@code true} for models that support it.
+         *
+         * @param parallelToolCalls whether to allow parallel tool calls
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder parallelToolCalls(Boolean parallelToolCalls) {
             this.parallelToolCalls = parallelToolCalls;
             return this;
         }
 
+        /**
+         * When {@code true}, stores the output of this request for use in model distillation or evals.
+         * See the <a href="https://platform.openai.com/docs/api-reference/chat/create#chat-create-store">API docs</a>.
+         *
+         * @param store whether to store the output
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder store(Boolean store) {
             this.store = store;
             return this;
         }
 
+        /**
+         * Sets developer-defined metadata tags (key-value pairs) attached to the stored request.
+         * Only applicable when {@link #store(Boolean)} is {@code true}.
+         *
+         * @param metadata the metadata map
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder metadata(Map<String, String> metadata) {
             this.metadata = metadata;
             return this;
         }
 
+        /**
+         * Sets the service tier for this request (e.g. {@code "auto"} or {@code "default"}).
+         * See the <a href="https://platform.openai.com/docs/api-reference/chat/create#chat-create-service_tier">API docs</a>.
+         *
+         * @param serviceTier the service tier identifier
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder serviceTier(String serviceTier) {
             this.serviceTier = serviceTier;
             return this;
         }
 
+        /**
+         * Sets the reasoning effort for o-series models (e.g. {@code "low"}, {@code "medium"}, {@code "high"}).
+         * Higher effort produces more thorough reasoning at the cost of more tokens and latency.
+         * See the <a href="https://platform.openai.com/docs/guides/reasoning">reasoning docs</a>.
+         *
+         * @param reasoningEffort the reasoning effort level
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder reasoningEffort(String reasoningEffort) {
             this.reasoningEffort = reasoningEffort;
             return this;
@@ -546,16 +734,36 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        /**
+         * Sets the HTTP request timeout for calls to the OpenAI API.
+         * <p>
+         * Defaults to 15 seconds for connect and 60 seconds for read.
+         *
+         * @param timeout the request timeout
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
+        /**
+         * Enables debug logging of HTTP request bodies sent to the OpenAI API.
+         *
+         * @param logRequests whether to log requests
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
+        /**
+         * Enables debug logging of server-sent event response bodies received from the OpenAI API.
+         *
+         * @param logResponses whether to log responses
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
@@ -604,11 +812,24 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        /**
+         * Sets the list of {@link ChatModelListener}s to be notified on each request and response.
+         * Useful for logging, metrics, and observability integrations.
+         *
+         * @param listeners the chat model listeners
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return this;
         }
 
+        /**
+         * Sets the {@link ChatModelListener}s to be notified on each request and response.
+         *
+         * @param listeners the chat model listeners
+         * @return {@code this}
+         */
         public OpenAiStreamingChatModelBuilder listeners(ChatModelListener... listeners) {
             return listeners(asList(listeners));
         }
