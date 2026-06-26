@@ -909,6 +909,22 @@ HtmlReportGenerator.generateExecution(monitor, Path.of("execution.html"));
 
 This last method also supports filtering by memory id, for instance `HtmlReportGenerator.generateExecution(monitor, memoryId, path)`, while all methods have overloads that return the HTML as a `String` instead of writing to a file.
 
+By default, `AgentMonitor` retains up to 100 sessions (distinct memory IDs) per outcome (successful and failed, independently). When the limit is exceeded, the oldest sessions are evicted automatically. This makes it safe to attach a monitor to a long-lived singleton agent without risking unbounded memory growth.
+
+The retention limit can be changed at any time via `setMaxRetainedSessions`. If the new limit is lower than the current number of retained sessions, excess entries are evicted immediately:
+
+```java
+monitor.setMaxRetainedSessions(20);
+```
+
+Setting it to `0` disables retention entirely — listener callbacks still fire, but nothing is kept in memory. To explicitly remove all retained sessions, use the `clear()` method:
+
+```java
+monitor.clear();
+```
+
+Both operations leave ongoing (in-flight) executions unaffected.
+
 Another alternative to manually creating an `AgentMonitor` and registering it as a listener, is making your agent service interface to extend the `MonitoredAgent` one. When doing so, the builder automatically creates and registers an `AgentMonitor` as a listener, and this monitor becomes accessible directly from the agent instance via the `agentMonitor()` method.
 
 For example, the sequence agent defined in the previous examples can be turned into a typed and monitored agent by defining an interface `StyledWriter` that also extends the `MonitoredAgent` interface:

@@ -51,15 +51,15 @@ public class InternalStreamingChatResponseHandlerUtils {
     /**
      * @since 1.8.0
      */
-    public static void onPartialResponse(StreamingChatResponseHandler handler,
-                                         String partialResponse,
-                                         StreamingHandle streamingHandle) {
+    public static void onPartialResponse(
+            StreamingChatResponseHandler handler, String partialResponse, StreamingHandle streamingHandle) {
         if (isNullOrEmpty(partialResponse)) {
             return;
         }
 
         try {
-            handler.onPartialResponse(new PartialResponse(partialResponse), new PartialResponseContext(streamingHandle));
+            handler.onPartialResponse(
+                    new PartialResponse(partialResponse), new PartialResponseContext(streamingHandle));
         } catch (Exception e) {
             withLoggingExceptions(() -> handler.onError(e));
         }
@@ -84,15 +84,15 @@ public class InternalStreamingChatResponseHandlerUtils {
     /**
      * @since 1.8.0
      */
-    public static void onPartialThinking(StreamingChatResponseHandler handler,
-                                         String partialThinking,
-                                         StreamingHandle streamingHandle) {
+    public static void onPartialThinking(
+            StreamingChatResponseHandler handler, String partialThinking, StreamingHandle streamingHandle) {
         if (isNullOrEmpty(partialThinking)) {
             return;
         }
 
         try {
-            handler.onPartialThinking(new PartialThinking(partialThinking), new PartialThinkingContext(streamingHandle));
+            handler.onPartialThinking(
+                    new PartialThinking(partialThinking), new PartialThinkingContext(streamingHandle));
         } catch (Exception e) {
             withLoggingExceptions(() -> handler.onError(e));
         }
@@ -113,9 +113,8 @@ public class InternalStreamingChatResponseHandlerUtils {
     /**
      * @since 1.8.0
      */
-    public static void onPartialToolCall(StreamingChatResponseHandler handler,
-                                         PartialToolCall partialToolCall,
-                                         StreamingHandle streamingHandle) {
+    public static void onPartialToolCall(
+            StreamingChatResponseHandler handler, PartialToolCall partialToolCall, StreamingHandle streamingHandle) {
         try {
             handler.onPartialToolCall(partialToolCall, new PartialToolCallContext(streamingHandle));
         } catch (Exception e) {
@@ -126,6 +125,14 @@ public class InternalStreamingChatResponseHandlerUtils {
     public static void onCompleteToolCall(StreamingChatResponseHandler handler, CompleteToolCall completeToolCall) {
         try {
             handler.onCompleteToolCall(completeToolCall);
+        } catch (Exception e) {
+            withLoggingExceptions(() -> handler.onError(e));
+        }
+    }
+
+    public static void onUnmappedRawEvent(StreamingChatResponseHandler handler, Object rawEvent) {
+        try {
+            handler.onUnmappedRawEvent(rawEvent);
         } catch (Exception e) {
             withLoggingExceptions(() -> handler.onError(e));
         }

@@ -3,7 +3,6 @@ package dev.langchain4j.model.openai.internal;
 import dev.langchain4j.Internal;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.internal.ToolCallBuilder;
-import dev.langchain4j.model.chat.response.DefaultRawStreamingEvent;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
@@ -17,6 +16,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
@@ -36,8 +36,7 @@ public final class ChatCompletionEventDispatcher {
         if (!dispatched) {
             ServerSentEvent rawServerSentEvent = parsedAndRawResponse.rawServerSentEvent();
             if (rawServerSentEvent != null) {
-                // TODO type
-                handler.onRawEvent(new DefaultRawStreamingEvent(null, rawServerSentEvent.data()));
+                onUnmappedRawEvent(handler, rawServerSentEvent);
             }
         }
     }

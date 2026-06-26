@@ -176,6 +176,7 @@ public class JdkHttpClient implements HttpClient {
             }
         } else {
             bodyPublisher = ofMultipartData(request.formDataFields(), request.formDataFiles());
+            builder.setHeader("Content-Type", MultipartBodyPublisher.contentType());
         }
         builder.method(request.method().name(), bodyPublisher);
 

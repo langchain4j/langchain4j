@@ -74,8 +74,8 @@ class OpenAiStreamingChatModelDeepSeekThinkingIT {
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any(), any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
         inOrder1.verify(spyHandler1).getThinking();
+        ignoreInteractions(spyHandler1).onUnmappedRawEvent(any());
         inOrder1.verifyNoMoreInteractions();
-        ignoreInteractions(spyHandler1).onRawEvent(any());
         verifyNoMoreInteractions(spyHandler1);
 
         // given

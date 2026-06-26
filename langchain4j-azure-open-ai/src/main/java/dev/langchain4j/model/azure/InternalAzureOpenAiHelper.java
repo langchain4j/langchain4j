@@ -215,9 +215,11 @@ class InternalAzureOpenAiHelper {
             // configuration (e.g. AZURE_HTTP_CLIENT_IMPLEMENTATION) when multiple providers are on the classpath.
             return HttpClient.createDefault(clientOptions);
         } catch (IllegalStateException e) {
-            throw new IllegalStateException("No HttpClientProvider implementation found on the classpath. "
-                    + "Add 'com.azure:azure-core-http-netty' as a dependency, "
-                    + "or provide a custom HttpClientProvider via .httpClientProvider() on the builder.", e);
+            throw new IllegalStateException(
+                    "No HttpClientProvider implementation found on the classpath. "
+                            + "Add 'com.azure:azure-core-http-netty' as a dependency, "
+                            + "or provide a custom HttpClientProvider via .httpClientProvider() on the builder.",
+                    e);
         }
     }
 
@@ -236,12 +238,16 @@ class InternalAzureOpenAiHelper {
     }
 
     static OpenAIServiceVersion getOpenAIServiceVersion(String serviceVersion) {
+        if (serviceVersion == null || serviceVersion.isBlank()) {
+            return OpenAIServiceVersion.getLatest();
+        }
         for (OpenAIServiceVersion version : OpenAIServiceVersion.values()) {
             if (version.getVersion().equals(serviceVersion)) {
                 return version;
             }
         }
-        return OpenAIServiceVersion.getLatest();
+        throw new IllegalArgumentException("Unsupported Azure OpenAI service version: '" + serviceVersion
+                + "'. Leave serviceVersion null or empty to use the latest supported version.");
     }
 
     static List<ChatRequestMessage> toOpenAiMessages(List<ChatMessage> messages) {
@@ -257,9 +263,8 @@ class InternalAzureOpenAiHelper {
             return chatRequestAssistantMessage;
         } else if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
             if (!toolExecutionResultMessage.hasSingleText()) {
-                throw new UnsupportedFeatureException(
-                        "Azure OpenAI does not support non-text content in tool results. "
-                                + "Only text content is supported.");
+                throw new UnsupportedFeatureException("Azure OpenAI does not support non-text content in tool results. "
+                        + "Only text content is supported.");
             }
             return new ChatRequestToolMessage(toolExecutionResultMessage.text(), toolExecutionResultMessage.id());
         } else if (message instanceof SystemMessage systemMessage) {

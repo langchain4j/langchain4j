@@ -731,8 +731,9 @@ public abstract class AbstractBaseChatModelIT<M> {
                 InOrder inOrder = inOrder(handler);
                 verifyToolCallbacks(handler, inOrder, toolExecutionRequest.id(), (StreamingChatModel) model);
                 inOrder.verify(handler).onCompleteResponse(chatResponse);
+                // onUnmappedRawEvent may be invoked for provider events not mapped to a typed callback
+                ignoreInteractions(handler).onUnmappedRawEvent(any());
                 inOrder.verifyNoMoreInteractions();
-                ignoreInteractions(handler).onRawEvent(any());
                 verifyNoMoreInteractions(handler);
             } else if (metadata.mode() == StreamingMode.PUBLISHER) {
                 // TODO verify all events and their order
@@ -942,8 +943,9 @@ public abstract class AbstractBaseChatModelIT<M> {
                 InOrder inOrder = inOrder(handler);
                 verifyToolCallbacks(handler, inOrder, (StreamingChatModel) model);
                 inOrder.verify(handler).onCompleteResponse(chatResponse);
+                // onUnmappedRawEvent may be invoked for provider events not mapped to a typed callback
+                ignoreInteractions(handler).onUnmappedRawEvent(any());
                 inOrder.verifyNoMoreInteractions();
-                ignoreInteractions(handler).onRawEvent(any());
                 verifyNoMoreInteractions(handler);
             } else if (metadata.mode() == StreamingMode.PUBLISHER) {
                 // TODO verify all events and their order
@@ -1125,8 +1127,9 @@ public abstract class AbstractBaseChatModelIT<M> {
                         toolExecutionRequests.get(1).id(),
                         (StreamingChatModel) model);
                 inOrder.verify(handler).onCompleteResponse(chatResponse);
+                // onUnmappedRawEvent may be invoked for provider events not mapped to a typed callback
+                ignoreInteractions(handler).onUnmappedRawEvent(any());
                 inOrder.verifyNoMoreInteractions();
-                ignoreInteractions(handler).onRawEvent(any());
                 verifyNoMoreInteractions(handler);
             } else if (metadata.mode() == StreamingMode.PUBLISHER) {
                 // TODO verify all events and their order

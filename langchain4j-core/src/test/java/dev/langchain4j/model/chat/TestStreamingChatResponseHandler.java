@@ -11,7 +11,6 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
-import dev.langchain4j.model.chat.response.RawStreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -50,7 +49,7 @@ public class TestStreamingChatResponseHandler implements StreamingChatResponseHa
     public void onPartialToolCall(PartialToolCall partialToolCall, PartialToolCallContext context) {}
 
     @Override
-    public void onRawEvent(RawStreamingEvent rawEvent) {}
+    public void onUnmappedRawEvent(Object rawEvent) {}
 
     @Override
     public void onCompleteResponse(ChatResponse completeResponse) {

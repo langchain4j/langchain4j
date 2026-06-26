@@ -65,7 +65,7 @@ public class StreamingChatResponseHandlerIT {
         verify(handler, atLeastOnce()).onPartialResponse(any(), any()); // LC4j will always call this callback
         verify(handler, atLeastOnce()).onPartialResponse(any());
         verify(handler).onCompleteResponse(any());
-        ignoreInteractions(handler).onRawEvent(any());
+        ignoreInteractions(handler).onUnmappedRawEvent(any());
         verifyNoMoreInteractions(handler);
     }
 
@@ -104,7 +104,7 @@ public class StreamingChatResponseHandlerIT {
         verify(handler, atLeastOnce()).onPartialResponse(any(), any());
         verify(handler, never()).onPartialResponse(any());
         verify(handler).onCompleteResponse(any());
-        ignoreInteractions(handler).onRawEvent(any());
+        ignoreInteractions(handler).onUnmappedRawEvent(any());
         verifyNoMoreInteractions(handler);
     }
 
@@ -149,7 +149,7 @@ public class StreamingChatResponseHandlerIT {
         verify(handler, atLeastOnce()).onPartialResponse(any(), any());
         verify(handler, never()).onPartialResponse(any());
         verify(handler).onCompleteResponse(any());
-        ignoreInteractions(handler).onRawEvent(any());
+        ignoreInteractions(handler).onUnmappedRawEvent(any());
         verifyNoMoreInteractions(handler);
     }
 }

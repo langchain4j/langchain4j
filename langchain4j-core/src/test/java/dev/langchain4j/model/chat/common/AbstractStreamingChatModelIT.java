@@ -498,7 +498,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             }
 
             @Override
-            public void onRawEvent(RawStreamingEvent rawEvent) {}
+            public void onUnmappedRawEvent(Object rawEvent) {}
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {

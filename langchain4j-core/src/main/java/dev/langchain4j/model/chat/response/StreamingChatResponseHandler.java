@@ -167,16 +167,26 @@ public interface StreamingChatResponseHandler {
     default void onCompleteToolCall(CompleteToolCall completeToolCall) {}
 
     /**
-     * Invoked for a provider-specific streaming event that langchain4j's generic event model does not
-     * map to a dedicated callback — for example a web-search or citation event. This is an escape hatch
-     * for consuming provider data the library does not (yet) model; see {@link RawStreamingEvent}.
-     * Defaults to a no-op, so handlers that do not care about such events simply ignore them.
+     * Invoked when a provider emits a raw streaming event that is <b>not</b> already exposed through one of the
+     * typed callbacks (such as {@link #onPartialResponse(PartialResponse, PartialResponseContext)},
+     * {@link #onPartialThinking(PartialThinking, PartialThinkingContext)},
+     * {@link #onPartialToolCall(PartialToolCall, PartialToolCallContext)} or
+     * {@link #onCompleteToolCall(CompleteToolCall)}).
+     * <p>
+     * This acts as an escape hatch for provider-specific events that langchain4j does not model, such as
+     * server-tool lifecycle events (e.g., OpenAI's {@code web_search_call.in_progress}). Events that are already
+     * delivered as partial responses, thinking or tool calls are not repeated here.
+     * <p>
+     * The event type depends on the provider implementation. Implementations using the
+     * {@code dev.langchain4j.http.client.HttpClient} abstraction (e.g., OpenAI, Anthropic, Google AI Gemini)
+     * typically expose {@code ServerSentEvent}; other implementations can expose provider-specific event objects
+     * (e.g., the OpenAI official Responses model exposes the SDK's {@code ResponseStreamEvent}).
      *
-     * @param rawEvent The unmapped provider event, carrying the raw payload.
+     * @param rawEvent A raw provider streaming event.
      * @since 1.17.0
      */
     @Experimental
-    default void onRawEvent(RawStreamingEvent rawEvent) {} // TODO names
+    default void onUnmappedRawEvent(Object rawEvent) {}
 
     /**
      * Invoked when the model has finished streaming a response.

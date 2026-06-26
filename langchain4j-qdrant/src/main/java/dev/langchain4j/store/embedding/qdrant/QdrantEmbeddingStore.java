@@ -22,6 +22,7 @@ import dev.langchain4j.store.embedding.*;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import io.qdrant.client.QdrantClient;
 import io.qdrant.client.QdrantGrpcClient;
+import io.qdrant.client.QueryFactory;
 import io.qdrant.client.WithVectorsSelectorFactory;
 import io.qdrant.client.grpc.Common.Filter;
 import io.qdrant.client.grpc.Common.PointId;
@@ -30,8 +31,8 @@ import io.qdrant.client.grpc.Points;
 import io.qdrant.client.grpc.Points.DeletePoints;
 import io.qdrant.client.grpc.Points.PointStruct;
 import io.qdrant.client.grpc.Points.PointsSelector;
+import io.qdrant.client.grpc.Points.QueryPoints;
 import io.qdrant.client.grpc.Points.ScoredPoint;
-import io.qdrant.client.grpc.Points.SearchPoints;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -223,22 +224,22 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
 
-        SearchPoints.Builder searchBuilder = SearchPoints.newBuilder()
+        QueryPoints.Builder queryBuilder = QueryPoints.newBuilder()
                 .setCollectionName(collectionName)
-                .addAllVector(request.queryEmbedding().vectorAsList())
+                .setQuery(QueryFactory.nearest(request.queryEmbedding().vectorAsList()))
                 .setWithVectors(WithVectorsSelectorFactory.enable(true))
                 .setWithPayload(enable(true))
                 .setLimit(request.maxResults());
 
         if (request.filter() != null) {
             Filter filter = QdrantFilterConverter.convertExpression(request.filter());
-            searchBuilder.setFilter(filter);
+            queryBuilder.setFilter(filter);
         }
 
         List<ScoredPoint> results;
 
         try {
-            results = client.searchAsync(searchBuilder.build()).get();
+            results = client.queryAsync(queryBuilder.build()).get();
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
         }

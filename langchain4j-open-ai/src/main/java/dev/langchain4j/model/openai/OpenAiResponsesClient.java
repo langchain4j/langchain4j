@@ -6,7 +6,6 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,6 +36,8 @@ import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.StreamingHttpEvent;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -46,7 +47,6 @@ import dev.langchain4j.model.chat.request.json.JsonRawSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
-import dev.langchain4j.model.chat.response.DefaultRawStreamingEvent;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingEvent;
@@ -906,7 +906,7 @@ class OpenAiResponsesClient {
 
     private static class ResponsesApiEventListener implements ServerSentEventListener {
 
-        private final StreamingChatResponseHandler handler;
+        private final MappingTrackingStreamingChatResponseHandler handler;
         private volatile StreamingHandle streamingHandle;
         private final Map<String, ToolExecutionRequest.Builder> toolCallBuilders = new LinkedHashMap<>();
         private final Map<String, Integer> toolCallIndices = new LinkedHashMap<>();
@@ -916,7 +916,7 @@ class OpenAiResponsesClient {
         private SuccessfulHttpResponse rawHttpResponse;
 
         ResponsesApiEventListener(StreamingChatResponseHandler handler) {
-            this.handler = handler;
+            this.handler = new MappingTrackingStreamingChatResponseHandler(handler);
         }
 
         private boolean isCancelled() {
@@ -959,7 +959,12 @@ class OpenAiResponsesClient {
                 return;
             }
 
-            handle(data);
+            handler.resetMappingTracking();
+            handleDelta(data);
+
+            if (!handler.wasMapped()) {
+                InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent(handler, event);
+            }
         }
 
         @Override
@@ -967,9 +972,8 @@ class OpenAiResponsesClient {
             withLoggingExceptions(() -> handler.onError(ExceptionMapper.DEFAULT.mapException(error)));
         }
 
-        private void handle(String data) {
+        private void handleDelta(String data) {
             if (data == null || (!data.trim().startsWith("{") && !data.trim().startsWith("["))) {
-                emitRaw(null, data);
                 return;
             }
 
@@ -977,19 +981,15 @@ class OpenAiResponsesClient {
                 var node = OBJECT_MAPPER.readTree(data);
                 var type = node.has(FIELD_TYPE) ? node.get(FIELD_TYPE).asText() : "";
 
-                boolean dispatched = false;
-
                 if (EVENT_OUTPUT_TEXT_DELTA.equals(type)) {
                     var text = node.path(FIELD_DELTA).asText();
                     if (!text.isEmpty()) {
                         onPartialResponse(handler, text, streamingHandle);
-                        dispatched = true;
                     }
                 } else if (EVENT_REASONING_TEXT_DELTA.equals(type) || EVENT_REASONING_SUMMARY_TEXT_DELTA.equals(type)) {
                     var thinking = node.path(FIELD_DELTA).asText();
                     if (!thinking.isEmpty()) {
                         onPartialThinking(handler, thinking, streamingHandle);
-                        dispatched = true;
                     }
                 } else if (EVENT_OUTPUT_ITEM_ADDED.equals(type)) {
                     var item = node.path(FIELD_ITEM);
@@ -1020,7 +1020,6 @@ class OpenAiResponsesClient {
                                     .partialArguments(delta)
                                     .build();
                             onPartialToolCall(handler, partialToolCall, streamingHandle);
-                            dispatched = true;
                         }
                     }
                 } else if (EVENT_FUNCTION_CALL_ARGUMENTS_DONE.equals(type)) {
@@ -1028,29 +1027,17 @@ class OpenAiResponsesClient {
                     var builder = toolCallBuilders.get(itemId);
                     if (builder != null) {
                         builder.arguments(node.path(FIELD_ARGUMENTS).asText());
-                        dispatched = completeToolCall(itemId, builder);
+                        completeToolCall(itemId, builder);
                     }
                 } else if (EVENT_OUTPUT_ITEM_DONE.equals(type)) {
-                    dispatched = handleOutputItemDone(node);
+                    handleOutputItemDone(node);
                 } else if (EVENT_RESPONSE_COMPLETED.equals(type) || EVENT_RESPONSE_INCOMPLETE.equals(type)) {
                     handleResponseCompleted(node);
-                    dispatched = true;
                 } else if (EVENT_RESPONSE_FAILED.equals(type) || EVENT_RESPONSE_ERROR.equals(type)) {
                     handleResponseFailure(node);
-                    dispatched = true;
-                }
-
-                if (!dispatched) {
-                    emitRaw(type, data);
                 }
             } catch (Exception e) {
                 throw new RuntimeException(e);
-            }
-        }
-
-        private void emitRaw(String type, String data) {
-            if (!isCancelled()) {
-                handler.onRawEvent(new DefaultRawStreamingEvent(isNullOrBlank(type) ? null : type, data));
             }
         }
 

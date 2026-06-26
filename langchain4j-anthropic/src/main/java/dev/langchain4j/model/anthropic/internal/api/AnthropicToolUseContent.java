@@ -16,9 +16,10 @@ public class AnthropicToolUseContent extends AnthropicMessageContent {
 
     public String id;
     public String name;
-    public Map<String, Object> input;
+    @com.fasterxml.jackson.annotation.JsonRawValue
+    public String input;
 
-    public AnthropicToolUseContent(String id, String name, Map<String, Object> input) {
+    public AnthropicToolUseContent(String id, String name, String input) {
         super("tool_use");
         this.id = id;
         this.name = name;
@@ -54,7 +55,7 @@ public class AnthropicToolUseContent extends AnthropicMessageContent {
 
         private String id;
         private String name;
-        private Map<String, Object> input;
+        private String input;
 
         public Builder id(String id) {
             this.id = id;
@@ -66,7 +67,7 @@ public class AnthropicToolUseContent extends AnthropicMessageContent {
             return this;
         }
 
-        public Builder input(Map<String, Object> input) {
+        public Builder input(String input) {
             this.input = input;
             return this;
         }

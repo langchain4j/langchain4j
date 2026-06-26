@@ -279,7 +279,7 @@ class AiServiceStreamingPublisherTest {
 
     @Test
     void propagates_raw_provider_events() throws Exception {
-        RawStreamingEvent raw = new DefaultRawStreamingEvent("web_search", "{\"q\":\"berlin\"}");
+        RawStreamingEvent raw = new DefaultRawStreamingEvent("{\"q\":\"berlin\"}");
         StreamingEventChatModelMock model =
                 StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello")).withRawEvent(raw);
 
