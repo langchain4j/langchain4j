@@ -60,6 +60,11 @@
           "justification": "Deprecated OpenAI model removed"
         },
         {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.audio.speech.AudioSpeechRequest",
+          "justification": "AudioSpeechRequest is intentionally exposed by OpenAiAudioSpeechModel because it implements the core AudioSpeechModel API"
+        },
+        {
           "code": "java.method.addedToInterface",
           "new": "method byte[] dev.langchain4j.model.openai.internal.SyncOrAsync<ResponseContent>::executeInputStream()",
           "justification": "SyncOrAsync is an internal interface (dev.langchain4j.model.openai.internal); new method added to support audio speech streaming responses"
