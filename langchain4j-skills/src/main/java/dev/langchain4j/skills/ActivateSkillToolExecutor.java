@@ -12,6 +12,8 @@ import static java.util.stream.Collectors.joining;
 
 class ActivateSkillToolExecutor extends AbstractSkillToolExecutor {
 
+    static final String ACTIVATED_SKILL_ATTRIBUTE = "activated_skill"; // do not change, will break backward compatibility!
+
     private final ActivateSkillToolConfig config;
     private final Map<String, Skill> skillsByName;
 
@@ -38,6 +40,7 @@ class ActivateSkillToolExecutor extends AbstractSkillToolExecutor {
         return ToolExecutionResult.builder()
                 .result(skill)
                 .resultText(skill.content())
+                .attributes(Map.of(ACTIVATED_SKILL_ATTRIBUTE, skillName))
                 .build();
     }
 }

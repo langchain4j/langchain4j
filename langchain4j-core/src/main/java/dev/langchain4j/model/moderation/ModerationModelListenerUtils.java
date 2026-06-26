@@ -35,9 +35,10 @@ class ModerationModelListenerUtils {
                 listener.onRequest(requestContext);
             } catch (Exception e) {
                 LOG.warn(
-                        "An exception occurred during the invocation of the moderation model listener '{}'. "
-                                + "This exception has been ignored.",
+                        "An exception occurred during the invocation of the moderation model listener '{}'"
+                                + " for model provider '{}'. This exception has been ignored.",
                         listener.getClass().getName(),
+                        modelProvider,
                         e);
             }
         });
@@ -59,9 +60,10 @@ class ModerationModelListenerUtils {
                 listener.onResponse(responseContext);
             } catch (Exception e) {
                 LOG.warn(
-                        "An exception occurred during the invocation of the moderation model listener '{}'. "
-                                + "This exception has been ignored.",
+                        "An exception occurred during the invocation of the moderation model listener '{}'"
+                                + " for model provider '{}'. This exception has been ignored.",
                         listener.getClass().getName(),
+                        modelProvider,
                         e);
             }
         });
@@ -83,9 +85,10 @@ class ModerationModelListenerUtils {
                 listener.onError(errorContext);
             } catch (Exception e) {
                 LOG.warn(
-                        "An exception occurred during the invocation of the moderation model listener '{}'. "
-                                + "This exception has been ignored.",
+                        "An exception occurred during the invocation of the moderation model listener '{}'"
+                                + " for model provider '{}'. This exception has been ignored.",
                         listener.getClass().getName(),
+                        modelProvider,
                         e);
             }
         });

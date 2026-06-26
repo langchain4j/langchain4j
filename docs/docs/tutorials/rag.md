@@ -105,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.12.1-beta21</version>
+    <version>1.11.8-beta19</version>
 </dependency>
 ```
 
@@ -284,6 +284,8 @@ To parse each of these formats, there's a `DocumentParser` interface with severa
 (e.g. DOC, DOCX, PPT, PPTX, XLS, XLSX, etc.)
 - `ApacheTikaDocumentParser` from the `langchain4j-document-parser-apache-tika` module,
 which can automatically detect and parse almost all existing file formats
+- `DoclingDocumentParser` from the `langchain4j-document-parser-docling` module, 
+  which uses [Docling Java](https://docling-project.github.io/docling-java/current/) and [Docling](https://docling.ai) to process documents.
 - `MarkdownDocumentParser` from the `langchain4j-document-parser-markdown` module,
   which can parse files in markdown format
 - `YamlDocumentParser` from the `langchain4j-document-parser-yaml` module,
@@ -786,6 +788,8 @@ Some known approaches to improve retrieval include:
 - Hypothetical document embeddings (HyDE)
 
 More details can be found [here](https://blog.langchain.dev/query-transformations/).
+
+LangChain4j also has an optional community [Prompt Repetition](/integrations/prompt-repetition/) module that provides `RepeatingQueryTransformer`. It repeats the retrieval query before content retrieval and should be used to transform the query itself, not the final augmented prompt sent to the model.
 
 #### Default Query Transformer
 `DefaultQueryTransformer` is the default implementation used in `DefaultRetrievalAugmentor`.

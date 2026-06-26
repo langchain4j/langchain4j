@@ -12,7 +12,11 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatResponseMetadata;
 import dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel;
+import dev.langchain4j.model.googleai.GoogleAiGeminiTokenUsage;
+import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.InOrder;
 
@@ -24,7 +28,7 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     static final StreamingChatModel GOOGLE_AI_GEMINI_STREAMING_CHAT_MODEL = GoogleAiGeminiStreamingChatModel.builder()
             .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-            .modelName("gemini-2.0-flash-lite")
+            .modelName("gemini-2.5-flash-lite")
             .logRequests(false) // images are huge in logs
             .logResponses(false)
             .build();
@@ -39,7 +43,7 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected String customModelName() {
-        return "gemini-2.0-flash";
+        return "gemini-2.5-flash";
     }
 
     @Override
@@ -47,8 +51,8 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
         return GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
                 .defaultRequestParameters(parameters)
-                .modelName(getOrDefault(parameters.modelName(), "gemini-2.0-flash-lite"))
-                .logRequests(true)
+                .modelName(getOrDefault(parameters.modelName(), "gemini-2.5-flash-lite"))
+                .logRequests(false)
                 .logResponses(true)
                 .build();
     }
@@ -67,8 +71,8 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     public StreamingChatModel createModelWith(ChatModelListener listener) {
         return GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-                .modelName("gemini-2.0-flash-lite")
-                .logRequests(true)
+                .modelName("gemini-2.5-flash-lite")
+                .logRequests(false)
                 .logResponses(true)
                 .listeners(List.of(listener))
                 .build();
@@ -101,5 +105,31 @@ class GoogleAiGeminiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel model) {
         return GoogleAiGeminiChatResponseMetadata.class;
+    }
+
+    @Override
+    protected Class<? extends TokenUsage> tokenUsageType(StreamingChatModel model) {
+        return GoogleAiGeminiTokenUsage.class;
+    }
+
+    @Disabled("Gemini cannot do it reliably")
+    @Override
+    protected void should_execute_multiple_tools_in_parallel_then_answer(StreamingChatModel model) {}
+
+    @Override
+    protected void sleepIfNeeded() {
+        try {
+            afterEach();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }

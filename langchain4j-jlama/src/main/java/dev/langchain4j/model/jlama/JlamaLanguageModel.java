@@ -1,5 +1,7 @@
 package dev.langchain4j.model.jlama;
 
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import com.github.tjake.jlama.model.AbstractModel;
 import com.github.tjake.jlama.model.functions.Generator;
 import com.github.tjake.jlama.safetensors.DType;
@@ -10,12 +12,9 @@ import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.UUID;
-
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 public class JlamaLanguageModel implements LanguageModel {
     private final AbstractModel model;
@@ -23,30 +22,30 @@ public class JlamaLanguageModel implements LanguageModel {
     private final Integer maxTokens;
     private final UUID id = UUID.randomUUID();
 
-    public JlamaLanguageModel(Path modelCachePath,
-                              String modelName,
-                              String authToken,
-                              Integer threadCount,
-                              Boolean quantizeModelAtRuntime,
-                              Path workingDirectory,
-                              DType workingQuantizedType,
-                              Float temperature,
-                              Integer maxTokens) {
+    public JlamaLanguageModel(
+            Path modelCachePath,
+            String modelName,
+            String authToken,
+            Integer threadCount,
+            Boolean quantizeModelAtRuntime,
+            Path workingDirectory,
+            DType workingQuantizedType,
+            Float temperature,
+            Integer maxTokens) {
         JlamaModelRegistry registry = JlamaModelRegistry.getOrCreate(modelCachePath);
-        JlamaModel jlamaModel = RetryUtils.withRetryMappingExceptions(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), 2);
+        JlamaModel jlamaModel = RetryUtils.withRetryMappingExceptions(
+                () -> registry.downloadModel(modelName, Optional.ofNullable(authToken)),
+                2,
+                JlamaExceptionMapper.INSTANCE);
 
         JlamaModel.Loader loader = jlamaModel.loader();
-        if (quantizeModelAtRuntime != null && quantizeModelAtRuntime)
-            loader = loader.quantized();
+        if (quantizeModelAtRuntime != null && quantizeModelAtRuntime) loader = loader.quantized();
 
-        if (workingQuantizedType != null)
-            loader = loader.workingQuantizationType(workingQuantizedType);
+        if (workingQuantizedType != null) loader = loader.workingQuantizationType(workingQuantizedType);
 
-        if (threadCount != null)
-            loader = loader.threadCount(threadCount);
+        if (threadCount != null) loader = loader.threadCount(threadCount);
 
-        if (workingDirectory != null)
-            loader = loader.workingDirectory(workingDirectory);
+        if (workingDirectory != null) loader = loader.workingDirectory(workingDirectory);
 
         this.model = loader.load();
         this.temperature = temperature == null ? 0.7f : temperature;
@@ -72,9 +71,10 @@ public class JlamaLanguageModel implements LanguageModel {
 
     @Override
     public Response<String> generate(String prompt) {
-        Generator.Response r = model.generate(id, PromptContext.of(prompt), temperature, maxTokens, (token, time) -> {
-        });
-        return Response.from(r.responseText, new TokenUsage(r.promptTokens, r.generatedTokens), toFinishReason(r.finishReason));
+        Generator.Response r =
+                model.generate(id, PromptContext.of(prompt), temperature, maxTokens, (token, time) -> {});
+        return Response.from(
+                r.responseText, new TokenUsage(r.promptTokens, r.generatedTokens), toFinishReason(r.finishReason));
     }
 
     public static class JlamaLanguageModelBuilder {
@@ -138,11 +138,24 @@ public class JlamaLanguageModel implements LanguageModel {
         }
 
         public JlamaLanguageModel build() {
-            return new JlamaLanguageModel(this.modelCachePath, this.modelName, this.authToken, this.threadCount, this.quantizeModelAtRuntime, this.workingDirectory, this.workingQuantizedType, this.temperature, this.maxTokens);
+            return new JlamaLanguageModel(
+                    this.modelCachePath,
+                    this.modelName,
+                    this.authToken,
+                    this.threadCount,
+                    this.quantizeModelAtRuntime,
+                    this.workingDirectory,
+                    this.workingQuantizedType,
+                    this.temperature,
+                    this.maxTokens);
         }
 
         public String toString() {
-            return "JlamaLanguageModel.JlamaLanguageModelBuilder(modelCachePath=" + this.modelCachePath + ", modelName=" + this.modelName + ", authToken=" + this.authToken + ", threadCount=" + this.threadCount + ", quantizeModelAtRuntime=" + this.quantizeModelAtRuntime + ", workingDirectory=" + this.workingDirectory + ", workingQuantizedType=" + this.workingQuantizedType + ", temperature=" + this.temperature + ", maxTokens=" + this.maxTokens + ")";
+            return "JlamaLanguageModel.JlamaLanguageModelBuilder(modelCachePath=" + this.modelCachePath + ", modelName="
+                    + this.modelName + ", authToken=" + this.authToken + ", threadCount=" + this.threadCount
+                    + ", quantizeModelAtRuntime=" + this.quantizeModelAtRuntime + ", workingDirectory="
+                    + this.workingDirectory + ", workingQuantizedType=" + this.workingQuantizedType + ", temperature="
+                    + this.temperature + ", maxTokens=" + this.maxTokens + ")";
         }
     }
 }

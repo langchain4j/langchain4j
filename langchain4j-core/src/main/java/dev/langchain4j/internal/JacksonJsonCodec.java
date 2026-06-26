@@ -2,30 +2,40 @@ package dev.langchain4j.internal;
 
 import static com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility.ANY;
 import static com.fasterxml.jackson.annotation.PropertyAccessor.FIELD;
+import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
+import static com.fasterxml.jackson.databind.MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS;
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.AnnotationIntrospector;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.cfg.MapperConfig;
+import com.fasterxml.jackson.databind.introspect.AnnotatedClass;
+import com.fasterxml.jackson.databind.introspect.AnnotationIntrospectorPair;
+import com.fasterxml.jackson.databind.introspect.NopAnnotationIntrospector;
+import com.fasterxml.jackson.databind.jsontype.NamedType;
+import com.fasterxml.jackson.databind.jsontype.TypeResolverBuilder;
+import com.fasterxml.jackson.databind.jsontype.impl.StdTypeResolverBuilder;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import dev.langchain4j.Internal;
-
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -79,8 +89,12 @@ class JacksonJsonCodec implements Json.JsonCodec {
                 if (node.isObject()) {
                     int hour = node.get("hour").asInt();
                     int minute = node.get("minute").asInt();
-                    int second = Optional.ofNullable(node.get("second")).map(JsonNode::asInt).orElse(0);
-                    int nano = Optional.ofNullable(node.get("nano")).map(JsonNode::asInt).orElse(0);
+                    int second = Optional.ofNullable(node.get("second"))
+                            .map(JsonNode::asInt)
+                            .orElse(0);
+                    int nano = Optional.ofNullable(node.get("nano"))
+                            .map(JsonNode::asInt)
+                            .orElse(0);
                     return LocalTime.of(hour, minute, second, nano);
                 } else {
                     return LocalTime.parse(node.asText(), ISO_LOCAL_TIME);
@@ -108,8 +122,12 @@ class JacksonJsonCodec implements Json.JsonCodec {
                     JsonNode time = node.get("time");
                     int hour = time.get("hour").asInt();
                     int minute = time.get("minute").asInt();
-                    int second = Optional.ofNullable(time.get("second")).map(JsonNode::asInt).orElse(0);
-                    int nano = Optional.ofNullable(time.get("nano")).map(JsonNode::asInt).orElse(0);
+                    int second = Optional.ofNullable(time.get("second"))
+                            .map(JsonNode::asInt)
+                            .orElse(0);
+                    int nano = Optional.ofNullable(time.get("nano"))
+                            .map(JsonNode::asInt)
+                            .orElse(0);
                     return LocalDateTime.of(year, month, day, hour, minute, second, nano);
                 } else {
                     return LocalDateTime.parse(node.asText(), ISO_LOCAL_DATE_TIME);
@@ -117,15 +135,21 @@ class JacksonJsonCodec implements Json.JsonCodec {
             }
         });
 
-        // FAIL_ON_UNKNOWN_PROPERTIES is enabled by default
-        // to prevent issues caused by LLM hallucinations
-        return JsonMapper.builder()
+        ObjectMapper mapper = JsonMapper.builder()
                 .visibility(FIELD, ANY)
-                .enable(INDENT_OUTPUT)
-                .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
+                .disable(INDENT_OUTPUT) // disabled on purpose to save tokens when sending tool results to LLM
+                .enable(FAIL_ON_UNKNOWN_PROPERTIES) // enabled on purpose to prevent issues caused by LLM hallucinations
+                .enable(ACCEPT_CASE_INSENSITIVE_ENUMS)
                 .build()
                 .findAndRegisterModules()
                 .registerModule(module);
+
+        // Make sealed interfaces/classes deserializable as polymorphic types without the user
+        // having to add @JsonTypeInfo+@JsonSubTypes. We synthesize equivalent metadata via a
+        // custom AnnotationIntrospector consulted ahead of Jackson's default one.
+        mapper.setAnnotationIntrospector(AnnotationIntrospectorPair.pair(
+                new SealedTypePolymorphicIntrospector(), mapper.getDeserializationConfig().getAnnotationIntrospector()));
+        return mapper;
     }
 
     /**
@@ -141,7 +165,7 @@ class JacksonJsonCodec implements Json.JsonCodec {
      * Constructs a JacksonJsonCodec instance with a default ObjectMapper.
      * The default ObjectMapper is configured with custom serializers and deserializers
      * for Java 8 date/time types such as LocalDate, LocalTime, and LocalDateTime.
-     * It also registers other modules found on the classpath, enables formatted JSON output,
+     * It also registers other modules found on the classpath
      * and throws exceptions for unknown properties to improve handling of unexpected input.
      */
     public JacksonJsonCodec() {
@@ -182,5 +206,47 @@ class JacksonJsonCodec implements Json.JsonCodec {
      */
     public ObjectMapper getObjectMapper() {
         return objectMapper;
+    }
+
+    /**
+     * Synthesizes {@code @JsonTypeInfo} + {@code @JsonSubTypes} metadata for sealed types that
+     * carry no Jackson polymorphism annotations of their own. With this introspector consulted
+     * ahead of Jackson's default one, sealed bases dispatch natively via the same discriminator
+     * langchain4j puts in the schema — no custom deserializer needed.
+     */
+    private static final class SealedTypePolymorphicIntrospector extends NopAnnotationIntrospector {
+
+        @Override
+        public TypeResolverBuilder<?> findTypeResolver(
+                MapperConfig<?> config, AnnotatedClass ac, com.fasterxml.jackson.databind.JavaType baseType) {
+            Class<?> raw = ac.getRawType();
+            if (!shouldHandle(raw)) {
+                return null;
+            }
+            StdTypeResolverBuilder builder = new StdTypeResolverBuilder()
+                    .init(JsonTypeInfo.Id.NAME, null)
+                    .inclusion(JsonTypeInfo.As.PROPERTY)
+                    .typeProperty(PolymorphicTypes.discriminatorPropertyName(raw))
+                    .typeIdVisibility(false);
+            return builder;
+        }
+
+        @Override
+        public List<NamedType> findSubtypes(com.fasterxml.jackson.databind.introspect.Annotated a) {
+            Class<?> raw = a.getRawType();
+            if (!shouldHandle(raw)) {
+                return null;
+            }
+            return PolymorphicTypes.findConcreteSubtypes(raw).stream()
+                    .map(sub -> new NamedType(sub, PolymorphicTypes.discriminatorValue(raw, sub)))
+                    .toList();
+        }
+
+        private static boolean shouldHandle(Class<?> raw) {
+            // Step in for any polymorphic base that doesn't already declare its own type-info
+            // strategy via @JsonTypeInfo. This covers both sealed types (no annotations) and
+            // types that only use @JsonSubTypes for subtype enumeration.
+            return raw.getAnnotation(JsonTypeInfo.class) == null && PolymorphicTypes.isPolymorphic(raw);
+        }
     }
 }

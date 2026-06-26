@@ -2,6 +2,8 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
+import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.containsTool;
 import static dev.langchain4j.service.AiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
@@ -11,20 +13,26 @@ import static org.assertj.core.data.MapEntry.entry;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.LoggingChatModelListener;
 import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -48,8 +56,8 @@ import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
-
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -58,18 +66,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
+import org.mockito.InOrder;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -443,6 +453,10 @@ class AiServicesWithToolsIT {
 
         Tools spyTools = spy(new Tools());
 
+        Map<String, Object> toolResults = new ConcurrentHashMap<>();
+        Map<String, Thread> beforeToolExecutionThreads = new ConcurrentHashMap<>();
+        Map<String, Thread> afterToolExecutionThreads = new ConcurrentHashMap<>();
+
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -450,6 +464,13 @@ class AiServicesWithToolsIT {
                 .chatMemory(chatMemory)
                 .tools(spyTools)
                 .executeToolsConcurrently(executor)
+                .beforeToolExecution(before -> {
+                    beforeToolExecutionThreads.put(before.request().name(), Thread.currentThread());
+                })
+                .afterToolExecution(exec -> {
+                    toolResults.put(exec.request().name(), exec.resultObject());
+                    afterToolExecutionThreads.put(exec.request().name(), Thread.currentThread());
+                })
                 .build();
 
         String userMessage = "What is the current time and temperature in Munich?";
@@ -473,6 +494,19 @@ class AiServicesWithToolsIT {
         assertThat(getCurrentTemperatureThread).isNotEqualTo(Thread.currentThread());
 
         assertThat(getCurrentTimeThread).isNotEqualTo(getCurrentTemperatureThread);
+
+        assertThat(toolResults)
+                .hasSize(2)
+                .containsEntry("getCurrentTime", Tools.CURRENT_TIME)
+                .containsEntry("getCurrentTemperature", Tools.CURRENT_TEMPERATURE);
+
+        assertThat(beforeToolExecutionThreads).hasSize(2);
+        assertThat(beforeToolExecutionThreads.get("getCurrentTime")).isEqualTo(getCurrentTimeThread);
+        assertThat(beforeToolExecutionThreads.get("getCurrentTemperature")).isEqualTo(getCurrentTemperatureThread);
+
+        assertThat(afterToolExecutionThreads).hasSize(2);
+        assertThat(afterToolExecutionThreads.get("getCurrentTime")).isEqualTo(getCurrentTimeThread);
+        assertThat(afterToolExecutionThreads.get("getCurrentTemperature")).isEqualTo(getCurrentTemperatureThread);
     }
 
     static List<Executor> executors() {
@@ -685,6 +719,42 @@ class AiServicesWithToolsIT {
         }
     }
 
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_support_custom_tool_parameter_name(ChatModel chatModel) {
+
+        // given
+        class BashTool {
+
+            @Tool
+            String runBash(@P(name = "command") String cmd) {
+                return "Running command: " + cmd;
+            }
+        }
+
+        BashTool bashTool = spy(new BashTool());
+        ChatModel spyChatModel = spy(chatModel);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(spyChatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+                .tools(bashTool)
+                .build();
+
+        // when
+        Result<String> result = assistant.chat("Run a shell command 'ls -la'");
+
+        // then
+        verify(spyChatModel, atLeastOnce()).chat(argThat((ChatRequest request) -> {
+            ToolSpecification toolSpec = request.toolSpecifications().get(0);
+            return toolSpec.parameters().properties().containsKey("command");
+        }));
+
+        // verify that the tool method is called with the expected argument value
+        verify(bashTool).runBash("ls -la");
+        assertThat(result.content()).contains("ls -la");
+    }
+
     @Test
     void should_use_tool_provider() {
 
@@ -727,17 +797,17 @@ class AiServicesWithToolsIT {
 
         // given
         ToolProvider addToolProvider = (toolProviderRequest) -> {
-                ToolSpecification toolSpecification = ToolSpecification.builder()
-                        .name("add")
-                        .parameters(JsonObjectSchema.builder()
-                                .addNumberProperty("a")
-                                .addNumberProperty("b")
-                                .required("a", "b")
-                                .build())
-                        .build();
-                return ToolProviderResult.builder()
-                        .add(toolSpecification, (request, memoryId) -> "does not matter")
-                        .build();
+            ToolSpecification toolSpecification = ToolSpecification.builder()
+                    .name("add")
+                    .parameters(JsonObjectSchema.builder()
+                            .addNumberProperty("a")
+                            .addNumberProperty("b")
+                            .required("a", "b")
+                            .build())
+                    .build();
+            return ToolProviderResult.builder()
+                    .add(toolSpecification, (request, memoryId) -> "does not matter")
+                    .build();
         };
 
         ToolProvider multiplyToolProvider = (toolProviderRequest) -> {
@@ -1248,20 +1318,20 @@ class AiServicesWithToolsIT {
             ChatModel chatModel) {
 
         // given
-        int maxSequentialToolsInvocations = 1; // only one sequential tool call allowed, the test makes 3
+        int maxToolCallingRoundTrips = 1; // only one round trip allowed, the test makes 3
 
         AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
                 .chatModel(chatModel)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
                 .tools(new TransactionService())
-                .maxSequentialToolsInvocations(maxSequentialToolsInvocations)
+                .maxToolCallingRoundTrips(maxToolCallingRoundTrips)
                 .build();
 
         String userMessage = "What are the amounts of transactions T001 and T002?";
 
         assertThatExceptionOfType(RuntimeException.class)
                 .isThrownBy(() -> assistant.chat(userMessage))
-                .withMessage("Something is wrong, exceeded 1 sequential tool invocations");
+                .withMessage("Something is wrong, exceeded 1 tool calling round trips (maxToolCallingRoundTrips)");
     }
 
     @ParameterizedTest
@@ -1345,49 +1415,45 @@ class AiServicesWithToolsIT {
 
     interface RouterAgent {
 
-        @dev.langchain4j.service.UserMessage(
-                """
-            Analyze the following user request and categorize it as 'legal', 'medical' or 'technical',
-            then forward the request as it is to the corresponding expert provided as a tool.
-            Finally return the answer that you received from the expert without any modification.
+        @dev.langchain4j.service.UserMessage("""
+                        Analyze the following user request and categorize it as 'legal', 'medical' or 'technical',
+                        then forward the request as it is to the corresponding expert provided as a tool.
+                        Finally return the answer that you received from the expert without any modification.
 
-            The user request is: '{{it}}'.
-            """)
+                        The user request is: '{{it}}'.
+                        """)
         String askToExpert(String request);
     }
 
     interface MedicalExpert {
 
-        @dev.langchain4j.service.UserMessage(
-                """
-            You are a medical expert.
-            Analyze the following user request under a medical point of view and provide the best possible answer.
-            The user request is {{it}}.
-            """)
+        @dev.langchain4j.service.UserMessage("""
+                        You are a medical expert.
+                        Analyze the following user request under a medical point of view and provide the best possible answer.
+                        The user request is {{it}}.
+                        """)
         @Tool("A medical expert")
         String medicalRequest(String request);
     }
 
     interface LegalExpert {
 
-        @dev.langchain4j.service.UserMessage(
-                """
-            You are a legal expert.
-            Analyze the following user request under a legal point of view and provide the best possible answer.
-            The user request is {{it}}.
-            """)
+        @dev.langchain4j.service.UserMessage("""
+                        You are a legal expert.
+                        Analyze the following user request under a legal point of view and provide the best possible answer.
+                        The user request is {{it}}.
+                        """)
         @Tool("A legal expert")
         String legalRequest(String request);
     }
 
     interface TechnicalExpert {
 
-        @dev.langchain4j.service.UserMessage(
-                """
-            You are a technical expert.
-            Analyze the following user request under a technical point of view and provide the best possible answer.
-            The user request is {{it}}.
-            """)
+        @dev.langchain4j.service.UserMessage("""
+                        You are a technical expert.
+                        Analyze the following user request under a technical point of view and provide the best possible answer.
+                        The user request is {{it}}.
+                        """)
         @Tool("A technical expert")
         String technicalRequest(String request);
     }
@@ -1509,12 +1575,13 @@ class AiServicesWithToolsIT {
     @ParameterizedTest
     @MethodSource("modelsWithoutParallelToolCalling")
     void should_rewrite_chat_request_using_tool(ChatModel chatModel) {
-        AtomicInteger result = new AtomicInteger();
+        AtomicInteger addResult = new AtomicInteger();
+        AtomicInteger mulResult = new AtomicInteger();
         AiServicesIT.UserMessageTransformer requestTransformer = userMessage -> userMessage.replace("three", "four");
 
         Counter counter = AiServices.builder(Counter.class)
                 .chatModel(chatModel)
-                .tools(new CalculatorTool(result))
+                .tools(new CalculatorTool(addResult, mulResult))
                 .chatRequestTransformer(requestTransformer)
                 .build();
 
@@ -1523,26 +1590,1347 @@ class AiServicesWithToolsIT {
         int count = counter.doMath(sentence);
         assertThat(count).isEqualTo(56);
         // check that the tools have been correctly invoked
-        assertThat(result.get()).isEqualTo(56);
+        assertThat(addResult.get()).isEqualTo(14);
+        assertThat(mulResult.get()).isEqualTo(56);
     }
 
-    public static class CalculatorTool {
-        private final AtomicInteger result;
+    public static class AdderTool {
+        private final AtomicInteger addResult;
 
-        public CalculatorTool(final AtomicInteger result) {
-            this.result = result;
+        public AdderTool(final AtomicInteger addResult) {
+            this.addResult = addResult;
         }
 
         @Tool("calculates the sum of two integers")
         public int sum(int first, int second) {
-            return first + second;
+            int sum = first + second;
+            addResult.set(sum);
+            return sum;
+        }
+    }
+
+    public static class CalculatorTool extends AdderTool {
+        private final AtomicInteger mulResult;
+
+        public CalculatorTool(final AtomicInteger addResult, final AtomicInteger mulResult) {
+            super(addResult);
+            this.mulResult = mulResult;
         }
 
         @Tool("calculates the multiplication of two integers")
         public int multiply(int first, int second) {
             int prod = first * second;
-            result.set(prod);
+            mulResult.set(prod);
             return prod;
         }
+    }
+
+    @Test
+    void should_call_static_tool_provider_once_and_dynamic_tool_provider_before_each_chat_model_request() {
+
+        // given
+        ToolProvider spyStaticProvider = spy(new ToolProvider() {
+            @Override
+            public ToolProviderResult provideTools(ToolProviderRequest request) {
+                ToolSpecification getWeather = ToolSpecification.builder()
+                        .name("getWeather")
+                        .description("Gets the weather for a city")
+                        .build();
+                return ToolProviderResult.builder()
+                        .add(getWeather, (req, memoryId) -> "sunny")
+                        .build();
+            }
+        });
+
+        ToolProvider spyDynamicProvider = spy(new ToolProvider() {
+            @Override
+            public ToolProviderResult provideTools(ToolProviderRequest request) {
+                ToolSpecification getTime = ToolSpecification.builder()
+                        .name("getTime")
+                        .description("Gets the current time")
+                        .build();
+                return ToolProviderResult.builder()
+                        .add(getTime, (req, memoryId) -> "12:00")
+                        .build();
+            }
+
+            @Override
+            public boolean isDynamic() {
+                return true;
+            }
+        });
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("getWeather")
+                        .arguments("{\"city\":\"London\"}")
+                        .build()),
+                AiMessage.from("It is sunny in London"));
+        ChatModel spyChatModel = spy(chatModel);
+
+        interface SimpleAssistant {
+            String chat(String userMessage);
+        }
+
+        SimpleAssistant assistant = AiServices.builder(SimpleAssistant.class)
+                .chatModel(spyChatModel)
+                .toolProviders(spyStaticProvider, spyDynamicProvider)
+                .build();
+
+        // when
+        String answer = assistant.chat("What is the weather in London?");
+
+        // then
+        assertThat(answer).contains("sunny");
+
+        verify(spyStaticProvider, times(1)).provideTools(any());
+        verify(spyDynamicProvider, times(2)).provideTools(any());
+
+        verify(spyChatModel, times(2))
+                .chat(argThat((ChatRequest request) -> request.toolSpecifications().stream()
+                                .anyMatch(t -> t.name().equals("getWeather"))
+                        && request.toolSpecifications().stream()
+                                .anyMatch(t -> t.name().equals("getTime"))));
+    }
+
+    @Test
+    void dynamic_provider_new_tools_in_second_call_should_be_added() {
+
+        // given
+        AtomicInteger callCount = new AtomicInteger(0);
+
+        ToolProvider spyDynamicProvider = spy(new ToolProvider() {
+            @Override
+            public ToolProviderResult provideTools(ToolProviderRequest request) {
+                int call = callCount.incrementAndGet();
+                ToolProviderResult.Builder builder = ToolProviderResult.builder();
+                builder.add(
+                        ToolSpecification.builder()
+                                .name("getWeather")
+                                .description("Gets the weather")
+                                .build(),
+                        (req, memoryId) -> "sunny");
+                if (call >= 2) {
+                    builder.add(
+                            ToolSpecification.builder()
+                                    .name("getTime")
+                                    .description("Gets the time")
+                                    .build(),
+                            (req, memoryId) -> "12:00");
+                }
+                return builder.build();
+            }
+
+            @Override
+            public boolean isDynamic() {
+                return true;
+            }
+        });
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("getWeather")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("It is sunny and the time is 12:00"));
+        ChatModel spyChatModel = spy(chatModel);
+
+        interface SimpleAssistant {
+            String chat(String userMessage);
+        }
+
+        SimpleAssistant assistant = AiServices.builder(SimpleAssistant.class)
+                .chatModel(spyChatModel)
+                .toolProviders(spyDynamicProvider)
+                .build();
+
+        // when
+        String answer = assistant.chat("What is the weather?");
+
+        // then
+        assertThat(answer).contains("sunny");
+
+        InOrder inOrder = inOrder(spyChatModel);
+
+        inOrder.verify(spyChatModel)
+                .chat(argThat((ChatRequest request) ->
+                        containsTool(request, "getWeather") && !containsTool(request, "getTime")));
+
+        inOrder.verify(spyChatModel)
+                .chat(argThat((ChatRequest request) ->
+                        containsTool(request, "getWeather") && containsTool(request, "getTime")));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
+    }
+
+    @Test
+    void dynamic_provider_not_returning_tool_in_second_call_should_still_have_it() {
+
+        // given
+        AtomicInteger callCount = new AtomicInteger(0);
+
+        ToolProvider spyDynamicProvider = spy(new ToolProvider() {
+            @Override
+            public ToolProviderResult provideTools(ToolProviderRequest request) {
+                int call = callCount.incrementAndGet();
+                ToolProviderResult.Builder builder = ToolProviderResult.builder();
+                builder.add(
+                        ToolSpecification.builder()
+                                .name("getWeather")
+                                .description("Gets the weather")
+                                .build(),
+                        (req, memoryId) -> "sunny");
+                if (call == 1) {
+                    // Only returned on first call
+                    builder.add(
+                            ToolSpecification.builder()
+                                    .name("getTime")
+                                    .description("Gets the time")
+                                    .build(),
+                            (req, memoryId) -> "12:00");
+                }
+                return builder.build();
+            }
+
+            @Override
+            public boolean isDynamic() {
+                return true;
+            }
+        });
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("getWeather")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("It is sunny and the time is 12:00"));
+        ChatModel spyChatModel = spy(chatModel);
+
+        interface SimpleAssistant {
+            String chat(String userMessage);
+        }
+
+        SimpleAssistant assistant = AiServices.builder(SimpleAssistant.class)
+                .chatModel(spyChatModel)
+                .toolProviders(spyDynamicProvider)
+                .build();
+
+        // when
+        String answer = assistant.chat("What is the weather?");
+
+        // then
+        assertThat(answer).contains("sunny");
+
+        verify(spyChatModel, times(2))
+                .chat(argThat((ChatRequest request) ->
+                        containsTool(request, "getWeather") && containsTool(request, "getTime")));
+
+        verifyNoMoreInteractionsFor(spyChatModel);
+    }
+
+    @Test
+    void should_send_null_as_text_to_LLM_when_tool_returns_null_instead_of_Integer() {
+
+        // given
+        class ToolReturningNull {
+
+            @Tool("Returns nothing")
+            Integer doSomething() {
+                return null;
+            }
+        }
+
+        ToolReturningNull tools = spy(new ToolReturningNull());
+
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("doSomething")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("OK, got null")));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .build();
+
+        // when
+        assistant.chat("Do something");
+
+        // then
+        verify(tools).doSomething();
+
+        verify(chatModel, times(2)).chat(argThat((ChatRequest request) -> {
+            if (request.messages().size() < 3) {
+                return true; // first call
+            }
+            ToolExecutionResultMessage toolResult = request.messages().stream()
+                    .filter(ToolExecutionResultMessage.class::isInstance)
+                    .map(ToolExecutionResultMessage.class::cast)
+                    .findFirst()
+                    .orElse(null);
+            return toolResult != null && toolResult.text().equals("null");
+        }));
+    }
+
+    @Test
+    void should_send_null_as_text_to_LLM_when_tool_returns_null_instead_of_String() {
+
+        // given
+        class ToolReturningNull {
+
+            @Tool("Returns nothing")
+            String doSomething() {
+                return null;
+            }
+        }
+
+        ToolReturningNull tools = spy(new ToolReturningNull());
+
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("doSomething")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("OK, got null")));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .build();
+
+        // when
+        assistant.chat("Do something");
+
+        // then
+        verify(tools).doSomething();
+
+        verify(chatModel, times(2)).chat(argThat((ChatRequest request) -> {
+            if (request.messages().size() < 3) {
+                return true; // first call
+            }
+            ToolExecutionResultMessage toolResult = request.messages().stream()
+                    .filter(ToolExecutionResultMessage.class::isInstance)
+                    .map(ToolExecutionResultMessage.class::cast)
+                    .findFirst()
+                    .orElse(null);
+            return toolResult != null && toolResult.text().equals("null");
+        }));
+    }
+
+    @Test
+    void should_send_ImageContent_to_LLM_when_tool_with_Object_return_type_returns_Image() {
+
+        // given
+        class ToolReturningObjectThatIsImage {
+
+            @Tool("Takes a photo")
+            Object takePhoto() {
+                return Image.builder().base64Data("iVBOR").mimeType("image/png").build();
+            }
+        }
+
+        ToolReturningObjectThatIsImage tools = spy(new ToolReturningObjectThatIsImage());
+
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("takePhoto")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("I see a cat")));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .build();
+
+        // when
+        assistant.chat("Take a photo");
+
+        // then
+        verify(tools).takePhoto();
+
+        verify(chatModel, times(2)).chat(argThat((ChatRequest request) -> {
+            if (request.messages().size() < 3) {
+                return true; // first call
+            }
+            // second call should have ToolExecutionResultMessage with ImageContent
+            ToolExecutionResultMessage toolResult = request.messages().stream()
+                    .filter(ToolExecutionResultMessage.class::isInstance)
+                    .map(ToolExecutionResultMessage.class::cast)
+                    .findFirst()
+                    .orElse(null);
+            return toolResult != null
+                    && toolResult.contents().size() == 1
+                    && toolResult.contents().get(0) instanceof dev.langchain4j.data.message.ImageContent;
+        }));
+    }
+
+    @Test
+    void should_send_text_to_LLM_when_tool_with_Image_return_type_returns_null() {
+
+        // given
+        class ToolReturningNullImage {
+
+            @Tool("Takes a photo")
+            Image takePhoto() {
+                return null;
+            }
+        }
+
+        ToolReturningNullImage tools = spy(new ToolReturningNullImage());
+
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("takePhoto")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("No photo available")));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .build();
+
+        // when
+        assistant.chat("Take a photo");
+
+        // then
+        verify(tools).takePhoto();
+
+        verify(chatModel, times(2)).chat(argThat((ChatRequest request) -> {
+            if (request.messages().size() < 3) {
+                return true; // first call
+            }
+            // second call should have ToolExecutionResultMessage with text (null serialized)
+            ToolExecutionResultMessage toolResult = request.messages().stream()
+                    .filter(ToolExecutionResultMessage.class::isInstance)
+                    .map(ToolExecutionResultMessage.class::cast)
+                    .findFirst()
+                    .orElse(null);
+            return toolResult != null && toolResult.text().equals("null");
+        }));
+    }
+
+    @Test
+    void should_send_error_text_to_LLM_when_tool_with_Image_return_type_throws_exception() {
+
+        // given
+        class ToolThrowingException {
+
+            @Tool("Takes a photo")
+            Image takePhoto() {
+                throw new RuntimeException("Camera is broken");
+            }
+        }
+
+        ToolThrowingException tools = spy(new ToolThrowingException());
+
+        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("takePhoto")
+                        .arguments("{}")
+                        .build()),
+                AiMessage.from("Sorry, the camera is broken")));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .build();
+
+        // when
+        assistant.chat("Take a photo");
+
+        // then
+        verify(tools).takePhoto();
+
+        verify(chatModel, times(2)).chat(argThat((ChatRequest request) -> {
+            if (request.messages().size() < 3) {
+                return true; // first call
+            }
+            // second call should have ToolExecutionResultMessage with error text
+            ToolExecutionResultMessage toolResult = request.messages().stream()
+                    .filter(ToolExecutionResultMessage.class::isInstance)
+                    .map(ToolExecutionResultMessage.class::cast)
+                    .findFirst()
+                    .orElse(null);
+            return toolResult != null
+                    && toolResult.text().contains("Camera is broken")
+                    && Boolean.TRUE.equals(toolResult.isError());
+        }));
+    }
+
+    sealed interface Animal permits Dog, Cat {}
+
+    record Dog(String name, String breed) implements Animal {}
+
+    record Cat(String name, boolean indoor) implements Animal {}
+
+    @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "kind")
+    @JsonSubTypes({
+        @JsonSubTypes.Type(value = Square.class, name = "square"),
+        @JsonSubTypes.Type(value = Circle.class, name = "circle")
+    })
+    interface Shape {}
+
+    static class Square implements Shape {
+        double side;
+
+        Square() {}
+    }
+
+    static class Circle implements Shape {
+        double radius;
+
+        Circle() {}
+    }
+
+    record Owner(String name, Animal pet) {}
+
+    static class AnimalRegistry {
+
+        @Tool("registers a single animal")
+        void registerAnimal(Animal animal) {}
+
+        @Tool("registers a batch of animals at once")
+        void registerAnimals(List<Animal> animals) {}
+
+        @Tool("registers an owner with their pet")
+        void registerOwner(Owner owner) {}
+
+        @Tool("registers a shape preference")
+        void registerShape(Shape shape) {}
+    }
+
+    interface RegistryAssistant {
+        Result<String> chat(String userMessage);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_call_tool_with_polymorphic_sealed_argument(ChatModel chatModel) {
+
+        AnimalRegistry registry = spy(new AnimalRegistry());
+
+        RegistryAssistant assistant = AiServices.builder(RegistryAssistant.class)
+                .chatModel(chatModel)
+                .tools(registry)
+                .build();
+
+        assistant.chat("Please register a Labrador dog named Rex.");
+
+        verify(registry)
+                .registerAnimal(argThat(animal -> animal instanceof Dog dog
+                        && dog.name().equalsIgnoreCase("Rex")
+                        && dog.breed().toLowerCase().contains("labrador")));
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_call_tool_with_list_of_polymorphic_arguments(ChatModel chatModel) {
+
+        AnimalRegistry registry = spy(new AnimalRegistry());
+
+        RegistryAssistant assistant = AiServices.builder(RegistryAssistant.class)
+                .chatModel(chatModel)
+                .tools(registry)
+                .build();
+
+        assistant.chat("Register a batch of two animals in a single call using the registerAnimals tool "
+                + "(do NOT use registerAnimal): a Labrador dog named Rex, and an indoor cat named Whiskers.");
+
+        verify(registry)
+                .registerAnimals(argThat(animals -> animals.size() == 2
+                        && animals.stream().anyMatch(Dog.class::isInstance)
+                        && animals.stream().anyMatch(Cat.class::isInstance)));
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_call_tool_with_pojo_containing_nested_polymorphic_field(ChatModel chatModel) {
+
+        AnimalRegistry registry = spy(new AnimalRegistry());
+
+        RegistryAssistant assistant = AiServices.builder(RegistryAssistant.class)
+                .chatModel(chatModel)
+                .tools(registry)
+                .build();
+
+        assistant.chat("Please register Alice as the owner of her Labrador dog named Rex.");
+
+        verify(registry)
+                .registerOwner(argThat(owner -> owner.name().equalsIgnoreCase("Alice")
+                        && owner.pet() instanceof Dog dog
+                        && dog.name().equalsIgnoreCase("Rex")
+                        && dog.breed().toLowerCase().contains("labrador")));
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_call_tool_with_jackson_annotated_polymorphic_argument(ChatModel chatModel) {
+
+        AnimalRegistry registry = spy(new AnimalRegistry());
+
+        RegistryAssistant assistant = AiServices.builder(RegistryAssistant.class)
+                .chatModel(chatModel)
+                .tools(registry)
+                .build();
+
+        assistant.chat("Please register a circle shape with radius 4.");
+
+        verify(registry).registerShape(argThat(shape -> shape instanceof Circle circle && circle.radius == 4.0));
+    }
+
+    static class BankAccountService {
+
+        final Map<String, Double> accounts = new HashMap<>();
+
+        BankAccountService() {
+            accounts.put("Mario", 50.0);
+            accounts.put("Dmytro", 100.0);
+        }
+
+        @Tool("credits money to a bank account")
+        void credit(@P(name = "name", description = "account holder name") String name,
+                    @P(name = "amount", description = "amount to credit") double amount) {
+            accounts.merge(name, amount, Double::sum);
+        }
+
+        @CompensateFor("credit")
+        void uncredit(String name, double amount) {
+            accounts.merge(name, -amount, Double::sum);
+        }
+
+        @Tool("withdraws money from a bank account")
+        void withdraw(@P(name = "name", description = "account holder name") String name,
+                      @P(name = "amount", description = "amount to withdraw") double amount) {
+            if (accounts.getOrDefault(name, 0.0) < amount) {
+                throw new RuntimeException("Insufficient funds in " + name + "'s account");
+            }
+            accounts.merge(name, -amount, Double::sum);
+        }
+
+        @CompensateFor("withdraw")
+        void unwithdraw(String name, double amount) {
+            accounts.merge(name, amount, Double::sum);
+        }
+    }
+
+    @Test
+    void should_rollback_tool_executions_on_failure_when_transactional() {
+
+        // given
+        BankAccountService bankService = spy(new BankAccountService());
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                // First LLM response: credit Dmytro's account
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("credit")
+                        .arguments("{\"name\": \"Dmytro\", \"amount\": 100.0}")
+                        .build()),
+                // Second LLM response: withdraw from Mario's account (will fail - insufficient funds)
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("2")
+                        .name("withdraw")
+                        .arguments("{\"name\": \"Mario\", \"amount\": 100.0}")
+                        .build()),
+                AiMessage.from("Transfer complete"));
+
+        interface BankAssistant {
+            String chat(String userMessage);
+        }
+
+        BankAssistant assistant = AiServices.builder(BankAssistant.class)
+                .chatModel(chatModel)
+                .tools(bankService)
+                .compensateOnToolErrors(true)
+                .build();
+
+        // when
+        String response = assistant.chat("Transfer 100 dollars from Mario's account to Dmytro's account");
+
+        // then - the credit to Dmytro should have been rolled back via uncredit
+        verify(bankService).credit("Dmytro", 100.0);
+        verify(bankService).withdraw("Mario", 100.0);
+        verify(bankService).uncredit("Dmytro", 100.0);
+
+        // account balances should be back to their original state
+        assertThat(bankService.accounts.get("Mario")).isEqualTo(50.0);
+        assertThat(bankService.accounts.get("Dmytro")).isEqualTo(100.0);
+
+        // LLM received rollback info and responded
+        assertThat(response).isEqualTo("Transfer complete");
+    }
+
+    @Test
+    void should_not_rollback_tool_executions_on_failure_when_not_transactional() {
+
+        // given
+        BankAccountService bankService = spy(new BankAccountService());
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("credit")
+                        .arguments("{\"name\": \"Dmytro\", \"amount\": 100.0}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("2")
+                        .name("withdraw")
+                        .arguments("{\"name\": \"Mario\", \"amount\": 100.0}")
+                        .build()),
+                AiMessage.from("Transfer failed, Mario has insufficient funds"));
+
+        interface BankAssistant {
+            String chat(String userMessage);
+        }
+
+        BankAssistant assistant = AiServices.builder(BankAssistant.class)
+                .chatModel(chatModel)
+                .tools(bankService)
+                .build();
+
+        // when
+        assistant.chat("Transfer 100 dollars from Mario's account to Dmytro's account");
+
+        // then - no rollback: uncredit should never be called
+        verify(bankService).credit("Dmytro", 100.0);
+        verify(bankService).withdraw("Mario", 100.0);
+        verify(bankService, times(0)).uncredit("Dmytro", 100.0);
+
+        // Dmytro's balance stays at 200 (credit was not reversed)
+        assertThat(bankService.accounts.get("Mario")).isEqualTo(50.0);
+        assertThat(bankService.accounts.get("Dmytro")).isEqualTo(200.0);
+    }
+
+    @Test
+    void should_rollback_with_tool_execution_parameter() {
+
+        // given
+        class CompensatingBankService {
+
+            final Map<String, Double> accounts = new HashMap<>();
+            final List<String> reversedTransactionIds = new ArrayList<>();
+
+            CompensatingBankService() {
+                accounts.put("Mario", 50.0);
+                accounts.put("Dmytro", 100.0);
+            }
+
+            @Tool("credits money to a bank account")
+            String credit(@P(name = "name", description = "account holder name") String name,
+                          @P(name = "amount", description = "amount to credit") double amount) {
+                accounts.merge(name, amount, Double::sum);
+                return "TX-42";
+            }
+
+            @CompensateFor("credit")
+            void uncredit(ToolExecution toolExecution) {
+                reversedTransactionIds.add(toolExecution.result());
+                Map<String, Object> args = Json.fromJson(toolExecution.request().arguments(), Map.class);
+                accounts.merge((String) args.get("name"), -((Number) args.get("amount")).doubleValue(), Double::sum);
+            }
+
+            @Tool("withdraws money from a bank account")
+            void withdraw(@P(name = "name", description = "account holder name") String name,
+                          @P(name = "amount", description = "amount to withdraw") double amount) {
+                if (accounts.getOrDefault(name, 0.0) < amount) {
+                    throw new RuntimeException("Insufficient funds in " + name + "'s account");
+                }
+                accounts.merge(name, -amount, Double::sum);
+            }
+        }
+
+        CompensatingBankService bankService = new CompensatingBankService();
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("credit")
+                        .arguments("{\"name\": \"Dmytro\", \"amount\": 100.0}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("2")
+                        .name("withdraw")
+                        .arguments("{\"name\": \"Mario\", \"amount\": 100.0}")
+                        .build()),
+                AiMessage.from("Transfer complete"));
+
+        interface BankAssistant {
+            String chat(String userMessage);
+        }
+
+        BankAssistant assistant = AiServices.builder(BankAssistant.class)
+                .chatModel(chatModel)
+                .tools(bankService)
+                .compensateOnToolErrors(true)
+                .build();
+
+        // when
+        String response = assistant.chat("Transfer 100 dollars from Mario's account to Dmytro's account");
+
+        // then - the reverse method received the ToolExecution with the original result
+        assertThat(bankService.reversedTransactionIds).containsExactly("TX-42");
+
+        // balances should be restored
+        assertThat(bankService.accounts.get("Mario")).isEqualTo(50.0);
+        assertThat(bankService.accounts.get("Dmytro")).isEqualTo(100.0);
+
+        assertThat(response).isEqualTo("Transfer complete");
+    }
+
+    static class TravelBookingService {
+
+        final List<String> executionLog = new ArrayList<>();
+        final Set<String> failingTools;
+
+        TravelBookingService(String... failingTools) {
+            this.failingTools = Set.of(failingTools);
+        }
+
+        @Tool("books a flight")
+        String bookFlight(@P(name = "destination", description = "destination city") String destination) {
+            if (failingTools.contains("bookFlight")) {
+                throw new RuntimeException("No flights available to " + destination);
+            }
+            executionLog.add("bookFlight");
+            return "FL-123";
+        }
+
+        @CompensateFor("bookFlight")
+        void cancelFlight(ToolExecution toolExecution) {
+            executionLog.add("cancelFlight:" + toolExecution.result());
+        }
+
+        @Tool("books a hotel")
+        String bookHotel(@P(name = "destination", description = "destination city") String destination) {
+            if (failingTools.contains("bookHotel")) {
+                throw new RuntimeException("No hotels available in " + destination);
+            }
+            executionLog.add("bookHotel");
+            return "HT-456";
+        }
+
+        @CompensateFor("bookHotel")
+        void cancelHotel(ToolExecution toolExecution) {
+            executionLog.add("cancelHotel:" + toolExecution.result());
+        }
+
+        @Tool("rents a car")
+        String rentCar(@P(name = "destination", description = "destination city") String destination) {
+            if (failingTools.contains("rentCar")) {
+                throw new RuntimeException("No cars available in " + destination);
+            }
+            executionLog.add("rentCar");
+            return "CR-789";
+        }
+
+        @CompensateFor("rentCar")
+        void cancelCar(ToolExecution toolExecution) {
+            executionLog.add("cancelCar:" + toolExecution.result());
+        }
+    }
+
+    @Test
+    void should_rollback_in_reverse_order_when_last_tool_fails() {
+
+        // given
+        TravelBookingService travelService = new TravelBookingService("rentCar");
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(
+                        ToolExecutionRequest.builder().id("1").name("bookFlight")
+                                .arguments("{\"destination\": \"Paris\"}").build(),
+                        ToolExecutionRequest.builder().id("2").name("bookHotel")
+                                .arguments("{\"destination\": \"Paris\"}").build(),
+                        ToolExecutionRequest.builder().id("3").name("rentCar")
+                                .arguments("{\"destination\": \"Paris\"}").build()),
+                AiMessage.from("Trip booked"));
+
+        interface TravelAssistant {
+            String chat(String userMessage);
+        }
+
+        TravelAssistant assistant = AiServices.builder(TravelAssistant.class)
+                .chatModel(chatModel)
+                .tools(travelService)
+                .compensateOnToolErrors(true)
+                .build();
+
+        // when
+        String response = assistant.chat("Book a trip to Paris");
+
+        // then - rollback in reverse: cancelHotel before cancelFlight
+        assertThat(travelService.executionLog).containsExactly(
+                "bookFlight", "bookHotel",
+                "cancelHotel:HT-456", "cancelFlight:FL-123");
+        assertThat(response).isEqualTo("Trip booked");
+    }
+
+    @Test
+    void should_rollback_when_middle_tool_fails() {
+
+        // given
+        TravelBookingService travelService = new TravelBookingService("bookHotel");
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(
+                        ToolExecutionRequest.builder().id("1").name("bookFlight")
+                                .arguments("{\"destination\": \"Rome\"}").build(),
+                        ToolExecutionRequest.builder().id("2").name("bookHotel")
+                                .arguments("{\"destination\": \"Rome\"}").build(),
+                        ToolExecutionRequest.builder().id("3").name("rentCar")
+                                .arguments("{\"destination\": \"Rome\"}").build()),
+                AiMessage.from("Trip booked"));
+
+        interface TravelAssistant {
+            String chat(String userMessage);
+        }
+
+        TravelAssistant assistant = AiServices.builder(TravelAssistant.class)
+                .chatModel(chatModel)
+                .tools(travelService)
+                .compensateOnToolErrors(true)
+                .build();
+
+        // when
+        String response = assistant.chat("Book a trip to Rome");
+
+        // then - flight and car succeeded, hotel failed, rollback in reverse: cancelCar then cancelFlight
+        assertThat(travelService.executionLog).containsExactly(
+                "bookFlight", "rentCar",
+                "cancelCar:CR-789", "cancelFlight:FL-123");
+        assertThat(response).isEqualTo("Trip booked");
+    }
+
+    @Test
+    void should_rollback_when_first_tool_fails() {
+
+        // given
+        TravelBookingService travelService = new TravelBookingService("bookFlight");
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(
+                        ToolExecutionRequest.builder().id("1").name("bookFlight")
+                                .arguments("{\"destination\": \"Tokyo\"}").build(),
+                        ToolExecutionRequest.builder().id("2").name("bookHotel")
+                                .arguments("{\"destination\": \"Tokyo\"}").build(),
+                        ToolExecutionRequest.builder().id("3").name("rentCar")
+                                .arguments("{\"destination\": \"Tokyo\"}").build()),
+                AiMessage.from("Trip booked"));
+
+        interface TravelAssistant {
+            String chat(String userMessage);
+        }
+
+        TravelAssistant assistant = AiServices.builder(TravelAssistant.class)
+                .chatModel(chatModel)
+                .tools(travelService)
+                .compensateOnToolErrors(true)
+                .build();
+
+        // when
+        String response = assistant.chat("Book a trip to Tokyo");
+
+        // then - hotel and car succeeded, flight failed, rollback in reverse: cancelCar then cancelHotel
+        assertThat(travelService.executionLog).containsExactly(
+                "bookHotel", "rentCar",
+                "cancelCar:CR-789", "cancelHotel:HT-456");
+        assertThat(response).isEqualTo("Trip booked");
+    }
+
+    @Test
+    void should_not_double_compensate_after_retry() {
+
+        // given
+        BankAccountService bankService = spy(new BankAccountService());
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                // Round 1: credit succeeds
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("credit")
+                        .arguments("{\"name\": \"Dmytro\", \"amount\": 100.0}")
+                        .build()),
+                // Round 1: withdraw fails (insufficient funds) → rollback undoes credit
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("2")
+                        .name("withdraw")
+                        .arguments("{\"name\": \"Mario\", \"amount\": 100.0}")
+                        .build()),
+                // LLM retries: credit again
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("3")
+                        .name("credit")
+                        .arguments("{\"name\": \"Dmytro\", \"amount\": 100.0}")
+                        .build()),
+                // Retry: withdraw fails again → rollback should only undo the second credit
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("4")
+                        .name("withdraw")
+                        .arguments("{\"name\": \"Mario\", \"amount\": 100.0}")
+                        .build()),
+                AiMessage.from("Transfer failed"));
+
+        interface BankAssistant {
+            String chat(String userMessage);
+        }
+
+        BankAssistant assistant = AiServices.builder(BankAssistant.class)
+                .chatModel(chatModel)
+                .tools(bankService)
+                .compensateOnToolErrors(true)
+                .build();
+
+        // when
+        String response = assistant.chat("Transfer 100 dollars from Mario's account to Dmytro's account");
+
+        // then - uncredit should be called exactly twice (once per failure), not three times
+        verify(bankService, times(2)).credit("Dmytro", 100.0);
+        verify(bankService, times(2)).withdraw("Mario", 100.0);
+        verify(bankService, times(2)).uncredit("Dmytro", 100.0);
+
+        // account balances should be back to their original state
+        assertThat(bankService.accounts.get("Mario")).isEqualTo(50.0);
+        assertThat(bankService.accounts.get("Dmytro")).isEqualTo(100.0);
+
+        assertThat(response).isEqualTo("Transfer failed");
+    }
+
+    @Test
+    void should_inform_llm_about_rolled_back_tools() {
+
+        // given
+        TravelBookingService travelService = new TravelBookingService("bookHotel");
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(20);
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(
+                        ToolExecutionRequest.builder().id("1").name("bookFlight")
+                                .arguments("{\"destination\": \"Berlin\"}").build(),
+                        ToolExecutionRequest.builder().id("2").name("bookHotel")
+                                .arguments("{\"destination\": \"Berlin\"}").build(),
+                        ToolExecutionRequest.builder().id("3").name("rentCar")
+                                .arguments("{\"destination\": \"Berlin\"}").build()),
+                AiMessage.from("Sorry, I could not complete the booking because no hotels are available in Berlin."));
+
+        interface TravelAssistant {
+            String chat(String userMessage);
+        }
+
+        TravelAssistant assistant = AiServices.builder(TravelAssistant.class)
+                .chatModel(chatModel)
+                .tools(travelService)
+                .chatMemory(chatMemory)
+                .compensateOnToolErrors(true)
+                .build();
+
+        // when
+        String response = assistant.chat("Book a trip to Berlin");
+
+        // then - LLM responded with rollback-aware message
+        assertThat(response).contains("could not complete the booking");
+
+        // verify ChatMemory contains proper tool result messages
+        List<ToolExecutionResultMessage> toolResultMessages = chatMemory.messages().stream()
+                .filter(m -> m instanceof ToolExecutionResultMessage)
+                .map(m -> (ToolExecutionResultMessage) m)
+                .toList();
+
+        assertThat(toolResultMessages).hasSize(3);
+
+        // bookFlight succeeded but was rolled back
+        assertThat(toolResultMessages.get(0).isError()).isTrue();
+        assertThat(toolResultMessages.get(0).text())
+                .contains("bookFlight")
+                .contains("rolled back")
+                .contains("bookHotel");
+
+        // bookHotel failed — normal error message
+        assertThat(toolResultMessages.get(1).text())
+                .contains("No hotels available");
+
+        // rentCar succeeded but was rolled back
+        assertThat(toolResultMessages.get(2).isError()).isTrue();
+        assertThat(toolResultMessages.get(2).text())
+                .contains("rentCar")
+                .contains("rolled back")
+                .contains("bookHotel");
+    }
+
+    @Test
+    void should_rollback_prior_round_trip_tools_and_update_chat_memory() {
+
+        // given
+        BankAccountService bankService = spy(new BankAccountService());
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(20);
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                // Round 1: LLM calls credit (succeeds)
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("credit")
+                        .arguments("{\"name\": \"Dmytro\", \"amount\": 100.0}")
+                        .build()),
+                // Round 2: LLM calls withdraw (fails — insufficient funds)
+                // → rollback should undo credit from Round 1
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("2")
+                        .name("withdraw")
+                        .arguments("{\"name\": \"Mario\", \"amount\": 100.0}")
+                        .build()),
+                AiMessage.from("Transfer failed"));
+
+        interface BankAssistant {
+            String chat(String userMessage);
+        }
+
+        BankAssistant assistant = AiServices.builder(BankAssistant.class)
+                .chatModel(chatModel)
+                .tools(bankService)
+                .chatMemory(chatMemory)
+                .compensateOnToolErrors(true)
+                .build();
+
+        // when
+        String response = assistant.chat("Transfer 100 dollars from Mario's account to Dmytro's account");
+
+        // then - credit from round 1 should have been rolled back
+        verify(bankService).credit("Dmytro", 100.0);
+        verify(bankService).withdraw("Mario", 100.0);
+        verify(bankService).uncredit("Dmytro", 100.0);
+
+        // account balances should be back to their original state
+        assertThat(bankService.accounts.get("Mario")).isEqualTo(50.0);
+        assertThat(bankService.accounts.get("Dmytro")).isEqualTo(100.0);
+
+        // ChatMemory should reflect the rollback for the credit from round 1
+        List<ToolExecutionResultMessage> toolResultMessages = chatMemory.messages().stream()
+                .filter(m -> m instanceof ToolExecutionResultMessage)
+                .map(m -> (ToolExecutionResultMessage) m)
+                .toList();
+
+        assertThat(toolResultMessages).hasSize(2);
+
+        // credit was in round 1 but got rolled back due to withdraw failure in round 2
+        // — its message in ChatMemory should say it was rolled back
+        ToolExecutionResultMessage rolledbackCredit = toolResultMessages.get(0);
+        assertThat(rolledbackCredit.toolName()).isEqualTo("credit");
+        assertThat(rolledbackCredit.isError()).isTrue();
+        assertThat(rolledbackCredit.text())
+                .contains("credit")
+                .contains("rolled back")
+                .contains("withdraw");
+
+        // withdraw failed — normal error message
+        ToolExecutionResultMessage rolledbackWithdraw = toolResultMessages.get(1);
+        assertThat(rolledbackWithdraw.toolName()).isEqualTo("withdraw");
+        assertThat(rolledbackWithdraw.isError()).isTrue();
+        assertThat(rolledbackWithdraw.text())
+                .contains("Insufficient funds");
+
+        assertThat(response).isEqualTo("Transfer failed");
+    }
+
+    @Test
+    void should_throw_when_compensating_action_has_wrong_signature() {
+
+        class MisconfiguredService {
+
+            @Tool("credits money to a bank account")
+            void credit(String name, double amount) {
+            }
+
+            @CompensateFor("credit")
+            void uncredit(String name) {
+            }
+        }
+
+        assertThatExceptionOfType(IllegalConfigurationException.class)
+                .isThrownBy(() -> AiServices.builder(Assistant.class)
+                        .chatModel(ChatModelMock.thatAlwaysResponds("ok"))
+                        .tools(new MisconfiguredService())
+                        .compensateOnToolErrors(true)
+                        .build())
+                .withMessageContaining("@CompensateFor(\"credit\")")
+                .withMessageContaining("same parameter types");
+    }
+
+    @Test
+    void should_not_validate_compensating_actions_when_compensateOnToolErrors_is_disabled() {
+
+        class MisconfiguredService {
+
+            @Tool("credits money to a bank account")
+            void credit(String name, double amount) {
+            }
+
+            @CompensateFor("credit")
+            void uncredit(String name) {
+            }
+        }
+
+        // Should NOT throw — the user never enabled compensateOnToolErrors,
+        // so the mismatched @CompensateFor should be silently ignored
+        AiServices.builder(Assistant.class)
+                .chatModel(ChatModelMock.thatAlwaysResponds("ok"))
+                .tools(new MisconfiguredService())
+                .build();
+    }
+
+    static class BaseBankAccountService {
+
+        final Map<String, Double> accounts = new HashMap<>();
+
+        BaseBankAccountService() {
+            accounts.put("Mario", 50.0);
+            accounts.put("Dmytro", 100.0);
+        }
+
+        @Tool("credits money to a bank account")
+        void credit(@P(name = "name", description = "account holder name") String name,
+                    @P(name = "amount", description = "amount to credit") double amount) {
+            accounts.merge(name, amount, Double::sum);
+        }
+
+        @CompensateFor("credit")
+        void uncredit(String name, double amount) {
+            accounts.merge(name, -amount, Double::sum);
+        }
+    }
+
+    static class ExtendedBankAccountService extends BaseBankAccountService {
+
+        @Tool("withdraws money from a bank account")
+        void withdraw(@P(name = "name", description = "account holder name") String name,
+                      @P(name = "amount", description = "amount to withdraw") double amount) {
+            if (accounts.getOrDefault(name, 0.0) < amount) {
+                throw new RuntimeException("Insufficient funds in " + name + "'s account");
+            }
+            accounts.merge(name, -amount, Double::sum);
+        }
+
+        @CompensateFor("withdraw")
+        void unwithdraw(String name, double amount) {
+            accounts.merge(name, amount, Double::sum);
+        }
+    }
+
+    @Test
+    void should_rollback_inherited_compensating_actions() {
+
+        // given
+        ExtendedBankAccountService bankService = spy(new ExtendedBankAccountService());
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("credit")
+                        .arguments("{\"name\": \"Dmytro\", \"amount\": 100.0}")
+                        .build()),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("2")
+                        .name("withdraw")
+                        .arguments("{\"name\": \"Mario\", \"amount\": 100.0}")
+                        .build()),
+                AiMessage.from("Transfer complete"));
+
+        interface BankAssistant {
+            String chat(String userMessage);
+        }
+
+        BankAssistant assistant = AiServices.builder(BankAssistant.class)
+                .chatModel(chatModel)
+                .tools(bankService)
+                .compensateOnToolErrors(true)
+                .build();
+
+        // when
+        String response = assistant.chat("Transfer 100 dollars from Mario's account to Dmytro's account");
+
+        // then - the inherited @CompensateFor("credit") should have been discovered and called
+        verify(bankService).credit("Dmytro", 100.0);
+        verify(bankService).withdraw("Mario", 100.0);
+        verify(bankService).uncredit("Dmytro", 100.0);
+
+        assertThat(bankService.accounts.get("Mario")).isEqualTo(50.0);
+        assertThat(bankService.accounts.get("Dmytro")).isEqualTo(100.0);
+
+        assertThat(response).isEqualTo("Transfer complete");
+    }
+
+    @Test
+    void should_continue_remaining_compensations_when_one_compensating_action_throws() {
+
+        // given - the compensating action for 'bookHotel' itself throws; the framework should
+        // log it at WARN and still run the remaining compensating action for 'bookFlight'
+        class FaultyCompensationService {
+
+            final List<String> executionLog = new ArrayList<>();
+
+            @Tool("books a flight")
+            void bookFlight(@P(name = "destination", description = "destination city") String destination) {
+                executionLog.add("bookFlight");
+            }
+
+            @CompensateFor("bookFlight")
+            void cancelFlight(String destination) {
+                executionLog.add("cancelFlight");
+            }
+
+            @Tool("books a hotel")
+            void bookHotel(@P(name = "destination", description = "destination city") String destination) {
+                executionLog.add("bookHotel");
+            }
+
+            @CompensateFor("bookHotel")
+            void cancelHotel(String destination) {
+                throw new RuntimeException("hotel cancellation failed");
+            }
+
+            @Tool("rents a car")
+            void rentCar(@P(name = "destination", description = "destination city") String destination) {
+                throw new RuntimeException("No cars available in " + destination);
+            }
+        }
+
+        FaultyCompensationService travelService = new FaultyCompensationService();
+
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+                AiMessage.from(
+                        ToolExecutionRequest.builder().id("1").name("bookFlight")
+                                .arguments("{\"destination\": \"Paris\"}").build(),
+                        ToolExecutionRequest.builder().id("2").name("bookHotel")
+                                .arguments("{\"destination\": \"Paris\"}").build(),
+                        ToolExecutionRequest.builder().id("3").name("rentCar")
+                                .arguments("{\"destination\": \"Paris\"}").build()),
+                AiMessage.from("Trip booking failed"));
+
+        interface TravelAssistant {
+            String chat(String userMessage);
+        }
+
+        TravelAssistant assistant = AiServices.builder(TravelAssistant.class)
+                .chatModel(chatModel)
+                .tools(travelService)
+                .compensateOnToolErrors(true)
+                .build();
+
+        // when
+        String response = assistant.chat("Book a trip to Paris");
+
+        // then - even though cancelHotel threw, cancelFlight still ran (best-effort, reverse order)
+        assertThat(travelService.executionLog).containsExactly("bookFlight", "bookHotel", "cancelFlight");
+        assertThat(response).isEqualTo("Trip booking failed");
     }
 }

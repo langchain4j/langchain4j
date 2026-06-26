@@ -13,7 +13,7 @@ sidebar_position: 7
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-watsonx</artifactId>
-    <version>1.12.1-beta21</version>
+    <version>1.11.8-beta19</version>
 </dependency>
 ```
 
@@ -21,7 +21,7 @@ sidebar_position: 7
 
 Watsonx.ai supports authentication via the `Authenticator` interface.
 
-This allows to use different authentication mechanisms depending on your deployment:
+This allows you to use different authentication mechanisms depending on your deployment:
 
 - **IBMCloudAuthenticator** – authenticates with **IBM Cloud** using an API key. This is the simplest approach and is used when you provide the `apiKey(...)` builder method.
 - **CP4DAuthenticator** – authenticates with **Cloud Pak for Data** deployments.

@@ -573,6 +573,187 @@ enum Priority {
 ```
 :::
 
+#### Polymorphic Types
+
+AI Service methods can return polymorphic types — a base type whose concrete subtype is
+decided by the LLM at runtime. Two flavors are supported:
+
+- **Sealed interfaces and sealed classes** — no annotations needed; subtypes are
+  discovered via `Class.getPermittedSubclasses()`.
+- **Plain abstract classes and interfaces** — must declare their subtypes explicitly
+  with Jackson's `@JsonSubTypes`.
+
+Polymorphic return types work for the type itself, for collections (`List<T>`, `Set<T>`),
+for fields nested inside other POJOs, and for recursive hierarchies where a subtype
+contains the base type as a field (e.g., `BinaryOp(left: ExpressionNode, right: ExpressionNode)`
+where `ExpressionNode` is the sealed base).
+
+A discriminator property (defaulting to `"type"`) is added to each subtype so the LLM
+can communicate which concrete type it produced; the parser then dispatches to the
+right subtype automatically.
+
+**Sealed interfaces and classes — no annotations needed:**
+
+```java
+sealed interface Animal permits Dog, Cat {}
+
+record Dog(String name, String breed) implements Animal {}
+
+record Cat(String name, boolean indoor) implements Animal {}
+
+interface AnimalExtractor {
+
+    Animal extractAnimalFrom(String text);
+}
+```
+
+The LLM is shown a schema with `anyOf` over `Dog` and `Cat`, each constrained to emit
+its simple class name in the `type` property. Given:
+
+```
+Rex is a Labrador.
+```
+
+the LLM emits `{"value":{"type":"Dog","name":"Rex","breed":"Labrador"}}`, which is parsed
+back into a `Dog` instance.
+
+:::note
+Because many LLM providers do not support JSON schemas with `anyOf` at the root,
+the schema wraps the polymorphic choice under a `value` property (or `values` for collections).
+The wrapper is an implementation detail — your AI Service method still returns the unwrapped subtype.
+:::
+
+**Collections of polymorphic types:**
+
+```java
+interface AnimalsExtractor {
+
+    List<Animal> extractAnimalsFrom(String text);
+}
+```
+
+**Polymorphic fields inside another POJO:**
+
+```java
+record Owner(String name, Animal pet) {}
+
+interface OwnerExtractor {
+
+    Owner extractOwnerFrom(String text);
+}
+```
+
+**Jackson `@JsonSubTypes` / `@JsonTypeInfo`** are also supported and let you decouple wire
+names from Java class names:
+
+```java
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "kind")
+@JsonSubTypes({
+    @JsonSubTypes.Type(value = Square.class, name = "square"),
+    @JsonSubTypes.Type(value = Circle.class, name = "circle")
+})
+interface Shape {}
+
+class Square implements Shape { double side; }
+
+class Circle implements Shape { double radius; }
+```
+
+Resolution order for the discriminator value:
+1. `@JsonSubTypes.Type(name = "...")` on the base type
+2. `@JsonTypeName` on the subtype
+3. `Class.getSimpleName()` (the default)
+
+So `@JsonTypeName` is a convenient way to set a wire name when you don't want to declare
+it on the base:
+
+```java
+sealed interface Bird permits Eagle, Sparrow {}
+
+@JsonTypeName("bird_eagle")
+record Eagle(double wingspanMeters) implements Bird {}
+
+@JsonTypeName("bird_sparrow")
+record Sparrow(boolean migratory) implements Bird {}
+```
+
+The LLM will see `"bird_eagle"` / `"bird_sparrow"` as the discriminator values rather than the simple
+class names (`"Eagle"`/`"Sparrow"`).
+
+**Supported `@JsonTypeInfo` configuration:**
+
+| Attribute | Supported values |
+|---|---|
+| `use` | `Id.NAME`, `Id.SIMPLE_NAME` |
+| `include` | `As.PROPERTY` (default), `As.EXISTING_PROPERTY` |
+| `property` | Any explicit value; defaults to `"@type"` when blank |
+| `defaultImpl` | Any concrete subclass — used when the LLM's discriminator is missing or unknown |
+| `visible` | `true` keeps the discriminator field on the deserialized bean (and bypasses the field-collision check) |
+
+Anything else (e.g., `Id.CLASS`, `As.WRAPPER_OBJECT`) is rejected at schema-generation time
+with an `UnsupportedFeatureException`.
+
+**`defaultImpl` for hallucination tolerance:**
+
+```java
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, defaultImpl = UnknownTool.class)
+@JsonSubTypes({
+    @JsonSubTypes.Type(value = Hammer.class, name = "hammer"),
+    @JsonSubTypes.Type(value = Wrench.class, name = "wrench")
+})
+interface Tool {}
+```
+
+If the LLM emits an unknown discriminator (e.g., `"saw"`) or omits it entirely, the parser
+returns an `UnknownTool` instead of failing, so your code can detect and handle the
+hallucination.
+
+**Adding descriptions:**
+
+You can guide the LLM by annotating the base type and/or subtypes with `@Description`.
+The base-type description is attached to the `anyOf` element, and each subtype's
+description is attached to its individual option:
+
+```java
+@Description("A pet that lives in your home")
+sealed interface Pet permits Hamster, Parrot {}
+
+@Description("A small caged rodent kept as a pet")
+record Hamster(String name, double weightGrams) implements Pet {}
+
+@Description("A talking bird that can mimic human speech")
+record Parrot(String name, int vocabulary) implements Pet {}
+```
+
+When `@Description` is omitted, descriptions fall back to the simple class name
+(e.g., `"Hamster"`) so the LLM still has a label per option.
+
+**Recursive polymorphic types:**
+
+A polymorphic base whose subtypes contain it as a field works as well:
+
+```java
+sealed interface ExpressionNode permits Literal, BinaryOp {}
+
+record Literal(int value) implements ExpressionNode {}
+
+record BinaryOp(String operator, ExpressionNode left, ExpressionNode right) implements ExpressionNode {}
+```
+
+Recursive polymorphic schemas require a model that supports `$ref` / `$defs`
+(currently Azure OpenAI, Mistral and OpenAI).
+
+**Discriminator field collisions:**
+
+If a subtype declares a field with the same name as the discriminator (e.g., a `type` field
+on a sealed-only base), schema generation fails with a clear message. Fix options:
+
+- Rename the field, or
+- Choose a different discriminator name with `@JsonTypeInfo(property = "...")`, or
+- Set `@JsonTypeInfo(visible = true)` if the field is intentionally part of the subtype, or
+- Use `@JsonTypeInfo(include = As.EXISTING_PROPERTY)` when the field on the subtype is the
+  source of truth for the discriminator.
+
 #### Limitations
 
 When using JSON Schema with AI Services, there are some limitations:
@@ -585,9 +766,9 @@ When using JSON Schema with AI Services, there are some limitations:
   - `enum`s
   - Nested POJOs
   - `List<T>`, `Set<T>` and `T[]`, where `T` is a scalar, an `enum` or a POJO
+  - Polymorphic types (sealed interfaces/classes or types annotated with Jackson `@JsonSubTypes`)
 - Recursion is currently supported only by Azure OpenAI, Mistral and OpenAI.
-- Polymorphism is not supported yet. The returned POJO and its nested POJOs must be concrete classes;
-interfaces or abstract classes are not supported.
+- Polymorphic types require an LLM that supports `anyOf` in the JSON schema.
 - When LLM does not support JSON Schema feature, or it is not enabled, or type is not supported,
   AI Service will fall back to [prompting](/tutorials/structured-outputs#prompting).
 
@@ -616,27 +797,28 @@ If LLM and LLM provider supports the methods described above, it is better to us
 
 ## Supported Types
 
-| Type                          | JSON Schema | Prompting |
-|-------------------------------|-------------|-----------|
-| `POJO`                        | ✅           | ✅         |
-| `List<POJO>`, `Set<POJO>`     | ✅           | ❌         |
-| `Enum`                        | ✅           | ✅         |
-| `List<Enum>`, `Set<Enum>`     | ✅           | ✅         |
-| `List<String>`, `Set<String>` | ✅           | ✅         |
-| `boolean`, `Boolean`          | ✅           | ✅         |
-| `int`, `Integer`              | ✅           | ✅         |
-| `long`, `Long`                | ✅           | ✅         |
-| `float`, `Float`              | ✅           | ✅         |
-| `double`, `Double`            | ✅           | ✅         |
-| `byte`, `Byte`                | ❌           | ✅         |
-| `short`, `Short`              | ❌           | ✅         |
-| `BigInteger`                  | ❌           | ✅         |
-| `BigDecimal`                  | ❌           | ✅         |
-| `Date`                        | ❌           | ✅         |
-| `LocalDate`                   | ❌           | ✅         |
-| `LocalTime`                   | ❌           | ✅         |
-| `LocalDateTime`               | ❌           | ✅         |
-| `Map<?, ?>`                   | ❌           | ✅         |
+| Type                                                       | JSON Schema | Prompting |
+|------------------------------------------------------------|-------------|-----------|
+| `POJO`                                                     | ✅           | ✅         |
+| `List<POJO>`, `Set<POJO>`                                  | ✅           | ❌         |
+| `Enum`                                                     | ✅           | ✅         |
+| `List<Enum>`, `Set<Enum>`                                  | ✅           | ✅         |
+| `List<String>`, `Set<String>`                              | ✅           | ✅         |
+| Polymorphic (sealed / `@JsonSubTypes`), incl. `List`/`Set` | ✅           | ❌         |
+| `boolean`, `Boolean`                                       | ✅           | ✅         |
+| `int`, `Integer`                                           | ✅           | ✅         |
+| `long`, `Long`                                             | ✅           | ✅         |
+| `float`, `Float`                                           | ✅           | ✅         |
+| `double`, `Double`                                         | ✅           | ✅         |
+| `byte`, `Byte`                                             | ❌           | ✅         |
+| `short`, `Short`                                           | ❌           | ✅         |
+| `BigInteger`                                               | ❌           | ✅         |
+| `BigDecimal`                                               | ❌           | ✅         |
+| `Date`                                                     | ❌           | ✅         |
+| `LocalDate`                                                | ❌           | ✅         |
+| `LocalTime`                                                | ❌           | ✅         |
+| `LocalDateTime`                                            | ❌           | ✅         |
+| `Map<?, ?>`                                                | ❌           | ✅         |
 
 A few examples:
 ```java

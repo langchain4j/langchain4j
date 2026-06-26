@@ -1,15 +1,20 @@
 package dev.langchain4j.service.output;
 
-import dev.langchain4j.Internal;
+import static dev.langchain4j.service.output.ParsingUtils.parseAsStringOrJson;
 
+import dev.langchain4j.Internal;
 import java.math.BigDecimal;
 
 @Internal
 class BigDecimalOutputParser implements OutputParser<BigDecimal> {
 
     @Override
-    public BigDecimal parse(String string) {
-        return new BigDecimal(string.trim());
+    public BigDecimal parse(String text) {
+        return parseAsStringOrJson(text, BigDecimalOutputParser::parseBigDecimal, BigDecimal.class);
+    }
+
+    private static BigDecimal parseBigDecimal(String text) {
+        return new BigDecimal(text.trim());
     }
 
     @Override

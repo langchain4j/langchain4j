@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>1.13.0-beta22-SNAPSHOT</version>
+    <version>1.17.0-beta27-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -26,6 +26,7 @@
         <module>langchain4j-http-client</module>
         <module>http-clients/langchain4j-http-client-jdk</module>
         <module>http-clients/langchain4j-http-client-apache</module>
+        <module>http-clients/langchain4j-http-client-okhttp</module>
 
         <!-- model providers -->
         <module>langchain4j-anthropic</module>
@@ -44,6 +45,7 @@
         <module>langchain4j-open-ai-official</module>
         <module>langchain4j-github-models</module>
         <module>langchain4j-google-ai-gemini</module>
+        <module>langchain4j-google-genai</module>
         <module>langchain4j-vertex-ai</module>
         <module>langchain4j-vertex-ai-gemini</module>
         <module>langchain4j-vertex-ai-anthropic</module>
@@ -100,6 +102,7 @@
         <module>document-parsers/langchain4j-document-parser-apache-pdfbox</module>
         <module>document-parsers/langchain4j-document-parser-apache-poi</module>
         <module>document-parsers/langchain4j-document-parser-apache-tika</module>
+        <module>document-parsers/langchain4j-document-parser-docling</module>
         <module>document-parsers/langchain4j-document-parser-markdown</module>
         <module>document-parsers/langchain4j-document-parser-yaml</module>
 
@@ -124,6 +127,7 @@
 
         <!-- experimental -->
         <module>experimental/langchain4j-experimental-sql</module>
+        <module>experimental/langchain4j-experimental-hibernate</module>
         <module>experimental/langchain4j-experimental-skills-shell</module>
         <module>langchain4j-agentic</module>
         <module>langchain4j-agentic-a2a</module>
@@ -139,13 +143,13 @@
         <module>integration-tests</module>
 
         <!-- internal -->
-        <module>internal/langchain4j-test-retry</module>
+        <module>internal/langchain4j-internal-test-retry</module>
         <module>internal/langchain4j-docu-chatbot-updater</module>
     </modules>
 
     <properties>
-        <langchain4j.stable.version>1.13.0-SNAPSHOT</langchain4j.stable.version>
-        <langchain4j.beta.version>1.13.0-beta22-SNAPSHOT</langchain4j.beta.version>
+        <langchain4j.stable.version>1.17.0-SNAPSHOT</langchain4j.stable.version>
+        <langchain4j.beta.version>1.17.0-beta27-SNAPSHOT</langchain4j.beta.version>
         <gib.disable>true</gib.disable>
     </properties>
 
@@ -163,7 +167,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.5.0</version>
+                <version>3.12.0</version>
                 <executions>
                     <execution>
                         <id>attach-javadocs</id>
@@ -200,7 +204,7 @@
             <extension>
                 <groupId>io.github.gitflow-incremental-builder</groupId>
                 <artifactId>gitflow-incremental-builder</artifactId>
-                <version>4.0.0</version>
+                <version>4.6.0</version>
             </extension>
         </extensions>
     </build>
@@ -210,7 +214,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.5.0</version>
+                <version>3.12.0</version>
                 <reportSets>
                     <reportSet>
                         <id>aggregate</id>

@@ -2,6 +2,7 @@ package dev.langchain4j.model.anthropic.internal.mapper;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -52,6 +53,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
@@ -115,8 +117,29 @@ public class AnthropicMapper {
     }
 
     private static AnthropicToolResultContent toAnthropicToolResultContent(ToolExecutionResultMessage message) {
+        if (message.hasSingleText()) {
+            return new AnthropicToolResultContent(
+                    message.id(), message.text(), Boolean.TRUE.equals(message.isError()) ? true : null);
+        }
+        List<AnthropicMessageContent> contentBlocks = new ArrayList<>();
+        for (dev.langchain4j.data.message.Content content : message.contents()) {
+            if (content instanceof TextContent textContent) {
+                contentBlocks.add(new AnthropicTextContent(textContent.text()));
+            } else if (content instanceof ImageContent imageContent) {
+                Image image = imageContent.image();
+                if (image.url() != null) {
+                    contentBlocks.add(AnthropicImageContent.fromUrl(image.url().toString()));
+                } else {
+                    contentBlocks.add(AnthropicImageContent.fromBase64(
+                            ensureNotBlank(image.mimeType(), "mimeType"),
+                            ensureNotBlank(image.base64Data(), "base64Data")));
+                }
+            } else {
+                throw illegalArgument("Unsupported content type in tool result: " + content.type());
+            }
+        }
         return new AnthropicToolResultContent(
-                message.id(), message.text(), Boolean.TRUE.equals(message.isError()) ? true : null);
+                message.id(), contentBlocks, Boolean.TRUE.equals(message.isError()) ? true : null);
     }
 
     private static List<AnthropicMessageContent> toAnthropicMessageContents(UserMessage message) {
@@ -201,13 +224,13 @@ public class AnthropicMapper {
         return contents;
     }
 
-    private static Map<String, Object> toAnthropicInput(ToolExecutionRequest toolExecutionRequest) {
+    private static String toAnthropicInput(ToolExecutionRequest toolExecutionRequest) {
         String arguments = toolExecutionRequest.arguments();
         if (isNullOrBlank(arguments)) {
-            return Map.of();
+            return "{}";
         }
 
-        return fromJson(arguments, Map.class);
+        return arguments;
     }
 
     public static List<AnthropicTextContent> toAnthropicSystemPrompt(
@@ -387,18 +410,21 @@ public class AnthropicMapper {
             Boolean strictTools) {
         JsonObjectSchema parameters = toolSpecification.parameters();
 
-        // prevent NPE during unboxing
-        boolean strict = Boolean.TRUE.equals(strictTools);
+        boolean strict = isEffectivelyStrict(toolSpecification, Boolean.TRUE.equals(strictTools));
+
+        AnthropicToolSchema.Builder inputSchemaBuilder = AnthropicToolSchema.builder()
+                .properties(parameters != null ? toMap(parameters.properties(), strict) : emptyMap())
+                .required(parameters != null ? parameters.required() : emptyList())
+                .additionalProperties(strict ? Boolean.FALSE : null);
+        if (parameters != null && !parameters.definitions().isEmpty()) {
+            inputSchemaBuilder.defs(mapDefs(parameters.definitions()));
+        }
 
         AnthropicTool.Builder toolBuilder = AnthropicTool.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())
                 .strict(strict ? Boolean.TRUE : null)
-                .inputSchema(AnthropicToolSchema.builder()
-                        .properties(parameters != null ? toMap(parameters.properties(), strict) : emptyMap())
-                        .required(parameters != null ? parameters.required() : emptyList())
-                        .additionalProperties(strict ? Boolean.FALSE : null)
-                        .build());
+                .inputSchema(inputSchemaBuilder.build());
 
         if (cacheToolsPrompt != AnthropicCacheType.NO_CACHE) {
             toolBuilder.cacheControl(cacheToolsPrompt.cacheControl());
@@ -478,6 +504,20 @@ public class AnthropicMapper {
             } else {
                 map.put("items", Collections.emptyMap());
             }
+
+            return map;
+        }
+        if (schemaElement instanceof JsonAnyOfSchema anyOfSchema) {
+            Map<String, Object> map = new LinkedHashMap<>();
+
+            if (anyOfSchema.description() != null) {
+                map.put("description", anyOfSchema.description());
+            }
+
+            List<Map<String, Object>> anyOf = anyOfSchema.anyOf().stream()
+                    .map(AnthropicMapper::toAnthropicSchema)
+                    .toList();
+            map.put("anyOf", anyOf);
 
             return map;
         }

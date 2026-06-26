@@ -1,0 +1,8 @@
+{
+  "label": "Prompt Repetition",
+  "position": 22,
+  "link": {
+    "type": "generated-index",
+    "description": "Prompt repetition utilities for AI Services guardrails and RAG query transformation"
+  }
+}

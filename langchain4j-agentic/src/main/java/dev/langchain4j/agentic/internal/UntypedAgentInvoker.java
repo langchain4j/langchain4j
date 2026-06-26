@@ -1,7 +1,13 @@
 package dev.langchain4j.agentic.internal;
 
+import dev.langchain4j.agentic.agent.MissingArgumentException;
+import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
+
+import static dev.langchain4j.agentic.scope.DefaultAgenticScope.isSerializable;
 
 public final class UntypedAgentInvoker extends AbstractAgentInvoker {
 
@@ -11,7 +17,18 @@ public final class UntypedAgentInvoker extends AbstractAgentInvoker {
 
     @Override
     public AgentInvocationArguments toInvocationArguments(AgenticScope agenticScope) {
-        return new AgentInvocationArguments(agenticScope.state(), new Object[]{agenticScope.state()});
+        for (AgentArgument arg : arguments()) {
+            if (agenticScope.readState(arg.name()) == null) {
+                throw new MissingArgumentException(arg.name());
+            }
+        }
+        Map<String, Object> args = new HashMap<>();
+        for (var entry : agenticScope.state().entrySet()) {
+            if (isSerializable(entry.getValue())) {
+                args.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return new AgentInvocationArguments(args, new Object[]{args});
     }
 
     @Override

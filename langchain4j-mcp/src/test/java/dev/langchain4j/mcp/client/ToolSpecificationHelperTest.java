@@ -1,8 +1,10 @@
 package dev.langchain4j.mcp.client;
 
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.DESTRUCTIVE_HINT;
+import static dev.langchain4j.mcp.client.McpToolMetadataKeys.ICONS;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.IDEMPOTENT_HINT;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.OPEN_WORLD_HINT;
+import static dev.langchain4j.mcp.client.McpToolMetadataKeys.OUTPUT_SCHEMA;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.READ_ONLY_HINT;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.TITLE;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.TITLE_ANNOTATION;
@@ -11,7 +13,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.TextNode;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
@@ -21,6 +22,7 @@ import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import java.util.List;
@@ -203,8 +205,7 @@ class ToolSpecificationHelperTest {
 
     @Test
     void arrayWithMultipleAllowedTypes() throws JsonProcessingException {
-        String text =
-                """
+        String text = """
                         [{
                           "name": "query",
                           "description": "Execute a SELECT query",
@@ -345,8 +346,7 @@ class ToolSpecificationHelperTest {
     @Test
     void nullTypeName() throws JsonProcessingException {
         // the 'value' parameter has an empty definition, so it can be anything
-        String text =
-                """
+        String text = """
                 [{
                    "name": "set_config_value",
                    "description": "Set a specific configuration value by key",
@@ -376,8 +376,7 @@ class ToolSpecificationHelperTest {
     void nullType() throws JsonProcessingException {
         // the 'type' parameter is "null" and so most not be present
         // trimmed version from Atalassian's MCP server
-        String text =
-                """
+        String text = """
                 [{
                   "name": "createCompassCustomFieldDefinition",
                   "description": "Create a new Compass custom field definition",
@@ -477,13 +476,106 @@ class ToolSpecificationHelperTest {
                 }]
                 """;
         ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
-        Map<String, Object> metadata = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json).get(0).metadata();
+        Map<String, Object> metadata = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
+                .get(0)
+                .metadata();
         assertThat(metadata.get(TITLE_ANNOTATION)).isEqualTo("A tool with annotations");
         assertThat(metadata.get(TITLE)).isEqualTo("A title in the root tool object");
         assertThat(metadata.get(READ_ONLY_HINT)).isEqualTo(false);
         assertThat(metadata.get(DESTRUCTIVE_HINT)).isEqualTo(true);
         assertThat(metadata.get(IDEMPOTENT_HINT)).isEqualTo(false);
         assertThat(metadata.get(OPEN_WORLD_HINT)).isEqualTo(true);
+    }
+
+    @Test
+    void toolWithOutputSchema() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "get_weather",
+                    "description": "Get the weather for a location",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "location": { "type": "string" }
+                      },
+                      "required": ["location"]
+                    },
+                    "outputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "temperature": {
+                          "type": "number",
+                          "description": "Temperature in Celsius"
+                        },
+                        "conditions": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["temperature", "conditions"]
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        Map<String, Object> metadata = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
+                .get(0)
+                .metadata();
+
+        assertThat(metadata.get(OUTPUT_SCHEMA)).isInstanceOf(Map.class);
+        Map<String, Object> outputSchema = (Map<String, Object>) metadata.get(OUTPUT_SCHEMA);
+        assertThat(outputSchema.get("type")).isEqualTo("object");
+        assertThat(outputSchema.get("required")).isEqualTo(List.of("temperature", "conditions"));
+        assertThat(outputSchema.get("properties")).isInstanceOf(Map.class);
+        Map<String, Object> properties = (Map<String, Object>) outputSchema.get("properties");
+        assertThat(properties).containsOnlyKeys("temperature", "conditions");
+    }
+
+    @Test
+    void toolWithIcons() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "get_weather",
+                    "inputSchema": {
+                    },
+                    "icons": [
+                      {
+                        "src": "https://example.org/weather.png",
+                        "mimeType": "image/png",
+                        "sizes": ["64x64"],
+                        "theme": "dark"
+                      }
+                    ]
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        Map<String, Object> metadata = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
+                .get(0)
+                .metadata();
+
+        assertThat(metadata.get(ICONS))
+                .isEqualTo(List.of(new McpIcon(
+                        "image/png", List.of("64x64"), "https://example.org/weather.png", McpIconTheme.DARK)));
+    }
+
+    @Test
+    void toolWithoutOutputSchema() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "noop",
+                    "inputSchema": {}
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        Map<String, Object> metadata = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
+                .get(0)
+                .metadata();
+
+        assertThat(metadata).doesNotContainKey(OUTPUT_SCHEMA);
     }
 
     @Test
@@ -505,12 +597,183 @@ class ToolSpecificationHelperTest {
                 }]
                 """;
         ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
-        Map<String, Object> metadata = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json).get(0).metadata();
+        Map<String, Object> metadata = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
+                .get(0)
+                .metadata();
 
         assertThat(metadata.get("example.org/array")).isEqualTo(List.of(1, 2, 3));
         assertThat(metadata.get("example.org/string")).isEqualTo("hello");
         assertThat(metadata.get("complex")).isInstanceOf(Map.class);
         Map<String, Object> complex = (Map<String, Object>) metadata.get("complex");
         assertThat(complex.get("a")).isEqualTo(true);
+    }
+
+    @Test
+    void toolWithRefAndDefs() throws JsonProcessingException {
+        // a tool whose inputSchema uses $defs and $ref for a recursive/shared type
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "create_node",
+                    "description": "Creates a tree node",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "node": {
+                          "$ref": "#/$defs/TreeNode"
+                        }
+                      },
+                      "required": ["node"],
+                      "$defs": {
+                        "TreeNode": {
+                          "type": "object",
+                          "properties": {
+                            "value": {
+                              "type": "string",
+                              "description": "Node value"
+                            },
+                            "children": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/$defs/TreeNode"
+                              }
+                            }
+                          },
+                          "required": ["value"]
+                        }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(toolSpecifications).hasSize(1);
+        ToolSpecification toolSpecification = toolSpecifications.get(0);
+        assertThat(toolSpecification.name()).isEqualTo("create_node");
+
+        JsonObjectSchema parameters = toolSpecification.parameters();
+
+        // the "node" property should be a reference
+        JsonSchemaElement nodeParam = parameters.properties().get("node");
+        assertThat(nodeParam).isInstanceOf(JsonReferenceSchema.class);
+        assertThat(((JsonReferenceSchema) nodeParam).reference()).isEqualTo("TreeNode");
+
+        // $defs should be parsed into definitions
+        assertThat(parameters.definitions()).isNotNull();
+        assertThat(parameters.definitions()).containsKey("TreeNode");
+        JsonObjectSchema treeNodeDef =
+                (JsonObjectSchema) parameters.definitions().get("TreeNode");
+        assertThat(treeNodeDef.properties()).containsOnlyKeys("value", "children");
+
+        // the "children" items should also be a reference
+        JsonArraySchema children = (JsonArraySchema) treeNodeDef.properties().get("children");
+        assertThat(children.items()).isInstanceOf(JsonReferenceSchema.class);
+        assertThat(((JsonReferenceSchema) children.items()).reference()).isEqualTo("TreeNode");
+    }
+
+    @Test
+    void toolWithDraft07Definitions() throws JsonProcessingException {
+        // uses "definitions" (draft-07) instead of "$defs" (draft 2019-09+)
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "send_message",
+                    "description": "Sends a message",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "recipient": {
+                          "$ref": "#/definitions/Contact"
+                        }
+                      },
+                      "definitions": {
+                        "Contact": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "email": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["name", "email"]
+                        }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(toolSpecifications).hasSize(1);
+
+        JsonObjectSchema parameters = toolSpecifications.get(0).parameters();
+
+        // the "recipient" property should be a reference
+        JsonSchemaElement recipientParam = parameters.properties().get("recipient");
+        assertThat(recipientParam).isInstanceOf(JsonReferenceSchema.class);
+        assertThat(((JsonReferenceSchema) recipientParam).reference()).isEqualTo("Contact");
+
+        // definitions should be parsed
+        assertThat(parameters.definitions()).containsKey("Contact");
+        JsonObjectSchema contactDef =
+                (JsonObjectSchema) parameters.definitions().get("Contact");
+        assertThat(contactDef.properties()).containsOnlyKeys("name", "email");
+        assertThat(contactDef.required()).containsExactly("name", "email");
+    }
+
+    @Test
+    void toolWithRefInAnyOf() throws JsonProcessingException {
+        // $ref used inside an anyOf
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "process",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "input": {
+                          "anyOf": [
+                            { "$ref": "#/$defs/TextInput" },
+                            { "type": "string" }
+                          ],
+                          "description": "The input to process"
+                        }
+                      },
+                      "$defs": {
+                        "TextInput": {
+                          "type": "object",
+                          "properties": {
+                            "text": { "type": "string" },
+                            "language": { "type": "string" }
+                          }
+                        }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(toolSpecifications).hasSize(1);
+
+        JsonObjectSchema parameters = toolSpecifications.get(0).parameters();
+
+        // the "input" property should be anyOf with a $ref and a string
+        JsonSchemaElement inputParam = parameters.properties().get("input");
+        assertThat(inputParam).isInstanceOf(JsonAnyOfSchema.class);
+        JsonAnyOfSchema anyOf = (JsonAnyOfSchema) inputParam;
+        assertThat(anyOf.anyOf()).hasSize(2);
+        assertThat(anyOf.anyOf().get(0)).isInstanceOf(JsonReferenceSchema.class);
+        assertThat(((JsonReferenceSchema) anyOf.anyOf().get(0)).reference()).isEqualTo("TextInput");
+        assertThat(anyOf.anyOf().get(1)).isInstanceOf(JsonStringSchema.class);
+
+        // $defs should be parsed into definitions
+        assertThat(parameters.definitions()).containsKey("TextInput");
+        JsonObjectSchema textInputDef =
+                (JsonObjectSchema) parameters.definitions().get("TextInput");
+        assertThat(textInputDef.properties()).containsOnlyKeys("text", "language");
     }
 }

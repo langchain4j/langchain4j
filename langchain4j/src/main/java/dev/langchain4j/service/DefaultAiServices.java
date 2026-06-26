@@ -1,5 +1,7 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
+import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
@@ -16,6 +18,7 @@ import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
@@ -32,6 +35,7 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -51,6 +55,7 @@ import dev.langchain4j.service.guardrail.GuardrailService;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.service.output.ServiceOutputParser;
+import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
@@ -72,6 +77,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 @Internal
 class DefaultAiServices<T> extends AiServices<T> {
@@ -146,6 +152,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .methodName(method.getName())
                                 .methodArguments(args != null ? Arrays.asList(args) : List.of())
                                 .chatMemoryId(findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT))
+                                .defaultRequestParameters(determineChatRequestParameters(context))
+                                .modelProvider(determineModelProvider(context))
                                 .invocationParameters(invocationParameters)
                                 .managedParameters(LangChain4jManaged.current())
                                 .timestampNow()
@@ -161,6 +169,22 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
                     }
 
+                    private static ChatRequestParameters determineChatRequestParameters(AiServiceContext context) {
+                        if (context.chatModel != null) {
+                            return context.chatModel.defaultRequestParameters();
+                        }
+                        return context.streamingChatModel != null
+                                ? context.streamingChatModel.defaultRequestParameters()
+                                : null;
+                    }
+
+                    private static ModelProvider determineModelProvider(AiServiceContext context) {
+                        if (context.chatModel != null) {
+                            return context.chatModel.provider();
+                        }
+                        return context.streamingChatModel != null ? context.streamingChatModel.provider() : null;
+                    }
+
                     public Object invoke(Method method, Object[] args, InvocationContext invocationContext) {
 
                         Object memoryId = invocationContext.chatMemoryId();
@@ -168,7 +192,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 ? context.chatMemoryService.getOrCreateChatMemory(memoryId)
                                 : null;
 
-                        Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
+                        Optional<SystemMessage> systemMessage = prepareSystemMessage(invocationContext, method, args);
                         if (context.systemMessageTransformer != null) {
                             String transformedSystemMessage = context.systemMessageTransformer.apply(
                                     systemMessage.map(SystemMessage::text).orElse(null), invocationContext);
@@ -250,17 +274,19 @@ class DefaultAiServices<T> extends AiServices<T> {
                             messages.add(userMessage);
                         }
 
+                        invocationContext = invocationContext.toBuilder()
+                                .userMessage(userMessage)
+                                .build();
+
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
                         ToolServiceContext toolServiceContext =
-                                context.toolService.createContext(invocationContext, userMessage, chatMemory);
+                                context.toolService.createContext(invocationContext, userMessage, messages);
 
                         if (streaming) {
                             var tokenStreamParameters = AiServiceTokenStreamParameters.builder()
                                     .messages(messages)
-                                    .effectiveTools(toolServiceContext.effectiveTools())
-                                    .availableTools(toolServiceContext.availableTools())
-                                    .toolExecutors(toolServiceContext.toolExecutors())
+                                    .toolServiceContext(toolServiceContext)
                                     .toolArgumentsErrorHandler(context.toolService.argumentsErrorHandler())
                                     .toolExecutionErrorHandler(context.toolService.executionErrorHandler())
                                     .toolExecutor(context.toolService.executor())
@@ -325,29 +351,74 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 chatMemory,
                                 invocationContext,
                                 toolServiceContext,
-                                isReturnTypeResult);
+                                context.chatModel::chat);
 
-                        if (toolServiceResult.immediateToolReturn() && isReturnTypeResult) {
-                            var result = Result.builder()
-                                    .content(null)
-                                    .tokenUsage(toolServiceResult.aggregateTokenUsage())
-                                    .sources(augmentationResult == null ? null : augmentationResult.contents())
-                                    .finishReason(TOOL_EXECUTION)
-                                    .toolExecutions(toolServiceResult.toolExecutions())
-                                    .intermediateResponses(toolServiceResult.intermediateResponses())
-                                    .finalResponse(toolServiceResult.finalResponse())
-                                    .build();
+                        if (toolServiceResult.immediateToolReturn()) {
+                            if (isReturnTypeResult) {
+                                var result = Result.builder()
+                                        .content(null)
+                                        .tokenUsage(toolServiceResult.aggregateTokenUsage())
+                                        .sources(augmentationResult == null ? null : augmentationResult.contents())
+                                        .finishReason(TOOL_EXECUTION)
+                                        .toolExecutions(toolServiceResult.toolExecutions())
+                                        .intermediateResponses(toolServiceResult.intermediateResponses())
+                                        .finalResponse(toolServiceResult.finalResponse())
+                                        .build();
 
-                            return fireEventAndReturn(invocationContext, result);
+                                return fireEventAndReturn(invocationContext, result);
+                            }
+                            if (returnType == void.class) {
+                                return fireEventAndReturn(invocationContext, null);
+                            }
+                            Set<ReturnBehavior> returnBehaviors = toolServiceResult.toolExecutions().stream()
+                                    .map(execution -> toolServiceContext.returnBehavior(
+                                            execution.request().name()))
+                                    .collect(Collectors.toSet());
+                            if (returnBehaviors.stream()
+                                    .allMatch(returnBehavior -> returnBehavior == ReturnBehavior.IMMEDIATE
+                                            || returnBehavior == ReturnBehavior.IMMEDIATE_IF_LAST)) {
+                                int numNullResults = 0;
+                                ToolExecution lastNonNull = null;
+                                for (ToolExecution execution : toolServiceResult.toolExecutions()) {
+                                    if (execution.resultObject() == null) {
+                                        numNullResults++;
+                                    } else {
+                                        lastNonNull = execution;
+                                    }
+                                }
+                                if (numNullResults
+                                        == toolServiceResult.toolExecutions().size()) {
+                                    return fireEventAndReturn(invocationContext, null);
+                                } else if (numNullResults + 1
+                                                == toolServiceResult
+                                                        .toolExecutions()
+                                                        .size()
+                                        && resolvesToType(lastNonNull.resultObject(), returnType)) {
+                                    // if only one non-null result, return it if it resolves to the return type
+                                    return fireEventAndReturn(invocationContext, lastNonNull.resultObject());
+                                }
+                                throw illegalConfiguration(
+                                        "AI Service method '%s' call cannot resolve return type from tool executions with ReturnBehavior.%s/%s. Use %s as your return type.",
+                                        method.getName(), IMMEDIATE, IMMEDIATE_IF_LAST, Result.class.getName());
+                            }
                         }
 
                         ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
+
+                        ChatExecutor toolAwareRepromptExecutor = ToolAwareRepromptExecutor.wrap(
+                                chatExecutor,
+                                context,
+                                memoryId,
+                                parameters,
+                                invocationContext,
+                                toolServiceContext,
+                                context.chatModel::chat);
 
                         var response = invokeOutputGuardrails(
                                 context.guardrailService(),
                                 method,
                                 aggregateResponse,
-                                chatExecutor,
+                                toolAwareRepromptExecutor,
                                 commonGuardrailParam);
 
                         if (response != null) {
@@ -491,6 +562,10 @@ class DefaultAiServices<T> extends AiServices<T> {
         return (T) proxyInstance;
     }
 
+    private static boolean resolvesToType(Object o, Type returnType) {
+        return o != null && returnType instanceof Class && ((Class) returnType).isAssignableFrom(o.getClass());
+    }
+
     private UserMessage invokeInputGuardrails(
             GuardrailService guardrailService,
             Method method,
@@ -528,22 +603,27 @@ class DefaultAiServices<T> extends AiServices<T> {
         return (T) responseFromLLM;
     }
 
-    private Optional<SystemMessage> prepareSystemMessage(Object memoryId, Method method, Object[] args) {
-        return findSystemMessageTemplate(memoryId, method).map(systemMessageTemplate -> PromptTemplate.from(
-                        systemMessageTemplate)
-                .apply(InternalReflectionVariableResolver.findTemplateVariables(systemMessageTemplate, method, args))
-                .toSystemMessage());
+    private Optional<SystemMessage> prepareSystemMessage(
+            InvocationContext invocationContext, Method method, Object[] args) {
+        return findSystemMessageTemplate(invocationContext, method)
+                .map(systemMessageTemplate -> PromptTemplate.from(systemMessageTemplate)
+                        .apply(InternalReflectionVariableResolver.findTemplateVariables(
+                                systemMessageTemplate, method, args))
+                        .toSystemMessage());
     }
 
-    private Optional<String> findSystemMessageTemplate(Object memoryId, Method method) {
+    private Optional<String> findSystemMessageTemplate(InvocationContext invocationContext, Method method) {
         dev.langchain4j.service.SystemMessage annotation =
                 method.getAnnotation(dev.langchain4j.service.SystemMessage.class);
         if (annotation != null) {
             return Optional.of(getTemplate(
                     method, "System", annotation.fromResource(), annotation.value(), annotation.delimiter()));
         }
-
-        return context.systemMessageProvider.apply(memoryId);
+        if (context.systemMessageProviderWithContext != null) {
+            return Optional.of(context.systemMessageProviderWithContext.apply(invocationContext));
+        } else {
+            return context.systemMessageProvider.apply(invocationContext.chatMemoryId());
+        }
     }
 
     private static UserMessage prepareUserMessage(

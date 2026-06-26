@@ -6,12 +6,11 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import org.assertj.core.api.WithAssertions;
-import org.junit.jupiter.api.Test;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import org.assertj.core.api.WithAssertions;
+import org.junit.jupiter.api.Test;
 
 class StreamingChatModelTest implements WithAssertions {
 
@@ -31,13 +30,22 @@ class StreamingChatModelTest implements WithAssertions {
     public static final class CollectorResponseHandler implements StreamingChatResponseHandler {
 
         private final List<ChatResponse> responses = new ArrayList<>();
+        private final List<Object> rawEvents = new ArrayList<>();
 
         public List<ChatResponse> responses() {
             return responses;
         }
 
+        public List<Object> rawEvents() {
+            return rawEvents;
+        }
+
         @Override
-        public void onPartialResponse(String partialResponse) {
+        public void onPartialResponse(String partialResponse) {}
+
+        @Override
+        public void onUnmappedRawEvent(Object rawEvent) {
+            rawEvents.add(rawEvent);
         }
 
         @Override
@@ -46,8 +54,7 @@ class StreamingChatModelTest implements WithAssertions {
         }
 
         @Override
-        public void onError(Throwable error) {
-        }
+        public void onError(Throwable error) {}
     }
 
     @Test
@@ -80,5 +87,24 @@ class StreamingChatModelTest implements WithAssertions {
             assertThat(response.tokenUsage()).isNull();
             assertThat(response.finishReason()).isNull();
         }
+    }
+
+    @Test
+    void should_forward_raw_event_callback() {
+        Object rawEvent = "provider.raw.event";
+
+        StreamingChatModel model = new StreamingChatModel() {
+            @Override
+            public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+                handler.onUnmappedRawEvent(rawEvent);
+                handler.onCompleteResponse(
+                        ChatResponse.builder().aiMessage(new AiMessage("done")).build());
+            }
+        };
+
+        CollectorResponseHandler handler = new CollectorResponseHandler();
+        model.chat("search", handler);
+
+        assertThat(handler.rawEvents()).containsExactly(rawEvent);
     }
 }

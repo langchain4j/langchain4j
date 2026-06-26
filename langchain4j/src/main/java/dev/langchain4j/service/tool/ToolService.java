@@ -1,26 +1,34 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
+import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.internal.Exceptions.runtime;
+import static dev.langchain4j.internal.Utils.allConcreteMethods;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.service.tool.search.ToolSearchService.addFoundTools;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.ReturnBehavior;
+import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.invocation.InvocationParameters;
+import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -34,26 +42,32 @@ import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.tool.search.ToolSearchService;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
-
 import java.lang.reflect.Method;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.lang.reflect.Parameter;
+import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 @Internal
 public class ToolService {
+
+    private static final Logger log = LoggerFactory.getLogger(ToolService.class);
 
     private static final ToolArgumentsErrorHandler DEFAULT_TOOL_ARGUMENTS_ERROR_HANDLER = (error, context) -> {
         if (error instanceof RuntimeException re) {
@@ -63,17 +77,26 @@ public class ToolService {
         }
     };
     private static final ToolExecutionErrorHandler DEFAULT_TOOL_EXECUTION_ERROR_HANDLER = (error, context) -> {
-        String errorMessage =
-                isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
+        String errorMessage = errorMessage(error);
+        log.warn(
+                "Tool '{}' execution failed. The error message is being returned to the LLM. "
+                        + "To customize this behavior (and silence this log), configure a custom "
+                        + "ToolExecutionErrorHandler via AiServices.toolExecutionErrorHandler(...). Error: {}",
+                context.toolExecutionRequest().name(),
+                errorMessage,
+                error);
         return ToolErrorHandlerResult.text(errorMessage);
     };
 
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
-    private final Set<String> immediateReturnTools = new HashSet<>();
+    private final Map<String, ReturnBehavior> returnBehaviors = new HashMap<>();
+    private final Map<String, BiConsumer<ToolExecution, InvocationContext>> compensatingExecutors = new HashMap<>();
+    private IllegalConfigurationException compensatingToolMisconfiguration;
     private final Set<ToolProvider> toolProviders = new LinkedHashSet<>();
+    private boolean compensateOnToolErrors;
     private Executor executor;
-    private int maxSequentialToolsInvocations = 100;
+    private int maxToolCallingRoundTrips = 100;
     private ToolArgumentsErrorHandler argumentsErrorHandler;
     private ToolExecutionErrorHandler executionErrorHandler;
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy =
@@ -112,50 +135,77 @@ public class ToolService {
 
     public void tools(Map<ToolSpecification, ToolExecutor> tools, Set<String> immediateReturnToolNames) {
         this.tools(tools);
-        immediateReturnTools.addAll(immediateReturnToolNames);
+        immediateReturnToolNames.forEach(name -> returnBehaviors.put(name, IMMEDIATE));
     }
 
     public void tools(Collection<Object> objectsWithTools) {
-        for (Object objectWithTool : objectsWithTools) {
-            if (objectWithTool instanceof Class) {
-                throw illegalConfiguration("Tool '%s' must be an object, not a class", objectWithTool);
-            }
-
-            if (objectWithTool instanceof Iterable) {
-                throw illegalConfiguration(
-                        "Tool '%s' is an Iterable (likely a nested collection). "
-                                + "Please pass tool objects directly, not wrapped in collections.",
-                        objectWithTool.getClass().getName());
-            }
-
-            AtomicBoolean hasToolMethods = new AtomicBoolean(false);
-            for (Method method : objectWithTool.getClass().getDeclaredMethods()) {
-                getAnnotatedMethod(method, Tool.class).ifPresent(toolMethod -> {
-                    hasToolMethods.set(true);
-                    processToolMethod(objectWithTool, toolMethod);
-                });
-            }
-
-            if (!hasToolMethods.get()) {
-                throw illegalConfiguration(
-                        "Object '%s' does not have any methods annotated with @Tool",
-                        objectWithTool.getClass().getName());
-            }
+        for (Object objectWithTools : objectsWithTools) {
+            List<AiServiceTool> tools = findTools(objectWithTools);
+            addTools(tools, this.toolExecutors, this.toolSpecifications, this.returnBehaviors);
+            this.compensatingExecutors.putAll(findCompensatingActions(objectWithTools));
         }
     }
 
-    private void processToolMethod(Object object, Method method) {
-        ToolSpecification toolSpecification = toolSpecificationFrom(method);
-        if (toolExecutors.containsKey(toolSpecification.name())) {
-            throw new IllegalConfigurationException("Duplicated definition for tool: " + toolSpecification.name());
-        }
-        toolSpecifications.add(toolSpecification);
+    /**
+     * @since 1.14.0
+     */
+    public void tools(List<AiServiceTool> tools) {
+        addTools(tools, this.toolExecutors, this.toolSpecifications, this.returnBehaviors);
+    }
 
-        ToolExecutor toolExecutor = createToolExecutor(object, method);
-        toolExecutors.put(toolSpecification.name(), toolExecutor);
+    private static void validateToolParameters(Method toolMethod) {
+        for (Parameter parameter : toolMethod.getParameters()) {
+            P pAnnotation = parameter.getAnnotation(P.class);
+            if (pAnnotation == null) {
+                continue;
+            }
+            Class<?> type = parameter.getType();
+            boolean hasDefault = !P.NO_DEFAULT.equals(pAnnotation.defaultValue());
 
-        if (method.getAnnotation(Tool.class).returnBehavior() == ReturnBehavior.IMMEDIATE) {
-            immediateReturnTools.add(toolSpecification.name());
+            if (type.isPrimitive() && !pAnnotation.required() && !hasDefault) {
+                throw illegalConfiguration(
+                        "Parameter '%s' of tool '%s.%s' is a primitive (%s) and cannot be marked as @P(required = false). "
+                                + "Use a boxed type (e.g. Integer instead of int), Optional<T>, or @P(defaultValue = ...).",
+                        parameter.getName(),
+                        toolMethod.getDeclaringClass().getName(),
+                        toolMethod.getName(),
+                        type.getName());
+            }
+
+            if (!hasDefault) {
+                continue;
+            }
+
+            if (type == Optional.class) {
+                throw illegalConfiguration(
+                        "Parameter '%s' of tool '%s.%s' has @P(defaultValue = ...) and is Optional<T>. "
+                                + "Optional<T> already represents \"absent\"; use one mechanism or the other.",
+                        parameter.getName(), toolMethod.getDeclaringClass().getName(), toolMethod.getName());
+            }
+
+            if (parameter.isAnnotationPresent(ToolMemoryId.class)
+                    || InvocationParameters.class.isAssignableFrom(type)
+                    || type == InvocationContext.class
+                    || LangChain4jManaged.class.isAssignableFrom(type)) {
+                throw illegalConfiguration(
+                        "Parameter '%s' of tool '%s.%s' has @P(defaultValue = ...) but is a framework-injected parameter; "
+                                + "default values are not supported on framework-injected parameters.",
+                        parameter.getName(), toolMethod.getDeclaringClass().getName(), toolMethod.getName());
+            }
+
+            try {
+                DefaultToolExecutor.parseDefaultValue(
+                        pAnnotation.defaultValue(), parameter.getName(), type, parameter.getParameterizedType());
+            } catch (Exception e) {
+                throw illegalConfiguration(
+                        "Cannot parse @P(defaultValue = \"%s\") for parameter '%s' of tool '%s.%s' (type %s): %s",
+                        pAnnotation.defaultValue(),
+                        parameter.getName(),
+                        toolMethod.getDeclaringClass().getName(),
+                        toolMethod.getName(),
+                        type.getName(),
+                        e.getMessage());
+            }
         }
     }
 
@@ -167,6 +217,126 @@ public class ToolService {
                 .wrapToolArgumentsExceptions(true)
                 .propagateToolExecutionExceptions(true)
                 .build();
+    }
+
+    /**
+     * Scans the given object for {@link Tool @Tool}-annotated methods and returns
+     * a list of {@link AiServiceTool}s.
+     *
+     * @param objectWithTools an object containing {@link Tool @Tool}-annotated methods
+     * @return list of resolved tools
+     * @throws IllegalConfigurationException if the object has no {@link Tool @Tool}-annotated methods
+     * @since 1.13.0
+     */
+    public static List<AiServiceTool> findTools(Object objectWithTools) {
+        if (objectWithTools instanceof Class) {
+            throw illegalConfiguration("Tool '%s' must be an object, not a class", objectWithTools);
+        }
+        if (objectWithTools instanceof Iterable) {
+            throw illegalConfiguration(
+                    "Tool '%s' is an Iterable (likely a nested collection). "
+                            + "Please pass tool objects directly, not wrapped in collections.",
+                    objectWithTools.getClass().getName());
+        }
+
+        List<AiServiceTool> result = new ArrayList<>();
+        for (Method method : allConcreteMethods(objectWithTools.getClass())) {
+            Optional<Method> annotatedMethod = getAnnotatedMethod(method, Tool.class);
+            if (annotatedMethod.isPresent()) {
+                Method toolMethod = annotatedMethod.get();
+                validateToolParameters(toolMethod);
+                result.add(AiServiceTool.builder()
+                        .toolSpecification(toolSpecificationFrom(toolMethod))
+                        .toolExecutor(createToolExecutor(objectWithTools, toolMethod))
+                        .returnBehavior(toolMethod.getAnnotation(Tool.class).returnBehavior())
+                        .build());
+            }
+        }
+        if (result.isEmpty()) {
+            throw illegalConfiguration(
+                    "Object '%s' does not have any methods annotated with @Tool",
+                    objectWithTools.getClass().getName());
+        }
+        return result;
+    }
+
+    public void compensateOnToolErrors(boolean compensateOnToolErrors) {
+        this.compensateOnToolErrors = compensateOnToolErrors;
+        if (compensateOnToolErrors && compensatingToolMisconfiguration != null) {
+            throw compensatingToolMisconfiguration;
+        }
+    }
+
+    private Map<String, BiConsumer<ToolExecution, InvocationContext>> findCompensatingActions(
+            Object objectWithTools) {
+        Map<String, BiConsumer<ToolExecution, InvocationContext>> compensatingActions = new HashMap<>();
+        if (compensatingToolMisconfiguration != null) {
+            return compensatingActions;
+        }
+
+        for (Method method : allConcreteMethods(objectWithTools.getClass())) {
+            CompensateFor compensateFor = method.getAnnotation(CompensateFor.class);
+            if (compensateFor != null) {
+                String toolName = compensateFor.value();
+                ToolExecutor toolExecutor = toolExecutors.get(toolName);
+                if (toolExecutor == null) {
+                    compensatingToolMisconfiguration = illegalConfiguration(
+                            "@CompensateFor(\"%s\") on method '%s.%s' references tool '%s' which does not exist",
+                            toolName, objectWithTools.getClass().getName(), method.getName(), toolName);
+                    if (compensateOnToolErrors) {
+                        throw compensatingToolMisconfiguration;
+                    }
+                    break;
+                }
+                if (!(toolExecutor instanceof DefaultToolExecutor)) {
+                    compensatingToolMisconfiguration = illegalConfiguration(
+                            "@CompensateFor(\"%s\") on method '%s.%s' references tool '%s' which is not a @Tool-annotated method."
+                                    + " Only @Tool-annotated methods support compensating actions",
+                            toolName, objectWithTools.getClass().getName(), method.getName(), toolName);
+                    if (compensateOnToolErrors) {
+                        throw compensatingToolMisconfiguration;
+                    }
+                    break;
+                }
+                Method toolMethod = ((DefaultToolExecutor) toolExecutor).originalMethod();
+                Class<?>[] compensatingParams = method.getParameterTypes();
+                boolean acceptsToolExecution = compensatingParams.length == 1
+                        && compensatingParams[0] == ToolExecution.class;
+                if (!acceptsToolExecution
+                        && !Arrays.equals(toolMethod.getParameterTypes(), compensatingParams)) {
+                    compensatingToolMisconfiguration = illegalConfiguration(
+                            "@CompensateFor(\"%s\") on method '%s.%s' must have the same parameter types as tool '%s'"
+                                    + " or a single %s parameter",
+                            toolName, objectWithTools.getClass().getName(), method.getName(),
+                            toolName, ToolExecution.class.getSimpleName());
+                    if (compensateOnToolErrors) {
+                        throw compensatingToolMisconfiguration;
+                    }
+                    break;
+                }
+                if (acceptsToolExecution) {
+                    method.setAccessible(true);
+                    Method compensatingMethod = method;
+                    compensatingActions.put(toolName, (toolExecution, ctx) -> {
+                        try {
+                            compensatingMethod.invoke(objectWithTools, toolExecution);
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                } else {
+                    DefaultToolExecutor executor = DefaultToolExecutor.builder()
+                            .object(objectWithTools)
+                            .originalMethod(toolMethod)
+                            .methodToInvoke(method)
+                            .propagateToolExecutionExceptions(true)
+                            .build();
+                    compensatingActions.put(toolName, (toolExecution, ctx) ->
+                            executor.executeWithContext(toolExecution.request(), ctx));
+                }
+            }
+        }
+        return compensatingActions;
     }
 
     /**
@@ -187,12 +357,24 @@ public class ToolService {
         return DefaultExecutorProvider.getDefaultExecutorService();
     }
 
-    public void maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
-        this.maxSequentialToolsInvocations = maxSequentialToolsInvocations;
+    public void maxToolCallingRoundTrips(int maxToolCallingRoundTrips) {
+        this.maxToolCallingRoundTrips = maxToolCallingRoundTrips;
     }
 
+    public int maxToolCallingRoundTrips() {
+        return maxToolCallingRoundTrips;
+    }
+
+    /** @deprecated Use {@link #maxToolCallingRoundTrips(int)} instead. */
+    @Deprecated(since = "1.15.0")
+    public void maxSequentialToolsInvocations(int maxSequentialToolsInvocations) {
+        this.maxToolCallingRoundTrips = maxSequentialToolsInvocations;
+    }
+
+    /** @deprecated Use {@link #maxToolCallingRoundTrips()} instead. */
+    @Deprecated(since = "1.15.0")
     public int maxSequentialToolsInvocations() {
-        return maxSequentialToolsInvocations;
+        return maxToolCallingRoundTrips;
     }
 
     /**
@@ -203,10 +385,24 @@ public class ToolService {
     }
 
     /**
+     * @since 1.17.0
+     */
+    public Consumer<BeforeToolExecution> beforeToolExecution() {
+        return beforeToolExecution;
+    }
+
+    /**
      * @since 1.11.0
      */
     public void afterToolExecution(Consumer<ToolExecution> afterToolExecution) {
         this.afterToolExecution = afterToolExecution;
+    }
+
+    /**
+     * @since 1.17.0
+     */
+    public Consumer<ToolExecution> afterToolExecution() {
+        return afterToolExecution;
     }
 
     /**
@@ -244,65 +440,73 @@ public class ToolService {
         this.toolSearchService = new ToolSearchService(toolSearchStrategy);
     }
 
-    public ToolServiceContext createContext(InvocationContext invocationContext,
-                                            UserMessage userMessage,
-                                            ChatMemory chatMemory) {
-        ToolServiceContext toolServiceContext = createContext(invocationContext, userMessage);
-        if (toolSearchService == null) {
-            return toolServiceContext;
-        } else {
-            return toolSearchService.adjust(toolServiceContext, chatMemory, invocationContext);
+    public ToolServiceContext createContext(
+            InvocationContext invocationContext, UserMessage userMessage, List<ChatMessage> messages) {
+        ToolServiceContext context = createContextFromStaticToolsAndProviders(invocationContext, userMessage, messages);
+        if (toolSearchService != null) {
+            context = toolSearchService.adjust(context, messages, invocationContext);
         }
+        context = refreshDynamicProviders(context, messages, invocationContext);
+        return context;
     }
 
-    /**
-     * @deprecated use {@link #createContext(InvocationContext, UserMessage, ChatMemory)} instead
-     */
-    @Deprecated(since = "1.12.0")
-    public ToolServiceContext createContext(InvocationContext invocationContext, UserMessage userMessage) {
-        // TODO make private
+    private ToolServiceContext createContextFromStaticToolsAndProviders(
+            InvocationContext invocationContext, UserMessage userMessage, List<ChatMessage> messages) {
         if (this.toolProviders.isEmpty()) {
-            return this.toolSpecifications.isEmpty()
-                    ? ToolServiceContext.Empty.INSTANCE
-                    : ToolServiceContext.builder()
-                            .effectiveTools(this.toolSpecifications)
-                            .availableTools(this.toolSpecifications)
-                            .toolExecutors(this.toolExecutors)
-                            .immediateReturnTools(this.immediateReturnTools)
-                            .build();
+            if (this.toolSpecifications.isEmpty()) {
+                return ToolServiceContext.Empty.INSTANCE;
+            }
+
+            return ToolServiceContext.builder()
+                    .effectiveTools(this.toolSpecifications)
+                    .availableTools(this.toolSpecifications)
+                    .toolExecutors(this.toolExecutors)
+                    .returnBehaviors(this.returnBehaviors)
+                    .build();
         }
 
         List<ToolSpecification> toolSpecifications = new ArrayList<>(this.toolSpecifications);
         Map<String, ToolExecutor> toolExecutors = new HashMap<>(this.toolExecutors);
-        Set<String> immediateReturnTools = new HashSet<>(this.immediateReturnTools);
+        Map<String, ReturnBehavior> returnBehaviors = new HashMap<>(this.returnBehaviors);
+        List<ToolProvider> dynamicToolProviders = new ArrayList<>();
+
         ToolProviderRequest toolProviderRequest = ToolProviderRequest.builder()
                 .invocationContext(invocationContext)
                 .userMessage(userMessage)
+                .messages(messages)
                 .build();
         toolProviders.forEach(toolProvider -> {
+            if (toolProvider.isDynamic()) {
+                dynamicToolProviders.add(toolProvider);
+                return;
+            }
             ToolProviderResult toolProviderResult = toolProvider.provideTools(toolProviderRequest);
             if (toolProviderResult != null) {
-                for (Map.Entry<ToolSpecification, ToolExecutor> entry :
-                        toolProviderResult.tools().entrySet()) {
-                    String toolName = entry.getKey().name();
-                    if (toolExecutors.putIfAbsent(toolName, entry.getValue()) == null) {
-                        toolSpecifications.add(entry.getKey());
-                    } else {
-                        throw new IllegalConfigurationException(
-                                "Duplicated definition for tool: " + entry.getKey().name());
-                    }
-                }
-                if (toolProviderResult.immediateReturnToolNames() != null) {
-                    immediateReturnTools.addAll(toolProviderResult.immediateReturnToolNames());
-                }
+                addTools(toolProviderResult.aiServiceTools(), toolExecutors, toolSpecifications, returnBehaviors);
             }
         });
+
         return ToolServiceContext.builder()
                 .effectiveTools(toolSpecifications)
                 .availableTools(toolSpecifications)
                 .toolExecutors(toolExecutors)
-                .immediateReturnTools(immediateReturnTools)
+                .returnBehaviors(returnBehaviors)
+                .dynamicToolProviders(dynamicToolProviders)
                 .build();
+    }
+
+    private static void addTools(
+            List<AiServiceTool> tools,
+            Map<String, ToolExecutor> toolExecutors,
+            List<ToolSpecification> toolSpecifications,
+            Map<String, ReturnBehavior> returnBehaviors) {
+        for (AiServiceTool tool : tools) {
+            if (toolExecutors.putIfAbsent(tool.name(), tool.toolExecutor()) != null) {
+                throw new IllegalConfigurationException("Duplicated definition for tool: " + tool.name());
+            }
+            toolSpecifications.add(tool.toolSpecification());
+            returnBehaviors.put(tool.name(), tool.returnBehavior());
+        }
     }
 
     public ToolServiceResult executeInferenceAndToolsLoop(
@@ -315,16 +519,40 @@ public class ToolService {
             InvocationContext invocationContext,
             ToolServiceContext toolServiceContext,
             boolean isReturnTypeResult) {
+        return executeInferenceAndToolsLoop(
+                context,
+                memoryId,
+                chatResponse,
+                parameters,
+                messages,
+                chatMemory,
+                invocationContext,
+                toolServiceContext,
+                context.chatModel::chat);
+    }
+
+    public ToolServiceResult executeInferenceAndToolsLoop(
+            AiServiceContext context,
+            Object memoryId,
+            ChatResponse chatResponse,
+            ChatRequestParameters parameters,
+            List<ChatMessage> messages,
+            ChatMemory chatMemory,
+            InvocationContext invocationContext,
+            ToolServiceContext toolServiceContext,
+            Function<ChatRequest, ChatResponse> chatModelInvoker) {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
+        List<CompensableToolExecution> compensableExecutions = compensateOnToolErrors ? new ArrayList<>() : null;
 
-        int sequentialToolsInvocationsLeft = maxSequentialToolsInvocations;
+        int roundTripsLeft = maxToolCallingRoundTrips;
         while (true) {
 
-            if (sequentialToolsInvocationsLeft-- == 0) {
+            if (roundTripsLeft-- == 0) {
                 throw runtime(
-                        "Something is wrong, exceeded %s sequential tool invocations", maxSequentialToolsInvocations);
+                        "Something is wrong, exceeded %s tool calling round trips (maxToolCallingRoundTrips)",
+                        maxToolCallingRoundTrips);
             }
 
             AiMessage aiMessage = chatResponse.aiMessage();
@@ -342,47 +570,56 @@ public class ToolService {
 
             intermediateResponses.add(chatResponse);
 
+            List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults =
-                    execute(aiMessage.toolExecutionRequests(), toolServiceContext.toolExecutors(), invocationContext);
+                    execute(toolExecutionRequests, toolServiceContext.toolExecutors(), invocationContext);
 
-            boolean immediateToolReturn = true;
-            for (Map.Entry<ToolExecutionRequest, ToolExecutionResult> entry : toolResults.entrySet()) {
-                ToolExecutionRequest request = entry.getKey();
-                ToolExecutionResult result = entry.getValue();
-                ToolExecutionResultMessage resultMessage = ToolExecutionResultMessage.builder()
-                        .id(request.id())
-                        .toolName(request.name())
-                        .text(result.resultText())
-                        .isError(result.isError())
-                        .attributes(result.attributes())
+            boolean anyToolErrored = false;
+            String failedToolName = null;
+            List<ReturnBehavior> returnBehaviors = new ArrayList<>(toolExecutionRequests.size());
+            List<ToolExecutionResultMessage> resultMessages = new ArrayList<>(toolExecutionRequests.size());
+
+            for (ToolExecutionRequest request : toolExecutionRequests) {
+                ToolExecutionResult result = toolResults.get(request);
+                ToolExecutionResultMessage toolExecMsg = toResultMessage(request, result);
+                resultMessages.add(toolExecMsg);
+
+                ToolExecution toolExecution = ToolExecution.builder()
+                        .request(request)
+                        .result(result)
+                        .invocationContext(invocationContext)
                         .build();
-
-                ToolExecution toolExecution =
-                        ToolExecution.builder().request(request).result(result).build();
                 toolExecutions.add(toolExecution);
 
                 fireToolExecutedEvent(invocationContext, request, toolExecution, context.eventListenerRegistrar);
 
+                if (!result.isError() && compensateOnToolErrors && compensatingExecutors.containsKey(request.name())) {
+                    compensableExecutions.add(new CompensableToolExecution(toolExecution, toolExecMsg));
+                }
+
+                if (result.isError() && failedToolName == null) {
+                    failedToolName = request.name();
+                }
+                anyToolErrored = anyToolErrored || result.isError();
+                returnBehaviors.add(toolServiceContext.returnBehavior(request.name()));
+            }
+
+            if (anyToolErrored && compensableExecutions != null && !compensableExecutions.isEmpty()) {
+                compensateToolsActions(compensableExecutions, invocationContext);
+                rewriteChatMemoryForCompensatedTools(messages, chatMemory, compensableExecutions, failedToolName);
+                compensableExecutions.clear();
+                rewriteCurrentResults(toolExecutionRequests, toolResults, resultMessages, failedToolName);
+            }
+
+            for (ToolExecutionResultMessage resultMessage : resultMessages) {
                 if (chatMemory != null) {
                     chatMemory.add(resultMessage);
                 } else {
                     messages.add(resultMessage);
                 }
-
-                if (immediateToolReturn) {
-                    if (toolServiceContext.immediateReturnTools().contains(request.name())) {
-                        if (!isReturnTypeResult) {
-                            throw illegalConfiguration(
-                                    "Tool '%s' with immediate return is not allowed on a AI service not returning Result.",
-                                    request.name());
-                        }
-                    } else {
-                        immediateToolReturn = false;
-                    }
-                }
             }
 
-            if (immediateToolReturn) {
+            if (shouldReturnImmediately(anyToolErrored, returnBehaviors)) {
                 ChatResponse finalResponse = intermediateResponses.remove(intermediateResponses.size() - 1);
                 return ToolServiceResult.builder()
                         .intermediateResponses(intermediateResponses)
@@ -395,11 +632,18 @@ public class ToolService {
 
             if (chatMemory != null) {
                 messages = chatMemory.messages();
+                if (!context.storeRetrievedContentInChatMemory) {
+                    messages = UserMessage.replaceLast(chatMemory.messages(), invocationContext.userMessage());
+                }
             }
 
+            toolServiceContext = refreshDynamicProviders(toolServiceContext, messages, invocationContext);
             if (toolSearchService != null) {
-                parameters = addFoundTools(parameters, toolResults.values(), toolServiceContext.availableTools());
+                toolServiceContext = ToolSearchService.addFoundTools(toolServiceContext, toolResults.values());
             }
+            parameters = parameters.overrideWith(ChatRequestParameters.builder()
+                    .toolSpecifications(toolServiceContext.effectiveTools())
+                    .build());
 
             ChatRequest chatRequest = context.chatRequestTransformer.apply(
                     ChatRequest.builder()
@@ -409,7 +653,7 @@ public class ToolService {
                     memoryId);
 
             fireRequestIssuedEvent(chatRequest, invocationContext, context.eventListenerRegistrar);
-            chatResponse = context.chatModel.chat(chatRequest);
+            chatResponse = chatModelInvoker.apply(chatRequest);
             fireResponseReceivedEvent(chatRequest, chatResponse, invocationContext, context.eventListenerRegistrar);
             aggregateTokenUsage =
                     TokenUsage.sum(aggregateTokenUsage, chatResponse.metadata().tokenUsage());
@@ -423,6 +667,139 @@ public class ToolService {
                 .build();
     }
 
+    private void rewriteCurrentResults(List<ToolExecutionRequest> toolExecutionRequests,
+                                       Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+                                       List<ToolExecutionResultMessage> resultMessages,
+                                       String failedToolName) {
+        for (int i = 0; i < toolExecutionRequests.size(); i++) {
+            ToolExecutionRequest request = toolExecutionRequests.get(i);
+            if (!toolResults.get(request).isError()
+                    && compensatingExecutors.containsKey(request.name())) {
+                resultMessages.set(i, rolledBackResultMessage(resultMessages.get(i), failedToolName));
+            }
+        }
+    }
+
+    private static void rewriteChatMemoryForCompensatedTools(List<ChatMessage> messages,
+                                                             ChatMemory chatMemory,
+                                                             List<CompensableToolExecution> compensableExecutions,
+                                                             String failedToolName) {
+        List<ChatMessage> memoryMessages = chatMemory != null ? new ArrayList<>(chatMemory.messages()) : messages;
+        for (CompensableToolExecution entry : compensableExecutions) {
+            ToolExecutionResultMessage originalMsg = entry.resultMessage();
+            ToolExecutionResultMessage replacementMsg = rolledBackResultMessage(originalMsg, failedToolName);
+            for (int j = 0; j < memoryMessages.size(); j++) {
+                if (memoryMessages.get(j) instanceof ToolExecutionResultMessage msg
+                        && msg.id().equals(originalMsg.id())) {
+                    memoryMessages.set(j, replacementMsg);
+                    break;
+                }
+            }
+        }
+        if (chatMemory != null) {
+            chatMemory.set(memoryMessages);
+        }
+    }
+
+    private static ToolExecutionResultMessage rolledBackResultMessage(
+            ToolExecutionResultMessage original, String failedToolName) {
+        String rolledBackText = "Tool '" + original.toolName() + "' was executed successfully"
+                + " but was rolled back due to failure of tool '" + failedToolName + "'";
+        return original.toBuilder()
+                .contents(List.of(TextContent.from(rolledBackText)))
+                .isError(true)
+                .build();
+    }
+
+    private record CompensableToolExecution(ToolExecution toolExecution, ToolExecutionResultMessage resultMessage) {}
+
+    private void compensateToolsActions(List<CompensableToolExecution> compensableExecutions, InvocationContext invocationContext) {
+        for (int i = compensableExecutions.size() - 1; i >= 0; i--) {
+            ToolExecution toolExecution = compensableExecutions.get(i).toolExecution();
+            String toolName = toolExecution.request().name();
+            BiConsumer<ToolExecution, InvocationContext> compensatingAction = compensatingExecutors.get(toolName);
+            try {
+                compensatingAction.accept(toolExecution, invocationContext);
+            } catch (Exception e) {
+                log.warn("Compensating action failed for tool '{}': {}", toolName, e.getMessage(), e);
+            }
+        }
+    }
+
+    public static boolean shouldReturnImmediately(boolean anyToolErrored, List<ReturnBehavior> returnBehaviors) {
+        if (anyToolErrored) {
+            return false; // if any tool call failed, LLM should receive an error so that it can attempt to fix it
+        }
+        if (returnBehaviors.isEmpty()) {
+            return false;
+        }
+        if (returnBehaviors.get(returnBehaviors.size() - 1) == IMMEDIATE_IF_LAST) {
+            return true;
+        }
+        return returnBehaviors.stream().allMatch(rb -> rb == IMMEDIATE || rb == IMMEDIATE_IF_LAST);
+    }
+
+    /**
+     * Re-evaluates {@linkplain ToolProvider#isDynamic() dynamic} tool providers and returns
+     * an updated {@link ToolServiceContext} with any newly provided tool specifications and executors.
+     * <p>
+     * Non-dynamic providers are not re-called — their tools remain unchanged.
+     * Tools returned by dynamic providers are only added, never removed: once a tool
+     * is present in the context, it stays for the remainder of the AI service invocation.
+     *
+     * @since 1.13.0
+     */
+    public static ToolServiceContext refreshDynamicProviders(
+            ToolServiceContext toolServiceContext, List<ChatMessage> messages, InvocationContext invocationContext) {
+        if (toolServiceContext == null) {
+            return null;
+        }
+
+        List<ToolProvider> dynamicProviders = toolServiceContext.dynamicToolProviders();
+        if (dynamicProviders.isEmpty()) {
+            return toolServiceContext;
+        }
+
+        UserMessage userMessage = UserMessage.findLast(messages).orElseThrow();
+        ToolProviderRequest request = ToolProviderRequest.builder()
+                .invocationContext(invocationContext)
+                .userMessage(userMessage)
+                .messages(messages)
+                .build();
+
+        List<ToolSpecification> newEffectiveTools = new ArrayList<>(toolServiceContext.effectiveTools());
+        List<ToolSpecification> newAvailableTools = new ArrayList<>(toolServiceContext.availableTools());
+        Map<String, ToolExecutor> newToolExecutors = new HashMap<>(toolServiceContext.toolExecutors());
+        Map<String, ReturnBehavior> newReturnBehaviors = new HashMap<>(toolServiceContext.returnBehaviors());
+        boolean changed = false;
+
+        for (ToolProvider dynamicProvider : dynamicProviders) {
+            ToolProviderResult result = dynamicProvider.provideTools(request);
+            if (result != null) {
+                for (AiServiceTool tool : result.aiServiceTools()) {
+                    if (!newToolExecutors.containsKey(tool.name())) {
+                        newEffectiveTools.add(tool.toolSpecification());
+                        newAvailableTools.add(tool.toolSpecification());
+                        newToolExecutors.put(tool.name(), tool.toolExecutor());
+                        newReturnBehaviors.put(tool.name(), tool.returnBehavior());
+                        changed = true;
+                    }
+                }
+            }
+        }
+
+        if (!changed) {
+            return toolServiceContext;
+        }
+
+        return toolServiceContext.toBuilder()
+                .effectiveTools(newEffectiveTools)
+                .availableTools(newAvailableTools)
+                .toolExecutors(newToolExecutors)
+                .returnBehaviors(newReturnBehaviors)
+                .build();
+    }
+
     private void fireToolExecutedEvent(
             InvocationContext invocationContext,
             ToolExecutionRequest request,
@@ -431,7 +808,7 @@ public class ToolService {
         listenerRegistrar.fireEvent(ToolExecutedEvent.builder()
                 .invocationContext(invocationContext)
                 .request(request)
-                .resultText(toolExecution.result())
+                .resultContents(toolExecution.resultContents())
                 .build());
     }
 
@@ -478,20 +855,7 @@ public class ToolService {
 
         for (ToolExecutionRequest toolRequest : toolRequests) {
             CompletableFuture<ToolExecutionResult> future = CompletableFuture.supplyAsync(
-                    () -> {
-                        ToolExecutor toolExecutor = toolExecutors.get(toolRequest.name());
-                        if (toolExecutor == null) {
-                            return applyToolHallucinationStrategy(toolRequest);
-                        } else {
-                            return executeWithErrorHandling(
-                                    toolRequest,
-                                    toolExecutor,
-                                    invocationContext,
-                                    argumentsErrorHandler(),
-                                    executionErrorHandler());
-                        }
-                    },
-                    executor);
+                    () -> executeTool(invocationContext, toolExecutors, toolRequest), executor);
             futures.put(toolRequest, future);
         }
 
@@ -561,9 +925,13 @@ public class ToolService {
             Consumer<BeforeToolExecution> beforeToolExecution,
             Consumer<ToolExecution> afterToolExecution) {
         if (beforeToolExecution != null) {
-            beforeToolExecution.accept(
-                    BeforeToolExecution.builder().request(toolRequest).build());
+            beforeToolExecution.accept(BeforeToolExecution.builder()
+                    .request(toolRequest)
+                    .invocationContext(invocationContext)
+                    .build());
         }
+
+        LocalDateTime startTime = LocalDateTime.now();
 
         ToolExecutor executor = toolExecutors.get(toolRequest.name());
         ToolExecutionResult toolResult = executor == null
@@ -575,6 +943,9 @@ public class ToolService {
             afterToolExecution.accept(ToolExecution.builder()
                     .request(toolRequest)
                     .result(toolResult)
+                    .startTime(startTime)
+                    .finishTime(LocalDateTime.now())
+                    .invocationContext(invocationContext)
                     .build());
         }
         return toolResult;
@@ -592,6 +963,7 @@ public class ToolService {
             ToolErrorContext errorContext = ToolErrorContext.builder()
                     .toolExecutionRequest(toolRequest)
                     .invocationContext(invocationContext)
+                    .rawError(e)
                     .build();
 
             ToolErrorHandlerResult errorHandlerResult;
@@ -608,9 +980,28 @@ public class ToolService {
         }
     }
 
+    static ToolExecutionResultMessage toResultMessage(ToolExecutionRequest request, ToolExecutionResult result) {
+        return ToolExecutionResultMessage.builder()
+                .id(request.id())
+                .toolName(request.name())
+                .contents(result.resultContents())
+                .isError(result.isError())
+                .attributes(result.attributes())
+                .build();
+    }
+
     private static Throwable getCause(Exception e) {
         Throwable cause = e.getCause();
         return cause != null ? cause : e;
+    }
+
+    private static String errorMessage(Throwable throwable) {
+        if (throwable == null) {
+            return "unknown error";
+        }
+
+        String message = throwable.getMessage();
+        return isNullOrBlank(message) ? throwable.getClass().getName() : message;
     }
 
     public ToolExecutionResult applyToolHallucinationStrategy(ToolExecutionRequest toolRequest) {
@@ -656,7 +1047,21 @@ public class ToolService {
         throw new IllegalStateException("There are multiple ToolProvider configured, use toolProviders() instead");
     }
 
+    /**
+     * Returns the effective {@link ReturnBehavior} for the given tool, as configured on this service.
+     * Unknown tools and tools without an explicit behavior default to {@link ReturnBehavior#TO_LLM}.
+     *
+     * @since 1.14.0
+     */
+    public ReturnBehavior returnBehavior(String toolName) {
+        return returnBehaviors.getOrDefault(toolName, ReturnBehavior.TO_LLM);
+    }
+
+    /**
+     * @deprecated use {@link #returnBehavior(String)} instead
+     */
+    @Deprecated(since = "1.14.0")
     public boolean isImmediateTool(String toolName) {
-        return immediateReturnTools.contains(toolName);
+        return returnBehaviors.get(toolName) == IMMEDIATE;
     }
 }

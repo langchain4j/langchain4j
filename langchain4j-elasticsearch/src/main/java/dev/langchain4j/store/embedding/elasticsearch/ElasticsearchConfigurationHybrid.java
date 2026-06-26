@@ -3,8 +3,9 @@ package dev.langchain4j.store.embedding.elasticsearch;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.KnnRetriever;
-import co.elastic.clients.elasticsearch._types.Retriever;
-import co.elastic.clients.elasticsearch._types.query_dsl.MatchQuery;
+import co.elastic.clients.elasticsearch._types.RRFRetrieverEntry;
+import co.elastic.clients.elasticsearch._types.StandardRetriever;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.SourceConfig;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
@@ -23,9 +24,10 @@ import org.slf4j.LoggerFactory;
  *
  * @see <a href="https://www.elastic.co/subscriptions">subscriptions</a>
  */
-public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration {
+public class ElasticsearchConfigurationHybrid implements ElasticsearchConfiguration {
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchConfigurationHybrid.class);
     private final Integer numCandidates;
+    private final boolean includeVectorResponse;
 
     public static class Builder {
         private Integer numCandidates;
@@ -70,21 +72,12 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
     }
 
     @Override
-    SearchResponse<Document> vectorSearch(
-            ElasticsearchClient client, String indexName, EmbeddingSearchRequest embeddingSearchRequest)
-            throws ElasticsearchException {
-        throw new UnsupportedOperationException("Hybrid configuration does not support vector search");
+    public boolean isIncludeVectorResponse() {
+        return includeVectorResponse;
     }
 
     @Override
-    SearchResponse<Document> fullTextSearch(
-            final ElasticsearchClient client, final String indexName, final String textQuery)
-            throws ElasticsearchException {
-        throw new UnsupportedOperationException("Hybrid configuration does not support full text search");
-    }
-
-    @Override
-    SearchResponse<Document> hybridSearch(
+    public SearchResponse<Document> hybridSearch(
             final ElasticsearchClient client,
             final String indexName,
             final EmbeddingSearchRequest embeddingSearchRequest,
@@ -96,8 +89,10 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
                 .field(VECTOR_FIELD)
                 .queryVector(embeddingSearchRequest.queryEmbedding().vectorAsList());
 
+        Query filter = null;
         if (embeddingSearchRequest.filter() != null) {
-            krb.filter(ElasticsearchMetadataFilterMapper.map(embeddingSearchRequest.filter()));
+            filter = ElasticsearchMetadataFilterMapper.map(embeddingSearchRequest.filter());
+            krb.filter(filter);
         }
 
         // k and numCandidates are required in KnnRetriever, calculating default values similarly to how elasticsearch
@@ -113,8 +108,14 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
         KnnRetriever knn = krb.build();
 
         // Building full text part of the hybrid query
-        MatchQuery matchQuery =
-                new MatchQuery.Builder().field(TEXT_FIELD).query(textQuery).build();
+        Query matchQuery = Query.of(q -> q.match(m -> m.field(TEXT_FIELD).query(textQuery)));
+        StandardRetriever.Builder srb = new StandardRetriever.Builder().query(matchQuery);
+
+        if (filter != null) {
+            srb.filter(filter);
+        }
+
+        StandardRetriever standard = srb.build();
 
         log.trace("Searching for embeddings in index [{}] with hybrid query [{}], [{}].", indexName, knn, matchQuery);
 
@@ -127,8 +128,8 @@ public class ElasticsearchConfigurationHybrid extends ElasticsearchConfiguration
                         })
                         .index(indexName)
                         .retriever(r -> r.rrf(rf -> rf.retrievers(List.of(
-                                Retriever.of(rt -> rt.standard(st -> st.query(matchQuery))),
-                                Retriever.of(rt -> rt.knn(knn))))))
+                                RRFRetrieverEntry.of(rre -> rre.retriever(rt -> rt.standard(standard))),
+                                RRFRetrieverEntry.of(rre -> rre.retriever(rt -> rt.knn(knn)))))))
                         .size(embeddingSearchRequest.maxResults())
                         .minScore(embeddingSearchRequest.minScore()),
                 Document.class);

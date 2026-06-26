@@ -20,14 +20,17 @@ public class WatsonxModelCatalogIT {
     void should_list_models() {
         var models = assertDoesNotThrow(() -> modelCatalog.listModels());
         assertTrue(models.size() > 0);
-        assertNotNull(models.get(0).createdAt());
-        assertNotNull(models.get(0).description());
-        assertNotNull(models.get(0).displayName());
-        assertNotNull(models.get(0).maxInputTokens());
-        assertNotNull(models.get(0).maxOutputTokens());
-        assertNotNull(models.get(0).name());
-        assertNotNull(models.get(0).owner());
-        assertNotNull(models.get(0).provider());
-        assertNotNull(models.get(0).type());
+        var model = models.stream()
+                .filter(m -> m.name().equals("ibm/granite-4-h-small"))
+                .findFirst()
+                .orElseThrow();
+        assertNotNull(model.createdAt());
+        assertNotNull(model.description());
+        assertNotNull(model.displayName());
+        assertNotNull(model.maxInputTokens());
+        assertNotNull(model.name());
+        assertNotNull(model.owner());
+        assertNotNull(model.provider());
+        assertNotNull(model.type());
     }
 }

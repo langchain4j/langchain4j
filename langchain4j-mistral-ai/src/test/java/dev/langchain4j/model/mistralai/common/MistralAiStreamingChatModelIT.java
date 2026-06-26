@@ -20,7 +20,7 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     static final StreamingChatModel MISTRAL_STREAMING_CHAT_MODEL = MistralAiStreamingChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-            .modelName(MISTRAL_SMALL_LATEST)
+            .modelName("mistral-medium-2508")
             .temperature(0.0)
             .logRequests(false) // images are huge in logs
             .logResponses(true)
@@ -48,7 +48,7 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected String customModelName() {
-        return "open-mixtral-8x22b";
+        return "mistral-small-latest";
     }
 
     @Override
@@ -85,5 +85,15 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected boolean supportsPartialToolStreaming(StreamingChatModel model) {
         return false;
+    }
+
+    @Override
+    protected String catImageUrl() {
+        return "https://images.all-free-download.com/images/graphicwebp/cat_hangover_relax_213869.webp";
+    }
+
+    @Override
+    protected String diceImageUrl() {
+        return "https://images.all-free-download.com/images/graphicwebp/double_six_dice_196084.webp";
     }
 }

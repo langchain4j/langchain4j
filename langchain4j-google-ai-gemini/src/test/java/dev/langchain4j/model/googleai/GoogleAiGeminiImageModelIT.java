@@ -10,6 +10,8 @@ import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -123,8 +125,6 @@ class GoogleAiGeminiImageModelIT {
         Map<String, Object> searchEntryPoint = (Map<String, Object>) groundingMetadata.get("searchEntryPoint");
         assertThat(searchEntryPoint).containsKey("renderedContent");
         assertThat((String) searchEntryPoint.get("renderedContent")).isNotBlank();
-
-        saveImage(imageResponse.content(), "paris_weather_illustration");
     }
 
     private static void saveImage(Image image, String fileName) throws IOException {
@@ -147,5 +147,13 @@ class GoogleAiGeminiImageModelIT {
             case "image/webp" -> "webp";
             default -> "png";
         };
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }

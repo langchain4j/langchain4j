@@ -1,0 +1,15 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.nonPublicPartOfAPI",
+          "old": "class dev.langchain4j.model.scoring.onnx.OnnxScoringBertCrossEncoder",
+          "justification": "AbstractInProcessScoringModel is package-private, so the protected method cannot leak to external subclasses"
+        }
+      ]
+    }
+  }
+]

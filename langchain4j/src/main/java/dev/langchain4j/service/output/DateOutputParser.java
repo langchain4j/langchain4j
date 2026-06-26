@@ -2,29 +2,27 @@ package dev.langchain4j.service.output;
 
 import dev.langchain4j.Internal;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 
 @Internal
 class DateOutputParser implements OutputParser<Date> {
 
     private static final String DATE_PATTERN = "yyyy-MM-dd";
-    private static final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat(DATE_PATTERN);
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
 
     @Override
     public Date parse(String string) {
-        string = string.trim();
-
-        // SimpleDateFormat silently accepts dd-MM-yyyy; but parses it strangely.
-        if (string.indexOf("-") != 4 || string.indexOf("-", 5) != 7) {
-            throw new RuntimeException("Invalid date format: " + string);
+        if (string == null) {
+            throw new OutputParsingException("Cannot parse null into java.util.Date", null);
         }
-
         try {
-            return SIMPLE_DATE_FORMAT.parse(string);
-        } catch (ParseException e) {
-            throw new RuntimeException(e);
+            LocalDate localDate = LocalDate.parse(string.trim(), FORMATTER);
+            return Date.from(localDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        } catch (Exception e) {
+            throw new OutputParsingException("Cannot parse '%s' into java.util.Date".formatted(string), e);
         }
     }
 

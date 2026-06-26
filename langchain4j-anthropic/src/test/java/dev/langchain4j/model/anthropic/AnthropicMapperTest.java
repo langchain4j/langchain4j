@@ -41,6 +41,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import java.net.URI;
 import java.util.AbstractMap;
@@ -101,7 +102,7 @@ class AnthropicMapperTest {
                                         singletonList(AnthropicToolUseContent.builder()
                                                 .id("12345")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 2), entry("second", 2)))
+                                                .input("{\"first\": 2, \"second\": 2}")
                                                 .build())),
                                 new AnthropicMessage(
                                         USER, singletonList(new AnthropicToolResultContent("12345", "4", null))))),
@@ -126,7 +127,7 @@ class AnthropicMapperTest {
                                                 AnthropicToolUseContent.builder()
                                                         .id("12345")
                                                         .name("calculator")
-                                                        .input(mapOf(entry("first", 2), entry("second", 2)))
+                                                        .input("{\"first\": 2, \"second\": 2}")
                                                         .build())),
                                 new AnthropicMessage(
                                         USER, singletonList(new AnthropicToolResultContent("12345", "4", null))))),
@@ -155,12 +156,12 @@ class AnthropicMapperTest {
                                                 AnthropicToolUseContent.builder()
                                                         .id("12345")
                                                         .name("calculator")
-                                                        .input(mapOf(entry("first", 2), entry("second", 2)))
+                                                        .input("{\"first\": 2, \"second\": 2}")
                                                         .build(),
                                                 AnthropicToolUseContent.builder()
                                                         .id("67890")
                                                         .name("calculator")
-                                                        .input(mapOf(entry("first", 3), entry("second", 3)))
+                                                        .input("{\"first\": 3, \"second\": 3}")
                                                         .build())),
                                 new AnthropicMessage(
                                         USER,
@@ -190,7 +191,7 @@ class AnthropicMapperTest {
                                         singletonList(AnthropicToolUseContent.builder()
                                                 .id("12345")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 2), entry("second", 2)))
+                                                .input("{\"first\": 2, \"second\": 2}")
                                                 .build())),
                                 new AnthropicMessage(
                                         USER, singletonList(new AnthropicToolResultContent("12345", "4", null))),
@@ -199,7 +200,7 @@ class AnthropicMapperTest {
                                         singletonList(AnthropicToolUseContent.builder()
                                                 .id("67890")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 3), entry("second", 3)))
+                                                .input("{\"first\": 3, \"second\": 3}")
                                                 .build())),
                                 new AnthropicMessage(
                                         USER, singletonList(new AnthropicToolResultContent("67890", "6", null))))),
@@ -273,9 +274,7 @@ class AnthropicMapperTest {
         Map<String, Object> map = toAnthropicSchema(jsonSchemaElement);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map))
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
                         {
                           "type": "object",
                           "properties": {
@@ -288,6 +287,106 @@ class AnthropicMapperTest {
                           "additionalProperties": false
                         }
                        """);
+    }
+
+    @Test
+    void test_toAnthropicSchema_with_definitions() throws JsonProcessingException {
+
+        // given
+        String reference = "Person";
+        JsonSchemaElement personSchema = JsonObjectSchema.builder()
+                .addStringProperty("name")
+                .required("name")
+                .build();
+        JsonSchemaElement rootSchema = JsonObjectSchema.builder()
+                .addProperty(
+                        "person",
+                        JsonReferenceSchema.builder().reference(reference).build())
+                .required("person")
+                .definitions(Map.of(reference, personSchema))
+                .build();
+
+        // when
+        Map<String, Object> map = toAnthropicSchema(rootSchema);
+
+        // then
+        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
+                        {
+                          "type": "object",
+                          "properties": {
+                              "person": { "$ref": "#/$defs/Person" }
+                          },
+                          "required": ["person"],
+                          "additionalProperties": false,
+                          "$defs": {
+                              "Person": {
+                                  "type": "object",
+                                  "properties": { "name": { "type": "string" } },
+                                  "required": ["name"],
+                                  "additionalProperties": false
+                              }
+                          }
+                        }
+                       """);
+    }
+
+    @Test
+    void test_toAnthropicTool_with_definitions() throws JsonProcessingException {
+
+        // given
+        String reference = "Foo";
+        JsonSchemaElement fooSchema = JsonObjectSchema.builder()
+                .addStringProperty("name")
+                .required("name")
+                .build();
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .name("tool")
+                .description("description")
+                .parameters(JsonObjectSchema.builder()
+                        .addProperty(
+                                "foo",
+                                JsonReferenceSchema.builder()
+                                        .reference(reference)
+                                        .build())
+                        .required("foo")
+                        .definitions(Map.of(reference, fooSchema))
+                        .build())
+                .build();
+
+        // when
+        AnthropicTool anthropicTool = toAnthropicTool(toolSpecification, AnthropicCacheType.NO_CACHE, Set.of(), null);
+
+        // then
+        assertThat(anthropicTool.inputSchema.defs).isNotNull();
+        assertThat(anthropicTool.inputSchema.defs).containsKey(reference);
+
+        // and the $defs key is serialized as "$defs" (not snake_cased to "defs")
+        String json = new ObjectMapper().writeValueAsString(anthropicTool.inputSchema);
+        assertThat(json).contains("\"$defs\"");
+        assertThat(json).doesNotContain("\"defs\"");
+    }
+
+    @Test
+    void test_toAnthropicTool_without_definitions_omits_defs() throws JsonProcessingException {
+
+        // given
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .name("tool")
+                .description("description")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("parameter")
+                        .required("parameter")
+                        .build())
+                .build();
+
+        // when
+        AnthropicTool anthropicTool = toAnthropicTool(toolSpecification, AnthropicCacheType.NO_CACHE, Set.of(), null);
+
+        // then
+        assertThat(anthropicTool.inputSchema.defs).isNull();
+
+        String json = new ObjectMapper().writeValueAsString(anthropicTool.inputSchema);
+        assertThat(json).doesNotContain("$defs");
     }
 
     @Test
@@ -306,9 +405,7 @@ class AnthropicMapperTest {
         Map<String, Object> map = toAnthropicSchema(bookRecord);
 
         // then
-        assertThat(new ObjectMapper().writeValueAsString(map))
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(new ObjectMapper().writeValueAsString(map)).isEqualToIgnoringWhitespace("""
                         {
                           "type": "object",
                           "properties": {
@@ -354,6 +451,68 @@ class AnthropicMapperTest {
                                         .required(emptyList())
                                         .build())
                                 .build()));
+    }
+
+    @Test
+    void per_tool_strict_true_should_override_model_level_null() {
+        // given
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("strict_tool")
+                .description("description")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("param")
+                        .required("param")
+                        .build())
+                .strict(true)
+                .build();
+
+        // when - model-level strictTools is null
+        AnthropicTool tool = toAnthropicTool(toolSpec, AnthropicCacheType.NO_CACHE, Set.of(), null);
+
+        // then
+        assertThat(tool.strict).isTrue();
+        assertThat(tool.inputSchema.additionalProperties).isFalse();
+    }
+
+    @Test
+    void per_tool_strict_false_should_override_model_level_true() {
+        // given
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("non_strict_tool")
+                .description("description")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("param")
+                        .required("param")
+                        .build())
+                .strict(false)
+                .build();
+
+        // when - model-level strictTools is true
+        AnthropicTool tool = toAnthropicTool(toolSpec, AnthropicCacheType.NO_CACHE, Set.of(), true);
+
+        // then
+        assertThat(tool.strict).isNull();
+        assertThat(tool.inputSchema.additionalProperties).isNull();
+    }
+
+    @Test
+    void per_tool_strict_null_should_fall_back_to_model_level() {
+        // given
+        ToolSpecification toolSpec = ToolSpecification.builder()
+                .name("default_tool")
+                .description("description")
+                .parameters(JsonObjectSchema.builder()
+                        .addStringProperty("param")
+                        .required("param")
+                        .build())
+                .build();
+
+        // when - model-level strictTools is true
+        AnthropicTool tool = toAnthropicTool(toolSpec, AnthropicCacheType.NO_CACHE, Set.of(), true);
+
+        // then - falls back to model-level
+        assertThat(tool.strict).isTrue();
+        assertThat(tool.inputSchema.additionalProperties).isFalse();
     }
 
     @Test

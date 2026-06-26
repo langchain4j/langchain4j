@@ -1,13 +1,11 @@
 package dev.langchain4j.web.search;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-
 
 /**
  * Represents a search request that can be made by the user to perform searches in any implementation of {@link WebSearchEngine}.

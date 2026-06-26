@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.agent.AgentInvocationException;
+import dev.langchain4j.agentic.agent.ChatMessagesAccess;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
@@ -31,7 +32,13 @@ public interface AgentInvoker extends AgentInstance, InternalAgent {
         AgentListener listener = listener();
         beforeAgentInvocation(listener, agenticScope, this, args.namedArgs());
         Object result = internalInvoke(agenticScope, listener, agent, args);
-        afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result);
+        if (agent instanceof ChatMessagesAccess chatMessagesAccess) {
+            afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result,
+                    chatMessagesAccess.lastChatRequest(agenticScope.memoryId()),
+                    chatMessagesAccess.lastChatResponse(agenticScope.memoryId()));
+        } else {
+            afterAgentInvocation(listener, agenticScope, this, args.namedArgs(), result);
+        }
         return result;
     }
 
@@ -49,11 +56,13 @@ public interface AgentInvoker extends AgentInstance, InternalAgent {
     }
 
     static AgentInvoker fromSpec(AgentSpecsProvider spec, Method agenticMethod, String name) {
-        List<AgentArgument> arguments = List.of(new AgentArgument(AgenticScope.class, AGENTIC_SCOPE_ARG_NAME));
+        List<AgentArgument> arguments = spec.arguments() != null
+                ? spec.arguments()
+                : List.of(new AgentArgument(AgenticScope.class, AGENTIC_SCOPE_ARG_NAME));
         InternalAgent agentInstance = new NonAiAgentInstance(agenticMethod.getDeclaringClass(),
                 name, spec.description(), agenticMethod.getGenericReturnType(), spec.outputKey(), spec.async(), arguments,
                 spec.listener());
-        return new MethodAgentInvoker(agenticMethod, agentInstance);
+        return new SpecAgentInvoker(agenticMethod, agentInstance);
     }
 
     static AgentInvoker fromMethod(InternalAgent agent, Method method) {

@@ -1,9 +1,12 @@
 package dev.langchain4j.model.anthropic.common;
 
+import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.List;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.model.anthropic.AnthropicChatModel;
+import dev.langchain4j.model.anthropic.AnthropicChatRequestParameters;
 import dev.langchain4j.model.anthropic.AnthropicChatResponseMetadata;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.chat.ChatModel;
@@ -11,6 +14,8 @@ import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.Base64;
+import java.util.List;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -20,6 +25,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 class AnthropicChatModelIT extends AbstractChatModelIT {
 
     static final ChatModel ANTHROPIC_CHAT_MODEL = AnthropicChatModel.builder()
+            .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
             .modelName(CLAUDE_HAIKU_4_5_20251001)
             .temperature(0.0)
@@ -28,6 +34,7 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
             .build();
 
     static final ChatModel ANTHROPIC_SCHEMA_MODEL = AnthropicChatModel.builder()
+            .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
             .modelName(CLAUDE_HAIKU_4_5_20251001)
             .temperature(0.0)
@@ -44,6 +51,7 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
     @Override
     protected ChatModel createModelWith(ChatRequestParameters parameters) {
         var anthropicChatModelBuilder = AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .defaultRequestParameters(parameters)
                 .logRequests(true)
@@ -61,7 +69,7 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder()
+        return AnthropicChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
                 .build();
     }
@@ -115,7 +123,25 @@ class AnthropicChatModelIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected ImageContent catImageContentBase64() {
+        String base64Data = Base64.getEncoder().encodeToString(readBytes(catImageUrl()));
+        return ImageContent.from(base64Data, "image/webp");
+    }
+
+    @Override
     protected String diceImageUrl() {
         return "https://images.all-free-download.com/images/graphicwebp/double_six_dice_196084.webp";
+    }
+
+    @Override
+    protected ImageContent diceImageContentBase64() {
+        String base64Data = Base64.getEncoder().encodeToString(readBytes(diceImageUrl()));
+        return ImageContent.from(base64Data, "image/webp");
+    }
+
+    @Override
+    protected void assertOutputTokenCount(TokenUsage tokenUsage, Integer maxOutputTokens) {
+        // Sometimes Anthropic produces one token less than expected (e.g., 4 instead of 5)
+        assertThat(tokenUsage.outputTokenCount()).isBetween(maxOutputTokens - 1, maxOutputTokens);
     }
 }

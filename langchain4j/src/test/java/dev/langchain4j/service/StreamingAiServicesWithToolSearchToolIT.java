@@ -8,8 +8,10 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
@@ -51,7 +53,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
-class StreamingAiServicesWithToolSearchToolIT {
+public class StreamingAiServicesWithToolSearchToolIT {
 
     static List<StreamingChatModel> models() {
         return List.of(
@@ -478,7 +480,7 @@ class StreamingAiServicesWithToolSearchToolIT {
             @Override
             public ToolSearchResult search(ToolSearchRequest request) {
                 // find all available tools
-                List<String> foundToolNames = request.searchableTools().stream().map(it -> it.name()).toList();
+                List<String> foundToolNames = request.searchableTools().stream().map(ToolSpecification::name).sorted().toList();
                 return new ToolSearchResult(foundToolNames, "Tools found: " + String.join(", ", foundToolNames));
             }
         });
@@ -1062,7 +1064,8 @@ class StreamingAiServicesWithToolSearchToolIT {
         return futureResponse.get(60, SECONDS);
     }
 
-    private static void verifyNoMoreImportantInteractions(StreamingChatModel model) {
+    public static void verifyNoMoreImportantInteractions(StreamingChatModel model) {
+        ignoreInteractions(model).chat(any(ChatRequest.class), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
         ignoreInteractions(model).doChat(any(), any());
         ignoreInteractions(model).defaultRequestParameters();
         ignoreInteractions(model).supportedCapabilities();

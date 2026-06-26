@@ -4,7 +4,7 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.googleai.FinishReasonMapper.fromGFinishReasonToFinishReason;
-import static dev.langchain4j.model.googleai.FunctionMapper.fromToolSepcsToGTool;
+import static dev.langchain4j.model.googleai.FunctionMapper.fromToolSpecsToGTools;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromGPartsToAiMessage;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
 import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 
 class BaseGeminiChatModel {
@@ -54,6 +55,8 @@ class BaseGeminiChatModel {
     protected final Boolean enableEnhancedCivicAnswers;
     protected final GeminiMediaResolutionLevel mediaResolution;
     protected final boolean mediaResolutionPerPartEnabled;
+    protected final GeminiGenerationConfig.GeminiImageConfig imageConfig;
+    protected final String cachedContentName;
 
     protected final ChatRequestParameters defaultRequestParameters;
 
@@ -78,6 +81,8 @@ class BaseGeminiChatModel {
         this.logprobs = builder.logprobs;
         this.mediaResolution = builder.mediaResolution;
         this.mediaResolutionPerPartEnabled = getOrDefault(builder.mediaResolutionPerPartEnabled, false);
+        this.imageConfig = buildImageConfig(builder.aspectRatio, builder.imageSize);
+        this.cachedContentName = builder.cachedContentName;
 
         ChatRequestParameters parameters;
         if (builder.defaultRequestParameters != null) {
@@ -110,7 +115,8 @@ class BaseGeminiChatModel {
                 getOrDefault(builder.logRequests, false),
                 getOrDefault(builder.logResponses, false),
                 builder.logger,
-                builder.timeout);
+                builder.timeout,
+                builder.customHeadersSupplier);
     }
 
     protected GeminiGenerateContentRequest createGenerateContentRequest(ChatRequest chatRequest) {
@@ -151,12 +157,14 @@ class BaseGeminiChatModel {
                         .presencePenalty(parameters.presencePenalty())
                         .frequencyPenalty(parameters.frequencyPenalty())
                         .responseLogprobs(responseLogprobs)
+                        .enableEnhancedCivicAnswers(enableEnhancedCivicAnswers)
                         .logprobs(logprobs)
                         .thinkingConfig(this.thinkingConfig)
                         .mediaResolution(this.mediaResolution)
+                        .imageConfig(this.imageConfig)
                         .build())
                 .safetySettings(this.safetySettings)
-                .tools(fromToolSepcsToGTool(
+                .tools(fromToolSpecsToGTools(
                         chatRequest.toolSpecifications(),
                         this.allowCodeExecution,
                         this.allowGoogleSearch,
@@ -164,6 +172,7 @@ class BaseGeminiChatModel {
                         this.allowGoogleMaps,
                         this.retrieveGoogleMapsWidgetToken))
                 .toolConfig(toToolConfig(parameters.toolChoice(), this.functionCallingConfig))
+                .cachedContent(this.cachedContentName)
                 .build();
     }
 
@@ -217,8 +226,18 @@ class BaseGeminiChatModel {
         return switch (config.getMode()) {
             case AUTO -> ToolChoice.AUTO;
             case ANY -> ToolChoice.REQUIRED;
-            case NONE -> null;
+            case NONE, VALIDATED -> null;
         };
+    }
+
+    private static GeminiGenerationConfig.GeminiImageConfig buildImageConfig(String aspectRatio, String imageSize) {
+        if (aspectRatio == null && imageSize == null) {
+            return null;
+        }
+        return GeminiGenerationConfig.GeminiImageConfig.builder()
+                .aspectRatio(aspectRatio)
+                .imageSize(imageSize)
+                .build();
     }
 
     protected ChatResponse processResponse(GeminiGenerateContentResponse geminiResponse) {
@@ -258,8 +277,13 @@ class BaseGeminiChatModel {
     }
 
     protected TokenUsage createTokenUsage(GeminiUsageMetadata tokenCounts) {
-        return new TokenUsage(
-                tokenCounts.promptTokenCount(), tokenCounts.candidatesTokenCount(), tokenCounts.totalTokenCount());
+        return GoogleAiGeminiTokenUsage.builder()
+                .inputTokenCount(tokenCounts.promptTokenCount())
+                .outputTokenCount(tokenCounts.candidatesTokenCount())
+                .totalTokenCount(tokenCounts.totalTokenCount())
+                .cachedContentTokenCount(tokenCounts.cachedContentTokenCount())
+                .thoughtsTokenCount(tokenCounts.thoughtsTokenCount())
+                .build();
     }
 
     private UrlContextMetadata toUrlContextMetadata(
@@ -325,6 +349,10 @@ class BaseGeminiChatModel {
         protected List<ChatModelListener> listeners;
         protected GeminiMediaResolutionLevel mediaResolution;
         protected Boolean mediaResolutionPerPartEnabled;
+        protected String aspectRatio;
+        protected String imageSize;
+        protected String cachedContentName;
+        protected Supplier<Map<String, String>> customHeadersSupplier;
 
         @SuppressWarnings("unchecked")
         protected B builder() {
@@ -696,6 +724,57 @@ class BaseGeminiChatModel {
          */
         public B mediaResolutionPerPartEnabled(Boolean mediaResolutionPerPartEnabled) {
             this.mediaResolutionPerPartEnabled = mediaResolutionPerPartEnabled;
+            return builder();
+        }
+
+        /**
+         * Sets the target aspect ratio for generated images.
+         * This is serialized to {@code generationConfig.imageConfig.aspectRatio}.
+         */
+        public B aspectRatio(String aspectRatio) {
+            this.aspectRatio = aspectRatio;
+            return builder();
+        }
+
+        /**
+         * Alias for {@link #aspectRatio(String)}.
+         */
+        public B imageAspectRatio(String imageAspectRatio) {
+            return aspectRatio(imageAspectRatio);
+        }
+
+        /**
+         * Sets the target image size for generated images.
+         * This is serialized to {@code generationConfig.imageConfig.imageSize}.
+         */
+        public B imageSize(String imageSize) {
+            this.imageSize = imageSize;
+            return builder();
+        }
+
+        /**
+         * Sets the resource name of a previously created cache (e.g. {@code "cachedContents/abc123"}) to attach
+         * to every {@code generateContent} / {@code streamGenerateContent} request issued by this model. The cached
+         * context (system instructions, documents, etc.) will be reused server-side, reducing latency and token
+         * cost.
+         *
+         * <p>This integration does not manage the cache lifecycle (create / list / delete); callers are expected
+         * to create the cache out of band via the
+         * <a href="https://ai.google.dev/gemini-api/docs/caching">Gemini context caching API</a> and pass the
+         * returned resource name here.</p>
+         */
+        public B cachedContentName(String cachedContentName) {
+            this.cachedContentName = cachedContentName;
+            return builder();
+        }
+
+        public B customHeaders(Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return builder();
+        }
+
+        public B customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return builder();
         }
     }

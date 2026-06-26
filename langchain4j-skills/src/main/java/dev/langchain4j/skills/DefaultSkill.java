@@ -9,6 +9,17 @@ public class DefaultSkill extends AbstractSkill {
         super(builder);
     }
 
+    /**
+     * Returns a new builder pre-populated with the values from this skill.
+     * Useful for creating a modified copy, e.g. adding tools to a filesystem-loaded skill:
+     * <pre>{@code
+     * Skill skillWithTools = skill.toBuilder().tools(new MyTools()).build();
+     * }</pre>
+     */
+    public Builder toBuilder() {
+        return builder().copyFrom(this);
+    }
+
     public static Builder builder() {
         return new Builder();
     }

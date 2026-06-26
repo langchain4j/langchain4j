@@ -9,9 +9,8 @@ import static java.util.stream.Collectors.toCollection;
 import com.ibm.watsonx.ai.chat.ChatHandler;
 import com.ibm.watsonx.ai.chat.ChatResponse.ResultChoice;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
-import com.ibm.watsonx.ai.chat.model.ChatParameters;
+import com.ibm.watsonx.ai.chat.model.ChatUsage;
 import com.ibm.watsonx.ai.chat.model.CompletedToolCall;
-import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.PartialChatResponse;
 import com.ibm.watsonx.ai.chat.model.PartialToolCall;
 import com.ibm.watsonx.ai.chat.model.Tool;
@@ -72,92 +71,91 @@ public class WatsonxStreamingChatModel extends WatsonxChat implements StreamingC
                 ? toolSpecifications.stream().map(Converter::toTool).toList()
                 : null;
 
-        var watsonxChatRequest = com.ibm.watsonx.ai.chat.ChatRequest.builder();
-        final ExtractionTags tags;
+        String deploymentId = null;
+        var watsonxChatRequestBuilder = com.ibm.watsonx.ai.chat.ChatRequest.builder();
 
-        if (chatRequest.parameters() instanceof WatsonxChatRequestParameters wcrp && nonNull(wcrp.thinking())) {
-            validateThinkingIsAllowedForGraniteModel(wcrp.modelName(), chatRequest.messages(), toolSpecifications);
-            watsonxChatRequest.thinking(wcrp.thinking());
-            tags = wcrp.thinking().extractionTags();
-        } else tags = null;
+        if (chatRequest.parameters() instanceof WatsonxChatRequestParameters wcrp) {
+            deploymentId = wcrp.deploymentId();
+            if (nonNull(wcrp.thinking())) watsonxChatRequestBuilder.thinking(wcrp.thinking());
+        }
 
-        ChatParameters parameters = Converter.toChatParameters(chatRequest.parameters());
-        chatService.chatStreaming(
-                watsonxChatRequest
-                        .messages(messages)
-                        .tools(tools)
-                        .parameters(parameters)
-                        .build(),
-                new ChatHandler() {
-                    @Override
-                    public void onCompleteResponse(com.ibm.watsonx.ai.chat.ChatResponse completeResponse) {
+        var parameters = Converter.toChatParameters(chatRequest.parameters());
+        var watsonxChatRequest = watsonxChatRequestBuilder
+                .messages(messages)
+                .tools(tools)
+                .parameters(parameters)
+                .deploymentId(deploymentId)
+                .build();
 
-                        ResultChoice choice = completeResponse.choices().get(0);
-                        FinishReason finishReason = Converter.toFinishReason(choice.finishReason());
-                        TokenUsage tokenUsage = new TokenUsage(
-                                completeResponse.usage().promptTokens(),
-                                completeResponse.usage().completionTokens(),
-                                completeResponse.usage().totalTokens());
+        chatProvider.chatStreaming(watsonxChatRequest, new ChatHandler() {
+            @Override
+            public void onCompleteResponse(com.ibm.watsonx.ai.chat.ChatResponse completeResponse) {
 
-                        var assistantMessage = completeResponse.toAssistantMessage();
-                        var aiMessage = AiMessage.builder();
+                ResultChoice choice = completeResponse.choices().get(0);
+                FinishReason finishReason = Converter.toFinishReason(choice.finishReason());
+                ChatUsage completeUsage = completeResponse.usage();
+                TokenUsage tokenUsage = completeUsage != null
+                        ? new TokenUsage(
+                                completeUsage.promptTokens(),
+                                completeUsage.completionTokens(),
+                                completeUsage.totalTokens())
+                        : null;
 
-                        if (isNotNullOrBlank(assistantMessage.refusal()))
-                            handler.onError(new ContentFilteredException(assistantMessage.refusal()));
+                var assistantMessage = completeResponse.toAssistantMessage();
+                var aiMessage = AiMessage.builder();
 
-                        if (nonNull(tags)) {
-                            aiMessage.thinking(assistantMessage.thinking());
-                            aiMessage.text(assistantMessage.content());
-                        } else {
-                            aiMessage.text(assistantMessage.content());
-                        }
+                if (isNotNullOrBlank(assistantMessage.refusal()))
+                    handler.onError(new ContentFilteredException(assistantMessage.refusal()));
 
-                        if (nonNull(assistantMessage.toolCalls())) {
-                            aiMessage.toolExecutionRequests(assistantMessage.toolCalls().stream()
-                                    .map(Converter::toToolExecutionRequest)
-                                    .toList());
-                        }
+                if (nonNull(assistantMessage.toolCalls())) {
+                    aiMessage.toolExecutionRequests(assistantMessage.toolCalls().stream()
+                            .map(Converter::toToolExecutionRequest)
+                            .toList());
+                }
 
-                        ChatResponse chatResponse = ChatResponse.builder()
-                                .aiMessage(aiMessage.build())
-                                .metadata(WatsonxChatResponseMetadata.builder()
-                                        .created(completeResponse.created())
-                                        .modelVersion(completeResponse.modelVersion())
-                                        .finishReason(finishReason)
-                                        .id(completeResponse.id())
-                                        .modelName(completeResponse.modelId())
-                                        .tokenUsage(tokenUsage)
-                                        .build())
-                                .build();
+                aiMessage.thinking(assistantMessage.thinking());
+                aiMessage.text(assistantMessage.content());
 
-                        handler.onCompleteResponse(chatResponse);
-                    }
+                ChatResponse chatResponse = ChatResponse.builder()
+                        .aiMessage(aiMessage.build())
+                        .metadata(WatsonxChatResponseMetadata.builder()
+                                .created(completeResponse.created())
+                                .modelVersion(completeResponse.modelVersion())
+                                .finishReason(finishReason)
+                                .id(completeResponse.id())
+                                .modelName(completeResponse.modelId())
+                                .tokenUsage(tokenUsage)
+                                .build())
+                        .build();
 
-                    @Override
-                    public void onError(Throwable error) {
-                        handler.onError(WatsonxExceptionMapper.INSTANCE.mapException(error));
-                    }
+                handler.onCompleteResponse(chatResponse);
+            }
 
-                    @Override
-                    public void onPartialResponse(String partialResponse, PartialChatResponse partialChatResponse) {
-                        handler.onPartialResponse(partialResponse);
-                    }
+            @Override
+            public void onError(Throwable error) {
+                handler.onError(WatsonxExceptionMapper.INSTANCE.mapException(error));
+            }
 
-                    @Override
-                    public void onCompleteToolCall(CompletedToolCall completedToolCall) {
-                        handler.onCompleteToolCall(Converter.toCompleteToolCall(completedToolCall.toolCall()));
-                    }
+            @Override
+            public void onPartialResponse(String partialResponse, PartialChatResponse partialChatResponse) {
+                handler.onPartialResponse(partialResponse);
+            }
 
-                    @Override
-                    public void onPartialThinking(String partialThinking, PartialChatResponse partialChatResponse) {
-                        handler.onPartialThinking(new PartialThinking(partialThinking));
-                    }
+            @Override
+            public void onCompleteToolCall(CompletedToolCall completedToolCall) {
+                handler.onCompleteToolCall(Converter.toCompleteToolCall(completedToolCall.toolCall()));
+            }
 
-                    @Override
-                    public void onPartialToolCall(PartialToolCall partialToolCall) {
-                        handler.onPartialToolCall(Converter.toPartialToolCall(partialToolCall));
-                    }
-                });
+            @Override
+            public void onPartialThinking(String partialThinking, PartialChatResponse partialChatResponse) {
+                handler.onPartialThinking(new PartialThinking(partialThinking));
+            }
+
+            @Override
+            public void onPartialToolCall(PartialToolCall partialToolCall) {
+                handler.onPartialToolCall(Converter.toPartialToolCall(partialToolCall));
+            }
+        });
     }
 
     @Override
