@@ -248,4 +248,52 @@ class AnthropicChatRequestParametersTest {
         assertThat(copy.disableParallelToolUse()).isTrue();
         assertThat(copy.userId()).isEqualTo("test-user-123");
     }
+
+    @Test
+    void inline_system_messages_is_plumbed_through_builder_override_defaultedBy_and_copy() {
+        // build + getter
+        assertThat(AnthropicChatRequestParameters.builder()
+                        .inlineSystemMessages(true)
+                        .build()
+                        .inlineSystemMessages())
+                .isTrue();
+
+        // defaults to null
+        assertThat(AnthropicChatRequestParameters.EMPTY.inlineSystemMessages()).isNull();
+
+        // overrideWith takes the other value when set
+        AnthropicChatRequestParameters overridden = AnthropicChatRequestParameters.builder()
+                .inlineSystemMessages(true)
+                .build()
+                .overrideWith(AnthropicChatRequestParameters.builder()
+                        .inlineSystemMessages(false)
+                        .build());
+        assertThat(overridden.inlineSystemMessages()).isFalse();
+
+        // defaultedBy keeps the original value
+        AnthropicChatRequestParameters defaulted = AnthropicChatRequestParameters.builder()
+                .inlineSystemMessages(true)
+                .build()
+                .defaultedBy(AnthropicChatRequestParameters.builder()
+                        .inlineSystemMessages(false)
+                        .build());
+        assertThat(defaulted.inlineSystemMessages()).isTrue();
+
+        // equals/hashCode distinguish the field
+        AnthropicChatRequestParameters on = AnthropicChatRequestParameters.builder()
+                .inlineSystemMessages(true)
+                .build();
+        AnthropicChatRequestParameters onCopy = AnthropicChatRequestParameters.builder()
+                .inlineSystemMessages(true)
+                .build();
+        AnthropicChatRequestParameters off = AnthropicChatRequestParameters.builder()
+                .inlineSystemMessages(false)
+                .build();
+        assertThat(on).isEqualTo(onCopy).hasSameHashCodeAs(onCopy);
+        assertThat(on).isNotEqualTo(off);
+
+        // toBuilder round-trips the field
+        assertThat(on.toBuilder().build()).isEqualTo(on);
+        assertThat(on.toBuilder().build().inlineSystemMessages()).isTrue();
+    }
 }
