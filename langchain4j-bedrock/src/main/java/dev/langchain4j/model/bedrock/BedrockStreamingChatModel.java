@@ -272,6 +272,16 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
 
         private BedrockRuntimeAsyncClient client;
 
+        /**
+         * Sets a pre-configured {@link BedrockRuntimeAsyncClient} to use for streaming API calls.
+         * <p>
+         * Use this when you need full control over the AWS client configuration
+         * (credentials, region, endpoint overrides, etc.).
+         * When set, the {@link #region(Region)} setting is ignored.
+         *
+         * @param client the async Bedrock runtime client
+         * @return {@code this}
+         */
         public Builder client(BedrockRuntimeAsyncClient client) {
             this.client = client;
             return this;
