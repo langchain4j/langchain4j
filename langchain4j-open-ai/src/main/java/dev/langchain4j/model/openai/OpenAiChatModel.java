@@ -65,6 +65,7 @@ public class OpenAiChatModel implements ChatModel {
     private final boolean returnThinking;
     private final boolean sendThinking;
     private final String thinkingFieldName;
+    private final boolean useInputImageFormat;
     private final List<ChatModelListener> listeners;
 
     public OpenAiChatModel(OpenAiChatModelBuilder builder) {
@@ -132,6 +133,7 @@ public class OpenAiChatModel implements ChatModel {
         this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.sendThinking = getOrDefault(builder.sendThinking, false);
         this.thinkingFieldName = getOrDefault(builder.thinkingFieldName, "reasoning_content");
+        this.useInputImageFormat = getOrDefault(builder.useInputImageFormat, false);
         this.listeners = copy(builder.listeners);
     }
 
@@ -156,7 +158,13 @@ public class OpenAiChatModel implements ChatModel {
         validate(parameters);
 
         ChatCompletionRequest openAiRequest = toOpenAiChatRequest(
-                        chatRequest, parameters, sendThinking, thinkingFieldName, strictTools, strictJsonSchema)
+                        chatRequest,
+                        parameters,
+                        sendThinking,
+                        thinkingFieldName,
+                        strictTools,
+                        strictJsonSchema,
+                        useInputImageFormat)
                 .build();
 
         ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse = withRetryMappingExceptions(
@@ -275,6 +283,7 @@ public class OpenAiChatModel implements ChatModel {
         private Boolean returnThinking;
         private Boolean sendThinking;
         private String thinkingFieldName;
+        private Boolean useInputImageFormat;
         private Boolean logprobs;
         private Integer topLogprobs;
         private Duration timeout;
@@ -500,6 +509,19 @@ public class OpenAiChatModel implements ChatModel {
         public OpenAiChatModelBuilder sendThinking(Boolean sendThinking) {
             this.sendThinking = sendThinking;
             this.thinkingFieldName = "reasoning_content";
+            return this;
+        }
+
+        /**
+         * Controls whether image content is sent using the {@code input_image} format.
+         * <p>
+         * Disabled by default, preserving the OpenAI Chat Completions {@code image_url} format.
+         *
+         * @param useInputImageFormat whether to send image content as {@code input_image}
+         * @return {@code this}
+         */
+        public OpenAiChatModelBuilder useInputImageFormat(Boolean useInputImageFormat) {
+            this.useInputImageFormat = useInputImageFormat;
             return this;
         }
 

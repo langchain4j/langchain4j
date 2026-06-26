@@ -63,6 +63,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
     private final boolean sendThinking;
     private final String thinkingFieldName;
     private final boolean accumulateToolCallId;
+    private final boolean useInputImageFormat;
     private final List<ChatModelListener> listeners;
 
     public OpenAiStreamingChatModel(OpenAiStreamingChatModelBuilder builder) {
@@ -128,6 +129,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         this.sendThinking = getOrDefault(builder.sendThinking, false);
         this.thinkingFieldName = getOrDefault(builder.thinkingFieldName, "reasoning_content");
         this.accumulateToolCallId = getOrDefault(builder.accumulateToolCallId, true);
+        this.useInputImageFormat = getOrDefault(builder.useInputImageFormat, false);
         this.listeners = copy(builder.listeners);
     }
 
@@ -188,7 +190,8 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
     private ChatCompletionRequest createOpenAiRequest(ChatRequest request,
                                                       OpenAiChatRequestParameters parameters) {
-        return toOpenAiChatRequest(request, parameters, sendThinking, thinkingFieldName, strictTools, strictJsonSchema)
+        return toOpenAiChatRequest(
+                        request, parameters, sendThinking, thinkingFieldName, strictTools, strictJsonSchema, useInputImageFormat)
                 .stream(true)
                 .streamOptions(StreamOptions.builder().includeUsage(true).build())
                 .build();
@@ -244,6 +247,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         private Boolean sendThinking;
         private String thinkingFieldName;
         private Boolean accumulateToolCallId;
+        private Boolean useInputImageFormat;
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
@@ -478,6 +482,19 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
          */
         public OpenAiStreamingChatModelBuilder accumulateToolCallId(Boolean accumulateToolCallId) {
             this.accumulateToolCallId = accumulateToolCallId;
+            return this;
+        }
+
+        /**
+         * Controls whether image content is sent using the {@code input_image} format.
+         * <p>
+         * Disabled by default, preserving the OpenAI Chat Completions {@code image_url} format.
+         *
+         * @param useInputImageFormat whether to send image content as {@code input_image}
+         * @return {@code this}
+         */
+        public OpenAiStreamingChatModelBuilder useInputImageFormat(Boolean useInputImageFormat) {
+            this.useInputImageFormat = useInputImageFormat;
             return this;
         }
 
