@@ -1,5 +1,11 @@
 package dev.langchain4j.store.embedding.cassandra;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.Utils.toStringValueMap;
+import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static java.util.stream.Collectors.toList;
+
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.dtsx.astra.sdk.cassio.AnnQuery;
@@ -18,18 +24,11 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
-import org.jspecify.annotations.NonNull;
-
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.Utils.toStringValueMap;
-import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
-import static java.util.stream.Collectors.toList;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Implementation of {@link EmbeddingStore} using Cassandra.
@@ -68,9 +67,11 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param dimension dimension
      * @param metric    metric
      */
-    public CassandraEmbeddingStore(CqlSession session, String tableName, int dimension, CassandraSimilarityMetric metric) {
+    public CassandraEmbeddingStore(
+            CqlSession session, String tableName, int dimension, CassandraSimilarityMetric metric) {
         this.cassandraSession = session;
-        this.embeddingTable = new MetadataVectorTable(session, session.getKeyspace().get().asInternal(), tableName, dimension, metric);
+        this.embeddingTable = new MetadataVectorTable(
+                session, session.getKeyspace().get().asInternal(), tableName, dimension, metric);
         embeddingTable.create();
     }
 
@@ -104,58 +105,110 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
         protected Integer dimension;
         protected CassandraSimilarityMetric metric = CassandraSimilarityMetric.COSINE;
 
+        /**
+         * Sets the Cassandra contact points (hostnames or IP addresses).
+         *
+         * @param contactPoints the list of contact points
+         * @return {@code this}
+         */
         public Builder contactPoints(List<String> contactPoints) {
             this.contactPoints = contactPoints;
             return this;
         }
 
+        /**
+         * Sets the local data center name for the Cassandra driver.
+         *
+         * @param localDataCenter the local data center name
+         * @return {@code this}
+         */
         public Builder localDataCenter(String localDataCenter) {
             this.localDataCenter = localDataCenter;
             return this;
         }
 
+        /**
+         * Sets the Cassandra native transport port. Defaults to {@code 9042}.
+         *
+         * @param port the port number
+         * @return {@code this}
+         */
         public Builder port(Integer port) {
             this.port = port;
             return this;
         }
 
+        /**
+         * Sets the username for Cassandra authentication.
+         *
+         * @param userName the username
+         * @return {@code this}
+         */
         public Builder userName(String userName) {
             this.userName = userName;
             return this;
         }
 
+        /**
+         * Sets the password for Cassandra authentication.
+         *
+         * @param password the password
+         * @return {@code this}
+         */
         public Builder password(String password) {
             this.password = password;
             return this;
         }
 
+        /**
+         * Sets the Cassandra keyspace name.
+         *
+         * @param keyspace the keyspace name
+         * @return {@code this}
+         */
         public Builder keyspace(String keyspace) {
             this.keyspace = keyspace;
             return this;
         }
 
+        /**
+         * Sets the Cassandra table name for storing embeddings.
+         *
+         * @param table the table name
+         * @return {@code this}
+         */
         public Builder table(String table) {
             this.table = table;
             return this;
         }
 
+        /**
+         * Sets the number of dimensions for the embedding vectors.
+         *
+         * @param dimension the number of dimensions
+         * @return {@code this}
+         */
         public Builder dimension(Integer dimension) {
             this.dimension = dimension;
             return this;
         }
 
+        /**
+         * Sets the similarity metric used for vector search. Defaults to {@code COSINE}.
+         *
+         * @param metric the similarity metric
+         * @return {@code this}
+         */
         public Builder metric(CassandraSimilarityMetric metric) {
             this.metric = metric;
             return this;
         }
 
-        public Builder() {
-        }
+        public Builder() {}
 
         public CassandraEmbeddingStore build() {
-            CqlSessionBuilder builder = CqlSession.builder()
-                    .withKeyspace(keyspace)
-                    .withLocalDatacenter(localDataCenter);
+            CqlSessionBuilder builder =
+                    CqlSession.builder().withKeyspace(keyspace).withLocalDatacenter(localDataCenter);
             if (userName != null && password != null) {
                 builder.withAuthCredentials(userName, password);
             }
@@ -182,41 +235,89 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
         private CassandraSimilarityMetric metric = CassandraSimilarityMetric.COSINE;
         private AstraEnvironment env = AstraEnvironment.PROD;
 
+        /**
+         * Sets the Astra DB application token for authentication.
+         *
+         * @param token the Astra DB token
+         * @return {@code this}
+         */
         public BuilderAstra token(String token) {
             this.token = token;
             return this;
         }
 
+        /**
+         * Sets the Astra environment. Defaults to {@code PROD}.
+         *
+         * @param env the Astra environment
+         * @return {@code this}
+         */
         public BuilderAstra env(AstraEnvironment env) {
             this.env = env;
             return this;
         }
 
+        /**
+         * Sets the Astra database ID.
+         *
+         * @param dbId the database UUID
+         * @return {@code this}
+         */
         public BuilderAstra databaseId(UUID dbId) {
             this.dbId = dbId;
             return this;
         }
 
+        /**
+         * Sets the Astra database region. Defaults to {@code "us-east1"}.
+         *
+         * @param dbRegion the database region
+         * @return {@code this}
+         */
         public BuilderAstra databaseRegion(String dbRegion) {
             this.dbRegion = dbRegion;
             return this;
         }
 
+        /**
+         * Sets the keyspace name. Defaults to {@code "default_keyspace"}.
+         *
+         * @param keyspaceName the keyspace name
+         * @return {@code this}
+         */
         public BuilderAstra keyspace(String keyspaceName) {
             this.keyspaceName = keyspaceName;
             return this;
         }
 
+        /**
+         * Sets the table name for storing embeddings.
+         *
+         * @param tableName the table name
+         * @return {@code this}
+         */
         public BuilderAstra table(String tableName) {
             this.tableName = tableName;
             return this;
         }
 
+        /**
+         * Sets the number of dimensions for the embedding vectors.
+         *
+         * @param dimension the number of dimensions
+         * @return {@code this}
+         */
         public BuilderAstra dimension(int dimension) {
             this.dimension = dimension;
             return this;
         }
 
+        /**
+         * Sets the similarity metric used for vector search. Defaults to {@code COSINE}.
+         *
+         * @param metric the similarity metric
+         * @return {@code this}
+         */
         public BuilderAstra metric(CassandraSimilarityMetric metric) {
             this.metric = metric;
             return this;
@@ -300,13 +401,13 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddingList, List<TextSegment> textSegmentList) {
-    	if (ids == null || embeddingList == null || textSegmentList == null) {
+        if (ids == null || embeddingList == null || textSegmentList == null) {
             throw new IllegalArgumentException("ids, embeddingList, and textSegmentList must not be null");
         }
         if (ids.size() != embeddingList.size() || ids.size() != textSegmentList.size()) {
             throw new IllegalArgumentException("ids, embeddingList, and textSegmentList must all have the same size");
         }
-        
+
         // Looping on both list with an index
         for (int i = 0; i < embeddingList.size(); i++) {
             addInternal(ids.get(i), embeddingList.get(i), textSegmentList.get(i));
@@ -347,10 +448,9 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         TextSegment embedded = null;
         String body = record.getEmbedded().getBody();
-        if (body != null
-                && !body.isEmpty()
-                && record.getEmbedded().getMetadata() != null) {
-            embedded = TextSegment.from(record.getEmbedded().getBody(),
+        if (body != null && !body.isEmpty() && record.getEmbedded().getMetadata() != null) {
+            embedded = TextSegment.from(
+                    record.getEmbedded().getBody(),
                     new Metadata(record.getEmbedded().getMetadata()));
         }
         return new EmbeddingMatch<>(
@@ -373,7 +473,8 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param metadata   map key-value to build a metadata filter
      * @return list of matching results
      */
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding embedding, int maxResults, double minScore, Metadata metadata) {
+    public List<EmbeddingMatch<TextSegment>> findRelevant(
+            Embedding embedding, int maxResults, double minScore, Metadata metadata) {
         AnnQuery.AnnQueryBuilder builder = AnnQuery.builder()
                 .embeddings(embedding.vectorAsList())
                 .metric(CassandraSimilarityMetric.COSINE)
@@ -382,9 +483,7 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
         if (metadata != null) {
             builder.metaData(toStringValueMap(metadata.toMap()));
         }
-        return embeddingTable
-                .similaritySearch(builder.build())
-                .stream()
+        return embeddingTable.similaritySearch(builder.build()).stream()
                 .map(CassandraEmbeddingStore::mapSearchResult)
                 .collect(toList());
     }
