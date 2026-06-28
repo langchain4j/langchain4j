@@ -139,7 +139,7 @@ server will cause the tool provider to throw an exception.
 
 Moreover, a MCP servers may often provide tens of tools, while a given AI service
 may only need a few of them, both to prevent the usage of an unwanted tool and to 
-reduce the possibility of hallucinations. The `McpToolProvider` allows to filter 
+reduce the possibility of hallucinations. The `McpToolProvider` allows you to filter 
 these tools by name as it follows:
 
 ```java
@@ -151,7 +151,7 @@ McpToolProvider toolProvider = McpToolProvider.builder()
 
 In this way the AI service configured with this `ToolProvider` could only use
 those mentioned 3 tools, allowing it to read existing issues, but preventing it
-from creating new ones. More in general, a `ToolProvider` allows to filter tools
+from creating new ones. More in general, a `ToolProvider` allows you to filter tools
 through a `BiPredicate<McpClient, ToolSpecification>`. This could be also useful
 when multiple MCP clients expose tools with the same and then conflicting names. 
 For example, the following `ToolProvider` takes tools from two MCP clients

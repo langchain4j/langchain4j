@@ -26,6 +26,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
@@ -473,8 +474,14 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
             Parameter[] parameters = method.getParameters();
             for (int i = 0; i < parameters.length; i++) {
                 int index = i;
-                AgentInvoker.optionalParameterName(parameters[i])
-                        .ifPresent(argName -> agenticScope.writeState(argName, args[index]));
+                if (InvocationParameters.class.isAssignableFrom(parameters[i].getType())) {
+                    if (args[index] != null) {
+                        agenticScope.writeExecutionContext(InvocationParameters.class, args[index]);
+                    }
+                } else {
+                    AgentInvoker.optionalParameterName(parameters[i])
+                            .ifPresent(argName -> agenticScope.writeState(argName, args[index]));
+                }
             }
         }
     }

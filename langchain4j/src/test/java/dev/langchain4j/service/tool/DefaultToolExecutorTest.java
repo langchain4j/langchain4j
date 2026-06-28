@@ -709,4 +709,31 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .isThrownBy(() -> executor.execute(request, "DEFAULT"))
                 .withCauseInstanceOf(IllegalArgumentException.class);
     }
+
+    static class ToolWithException {
+        @Tool("Tool that throws exception")
+        public String throwingTool(String input) {
+            throw new RuntimeException("Test exception with details");
+        }
+    }
+
+    @Test
+    void should_return_error_result_when_tool_execution_fails() throws Exception {
+        ToolWithException tool = new ToolWithException();
+        Method method = ToolWithException.class.getMethod("throwingTool", String.class);
+
+        DefaultToolExecutor executor = new DefaultToolExecutor(tool, method);
+
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("throwingTool")
+                .arguments("{\"arg0\": \"test\"}")
+                .build();
+
+        ToolExecutionResult result =
+                executor.executeWithContext(request, InvocationContext.builder().build());
+
+        assertThat(result.isError()).isTrue();
+        assertThat(result.resultText()).isEqualTo("Test exception with details");
+    }
 }

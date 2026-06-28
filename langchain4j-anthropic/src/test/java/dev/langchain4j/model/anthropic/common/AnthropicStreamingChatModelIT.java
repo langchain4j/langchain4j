@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeast;
 
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.model.anthropic.AnthropicChatRequestParameters;
 import dev.langchain4j.model.anthropic.AnthropicChatResponseMetadata;
 import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
@@ -18,7 +19,6 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
-
 import java.util.Base64;
 import java.util.List;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -77,7 +77,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder()
+        return AnthropicChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
                 .build();
     }
@@ -113,13 +113,16 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
         // Anthropic can talk before calling a tool. "atLeast(0)" is meant to ignore it.
         io.verify(handler, atLeast(0)).onPartialResponse(any(), any());
 
-        io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
-                // Anthropic does not output same tokens consistently, so we can't easily assert partialArguments
-                toolCall.index() == 0
-                        && toolCall.id().equals(id)
-                        && toolCall.name().equals("getWeather")
-                        && !toolCall.partialArguments().isBlank()
-        ), any());
+        io.verify(handler, atLeast(1))
+                .onPartialToolCall(
+                        argThat(toolCall ->
+                                // Anthropic does not output same tokens consistently, so we can't easily assert
+                                // partialArguments
+                                toolCall.index() == 0
+                                        && toolCall.id().equals(id)
+                                        && toolCall.name().equals("getWeather")
+                                        && !toolCall.partialArguments().isBlank()),
+                        any());
         io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\": \"Munich\"}"));
     }
 
@@ -127,13 +130,16 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id1, String id2) {
         verifyToolCallbacks(handler, io, id1);
 
-        io.verify(handler, atLeast(1)).onPartialToolCall(argThat(toolCall ->
-                // Anthropic does not output same tokens consistently, so we can't easily assert partialArguments
-                toolCall.index() == 1
-                        && toolCall.id().equals(id2)
-                        && toolCall.name().equals("getTime")
-                        && !toolCall.partialArguments().isBlank()
-        ), any());
+        io.verify(handler, atLeast(1))
+                .onPartialToolCall(
+                        argThat(toolCall ->
+                                // Anthropic does not output same tokens consistently, so we can't easily assert
+                                // partialArguments
+                                toolCall.index() == 1
+                                        && toolCall.id().equals(id2)
+                                        && toolCall.name().equals("getTime")
+                                        && !toolCall.partialArguments().isBlank()),
+                        any());
         io.verify(handler).onCompleteToolCall(complete(1, id2, "getTime", "{\"country\": \"France\"}"));
     }
 

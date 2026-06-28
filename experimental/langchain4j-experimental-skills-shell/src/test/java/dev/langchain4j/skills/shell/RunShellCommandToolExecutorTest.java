@@ -1,16 +1,17 @@
 package dev.langchain4j.skills.shell;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.service.tool.ToolExecutionResult;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
-
-import java.util.Map;
-import java.util.concurrent.Executors;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class RunShellCommandToolExecutorTest {
 
@@ -21,8 +22,28 @@ class RunShellCommandToolExecutorTest {
         RunShellCommandToolExecutor executor = executor(1, 1);
 
         assertThat(executor.resolveTimeout(Map.of())).isNull();
-        assertThat(executor.resolveTimeout(Map.of(timeoutSecondsParameterName, 1))).isEqualTo(1);
-        assertThat(executor.resolveTimeout(Map.of(timeoutSecondsParameterName, "1"))).isEqualTo(1);
+        assertThat(executor.resolveTimeout(Map.of(timeoutSecondsParameterName, 1)))
+                .isEqualTo(1);
+        assertThat(executor.resolveTimeout(Map.of(timeoutSecondsParameterName, "1")))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void should_throw_ToolExecutionException_when_command_argument_value_is_null() {
+        RunShellCommandToolExecutor executor = executor(false);
+
+        assertThatThrownBy(() -> executor.executeWithContext(requestWithRawArguments("{\"command\": null}"), null))
+                .isInstanceOf(ToolExecutionException.class)
+                .hasMessageContaining("Missing required tool argument");
+    }
+
+    @Test
+    void should_throw_ToolArgumentsException_when_command_argument_value_is_null() {
+        RunShellCommandToolExecutor executor = executor(true);
+
+        assertThatThrownBy(() -> executor.executeWithContext(requestWithRawArguments("{\"command\": null}"), null))
+                .isInstanceOf(ToolArgumentsException.class)
+                .hasMessageContaining("Missing required tool argument");
     }
 
     @Test
@@ -60,8 +81,8 @@ class RunShellCommandToolExecutorTest {
     @Test
     @EnabledOnOs(OS.WINDOWS)
     void should_truncate_stdout_on_success_when_exceeds_limit_on_windows() {
-        ToolExecutionResult result = executor(20, 100)
-                .executeWithContext(request("for /l %i in (1,1,100) do @echo %i"), null);
+        ToolExecutionResult result =
+                executor(20, 100).executeWithContext(request("for /l %i in (1,1,100) do @echo %i"), null);
 
         assertThat(result.isError()).isFalse();
         assertThat(result.resultText()).contains("[truncated:");
@@ -71,8 +92,7 @@ class RunShellCommandToolExecutorTest {
     @Test
     @DisabledOnOs(OS.WINDOWS)
     void should_truncate_stdout_on_error_when_exceeds_limit_on_unix() {
-        ToolExecutionResult result = executor(20, 100)
-                .executeWithContext(request("seq 1 100; exit 1"), null);
+        ToolExecutionResult result = executor(20, 100).executeWithContext(request("seq 1 100; exit 1"), null);
 
         assertThat(result.isError()).isTrue();
         assertThat(result.resultText()).contains("<stdout>");
@@ -83,8 +103,8 @@ class RunShellCommandToolExecutorTest {
     @Test
     @EnabledOnOs(OS.WINDOWS)
     void should_truncate_stdout_on_error_when_exceeds_limit_on_windows() {
-        ToolExecutionResult result = executor(20, 100)
-                .executeWithContext(request("(for /l %i in (1,1,100) do @echo %i) & exit /b 1"), null);
+        ToolExecutionResult result =
+                executor(20, 100).executeWithContext(request("(for /l %i in (1,1,100) do @echo %i) & exit /b 1"), null);
 
         assertThat(result.isError()).isTrue();
         assertThat(result.resultText()).contains("<stdout>");
@@ -95,8 +115,7 @@ class RunShellCommandToolExecutorTest {
     @Test
     @DisabledOnOs(OS.WINDOWS)
     void should_not_truncate_stderr_on_error_when_within_limit_on_unix() {
-        ToolExecutionResult result = executor(100, 100)
-                .executeWithContext(request("echo err >&2; exit 1"), null);
+        ToolExecutionResult result = executor(100, 100).executeWithContext(request("echo err >&2; exit 1"), null);
 
         assertThat(result.isError()).isTrue();
         assertThat(result.resultText()).contains("<stderr>");
@@ -107,8 +126,7 @@ class RunShellCommandToolExecutorTest {
     @Test
     @EnabledOnOs(OS.WINDOWS)
     void should_not_truncate_stderr_on_error_when_within_limit_on_windows() {
-        ToolExecutionResult result = executor(100, 100)
-                .executeWithContext(request("echo err 1>&2 & exit /b 1"), null);
+        ToolExecutionResult result = executor(100, 100).executeWithContext(request("echo err 1>&2 & exit /b 1"), null);
 
         assertThat(result.isError()).isTrue();
         assertThat(result.resultText()).contains("<stderr>");
@@ -119,8 +137,7 @@ class RunShellCommandToolExecutorTest {
     @Test
     @DisabledOnOs(OS.WINDOWS)
     void should_truncate_stderr_on_error_when_exceeds_limit_on_unix() {
-        ToolExecutionResult result = executor(100, 20)
-                .executeWithContext(request("seq 1 100 >&2; exit 1"), null);
+        ToolExecutionResult result = executor(100, 20).executeWithContext(request("seq 1 100 >&2; exit 1"), null);
 
         assertThat(result.isError()).isTrue();
         assertThat(result.resultText()).contains("<stderr>");
@@ -141,12 +158,16 @@ class RunShellCommandToolExecutorTest {
     }
 
     private RunShellCommandToolExecutor executor(int maxStdOutChars, int maxStdErrChars) {
-        return new RunShellCommandToolExecutor(
-                RunShellCommandToolConfig.builder()
-                        .maxStdOutChars(maxStdOutChars)
-                        .maxStdErrChars(maxStdErrChars)
-                        .build()
-        );
+        return new RunShellCommandToolExecutor(RunShellCommandToolConfig.builder()
+                .maxStdOutChars(maxStdOutChars)
+                .maxStdErrChars(maxStdErrChars)
+                .build());
+    }
+
+    private RunShellCommandToolExecutor executor(boolean throwToolArgumentsExceptions) {
+        return new RunShellCommandToolExecutor(RunShellCommandToolConfig.builder()
+                .throwToolArgumentsExceptions(throwToolArgumentsExceptions)
+                .build());
     }
 
     private ToolExecutionRequest request(String command) {
@@ -154,6 +175,14 @@ class RunShellCommandToolExecutorTest {
                 .id("1")
                 .name("run_shell_command")
                 .arguments("{\"command\": \"" + command + "\"}")
+                .build();
+    }
+
+    private ToolExecutionRequest requestWithRawArguments(String arguments) {
+        return ToolExecutionRequest.builder()
+                .id("1")
+                .name("run_shell_command")
+                .arguments(arguments)
                 .build();
     }
 }

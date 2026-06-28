@@ -1,9 +1,10 @@
 package dev.langchain4j.agentic.mcp;
 
 import dev.langchain4j.agentic.UntypedAgent;
-import dev.langchain4j.agentic.internal.InternalAgent;
+import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.internal.AgentInvocationArguments;
 import dev.langchain4j.agentic.internal.AgentInvoker;
+import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -94,7 +95,9 @@ public class McpClientAgentInvoker implements AgentInvoker {
 
     @Override
     public List<AgentArgument> arguments() {
-        return Stream.of(inputKeys).map(input -> new AgentArgument(Object.class, input)).toList();
+        return Stream.of(inputKeys)
+                .map(input -> new AgentArgument(Object.class, input))
+                .toList();
     }
 
     @Override
@@ -116,6 +119,9 @@ public class McpClientAgentInvoker implements AgentInvoker {
         int i = 0;
         for (String argName : inputKeys) {
             Object argValue = agenticScope.readState(argName);
+            if (argValue == null) {
+                throw new MissingArgumentException(argName);
+            }
             positionalArgs[i++] = argValue;
             namedArgs.put(argName, argValue);
         }
