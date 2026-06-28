@@ -12,7 +12,6 @@ import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
-import dev.langchain4j.medel.ModelProvider.RESPONSIBLE_AI;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
@@ -77,8 +76,8 @@ public class ResponsibleAiModerationModel implements ModerationModel {
     }
 
     @Override
-    private ModelProvider provider() {
-        return RESPONSIBLE_AI;
+    public ModelProvider provider() {
+        return ModelProvider.RESPONSIBLE_AI;
     }
 
     @Override

@@ -1,0 +1,40 @@
+[
+    {
+        "extension": "revapi.differences",
+        "configuration": {
+            "ignore": true,
+            "differences": [
+                {
+                    "code": "java.class.externalClassExposedInAPI",
+                    "old": "missing-class dev.langchain4j.http.client.HttpClientBuilder",
+                    "justification": "HttpClientBuilder is part of LangChain4j HTTP client module and is intentionally exposed through ResponsibleAI builder API"
+                },
+                {
+                    "code": "java.class.externalClassExposedInAPI",
+                    "old": "missing-class dev.langchain4j.model.ModelProvider",
+                    "justification": "ModelProvider is a core LangChain4j abstraction used in provider() method"
+                },
+                {
+                    "code": "java.class.externalClassExposedInAPI",
+                    "old": "missing-class dev.langchain4j.model.moderation.ModerationRequest",
+                    "justification": "ModerationRequest is part of the public ModerationModel API contract"
+                },
+                {
+                    "code": "java.class.externalClassExposedInAPI",
+                    "old": "missing-class dev.langchain4j.model.moderation.ModerationResponse",
+                    "justification": "ModerationResponse is returned by ModerationModel implementations"
+                },
+                {
+                    "code": "java.class.externalClassExposedInAPI",
+                    "old": "missing-class dev.langchain4j.model.moderation.listener.ModerationModelListener",
+                    "justification": "Listeners are part of the public moderation lifecycle API"
+                },
+                {
+                    "code": "java.class.externalClassExposedInAPI",
+                    "old": "missing-class org.slf4j.Logger",
+                    "justification": "Logger is used for optional request/response logging configuration"
+                }
+            ]
+        }
+    }
+]
