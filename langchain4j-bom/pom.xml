@@ -238,6 +238,12 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-responsible-ai</artifactId>
+                <version>${langchain4j.stable.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-gpu-llama3</artifactId>
                 <version>${langchain4j.beta.version}</version>
             </dependency>

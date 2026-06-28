@@ -52,6 +52,7 @@
         <module>langchain4j-workers-ai</module>
         <module>langchain4j-voyage-ai</module>
         <module>langchain4j-watsonx</module>
+        <module>langchain4j-responsible-ai</module>
 
         <!-- in-process embeddings -->
         <module>embeddings/langchain4j-embeddings</module>

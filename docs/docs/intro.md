@@ -57,7 +57,7 @@ For easier integration, LangChain4j also includes integration with
 - Integration with [5+ chat memory stores](/category/chat-memory-stores) 
 - Integration with [5+ image generation models](/category/image-models)
 - Integration with [5+ scoring (re-ranking) models](/category/scoring-reranking-models)
-- Integration with one moderation model (OpenAI)
+- Integration with 2 moderation models (OpenAI, Responsible AI)
 - Support for texts and images as inputs (multimodality)
 - [AI Services](/tutorials/ai-services) (high-level LLM API)
 - [Agents and Agentic AI](/tutorials/agents)
