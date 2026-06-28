@@ -24,6 +24,7 @@ public enum OTelGenAiProviderName {
     OLLAMA(ModelProvider.OLLAMA, "ollama"),
     OPEN_AI(ModelProvider.OPEN_AI, "openai"),
     WATSONX(ModelProvider.WATSONX, "ibm.watsonx.ai"),
+    RESPONSIBLE_AI(ModelProvider.RESPONSIBLE_AI, "responsible_ai"),
     OTHER(ModelProvider.OTHER, "unknown");
 
     private final ModelProvider modelProvider;
