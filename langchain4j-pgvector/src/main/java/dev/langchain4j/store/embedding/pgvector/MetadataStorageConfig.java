@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.pgvector;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -50,4 +51,17 @@ public interface MetadataStorageConfig {
      * @return Index Type
      */
     String indexType();
+
+    /**
+     * Compound (multi-column) indexes. Each inner list defines the columns for one compound index.
+     * Example:
+     * <ul>
+     * <li><code>List.of(List.of("query_id", "type", "version"))</code> generates:
+     * <code>CREATE INDEX IF NOT EXISTS table_query_id_type_version ON table (query_id, type, version)</code>
+     * </ul>
+     * @return list of compound index column groups
+     */
+    default List<List<String>> compoundIndexes() {
+        return Collections.emptyList();
+    }
 }
