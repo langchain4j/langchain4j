@@ -210,7 +210,6 @@ public class RailTestCaseRunner {
                         "Pharmacy finder assistant.",
                         true);
 
-
                 boolean testPassed = toolResultResponse != null && toolResultResponse.getResult() != null;
                 if (testPassed) {
                     System.out.println("PASSED");
