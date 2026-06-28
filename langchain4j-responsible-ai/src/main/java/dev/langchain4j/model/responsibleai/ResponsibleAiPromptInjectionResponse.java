@@ -36,29 +36,69 @@ public class ResponsibleAiPromptInjectionResponse {
     @JsonProperty("credits_consumed")
     private Double creditsConsumed;
 
-    public Boolean getInjectionDetected() { return injectionDetected; }
-    public void setInjectionDetected(Boolean injectionDetected) { this.injectionDetected = injectionDetected; }
+    public Boolean getInjectionDetected() {
+        return injectionDetected;
+    }
 
-    public String getAttackType() { return attackType; }
-    public void setAttackType(String attackType) { this.attackType = attackType; }
+    public void setInjectionDetected(Boolean injectionDetected) {
+        this.injectionDetected = injectionDetected;
+    }
 
-    public Double getConfidence() { return confidence; }
-    public void setConfidence(Double confidence) { this.confidence = confidence; }
+    public String getAttackType() {
+        return attackType;
+    }
 
-    public String getSeverity() { return severity; }
-    public void setSeverity(String severity) { this.severity = severity; }
+    public void setAttackType(String attackType) {
+        this.attackType = attackType;
+    }
 
-    public String getRecommendedAction() { return recommendedAction; }
-    public void setRecommendedAction(String recommendedAction) { this.recommendedAction = recommendedAction; }
+    public Double getConfidence() {
+        return confidence;
+    }
 
-    public String getPayloadPreview() { return payloadPreview; }
-    public void setPayloadPreview(String payloadPreview) { this.payloadPreview = payloadPreview; }
+    public void setConfidence(Double confidence) {
+        this.confidence = confidence;
+    }
 
-    public String getEventId() { return eventId; }
-    public void setEventId(String eventId) { this.eventId = eventId; }
+    public String getSeverity() {
+        return severity;
+    }
 
-    public Double getCreditsConsumed() { return creditsConsumed; }
-    public void setCreditsConsumed(Double creditsConsumed) { this.creditsConsumed = creditsConsumed; }
+    public void setSeverity(String severity) {
+        this.severity = severity;
+    }
+
+    public String getRecommendedAction() {
+        return recommendedAction;
+    }
+
+    public void setRecommendedAction(String recommendedAction) {
+        this.recommendedAction = recommendedAction;
+    }
+
+    public String getPayloadPreview() {
+        return payloadPreview;
+    }
+
+    public void setPayloadPreview(String payloadPreview) {
+        this.payloadPreview = payloadPreview;
+    }
+
+    public String getEventId() {
+        return eventId;
+    }
+
+    public void setEventId(String eventId) {
+        this.eventId = eventId;
+    }
+
+    public Double getCreditsConsumed() {
+        return creditsConsumed;
+    }
+
+    public void setCreditsConsumed(Double creditsConsumed) {
+        this.creditsConsumed = creditsConsumed;
+    }
 
     /**
      * Builds a PromptInjectionResult from flat API response fields.
@@ -70,8 +110,8 @@ public class ResponsibleAiPromptInjectionResponse {
         }
         PromptInjectionResult r = new PromptInjectionResult();
         r.setInjectionDetected(injectionDetected);
-        r.setRiskScore(confidence);           // API uses "confidence" for risk score
-        r.setRiskLevel(severity);             // API uses "severity" for risk level
+        r.setRiskScore(confidence); // API uses "confidence" for risk score
+        r.setRiskLevel(severity); // API uses "severity" for risk level
         r.setAttackTypes(attackType != null ? Collections.singletonList(attackType) : null);
         r.setRecommendation(recommendedAction);
         return r;
@@ -85,15 +125,44 @@ public class ResponsibleAiPromptInjectionResponse {
         private List<String> attackTypes;
         private String recommendation;
 
-        public Boolean getInjectionDetected() { return injectionDetected; }
-        public void setInjectionDetected(Boolean injectionDetected) { this.injectionDetected = injectionDetected; }
-        public Double getRiskScore() { return riskScore; }
-        public void setRiskScore(Double riskScore) { this.riskScore = riskScore; }
-        public String getRiskLevel() { return riskLevel; }
-        public void setRiskLevel(String riskLevel) { this.riskLevel = riskLevel; }
-        public List<String> getAttackTypes() { return attackTypes; }
-        public void setAttackTypes(List<String> attackTypes) { this.attackTypes = attackTypes; }
-        public String getRecommendation() { return recommendation; }
-        public void setRecommendation(String recommendation) { this.recommendation = recommendation; }
+        public Boolean getInjectionDetected() {
+            return injectionDetected;
+        }
+
+        public void setInjectionDetected(Boolean injectionDetected) {
+            this.injectionDetected = injectionDetected;
+        }
+
+        public Double getRiskScore() {
+            return riskScore;
+        }
+
+        public void setRiskScore(Double riskScore) {
+            this.riskScore = riskScore;
+        }
+
+        public String getRiskLevel() {
+            return riskLevel;
+        }
+
+        public void setRiskLevel(String riskLevel) {
+            this.riskLevel = riskLevel;
+        }
+
+        public List<String> getAttackTypes() {
+            return attackTypes;
+        }
+
+        public void setAttackTypes(List<String> attackTypes) {
+            this.attackTypes = attackTypes;
+        }
+
+        public String getRecommendation() {
+            return recommendation;
+        }
+
+        public void setRecommendation(String recommendation) {
+            this.recommendation = recommendation;
+        }
     }
 }

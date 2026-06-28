@@ -210,9 +210,9 @@ public class RailTestCaseRunner {
                         "Pharmacy finder assistant.",
                         true);
 
-                        System.out.println("========== RAW JSON ==========");
-                        System.out.println(toolResultResponse);
-                        System.out.println("==============================");
+                System.out.println("========== RAW JSON ==========");
+                System.out.println(toolResultResponse);
+                System.out.println("==============================");
 
                 boolean testPassed = toolResultResponse != null && toolResultResponse.getResult() != null;
                 if (testPassed) {

@@ -131,10 +131,8 @@ class ResponsibleAiModerationModelTest {
         assertThat(response.getResult().getSafe()).isFalse();
         assertThat(response.getResult().getRiskLevel()).isEqualTo("high");
         assertThat(response.getResult().getRiskScore()).isEqualTo(0.89);
-        assertThat(response.getResult().getExplanation())
-                .contains("Suspicious URL");
-        assertThat(response.getResult().getRecommendation())
-                .isEqualTo("block");
+        assertThat(response.getResult().getExplanation()).contains("Suspicious URL");
+        assertThat(response.getResult().getRecommendation()).isEqualTo("block");
     }
 
     @Test

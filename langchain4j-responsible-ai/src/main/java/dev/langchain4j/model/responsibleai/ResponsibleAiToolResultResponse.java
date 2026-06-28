@@ -2,7 +2,6 @@ package dev.langchain4j.model.responsibleai;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,9 +28,7 @@ public class ResponsibleAiToolResultResponse {
             return result;
         }
 
-        if (piiDetectedInfo == null
-                && injectionDetectedInfo == null
-                && recommendation == null) {
+        if (piiDetectedInfo == null && injectionDetectedInfo == null && recommendation == null) {
             return null;
         }
 
@@ -152,9 +149,7 @@ public class ResponsibleAiToolResultResponse {
                 return null;
             }
 
-            return entities.stream()
-                    .map(PiiEntity::getType)
-                    .collect(Collectors.toList());
+            return entities.stream().map(PiiEntity::getType).collect(Collectors.toList());
         }
 
         public String getRedactedResult() {
