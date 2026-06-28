@@ -157,6 +157,7 @@ class BaseGeminiChatModel {
                         .presencePenalty(parameters.presencePenalty())
                         .frequencyPenalty(parameters.frequencyPenalty())
                         .responseLogprobs(responseLogprobs)
+                        .enableEnhancedCivicAnswers(enableEnhancedCivicAnswers)
                         .logprobs(logprobs)
                         .thinkingConfig(this.thinkingConfig)
                         .mediaResolution(this.mediaResolution)

@@ -88,6 +88,13 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
         assertThat(tokenUsage.outputTokenCount()).isLessThanOrEqualTo(maxOutputTokens); // TODO
     }
 
+    @Override
+    protected void assertTotalTokenCount(TokenUsage tokenUsage) {
+        // total token count can be more than input+output due to thinking/reasoning
+        assertThat(tokenUsage.totalTokenCount())
+                .isGreaterThanOrEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+    }
+
     @Test
     void should_persist_thought_signature_in_multi_turn_tool_execution() {
         GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()

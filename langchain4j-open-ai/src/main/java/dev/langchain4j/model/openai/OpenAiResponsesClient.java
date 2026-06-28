@@ -35,6 +35,7 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -819,7 +820,7 @@ class OpenAiResponsesClient {
 
     private static class ResponsesApiEventListener implements ServerSentEventListener {
 
-        private final StreamingChatResponseHandler handler;
+        private final MappingTrackingStreamingChatResponseHandler handler;
         private volatile StreamingHandle streamingHandle;
         private final Map<String, ToolExecutionRequest.Builder> toolCallBuilders = new LinkedHashMap<>();
         private final Map<String, Integer> toolCallIndices = new LinkedHashMap<>();
@@ -829,7 +830,7 @@ class OpenAiResponsesClient {
         private SuccessfulHttpResponse rawHttpResponse;
 
         ResponsesApiEventListener(StreamingChatResponseHandler handler) {
-            this.handler = handler;
+            this.handler = new MappingTrackingStreamingChatResponseHandler(handler);
         }
 
         private boolean isCancelled() {
@@ -870,7 +871,12 @@ class OpenAiResponsesClient {
                 return;
             }
 
+            handler.resetMappingTracking();
             handleDelta(data);
+
+            if (!handler.wasMapped()) {
+                InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent(handler, event);
+            }
         }
 
         @Override

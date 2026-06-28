@@ -26,6 +26,11 @@ class MongoDbEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         return EMBEDDING_MODEL;
     }
 
+    @Override
+    protected boolean supportsContains() {
+        return true;
+    }
+
     @AfterEach
     void afterEach() {
         fixture.afterTests();

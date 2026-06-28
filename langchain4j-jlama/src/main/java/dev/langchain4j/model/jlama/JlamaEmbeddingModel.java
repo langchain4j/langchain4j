@@ -1,5 +1,7 @@
 package dev.langchain4j.model.jlama;
 
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import com.github.tjake.jlama.model.AbstractModel;
 import com.github.tjake.jlama.model.ModelSupport;
 import com.github.tjake.jlama.model.bert.BertModel;
@@ -10,43 +12,41 @@ import dev.langchain4j.internal.RetryUtils;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.jlama.spi.JlamaEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 public class JlamaEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final BertModel model;
     private final Generator.PoolingType poolingType;
     private final String modelName;
 
-    public JlamaEmbeddingModel(Path modelCachePath,
-                               String modelName,
-                               String authToken,
-                               Integer threadCount,
-                               Boolean quantizeModelAtRuntime,
-                               Generator.PoolingType poolingType,
-                               Path workingDirectory) {
+    public JlamaEmbeddingModel(
+            Path modelCachePath,
+            String modelName,
+            String authToken,
+            Integer threadCount,
+            Boolean quantizeModelAtRuntime,
+            Generator.PoolingType poolingType,
+            Path workingDirectory) {
 
         JlamaModelRegistry registry = JlamaModelRegistry.getOrCreate(modelCachePath);
-        JlamaModel jlamaModel = RetryUtils.withRetryMappingExceptions(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), 2);
+        JlamaModel jlamaModel = RetryUtils.withRetryMappingExceptions(
+                () -> registry.downloadModel(modelName, Optional.ofNullable(authToken)),
+                2,
+                JlamaExceptionMapper.INSTANCE);
 
         if (jlamaModel.getModelType() != ModelSupport.ModelType.BERT) {
             throw new IllegalArgumentException("Model type must be BERT");
         }
 
         JlamaModel.Loader loader = jlamaModel.loader();
-        if (quantizeModelAtRuntime != null && quantizeModelAtRuntime)
-            loader = loader.quantized();
+        if (quantizeModelAtRuntime != null && quantizeModelAtRuntime) loader = loader.quantized();
 
-        if (threadCount != null)
-            loader = loader.threadCount(threadCount);
+        if (threadCount != null) loader = loader.threadCount(threadCount);
 
-        if (workingDirectory != null)
-            loader = loader.workingDirectory(workingDirectory);
+        if (workingDirectory != null) loader = loader.workingDirectory(workingDirectory);
 
         loader = loader.inferenceType(AbstractModel.InferenceType.FULL_EMBEDDING);
 
@@ -130,11 +130,21 @@ public class JlamaEmbeddingModel extends DimensionAwareEmbeddingModel {
         }
 
         public JlamaEmbeddingModel build() {
-            return new JlamaEmbeddingModel(this.modelCachePath, this.modelName, this.authToken, this.threadCount, this.quantizeModelAtRuntime, this.poolingType, this.workingDirectory);
+            return new JlamaEmbeddingModel(
+                    this.modelCachePath,
+                    this.modelName,
+                    this.authToken,
+                    this.threadCount,
+                    this.quantizeModelAtRuntime,
+                    this.poolingType,
+                    this.workingDirectory);
         }
 
         public String toString() {
-            return "JlamaEmbeddingModel.JlamaEmbeddingModelBuilder(modelCachePath=" + this.modelCachePath + ", modelName=" + this.modelName + ", authToken=" + this.authToken + ", threadCount=" + this.threadCount + ", quantizeModelAtRuntime=" + this.quantizeModelAtRuntime + ", poolingType=" + this.poolingType + ", workingDirectory=" + this.workingDirectory + ")";
+            return "JlamaEmbeddingModel.JlamaEmbeddingModelBuilder(modelCachePath=" + this.modelCachePath
+                    + ", modelName=" + this.modelName + ", authToken=" + this.authToken + ", threadCount="
+                    + this.threadCount + ", quantizeModelAtRuntime=" + this.quantizeModelAtRuntime + ", poolingType="
+                    + this.poolingType + ", workingDirectory=" + this.workingDirectory + ")";
         }
     }
 }

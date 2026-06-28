@@ -71,5 +71,28 @@ class GoogleAiGeminiStreamingChatModelTest {
             assertThat(result.cachedContent()).isNull();
             assertThatCharSequence(Json.toJson(result)).doesNotContain("\"cachedContent\"");
         }
+
+        @Test
+        void enableEnhancedCivicAnswersInContentRequest() {
+            GoogleAiGeminiStreamingChatModel chatModel = GoogleAiGeminiStreamingChatModel.builder()
+                    .apiKey("ApiKey")
+                    .modelName("ModelName")
+                    .enableEnhancedCivicAnswers(true)
+                    .build();
+            GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
+
+            assertThat(result.generationConfig().enableEnhancedCivicAnswers()).isTrue();
+        }
+
+        @Test
+        void defaultEnableEnhancedCivicAnswersInContentRequest() {
+            GoogleAiGeminiStreamingChatModel chatModel = GoogleAiGeminiStreamingChatModel.builder()
+                    .apiKey("ApiKey")
+                    .modelName("ModelName")
+                    .build();
+            GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
+
+            assertThat(result.generationConfig().enableEnhancedCivicAnswers()).isFalse();
+        }
     }
 }

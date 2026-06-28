@@ -357,6 +357,25 @@ class PartsAndContentsMapperTest {
     }
 
     @Test
+    void fromGPartsToAiMessage_rendersExecutableCodeAsFencedBlock() {
+        // Given
+        GeminiContent.GeminiPart.GeminiExecutableCode executableCode =
+                new GeminiContent.GeminiPart.GeminiExecutableCode(
+                        GeminiContent.GeminiPart.GeminiExecutableCode.GeminiLanguage.PYTHON, "print(1)");
+        GeminiContent.GeminiPart part = GeminiContent.GeminiPart.builder()
+                .executableCode(executableCode)
+                .build();
+        List<GeminiContent.GeminiPart> parts = List.of(part);
+
+        // When
+        AiMessage result = PartsAndContentsMapper.fromGPartsToAiMessage(parts, true, null);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.text()).isEqualTo("Code executed:\n```python\nprint(1)\n```\n");
+    }
+
+    @Test
     void fromGPartsToAiMessage_ignoresNonImageInlineData() {
         // Given
         GeminiBlob audioBlob = new GeminiBlob("audio/mp3", "base64audiodata");

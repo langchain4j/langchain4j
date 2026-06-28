@@ -14,12 +14,14 @@ import static dev.langchain4j.service.IllegalConfigurationException.illegalConfi
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.ReturnBehavior;
+import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
@@ -41,8 +43,11 @@ import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.tool.search.ToolSearchService;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import java.lang.reflect.Method;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.lang.reflect.Parameter;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -55,11 +60,14 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 @Internal
 public class ToolService {
+
+    private static final Logger log = LoggerFactory.getLogger(ToolService.class);
 
     private static final ToolArgumentsErrorHandler DEFAULT_TOOL_ARGUMENTS_ERROR_HANDLER = (error, context) -> {
         if (error instanceof RuntimeException re) {
@@ -69,15 +77,24 @@ public class ToolService {
         }
     };
     private static final ToolExecutionErrorHandler DEFAULT_TOOL_EXECUTION_ERROR_HANDLER = (error, context) -> {
-        String errorMessage =
-                isNullOrBlank(error.getMessage()) ? error.getClass().getName() : error.getMessage();
+        String errorMessage = errorMessage(error);
+        log.warn(
+                "Tool '{}' execution failed. The error message is being returned to the LLM. "
+                        + "To customize this behavior (and silence this log), configure a custom "
+                        + "ToolExecutionErrorHandler via AiServices.toolExecutionErrorHandler(...). Error: {}",
+                context.toolExecutionRequest().name(),
+                errorMessage,
+                error);
         return ToolErrorHandlerResult.text(errorMessage);
     };
 
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
     private final Map<String, ReturnBehavior> returnBehaviors = new HashMap<>();
+    private final Map<String, BiConsumer<ToolExecution, InvocationContext>> compensatingExecutors = new HashMap<>();
+    private IllegalConfigurationException compensatingToolMisconfiguration;
     private final Set<ToolProvider> toolProviders = new LinkedHashSet<>();
+    private boolean compensateOnToolErrors;
     private Executor executor;
     private int maxToolCallingRoundTrips = 100;
     private ToolArgumentsErrorHandler argumentsErrorHandler;
@@ -125,6 +142,7 @@ public class ToolService {
         for (Object objectWithTools : objectsWithTools) {
             List<AiServiceTool> tools = findTools(objectWithTools);
             addTools(tools, this.toolExecutors, this.toolSpecifications, this.returnBehaviors);
+            this.compensatingExecutors.putAll(findCompensatingActions(objectWithTools));
         }
     }
 
@@ -242,6 +260,85 @@ public class ToolService {
         return result;
     }
 
+    public void compensateOnToolErrors(boolean compensateOnToolErrors) {
+        this.compensateOnToolErrors = compensateOnToolErrors;
+        if (compensateOnToolErrors && compensatingToolMisconfiguration != null) {
+            throw compensatingToolMisconfiguration;
+        }
+    }
+
+    private Map<String, BiConsumer<ToolExecution, InvocationContext>> findCompensatingActions(
+            Object objectWithTools) {
+        Map<String, BiConsumer<ToolExecution, InvocationContext>> compensatingActions = new HashMap<>();
+        if (compensatingToolMisconfiguration != null) {
+            return compensatingActions;
+        }
+
+        for (Method method : allConcreteMethods(objectWithTools.getClass())) {
+            CompensateFor compensateFor = method.getAnnotation(CompensateFor.class);
+            if (compensateFor != null) {
+                String toolName = compensateFor.value();
+                ToolExecutor toolExecutor = toolExecutors.get(toolName);
+                if (toolExecutor == null) {
+                    compensatingToolMisconfiguration = illegalConfiguration(
+                            "@CompensateFor(\"%s\") on method '%s.%s' references tool '%s' which does not exist",
+                            toolName, objectWithTools.getClass().getName(), method.getName(), toolName);
+                    if (compensateOnToolErrors) {
+                        throw compensatingToolMisconfiguration;
+                    }
+                    break;
+                }
+                if (!(toolExecutor instanceof DefaultToolExecutor)) {
+                    compensatingToolMisconfiguration = illegalConfiguration(
+                            "@CompensateFor(\"%s\") on method '%s.%s' references tool '%s' which is not a @Tool-annotated method."
+                                    + " Only @Tool-annotated methods support compensating actions",
+                            toolName, objectWithTools.getClass().getName(), method.getName(), toolName);
+                    if (compensateOnToolErrors) {
+                        throw compensatingToolMisconfiguration;
+                    }
+                    break;
+                }
+                Method toolMethod = ((DefaultToolExecutor) toolExecutor).originalMethod();
+                Class<?>[] compensatingParams = method.getParameterTypes();
+                boolean acceptsToolExecution = compensatingParams.length == 1
+                        && compensatingParams[0] == ToolExecution.class;
+                if (!acceptsToolExecution
+                        && !Arrays.equals(toolMethod.getParameterTypes(), compensatingParams)) {
+                    compensatingToolMisconfiguration = illegalConfiguration(
+                            "@CompensateFor(\"%s\") on method '%s.%s' must have the same parameter types as tool '%s'"
+                                    + " or a single %s parameter",
+                            toolName, objectWithTools.getClass().getName(), method.getName(),
+                            toolName, ToolExecution.class.getSimpleName());
+                    if (compensateOnToolErrors) {
+                        throw compensatingToolMisconfiguration;
+                    }
+                    break;
+                }
+                if (acceptsToolExecution) {
+                    method.setAccessible(true);
+                    Method compensatingMethod = method;
+                    compensatingActions.put(toolName, (toolExecution, ctx) -> {
+                        try {
+                            compensatingMethod.invoke(objectWithTools, toolExecution);
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                } else {
+                    DefaultToolExecutor executor = DefaultToolExecutor.builder()
+                            .object(objectWithTools)
+                            .originalMethod(toolMethod)
+                            .methodToInvoke(method)
+                            .propagateToolExecutionExceptions(true)
+                            .build();
+                    compensatingActions.put(toolName, (toolExecution, ctx) ->
+                            executor.executeWithContext(toolExecution.request(), ctx));
+                }
+            }
+        }
+        return compensatingActions;
+    }
+
     /**
      * @since 1.4.0
      */
@@ -288,10 +385,24 @@ public class ToolService {
     }
 
     /**
+     * @since 1.17.0
+     */
+    public Consumer<BeforeToolExecution> beforeToolExecution() {
+        return beforeToolExecution;
+    }
+
+    /**
      * @since 1.11.0
      */
     public void afterToolExecution(Consumer<ToolExecution> afterToolExecution) {
         this.afterToolExecution = afterToolExecution;
+    }
+
+    /**
+     * @since 1.17.0
+     */
+    public Consumer<ToolExecution> afterToolExecution() {
+        return afterToolExecution;
     }
 
     /**
@@ -408,9 +519,32 @@ public class ToolService {
             InvocationContext invocationContext,
             ToolServiceContext toolServiceContext,
             boolean isReturnTypeResult) {
+        return executeInferenceAndToolsLoop(
+                context,
+                memoryId,
+                chatResponse,
+                parameters,
+                messages,
+                chatMemory,
+                invocationContext,
+                toolServiceContext,
+                context.chatModel::chat);
+    }
+
+    public ToolServiceResult executeInferenceAndToolsLoop(
+            AiServiceContext context,
+            Object memoryId,
+            ChatResponse chatResponse,
+            ChatRequestParameters parameters,
+            List<ChatMessage> messages,
+            ChatMemory chatMemory,
+            InvocationContext invocationContext,
+            ToolServiceContext toolServiceContext,
+            Function<ChatRequest, ChatResponse> chatModelInvoker) {
         TokenUsage aggregateTokenUsage = chatResponse.metadata().tokenUsage();
         List<ToolExecution> toolExecutions = new ArrayList<>();
         List<ChatResponse> intermediateResponses = new ArrayList<>();
+        List<CompensableToolExecution> compensableExecutions = compensateOnToolErrors ? new ArrayList<>() : null;
 
         int roundTripsLeft = maxToolCallingRoundTrips;
         while (true) {
@@ -441,11 +575,14 @@ public class ToolService {
                     execute(toolExecutionRequests, toolServiceContext.toolExecutors(), invocationContext);
 
             boolean anyToolErrored = false;
+            String failedToolName = null;
             List<ReturnBehavior> returnBehaviors = new ArrayList<>(toolExecutionRequests.size());
+            List<ToolExecutionResultMessage> resultMessages = new ArrayList<>(toolExecutionRequests.size());
 
             for (ToolExecutionRequest request : toolExecutionRequests) {
                 ToolExecutionResult result = toolResults.get(request);
-                ToolExecutionResultMessage resultMessage = toResultMessage(request, result);
+                ToolExecutionResultMessage toolExecMsg = toResultMessage(request, result);
+                resultMessages.add(toolExecMsg);
 
                 ToolExecution toolExecution = ToolExecution.builder()
                         .request(request)
@@ -456,14 +593,30 @@ public class ToolService {
 
                 fireToolExecutedEvent(invocationContext, request, toolExecution, context.eventListenerRegistrar);
 
+                if (!result.isError() && compensateOnToolErrors && compensatingExecutors.containsKey(request.name())) {
+                    compensableExecutions.add(new CompensableToolExecution(toolExecution, toolExecMsg));
+                }
+
+                if (result.isError() && failedToolName == null) {
+                    failedToolName = request.name();
+                }
+                anyToolErrored = anyToolErrored || result.isError();
+                returnBehaviors.add(toolServiceContext.returnBehavior(request.name()));
+            }
+
+            if (anyToolErrored && compensableExecutions != null && !compensableExecutions.isEmpty()) {
+                compensateToolsActions(compensableExecutions, invocationContext);
+                rewriteChatMemoryForCompensatedTools(messages, chatMemory, compensableExecutions, failedToolName);
+                compensableExecutions.clear();
+                rewriteCurrentResults(toolExecutionRequests, toolResults, resultMessages, failedToolName);
+            }
+
+            for (ToolExecutionResultMessage resultMessage : resultMessages) {
                 if (chatMemory != null) {
                     chatMemory.add(resultMessage);
                 } else {
                     messages.add(resultMessage);
                 }
-
-                anyToolErrored = anyToolErrored || result.isError();
-                returnBehaviors.add(toolServiceContext.returnBehavior(request.name()));
             }
 
             if (shouldReturnImmediately(anyToolErrored, returnBehaviors)) {
@@ -500,7 +653,7 @@ public class ToolService {
                     memoryId);
 
             fireRequestIssuedEvent(chatRequest, invocationContext, context.eventListenerRegistrar);
-            chatResponse = context.chatModel.chat(chatRequest);
+            chatResponse = chatModelInvoker.apply(chatRequest);
             fireResponseReceivedEvent(chatRequest, chatResponse, invocationContext, context.eventListenerRegistrar);
             aggregateTokenUsage =
                     TokenUsage.sum(aggregateTokenUsage, chatResponse.metadata().tokenUsage());
@@ -512,6 +665,65 @@ public class ToolService {
                 .toolExecutions(toolExecutions)
                 .aggregateTokenUsage(aggregateTokenUsage)
                 .build();
+    }
+
+    private void rewriteCurrentResults(List<ToolExecutionRequest> toolExecutionRequests,
+                                       Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+                                       List<ToolExecutionResultMessage> resultMessages,
+                                       String failedToolName) {
+        for (int i = 0; i < toolExecutionRequests.size(); i++) {
+            ToolExecutionRequest request = toolExecutionRequests.get(i);
+            if (!toolResults.get(request).isError()
+                    && compensatingExecutors.containsKey(request.name())) {
+                resultMessages.set(i, rolledBackResultMessage(resultMessages.get(i), failedToolName));
+            }
+        }
+    }
+
+    private static void rewriteChatMemoryForCompensatedTools(List<ChatMessage> messages,
+                                                             ChatMemory chatMemory,
+                                                             List<CompensableToolExecution> compensableExecutions,
+                                                             String failedToolName) {
+        List<ChatMessage> memoryMessages = chatMemory != null ? new ArrayList<>(chatMemory.messages()) : messages;
+        for (CompensableToolExecution entry : compensableExecutions) {
+            ToolExecutionResultMessage originalMsg = entry.resultMessage();
+            ToolExecutionResultMessage replacementMsg = rolledBackResultMessage(originalMsg, failedToolName);
+            for (int j = 0; j < memoryMessages.size(); j++) {
+                if (memoryMessages.get(j) instanceof ToolExecutionResultMessage msg
+                        && msg.id().equals(originalMsg.id())) {
+                    memoryMessages.set(j, replacementMsg);
+                    break;
+                }
+            }
+        }
+        if (chatMemory != null) {
+            chatMemory.set(memoryMessages);
+        }
+    }
+
+    private static ToolExecutionResultMessage rolledBackResultMessage(
+            ToolExecutionResultMessage original, String failedToolName) {
+        String rolledBackText = "Tool '" + original.toolName() + "' was executed successfully"
+                + " but was rolled back due to failure of tool '" + failedToolName + "'";
+        return original.toBuilder()
+                .contents(List.of(TextContent.from(rolledBackText)))
+                .isError(true)
+                .build();
+    }
+
+    private record CompensableToolExecution(ToolExecution toolExecution, ToolExecutionResultMessage resultMessage) {}
+
+    private void compensateToolsActions(List<CompensableToolExecution> compensableExecutions, InvocationContext invocationContext) {
+        for (int i = compensableExecutions.size() - 1; i >= 0; i--) {
+            ToolExecution toolExecution = compensableExecutions.get(i).toolExecution();
+            String toolName = toolExecution.request().name();
+            BiConsumer<ToolExecution, InvocationContext> compensatingAction = compensatingExecutors.get(toolName);
+            try {
+                compensatingAction.accept(toolExecution, invocationContext);
+            } catch (Exception e) {
+                log.warn("Compensating action failed for tool '{}': {}", toolName, e.getMessage(), e);
+            }
+        }
     }
 
     public static boolean shouldReturnImmediately(boolean anyToolErrored, List<ReturnBehavior> returnBehaviors) {
@@ -751,6 +963,7 @@ public class ToolService {
             ToolErrorContext errorContext = ToolErrorContext.builder()
                     .toolExecutionRequest(toolRequest)
                     .invocationContext(invocationContext)
+                    .rawError(e)
                     .build();
 
             ToolErrorHandlerResult errorHandlerResult;
@@ -780,6 +993,15 @@ public class ToolService {
     private static Throwable getCause(Exception e) {
         Throwable cause = e.getCause();
         return cause != null ? cause : e;
+    }
+
+    private static String errorMessage(Throwable throwable) {
+        if (throwable == null) {
+            return "unknown error";
+        }
+
+        String message = throwable.getMessage();
+        return isNullOrBlank(message) ? throwable.getClass().getName() : message;
     }
 
     public ToolExecutionResult applyToolHallucinationStrategy(ToolExecutionRequest toolRequest) {
