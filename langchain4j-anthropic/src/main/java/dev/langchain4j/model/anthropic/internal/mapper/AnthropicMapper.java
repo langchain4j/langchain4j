@@ -87,7 +87,7 @@ public class AnthropicMapper {
     }
 
     public static List<AnthropicMessage> toAnthropicMessages(
-            List<ChatMessage> messages, boolean sendThinking, boolean inlineSystemMessages) {
+            List<ChatMessage> messages, boolean sendThinking, boolean midConversationSystemMessages) {
 
         List<AnthropicMessage> anthropicMessages = new ArrayList<>();
         List<AnthropicMessageContent> toolContents = new ArrayList<>();
@@ -100,8 +100,8 @@ public class AnthropicMapper {
                 toolContents.add(toAnthropicToolResultContent(toolExecutionResultMessage));
             } else if (message instanceof SystemMessage systemMessage) {
                 // a leading system message is handled in "toAnthropicSystemPrompt"; a mid-conversation one
-                // is emitted inline as a role:"system" message only when inlineSystemMessages is enabled
-                if (inlineSystemMessages && conversationStarted) {
+                // is emitted inline as a role:"system" message only when midConversationSystemMessages is enabled
+                if (midConversationSystemMessages && conversationStarted) {
                     if (!toolContents.isEmpty()) {
                         anthropicMessages.add(new AnthropicMessage(USER, toolContents));
                         toolContents = new ArrayList<>();
@@ -256,14 +256,14 @@ public class AnthropicMapper {
     }
 
     public static List<AnthropicTextContent> toAnthropicSystemPrompt(
-            List<ChatMessage> messages, AnthropicCacheType cacheType, boolean inlineSystemMessages) {
+            List<ChatMessage> messages, AnthropicCacheType cacheType, boolean midConversationSystemMessages) {
         List<SystemMessage> systemMessages = new ArrayList<>();
         boolean conversationStarted = false;
         for (ChatMessage message : messages) {
             if (message instanceof SystemMessage systemMessage) {
-                // when inlineSystemMessages is enabled, only leading system messages go to the top-level
+                // when midConversationSystemMessages is enabled, only leading system messages go to the top-level
                 // "system" field; mid-conversation ones are emitted inline by "toAnthropicMessages"
-                if (!inlineSystemMessages || !conversationStarted) {
+                if (!midConversationSystemMessages || !conversationStarted) {
                     systemMessages.add(systemMessage);
                 }
             } else {

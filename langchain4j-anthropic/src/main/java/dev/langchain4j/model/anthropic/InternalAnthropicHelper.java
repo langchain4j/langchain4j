@@ -57,7 +57,7 @@ class InternalAnthropicHelper {
             ChatRequest chatRequest,
             AnthropicThinking thinking,
             boolean sendThinking,
-            boolean inlineSystemMessages,
+            boolean midConversationSystemMessages,
             AnthropicCacheType cacheType,
             AnthropicCacheType toolsCacheType,
             boolean stream,
@@ -71,8 +71,8 @@ class InternalAnthropicHelper {
 
         AnthropicCreateMessageRequest.Builder requestBuilder = AnthropicCreateMessageRequest.builder().stream(stream)
                 .model(chatRequest.modelName())
-                .messages(toAnthropicMessages(chatRequest.messages(), sendThinking, inlineSystemMessages))
-                .system(toAnthropicSystemPrompt(chatRequest.messages(), cacheType, inlineSystemMessages))
+                .messages(toAnthropicMessages(chatRequest.messages(), sendThinking, midConversationSystemMessages))
+                .system(toAnthropicSystemPrompt(chatRequest.messages(), cacheType, midConversationSystemMessages))
                 .maxTokens(chatRequest.maxOutputTokens())
                 .stopSequences(chatRequest.stopSequences())
                 .temperature(chatRequest.temperature())

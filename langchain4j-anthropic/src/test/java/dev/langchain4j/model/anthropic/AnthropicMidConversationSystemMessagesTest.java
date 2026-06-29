@@ -17,7 +17,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class AnthropicInlineSystemMessagesTest {
+class AnthropicMidConversationSystemMessagesTest {
 
     private WireMockServer wireMockServer;
 
@@ -49,7 +49,7 @@ class AnthropicInlineSystemMessagesTest {
 
     @Test
     void should_send_mid_conversation_system_message_inline_when_enabled() {
-        AnthropicChatModel model = modelBuilder().inlineSystemMessages(true).build();
+        AnthropicChatModel model = modelBuilder().midConversationSystemMessages(true).build();
 
         model.chat(ChatRequest.builder()
                 .messages(
@@ -68,7 +68,7 @@ class AnthropicInlineSystemMessagesTest {
     }
 
     @Test
-    void should_not_inline_system_messages_by_default() {
+    void should_not_mid_conversation_system_messages_by_default() {
         AnthropicChatModel model = modelBuilder().build();
 
         model.chat(ChatRequest.builder()
@@ -85,13 +85,13 @@ class AnthropicInlineSystemMessagesTest {
     }
 
     @Test
-    void should_inline_system_messages_per_request_when_model_default_is_disabled() {
+    void should_mid_conversation_system_messages_per_request_when_model_default_is_disabled() {
         AnthropicChatModel model = modelBuilder().build();
 
         ChatRequest request = ChatRequest.builder()
                 .messages(UserMessage.from("Hi"), SystemMessage.from("From now on, be concise."))
                 .parameters(AnthropicChatRequestParameters.builder()
-                        .inlineSystemMessages(true)
+                        .midConversationSystemMessages(true)
                         .build())
                 .build();
 

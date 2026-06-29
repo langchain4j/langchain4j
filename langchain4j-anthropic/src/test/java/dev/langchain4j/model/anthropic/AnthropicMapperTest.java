@@ -630,7 +630,7 @@ class AnthropicMapperTest {
     }
 
     @Test
-    void inline_system_messages_disabled_sends_all_system_messages_via_top_level_system_prompt() {
+    void mid_conversation_system_messages_disabled_sends_all_system_messages_via_top_level_system_prompt() {
         // given
         List<ChatMessage> messages = asList(
                 SystemMessage.from("leading"),
@@ -652,7 +652,7 @@ class AnthropicMapperTest {
     }
 
     @Test
-    void inline_system_messages_enabled_keeps_only_leading_system_messages_in_top_level_system_prompt() {
+    void mid_conversation_system_messages_enabled_keeps_only_leading_system_messages_in_top_level_system_prompt() {
         // given
         List<ChatMessage> messages = asList(
                 SystemMessage.from("leading-1"),
@@ -678,7 +678,7 @@ class AnthropicMapperTest {
     }
 
     @Test
-    void inline_system_messages_enabled_inlines_system_message_after_pending_tool_result() {
+    void mid_conversation_system_messages_enabled_inlines_system_message_after_pending_tool_result() {
         // given a system message that appears mid-conversation, right after a tool result
         List<ChatMessage> messages = asList(
                 UserMessage.from("calc 2+2"),
