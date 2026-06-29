@@ -33,7 +33,7 @@ class AnthropicSkillsTest {
 
     private static AnthropicCreateMessageRequest requestWithSkills(List<AnthropicSkill> skills) {
         return createAnthropicRequest(
-                chatRequest(), null, true, NO_CACHE, NO_CACHE, false, null, null, null, null, null, skills, null, null);
+                chatRequest(), null, true, false, NO_CACHE, NO_CACHE, false, null, null, null, null, null, skills, null, null);
     }
 
     @Test
@@ -68,6 +68,7 @@ class AnthropicSkillsTest {
                 chatRequest(),
                 null,
                 true,
+                false,
                 NO_CACHE,
                 NO_CACHE,
                 false,
@@ -101,6 +102,7 @@ class AnthropicSkillsTest {
                 chatRequest,
                 null,
                 true,
+                false,
                 NO_CACHE,
                 NO_CACHE,
                 false,
