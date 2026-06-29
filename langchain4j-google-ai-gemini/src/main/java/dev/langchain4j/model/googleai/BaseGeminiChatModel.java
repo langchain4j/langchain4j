@@ -123,9 +123,10 @@ class BaseGeminiChatModel {
     }
 
     protected GeminiGenerateContentRequest createGenerateContentRequest(ChatRequest chatRequest) {
-        ChatRequestParameters parameters = chatRequest.parameters();
+        GoogleAiGeminiChatRequestParameters parameters =
+                (GoogleAiGeminiChatRequestParameters) chatRequest.parameters();
         GeminiGenerationConfig.GeminiImageConfig effectiveImageConfig =
-                buildImageConfig(aspectRatio(parameters), imageSize(parameters));
+                buildImageConfig(parameters.aspectRatio(), parameters.imageSize());
 
         GeminiContent systemInstruction = new GeminiContent(List.of(), GeminiRole.MODEL.toString());
         List<GeminiContent> geminiContentList = fromMessageToGContent(
@@ -241,20 +242,6 @@ class BaseGeminiChatModel {
                 .aspectRatio(aspectRatio)
                 .imageSize(imageSize)
                 .build();
-    }
-
-    private static String aspectRatio(ChatRequestParameters parameters) {
-        if (parameters instanceof GoogleAiGeminiChatRequestParameters geminiParameters) {
-            return geminiParameters.aspectRatio();
-        }
-        return null;
-    }
-
-    private static String imageSize(ChatRequestParameters parameters) {
-        if (parameters instanceof GoogleAiGeminiChatRequestParameters geminiParameters) {
-            return geminiParameters.imageSize();
-        }
-        return null;
     }
 
     protected ChatResponse processResponse(GeminiGenerateContentResponse geminiResponse) {
