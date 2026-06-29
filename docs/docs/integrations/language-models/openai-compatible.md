@@ -44,11 +44,12 @@ StreamingChatModel model = OpenAiStreamingChatModel.builder()
         .modelName("deepseek-chat")
         .accumulateToolCallId(false) // Set to false for DeepSeek, Qwen, etc.
         .build();
-```
-Below we provide specific examples for popular OpenAI-compatible APIs, including Groq, Docker Model Runner, GPT4All, Ollama, and LM Studio.
+    ```
+Below we provide specific examples for popular OpenAI-compatible APIs, including Tuning Engines, Groq, Docker Model Runner, GPT4All, Ollama, and LM Studio.
 
 ### Contents:
 - [Prerequisites for Using OpenAI-Compatible Language Models](#prerequisites-for-using-openai-compatible-language-models)
+- [Tuning Engines](#tuning-engines)
 - [Groq](#groq)
 - [Docker Model Runner](#docker-model-runner)
 - [GPT4All](#gpt4all)
@@ -66,7 +67,7 @@ First, make sure you have the OpenAI module in your `pom.xml` or Gradle build fi
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.13.1</version>
+    <version>1.17.0</version>
 </dependency>
 ```
 
@@ -75,8 +76,22 @@ First, make sure you have the OpenAI module in your `pom.xml` or Gradle build fi
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.13.1-beta23</version>
+    <version>1.17.0-beta27</version>
 </dependency>
+```
+
+## Tuning Engines
+
+**Deployment:** SaaS (key required)
+
+**Description:** [Tuning Engines](https://www.tuningengines.com/) exposes an OpenAI-compatible endpoint that can sit in front of your model providers. LangChain4j keeps the application and agent logic, while the endpoint can centralize routing, policy controls, audit logs, traces, approvals, and cost visibility.
+
+```java
+ChatModel model = OpenAiChatModel.builder()
+        .baseUrl("https://api.tuningengines.com/v1")
+        .apiKey(System.getenv("TUNING_ENGINES_API_KEY"))
+        .modelName("gpt-4o-mini")
+        .build();
 ```
 
 ## Groq
@@ -182,7 +197,7 @@ ChatModel model = OpenAiChatModel.builder()
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-http-client-jdk</artifactId>
-    <version>1.13.1</version>
+    <version>1.17.0</version>
 </dependency>
 ```
 6. Configure LangChain4j and specify the `httpClientBuilder`
@@ -205,4 +220,3 @@ ChatModel model = OpenAiChatModel.builder()
         .httpClientBuilder(jdkHttpClientBuilder)
         .build();
 ```
-

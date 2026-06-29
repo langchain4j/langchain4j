@@ -5,6 +5,8 @@ import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithToolsIT;
 import java.util.Collections;
 import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -19,7 +21,7 @@ class GoogleAiGeminiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
                 .modelName("gemini-2.5-flash")
                 .temperature(0.0)
-                .logRequests(true)
+                .logRequests(false)
                 .logResponses(true)
                 .build());
     }
@@ -33,5 +35,13 @@ class GoogleAiGeminiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     @Override
     protected boolean supportsMultimodalToolResults() {
         return true;
+    }
+
+    @AfterEach
+    void afterEach() throws InterruptedException {
+        String ciDelaySeconds = System.getenv("CI_DELAY_SECONDS_GOOGLE_AI_GEMINI");
+        if (ciDelaySeconds != null) {
+            Thread.sleep(Integer.parseInt(ciDelaySeconds) * 1000L);
+        }
     }
 }

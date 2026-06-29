@@ -191,7 +191,8 @@ class McpProtocolSerializationTest {
         McpImplementation serverInfo = new McpImplementation("server", "1.0", "Server Title");
         McpInitializeResult.Capabilities.Tools tools = new McpInitializeResult.Capabilities.Tools(true);
         McpInitializeResult.Capabilities capabilities = new McpInitializeResult.Capabilities(tools);
-        McpInitializeResult.Result result = new McpInitializeResult.Result("2025-06-18", capabilities, serverInfo);
+        McpInitializeResult.Result result = new McpInitializeResult.Result(
+                "2025-06-18", capabilities, serverInfo, "Use this server for file operations.");
         McpInitializeResult response = new McpInitializeResult(1L, result);
 
         // when
@@ -204,6 +205,7 @@ class McpProtocolSerializationTest {
         assertThat(json.get("result").get("serverInfo").get("name").asText()).isEqualTo("server");
         assertThat(json.get("result").get("serverInfo").get("version").asText()).isEqualTo("1.0");
         assertThat(json.get("result").get("serverInfo").get("title").asText()).isEqualTo("Server Title");
+        assertThat(json.get("result").get("instructions").asText()).isEqualTo("Use this server for file operations.");
         assertThat(json.get("result")
                         .get("capabilities")
                         .get("tools")

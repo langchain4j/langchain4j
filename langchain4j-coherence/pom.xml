@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.14.0-beta24-SNAPSHOT</version>
+        <version>1.18.0-beta28-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -13,7 +13,7 @@
     <name>LangChain4j :: Integration :: Oracle Coherence</name>
 
     <properties>
-        <coherence.version>24.09</coherence.version>
+        <coherence.version>24.09.3</coherence.version>
         <coherence.groupId>com.oracle.coherence.ce</coherence.groupId>
     </properties>
 
@@ -34,7 +34,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.14.0-SNAPSHOT</version>
+            <version>1.18.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
@@ -51,7 +51,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.14.0-SNAPSHOT</version>
+            <version>1.18.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>

@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 
 class BaseGeminiChatModel {
@@ -54,6 +55,7 @@ class BaseGeminiChatModel {
     protected final Boolean enableEnhancedCivicAnswers;
     protected final GeminiMediaResolutionLevel mediaResolution;
     protected final boolean mediaResolutionPerPartEnabled;
+    protected final String cachedContentName;
 
     protected final ChatRequestParameters defaultRequestParameters;
 
@@ -78,6 +80,7 @@ class BaseGeminiChatModel {
         this.logprobs = builder.logprobs;
         this.mediaResolution = builder.mediaResolution;
         this.mediaResolutionPerPartEnabled = getOrDefault(builder.mediaResolutionPerPartEnabled, false);
+        this.cachedContentName = builder.cachedContentName;
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -119,7 +122,8 @@ class BaseGeminiChatModel {
                 getOrDefault(builder.logRequests, false),
                 getOrDefault(builder.logResponses, false),
                 builder.logger,
-                builder.timeout);
+                builder.timeout,
+                builder.customHeadersSupplier);
     }
 
     protected GeminiGenerateContentRequest createGenerateContentRequest(ChatRequest chatRequest) {
@@ -163,6 +167,7 @@ class BaseGeminiChatModel {
                         .presencePenalty(parameters.presencePenalty())
                         .frequencyPenalty(parameters.frequencyPenalty())
                         .responseLogprobs(responseLogprobs)
+                        .enableEnhancedCivicAnswers(enableEnhancedCivicAnswers)
                         .logprobs(logprobs)
                         .thinkingConfig(this.thinkingConfig)
                         .mediaResolution(this.mediaResolution)
@@ -177,6 +182,7 @@ class BaseGeminiChatModel {
                         this.allowGoogleMaps,
                         this.retrieveGoogleMapsWidgetToken))
                 .toolConfig(toToolConfig(parameters.toolChoice(), this.functionCallingConfig))
+                .cachedContent(this.cachedContentName)
                 .build();
     }
 
@@ -355,6 +361,8 @@ class BaseGeminiChatModel {
         protected Boolean mediaResolutionPerPartEnabled;
         protected String aspectRatio;
         protected String imageSize;
+        protected String cachedContentName;
+        protected Supplier<Map<String, String>> customHeadersSupplier;
 
         @SuppressWarnings("unchecked")
         protected B builder() {
@@ -758,6 +766,32 @@ class BaseGeminiChatModel {
          */
         public B imageSize(String imageSize) {
             this.imageSize = imageSize;
+            return builder();
+        }
+
+        /**
+         * Sets the resource name of a previously created cache (e.g. {@code "cachedContents/abc123"}) to attach
+         * to every {@code generateContent} / {@code streamGenerateContent} request issued by this model. The cached
+         * context (system instructions, documents, etc.) will be reused server-side, reducing latency and token
+         * cost.
+         *
+         * <p>This integration does not manage the cache lifecycle (create / list / delete); callers are expected
+         * to create the cache out of band via the
+         * <a href="https://ai.google.dev/gemini-api/docs/caching">Gemini context caching API</a> and pass the
+         * returned resource name here.</p>
+         */
+        public B cachedContentName(String cachedContentName) {
+            this.cachedContentName = cachedContentName;
+            return builder();
+        }
+
+        public B customHeaders(Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return builder();
+        }
+
+        public B customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return builder();
         }
     }

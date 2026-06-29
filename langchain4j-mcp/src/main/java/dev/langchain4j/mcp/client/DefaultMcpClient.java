@@ -31,6 +31,7 @@ import dev.langchain4j.mcp.protocol.McpGetPromptRequest;
 import dev.langchain4j.mcp.protocol.McpImplementation;
 import dev.langchain4j.mcp.protocol.McpInitializeParams;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
+import dev.langchain4j.mcp.protocol.McpInitializeResult;
 import dev.langchain4j.mcp.protocol.McpListPromptsRequest;
 import dev.langchain4j.mcp.protocol.McpListResourceTemplatesRequest;
 import dev.langchain4j.mcp.protocol.McpListResourcesRequest;
@@ -61,6 +62,7 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -114,6 +116,7 @@ public class DefaultMcpClient implements McpClient {
     private final List<McpClientListener> listeners;
     private final McpMetaSupplier metaSupplier;
     private final McpToolResultExtractor toolResultExtractor;
+    private volatile @Nullable McpInitializeResult initializeResult;
 
     public DefaultMcpClient(Builder builder) {
         try {
@@ -154,19 +157,38 @@ public class DefaultMcpClient implements McpClient {
                     pendingOperations,
                     mcpRoots::get,
                     transport,
-                    logHandler::handleLogMessage,
-                    () -> toolListRefs.set(null),
+                    message -> {
+                        logHandler.handleLogMessage(message);
+                        notifyListeners(l -> l.onNotificationMessage(message));
+                    },
+                    () -> {
+                        toolListRefs.set(null);
+                        notifyListeners(l -> l.onNotificationToolsListChanged());
+                    },
                     () -> {
                         resourceRefs.set(null);
                         resourceTemplateRefs.set(null);
+                        notifyListeners(l -> l.onNotificationResourcesListChanged());
                     },
-                    () -> promptRefs.set(null),
+                    () -> {
+                        promptRefs.set(null);
+                        notifyListeners(l -> l.onNotificationPromptsListChanged());
+                    },
                     uri -> {
                         if (onResourceUpdated != null) {
                             onResourceUpdated.accept(this, uri);
                         }
+                        notifyListeners(l -> l.onNotificationResourceUpdated(uri));
                     },
-                    progressHandler);
+                    notification -> {
+                        if (progressHandler != null) {
+                            progressHandler.onProgress(notification);
+                        }
+                        notifyListeners(l -> l.onNotificationProgress(notification));
+                    },
+                    () -> notifyListeners(l -> l.onServerPing()),
+                    () -> notifyListeners(l -> l.onServerRootsList()),
+                    (requestId, reason) -> notifyListeners(l -> l.onNotificationCancelled(requestId, reason)));
             ((ObjectNode) RESULT_TIMEOUT)
                     .putObject("result")
                     .putArray("content")
@@ -201,12 +223,17 @@ public class DefaultMcpClient implements McpClient {
         McpInitializeRequest request = new McpInitializeRequest(operationId);
         McpInitializeParams params = createInitializeParams();
         request.setParams(params);
-        applyMeta(request, null);
+        McpCallContext context = new McpCallContext(null, request);
+        notifyListeners(l -> l.beforeInitialize(context));
+        applyMeta(request, context);
         try {
             JsonNode capabilities =
                     transport.initialize(request).get(initializationTimeout.toMillis(), TimeUnit.MILLISECONDS);
             log.debug("MCP server capabilities: {}", capabilities.get("result"));
+            initializeResult = toInitializeResult(capabilities);
+            notifyListeners(l -> l.afterInitialize(context));
         } catch (Exception e) {
+            notifyListeners(l -> l.onInitializeError(context, e));
             throw new RuntimeException(e);
         } finally {
             pendingOperations.remove(operationId);
@@ -231,9 +258,48 @@ public class DefaultMcpClient implements McpClient {
         return params;
     }
 
+    private static McpInitializeResult toInitializeResult(JsonNode response) {
+        JsonNode result = response.path("result");
+        JsonNode serverInfo = result.path("serverInfo");
+        JsonNode tools = result.path("capabilities").path("tools");
+
+        McpImplementation implementation = null;
+        if (!serverInfo.isMissingNode() && !serverInfo.isNull()) {
+            implementation = OBJECT_MAPPER.convertValue(serverInfo, McpImplementation.class);
+        }
+
+        McpInitializeResult.Capabilities capabilities = new McpInitializeResult.Capabilities(
+                new McpInitializeResult.Capabilities.Tools(toNullableBoolean(tools.get("listChanged"))));
+
+        return new McpInitializeResult(
+                toNullableLong(response.get("id")),
+                new McpInitializeResult.Result(
+                        result.path("protocolVersion").asText(null),
+                        capabilities,
+                        implementation,
+                        result.path("instructions").asText(null)));
+    }
+
+    private static @Nullable Long toNullableLong(JsonNode node) {
+        return node == null || node.isNull() || !node.canConvertToLong() ? null : node.asLong();
+    }
+
+    private static @Nullable Boolean toNullableBoolean(JsonNode node) {
+        return node == null || node.isNull() ? null : node.asBoolean();
+    }
+
     @Override
     public String key() {
         return key;
+    }
+
+    @Override
+    public @Nullable String instructions() {
+        McpInitializeResult currentInitializeResult = initializeResult;
+        if (currentInitializeResult == null || currentInitializeResult.getResult() == null) {
+            return null;
+        }
+        return currentInitializeResult.getResult().getInstructions();
     }
 
     @Override
@@ -430,12 +496,17 @@ public class DefaultMcpClient implements McpClient {
         transport.checkHealth();
         long operationId = idGenerator.getAndIncrement();
         McpPingRequest ping = new McpPingRequest(operationId);
-        applyMeta(ping, null);
+        McpCallContext context = new McpCallContext(null, ping);
+        notifyListeners(l -> l.beforePing(context));
+        applyMeta(ping, context);
         try {
-            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(ping);
+            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(context);
             resultFuture.get(pingTimeout.toMillis(), TimeUnit.MILLISECONDS);
+            notifyListeners(l -> l.afterPing(context));
         } catch (ExecutionException | InterruptedException | TimeoutException e) {
-            throw new RuntimeException(e);
+            RuntimeException re = new RuntimeException(e);
+            notifyListeners(l -> l.onPingError(context, re));
+            throw re;
         } finally {
             pendingOperations.remove(operationId);
         }
@@ -445,8 +516,10 @@ public class DefaultMcpClient implements McpClient {
     public void setRoots(final List<McpRoot> roots) {
         this.mcpRoots.set(roots);
         McpRootsListChangedNotification notification = new McpRootsListChangedNotification();
-        applyMeta(notification, null);
-        transport.executeOperationWithoutResponse(notification);
+        McpCallContext context = new McpCallContext(null, notification);
+        applyMeta(notification, context);
+        transport.executeOperationWithoutResponse(context);
+        notifyListeners(l -> l.onRootsListChanged(context));
     }
 
     @Override
@@ -460,12 +533,18 @@ public class DefaultMcpClient implements McpClient {
         }
         long operationId = idGenerator.getAndIncrement();
         McpSubscribeResourceRequest operation = new McpSubscribeResourceRequest(operationId, uri);
+        McpCallContext context = new McpCallContext(null, operation);
+        notifyListeners(l -> l.beforeResourceSubscribe(context));
+        applyMeta(operation, context);
         long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
         try {
-            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(operation);
+            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(context);
             resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            notifyListeners(l -> l.afterResourceSubscribe(context));
         } catch (ExecutionException | TimeoutException e) {
-            throw new RuntimeException(e);
+            RuntimeException re = new RuntimeException(e);
+            notifyListeners(l -> l.onResourceSubscribeError(context, re));
+            throw re;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
@@ -479,12 +558,18 @@ public class DefaultMcpClient implements McpClient {
         assertNotClosed();
         long operationId = idGenerator.getAndIncrement();
         McpUnsubscribeResourceRequest operation = new McpUnsubscribeResourceRequest(operationId, uri);
+        McpCallContext context = new McpCallContext(null, operation);
+        notifyListeners(l -> l.beforeResourceUnsubscribe(context));
+        applyMeta(operation, context);
         long timeoutMillis = resourcesTimeout.toMillis() == 0 ? Integer.MAX_VALUE : resourcesTimeout.toMillis();
         try {
-            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(operation);
+            CompletableFuture<JsonNode> resultFuture = transport.executeOperationWithResponse(context);
             resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            notifyListeners(l -> l.afterResourceUnsubscribe(context));
         } catch (ExecutionException | TimeoutException e) {
-            throw new RuntimeException(e);
+            RuntimeException re = new RuntimeException(e);
+            notifyListeners(l -> l.onResourceUnsubscribeError(context, re));
+            throw re;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
@@ -555,44 +640,80 @@ public class DefaultMcpClient implements McpClient {
     }
 
     private List<ToolSpecification> obtainToolList(InvocationContext invocationContext) {
-        List<ToolSpecification> list = fetchPaginatedList(
-                (id, cursor) -> new McpListToolsRequest(id, cursor),
-                toolExecutionTimeout,
-                invocationContext,
-                result -> ToolSpecificationHelper.toolSpecificationListFromMcpResponse(
-                        (ArrayNode) result.get("result").get("tools")));
-        toolListRefs.set(list);
-        return list;
+        McpCallContext listenerContext =
+                new McpCallContext(invocationContext, new McpListToolsRequest(idGenerator.getAndIncrement(), null));
+        notifyListeners(l -> l.beforeToolsList(listenerContext));
+        try {
+            List<ToolSpecification> list = fetchPaginatedList(
+                    (id, cursor) -> new McpListToolsRequest(id, cursor),
+                    toolExecutionTimeout,
+                    invocationContext,
+                    result -> ToolSpecificationHelper.toolSpecificationListFromMcpResponse(
+                            (ArrayNode) result.get("result").get("tools")));
+            toolListRefs.set(list);
+            notifyListeners(l -> l.afterToolsList(listenerContext, list));
+            return list;
+        } catch (RuntimeException e) {
+            notifyListeners(l -> l.onToolsListError(listenerContext, e));
+            throw e;
+        }
     }
 
     private List<McpResource> obtainResourceList(InvocationContext invocationContext) {
-        List<McpResource> list = fetchPaginatedList(
-                (id, cursor) -> new McpListResourcesRequest(id, cursor),
-                resourcesTimeout,
-                invocationContext,
-                ResourcesHelper::parseResourceRefs);
-        resourceRefs.set(list);
-        return list;
+        McpCallContext listenerContext =
+                new McpCallContext(invocationContext, new McpListResourcesRequest(idGenerator.getAndIncrement(), null));
+        notifyListeners(l -> l.beforeResourcesList(listenerContext));
+        try {
+            List<McpResource> list = fetchPaginatedList(
+                    (id, cursor) -> new McpListResourcesRequest(id, cursor),
+                    resourcesTimeout,
+                    invocationContext,
+                    ResourcesHelper::parseResourceRefs);
+            resourceRefs.set(list);
+            notifyListeners(l -> l.afterResourcesList(listenerContext, list));
+            return list;
+        } catch (RuntimeException e) {
+            notifyListeners(l -> l.onResourcesListError(listenerContext, e));
+            throw e;
+        }
     }
 
     private List<McpResourceTemplate> obtainResourceTemplateList(InvocationContext invocationContext) {
-        List<McpResourceTemplate> list = fetchPaginatedList(
-                (id, cursor) -> new McpListResourceTemplatesRequest(id, cursor),
-                resourcesTimeout,
-                invocationContext,
-                ResourcesHelper::parseResourceTemplateRefs);
-        resourceTemplateRefs.set(list);
-        return list;
+        McpCallContext listenerContext = new McpCallContext(
+                invocationContext, new McpListResourceTemplatesRequest(idGenerator.getAndIncrement(), null));
+        notifyListeners(l -> l.beforeResourceTemplatesList(listenerContext));
+        try {
+            List<McpResourceTemplate> list = fetchPaginatedList(
+                    (id, cursor) -> new McpListResourceTemplatesRequest(id, cursor),
+                    resourcesTimeout,
+                    invocationContext,
+                    ResourcesHelper::parseResourceTemplateRefs);
+            resourceTemplateRefs.set(list);
+            notifyListeners(l -> l.afterResourceTemplatesList(listenerContext, list));
+            return list;
+        } catch (RuntimeException e) {
+            notifyListeners(l -> l.onResourceTemplatesListError(listenerContext, e));
+            throw e;
+        }
     }
 
     private List<McpPrompt> obtainPromptList(InvocationContext invocationContext) {
-        List<McpPrompt> list = fetchPaginatedList(
-                (id, cursor) -> new McpListPromptsRequest(id, cursor),
-                promptsTimeout,
-                invocationContext,
-                PromptsHelper::parsePromptRefs);
-        promptRefs.set(list);
-        return list;
+        McpCallContext listenerContext =
+                new McpCallContext(invocationContext, new McpListPromptsRequest(idGenerator.getAndIncrement(), null));
+        notifyListeners(l -> l.beforePromptsList(listenerContext));
+        try {
+            List<McpPrompt> list = fetchPaginatedList(
+                    (id, cursor) -> new McpListPromptsRequest(id, cursor),
+                    promptsTimeout,
+                    invocationContext,
+                    PromptsHelper::parsePromptRefs);
+            promptRefs.set(list);
+            notifyListeners(l -> l.afterPromptsList(listenerContext, list));
+            return list;
+        } catch (RuntimeException e) {
+            notifyListeners(l -> l.onPromptsListError(listenerContext, e));
+            throw e;
+        }
     }
 
     private void startAutoHealthCheck() {

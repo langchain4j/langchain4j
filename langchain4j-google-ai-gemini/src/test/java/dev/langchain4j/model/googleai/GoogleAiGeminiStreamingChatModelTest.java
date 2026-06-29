@@ -21,8 +21,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class GoogleAiGeminiStreamingChatModelTest {
-    private static final ChatRequest DEFAULT_REQUEST =
-            ChatRequest.builder().messages(new UserMessage("Hi")).build();
+    private static final ChatRequest DEFAULT_REQUEST = ChatRequest.builder()
+            .messages(new UserMessage("Hi"))
+            .parameters(GoogleAiGeminiChatRequestParameters.builder().build())
+            .build();
 
     @Mock
     GeminiService geminiService;
@@ -121,6 +123,54 @@ class GoogleAiGeminiStreamingChatModelTest {
                             .aspectRatio("1:1")
                             .imageSize("1K")
                             .build());
+        }
+
+        @Test
+        void cachedContentNameInContentRequest() {
+            GoogleAiGeminiStreamingChatModel chatModel = GoogleAiGeminiStreamingChatModel.builder()
+                    .apiKey("ApiKey")
+                    .modelName("ModelName")
+                    .cachedContentName("cachedContents/abc123")
+                    .build();
+            GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
+
+            assertThat(result.cachedContent()).isEqualTo("cachedContents/abc123");
+            assertThatCharSequence(Json.toJson(result)).contains("\"cachedContent\" : \"cachedContents/abc123\"");
+        }
+
+        @Test
+        void defaultCachedContentNameInContentRequest() {
+            GoogleAiGeminiStreamingChatModel chatModel = GoogleAiGeminiStreamingChatModel.builder()
+                    .apiKey("ApiKey")
+                    .modelName("ModelName")
+                    .build();
+            GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
+
+            assertThat(result.cachedContent()).isNull();
+            assertThatCharSequence(Json.toJson(result)).doesNotContain("\"cachedContent\"");
+        }
+
+        @Test
+        void enableEnhancedCivicAnswersInContentRequest() {
+            GoogleAiGeminiStreamingChatModel chatModel = GoogleAiGeminiStreamingChatModel.builder()
+                    .apiKey("ApiKey")
+                    .modelName("ModelName")
+                    .enableEnhancedCivicAnswers(true)
+                    .build();
+            GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
+
+            assertThat(result.generationConfig().enableEnhancedCivicAnswers()).isTrue();
+        }
+
+        @Test
+        void defaultEnableEnhancedCivicAnswersInContentRequest() {
+            GoogleAiGeminiStreamingChatModel chatModel = GoogleAiGeminiStreamingChatModel.builder()
+                    .apiKey("ApiKey")
+                    .modelName("ModelName")
+                    .build();
+            GeminiGenerateContentRequest result = chatModel.createGenerateContentRequest(DEFAULT_REQUEST);
+
+            assertThat(result.generationConfig().enableEnhancedCivicAnswers()).isFalse();
         }
     }
 }

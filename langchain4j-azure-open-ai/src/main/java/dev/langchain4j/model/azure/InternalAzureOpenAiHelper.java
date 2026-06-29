@@ -48,7 +48,6 @@ import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClient;
 import com.azure.core.http.HttpClientProvider;
 import com.azure.core.http.ProxyOptions;
-import com.azure.core.http.netty.NettyAsyncHttpClientProvider;
 import com.azure.core.http.policy.ExponentialBackoffOptions;
 import com.azure.core.http.policy.HttpLogDetailLevel;
 import com.azure.core.http.policy.HttpLogOptions;
@@ -175,8 +174,7 @@ class InternalAzureOpenAiHelper {
             customHeaders.forEach((name, value) -> headers.add(new Header(name, value)));
         }
         clientOptions.setHeaders(headers);
-        httpClientProvider = getOrDefault(httpClientProvider, NettyAsyncHttpClientProvider::new);
-        HttpClient httpClient = httpClientProvider.createInstance(clientOptions);
+        HttpClient httpClient = createHttpClient(httpClientProvider, clientOptions);
 
         HttpLogOptions httpLogOptions = new HttpLogOptions();
         if (logRequestsAndResponses) {
@@ -206,6 +204,25 @@ class InternalAzureOpenAiHelper {
         return openAIClientBuilder;
     }
 
+    static HttpClient createHttpClient(HttpClientProvider httpClientProvider, HttpClientOptions clientOptions) {
+        if (httpClientProvider != null) {
+            return httpClientProvider.createInstance(clientOptions);
+        }
+        try {
+            // Discover the default HttpClientProvider (e.g. azure-core-http-netty) via the Azure SDK's own
+            // ServiceLoader-based mechanism. Unlike a hard-coded NettyAsyncHttpClientProvider, this lets users
+            // exclude azure-core-http-netty and supply a different implementation, and it honors the Azure SDK
+            // configuration (e.g. AZURE_HTTP_CLIENT_IMPLEMENTATION) when multiple providers are on the classpath.
+            return HttpClient.createDefault(clientOptions);
+        } catch (IllegalStateException e) {
+            throw new IllegalStateException(
+                    "No HttpClientProvider implementation found on the classpath. "
+                            + "Add 'com.azure:azure-core-http-netty' as a dependency, "
+                            + "or provide a custom HttpClientProvider via .httpClientProvider() on the builder.",
+                    e);
+        }
+    }
+
     static RetryOptions resolveRetryOptions(Integer maxRetries, RetryOptions retryOptions) {
         if (retryOptions == null) {
             maxRetries = getOrDefault(maxRetries, 2);
@@ -221,12 +238,16 @@ class InternalAzureOpenAiHelper {
     }
 
     static OpenAIServiceVersion getOpenAIServiceVersion(String serviceVersion) {
+        if (serviceVersion == null || serviceVersion.isBlank()) {
+            return OpenAIServiceVersion.getLatest();
+        }
         for (OpenAIServiceVersion version : OpenAIServiceVersion.values()) {
             if (version.getVersion().equals(serviceVersion)) {
                 return version;
             }
         }
-        return OpenAIServiceVersion.getLatest();
+        throw new IllegalArgumentException("Unsupported Azure OpenAI service version: '" + serviceVersion
+                + "'. Leave serviceVersion null or empty to use the latest supported version.");
     }
 
     static List<ChatRequestMessage> toOpenAiMessages(List<ChatMessage> messages) {
@@ -242,9 +263,8 @@ class InternalAzureOpenAiHelper {
             return chatRequestAssistantMessage;
         } else if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
             if (!toolExecutionResultMessage.hasSingleText()) {
-                throw new UnsupportedFeatureException(
-                        "Azure OpenAI does not support non-text content in tool results. "
-                                + "Only text content is supported.");
+                throw new UnsupportedFeatureException("Azure OpenAI does not support non-text content in tool results. "
+                        + "Only text content is supported.");
             }
             return new ChatRequestToolMessage(toolExecutionResultMessage.text(), toolExecutionResultMessage.id());
         } else if (message instanceof SystemMessage systemMessage) {

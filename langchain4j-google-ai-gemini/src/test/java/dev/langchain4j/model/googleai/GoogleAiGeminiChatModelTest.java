@@ -301,6 +301,41 @@ class GoogleAiGeminiChatModelTest {
             // Then
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(FinishReason.LENGTH);
         }
+
+        @Test
+        void shouldMapImageRecitationToContentFilter() {
+            // Given
+            var candidate = new GeminiCandidate(
+                    new GeminiContent(
+                            List.of(GeminiContent.GeminiPart.builder()
+                                    .text("Image response")
+                                    .build()),
+                            "model"),
+                    GeminiFinishReason.IMAGE_RECITATION,
+                    null,
+                    null);
+
+            var geminiResponse = new GeminiGenerateContentResponse(
+                    "image-recitation-id", "gemini-pro-v1", List.of(candidate), createUsageMetadata(10, 20, 30), null);
+
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(geminiResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .build(mockGeminiService);
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(new UserMessage("Generate image"))
+                    .build();
+
+            // When
+            var chatResponse = subject.chat(chatRequest);
+
+            // Then
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(FinishReason.CONTENT_FILTER);
+        }
     }
 
     @Nested
@@ -361,6 +396,7 @@ class GoogleAiGeminiChatModelTest {
                             .seed(42)
                             .candidateCount(1)
                             .responseLogprobs(false)
+                            .enableEnhancedCivicAnswers(false)
                             .build());
         }
 

@@ -10,7 +10,9 @@ import dev.langchain4j.mcp.protocol.McpRootsListResponse;
 import dev.langchain4j.mcp.protocol.McpServerMethod;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
@@ -34,6 +36,9 @@ public class McpOperationHandler {
     private final Consumer<String> onResourceUpdate;
     private final Supplier<List<McpRoot>> roots;
     private final McpProgressHandler progressHandler;
+    private final Runnable onServerPing;
+    private final Runnable onServerRootsList;
+    private final BiConsumer<Long, String> onServerCancelled;
 
     public McpOperationHandler(
             Map<Long, CompletableFuture<JsonNode>> pendingOperations,
@@ -44,7 +49,10 @@ public class McpOperationHandler {
             Runnable onResourceListUpdate,
             Runnable onPromptListUpdate,
             Consumer<String> onResourceUpdate,
-            McpProgressHandler progressHandler) {
+            McpProgressHandler progressHandler,
+            Runnable onServerPing,
+            Runnable onServerRootsList,
+            BiConsumer<Long, String> onServerCancelled) {
         this.pendingOperations = pendingOperations;
         this.transport = transport;
         this.logMessageConsumer = logMessageConsumer;
@@ -54,6 +62,9 @@ public class McpOperationHandler {
         this.onResourceUpdate = onResourceUpdate;
         this.roots = roots;
         this.progressHandler = progressHandler;
+        this.onServerPing = onServerPing;
+        this.onServerRootsList = onServerRootsList;
+        this.onServerCancelled = onServerCancelled;
     }
 
     public void handle(JsonNode message) {
@@ -84,9 +95,15 @@ public class McpOperationHandler {
             switch (method) {
                 case PING:
                     transport.executeOperationWithoutResponse(new McpPingResponse(messageId));
+                    if (onServerPing != null) {
+                        onServerPing.run();
+                    }
                     break;
                 case ROOTS_LIST:
                     transport.executeOperationWithoutResponse(new McpRootsListResponse(messageId, roots.get()));
+                    if (onServerRootsList != null) {
+                        onServerRootsList.run();
+                    }
                     break;
                 default:
                     log.warn("Received response for unknown message id: {}", messageId);
@@ -125,8 +142,36 @@ public class McpOperationHandler {
             case NOTIFICATION_PROGRESS:
                 handleProgressNotification(message);
                 break;
+            case NOTIFICATION_CANCELLED:
+                handleCancelledNotification(message);
+                break;
             default:
                 log.warn("Received unknown message: {}", message);
+        }
+    }
+
+    private void handleCancelledNotification(JsonNode message) {
+        JsonNode params = message.get("params");
+        if (params == null || !params.has("requestId")) {
+            log.warn("Received cancelled notification without requestId: {}", message);
+            return;
+        }
+        long requestId = params.get("requestId").asLong();
+        String reason = params.has("reason") ? params.get("reason").asText() : null;
+        CompletableFuture<JsonNode> pending = pendingOperations.remove(requestId);
+        if (pending != null) {
+            String message1 = reason != null
+                    ? "Request " + requestId + " was cancelled by the server: " + reason
+                    : "Request " + requestId + " was cancelled by the server";
+            pending.completeExceptionally(new CancellationException(message1));
+        } else {
+            log.debug(
+                    "Received cancelled notification for unknown or already completed request id: {} (reason: {})",
+                    requestId,
+                    reason);
+        }
+        if (onServerCancelled != null) {
+            onServerCancelled.accept(requestId, reason);
         }
     }
 

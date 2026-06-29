@@ -4,6 +4,7 @@ import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -34,6 +35,7 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -57,8 +59,7 @@ import java.util.Set;
 
 class OpenAiResponsesClient {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-            .enable(INDENT_OUTPUT);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().enable(INDENT_OUTPUT);
 
     private static final String DEFAULT_BASE_URL = "https://api.openai.com/v1";
     private static final String OPENAI_ORGANIZATION_HEADER = "OpenAI-Organization";
@@ -149,7 +150,8 @@ class OpenAiResponsesClient {
     private static final String ROLE_USER = "user";
     private static final String ROLE_ASSISTANT = "assistant";
 
-    static final String ENCRYPTED_REASONING_KEY = "encrypted_reasoning"; // do not change, will break backward compatibility!
+    static final String ENCRYPTED_REASONING_KEY =
+            "encrypted_reasoning"; // do not change, will break backward compatibility!
 
     private static final String TYPE_FUNCTION = "function";
     private static final String TYPE_FUNCTION_CALL = "function_call";
@@ -198,9 +200,10 @@ class OpenAiResponsesClient {
         }
     }
 
-    void streamingChat(ChatRequest chatRequest,
-                       OpenAiResponsesChatRequestParameters parameters,
-                       StreamingChatResponseHandler handler) {
+    void streamingChat(
+            ChatRequest chatRequest,
+            OpenAiResponsesChatRequestParameters parameters,
+            StreamingChatResponseHandler handler) {
         try {
             Map<String, Object> payload = buildRequestPayload(chatRequest, parameters, true);
             HttpRequest request = buildHttpRequest(payload, true);
@@ -212,9 +215,8 @@ class OpenAiResponsesClient {
         }
     }
 
-    private Map<String, Object> buildRequestPayload(ChatRequest chatRequest,
-                                                    OpenAiResponsesChatRequestParameters parameters,
-                                                    boolean stream) {
+    private Map<String, Object> buildRequestPayload(
+            ChatRequest chatRequest, OpenAiResponsesChatRequestParameters parameters, boolean stream) {
         List<Map<String, Object>> input = new ArrayList<>();
         for (ChatMessage message : chatRequest.messages()) {
             input.addAll(toResponsesMessages(message));
@@ -296,10 +298,12 @@ class OpenAiResponsesClient {
         }
 
         boolean strictTools = Boolean.TRUE.equals(parameters.strictTools());
+        List<Map<String, Object>> tools = new ArrayList<>();
         List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
         if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
-            List<Map<String, Object>> tools = new ArrayList<>();
             for (ToolSpecification toolSpec : toolSpecifications) {
+                boolean effectiveStrict = isEffectivelyStrict(toolSpec, strictTools);
+
                 Map<String, Object> tool = new LinkedHashMap<>();
                 tool.put(FIELD_TYPE, TYPE_FUNCTION);
                 tool.put(FIELD_NAME, toolSpec.name());
@@ -309,8 +313,8 @@ class OpenAiResponsesClient {
 
                 Map<String, Object> functionParameters = null;
                 if (toolSpec.parameters() != null) {
-                    functionParameters = toMap(toolSpec.parameters(), strictTools);
-                } else if (strictTools) {
+                    functionParameters = toMap(toolSpec.parameters(), effectiveStrict);
+                } else if (effectiveStrict) {
                     functionParameters = new LinkedHashMap<>();
                     functionParameters.put(FIELD_TYPE, TYPE_OBJECT);
                     functionParameters.put(FIELD_PROPERTIES, Map.of());
@@ -321,12 +325,17 @@ class OpenAiResponsesClient {
                     tool.put(FIELD_PARAMETERS, functionParameters);
                 }
 
-                if (strictTools) {
+                if (effectiveStrict) {
                     tool.put(FIELD_STRICT, true);
                 }
 
                 tools.add(tool);
             }
+        }
+        if (parameters.serverTools() != null) {
+            tools.addAll(parameters.serverTools());
+        }
+        if (!tools.isEmpty()) {
             payload.put(FIELD_TOOLS, tools);
 
             if (parameters.toolChoice() != null) {
@@ -401,7 +410,8 @@ class OpenAiResponsesClient {
                 JsonNode summaryArray = item.path(FIELD_SUMMARY);
                 if (summaryArray.isArray()) {
                     for (JsonNode summaryItem : summaryArray) {
-                        if (FIELD_SUMMARY_TEXT.equals(summaryItem.path(FIELD_TYPE).asText())) {
+                        if (FIELD_SUMMARY_TEXT.equals(
+                                summaryItem.path(FIELD_TYPE).asText())) {
                             summaryBuilder.append(summaryItem.path(FIELD_TEXT).asText());
                         }
                     }
@@ -473,7 +483,8 @@ class OpenAiResponsesClient {
         JsonNode outputDetailsNode = usageNode.path(FIELD_OUTPUT_TOKENS_DETAILS);
         if (!outputDetailsNode.isMissingNode()) {
             usageBuilder.outputTokensDetails(OpenAiTokenUsage.OutputTokensDetails.builder()
-                    .reasoningTokens(outputDetailsNode.path(FIELD_REASONING_TOKENS).asInt())
+                    .reasoningTokens(
+                            outputDetailsNode.path(FIELD_REASONING_TOKENS).asInt())
                     .build());
         }
 
@@ -499,18 +510,14 @@ class OpenAiResponsesClient {
         String text = extractText(outputNode);
         String thinking = extractReasoningSummary(outputNode);
         String encryptedContent = extractReasoningEncryptedContent(outputNode);
-        List<ToolExecutionRequest> toolExecutionRequests =
-                extractToolExecutionRequests(outputNode);
+        List<ToolExecutionRequest> toolExecutionRequests = extractToolExecutionRequests(outputNode);
 
-        AiMessage.Builder aiMessageBuilder = AiMessage.builder()
-                .text(text)
-                .thinking(thinking)
-                .toolExecutionRequests(toolExecutionRequests);
+        AiMessage.Builder aiMessageBuilder =
+                AiMessage.builder().text(text).thinking(thinking).toolExecutionRequests(toolExecutionRequests);
         if (encryptedContent != null) {
             aiMessageBuilder.attributes(Map.of(ENCRYPTED_REASONING_KEY, encryptedContent));
         }
         AiMessage aiMessage = aiMessageBuilder.build();
-
 
         OpenAiResponsesChatResponseMetadata.Builder metadataBuilder = OpenAiResponsesChatResponseMetadata.builder()
                 .id(responseNode.path(FIELD_ID).asText(null))
@@ -685,8 +692,9 @@ class OpenAiResponsesClient {
             case LOW -> "low";
             case HIGH -> "high";
             case AUTO -> "auto";
-            default -> throw new UnsupportedFeatureException(
-                    "DetailLevel " + detailLevel + " is not supported by OpenAI Responses API. Supported values: LOW, HIGH, AUTO");
+            default ->
+                throw new UnsupportedFeatureException("DetailLevel " + detailLevel
+                        + " is not supported by OpenAI Responses API. Supported values: LOW, HIGH, AUTO");
         };
     }
 
@@ -812,7 +820,7 @@ class OpenAiResponsesClient {
 
     private static class ResponsesApiEventListener implements ServerSentEventListener {
 
-        private final StreamingChatResponseHandler handler;
+        private final MappingTrackingStreamingChatResponseHandler handler;
         private volatile StreamingHandle streamingHandle;
         private final Map<String, ToolExecutionRequest.Builder> toolCallBuilders = new LinkedHashMap<>();
         private final Map<String, Integer> toolCallIndices = new LinkedHashMap<>();
@@ -822,7 +830,7 @@ class OpenAiResponsesClient {
         private SuccessfulHttpResponse rawHttpResponse;
 
         ResponsesApiEventListener(StreamingChatResponseHandler handler) {
-            this.handler = handler;
+            this.handler = new MappingTrackingStreamingChatResponseHandler(handler);
         }
 
         private boolean isCancelled() {
@@ -863,7 +871,12 @@ class OpenAiResponsesClient {
                 return;
             }
 
+            handler.resetMappingTracking();
             handleDelta(data);
+
+            if (!handler.wasMapped()) {
+                InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent(handler, event);
+            }
         }
 
         @Override
@@ -974,10 +987,8 @@ class OpenAiResponsesClient {
             String thinking = extractReasoningSummary(outputNode);
             String encryptedContent = extractReasoningEncryptedContent(outputNode);
 
-            AiMessage.Builder aiMessageBuilder = AiMessage.builder()
-                    .text(text)
-                    .thinking(thinking)
-                    .toolExecutionRequests(completedToolCalls);
+            AiMessage.Builder aiMessageBuilder =
+                    AiMessage.builder().text(text).thinking(thinking).toolExecutionRequests(completedToolCalls);
             if (encryptedContent != null) {
                 aiMessageBuilder.attributes(Map.of(ENCRYPTED_REASONING_KEY, encryptedContent));
             }
@@ -992,8 +1003,8 @@ class OpenAiResponsesClient {
                 metadataBuilder.tokenUsage(tokenUsage);
             }
 
-            FinishReason finishReason = finishReasonFromStatus(
-                    responseNode.path(FIELD_STATUS).asText(null), !completedToolCalls.isEmpty());
+            FinishReason finishReason =
+                    finishReasonFromStatus(responseNode.path(FIELD_STATUS).asText(null), !completedToolCalls.isEmpty());
             if (finishReason != null) {
                 metadataBuilder.finishReason(finishReason);
             }
@@ -1002,10 +1013,12 @@ class OpenAiResponsesClient {
                 metadataBuilder.createdAt(responseNode.path(FIELD_CREATED_AT).asLong());
             }
             if (responseNode.hasNonNull(FIELD_COMPLETED_AT)) {
-                metadataBuilder.completedAt(responseNode.path(FIELD_COMPLETED_AT).asLong());
+                metadataBuilder.completedAt(
+                        responseNode.path(FIELD_COMPLETED_AT).asLong());
             }
             if (responseNode.hasNonNull(FIELD_SERVICE_TIER)) {
-                metadataBuilder.serviceTier(responseNode.path(FIELD_SERVICE_TIER).asText());
+                metadataBuilder.serviceTier(
+                        responseNode.path(FIELD_SERVICE_TIER).asText());
             }
             if (rawHttpResponse != null) {
                 metadataBuilder.rawHttpResponse(rawHttpResponse);
@@ -1014,9 +1027,7 @@ class OpenAiResponsesClient {
                 metadataBuilder.rawServerSentEvents(new ArrayList<>(rawServerSentEvents));
             }
 
-            var responseBuilder = ChatResponse.builder()
-                    .aiMessage(aiMessage)
-                    .metadata(metadataBuilder.build());
+            var responseBuilder = ChatResponse.builder().aiMessage(aiMessage).metadata(metadataBuilder.build());
 
             if (!isCancelled()) {
                 try {

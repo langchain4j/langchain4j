@@ -106,18 +106,18 @@ public class OkHttpClient implements HttpClient {
         return response.body().byteStream();
     }
 
-    private SuccessfulHttpResponse fromOkHttpResponse(Response response) {
+    private SuccessfulHttpResponse fromOkHttpResponse(Response response) throws IOException {
         Map<String, List<String>> headers = new HashMap<>();
         for (String name : response.headers().names()) {
             headers.put(name, response.headers().values(name));
         }
 
         String contentType = response.header("content-type");
-        String body;
+        byte[] body;
         if (contentType != null && contentType.contains("text/event-stream")) {
             body = null;
         } else {
-            body = readBody(response);
+            body = response.body().bytes();
         }
 
         return SuccessfulHttpResponse.builder()

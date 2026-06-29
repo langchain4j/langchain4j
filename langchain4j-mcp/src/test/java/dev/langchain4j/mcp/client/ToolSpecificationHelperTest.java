@@ -1,8 +1,10 @@
 package dev.langchain4j.mcp.client;
 
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.DESTRUCTIVE_HINT;
+import static dev.langchain4j.mcp.client.McpToolMetadataKeys.ICONS;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.IDEMPOTENT_HINT;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.OPEN_WORLD_HINT;
+import static dev.langchain4j.mcp.client.McpToolMetadataKeys.OUTPUT_SCHEMA;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.READ_ONLY_HINT;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.TITLE;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.TITLE_ANNOTATION;
@@ -203,8 +205,7 @@ class ToolSpecificationHelperTest {
 
     @Test
     void arrayWithMultipleAllowedTypes() throws JsonProcessingException {
-        String text =
-                """
+        String text = """
                         [{
                           "name": "query",
                           "description": "Execute a SELECT query",
@@ -345,8 +346,7 @@ class ToolSpecificationHelperTest {
     @Test
     void nullTypeName() throws JsonProcessingException {
         // the 'value' parameter has an empty definition, so it can be anything
-        String text =
-                """
+        String text = """
                 [{
                    "name": "set_config_value",
                    "description": "Set a specific configuration value by key",
@@ -376,8 +376,7 @@ class ToolSpecificationHelperTest {
     void nullType() throws JsonProcessingException {
         // the 'type' parameter is "null" and so most not be present
         // trimmed version from Atalassian's MCP server
-        String text =
-                """
+        String text = """
                 [{
                   "name": "createCompassCustomFieldDefinition",
                   "description": "Create a new Compass custom field definition",
@@ -486,6 +485,97 @@ class ToolSpecificationHelperTest {
         assertThat(metadata.get(DESTRUCTIVE_HINT)).isEqualTo(true);
         assertThat(metadata.get(IDEMPOTENT_HINT)).isEqualTo(false);
         assertThat(metadata.get(OPEN_WORLD_HINT)).isEqualTo(true);
+    }
+
+    @Test
+    void toolWithOutputSchema() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "get_weather",
+                    "description": "Get the weather for a location",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "location": { "type": "string" }
+                      },
+                      "required": ["location"]
+                    },
+                    "outputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "temperature": {
+                          "type": "number",
+                          "description": "Temperature in Celsius"
+                        },
+                        "conditions": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["temperature", "conditions"]
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        Map<String, Object> metadata = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
+                .get(0)
+                .metadata();
+
+        assertThat(metadata.get(OUTPUT_SCHEMA)).isInstanceOf(Map.class);
+        Map<String, Object> outputSchema = (Map<String, Object>) metadata.get(OUTPUT_SCHEMA);
+        assertThat(outputSchema.get("type")).isEqualTo("object");
+        assertThat(outputSchema.get("required")).isEqualTo(List.of("temperature", "conditions"));
+        assertThat(outputSchema.get("properties")).isInstanceOf(Map.class);
+        Map<String, Object> properties = (Map<String, Object>) outputSchema.get("properties");
+        assertThat(properties).containsOnlyKeys("temperature", "conditions");
+    }
+
+    @Test
+    void toolWithIcons() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "get_weather",
+                    "inputSchema": {
+                    },
+                    "icons": [
+                      {
+                        "src": "https://example.org/weather.png",
+                        "mimeType": "image/png",
+                        "sizes": ["64x64"],
+                        "theme": "dark"
+                      }
+                    ]
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        Map<String, Object> metadata = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
+                .get(0)
+                .metadata();
+
+        assertThat(metadata.get(ICONS))
+                .isEqualTo(List.of(new McpIcon(
+                        "image/png", List.of("64x64"), "https://example.org/weather.png", McpIconTheme.DARK)));
+    }
+
+    @Test
+    void toolWithoutOutputSchema() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "noop",
+                    "inputSchema": {}
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        Map<String, Object> metadata = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
+                .get(0)
+                .metadata();
+
+        assertThat(metadata).doesNotContainKey(OUTPUT_SCHEMA);
     }
 
     @Test

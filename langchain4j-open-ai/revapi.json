@@ -1,0 +1,75 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.method.removed",
+          "old": "method dev.langchain4j.model.openai.OpenAiImageModel.OpenAiImageModelBuilder dev.langchain4j.model.openai.OpenAiImageModel.OpenAiImageModelBuilder::style(java.lang.String)",
+          "justification": "The 'style' parameter is not supported by the OpenAI image generation API"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiImageModel.style",
+          "justification": "The 'style' parameter is not supported by the OpenAI image generation API"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiImageModel.OpenAiImageModelBuilder.style",
+          "justification": "The 'style' parameter is not supported by the OpenAI image generation API"
+        },
+        {
+          "code": "java.method.removed",
+          "old": "method dev.langchain4j.model.openai.OpenAiImageModel.OpenAiImageModelBuilder dev.langchain4j.model.openai.OpenAiImageModel.OpenAiImageModelBuilder::responseFormat(java.lang.String)",
+          "justification": "The 'response_format' parameter is not supported by the new OpenAI GPT image models"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiImageModel.responseFormat",
+          "justification": "The 'response_format' parameter is not supported by the new OpenAI GPT image models"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiImageModel.OpenAiImageModelBuilder.responseFormat",
+          "justification": "The 'response_format' parameter is not supported by the new OpenAI GPT image models"
+        },
+        {
+          "code": "java.method.removed",
+          "old": "method dev.langchain4j.model.openai.internal.image.GenerateImagesRequest.Builder dev.langchain4j.model.openai.internal.image.GenerateImagesRequest.Builder::style(java.lang.String)",
+          "justification": "The 'style' parameter is not supported by the OpenAI image generation API"
+        },
+        {
+          "code": "java.method.removed",
+          "old": "method dev.langchain4j.model.openai.internal.image.GenerateImagesRequest.Builder dev.langchain4j.model.openai.internal.image.GenerateImagesRequest.Builder::responseFormat(java.lang.String)",
+          "justification": "The 'response_format' parameter is not supported by the new OpenAI GPT image models"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_0125_PREVIEW",
+          "justification": "Deprecated OpenAI model removed"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1106_PREVIEW",
+          "justification": "Deprecated OpenAI model removed"
+        },
+        {
+          "code": "java.field.removed",
+          "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_TURBO_PREVIEW",
+          "justification": "Deprecated OpenAI model removed"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.audio.TextToSpeechRequest",
+          "justification": "TextToSpeechRequest is intentionally exposed by OpenAiTextToSpeechModel because it implements the core TextToSpeechModel API"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.audio.TextToSpeechResponse",
+          "justification": "TextToSpeechResponse is intentionally exposed by OpenAiTextToSpeechModel because it implements the core TextToSpeechModel API"
+        }
+      ]
+    }
+  }
+]

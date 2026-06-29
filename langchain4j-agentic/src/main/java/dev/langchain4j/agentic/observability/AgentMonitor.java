@@ -5,6 +5,7 @@ import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -24,11 +25,71 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class AgentMonitor implements AgentListener {
 
+    private static final int DEFAULT_MAX_RETAINED_SESSIONS = 100;
+
+    private volatile int maxRetainedSessions = DEFAULT_MAX_RETAINED_SESSIONS;
     private AgentInstance rootAgent;
 
-    private final Map<Object, List<MonitoredExecution>> successfulExecutions = new ConcurrentHashMap<>();
-    private final Map<Object, List<MonitoredExecution>> failedExecutions = new ConcurrentHashMap<>();
+    private final Map<Object, List<MonitoredExecution>> successfulExecutions;
+    private final Map<Object, List<MonitoredExecution>> failedExecutions;
     private final Map<Object, MonitoredExecution> ongoingExecutions = new ConcurrentHashMap<>();
+
+    public AgentMonitor() {
+        this.successfulExecutions = createBoundedMap();
+        this.failedExecutions = createBoundedMap();
+    }
+
+    /**
+     * Sets the maximum number of sessions (distinct memory IDs, per outcome: successful or failed)
+     * retained by this monitor. When the limit is exceeded, the oldest sessions are evicted
+     * automatically. If the new limit is lower than the current number of retained sessions,
+     * excess entries are evicted immediately.
+     *
+     * <p>Defaults to 100.
+     *
+     * @param maxRetainedSessions the maximum number of retained sessions per outcome, must be &ge; 0
+     * @throws IllegalArgumentException if {@code maxRetainedSessions} is negative
+     */
+    public void setMaxRetainedSessions(int maxRetainedSessions) {
+        if (maxRetainedSessions < 0) {
+            throw new IllegalArgumentException("maxRetainedSessions must be >= 0");
+        }
+        this.maxRetainedSessions = maxRetainedSessions;
+        trimToSize(successfulExecutions, maxRetainedSessions);
+        trimToSize(failedExecutions, maxRetainedSessions);
+    }
+
+    /**
+     * Removes all retained successful and failed executions.
+     * Ongoing executions are not affected.
+     */
+    public void clear() {
+        synchronized (successfulExecutions) {
+            successfulExecutions.clear();
+        }
+        synchronized (failedExecutions) {
+            failedExecutions.clear();
+        }
+    }
+
+    private static void trimToSize(Map<Object, ?> map, int maxSize) {
+        synchronized (map) {
+            var it = map.entrySet().iterator();
+            while (map.size() > maxSize && it.hasNext()) {
+                it.next();
+                it.remove();
+            }
+        }
+    }
+
+    private Map<Object, List<MonitoredExecution>> createBoundedMap() {
+        return new LinkedHashMap<>() {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<Object, List<MonitoredExecution>> eldest) {
+                return size() > maxRetainedSessions;
+            }
+        };
+    }
 
     @Internal
     public void setRootAgent(AgentInstance rootAgent) {
@@ -42,12 +103,10 @@ public class AgentMonitor implements AgentListener {
     @Override
     public void beforeAgentInvocation(AgentRequest agentRequest) {
         Object memoryId = agentRequest.agenticScope().memoryId();
-        MonitoredExecution currentExecution = ongoingExecutions.get(memoryId);
-        if (currentExecution == null) {
-            currentExecution = new MonitoredExecution(agentRequest);
-            ongoingExecutions.put(memoryId, currentExecution);
-        } else {
-            currentExecution.beforeAgentInvocation(agentRequest);
+        MonitoredExecution candidate = new MonitoredExecution(agentRequest);
+        MonitoredExecution existing = ongoingExecutions.putIfAbsent(memoryId, candidate);
+        if (existing != null) {
+            existing.beforeAgentInvocation(agentRequest);
         }
     }
 
@@ -57,8 +116,12 @@ public class AgentMonitor implements AgentListener {
         MonitoredExecution execution = ongoingExecutions.get(memoryId);
         execution.afterAgentInvocation(agentResponse);
         if (execution.done()) {
-            ongoingExecutions.remove(memoryId);
-            successfulExecutions.computeIfAbsent(memoryId, k -> new ArrayList<>()).add(execution);
+            ongoingExecutions.remove(memoryId, execution);
+            synchronized (successfulExecutions) {
+                successfulExecutions
+                        .computeIfAbsent(memoryId, k -> new ArrayList<>())
+                        .add(execution);
+            }
         }
     }
 
@@ -68,7 +131,11 @@ public class AgentMonitor implements AgentListener {
         MonitoredExecution execution = ongoingExecutions.remove(memoryId);
         if (execution != null) {
             execution.onAgentInvocationError(agentInvocationError);
-            failedExecutions.computeIfAbsent(memoryId, k -> new ArrayList<>()).add(execution);
+            synchronized (failedExecutions) {
+                failedExecutions
+                        .computeIfAbsent(memoryId, k -> new ArrayList<>())
+                        .add(execution);
+            }
         }
     }
 
@@ -99,7 +166,9 @@ public class AgentMonitor implements AgentListener {
     }
 
     public List<MonitoredExecution> successfulExecutions() {
-        return successfulExecutions.values().stream().flatMap(List::stream).toList();
+        synchronized (successfulExecutions) {
+            return successfulExecutions.values().stream().flatMap(List::stream).toList();
+        }
     }
 
     public List<MonitoredExecution> successfulExecutionsFor(AgenticScope agenticScope) {
@@ -107,11 +176,15 @@ public class AgentMonitor implements AgentListener {
     }
 
     public List<MonitoredExecution> successfulExecutionsFor(Object memoryId) {
-        return successfulExecutions.getOrDefault(memoryId, List.of());
+        synchronized (successfulExecutions) {
+            return List.copyOf(successfulExecutions.getOrDefault(memoryId, List.of()));
+        }
     }
 
     public List<MonitoredExecution> failedExecutions() {
-        return failedExecutions.values().stream().flatMap(List::stream).toList();
+        synchronized (failedExecutions) {
+            return failedExecutions.values().stream().flatMap(List::stream).toList();
+        }
     }
 
     public List<MonitoredExecution> failedExecutionsFor(AgenticScope agenticScope) {
@@ -119,7 +192,9 @@ public class AgentMonitor implements AgentListener {
     }
 
     public List<MonitoredExecution> failedExecutionsFor(Object memoryId) {
-        return failedExecutions.getOrDefault(memoryId, List.of());
+        synchronized (failedExecutions) {
+            return List.copyOf(failedExecutions.getOrDefault(memoryId, List.of()));
+        }
     }
 
     /**
@@ -128,8 +203,12 @@ public class AgentMonitor implements AgentListener {
      */
     public Set<Object> allMemoryIds() {
         Set<Object> ids = new LinkedHashSet<>();
-        ids.addAll(successfulExecutions.keySet());
-        ids.addAll(failedExecutions.keySet());
+        synchronized (successfulExecutions) {
+            ids.addAll(successfulExecutions.keySet());
+        }
+        synchronized (failedExecutions) {
+            ids.addAll(failedExecutions.keySet());
+        }
         ids.addAll(ongoingExecutions.keySet());
         return Collections.unmodifiableSet(ids);
     }
