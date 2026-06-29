@@ -132,7 +132,7 @@ public class OkHttpClient implements HttpClient {
         try {
             return response.body().bytes();
         } catch (Exception e) {
-            return ("Cannot read response body: " + e.getMessage()).getBytes(StandardCharsets.UTF_8);
+            return ("Cannot read response body: " + e.getMessage()).getBytes(StandardCharsets.UTF_8); // TODO
         }
     }
 

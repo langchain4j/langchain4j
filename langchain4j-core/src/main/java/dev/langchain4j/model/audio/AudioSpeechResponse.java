@@ -3,6 +3,8 @@ package dev.langchain4j.model.audio;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.audio.Audio;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 /**
  * Response containing the audio generated from text.
  */
@@ -17,7 +19,7 @@ public class AudioSpeechResponse {
      * @param audio The generated audio
      */
     public AudioSpeechResponse(Audio audio) {
-        this.audio = audio;
+        this.audio = ensureNotNull(audio, "audio");
     }
 
     /**

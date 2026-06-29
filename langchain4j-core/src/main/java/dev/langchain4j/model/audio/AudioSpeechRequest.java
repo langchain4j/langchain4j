@@ -2,6 +2,8 @@ package dev.langchain4j.model.audio;
 
 import dev.langchain4j.Experimental;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
 @Experimental
 public class AudioSpeechRequest {
 
@@ -9,7 +11,7 @@ public class AudioSpeechRequest {
     private final String voice;
 
     private AudioSpeechRequest(Builder builder) {
-        this.text = builder.text;
+        this.text = ensureNotBlank(builder.text, "text");
         this.voice = builder.voice;
     }
 
@@ -44,9 +46,6 @@ public class AudioSpeechRequest {
         }
 
         public AudioSpeechRequest build() {
-            if (text == null) {
-                throw new IllegalStateException("Input text must be provided");
-            }
             return new AudioSpeechRequest(this);
         }
     }

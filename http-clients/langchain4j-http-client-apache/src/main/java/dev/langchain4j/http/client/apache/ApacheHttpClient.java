@@ -159,7 +159,7 @@ public class ApacheHttpClient implements HttpClient {
             }
             return EntityUtils.toByteArray(entity);
         } catch (Exception e) {
-            return ("Cannot read response body: " + e.getMessage()).getBytes(StandardCharsets.UTF_8);
+            return ("Cannot read response body: " + e.getMessage()).getBytes(StandardCharsets.UTF_8); // TODO
         }
     }
 
