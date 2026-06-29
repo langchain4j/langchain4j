@@ -50,8 +50,8 @@ class InternalOpenAiOfficialHelperTest {
 
     @Test
     void should_set_image_detail_for_url_image() {
-        UserMessage message = UserMessage.from(ImageContent.from(
-                "https://example.com/image.png", ImageContent.DetailLevel.HIGH));
+        UserMessage message =
+                UserMessage.from(ImageContent.from("https://example.com/image.png", ImageContent.DetailLevel.HIGH));
 
         ChatCompletionMessageParam param = InternalOpenAiOfficialHelper.toOpenAiMessage(message);
 
@@ -83,8 +83,8 @@ class InternalOpenAiOfficialHelperTest {
 
     @Test
     void should_throw_when_image_detail_is_not_supported_by_openai_chat_completions() {
-        UserMessage message = UserMessage.from(ImageContent.from(
-                "https://example.com/image.png", ImageContent.DetailLevel.ULTRA_HIGH));
+        UserMessage message = UserMessage.from(
+                ImageContent.from("https://example.com/image.png", ImageContent.DetailLevel.ULTRA_HIGH));
 
         assertThatThrownBy(() -> InternalOpenAiOfficialHelper.toOpenAiMessage(message))
                 .isInstanceOf(UnsupportedFeatureException.class)

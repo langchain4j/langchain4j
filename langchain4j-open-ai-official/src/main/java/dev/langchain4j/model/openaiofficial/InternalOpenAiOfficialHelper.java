@@ -200,9 +200,9 @@ class InternalOpenAiOfficialHelper {
             case LOW -> ChatCompletionContentPartImage.ImageUrl.Detail.LOW;
             case HIGH -> ChatCompletionContentPartImage.ImageUrl.Detail.HIGH;
             case AUTO -> ChatCompletionContentPartImage.ImageUrl.Detail.AUTO;
-            case MEDIUM, ULTRA_HIGH -> throw new UnsupportedFeatureException(
-                    "DetailLevel " + detailLevel
-                            + " is not supported by OpenAI Chat Completions API. Supported values: LOW, HIGH, AUTO");
+            case MEDIUM, ULTRA_HIGH ->
+                throw new UnsupportedFeatureException("DetailLevel " + detailLevel
+                        + " is not supported by OpenAI Chat Completions API. Supported values: LOW, HIGH, AUTO");
         };
     }
 
