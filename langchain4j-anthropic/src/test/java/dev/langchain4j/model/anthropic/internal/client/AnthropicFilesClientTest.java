@@ -34,7 +34,8 @@ class AnthropicFilesClientTest {
             MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
             AnthropicFilesClient subject = createClient(mockHttpClient);
 
-            AnthropicFile actualFile = subject.upload("report.pdf", "application/pdf", "content".getBytes(StandardCharsets.UTF_8));
+            AnthropicFile actualFile =
+                    subject.upload("report.pdf", "application/pdf", "content".getBytes(StandardCharsets.UTF_8));
 
             assertThat(actualFile).isEqualTo(expectedFile);
 
@@ -130,8 +131,7 @@ class AnthropicFilesClientTest {
             AnthropicFilesClient subject = createClient(MockHttpClient.thatAlwaysResponds(
                     SuccessfulHttpResponse.builder().statusCode(200).body("").build()));
 
-            assertThatThrownBy(() -> subject.download("file_abc123"))
-                    .isInstanceOf(UnsupportedOperationException.class);
+            assertThatThrownBy(() -> subject.download("file_abc123")).isInstanceOf(UnsupportedOperationException.class);
         }
     }
 

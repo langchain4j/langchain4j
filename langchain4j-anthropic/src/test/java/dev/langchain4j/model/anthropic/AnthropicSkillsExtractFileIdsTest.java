@@ -34,10 +34,7 @@ class AnthropicSkillsExtractFileIdsTest {
                 .toolUseId("toolu_123")
                 .content(Map.of(
                         "content",
-                        List.of(
-                                Map.of("file_id", "file_1"),
-                                Map.of("file_id", "file_2"),
-                                Map.of("file_id", "file_1"))))
+                        List.of(Map.of("file_id", "file_1"), Map.of("file_id", "file_2"), Map.of("file_id", "file_1"))))
                 .build();
 
         ChatResponse chatResponse = chatResponseWithServerToolResults(List.of(result));
