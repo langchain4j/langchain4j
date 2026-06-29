@@ -36,7 +36,7 @@
             <dependency>
                 <groupId>com.microsoft.azure</groupId>
                 <artifactId>msal4j</artifactId>
-                <version>1.23.1</version>
+                <version>1.25.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
