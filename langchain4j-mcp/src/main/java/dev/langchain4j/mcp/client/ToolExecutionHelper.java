@@ -100,7 +100,8 @@ class ToolExecutionHelper {
             case NUMBER ->
                 switch (content.numberType()) {
                     case INT -> content.asInt();
-                    case LONG, BIG_INTEGER -> content.asLong();
+                    case LONG -> content.asLong();
+                    case BIG_INTEGER -> content.bigIntegerValue();
                     case FLOAT, DOUBLE, BIG_DECIMAL -> content.asDouble();
                 };
             case STRING -> content.asText();

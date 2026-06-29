@@ -114,7 +114,9 @@ class AiServicesWithToolsWithRequiredIT {
         // given
         class ToolWithPojoParameter {
 
-            record Person(String name, @JsonProperty(required = false) Integer age) {}
+            record Person(
+                    String name,
+                    @JsonProperty(required = false) Integer age) {}
 
             @Tool
             void process(Person person) {

@@ -313,9 +313,17 @@ public class DockerMcpTransport implements McpTransport {
             return this;
         }
 
-        public DockerMcpTransport.Builder dockerTslVerify(Boolean dockerTlsVerify) {
+        public DockerMcpTransport.Builder dockerTlsVerify(Boolean dockerTlsVerify) {
             this.dockerTlsVerify = dockerTlsVerify;
             return this;
+        }
+
+        /**
+         * @deprecated misspelled method name, use {@link #dockerTlsVerify(Boolean)} instead.
+         */
+        @Deprecated
+        public DockerMcpTransport.Builder dockerTslVerify(Boolean dockerTlsVerify) {
+            return dockerTlsVerify(dockerTlsVerify);
         }
 
         public DockerMcpTransport.Builder registryEmail(String registryEmail) {

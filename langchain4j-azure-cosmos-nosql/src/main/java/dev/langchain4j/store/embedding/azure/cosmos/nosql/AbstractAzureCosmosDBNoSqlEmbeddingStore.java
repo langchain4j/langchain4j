@@ -49,7 +49,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -413,7 +412,6 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
 
         List<Float> referenceEmbeddingString = request.queryEmbedding().vectorAsList();
 
-        // Start building query for similarity search
         StringBuilder queryBuilder = new StringBuilder(String.format(
                 "SELECT TOP @topK c.id as id, c.text as text, c.embedding as embedding, c.metadata as metadata, "
                         + "VectorDistance(c.%s, @embedding) as score FROM c",
@@ -429,7 +427,7 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
         parameters.add(new SqlParameter("@topK", request.maxResults()));
 
         SqlQuerySpec sqlQuerySpec = new SqlQuerySpec(query, parameters);
-        CosmosQueryRequestOptions options = new CosmosQueryRequestOptions();
+        CosmosQueryRequestOptions options = queryRequestOptions();
         logger.debug("Executing similarity search query: {}", query);
 
         return runQuery(sqlQuerySpec, options, request.minScore(), this.searchQueryType);
@@ -450,7 +448,7 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
         parameters.add(new SqlParameter("@topK", maxResults));
 
         SqlQuerySpec sqlQuerySpec = new SqlQuerySpec(query, parameters);
-        CosmosQueryRequestOptions options = new CosmosQueryRequestOptions();
+        CosmosQueryRequestOptions options = queryRequestOptions();
         logger.debug("Executing full text search query: {}", query);
 
         return runQuery(sqlQuerySpec, options, minScore, this.searchQueryType);
@@ -463,22 +461,24 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
             throw new IllegalArgumentException("maxResults must be 1000 or less.");
         }
 
-        String searchWords =
-                Arrays.stream(content.split("\\s+")).map(k -> "\"" + k + "\"").collect(Collectors.joining(", "));
-
         StringBuilder queryBuilder = new StringBuilder("SELECT TOP @topK * FROM c");
         List<SqlParameter> parameters = new ArrayList<>();
         parameters.add(new SqlParameter("@topK", maxResults));
         if (filter != null) {
-            queryBuilder.append(" WHERE").append(filterMapper.map(filter));
+            queryBuilder.append(" WHERE (").append(filterMapper.map(filter)).append(") AND ");
+        } else {
+            queryBuilder.append(" WHERE ");
         }
-        queryBuilder.append(" ORDER BY RANK FullTextScore(c.text, @searchWords)");
-
-        parameters.add(new SqlParameter("@searchWords", searchWords));
+        String searchWords = toFullTextScoreArguments(content);
+        queryBuilder.append(fullTextRankPredicate("text", searchWords));
+        queryBuilder
+                .append(" ORDER BY RANK FullTextScore(c.text, ")
+                .append(searchWords)
+                .append(")");
 
         String query = queryBuilder.toString();
         SqlQuerySpec sqlQuerySpec = new SqlQuerySpec(query, parameters);
-        CosmosQueryRequestOptions options = new CosmosQueryRequestOptions();
+        CosmosQueryRequestOptions options = queryRequestOptions();
         logger.debug("Executing full text search ranking query: {}", query);
 
         return runQuery(sqlQuerySpec, options, minScore, this.searchQueryType);
@@ -507,32 +507,57 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
                                 .lastIndexOf("/")
                         + 1);
 
-        String searchWords =
-                Arrays.stream(content.split("\\s+")).map(k -> "'" + k + "'").collect(Collectors.joining(", "));
+        String referenceEmbeddingVector = toVectorLiteral(referenceEmbedding.vectorAsList());
 
         StringBuilder queryBuilder = new StringBuilder(String.format(
                 "SELECT TOP @topK c.id as id, c.text as text, c.embedding as embedding, c.metadata as metadata, "
-                        + "VectorDistance(c.%s, @embedding) as score FROM c",
-                embeddingField));
+                        + "VectorDistance(c.%s, %s) as score FROM c",
+                embeddingField, referenceEmbeddingVector));
 
         List<SqlParameter> parameters = new ArrayList<>();
         parameters.add(new SqlParameter("@topK", maxResults));
-        parameters.add(new SqlParameter("@embedding", referenceEmbedding.vectorAsList()));
-        parameters.add(new SqlParameter("@searchWords", searchWords));
+        String searchWords = toFullTextScoreArguments(content);
 
         if (filter != null) {
-            queryBuilder.append(" AND").append(filterMapper.map(filter));
+            queryBuilder.append(" WHERE (").append(filterMapper.map(filter)).append(") AND ");
+        } else {
+            queryBuilder.append(" WHERE ");
         }
+        queryBuilder.append(fullTextRankPredicate(textField, searchWords));
         queryBuilder.append(String.format(
-                " ORDER BY RANK RRF(FullTextScore(c.%s, @searchWords), VectorDistance(c.%s, @embedding))",
-                textField, embeddingField));
+                " ORDER BY RANK RRF(VectorDistance(c.%s, %s), FullTextScore(c.%s, %s))",
+                embeddingField, referenceEmbeddingVector, textField, searchWords));
 
         String query = queryBuilder.toString();
         SqlQuerySpec sqlQuerySpec = new SqlQuerySpec(query, parameters);
-        CosmosQueryRequestOptions options = new CosmosQueryRequestOptions();
+        CosmosQueryRequestOptions options = queryRequestOptions();
         logger.debug("Executing hybrid search query: {}", query);
 
         return runQuery(sqlQuerySpec, options, minScore, this.searchQueryType);
+    }
+
+    private static String toFullTextScoreArguments(String content) {
+        ensureNotBlank(content, "content");
+
+        List<String> searchWords = new ArrayList<>();
+        Arrays.stream(content.trim().split("\\s+")).forEach(searchWord -> {
+            String escapedSearchWord = searchWord.replace("\\", "\\\\").replace("\"", "\\\"");
+            searchWords.add("\"" + escapedSearchWord + "\"");
+        });
+
+        return String.join(", ", searchWords);
+    }
+
+    private static String toVectorLiteral(List<Float> vector) {
+        return vector.stream().map(String::valueOf).collect(toList()).toString();
+    }
+
+    private static String fullTextRankPredicate(String textField, String searchWords) {
+        return String.format("(FullTextContainsAny(c.%s, %s) OR IS_DEFINED(c.id))", textField, searchWords);
+    }
+
+    private static CosmosQueryRequestOptions queryRequestOptions() {
+        return new CosmosQueryRequestOptions().setQueryMetricsEnabled(false).setMaxDegreeOfParallelism(1);
     }
 
     /**

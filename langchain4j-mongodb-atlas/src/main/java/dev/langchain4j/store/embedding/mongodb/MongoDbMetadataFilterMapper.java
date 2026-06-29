@@ -2,6 +2,7 @@ package dev.langchain4j.store.embedding.mongodb;
 
 import com.mongodb.client.model.Filters;
 import dev.langchain4j.store.embedding.filter.Filter;
+import dev.langchain4j.store.embedding.filter.comparison.ContainsString;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThanOrEqualTo;
@@ -13,6 +14,7 @@ import dev.langchain4j.store.embedding.filter.comparison.IsNotIn;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
+import java.util.regex.Pattern;
 import org.bson.conversions.Bson;
 
 class MongoDbMetadataFilterMapper {
@@ -40,8 +42,11 @@ class MongoDbMetadataFilterMapper {
             return mapOr((Or) filter);
         } else if (filter instanceof Not) {
             return mapNot((Not) filter);
+        } else if (filter instanceof ContainsString) {
+            return mapContains((ContainsString) filter);
         } else {
-            throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
+            throw new UnsupportedOperationException(
+                    "Unsupported filter type: " + filter.getClass().getName());
         }
     }
 
@@ -50,7 +55,7 @@ class MongoDbMetadataFilterMapper {
     }
 
     private static Bson mapEqual(IsEqualTo filter) {
-        return Filters.eq(getFieldName(filter.key()), filter.comparisonValue() );
+        return Filters.eq(getFieldName(filter.key()), filter.comparisonValue());
     }
 
     private static Bson mapNotEqual(IsNotEqualTo filter) {
@@ -91,5 +96,9 @@ class MongoDbMetadataFilterMapper {
 
     private static Bson mapNot(Not filter) {
         return Filters.not(map(filter.expression()));
+    }
+
+    private static Bson mapContains(ContainsString filter) {
+        return Filters.regex(getFieldName(filter.key()), Pattern.quote(filter.comparisonValue()));
     }
 }

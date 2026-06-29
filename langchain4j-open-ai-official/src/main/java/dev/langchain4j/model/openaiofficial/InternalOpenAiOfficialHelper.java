@@ -161,6 +161,9 @@ class InternalOpenAiOfficialHelper {
                                 .inputAudio(ChatCompletionContentPartInputAudio.InputAudio.builder()
                                         .data(ensureNotBlank(
                                                 audioContent.audio().base64Data(), "audio.base64Data"))
+                                        .format(ChatCompletionContentPartInputAudio.InputAudio.Format.of(ensureNotBlank(
+                                                        audioContent.audio().mimeType(), "audio.mimeType")
+                                                .split("/")[1]))
                                         .build())
                                 .build()
                                 .inputAudio())

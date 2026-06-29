@@ -26,14 +26,14 @@ import com.azure.ai.openai.models.ReasoningEffortValue;
 class AzureOpenAiStreamingChatModelIT {
 
     @ParameterizedTest(name = "Deployment name {0} using {1} with custom async client set to {2} ")
-    @CsvSource({"gpt-4o,        gpt-4o, true", "gpt-4o,        gpt-4o, false"})
-    void should_custom_models_work(String deploymentName, String gptVersion, boolean useCustomAsyncClient) {
+    @CsvSource({"gpt-4o, true", "gpt-4o, false"})
+    void should_custom_models_work(String deploymentName, boolean useCustomAsyncClient) {
 
         OpenAIAsyncClient asyncClient = null;
         if (useCustomAsyncClient) {
             asyncClient = InternalAzureOpenAiHelper.setupAsyncClient(
                     System.getenv("AZURE_OPENAI_ENDPOINT"),
-                    gptVersion,
+                    null, // serviceVersion: use latest (this slot was incorrectly receiving the model name)
                     AzureModelBuilders.getAzureOpenaiKey(),
                     Duration.ofSeconds(30),
                     5,

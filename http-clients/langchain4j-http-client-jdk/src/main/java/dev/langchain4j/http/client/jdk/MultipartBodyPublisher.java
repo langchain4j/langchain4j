@@ -21,6 +21,14 @@ class MultipartBodyPublisher {
         return parts;
     }
 
+    /**
+     * The {@code Content-Type} header value (including the boundary) that must accompany the body produced by
+     * {@link #build()}. Without this header the server cannot parse the multipart payload.
+     */
+    static String contentType() {
+        return "multipart/form-data; boundary=" + BOUNDARY;
+    }
+
     void addField(String name, String value) {
         String part = "--" + BOUNDARY + CRLF + "Content-Disposition: form-data; name=\""
                 + name + "\"" + CRLF + CRLF

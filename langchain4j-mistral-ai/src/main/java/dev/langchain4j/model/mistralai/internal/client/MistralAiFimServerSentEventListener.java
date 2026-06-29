@@ -63,15 +63,17 @@ class MistralAiFimServerSentEventListener implements ServerSentEventListener {
                     chatCompletionResponse.getChoices().get(0);
 
             List<MistralAiMessageContent> chunks = choice.getDelta().getContent();
-            for (var chunk : chunks) {
-                if (chunk instanceof MistralAiTextContent textContent) {
-                    String text = textContent.getText();
-                    if (isNotNullOrEmpty(text)) {
-                        contentBuilder.append(text);
-                        try {
-                            handler.onNext(text);
-                        } catch (Exception e) {
-                            withLoggingExceptions(() -> handler.onError(e));
+            if (isNotNullOrEmpty(chunks)) {
+                for (var chunk : chunks) {
+                    if (chunk instanceof MistralAiTextContent textContent) {
+                        String text = textContent.getText();
+                        if (isNotNullOrEmpty(text)) {
+                            contentBuilder.append(text);
+                            try {
+                                handler.onNext(text);
+                            } catch (Exception e) {
+                                withLoggingExceptions(() -> handler.onError(e));
+                            }
                         }
                     }
                 }

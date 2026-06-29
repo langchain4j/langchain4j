@@ -20,6 +20,7 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
     private final String thinkingType;
     private final Integer thinkingBudgetTokens;
     private final Boolean sendThinking;
+    private final Boolean midConversationSystemMessages;
     private final Boolean returnThinking;
     private final String toolChoiceName;
     private final Boolean disableParallelToolUse;
@@ -32,6 +33,7 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
         this.thinkingType = builder.thinkingType;
         this.thinkingBudgetTokens = builder.thinkingBudgetTokens;
         this.sendThinking = builder.sendThinking;
+        this.midConversationSystemMessages = builder.midConversationSystemMessages;
         this.returnThinking = builder.returnThinking;
         this.toolChoiceName = builder.toolChoiceName;
         this.disableParallelToolUse = builder.disableParallelToolUse;
@@ -56,6 +58,10 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
 
     public Boolean sendThinking() {
         return sendThinking;
+    }
+
+    public Boolean midConversationSystemMessages() {
+        return midConversationSystemMessages;
     }
 
     public Boolean returnThinking() {
@@ -101,6 +107,7 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 && Objects.equals(thinkingType, that.thinkingType)
                 && Objects.equals(thinkingBudgetTokens, that.thinkingBudgetTokens)
                 && Objects.equals(sendThinking, that.sendThinking)
+                && Objects.equals(midConversationSystemMessages, that.midConversationSystemMessages)
                 && Objects.equals(returnThinking, that.returnThinking)
                 && Objects.equals(toolChoiceName, that.toolChoiceName)
                 && Objects.equals(disableParallelToolUse, that.disableParallelToolUse)
@@ -116,6 +123,7 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 thinkingType,
                 thinkingBudgetTokens,
                 sendThinking,
+                midConversationSystemMessages,
                 returnThinking,
                 toolChoiceName,
                 disableParallelToolUse,
@@ -141,6 +149,7 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 + ", thinkingType=" + thinkingType
                 + ", thinkingBudgetTokens=" + thinkingBudgetTokens
                 + ", sendThinking=" + sendThinking
+                + ", midConversationSystemMessages=" + midConversationSystemMessages
                 + ", returnThinking=" + returnThinking
                 + ", toolChoiceName=" + toolChoiceName
                 + ", disableParallelToolUse=" + disableParallelToolUse
@@ -163,6 +172,7 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
         private String thinkingType;
         private Integer thinkingBudgetTokens;
         private Boolean sendThinking;
+        private Boolean midConversationSystemMessages;
         private Boolean returnThinking;
         private String toolChoiceName;
         private Boolean disableParallelToolUse;
@@ -177,6 +187,7 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 thinkingType(getOrDefault(anthropicParameters.thinkingType(), thinkingType));
                 thinkingBudgetTokens(getOrDefault(anthropicParameters.thinkingBudgetTokens(), thinkingBudgetTokens));
                 sendThinking(getOrDefault(anthropicParameters.sendThinking(), sendThinking));
+                midConversationSystemMessages(getOrDefault(anthropicParameters.midConversationSystemMessages(), midConversationSystemMessages));
                 returnThinking(getOrDefault(anthropicParameters.returnThinking(), returnThinking));
                 toolChoiceName(getOrDefault(anthropicParameters.toolChoiceName(), toolChoiceName));
                 disableParallelToolUse(
@@ -212,6 +223,11 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
 
         public Builder sendThinking(Boolean sendThinking) {
             this.sendThinking = sendThinking;
+            return this;
+        }
+
+        public Builder midConversationSystemMessages(Boolean midConversationSystemMessages) {
+            this.midConversationSystemMessages = midConversationSystemMessages;
             return this;
         }
 

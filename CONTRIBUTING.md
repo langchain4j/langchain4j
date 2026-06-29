@@ -21,9 +21,13 @@ Thank you for investing your time and effort in contributing to our project, we 
 
 - Please fill in all sections of the issue template.
 
-# Opening a draft PR
+# Opening a PR
 
-- Please open the PR as a draft initially. Once it is reviewed and approved, we will then ask you to finalize it (see section below).
+- Please open the PR as ready for review, not as a draft.
+- Before opening the PR, please make sure it is complete:
+  - Add unit and/or integration tests for your change (see the testing guidelines above). This is critical: no tests, no review!
+  - Add [documentation](https://github.com/langchain4j/langchain4j/tree/main/docs/docs) (if required).
+  - Run `./mvnw spotless:check` and `./mvnw spotless:apply` to ensure compliance with the source code formatting of the project.
 - Fill in all the sections of the PR template.
 - Please make it easier to review your PR:
   - Keep changes as small as possible.
@@ -31,13 +35,6 @@ Thank you for investing your time and effort in contributing to our project, we 
   - Avoid reformatting existing code.
 
 Please note that we do not have the capacity to review PRs immediately. We ask for your patience. We are doing our best to review your PR as quickly as possible.
-
-# Finalizing the draft PR
-
-- Add [documentation](https://github.com/langchain4j/langchain4j/tree/main/docs/docs) (if required).
-- Add an example to the [examples repository](https://github.com/langchain4j/langchain4j-examples) (if required).
-- Run `./mvnw spotless:check` and `./mvnw spotless:apply` to ensure compliance with the source code formatting of the project.
-- [Mark a PR as ready for review](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/changing-the-stage-of-a-pull-request#marking-a-pull-request-as-ready-for-review)
 
 # Guidelines on adding a new model integration
 

@@ -276,7 +276,71 @@ class InfinispanMetadataFilterMapperTest {
         InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
 
         // then
-        assertThat(result.query).isEqualTo("m0.name='key' and m0.value = 'value with 'quotes' and \"double quotes\"'");
+        assertThat(result.query)
+                .isEqualTo("m0.name='key' and m0.value = 'value with ''quotes'' and \"double quotes\"'");
+    }
+
+    @Test
+    void should_escape_single_quote_in_string_value() {
+        // given
+        Filter filter = new IsEqualTo("name", "O'Brien");
+
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
+
+        // then
+        assertThat(result.query).isEqualTo("m0.name='name' and m0.value = 'O''Brien'");
+    }
+
+    @Test
+    void should_escape_single_quote_in_key() {
+        // given
+        Filter filter = new IsEqualTo("o'clock", "noon");
+
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
+
+        // then
+        assertThat(result.query).isEqualTo("m0.name='o''clock' and m0.value = 'noon'");
+    }
+
+    @Test
+    void should_escape_single_quote_in_in_filter() {
+        // given
+        Filter filter = new IsIn("name", Arrays.asList("O'Brien", "D'Angelo"));
+
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
+
+        // then
+        assertThat(result.query).isEqualTo("m0.name='name' and m0.value IN ('O''Brien', 'D''Angelo')");
+    }
+
+    @Test
+    void should_escape_single_quote_in_not_in_filter() {
+        // given
+        Filter filter = new IsNotIn("name", Arrays.asList("O'Brien"));
+
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
+
+        // then
+        assertThat(result.query)
+                .isEqualTo(
+                        "(m0.value NOT IN ('O''Brien') and m0.name='name') OR (m0.value IN ('O''Brien') and m0.name!='name') OR (i.metadata is null) ");
+    }
+
+    @Test
+    void should_not_change_query_for_quote_free_input() {
+        // given
+        Filter filter = new IsEqualTo("name", "John");
+
+        // when
+        InfinispanMetadataFilterMapper.FilterResult result = mapper.map(filter);
+
+        // then
+        // Quote-free input must produce byte-identical output (regression guard).
+        assertThat(result.query).isEqualTo("m0.name='name' and m0.value = 'John'");
     }
 
     @Test

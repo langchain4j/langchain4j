@@ -8,6 +8,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
@@ -37,6 +38,7 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.anthropic.AnthropicChatResponseMetadata;
 import dev.langchain4j.model.anthropic.AnthropicServerToolResult;
@@ -267,7 +269,12 @@ public class DefaultAnthropicClient extends AnthropicClient {
             AnthropicCreateMessageOptions options,
             StreamingChatResponseHandler handler) {
 
+        StreamingChatResponseHandler targetHandler = handler;
+
         ServerSentEventListener eventListener = new ServerSentEventListener() {
+
+            final MappingTrackingStreamingChatResponseHandler handler =
+                    new MappingTrackingStreamingChatResponseHandler(targetHandler);
 
             final List<String> contents = synchronizedList(new ArrayList<>());
             final StringBuffer contentBuilder = new StringBuffer();
@@ -315,25 +322,59 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     streamingHandle = toStreamingHandle(context.parsingHandle());
                 }
 
-                AnthropicStreamingData data = fromJson(event.data(), AnthropicStreamingData.class);
+                handler.resetMappingTracking();
 
-                if ("message_start".equals(event.event())) {
+                String eventName = event.event();
+                String eventData = event.data();
+
+                // OpenAI-compatible gateways in front of Claude may emit a trailing
+                // "data: [DONE]" sentinel or frames with an unknown/missing event name.
+                // Skip them gracefully instead of attempting to deserialize as
+                // AnthropicStreamingData, which would throw MismatchedInputException.
+                if (isSkippableSseFrame(eventName, eventData)) {
+                    rawServerSentEvents.add(event);
+                    return;
+                }
+
+                AnthropicStreamingData data = fromJson(eventData, AnthropicStreamingData.class);
+
+                if ("message_start".equals(eventName)) {
                     handleMessageStart(data);
-                } else if ("content_block_start".equals(event.event())) {
+                } else if ("content_block_start".equals(eventName)) {
                     handleContentBlockStart(data, streamingHandle);
-                } else if ("content_block_delta".equals(event.event())) {
+                } else if ("content_block_delta".equals(eventName)) {
                     handleContentBlockDelta(data, streamingHandle);
-                } else if ("content_block_stop".equals(event.event())) {
+                } else if ("content_block_stop".equals(eventName)) {
                     handleContentBlockStop(data, streamingHandle);
-                } else if ("message_delta".equals(event.event())) {
+                } else if ("message_delta".equals(eventName)) {
                     handleMessageDelta(data);
-                } else if ("message_stop".equals(event.event())) {
+                } else if ("message_stop".equals(eventName)) {
                     handleMessageStop();
-                } else if ("error".equals(event.event())) {
+                } else if ("error".equals(eventName)) {
                     handleError(data);
                 }
 
                 rawServerSentEvents.add(event);
+
+                if (!handler.wasMapped()) {
+                    onUnmappedRawEvent(handler, event);
+                }
+            }
+
+            private static boolean isSkippableSseFrame(String eventName, String eventData) {
+                if (eventName == null) {
+                    return true;
+                }
+                if (eventData == null) {
+                    return true;
+                }
+                String trimmed = eventData.trim();
+                if (trimmed.isEmpty() || "[DONE]".equals(trimmed)) {
+                    return true;
+                }
+                // Anthropic SSE payloads are JSON objects; anything else (arrays, scalars)
+                // cannot be deserialized into AnthropicStreamingData.
+                return !trimmed.startsWith("{");
             }
 
             private void handleMessageStart(AnthropicStreamingData data) {

@@ -30,6 +30,7 @@ public class AnthropicCreateMessageRequest {
     public AnthropicOutputConfig outputConfig;
     public AnthropicThinking thinking;
     public AnthropicMetadata metadata;
+    public AnthropicContainer container;
 
     @JsonIgnore
     public Map<String, Object> customParameters;
@@ -51,6 +52,7 @@ public class AnthropicCreateMessageRequest {
         this.outputConfig = builder.outputConfig;
         this.thinking = builder.thinking;
         this.metadata = builder.metadata;
+        this.container = builder.container;
         this.customParameters = builder.customParameters;
     }
 
@@ -196,6 +198,14 @@ public class AnthropicCreateMessageRequest {
         this.metadata = metadata;
     }
 
+    public AnthropicContainer getContainer() {
+        return container;
+    }
+
+    public void setContainer(AnthropicContainer container) {
+        this.container = container;
+    }
+
     @JsonAnyGetter
     public Map<String, Object> getCustomParameters() {
         return customParameters;
@@ -225,6 +235,7 @@ public class AnthropicCreateMessageRequest {
                         .outputConfig(this.outputConfig)
                         .thinking(this.thinking)
                         .metadata(this.metadata)
+                        .container(this.container)
                         .customParameters(this.customParameters);
     }
 
@@ -244,6 +255,7 @@ public class AnthropicCreateMessageRequest {
         private AnthropicOutputConfig outputConfig;
         private AnthropicThinking thinking;
         private AnthropicMetadata metadata;
+        private AnthropicContainer container;
         private Map<String, Object> customParameters;
 
         public Builder model(String model) {
@@ -313,6 +325,11 @@ public class AnthropicCreateMessageRequest {
 
         public Builder metadata(AnthropicMetadata metadata) {
             this.metadata = metadata;
+            return this;
+        }
+
+        public Builder container(AnthropicContainer container) {
+            this.container = container;
             return this;
         }
 

@@ -14,6 +14,10 @@ public interface A2AService {
         return Provider.a2aService;
     }
 
+    static void setA2AService(A2AService a2aService) {
+        Provider.a2aService = a2aService;
+    }
+
     class Provider {
 
         static A2AService a2aService = loadA2AService();

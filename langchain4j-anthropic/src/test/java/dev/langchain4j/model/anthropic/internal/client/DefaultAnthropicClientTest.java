@@ -342,6 +342,58 @@ class DefaultAnthropicClientTest {
         }
 
         @Test
+        void shouldForwardOnlyRawEventsNotExposedViaTypedCallbacks() throws Exception {
+            // Given
+            ServerSentEvent messageStart = createMessageStartEvent();
+            ServerSentEvent contentBlockStart = createContentBlockStartEvent(); // text -> onPartialResponse
+            ServerSentEvent contentBlockDelta = createContentBlockDeltaEvent(); // text -> onPartialResponse
+            ServerSentEvent contentBlockStop = createContentBlockStopEvent(); // text stop -> no typed callback
+            ServerSentEvent messageDelta = createMessageDeltaEvent(); // stop reason/usage -> no typed callback
+            ServerSentEvent messageStop = createMessageStopEvent(); // -> onCompleteResponse
+            List<ServerSentEvent> events = List.of(
+                    messageStart, contentBlockStart, contentBlockDelta, contentBlockStop, messageDelta, messageStop);
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(events);
+
+            DefaultAnthropicClient subject = createClient(mockHttpClient);
+
+            AnthropicCreateMessageRequest request = createMessageRequest();
+
+            CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+            StringBuilder partialResponses = new StringBuilder();
+            List<Object> rawEvents = new ArrayList<>();
+
+            // When
+            subject.createMessage(request, new StreamingChatResponseHandler() {
+                @Override
+                public void onPartialResponse(String partialResponse) {
+                    partialResponses.append(partialResponse);
+                }
+
+                @Override
+                public void onUnmappedRawEvent(Object rawEvent) {
+                    rawEvents.add(rawEvent);
+                }
+
+                @Override
+                public void onCompleteResponse(ChatResponse completeResponse) {
+                    futureResponse.complete(completeResponse);
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    futureResponse.completeExceptionally(error);
+                }
+            });
+
+            futureResponse.get(5, TimeUnit.SECONDS);
+
+            // Then: text frames were delivered via onPartialResponse and are NOT repeated as raw events;
+            // only the frames with no typed callback are surfaced via onUnmappedRawEvent.
+            assertThat(partialResponses.toString()).isEqualTo("Hello world");
+            assertThat(rawEvents).containsExactly(messageStart, contentBlockStop, messageDelta);
+        }
+
+        @Test
         void shouldSendCorrectStreamingHttpRequest() throws Exception {
             // Given
             List<ServerSentEvent> events = List.of(createMessageStartEvent(), createMessageStopEvent());
@@ -411,6 +463,55 @@ class DefaultAnthropicClientTest {
             assertThat(error).isInstanceOf(AnthropicStreamingException.class);
             assertThat(error.getMessage()).isEqualTo("Rate limit exceeded");
             assertThat(((AnthropicStreamingException) error).type()).isEqualTo("rate_limit_error");
+        }
+
+        @Test
+        void shouldIgnoreDoneSentinelAndUnknownEventFrames() throws Exception {
+            // Given: a normal stream followed by a trailing "data: [DONE]" sentinel
+            // (emitted by OpenAI-compatible proxies in front of Claude) and a frame
+            // with no event name. Both must be skipped without throwing.
+            List<ServerSentEvent> events = List.of(
+                    createMessageStartEvent(),
+                    createContentBlockStartEvent(),
+                    createContentBlockDeltaEvent(),
+                    createContentBlockStopEvent(),
+                    createMessageDeltaEvent(),
+                    createMessageStopEvent(),
+                    new ServerSentEvent(null, "[DONE]"),
+                    new ServerSentEvent("ping", "{}"));
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(events);
+
+            DefaultAnthropicClient subject = createClient(mockHttpClient);
+
+            AnthropicCreateMessageRequest request = createMessageRequest();
+
+            CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+            StringBuilder partialResponses = new StringBuilder();
+
+            // When
+            subject.createMessage(request, new StreamingChatResponseHandler() {
+                @Override
+                public void onPartialResponse(String partialResponse) {
+                    partialResponses.append(partialResponse);
+                }
+
+                @Override
+                public void onCompleteResponse(ChatResponse completeResponse) {
+                    futureResponse.complete(completeResponse);
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    futureResponse.completeExceptionally(error);
+                }
+            });
+
+            ChatResponse response = futureResponse.get(5, TimeUnit.SECONDS);
+
+            // Then: the stream completes normally and the [DONE] / unknown frames do not
+            // corrupt the aggregated text or trigger an error.
+            assertThat(response).isNotNull();
+            assertThat(partialResponses.toString()).contains("Hello", " world");
         }
 
         @Test

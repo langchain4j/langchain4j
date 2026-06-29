@@ -14,7 +14,6 @@ import com.azure.core.credential.BasicAuthenticationCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.search.documents.indexes.models.SearchIndex;
 import com.azure.search.documents.models.SearchResult;
-import com.azure.search.documents.models.SemanticSearchResult;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -203,10 +202,8 @@ class AzureAiSearchContentRetrieverTest {
     @Test
     void fromAzureScoreToRelevanceScoreHYBRIDWITHRERANKING() {
         SearchResult mockResult = mock(SearchResult.class);
-        SemanticSearchResult mockSemanticSearchResult = mock(SemanticSearchResult.class);
 
-        when(mockResult.getSemanticSearch()).thenReturn(mockSemanticSearchResult);
-        when(mockSemanticSearchResult.getRerankerScore()).thenReturn(1.5);
+        when(mockResult.getRerankerScore()).thenReturn(1.5);
 
         double result = AzureAiSearchContentRetriever.fromAzureScoreToRelevanceScore(
                 mockResult, AzureAiSearchQueryType.HYBRID_WITH_RERANKING);

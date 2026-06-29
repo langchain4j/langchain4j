@@ -33,6 +33,8 @@ public interface StreamingChatResponseHandler {
 
     default void onCompleteToolCall(CompleteToolCall completeToolCall) {}
 
+    default void onUnmappedRawEvent(Object rawEvent) {}
+
     void onCompleteResponse(ChatResponse completeResponse);
 
     void onError(Throwable error);
@@ -50,6 +52,8 @@ Depending on the LLM provider, partial thinking text can consist of a single or 
 - When the next [partial tool call](/tutorials/tools#using-streamingchatmodel) is generated: either `onPartialToolCall(PartialToolCall)`
 or `onPartialToolCall(PartialToolCall, PartialToolCallContext)` is invoked (you can implement either of these methods).
 - When the LLM has completed streaming for a single tool call: `onCompleteToolCall(CompleteToolCall)` is invoked.
+- When the provider emits a raw streaming event that is not already exposed through one of the typed callbacks
+above: `onUnmappedRawEvent(Object)` is invoked. See [Unmapped Raw Events](#unmapped-raw-events) below.
 - When the LLM has completed generation: `onCompleteResponse(ChatResponse)` is invoked.
 The `ChatResponse` object contains the complete response (`AiMessage`) as well as `ChatResponseMetadata`.
 - When an error occurs: `onError(Throwable error)` is invoked.
@@ -116,6 +120,65 @@ import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResp
 
 model.chat("Tell me a joke", onPartialResponseAndError(System.out::print, Throwable::printStackTrace));
 ```
+
+## Unmapped Raw Events
+
+:::note
+This is an experimental feature intended for advanced use cases. The API may change in the future.
+:::
+
+Most applications only need the typed callbacks described above. However, some LLM providers emit
+additional streaming events that LangChain4j does not (yet) map to a dedicated callback - for example,
+the lifecycle events of OpenAI server-side tools such as `web_search`
+(`response.web_search_call.in_progress`, `response.web_search_call.searching`,
+`response.web_search_call.completed`).
+
+The `onUnmappedRawEvent(Object rawEvent)` callback gives you access to such events. It is invoked
+**only** for events that are **not** already exposed through one of the typed callbacks
+(`onPartialResponse`, `onPartialThinking`, `onPartialToolCall`, `onCompleteToolCall`, `onCompleteResponse`).
+In other words, partial responses, thinking and tool calls are **not** repeated as unmapped raw events,
+so you can consume both without duplication.
+
+The concrete type of `rawEvent` depends on the provider implementation:
+
+| Provider | Raw event type |
+|----------|----------------|
+| OpenAI, Anthropic, Google AI Gemini, Mistral, Ollama | `dev.langchain4j.http.client.sse.ServerSentEvent` |
+| OpenAI (official) - Responses API | `com.openai.models.responses.ResponseStreamEvent` |
+| OpenAI (official) - Chat Completions API | `com.openai.models.chat.completions.ChatCompletionChunk` |
+| Amazon Bedrock | `software.amazon.awssdk.services.bedrockruntime.model.ConverseStreamOutput` |
+| Google GenAI | `com.google.genai.types.GenerateContentResponse` |
+
+Because the event type is provider-specific, you typically inspect it with `instanceof` and cast:
+```java
+model.chat(userMessage, new StreamingChatResponseHandler() {
+
+    @Override
+    public void onPartialResponse(String partialResponse) {
+        System.out.println("onPartialResponse: " + partialResponse);
+    }
+
+    @Override
+    public void onUnmappedRawEvent(Object rawEvent) {
+        if (rawEvent instanceof ServerSentEvent sse) {
+            System.out.println("Raw SSE event: " + sse.event() + " -> " + sse.data());
+        }
+    }
+
+    @Override
+    public void onCompleteResponse(ChatResponse completeResponse) {
+        System.out.println("onCompleteResponse: " + completeResponse);
+    }
+
+    @Override
+    public void onError(Throwable error) {
+        error.printStackTrace();
+    }
+});
+```
+
+When using [AI Services](/tutorials/ai-services#streaming), the same events are available via the
+`TokenStream.onUnmappedRawEvent(Consumer<Object>)` callback.
 
 ## Streaming Cancellation
 

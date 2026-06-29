@@ -6,7 +6,7 @@ import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastruc
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl;
 import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_1;
 import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_2;
-import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_2_VISION;
+import static dev.langchain4j.model.ollama.OllamaImage.GEMMA_4;
 import static dev.langchain4j.model.ollama.OllamaImage.OLLAMA_IMAGE;
 import static dev.langchain4j.model.ollama.OllamaImage.localOllamaImage;
 import static dev.langchain4j.model.ollama.OllamaImage.resolve;
@@ -49,7 +49,7 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     private static final String MODEL_WITH_TOOLS = LLAMA_3_1;
     private static LC4jOllamaContainer ollamaWithTools;
 
-    private static final String MODEL_WITH_VISION = LLAMA_3_2_VISION;
+    private static final String MODEL_WITH_VISION = GEMMA_4;
     private static LC4jOllamaContainer ollamaWithVision;
 
     private static final String CUSTOM_MODEL_NAME = LLAMA_3_2;

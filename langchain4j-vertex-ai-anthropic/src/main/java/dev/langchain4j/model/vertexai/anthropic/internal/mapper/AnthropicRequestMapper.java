@@ -21,6 +21,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.vertexai.anthropic.internal.Constants;
 import dev.langchain4j.model.vertexai.anthropic.internal.api.*;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -199,10 +200,15 @@ public class AnthropicRequestMapper {
 
         List<String> required = parameters != null ? parameters.required() : emptyList();
 
-        Map<String, Object> inputSchema = Map.of(
-                "type", "object",
-                "properties", properties,
-                "required", required);
+        Map<String, Object> inputSchema = new LinkedHashMap<>();
+        inputSchema.put("type", "object");
+        inputSchema.put("properties", properties);
+        inputSchema.put("required", required);
+        if (parameters != null
+                && parameters.definitions() != null
+                && !parameters.definitions().isEmpty()) {
+            inputSchema.put("$defs", toMap(parameters.definitions()));
+        }
 
         String description;
         if (isNotNullOrBlank(toolSpecification.description())) {

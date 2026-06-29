@@ -1,8 +1,11 @@
 package dev.langchain4j.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
@@ -10,6 +13,7 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.PartialResponseContext;
@@ -17,6 +21,7 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
@@ -28,6 +33,7 @@ import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -54,6 +60,7 @@ class AiServiceTokenStreamTest {
     static Consumer<Throwable> DUMMY_ERROR_HANDLER = (error) -> {};
     static Consumer<ChatResponse> DUMMY_CHAT_RESPONSE_HANDLER = (chatResponse) -> {};
     static Consumer<BeforeToolExecution> DUMMY_BEFORE_TOOL_EXECUTION_HANDLER = (beforeToolExecution) -> {};
+    static Consumer<Object> DUMMY_RAW_EVENT_HANDLER = (rawEvent) -> {};
 
     List<ChatMessage> messages = new ArrayList<>();
 
@@ -138,6 +145,46 @@ class AiServiceTokenStreamTest {
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("beforeToolExecution can be invoked on TokenStream at most 1 time");
+    }
+
+    @Test
+    void start_onUnmappedRawEventInvoked_shouldNotThrowException() {
+        tokenStream.onUnmappedRawEvent(DUMMY_RAW_EVENT_HANDLER).ignoreErrors();
+
+        assertThatNoException().isThrownBy(() -> tokenStream.start());
+    }
+
+    @Test
+    void start_onUnmappedRawEventInvokedMultipleTimes_shouldThrowException() {
+        tokenStream
+                .onUnmappedRawEvent(DUMMY_RAW_EVENT_HANDLER)
+                .onUnmappedRawEvent(DUMMY_RAW_EVENT_HANDLER)
+                .ignoreErrors();
+
+        assertThatThrownBy(() -> tokenStream.start())
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("onUnmappedRawEvent can be invoked on TokenStream at most 1 time");
+    }
+
+    @Test
+    void start_shouldForwardRawEventCallbacks() {
+        StreamingChatModel streamingModel = mock(StreamingChatModel.class);
+        tokenStream = setupAiServiceTokenStream(streamingModel);
+        List<Object> rawEvents = new ArrayList<>();
+        Object rawEvent = "raw.event";
+
+        tokenStream.onUnmappedRawEvent(rawEvents::add).ignoreErrors();
+
+        tokenStream.start();
+
+        ArgumentCaptor<StreamingChatResponseHandler> handlerCaptor =
+                ArgumentCaptor.forClass(StreamingChatResponseHandler.class);
+        verify(streamingModel).chat(any(ChatRequest.class), handlerCaptor.capture());
+        StreamingChatResponseHandler handler = handlerCaptor.getValue();
+
+        handler.onUnmappedRawEvent(rawEvent);
+
+        assertThat(rawEvents).containsExactly(rawEvent);
     }
 
     @Test
@@ -251,7 +298,10 @@ class AiServiceTokenStreamTest {
     }
 
     private AiServiceTokenStream setupAiServiceTokenStream() {
-        StreamingChatModel streamingModel = mock(StreamingChatModel.class);
+        return setupAiServiceTokenStream(mock(StreamingChatModel.class));
+    }
+
+    private AiServiceTokenStream setupAiServiceTokenStream(StreamingChatModel streamingModel) {
         ChatModel chatModel = mock(ChatModel.class);
 
         AiServiceContext context = AiServiceContext.create(getClass());

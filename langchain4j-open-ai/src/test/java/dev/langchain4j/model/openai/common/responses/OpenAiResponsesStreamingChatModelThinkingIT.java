@@ -22,6 +22,7 @@ import org.mockito.InOrder;
 
 import java.util.List;
 
+import static dev.langchain4j.MockitoUtils.ignoreInteractions;
 import static java.util.List.of;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -96,6 +97,7 @@ class OpenAiResponsesStreamingChatModelThinkingIT {
         inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any(), any());
         inOrder.verify(spyHandler).onCompleteResponse(any());
         inOrder.verify(spyHandler).getThinking();
+        ignoreInteractions(spyHandler).onUnmappedRawEvent(any());
         inOrder.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler);
     }

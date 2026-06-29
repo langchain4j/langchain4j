@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai.compatible.deepseek;
 
 import static dev.langchain4j.JsonTestUtils.jsonify;
+import static dev.langchain4j.MockitoUtils.ignoreInteractions;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
@@ -74,6 +75,7 @@ class OpenAiStreamingChatModelDeepSeekThinkingIT {
         inOrder1.verify(spyHandler1, atLeastOnce()).onPartialResponse(any(), any());
         inOrder1.verify(spyHandler1).onCompleteResponse(any());
         inOrder1.verify(spyHandler1).getThinking();
+        ignoreInteractions(spyHandler1).onUnmappedRawEvent(any());
         inOrder1.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler1);
 

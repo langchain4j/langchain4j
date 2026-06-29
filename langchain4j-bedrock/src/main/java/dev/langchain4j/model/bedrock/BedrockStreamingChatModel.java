@@ -4,12 +4,14 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
 import static java.util.Objects.isNull;
 
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
@@ -82,8 +84,13 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
         AtomicReference<ContentBlockDelta.Type> currentContentType = new AtomicReference<>();
         AtomicReference<StreamingHandle> streamingHandle = new AtomicReference<>();
 
+        StreamingChatResponseHandler targetHandler = handler;
+
         ConverseStreamResponseHandler converseStreamResponseHandler = ConverseStreamResponseHandler.builder()
                 .onEventStream(publisher -> publisher.subscribe(new Subscriber<ConverseStreamOutput>() {
+
+                    final MappingTrackingStreamingChatResponseHandler handler =
+                            new MappingTrackingStreamingChatResponseHandler(targetHandler);
 
                     volatile Subscription subscription;
 
@@ -96,6 +103,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
 
                     @Override
                     public void onNext(ConverseStreamOutput output) {
+                        handler.resetMappingTracking();
                         if (output instanceof MessageStartEvent event) {
                             if (logResponses) {
                                 log.debug("onMessageStart: {}", event);
@@ -154,6 +162,10 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                             ChatResponse response =
                                     responseFrom(responseBuilder.build(), converseStreamRequest.modelId());
                             onCompleteResponse(handler, response);
+                        }
+
+                        if (!handler.wasMapped()) {
+                            onUnmappedRawEvent(handler, output);
                         }
 
                         subscription.request(1);

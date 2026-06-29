@@ -20,6 +20,7 @@ import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbed
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingResponse.GeminiEmbeddingResponseValues;
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandidate;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -354,6 +355,60 @@ class GeminiServiceTest {
         }
 
         @Test
+        void shouldForwardOnlyRawEventsNotExposedViaTypedCallbacks() throws Exception {
+            // Given: a text event (delivered to the user via onPartialResponse) and a metadata-only
+            // event that carries no text/thinking/tool content (not exposed via any typed callback).
+            ServerSentEvent textEvent = new ServerSentEvent("event1", Json.toJson(createGenerateContentResponse("Hi")));
+            ServerSentEvent metadataEvent = new ServerSentEvent("event2", Json.toJson(createMetadataOnlyResponse()));
+            List<ServerSentEvent> events = List.of(textEvent, metadataEvent);
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(events);
+
+            GeminiService subject = createService(mockHttpClient);
+
+            GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
+                    .contents(List.of(new GeminiContent(
+                            List.of(GeminiContent.GeminiPart.builder()
+                                    .text("Hi")
+                                    .build()),
+                            "user")))
+                    .build();
+
+            CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+            StringBuilder partialResponses = new StringBuilder();
+            List<Object> rawEvents = new ArrayList<>();
+
+            // When
+            subject.generateContentStream(TEST_MODEL_NAME, request, false, null, new StreamingChatResponseHandler() {
+                @Override
+                public void onPartialResponse(String partialResponse) {
+                    partialResponses.append(partialResponse);
+                }
+
+                @Override
+                public void onUnmappedRawEvent(Object rawEvent) {
+                    rawEvents.add(rawEvent);
+                }
+
+                @Override
+                public void onCompleteResponse(ChatResponse completeResponse) {
+                    futureResponse.complete(completeResponse);
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    futureResponse.completeExceptionally(error);
+                }
+            });
+
+            futureResponse.get(5, TimeUnit.SECONDS);
+
+            // Then: the text event was exposed via onPartialResponse and must NOT be repeated as a raw event;
+            // only the metadata-only event is surfaced via onUnmappedRawEvent.
+            assertThat(partialResponses.toString()).isEqualTo("Hi");
+            assertThat(rawEvents).containsExactly(metadataEvent);
+        }
+
+        @Test
         void shouldSendCorrectStreamingHttpRequest() throws Exception {
             // Given
             List<ServerSentEvent> events =
@@ -621,6 +676,11 @@ class GeminiServiceTest {
                 null,
                 null);
         return new GeminiGenerateContentResponse("responseId", "modelName", List.of(candidate), null, null);
+    }
+
+    private static GeminiGenerateContentResponse createMetadataOnlyResponse() {
+        // No candidates -> no text/thinking/tool content -> not exposed via any typed callback.
+        return new GeminiGenerateContentResponse("responseId", "modelName", List.of(), null, null);
     }
 
     private static GeminiEmbeddingRequest createEmbeddingRequest(GeminiContent content) {

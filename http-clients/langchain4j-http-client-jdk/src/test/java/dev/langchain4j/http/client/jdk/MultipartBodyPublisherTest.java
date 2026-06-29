@@ -125,6 +125,19 @@ class MultipartBodyPublisherTest {
         assertEquals(normalize(expected), body);
     }
 
+    @Test
+    void content_type_should_carry_the_boundary_used_in_the_body() {
+        MultipartBodyPublisher publisher = new MultipartBodyPublisher();
+        publisher.addField("field1", "value1");
+        publisher.build();
+
+        // The Content-Type header must advertise the same boundary the body is delimited with, otherwise the
+        // server cannot parse the payload.
+        assertEquals("multipart/form-data; boundary=----LangChain4j", MultipartBodyPublisher.contentType());
+        org.junit.jupiter.api.Assertions.assertTrue(
+                bodyAsString(publisher.parts()).contains("------LangChain4j"));
+    }
+
     private static String bodyAsString(List<byte[]> parts) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         for (byte[] part : parts) {

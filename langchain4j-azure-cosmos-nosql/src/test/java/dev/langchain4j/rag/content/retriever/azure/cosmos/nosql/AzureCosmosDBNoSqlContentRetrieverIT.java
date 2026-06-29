@@ -20,18 +20,23 @@ import com.azure.cosmos.models.IndexingPolicy;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.azure.AzureOpenAiEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.azure.cosmos.nosql.AzureCosmosDBSearchQueryType;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_HOST", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_MASTER_KEY", matches = ".+")
+@Execution(ExecutionMode.SAME_THREAD)
 class AzureCosmosDBNoSqlContentRetrieverIT {
 
     private static final String DATABASE_NAME = "test_database_langchain_java";
@@ -40,6 +45,7 @@ class AzureCosmosDBNoSqlContentRetrieverIT {
     private static final String TEXT_RANK_CONTAINER = "test_container_text_rank";
     private static final String HYBRID_CONTAINER = "test_container_hybrid";
 
+    private final String containerSuffix = "_" + UUID.randomUUID().toString().replace("-", "");
     private final EmbeddingModel embeddingModel;
     private final AzureCosmosDBNoSqlContentRetriever contentRetrieverWithVector;
     private final AzureCosmosDBNoSqlContentRetriever contentRetrieverWithFullTextSearch;
@@ -47,12 +53,7 @@ class AzureCosmosDBNoSqlContentRetrieverIT {
     private final AzureCosmosDBNoSqlContentRetriever contentRetrieverWithHybrid;
 
     public AzureCosmosDBNoSqlContentRetrieverIT() {
-        embeddingModel = AzureOpenAiEmbeddingModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .deploymentName("text-embedding-3-large")
-                .logRequestsAndResponses(false)
-                .build();
+        embeddingModel = new TestEmbeddingModel();
 
         contentRetrieverWithVector = createContentRetriever(
                 AzureCosmosDBSearchQueryType.VECTOR, VECTOR_CONTAINER, embeddingModel.dimension());
@@ -70,7 +71,7 @@ class AzureCosmosDBNoSqlContentRetrieverIT {
                 .apiKey(System.getenv("AZURE_COSMOS_MASTER_KEY"))
                 .embeddingModel(embeddingModel)
                 .databaseName(DATABASE_NAME)
-                .containerName(containerName)
+                .containerName(containerName + containerSuffix)
                 .partitionKeyPath("/id")
                 .indexingPolicy(getIndexingPolicy(queryType))
                 .searchQueryType(queryType)
@@ -95,7 +96,7 @@ class AzureCosmosDBNoSqlContentRetrieverIT {
                 .apiKey(System.getenv("AZURE_COSMOS_MASTER_KEY"))
                 // no embedding model for full-text
                 .databaseName(DATABASE_NAME)
-                .containerName(TEXT_SEARCH_CONTAINER)
+                .containerName(TEXT_SEARCH_CONTAINER + containerSuffix)
                 .partitionKeyPath("/id")
                 .indexingPolicy(getIndexingPolicy(AzureCosmosDBSearchQueryType.FULL_TEXT_SEARCH))
                 .cosmosFullTextPolicy(getFullTextPolicy())
@@ -277,5 +278,55 @@ class AzureCosmosDBNoSqlContentRetrieverIT {
         cosmosFullTextPolicy.setPaths(singletonList(cosmosFullTextPath));
         cosmosFullTextPolicy.setDefaultLanguage("en-US");
         return cosmosFullTextPolicy;
+    }
+
+    private static class TestEmbeddingModel implements EmbeddingModel {
+
+        private static final int DIMENSION = 384;
+
+        @Override
+        public Response<Embedding> embed(String text) {
+            List<Float> vector = new ArrayList<>(DIMENSION);
+            for (int i = 0; i < DIMENSION; i++) {
+                vector.add(0.0f);
+            }
+
+            String lowerCaseText = text.toLowerCase();
+            if (containsAny(lowerCaseText, "banana", "apple", "strawberry", "fruit", "bicycle", "racing")) {
+                vector.set(0, 1.0f);
+            } else if (containsAny(lowerCaseText, "computer", "electronics", "skateboard")) {
+                vector.set(1, 1.0f);
+            } else {
+                vector.set(2, 1.0f);
+            }
+
+            return Response.from(Embedding.from(vector));
+        }
+
+        @Override
+        public Response<Embedding> embed(TextSegment textSegment) {
+            return embed(textSegment.text());
+        }
+
+        @Override
+        public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
+            return Response.from(textSegments.stream()
+                    .map(textSegment -> embed(textSegment).content())
+                    .toList());
+        }
+
+        @Override
+        public int dimension() {
+            return DIMENSION;
+        }
+
+        private static boolean containsAny(String text, String... needles) {
+            for (String needle : needles) {
+                if (text.contains(needle)) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 }
