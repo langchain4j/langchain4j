@@ -5,7 +5,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -53,7 +52,7 @@ public class SuccessfulHttpResponse {
     // In 2.0 (when breaking changes are allowed) consider flipping this asymmetry to
     // byte[] body() + String bodyText(), and renaming this accessor accordingly.
     public byte[] bodyBytes() {
-        return body == null ? null : Arrays.copyOf(body, body.length); // TODO copy required?
+        return body;
     }
 
     /**
@@ -108,7 +107,7 @@ public class SuccessfulHttpResponse {
         }
 
         public Builder body(String body) {
-            this.body = body == null ? null : body.getBytes(StandardCharsets.UTF_8); // TODO
+            this.body = body == null ? null : body.getBytes(StandardCharsets.UTF_8);
             return this;
         }
 
