@@ -19,7 +19,6 @@ import okhttp3.Response;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.SocketTimeoutException;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -107,7 +106,7 @@ public class OkHttpClient implements HttpClient {
         return response.body().byteStream();
     }
 
-    private SuccessfulHttpResponse fromOkHttpResponse(Response response) {
+    private SuccessfulHttpResponse fromOkHttpResponse(Response response) throws IOException {
         Map<String, List<String>> headers = new HashMap<>();
         for (String name : response.headers().names()) {
             headers.put(name, response.headers().values(name));
@@ -118,7 +117,7 @@ public class OkHttpClient implements HttpClient {
         if (contentType != null && contentType.contains("text/event-stream")) {
             body = null;
         } else {
-            body = readBodyBytes(response);
+            body = response.body().bytes();
         }
 
         return SuccessfulHttpResponse.builder()
@@ -126,14 +125,6 @@ public class OkHttpClient implements HttpClient {
                 .headers(headers)
                 .body(body)
                 .build();
-    }
-
-    private byte[] readBodyBytes(Response response) {
-        try {
-            return response.body().bytes();
-        } catch (Exception e) {
-            return ("Cannot read response body: " + e.getMessage()).getBytes(StandardCharsets.UTF_8); // TODO
-        }
     }
 
     private String readBody(Response response) {

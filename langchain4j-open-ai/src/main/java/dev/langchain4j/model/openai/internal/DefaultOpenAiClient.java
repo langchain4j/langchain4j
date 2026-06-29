@@ -13,6 +13,7 @@ import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.model.openai.internal.audio.speech.OpenAiAudioSpeechRequest;
+import dev.langchain4j.model.openai.internal.audio.speech.OpenAiAudioSpeechResponse;
 import dev.langchain4j.model.openai.internal.audio.transcription.AudioFile;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionRequest;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionResponse;
@@ -279,7 +280,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
     }
 
     @Override
-    public SyncOrAsync<byte[]> audioSpeech(OpenAiAudioSpeechRequest request) {
+    public SyncOrAsync<OpenAiAudioSpeechResponse> audioSpeech(OpenAiAudioSpeechRequest request) {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "audio/speech")
@@ -289,7 +290,10 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .body(Json.toJson(request))
                 .build();
 
-        return new RequestExecutor<>(httpClient, httpRequest, byte[].class);
+        return new RequestExecutor<>(
+                httpClient,
+                httpRequest,
+                response -> OpenAiAudioSpeechResponse.from(response.bodyBytes(), response.contentType()));
     }
 
     @Override

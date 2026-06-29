@@ -18,6 +18,7 @@ import dev.langchain4j.model.audio.AudioSpeechRequest;
 import dev.langchain4j.model.audio.AudioSpeechResponse;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.audio.speech.OpenAiAudioSpeechRequest;
+import dev.langchain4j.model.openai.internal.audio.speech.OpenAiAudioSpeechResponse;
 import dev.langchain4j.model.openai.spi.OpenAiAudioSpeechModelBuilderFactory;
 import java.time.Duration;
 import org.slf4j.Logger;
@@ -74,11 +75,13 @@ public class OpenAiAudioSpeechModel implements AudioSpeechModel {
 
         OpenAiAudioSpeechRequest openAiRequest = requestBuilder(audioRequest).build();
 
-        byte[] audioBytes =
-                withRetryMappingExceptions(() -> client.audioSpeech(openAiRequest).executeBytes(), maxRetries);
+        OpenAiAudioSpeechResponse openAiResponse =
+                withRetryMappingExceptions(() -> client.audioSpeech(openAiRequest).execute(), maxRetries);
 
-        Audio audio =
-                Audio.builder().binaryData(audioBytes).mimeType("audio/mpeg").build();
+        Audio audio = Audio.builder()
+                .binaryData(openAiResponse.audio())
+                .mimeType(getOrDefault(openAiResponse.contentType(), "audio/mpeg"))
+                .build();
         return AudioSpeechResponse.from(audio);
     }
 

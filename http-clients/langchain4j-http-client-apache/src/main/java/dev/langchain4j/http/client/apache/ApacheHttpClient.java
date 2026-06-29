@@ -17,7 +17,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.SocketTimeoutException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -138,7 +137,7 @@ public class ApacheHttpClient implements HttpClient {
         return new ByteArrayInputStream(Objects.requireNonNullElseGet(bodyBytes, () -> new byte[0]));
     }
 
-    private SuccessfulHttpResponse fromApacheResponse(ClassicHttpResponse httpResponse) {
+    private SuccessfulHttpResponse fromApacheResponse(ClassicHttpResponse httpResponse) throws IOException {
         Map<String, List<String>> headers = new HashMap<>();
         org.apache.hc.core5.http.Header[] allHeaders = httpResponse.getHeaders();
         for (org.apache.hc.core5.http.Header header : allHeaders) {
@@ -151,16 +150,12 @@ public class ApacheHttpClient implements HttpClient {
                 .build();
     }
 
-    private byte[] readBodyBytes(HttpEntityContainer httpEntityContainer) {
-        try {
-            HttpEntity entity = httpEntityContainer.getEntity();
-            if (entity == null) {
-                return new byte[0];
-            }
-            return EntityUtils.toByteArray(entity);
-        } catch (Exception e) {
-            return ("Cannot read response body: " + e.getMessage()).getBytes(StandardCharsets.UTF_8); // TODO
+    private byte[] readBodyBytes(HttpEntityContainer httpEntityContainer) throws IOException {
+        HttpEntity entity = httpEntityContainer.getEntity();
+        if (entity == null) {
+            return new byte[0];
         }
+        return EntityUtils.toByteArray(entity);
     }
 
     private String readBody(HttpEntityContainer httpEntityContainer) {

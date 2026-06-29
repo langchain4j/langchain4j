@@ -7,10 +7,6 @@ public interface SyncOrAsync<ResponseContent> {
 
     ResponseContent execute();
 
-    default byte[] executeBytes() {
-        throw new UnsupportedOperationException();
-    }
-
     default ParsedAndRawResponse<ResponseContent> executeRaw() {
         ResponseContent parsedResponse = execute();
         SuccessfulHttpResponse rawHttpResponse = null;
