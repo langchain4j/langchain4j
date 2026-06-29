@@ -132,6 +132,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 .thinkingBudgetTokens(
                         getOrDefault(builder.thinkingBudgetTokens, anthropicDefaults.thinkingBudgetTokens()))
                 .sendThinking(getOrDefault(builder.sendThinking, anthropicDefaults.sendThinking()))
+                .midConversationSystemMessages(
+                        getOrDefault(builder.midConversationSystemMessages, anthropicDefaults.midConversationSystemMessages()))
                 .returnThinking(getOrDefault(builder.returnThinking, anthropicDefaults.returnThinking()))
                 .toolChoiceName(getOrDefault(builder.toolChoiceName, anthropicDefaults.toolChoiceName()))
                 .disableParallelToolUse(
@@ -166,6 +168,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private String thinkingDisplay;
         private Boolean returnThinking;
         private Boolean sendThinking;
+        private Boolean midConversationSystemMessages;
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
@@ -468,6 +471,31 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         }
 
         /**
+         * Controls whether a {@link SystemMessage} that appears after the conversation has started (a
+         * <em>mid-conversation</em> system message) is sent inline as a {@code system} entry in the
+         * {@code messages} array, instead of being merged into the top-level {@code system} prompt.
+         * <p>
+         * Disabled by default, in which case every {@link SystemMessage} is sent via the top-level
+         * {@code system} prompt regardless of position (the existing behavior). When enabled, leading
+         * {@link SystemMessage}s still populate the top-level {@code system} prompt, while later ones are
+         * sent inline so they take effect from that point in the conversation onward.
+         * <p>
+         * Supported only by Claude Opus 4.8. Anthropic also constrains placement: a mid-conversation system
+         * message must immediately follow a {@code user} turn (including a {@code user} turn carrying tool
+         * results) and must not sit between a {@code tool_use} block and its {@code tool_result}; an
+         * unsupported model or an invalid placement returns a 400. This library does not reorder messages;
+         * it sends them at the position the caller provided.
+         *
+         * @param midConversationSystemMessages whether to send mid-conversation system messages inline
+         * @return {@code this}
+         * @see <a href="https://platform.claude.com/docs/en/build-with-claude/mid-conversation-system-messages">Anthropic: mid-conversation system messages</a>
+         */
+        public AnthropicStreamingChatModelBuilder midConversationSystemMessages(Boolean midConversationSystemMessages) {
+            this.midConversationSystemMessages = midConversationSystemMessages;
+            return this;
+        }
+
+        /**
          * Sets the HTTP request timeout for calls to the Anthropic streaming API.
          *
          * @param timeout the request timeout
@@ -766,6 +794,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 chatRequest,
                 toThinking(parameters.thinkingType(), parameters.thinkingBudgetTokens(), this.thinkingDisplay),
                 getOrDefault(parameters.sendThinking(), true),
+                getOrDefault(parameters.midConversationSystemMessages(), false),
                 getOrDefault(parameters.cacheSystemMessages(), false) ? EPHEMERAL : NO_CACHE,
                 getOrDefault(parameters.cacheTools(), false) ? EPHEMERAL : NO_CACHE,
                 true,

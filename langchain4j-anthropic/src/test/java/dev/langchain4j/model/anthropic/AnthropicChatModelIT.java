@@ -4,6 +4,7 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.randomString;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_OPUS_4_8;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_5_20250929;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
@@ -857,5 +858,40 @@ class AnthropicChatModelIT {
         assertThat(result.type()).isEqualTo("web_search_tool_result");
         assertThat(result.toolUseId()).isNotBlank();
         assertThat(result.content()).isNotNull();
+    }
+
+    @Test
+    void should_apply_mid_conversation_system_message() {
+
+        // given - mid-conversation system messages are supported by Claude Opus 4.8 only
+        boolean midConversationSystemMessages = true;
+        AnthropicChatModelName modelName = CLAUDE_OPUS_4_8;
+
+        ChatModel model = AnthropicChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(modelName)
+                .midConversationSystemMessages(midConversationSystemMessages)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        // a leading system message (goes to the top-level "system" field) followed by a mid-conversation
+        // system message (sent inline) that adds an instruction partway through the conversation. Anthropic
+        // requires an inline system message to immediately follow a "user" turn, so it is placed right after
+        // the last user message, as the final entry, where the model's next reply must honor it.
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(
+                        SystemMessage.from("You are a helpful assistant."),
+                        UserMessage.from("Hello"),
+                        AiMessage.from("Hi! How can I help you today?"),
+                        UserMessage.from("What is the capital of France?"),
+                        SystemMessage.from("Include the exact word BANANA somewhere in your ryeply."))
+                .build();
+
+        // when - the request is accepted (no 400 for an invalid placement) ...
+        ChatResponse response = model.chat(chatRequest);
+
+        // then - ... and the inline system instruction takes effect on the reply
+        assertThat(response.aiMessage().text()).containsIgnoringCase("banana");
     }
 }

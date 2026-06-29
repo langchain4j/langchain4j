@@ -56,6 +56,7 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .thinkingDisplay(...)
     .returnThinking(...)
     .sendThinking(...)
+    .midConversationSystemMessages(...)
     .timeout(...)
     .maxRetries(...)
     .logRequests(...)
@@ -72,7 +73,8 @@ See the description of some of the parameters above [here](https://docs.anthropi
 ### Per-Request Parameters
 
 The Anthropic-specific options shown above (`cacheSystemMessages`, `cacheTools`, `thinkingType`,
-`thinkingBudgetTokens`, `sendThinking`, `returnThinking`, `toolChoiceName`, `disableParallelToolUse` and `userId`)
+`thinkingBudgetTokens`, `sendThinking`, `returnThinking`, `midConversationSystemMessages`, `toolChoiceName`,
+`disableParallelToolUse` and `userId`)
 can also be set per request via `AnthropicChatRequestParameters`, overriding the values configured on the model
 builder. This lets a single shared model instance vary these options from one call to the next — for example,
 enabling prompt caching for a long-running agent loop while skipping it for a cheap one-shot completion, without
@@ -524,6 +526,52 @@ ChatModel model = AnthropicChatModel.builder()
         .sendThinking(true)
         .build();
 ```
+
+## Mid-Conversation System Messages
+
+By default, every `SystemMessage` is folded into the top-level `system` prompt regardless of where it appears
+in the message list. This matches how Anthropic has always worked and is unchanged.
+
+Claude Opus 4.8 additionally supports
+[mid-conversation system messages](https://platform.claude.com/docs/en/build-with-claude/mid-conversation-system-messages):
+a `SystemMessage` that appears *after* the conversation has started can be sent inline as a `system` entry in the
+`messages` array, so it takes effect from that point in the conversation onward (for example, to change the
+assistant's instructions partway through a session). Enable this with `midConversationSystemMessages(true)`:
+
+```java
+AnthropicChatModel model = AnthropicChatModel.builder()
+    .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+    .modelName("claude-opus-4-8")
+    .midConversationSystemMessages(true)
+    .build();
+
+ChatResponse response = model.chat(ChatRequest.builder()
+    .messages(
+        SystemMessage.from("You are a helpful assistant."), // leading -> top-level "system" prompt
+        UserMessage.from("Hello"),
+        AiMessage.from("Hi! How can I help?"),
+        SystemMessage.from("From now on, answer only in French."), // mid-conversation -> inline
+        UserMessage.from("What is the capital of Spain?"))
+    .build());
+```
+
+When enabled, **leading** `SystemMessage`s (those before the first user/assistant message) still populate the
+top-level `system` prompt; only those appearing after the conversation has started are sent inline. This is not
+just a convention — Anthropic requires it: a `system` message cannot be the first entry in the `messages` array,
+and the base system prompt belongs in the stable, cacheable prefix anyway. With the option disabled (the
+default), behaviour is unchanged and all `SystemMessage`s go to the top-level `system` prompt.
+
+It can also be set per request via `AnthropicChatRequestParameters` (see [Per-Request Parameters](#per-request-parameters)).
+
+:::note
+Anthropic constrains where a mid-conversation system message may be placed: it must immediately follow a `user`
+turn (including a `user` turn carrying tool results), must precede an `assistant` turn or end the array, and must
+not sit between a `tool_use` block and its `tool_result`. Consecutive `system` messages are also not allowed.
+Note that, with the option disabled, langchain4j merges multiple `SystemMessage`s into the top-level `system`
+field; with it enabled, two adjacent mid-conversation `SystemMessage`s would be sent as consecutive inline
+`system` entries and rejected. langchain4j does not reorder or merge inline messages — it sends them at the
+position you provide — so an unsupported model or an invalid placement results in a `400` from the Anthropic API.
+:::
 
 ## PDF Support
 
