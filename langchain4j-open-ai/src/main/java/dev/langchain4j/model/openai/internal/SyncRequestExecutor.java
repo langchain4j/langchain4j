@@ -22,7 +22,7 @@ class SyncRequestExecutor<Response> {
         return new ParsedAndRawResponse<>(parsedResponse, rawHttpResponse);
     }
 
-    byte[] executeAsInputStream() {
+    byte[] executeBytes() { // TODO name
         SuccessfulHttpResponse rawHttpResponse = httpClient.execute(httpRequest);
         return rawHttpResponse.bodyBytes();
     }

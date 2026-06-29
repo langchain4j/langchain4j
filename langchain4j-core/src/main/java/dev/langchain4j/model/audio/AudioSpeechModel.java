@@ -4,7 +4,6 @@ import static dev.langchain4j.model.ModelProvider.OTHER;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.audio.request.AudioSpeechRequest;
 
 /**
  * A model that can generate audio from text.
@@ -13,12 +12,13 @@ import dev.langchain4j.model.audio.request.AudioSpeechRequest;
 public interface AudioSpeechModel {
 
     /**
+     * Convenience method for simple speech generation needs.
      * Given an input text, generates an audio speech.
      *
      * @param inputText The input text.
-     * @return The generated speech response as byte array.
+     * @return The generated speech response.
      */
-    default byte[] generate(String inputText) {
+    default AudioSpeechResponse generate(String inputText) {
         return generate(AudioSpeechRequest.builder().text(inputText).build());
     }
 
@@ -28,7 +28,7 @@ public interface AudioSpeechModel {
      * @param request The speech request containing the input text and optional parameters.
      * @return The generated speech response.
      */
-    byte[] generate(AudioSpeechRequest request);
+    AudioSpeechResponse generate(AudioSpeechRequest request);
 
     default ModelProvider provider() {
         return OTHER;

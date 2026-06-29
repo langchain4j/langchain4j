@@ -41,9 +41,9 @@ class RequestExecutor<Response> implements SyncOrAsyncOrStreaming<Response> {
     }
 
     @Override
-    public byte[] executeInputStream() {
+    public byte[] executeBytes() {
         SyncRequestExecutor<Response> executor = new SyncRequestExecutor<>(httpClient, httpRequest, responseClass);
-        return executor.executeAsInputStream();
+        return executor.executeBytes();
     }
 
     @Override

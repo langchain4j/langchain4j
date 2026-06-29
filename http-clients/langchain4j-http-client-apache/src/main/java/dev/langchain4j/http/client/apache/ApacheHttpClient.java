@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.SocketTimeoutException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -146,8 +147,20 @@ public class ApacheHttpClient implements HttpClient {
         return SuccessfulHttpResponse.builder()
                 .statusCode(httpResponse.getCode())
                 .headers(headers)
-                .body(readBody(httpResponse))
+                .body(readBodyBytes(httpResponse))
                 .build();
+    }
+
+    private byte[] readBodyBytes(HttpEntityContainer httpEntityContainer) {
+        try {
+            HttpEntity entity = httpEntityContainer.getEntity();
+            if (entity == null) {
+                return new byte[0];
+            }
+            return EntityUtils.toByteArray(entity);
+        } catch (Exception e) {
+            return ("Cannot read response body: " + e.getMessage()).getBytes(StandardCharsets.UTF_8);
+        }
     }
 
     private String readBody(HttpEntityContainer httpEntityContainer) {
@@ -254,11 +267,11 @@ public class ApacheHttpClient implements HttpClient {
             }
         }
 
-        String body;
+        byte[] body;
         if (contentType != null && contentType.contains("text/event-stream")) {
             body = null;
         } else {
-            body = apacheResponse.getBodyText();
+            body = apacheResponse.getBodyBytes();
         }
 
         return SuccessfulHttpResponse.builder()

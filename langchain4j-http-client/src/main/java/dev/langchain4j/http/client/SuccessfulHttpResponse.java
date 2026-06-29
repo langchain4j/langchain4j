@@ -29,11 +29,11 @@ public class SuccessfulHttpResponse {
     }
 
     public String body() {
-        return new String(body, StandardCharsets.UTF_8);
+        return body == null ? null : new String(body, StandardCharsets.UTF_8); // TODO charset
     }
 
-    public byte[] bodyBytes() {
-        return Arrays.copyOf(body, body.length);
+    public byte[] bodyBytes() { // TODO name
+        return body == null ? null : Arrays.copyOf(body, body.length); // TODO copy required?
     }
 
     public static Builder builder() {
@@ -64,7 +64,7 @@ public class SuccessfulHttpResponse {
         }
 
         public Builder body(String body) {
-            this.body = body.getBytes();
+            this.body = body == null ? null : body.getBytes(StandardCharsets.UTF_8);
             return this;
         }
 

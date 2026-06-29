@@ -2,6 +2,7 @@ package dev.langchain4j.model.openai;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.ModelProvider.OPEN_AI;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
@@ -9,22 +10,38 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.audio.AudioSpeechModel;
-import dev.langchain4j.model.audio.request.AudioSpeechRequest;
+import dev.langchain4j.model.audio.AudioSpeechRequest;
+import dev.langchain4j.model.audio.AudioSpeechResponse;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.audio.speech.OpenAiAudioSpeechRequest;
 import dev.langchain4j.model.openai.spi.OpenAiAudioSpeechModelBuilderFactory;
 import java.time.Duration;
 import org.slf4j.Logger;
 
+/**
+ * Represents an OpenAI text-to-speech model with a speech generation interface.
+ * The supported models are tts-1, tts-1-hd, gpt-4o-mini-tts, and gpt-4o-mini-tts-2025-12-15. <br/>
+ * You can find a description of the parameters
+ * <a href="https://platform.openai.com/docs/api-reference/audio/createSpeech">here</a>.
+ *
+ * @since 1.18.0
+ */
 @Experimental
 public class OpenAiAudioSpeechModel implements AudioSpeechModel {
+
+    /**
+     * The maximum input length accepted by the OpenAI speech API, in characters.
+     */
+    private static final int MAX_INPUT_TEXT_LENGTH = 4096;
 
     private final OpenAiClient client;
     private final int maxRetries;
     private final String modelName;
+    private final String voice;
 
     public OpenAiAudioSpeechModel(Builder builder) {
         this.client = OpenAiClient.builder()
@@ -41,26 +58,35 @@ public class OpenAiAudioSpeechModel implements AudioSpeechModel {
                 .userAgent(DEFAULT_USER_AGENT)
                 .build();
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
-        this.modelName = builder.modelName;
+        this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        this.voice = getOrDefault(builder.voice, "alloy");
     }
 
     @Override
-    public byte[] generate(AudioSpeechRequest audioRequest) {
+    public AudioSpeechResponse generate(AudioSpeechRequest audioRequest) {
         if (audioRequest == null || audioRequest.text() == null) {
             throw new IllegalArgumentException("Request and input text are required");
+        }
+        if (audioRequest.text().length() > MAX_INPUT_TEXT_LENGTH) {
+            throw new IllegalArgumentException(
+                    "Input text exceeds the maximum length of " + MAX_INPUT_TEXT_LENGTH + " characters");
         }
 
         OpenAiAudioSpeechRequest openAiRequest = requestBuilder(audioRequest).build();
 
-        return withRetryMappingExceptions(
-                () -> client.audioSpeech(openAiRequest).executeInputStream(), maxRetries);
+        byte[] audioBytes =
+                withRetryMappingExceptions(() -> client.audioSpeech(openAiRequest).executeBytes(), maxRetries);
+
+        Audio audio =
+                Audio.builder().binaryData(audioBytes).mimeType("audio/mpeg").build();
+        return AudioSpeechResponse.from(audio);
     }
 
     private OpenAiAudioSpeechRequest.Builder requestBuilder(AudioSpeechRequest request) {
         return OpenAiAudioSpeechRequest.builder()
                 .model(modelName)
                 .inputText(request.text())
-                .voice("alloy");
+                .voice(getOrDefault(request.voice(), voice));
     }
 
     @Override
@@ -83,6 +109,7 @@ public class OpenAiAudioSpeechModel implements AudioSpeechModel {
         private String organizationId;
         private String projectId;
         private String modelName;
+        private String voice;
 
         private Duration timeout;
         private Integer maxRetries;
@@ -126,6 +153,11 @@ public class OpenAiAudioSpeechModel implements AudioSpeechModel {
 
         public Builder modelName(String modelName) {
             this.modelName = modelName;
+            return this;
+        }
+
+        public Builder voice(String voice) {
+            this.voice = voice;
             return this;
         }
 
