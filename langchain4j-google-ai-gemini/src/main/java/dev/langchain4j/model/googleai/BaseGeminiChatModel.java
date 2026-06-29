@@ -79,27 +79,34 @@ class BaseGeminiChatModel {
         this.mediaResolution = builder.mediaResolution;
         this.mediaResolutionPerPartEnabled = getOrDefault(builder.mediaResolutionPerPartEnabled, false);
 
-        ChatRequestParameters parameters;
+        ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
-            parameters = builder.defaultRequestParameters;
+            commonParameters = builder.defaultRequestParameters;
         } else {
-            parameters = DefaultChatRequestParameters.EMPTY;
+            commonParameters = DefaultChatRequestParameters.EMPTY;
         }
 
+        GoogleAiGeminiChatRequestParameters geminiParameters =
+                builder.defaultRequestParameters instanceof GoogleAiGeminiChatRequestParameters googleAiParameters
+                        ? googleAiParameters
+                        : GoogleAiGeminiChatRequestParameters.EMPTY;
+
         this.defaultRequestParameters = GoogleAiGeminiChatRequestParameters.builder()
-                .modelName(getOrDefault(builder.modelName, parameters.modelName()))
-                .temperature(getOrDefault(builder.temperature, parameters.temperature()))
-                .topP(getOrDefault(builder.topP, parameters.topP()))
-                .topK(getOrDefault(builder.topK, parameters.topK()))
-                .frequencyPenalty(getOrDefault(builder.frequencyPenalty, parameters.frequencyPenalty()))
-                .presencePenalty(getOrDefault(builder.presencePenalty, parameters.presencePenalty()))
-                .maxOutputTokens(getOrDefault(builder.maxOutputTokens, parameters.maxOutputTokens()))
-                .stopSequences(getOrDefault(builder.stopSequences, parameters.stopSequences()))
-                .toolSpecifications(parameters.toolSpecifications())
-                .toolChoice(getOrDefault(toToolChoice(functionCallingConfig), parameters.toolChoice()))
-                .responseFormat(getOrDefault(builder.responseFormat, parameters.responseFormat()))
-                .aspectRatio(getOrDefault(builder.aspectRatio, aspectRatio(parameters)))
-                .imageSize(getOrDefault(builder.imageSize, imageSize(parameters)))
+                // common parameters
+                .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
+                .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
+                .topP(getOrDefault(builder.topP, commonParameters.topP()))
+                .topK(getOrDefault(builder.topK, commonParameters.topK()))
+                .frequencyPenalty(getOrDefault(builder.frequencyPenalty, commonParameters.frequencyPenalty()))
+                .presencePenalty(getOrDefault(builder.presencePenalty, commonParameters.presencePenalty()))
+                .maxOutputTokens(getOrDefault(builder.maxOutputTokens, commonParameters.maxOutputTokens()))
+                .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
+                .toolSpecifications(commonParameters.toolSpecifications())
+                .toolChoice(getOrDefault(toToolChoice(functionCallingConfig), commonParameters.toolChoice()))
+                .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                // Gemini-specific parameters
+                .aspectRatio(getOrDefault(builder.aspectRatio, geminiParameters.aspectRatio()))
+                .imageSize(getOrDefault(builder.imageSize, geminiParameters.imageSize()))
                 .build();
     }
 
@@ -372,6 +379,13 @@ class BaseGeminiChatModel {
             return builder();
         }
 
+        /**
+         * Sets default common {@link ChatRequestParameters} or
+         * Gemini-specific {@link GoogleAiGeminiChatRequestParameters}.
+         * <br>
+         * When a parameter is set via an individual builder method (e.g., {@link #modelName(String)}),
+         * its value takes precedence over the same parameter set via {@link ChatRequestParameters}.
+         */
         public B defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
             this.defaultRequestParameters = defaultRequestParameters;
             return builder();
