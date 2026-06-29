@@ -45,7 +45,7 @@ public abstract class OpenAiClient {
     }
 
     public SyncOrAsync<OpenAiTextToSpeechResponse> textToSpeech(OpenAiTextToSpeechRequest request) {
-        throw new UnsupportedOperationException("Audio speech is not supported by this client implementation");
+        throw new UnsupportedOperationException("Text-to-speech is not supported by this client implementation");
     }
 
     public SyncOrAsync<ModelsListResponse> listModels() {

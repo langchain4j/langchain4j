@@ -13,7 +13,7 @@ public interface TextToSpeechModel {
 
     /**
      * Convenience method for simple speech generation needs.
-     * Given an input text, generates an audio speech.
+     * Given an input text, synthesizes speech audio.
      *
      * @param text The input text.
      * @return The generated speech response.
@@ -23,7 +23,7 @@ public interface TextToSpeechModel {
     }
 
     /**
-     * Given an audio speech request, generates an audio speech.
+     * Given a text-to-speech request, synthesizes speech audio.
      *
      * @param request The speech request containing the input text and optional parameters.
      * @return The generated speech response.

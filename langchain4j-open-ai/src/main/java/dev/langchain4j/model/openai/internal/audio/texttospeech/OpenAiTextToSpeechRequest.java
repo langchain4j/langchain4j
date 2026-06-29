@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
 /**
- * Represents the audio speech request.
+ * Represents the text-to-speech request.
  * Find description of parameters
  * <a href="https://developers.openai.com/api/reference/resources/audio/subresources/speech/methods/create">here</a>.
  */

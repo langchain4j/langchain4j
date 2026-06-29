@@ -294,38 +294,38 @@ langchain4j.open-ai.moderation-model.timeout=...
 ```
 
 
-## Creating `OpenAiAudioSpeechModel`
+## Creating `OpenAiTextToSpeechModel`
 
-`OpenAiAudioSpeechModel` performs text-to-speech (TTS) using the
+`OpenAiTextToSpeechModel` performs text-to-speech (TTS) using the
 [OpenAI Speech API](https://platform.openai.com/docs/api-reference/audio/createSpeech).
 It returns the generated audio as raw bytes wrapped in an `Audio` object.
 
 The supported models are `tts-1`, `tts-1-hd`, `gpt-4o-mini-tts`, and `gpt-4o-mini-tts-2025-12-15`
-(see `OpenAiAudioSpeechModelName`). The default voice is `alloy`.
+(see `OpenAiTextToSpeechModelName`). The default voice is `alloy`.
 
 ### Plain Java
 ```java
-import dev.langchain4j.model.audio.AudioSpeechModel;
-import dev.langchain4j.model.audio.AudioSpeechRequest;
-import dev.langchain4j.model.audio.AudioSpeechResponse;
-import dev.langchain4j.model.openai.OpenAiAudioSpeechModel;
-import dev.langchain4j.model.openai.OpenAiAudioSpeechModelName;
+import dev.langchain4j.model.audio.TextToSpeechModel;
+import dev.langchain4j.model.audio.TextToSpeechRequest;
+import dev.langchain4j.model.audio.TextToSpeechResponse;
+import dev.langchain4j.model.openai.OpenAiTextToSpeechModel;
+import dev.langchain4j.model.openai.OpenAiTextToSpeechModelName;
 
-AudioSpeechModel model = OpenAiAudioSpeechModel.builder()
+TextToSpeechModel model = OpenAiTextToSpeechModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
-        .modelName(OpenAiAudioSpeechModelName.TTS_1)
+        .modelName(OpenAiTextToSpeechModelName.TTS_1)
         .voice("alloy") // optional, defaults to "alloy"
         .build();
 
 // Convenience method (uses the model's default voice):
-AudioSpeechResponse response = model.generate("Hello world!");
+TextToSpeechResponse response = model.synthesize("Hello world!");
 
 // Or with an explicit request (the voice here overrides the model default):
-AudioSpeechRequest request = AudioSpeechRequest.builder()
+TextToSpeechRequest request = TextToSpeechRequest.builder()
         .text("Hello world!")
         .voice("nova")
         .build();
-AudioSpeechResponse response2 = model.generate(request);
+TextToSpeechResponse response2 = model.synthesize(request);
 
 byte[] audioBytes = response.audio().binaryData(); // e.g. write to an .mp3 file
 String mimeType = response.audio().mimeType();      // e.g. "audio/mpeg"
