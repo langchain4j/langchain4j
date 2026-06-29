@@ -201,6 +201,38 @@ for (AnthropicServerToolResult result : results) {
 
 This is disabled by default to avoid storing potentially large data in ChatMemory.
 
+## Skills
+
+Anthropic's [Agent Skills](https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview)
+let Claude generate real downloadable documents (`.xlsx`, `.pptx`, `.docx`, `.pdf`) by running pre-built
+skills inside the code execution container. Enable them via the typed `skills` parameter:
+
+```java
+AnthropicChatModel model = AnthropicChatModel.builder()
+        .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+        .modelName("claude-opus-4-8")
+        .maxTokens(4096)
+        .skills(AnthropicSkill.XLSX, AnthropicSkill.PPTX)
+        .returnServerToolResults(true)
+        .build();
+
+ChatResponse response = model.chat("Create an Excel spreadsheet with the numbers 1 to 5 in column A");
+```
+
+Enabling skills automatically:
+
+- adds the `container.skills` block to the request,
+- adds the required `code_execution` server tool (unless one is already configured via `serverTools(...)`),
+- merges the required `anthropic-beta` headers with any value you supplied via `beta(...)`.
+
+Combine with `returnServerToolResults(true)` to surface the generated file ids under the
+`"server_tool_results"` key of `AiMessage.attributes()` (see [Retrieving Server Tool
+Results](#retrieving-server-tool-results) above); the files are downloadable for 24 hours through
+Anthropic's Files API.
+
+Skills are supported on Claude Sonnet 4 / 4.5, Opus 4 and later. At most 8 skills may be enabled per
+request. The same `skills(...)` parameter is available on `AnthropicStreamingChatModel`.
+
 ## Tool Search Tool
 
 Anthropic's [tool search tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool)

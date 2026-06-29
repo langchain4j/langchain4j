@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
 import static dev.langchain4j.model.anthropic.AnthropicChatModel.toThinking;
+import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.addSkillsBeta;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createAnthropicRequest;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.validate;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.EPHEMERAL;
@@ -69,6 +70,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     private final List<AnthropicServerTool> serverTools;
     private final boolean returnServerToolResults;
     private final Set<String> toolMetadataKeysToSend;
+    private final List<AnthropicSkill> skills;
     private final Map<String, Object> customParameters;
     private final Boolean strictTools;
     private final Set<Capability> supportedCapabilities;
@@ -82,7 +84,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 .baseUrl(getOrDefault(builder.baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(builder.apiKey)
                 .version(getOrDefault(builder.version, AnthropicChatModel.ANTHROPIC_VERSION))
-                .beta(builder.beta)
+                .beta(addSkillsBeta(builder.beta, builder.skills))
                 .timeout(builder.timeout)
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
@@ -109,6 +111,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         this.thinkingDisplay = builder.thinkingDisplay;
         this.serverTools = copy(builder.serverTools);
         this.toolMetadataKeysToSend = copy(builder.toolMetadataKeysToSend);
+        this.skills = copy(builder.skills);
         this.customParameters = copy(builder.customParameters);
         this.strictTools = builder.strictTools;
 
@@ -178,6 +181,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private List<AnthropicServerTool> serverTools;
         private Boolean returnServerToolResults;
         private Set<String> toolMetadataKeysToSend;
+        private List<AnthropicSkill> skills;
         private String userId;
         private Map<String, Object> customParameters;
         private Boolean strictTools;
@@ -636,6 +640,32 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         }
 
         /**
+         * Enables Anthropic <a href="https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview">Agent
+         * Skills</a> so Claude can generate real downloadable documents (e.g. {@code .xlsx}, {@code .pptx},
+         * {@code .docx}, {@code .pdf}).
+         * <p>
+         * Enabling skills automatically adds the {@code container.skills} block, the {@code code_execution} server tool
+         * (unless already configured via {@link #serverTools(List)}) and the required {@code anthropic-beta} headers, so
+         * none of that needs to be wired up manually.
+         * <p>
+         * Combine with {@link #returnServerToolResults(Boolean)} to surface the generated file ids under the
+         * {@code "server_tool_results"} key of {@link AiMessage#attributes()}.
+         * <p>
+         * Skills are supported on Claude Sonnet 4 / 4.5, Opus 4 and later. At most 8 skills may be enabled per request.
+         */
+        public AnthropicStreamingChatModelBuilder skills(List<AnthropicSkill> skills) {
+            this.skills = skills;
+            return this;
+        }
+
+        /**
+         * @see #skills(List)
+         */
+        public AnthropicStreamingChatModelBuilder skills(AnthropicSkill... skills) {
+            return skills(asList(skills));
+        }
+
+        /**
          * Controls whether to return server tool results (e.g., web_search, code_execution)
          * inside {@link AiMessage#attributes()} under the key "server_tool_results".
          * <p>
@@ -773,6 +803,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 this.serverTools,
                 this.toolMetadataKeysToSend,
                 parameters.userId(),
+                this.skills,
                 this.customParameters,
                 this.strictTools);
 

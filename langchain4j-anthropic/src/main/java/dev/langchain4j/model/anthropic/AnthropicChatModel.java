@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
+import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.addSkillsBeta;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createAnthropicRequest;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.validate;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.EPHEMERAL;
@@ -75,6 +76,7 @@ public class AnthropicChatModel implements ChatModel {
     private final List<AnthropicServerTool> serverTools;
     private final boolean returnServerToolResults;
     private final Set<String> toolMetadataKeysToSend;
+    private final List<AnthropicSkill> skills;
     private final Map<String, Object> customParameters;
     private final Boolean strictTools;
     private final Set<Capability> supportedCapabilities;
@@ -85,7 +87,7 @@ public class AnthropicChatModel implements ChatModel {
                 .baseUrl(getOrDefault(builder.baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(builder.apiKey)
                 .version(getOrDefault(builder.version, ANTHROPIC_VERSION))
-                .beta(builder.beta)
+                .beta(addSkillsBeta(builder.beta, builder.skills))
                 .timeout(builder.timeout)
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
@@ -113,6 +115,7 @@ public class AnthropicChatModel implements ChatModel {
         this.thinkingDisplay = builder.thinkingDisplay;
         this.serverTools = copy(builder.serverTools);
         this.toolMetadataKeysToSend = copy(builder.toolMetadataKeysToSend);
+        this.skills = copy(builder.skills);
         this.customParameters = copy(builder.customParameters);
         this.strictTools = builder.strictTools;
 
@@ -168,6 +171,7 @@ public class AnthropicChatModel implements ChatModel {
         private List<AnthropicServerTool> serverTools;
         private Boolean returnServerToolResults;
         private Set<String> toolMetadataKeysToSend;
+        private List<AnthropicSkill> skills;
         private Boolean cacheSystemMessages;
         private Boolean cacheTools;
         private String thinkingType;
@@ -454,6 +458,40 @@ public class AnthropicChatModel implements ChatModel {
          */
         public AnthropicChatModelBuilder serverTools(AnthropicServerTool... serverTools) {
             return serverTools(asList(serverTools));
+        }
+
+        /**
+         * Enables Anthropic <a href="https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview">Agent
+         * Skills</a> so Claude can generate real downloadable documents (e.g. {@code .xlsx}, {@code .pptx},
+         * {@code .docx}, {@code .pdf}). For example:
+         * <pre>
+         * AnthropicChatModel model = AnthropicChatModel.builder()
+         *     .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+         *     .modelName("claude-opus-4-8")
+         *     .maxTokens(4096)
+         *     .skills(AnthropicSkill.XLSX, AnthropicSkill.PPTX)
+         *     .returnServerToolResults(true)
+         *     .build();
+         * </pre>
+         * Enabling skills automatically adds the {@code container.skills} block, the {@code code_execution} server tool
+         * (unless already configured via {@link #serverTools(List)}) and the required {@code anthropic-beta} headers, so
+         * none of that needs to be wired up manually.
+         * <p>
+         * Combine with {@link #returnServerToolResults(Boolean)} to surface the generated file ids under the
+         * {@code "server_tool_results"} key of {@link AiMessage#attributes()}.
+         * <p>
+         * Skills are supported on Claude Sonnet 4 / 4.5, Opus 4 and later. At most 8 skills may be enabled per request.
+         */
+        public AnthropicChatModelBuilder skills(List<AnthropicSkill> skills) {
+            this.skills = skills;
+            return this;
+        }
+
+        /**
+         * @see #skills(List)
+         */
+        public AnthropicChatModelBuilder skills(AnthropicSkill... skills) {
+            return skills(asList(skills));
         }
 
         /**
@@ -789,6 +827,7 @@ public class AnthropicChatModel implements ChatModel {
                 this.serverTools,
                 this.toolMetadataKeysToSend,
                 parameters.userId(),
+                this.skills,
                 this.customParameters,
                 this.strictTools);
 

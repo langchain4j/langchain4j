@@ -626,6 +626,44 @@ class AnthropicChatModelIT {
     }
 
     @Test
+    void should_support_skills() {
+
+        // given
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
+
+        ChatModel model = AnthropicChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_SONNET_4_5_20250929)
+                .skills(AnthropicSkill.XLSX)
+                .returnServerToolResults(true)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Create an Excel spreadsheet with the numbers 1 to 5 in column A"))
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then: the request was wired up automatically (container.skills block + code_execution server tool)
+        String requestBody = spyingHttpClient.request().body();
+        assertThat(requestBody).contains("\"container\"").contains("\"skill_id\" : \"xlsx\"");
+        assertThat(requestBody).contains("code_execution_20250825");
+
+        // and: the skill actually ran, surfacing its results (e.g. generated file ids)
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).isNotBlank();
+
+        List<AnthropicServerToolResult> results = aiMessage.attribute("server_tool_results", List.class);
+        assertThat(results).isNotEmpty();
+    }
+
+    @Test
     void should_support_web_search_tool() {
 
         // given
