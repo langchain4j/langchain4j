@@ -409,13 +409,14 @@ final class SQLFilters {
 
             Set<OracleType> sqlTypes =
                     comparisonValues.stream().map(SQLFilters::toOracleType).collect(Collectors.toSet());
-            Iterator<OracleType> sqlTypeIterator = sqlTypes.iterator();
-            OracleType sqlType = sqlTypes.iterator().next();
 
             // IN and NOT IN conditions can operate on multiple data types, but the keyMapper needs to return the key as
             // a single data type. The IN and NOT IN conditions cannot operate on a CLOB, even if that's the only type.
-            if (!sqlTypeIterator.hasNext() && sqlType != OracleType.CLOB) {
-                return new SQLInFilter(key, keyMapper, isIn, comparisonValues, sqlType);
+            if (sqlTypes.size() == 1) {
+                OracleType sqlType = sqlTypes.iterator().next();
+                if (sqlType != OracleType.CLOB) {
+                    return new SQLInFilter(key, keyMapper, isIn, comparisonValues, sqlType);
+                }
             }
 
             // Replicate IN and NOT IN conditions as a sequence of OR conditions: "key = value0 OR key = value1 OR ..."

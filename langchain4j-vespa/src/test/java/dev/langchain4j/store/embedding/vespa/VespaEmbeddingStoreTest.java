@@ -1,10 +1,14 @@
 package dev.langchain4j.store.embedding.vespa;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.data.embedding.Embedding;
 import java.lang.reflect.Field;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class VespaEmbeddingStoreTest {
@@ -80,6 +84,30 @@ class VespaEmbeddingStoreTest {
         assertThat(getFieldValue(store, "avoidDups")).isEqualTo(true);
         assertThat(getFieldValue(store, "logRequests")).isEqualTo(false);
         assertThat(getFieldValue(store, "logResponses")).isEqualTo(false);
+    }
+
+    @Test
+    void should_throw_when_ids_and_embeddings_have_different_sizes() {
+        // Given
+        VespaEmbeddingStore store =
+                VespaEmbeddingStore.builder().url("https://test.vespa.ai").build();
+        Embedding embedding1 = Embedding.from(List.of(1f, 2f, 3f));
+        Embedding embedding2 = Embedding.from(List.of(4f, 5f, 6f));
+
+        // When + Then
+        assertThatThrownBy(() -> store.addAll(List.of("id1"), List.of(embedding1, embedding2), null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("same size");
+    }
+
+    @Test
+    void should_not_throw_or_call_server_when_input_is_empty() {
+        // Given
+        VespaEmbeddingStore store =
+                VespaEmbeddingStore.builder().url("https://test.vespa.ai").build();
+
+        // When + Then - empty input returns before any feeder/server interaction
+        assertThatCode(() -> store.addAll(List.of(), List.of(), null)).doesNotThrowAnyException();
     }
 
     private Object getFieldValue(Object object, String fieldName) throws Exception {

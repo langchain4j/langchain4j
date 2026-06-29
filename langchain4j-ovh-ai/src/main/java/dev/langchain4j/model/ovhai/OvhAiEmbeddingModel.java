@@ -1,5 +1,9 @@
 package dev.langchain4j.model.ovhai;
 
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -7,14 +11,9 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.ovhai.internal.api.EmbeddingRequest;
 import dev.langchain4j.model.ovhai.internal.api.EmbeddingResponse;
 import dev.langchain4j.model.ovhai.internal.client.DefaultOvhAiClient;
-import org.slf4j.Logger;
-
 import java.time.Duration;
 import java.util.List;
-
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static java.util.stream.Collectors.toList;
+import org.slf4j.Logger;
 
 /**
  * @deprecated use {@code OpenAiEmbeddingModel} from {@code langchain4j-open-ai} module instead
@@ -26,16 +25,14 @@ public class OvhAiEmbeddingModel implements EmbeddingModel {
     private final int maxRetries;
 
     private OvhAiEmbeddingModel(OvhAiEmbeddingModelBuilder builder) {
-        this.client =
-                DefaultOvhAiClient
-                        .builder()
-                        .baseUrl(builder.baseUrl)
-                        .apiKey(builder.apiKey)
-                        .timeout(getOrDefault(builder.timeout, Duration.ofSeconds(60)))
-                        .logRequests(getOrDefault(builder.logRequests, false))
-                        .logResponses(getOrDefault(builder.logResponses, false))
-                        .logger(builder.logger)
-                        .build();
+        this.client = DefaultOvhAiClient.builder()
+                .baseUrl(builder.baseUrl)
+                .apiKey(builder.apiKey)
+                .timeout(getOrDefault(builder.timeout, Duration.ofSeconds(60)))
+                .logRequests(getOrDefault(builder.logRequests, false))
+                .logResponses(getOrDefault(builder.logResponses, false))
+                .logger(builder.logger)
+                .build();
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
     }
 
@@ -56,17 +53,14 @@ public class OvhAiEmbeddingModel implements EmbeddingModel {
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
-        EmbeddingRequest request = EmbeddingRequest
-                .builder()
+        EmbeddingRequest request = EmbeddingRequest.builder()
                 .input(textSegments.stream().map(TextSegment::text).collect(toList()))
                 .build();
 
         EmbeddingResponse response = withRetryMappingExceptions(() -> client.embed((request)), maxRetries);
 
-        List<Embedding> embeddings = response.getEmbeddings()
-                .stream()
-                .map(Embedding::from)
-                .collect(toList());
+        List<Embedding> embeddings =
+                response.getEmbeddings().stream().map(Embedding::from).collect(toList());
 
         return Response.from(embeddings);
     }
@@ -80,8 +74,7 @@ public class OvhAiEmbeddingModel implements EmbeddingModel {
         private Boolean logResponses;
         private Logger logger;
 
-        OvhAiEmbeddingModelBuilder() {
-        }
+        OvhAiEmbeddingModelBuilder() {}
 
         public OvhAiEmbeddingModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -127,7 +120,10 @@ public class OvhAiEmbeddingModel implements EmbeddingModel {
         }
 
         public String toString() {
-            return "OvhAiEmbeddingModel.OvhAiEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+            return "OvhAiEmbeddingModel.OvhAiEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", apiKey="
+                    + (this.apiKey == null ? null : "********") + ", timeout=" + this.timeout + ", maxRetries="
+                    + this.maxRetries + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses
+                    + ")";
         }
     }
 }
