@@ -65,8 +65,8 @@ public class OpenAiAudioSpeechModel implements AudioSpeechModel {
 
     @Override
     public AudioSpeechResponse generate(AudioSpeechRequest audioRequest) {
-        if (audioRequest == null || audioRequest.text() == null) {
-            throw new IllegalArgumentException("Request and input text are required");
+        if (audioRequest == null) {
+            throw new IllegalArgumentException("Request is required");
         }
         if (audioRequest.text().length() > MAX_INPUT_TEXT_LENGTH) {
             throw new IllegalArgumentException(
@@ -124,8 +124,8 @@ public class OpenAiAudioSpeechModel implements AudioSpeechModel {
             // This is public so it can be extended
         }
 
-        public Builder httpClientProvider(HttpClientBuilder httpClientProvider) {
-            this.httpClientBuilder = httpClientProvider;
+        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
             return this;
         }
 

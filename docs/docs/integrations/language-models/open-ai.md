@@ -294,6 +294,46 @@ langchain4j.open-ai.moderation-model.timeout=...
 ```
 
 
+## Creating `OpenAiAudioSpeechModel`
+
+`OpenAiAudioSpeechModel` performs text-to-speech (TTS) using the
+[OpenAI Speech API](https://platform.openai.com/docs/api-reference/audio/createSpeech).
+It returns the generated audio as raw bytes wrapped in an `Audio` object.
+
+The supported models are `tts-1`, `tts-1-hd`, `gpt-4o-mini-tts`, and `gpt-4o-mini-tts-2025-12-15`
+(see `OpenAiAudioSpeechModelName`). The default voice is `alloy`.
+
+### Plain Java
+```java
+import dev.langchain4j.model.audio.AudioSpeechModel;
+import dev.langchain4j.model.audio.AudioSpeechRequest;
+import dev.langchain4j.model.audio.AudioSpeechResponse;
+import dev.langchain4j.model.openai.OpenAiAudioSpeechModel;
+import dev.langchain4j.model.openai.OpenAiAudioSpeechModelName;
+
+AudioSpeechModel model = OpenAiAudioSpeechModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName(OpenAiAudioSpeechModelName.TTS_1)
+        .voice("alloy") // optional, defaults to "alloy"
+        .build();
+
+// Convenience method (uses the model's default voice):
+AudioSpeechResponse response = model.generate("Hello world!");
+
+// Or with an explicit request (the voice here overrides the model default):
+AudioSpeechRequest request = AudioSpeechRequest.builder()
+        .text("Hello world!")
+        .voice("nova")
+        .build();
+AudioSpeechResponse response2 = model.generate(request);
+
+byte[] audioBytes = response.audio().binaryData(); // e.g. write to an .mp3 file
+String mimeType = response.audio().mimeType();      // e.g. "audio/mpeg"
+```
+
+The input text must not exceed 4096 characters (the OpenAI Speech API limit);
+longer input causes an `IllegalArgumentException`.
+
 ## Creating `OpenAiTokenCountEstimator`
 
 ```java
