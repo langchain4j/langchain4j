@@ -38,7 +38,8 @@ class InternalAnthropicHelper {
         if (parameters.presencePenalty() != null) {
             unsupportedFeatures.add("Presence Penalty");
         }
-        if (parameters.responseFormat() != null && parameters.responseFormat().type() == JSON
+        if (parameters.responseFormat() != null
+                && parameters.responseFormat().type() == JSON
                 && parameters.responseFormat().jsonSchema() == null) {
             unsupportedFeatures.add("Schemaless JSON response format");
         }
@@ -56,6 +57,7 @@ class InternalAnthropicHelper {
             ChatRequest chatRequest,
             AnthropicThinking thinking,
             boolean sendThinking,
+            boolean midConversationSystemMessages,
             AnthropicCacheType cacheType,
             AnthropicCacheType toolsCacheType,
             boolean stream,
@@ -69,8 +71,8 @@ class InternalAnthropicHelper {
 
         AnthropicCreateMessageRequest.Builder requestBuilder = AnthropicCreateMessageRequest.builder().stream(stream)
                 .model(chatRequest.modelName())
-                .messages(toAnthropicMessages(chatRequest.messages(), sendThinking))
-                .system(toAnthropicSystemPrompt(chatRequest.messages(), cacheType))
+                .messages(toAnthropicMessages(chatRequest.messages(), sendThinking, midConversationSystemMessages))
+                .system(toAnthropicSystemPrompt(chatRequest.messages(), cacheType, midConversationSystemMessages))
                 .maxTokens(chatRequest.maxOutputTokens())
                 .stopSequences(chatRequest.stopSequences())
                 .temperature(chatRequest.temperature())
@@ -85,7 +87,8 @@ class InternalAnthropicHelper {
             tools.addAll(toAnthropicTools(serverTools));
         }
         if (!isNullOrEmpty(chatRequest.toolSpecifications())) {
-            tools.addAll(toAnthropicTools(chatRequest.toolSpecifications(), toolsCacheType, toolMetadataKeysToSend, strictTools));
+            tools.addAll(toAnthropicTools(
+                    chatRequest.toolSpecifications(), toolsCacheType, toolMetadataKeysToSend, strictTools));
         }
         if (!tools.isEmpty()) {
             requestBuilder.tools(tools);
