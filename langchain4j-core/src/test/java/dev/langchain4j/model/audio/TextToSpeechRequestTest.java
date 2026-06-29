@@ -4,13 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
-class AudioSpeechRequestTest {
+class TextToSpeechRequestTest {
 
     @Test
     void should_create_request_with_input_text_only() {
         // when
-        AudioSpeechRequest request =
-                AudioSpeechRequest.builder().text("test speech").build();
+        TextToSpeechRequest request =
+                TextToSpeechRequest.builder().text("test speech").build();
 
         // then
         assertThat(request.text()).isEqualTo("test speech");
@@ -20,8 +20,8 @@ class AudioSpeechRequestTest {
     @Test
     void should_create_request_with_all_parameters() {
         // when
-        AudioSpeechRequest request =
-                AudioSpeechRequest.builder().text("test speech").voice("ash").build();
+        TextToSpeechRequest request =
+                TextToSpeechRequest.builder().text("test speech").voice("ash").build();
 
         // then
         assertThat(request.text()).isEqualTo("test speech");
@@ -33,8 +33,8 @@ class AudioSpeechRequestTest {
         // Length limits are provider-specific and enforced by the provider, not by the core request.
         String longText = "a".repeat(10_000);
 
-        AudioSpeechRequest request =
-                AudioSpeechRequest.builder().text(longText).build();
+        TextToSpeechRequest request =
+                TextToSpeechRequest.builder().text(longText).build();
 
         assertThat(request.text()).hasSize(10_000);
     }

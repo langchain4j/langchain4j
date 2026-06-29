@@ -61,13 +61,13 @@
         },
         {
           "code": "java.class.externalClassExposedInAPI",
-          "new": "missing-class dev.langchain4j.model.audio.AudioSpeechRequest",
-          "justification": "AudioSpeechRequest is intentionally exposed by OpenAiAudioSpeechModel because it implements the core AudioSpeechModel API"
+          "new": "missing-class dev.langchain4j.model.audio.TextToSpeechRequest",
+          "justification": "TextToSpeechRequest is intentionally exposed by OpenAiTextToSpeechModel because it implements the core TextToSpeechModel API"
         },
         {
           "code": "java.class.externalClassExposedInAPI",
-          "new": "missing-class dev.langchain4j.model.audio.AudioSpeechResponse",
-          "justification": "AudioSpeechResponse is intentionally exposed by OpenAiAudioSpeechModel because it implements the core AudioSpeechModel API"
+          "new": "missing-class dev.langchain4j.model.audio.TextToSpeechResponse",
+          "justification": "TextToSpeechResponse is intentionally exposed by OpenAiTextToSpeechModel because it implements the core TextToSpeechModel API"
         }
       ]
     }

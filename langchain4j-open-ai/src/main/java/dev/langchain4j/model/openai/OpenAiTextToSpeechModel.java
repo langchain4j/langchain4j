@@ -13,13 +13,13 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
-import dev.langchain4j.model.audio.AudioSpeechModel;
-import dev.langchain4j.model.audio.AudioSpeechRequest;
-import dev.langchain4j.model.audio.AudioSpeechResponse;
+import dev.langchain4j.model.audio.TextToSpeechModel;
+import dev.langchain4j.model.audio.TextToSpeechRequest;
+import dev.langchain4j.model.audio.TextToSpeechResponse;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
-import dev.langchain4j.model.openai.internal.audio.speech.OpenAiAudioSpeechRequest;
-import dev.langchain4j.model.openai.internal.audio.speech.OpenAiAudioSpeechResponse;
-import dev.langchain4j.model.openai.spi.OpenAiAudioSpeechModelBuilderFactory;
+import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest;
+import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechResponse;
+import dev.langchain4j.model.openai.spi.OpenAiTextToSpeechModelBuilderFactory;
 import java.time.Duration;
 import org.slf4j.Logger;
 
@@ -32,7 +32,7 @@ import org.slf4j.Logger;
  * @since 1.18.0
  */
 @Experimental
-public class OpenAiAudioSpeechModel implements AudioSpeechModel {
+public class OpenAiTextToSpeechModel implements TextToSpeechModel {
 
     /**
      * The maximum input length accepted by the OpenAI speech API, in characters.
@@ -44,7 +44,7 @@ public class OpenAiAudioSpeechModel implements AudioSpeechModel {
     private final String modelName;
     private final String voice;
 
-    public OpenAiAudioSpeechModel(Builder builder) {
+    public OpenAiTextToSpeechModel(Builder builder) {
         this.client = OpenAiClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_OPENAI_URL))
@@ -64,7 +64,7 @@ public class OpenAiAudioSpeechModel implements AudioSpeechModel {
     }
 
     @Override
-    public AudioSpeechResponse generate(AudioSpeechRequest audioRequest) {
+    public TextToSpeechResponse synthesize(TextToSpeechRequest audioRequest) {
         if (audioRequest == null) {
             throw new IllegalArgumentException("Request is required");
         }
@@ -73,22 +73,22 @@ public class OpenAiAudioSpeechModel implements AudioSpeechModel {
                     "Input text exceeds the maximum length of " + MAX_INPUT_TEXT_LENGTH + " characters");
         }
 
-        OpenAiAudioSpeechRequest openAiRequest = requestBuilder(audioRequest).build();
+        OpenAiTextToSpeechRequest openAiRequest = requestBuilder(audioRequest).build();
 
-        OpenAiAudioSpeechResponse openAiResponse =
-                withRetryMappingExceptions(() -> client.audioSpeech(openAiRequest).execute(), maxRetries);
+        OpenAiTextToSpeechResponse openAiResponse =
+                withRetryMappingExceptions(() -> client.textToSpeech(openAiRequest).execute(), maxRetries);
 
         Audio audio = Audio.builder()
                 .binaryData(openAiResponse.audio())
                 .mimeType(getOrDefault(openAiResponse.contentType(), "audio/mpeg"))
                 .build();
-        return AudioSpeechResponse.from(audio);
+        return TextToSpeechResponse.from(audio);
     }
 
-    private OpenAiAudioSpeechRequest.Builder requestBuilder(AudioSpeechRequest request) {
-        return OpenAiAudioSpeechRequest.builder()
+    private OpenAiTextToSpeechRequest.Builder requestBuilder(TextToSpeechRequest request) {
+        return OpenAiTextToSpeechRequest.builder()
                 .model(modelName)
-                .inputText(request.text())
+                .text(request.text())
                 .voice(getOrDefault(request.voice(), voice));
     }
 
@@ -98,7 +98,7 @@ public class OpenAiAudioSpeechModel implements AudioSpeechModel {
     }
 
     public static Builder builder() {
-        for (OpenAiAudioSpeechModelBuilderFactory factory : loadFactories(OpenAiAudioSpeechModelBuilderFactory.class)) {
+        for (OpenAiTextToSpeechModelBuilderFactory factory : loadFactories(OpenAiTextToSpeechModelBuilderFactory.class)) {
             return factory.get();
         }
         return new Builder();
@@ -149,7 +149,7 @@ public class OpenAiAudioSpeechModel implements AudioSpeechModel {
             return this;
         }
 
-        public Builder modelName(OpenAiAudioSpeechModelName modelName) {
+        public Builder modelName(OpenAiTextToSpeechModelName modelName) {
             this.modelName = modelName.toString();
             return this;
         }
@@ -189,8 +189,8 @@ public class OpenAiAudioSpeechModel implements AudioSpeechModel {
             return this;
         }
 
-        public OpenAiAudioSpeechModel build() {
-            return new OpenAiAudioSpeechModel(this);
+        public OpenAiTextToSpeechModel build() {
+            return new OpenAiTextToSpeechModel(this);
         }
     }
 }

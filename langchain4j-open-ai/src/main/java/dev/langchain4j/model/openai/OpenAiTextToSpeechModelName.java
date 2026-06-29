@@ -3,7 +3,7 @@ package dev.langchain4j.model.openai;
 import dev.langchain4j.Experimental;
 
 @Experimental
-public enum OpenAiAudioSpeechModelName {
+public enum OpenAiTextToSpeechModelName {
     TTS_1("tts-1"),
     TTS_1_HD("tts-1-hd"),
     GPT_4_O_MINI_TTS("gpt-4o-mini-tts"),
@@ -11,7 +11,7 @@ public enum OpenAiAudioSpeechModelName {
 
     private final String stringValue;
 
-    OpenAiAudioSpeechModelName(String stringValue) {
+    OpenAiTextToSpeechModelName(String stringValue) {
         this.stringValue = stringValue;
     }
 

@@ -9,7 +9,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * Response containing the audio generated from text.
  */
 @Experimental
-public class AudioSpeechResponse {
+public class TextToSpeechResponse {
 
     private final Audio audio;
 
@@ -18,7 +18,7 @@ public class AudioSpeechResponse {
      *
      * @param audio The generated audio
      */
-    public AudioSpeechResponse(Audio audio) {
+    public TextToSpeechResponse(Audio audio) {
         this.audio = ensureNotNull(audio, "audio");
     }
 
@@ -35,7 +35,7 @@ public class AudioSpeechResponse {
      * @param audio The generated audio
      * @return A new response
      */
-    public static AudioSpeechResponse from(Audio audio) {
-        return new AudioSpeechResponse(audio);
+    public static TextToSpeechResponse from(Audio audio) {
+        return new TextToSpeechResponse(audio);
     }
 }

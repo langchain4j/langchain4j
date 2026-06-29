@@ -1,4 +1,4 @@
-package dev.langchain4j.model.openai.internal.audio.speech;
+package dev.langchain4j.model.openai.internal.audio.texttospeech;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -11,10 +11,10 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
  * Find description of parameters
  * <a href="https://developers.openai.com/api/reference/resources/audio/subresources/speech/methods/create">here</a>.
  */
-@JsonDeserialize(builder = OpenAiAudioSpeechRequest.Builder.class)
+@JsonDeserialize(builder = OpenAiTextToSpeechRequest.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class OpenAiAudioSpeechRequest {
+public class OpenAiTextToSpeechRequest {
 
     /**
      * The text to generate audio for. The maximum length is 4096 characters.
@@ -37,13 +37,13 @@ public class OpenAiAudioSpeechRequest {
     @JsonProperty
     private final String voice;
 
-    public OpenAiAudioSpeechRequest(Builder builder) {
-        this.input = builder.inputText;
+    public OpenAiTextToSpeechRequest(Builder builder) {
+        this.input = builder.text;
         this.model = builder.model;
         this.voice = builder.voice;
     }
 
-    public String inputText() {
+    public String text() {
         return input;
     }
 
@@ -61,12 +61,12 @@ public class OpenAiAudioSpeechRequest {
 
     public static class Builder {
 
-        private String inputText;
+        private String text;
         private String model;
         private String voice;
 
-        public Builder inputText(String inputText) {
-            this.inputText = inputText;
+        public Builder text(String text) {
+            this.text = text;
             return this;
         }
 
@@ -80,8 +80,8 @@ public class OpenAiAudioSpeechRequest {
             return this;
         }
 
-        public OpenAiAudioSpeechRequest build() {
-            return new OpenAiAudioSpeechRequest(this);
+        public OpenAiTextToSpeechRequest build() {
+            return new OpenAiTextToSpeechRequest(this);
         }
     }
 }

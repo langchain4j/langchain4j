@@ -5,12 +5,12 @@ import dev.langchain4j.Experimental;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 @Experimental
-public class AudioSpeechRequest {
+public class TextToSpeechRequest {
 
     private final String text;
     private final String voice;
 
-    private AudioSpeechRequest(Builder builder) {
+    private TextToSpeechRequest(Builder builder) {
         this.text = ensureNotBlank(builder.text, "text");
         this.voice = builder.voice;
     }
@@ -45,8 +45,8 @@ public class AudioSpeechRequest {
             return this;
         }
 
-        public AudioSpeechRequest build() {
-            return new AudioSpeechRequest(this);
+        public TextToSpeechRequest build() {
+            return new TextToSpeechRequest(this);
         }
     }
 }

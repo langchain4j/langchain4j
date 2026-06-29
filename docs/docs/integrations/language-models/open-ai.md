@@ -334,6 +334,46 @@ String mimeType = response.audio().mimeType();      // e.g. "audio/mpeg"
 The input text must not exceed 4096 characters (the OpenAI Speech API limit);
 longer input causes an `IllegalArgumentException`.
 
+## Creating `OpenAiTextToSpeechModel`
+
+`OpenAiTextToSpeechModel` performs text-to-speech (TTS) using the
+[OpenAI Speech API](https://platform.openai.com/docs/api-reference/audio/createSpeech).
+It returns the generated audio as raw bytes wrapped in an `Audio` object.
+
+The supported models are `tts-1`, `tts-1-hd`, `gpt-4o-mini-tts`, and `gpt-4o-mini-tts-2025-12-15`
+(see `OpenAiTextToSpeechModelName`). The default voice is `alloy`.
+
+### Plain Java
+```java
+import dev.langchain4j.model.audio.TextToSpeechModel;
+import dev.langchain4j.model.audio.TextToSpeechRequest;
+import dev.langchain4j.model.audio.TextToSpeechResponse;
+import dev.langchain4j.model.openai.OpenAiTextToSpeechModel;
+import dev.langchain4j.model.openai.OpenAiTextToSpeechModelName;
+
+TextToSpeechModel model = OpenAiTextToSpeechModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName(OpenAiTextToSpeechModelName.TTS_1)
+        .voice("alloy") // optional, defaults to "alloy"
+        .build();
+
+// Convenience method (uses the model's default voice):
+TextToSpeechResponse response = model.synthesize("Hello world!");
+
+// Or with an explicit request (the voice here overrides the model default):
+TextToSpeechRequest request = TextToSpeechRequest.builder()
+        .text("Hello world!")
+        .voice("nova")
+        .build();
+TextToSpeechResponse response2 = model.synthesize(request);
+
+byte[] audioBytes = response.audio().binaryData(); // e.g. write to an .mp3 file
+String mimeType = response.audio().mimeType();      // e.g. "audio/mpeg"
+```
+
+The input text must not exceed 4096 characters (the OpenAI Speech API limit);
+longer input causes an `IllegalArgumentException`.
+
 ## Creating `OpenAiTokenCountEstimator`
 
 ```java
