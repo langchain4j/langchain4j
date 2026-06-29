@@ -7,8 +7,7 @@ import java.io.InputStream;
  */
 public class DocumentLoader {
 
-    private DocumentLoader() {
-    }
+    private DocumentLoader() {}
 
     /**
      * Loads a document from the given source using the given parser.
@@ -19,13 +18,17 @@ public class DocumentLoader {
      * @param parser The parser that will be used to parse the document.
      * @return The loaded document.
      * @throws BlankDocumentException when the parsed {@link Document} is blank/empty.
+     * @throws IllegalArgumentException when the document and source {@link Metadata} share one or more keys.
      */
     public static Document load(DocumentSource source, DocumentParser parser) {
         try (InputStream inputStream = source.inputStream()) {
             Document document = parser.parse(inputStream);
-            document.metadata().putAll(source.metadata().toMap());
-            return document;
-        } catch (BlankDocumentException e) {
+            Metadata sourceMetadata = source.metadata();
+            if (sourceMetadata.toMap().isEmpty()) {
+                return document;
+            }
+            return Document.from(document.text(), document.metadata().merge(sourceMetadata));
+        } catch (BlankDocumentException | IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {
             throw new RuntimeException("Failed to load document", e);
