@@ -57,7 +57,7 @@ class BaseGeminiChatModel {
     protected final boolean mediaResolutionPerPartEnabled;
     protected final String cachedContentName;
 
-    protected final ChatRequestParameters defaultRequestParameters;
+    protected final GoogleAiGeminiChatRequestParameters defaultRequestParameters;
 
     protected BaseGeminiChatModel(GoogleAiGeminiChatModelBaseBuilder<?> builder, GeminiService geminiService) {
         this.geminiService = geminiService;
