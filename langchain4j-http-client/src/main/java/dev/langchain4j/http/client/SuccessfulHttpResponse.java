@@ -108,7 +108,7 @@ public class SuccessfulHttpResponse {
         }
 
         public Builder body(String body) {
-            this.body = body == null ? null : body.getBytes(StandardCharsets.UTF_8);
+            this.body = body == null ? null : body.getBytes(StandardCharsets.UTF_8); // TODO
             return this;
         }
 

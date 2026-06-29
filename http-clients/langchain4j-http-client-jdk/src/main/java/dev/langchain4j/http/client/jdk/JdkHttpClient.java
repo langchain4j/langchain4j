@@ -53,7 +53,7 @@ public class JdkHttpClient implements HttpClient {
 
             if (!isSuccessful(jdkResponse)) {
                 throw new HttpException(
-                        jdkResponse.statusCode(), new String(jdkResponse.body(), StandardCharsets.UTF_8));
+                        jdkResponse.statusCode(), new String(jdkResponse.body(), StandardCharsets.UTF_8)); // TODO
             }
 
             return fromJdkResponse(jdkResponse, jdkResponse.body());
