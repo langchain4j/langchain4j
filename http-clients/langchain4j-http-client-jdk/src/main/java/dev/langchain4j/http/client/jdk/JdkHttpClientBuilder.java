@@ -4,16 +4,12 @@ import dev.langchain4j.http.client.HttpClientBuilder;
 
 import java.time.Duration;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
-
 public class JdkHttpClientBuilder implements HttpClientBuilder {
-
-    private static final int DEFAULT_STREAMING_BUFFER_SIZE = 16384;
 
     private java.net.http.HttpClient.Builder httpClientBuilder;
     private Duration connectTimeout;
     private Duration readTimeout;
-    private int streamingBufferSize = DEFAULT_STREAMING_BUFFER_SIZE;
+    private Integer streamingBufferSize;
 
     public java.net.http.HttpClient.Builder httpClientBuilder() {
         return httpClientBuilder;
@@ -46,7 +42,7 @@ public class JdkHttpClientBuilder implements HttpClientBuilder {
         return this;
     }
 
-    public int streamingBufferSize() {
+    public Integer streamingBufferSize() {
         return streamingBufferSize;
     }
 
@@ -55,13 +51,13 @@ public class JdkHttpClientBuilder implements HttpClientBuilder {
      * path. Server-sent events are relayed to the subscriber through this buffer; if the subscriber consumes
      * slower than the server produces and the buffer overflows, the stream terminates with an error.
      * <p>
-     * The default is {@code 16384}.
+     * The default is {@value JdkHttpClient#DEFAULT_STREAMING_BUFFER_SIZE}.
      *
      * @param streamingBufferSize the buffer size; must be greater than zero
      * @return the builder instance
      */
-    public JdkHttpClientBuilder streamingBufferSize(int streamingBufferSize) {
-        this.streamingBufferSize = ensureGreaterThanZero(streamingBufferSize, "streamingBufferSize");
+    public JdkHttpClientBuilder streamingBufferSize(Integer streamingBufferSize) {
+        this.streamingBufferSize = streamingBufferSize;
         return this;
     }
 

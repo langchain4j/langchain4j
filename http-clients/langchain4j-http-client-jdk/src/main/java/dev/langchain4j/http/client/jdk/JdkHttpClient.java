@@ -40,10 +40,13 @@ import java.util.concurrent.atomic.AtomicReference;
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.joining;
 
 public class JdkHttpClient implements HttpClient {
+
+    static final int DEFAULT_STREAMING_BUFFER_SIZE = 16384;
 
     private final java.net.http.HttpClient delegate;
     private final Duration readTimeout;
@@ -57,7 +60,7 @@ public class JdkHttpClient implements HttpClient {
         }
         this.delegate = httpClientBuilder.build();
         this.readTimeout = builder.readTimeout();
-        this.streamingBufferSize = builder.streamingBufferSize();
+        this.streamingBufferSize = ensureGreaterThanZero(getOrDefault(builder.streamingBufferSize(), DEFAULT_STREAMING_BUFFER_SIZE), "streamingBufferSize");
     }
 
     public static JdkHttpClientBuilder builder() {
@@ -294,7 +297,7 @@ public class JdkHttpClient implements HttpClient {
                                 subscription.cancel();
                                 return;
                             }
-                            subscription.request(Long.MAX_VALUE);
+                            subscription.request(Long.MAX_VALUE); // TODO
                         }
 
                         @Override
