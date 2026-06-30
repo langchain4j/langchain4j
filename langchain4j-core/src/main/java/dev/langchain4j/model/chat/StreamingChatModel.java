@@ -46,7 +46,7 @@ public interface StreamingChatModel {
      * @param request a {@link ChatRequest}, containing all the inputs to the LLM
      * @param handler a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM
      */
-    default void chat(ChatRequest request, StreamingChatResponseHandler handler) { // TODO rewrite using publisher
+    default void chat(ChatRequest request, StreamingChatResponseHandler handler) {
         chat(request, ChatRequestOptions.EMPTY, handler);
     }
 
@@ -174,6 +174,7 @@ public interface StreamingChatModel {
      *     <li>0..N {@link dev.langchain4j.model.chat.response.PartialResponse} (text chunks),</li>
      *     <li>0..N {@link dev.langchain4j.model.chat.response.PartialToolCall} (tool-call argument chunks),</li>
      *     <li>0..N {@link dev.langchain4j.model.chat.response.CompleteToolCall} (assembled tool calls),</li>
+     *     // TODO raw events
      *     <li>exactly one terminal {@link ChatResponse} (the aggregated final response),</li>
      * </ul>
      * followed by {@code onComplete}. On failure, {@code onError} is signaled after {@code onSubscribe}.
@@ -214,10 +215,6 @@ public interface StreamingChatModel {
         List<ChatModelListener> listeners = listeners();
 
         ModelProvider provider = provider();
-
-        // Note on cancellation: when downstream cancels mid-stream, no listener fires. Consistent
-        // with the handler path — listeners observe successful and failed requests; user-initiated
-        // cancellation is a third state that the listener API simply doesn't model. TODO
 
         return new Publisher<StreamingEvent>() {
 

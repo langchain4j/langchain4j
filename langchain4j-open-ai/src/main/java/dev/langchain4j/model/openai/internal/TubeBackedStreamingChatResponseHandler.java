@@ -7,9 +7,9 @@ import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
-import dev.langchain4j.model.chat.response.DefaultRawStreamingEvent;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
+import dev.langchain4j.model.chat.response.RawStreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingHandle;
@@ -76,7 +76,7 @@ public final class TubeBackedStreamingChatResponseHandler implements StreamingCh
     @Override
     public void onUnmappedRawEvent(Object rawEvent) {
         if (!tube.cancelled()) {
-            tube.send(new DefaultRawStreamingEvent(rawEvent));
+            tube.send(RawStreamingEvent.of(rawEvent));
         }
     }
 

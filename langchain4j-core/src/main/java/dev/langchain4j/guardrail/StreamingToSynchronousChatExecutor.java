@@ -49,7 +49,7 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
 
     @Override
     protected CompletableFuture<ChatResponse> executeAsync(ChatRequest chatRequest) {
-        return StreamingChatModelHelper.chatAsync(this.streamingChatModel, chatRequest, errorHandler);
+        return StreamingChatModelHelper.chatAsync(this.streamingChatModel, chatRequest, errorHandler); // TODO
     }
 
     private static class StreamingToSyncResponseHandler implements StreamingChatResponseHandler {

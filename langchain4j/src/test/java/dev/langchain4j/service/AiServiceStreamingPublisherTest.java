@@ -12,7 +12,6 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
-import dev.langchain4j.model.chat.response.DefaultRawStreamingEvent;
 import dev.langchain4j.model.chat.response.RawStreamingEvent;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
@@ -279,7 +278,7 @@ class AiServiceStreamingPublisherTest {
 
     @Test
     void propagates_raw_provider_events() throws Exception {
-        RawStreamingEvent raw = new DefaultRawStreamingEvent("{\"q\":\"berlin\"}");
+        RawStreamingEvent raw = RawStreamingEvent.of("{\"q\":\"berlin\"}");
         StreamingEventChatModelMock model =
                 StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello")).withRawEvent(raw);
 

@@ -20,7 +20,7 @@ import java.util.concurrent.CompletableFuture;
  * the {@link SynchronousBuilder}.
  */
 @Internal
-final class SynchronousChatExecutor extends AbstractChatExecutor {
+final class SynchronousChatExecutor extends AbstractChatExecutor { // TODO rename? not sync any more
     private final ChatModel chatModel;
 
     protected SynchronousChatExecutor(SynchronousBuilder builder) {
@@ -35,6 +35,6 @@ final class SynchronousChatExecutor extends AbstractChatExecutor {
 
     @Override
     protected CompletableFuture<ChatResponse> executeAsync(ChatRequest chatRequest) {
-        return this.chatModel.chatAsync(chatRequest);
+        return this.chatModel.chatAsync(chatRequest); // TODO
     }
 }
