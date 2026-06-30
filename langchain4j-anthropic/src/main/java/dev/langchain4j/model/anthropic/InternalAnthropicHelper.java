@@ -14,6 +14,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContainer;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContainer.AnthropicContainerSkill;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicDiagnosticsParameters;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicFormat;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMetadata;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicOutputConfig;
@@ -148,7 +149,9 @@ class InternalAnthropicHelper {
             String userId,
             List<AnthropicSkill> skills,
             Map<String, Object> customParameters,
-            Boolean strictTools) {
+            Boolean strictTools,
+            boolean returnCacheDiagnostics,
+            String previousMessageId) {
 
         AnthropicCreateMessageRequest.Builder requestBuilder = AnthropicCreateMessageRequest.builder().stream(stream)
                 .model(chatRequest.modelName())
@@ -191,6 +194,10 @@ class InternalAnthropicHelper {
 
         if (!isNullOrEmpty(userId)) {
             requestBuilder.metadata(AnthropicMetadata.builder().userId(userId).build());
+        }
+
+        if (returnCacheDiagnostics) {
+            requestBuilder.diagnostics(new AnthropicDiagnosticsParameters(previousMessageId));
         }
 
         return requestBuilder.build();

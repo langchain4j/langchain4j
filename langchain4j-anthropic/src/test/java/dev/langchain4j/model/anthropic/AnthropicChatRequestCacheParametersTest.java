@@ -195,6 +195,98 @@ class AnthropicChatRequestCacheParametersTest {
         assertThat(body).contains("request-user");
     }
 
+    @Test
+    void should_not_send_diagnostics_when_not_requested() {
+        AnthropicChatModel model = modelBuilder().build();
+
+        model.chat(ChatRequest.builder().messages(UserMessage.from("Hi")).build());
+
+        assertThat(lastRequestBody()).doesNotContain("\"diagnostics\"");
+    }
+
+    @Test
+    void should_opt_in_to_cache_diagnostics_with_null_previous_message_id_on_first_turn() {
+        AnthropicChatModel model = modelBuilder().build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("Hi"))
+                .parameters(AnthropicChatRequestParameters.builder()
+                        .returnCacheDiagnostics(true)
+                        .build())
+                .build();
+
+        model.chat(request);
+
+        String body = lastRequestBody();
+        assertThat(body).contains("\"diagnostics\"");
+        assertThat(body).contains("\"previous_message_id\" : null");
+    }
+
+    @Test
+    void should_send_previous_message_id_on_subsequent_turn() {
+        AnthropicChatModel model = modelBuilder().build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("Hi"))
+                .parameters(AnthropicChatRequestParameters.builder()
+                        .returnCacheDiagnostics(true)
+                        .previousMessageId("msg_previous")
+                        .build())
+                .build();
+
+        model.chat(request);
+
+        assertThat(lastRequestBody()).contains("\"previous_message_id\" : \"msg_previous\"");
+    }
+
+    @Test
+    void should_clear_previous_message_id_per_request_even_when_model_default_is_set() {
+        // Regression test: overrideWith() must not silently fall back to a stale model-level
+        // default when a request explicitly opts in to diagnostics fresh (previousMessageId == null),
+        // since null is a meaningful, required value here (see AnthropicDiagnosticsParameters).
+        AnthropicChatModel model = modelBuilder()
+                .defaultRequestParameters(AnthropicChatRequestParameters.builder()
+                        .previousMessageId("msg_stale_default")
+                        .build())
+                .build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("Hi"))
+                .parameters(AnthropicChatRequestParameters.builder()
+                        .returnCacheDiagnostics(true)
+                        .previousMessageId(null)
+                        .build())
+                .build();
+
+        model.chat(request);
+
+        String body = lastRequestBody();
+        assertThat(body).contains("\"previous_message_id\" : null");
+        assertThat(body).doesNotContain("msg_stale_default");
+    }
+
+    @Test
+    void should_not_pair_unrelated_default_previous_message_id_with_model_level_diagnostics_toggle() {
+        // Regression test: the model's own baseline defaultRequestParameters must apply the same
+        // "merge as a unit" rule as overrideWith() does. Without it, a previousMessageId carried on an
+        // unrelated defaultRequestParameters() object (with no returnCacheDiagnostics of its own) could
+        // get paired with an unrelated model-level returnCacheDiagnostics(true) toggle, sending a stale
+        // id the caller never associated with diagnostics.
+        AnthropicChatModel model = modelBuilder()
+                .returnCacheDiagnostics(true)
+                .defaultRequestParameters(AnthropicChatRequestParameters.builder()
+                        .previousMessageId("msg_unrelated")
+                        .build())
+                .build();
+
+        model.chat(ChatRequest.builder().messages(UserMessage.from("Hi")).build());
+
+        String body = lastRequestBody();
+        assertThat(body).contains("\"diagnostics\"");
+        assertThat(body).contains("\"previous_message_id\" : null");
+        assertThat(body).doesNotContain("msg_unrelated");
+    }
+
     private static ToolSpecification weatherTool() {
         return ToolSpecification.builder()
                 .name("get_weather")

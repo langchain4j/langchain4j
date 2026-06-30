@@ -139,6 +139,12 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 .disableParallelToolUse(
                         getOrDefault(builder.disableParallelToolUse, anthropicDefaults.disableParallelToolUse()))
                 .userId(getOrDefault(builder.userId, anthropicDefaults.userId()))
+                .returnCacheDiagnostics(
+                        getOrDefault(builder.returnCacheDiagnostics, anthropicDefaults.returnCacheDiagnostics()))
+                .previousMessageId(
+                        anthropicDefaults.returnCacheDiagnostics() != null
+                                ? anthropicDefaults.previousMessageId()
+                                : null)
                 .build();
     }
 
@@ -187,6 +193,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Boolean strictTools;
         private Set<Capability> supportedCapabilities;
         private Supplier<Map<String, String>> customHeadersSupplier;
+        private Boolean returnCacheDiagnostics;
 
         /**
          * Sets a custom {@link HttpClientBuilder} for the underlying HTTP client.
@@ -710,6 +717,22 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         }
 
         /**
+         * Enables Anthropic's (beta) cache diagnostics for every request.
+         * <p>
+         * Requires the {@code cache-diagnosis-2026-04-07} beta header to also be set via {@link #beta(String)}.
+         * There is intentionally no model-level default for the {@code id} to compare against — it must be
+         * set per-request via {@link AnthropicChatRequestParameters.Builder#previousMessageId(String)}; see
+         * {@link AnthropicChatRequestParameters#previousMessageId()} for why.
+         *
+         * @see AnthropicChatRequestParameters.Builder#returnCacheDiagnostics(Boolean)
+         * @see AnthropicCacheDiagnostics
+         */
+        public AnthropicStreamingChatModelBuilder returnCacheDiagnostics(Boolean returnCacheDiagnostics) {
+            this.returnCacheDiagnostics = returnCacheDiagnostics;
+            return this;
+        }
+
+        /**
          * Sets arbitrary extra parameters to include in the Anthropic API request body.
          * Use this for experimental or provider-specific fields not yet covered by dedicated builder methods.
          *
@@ -805,7 +828,9 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 parameters.userId(),
                 this.skills,
                 this.customParameters,
-                this.strictTools);
+                this.strictTools,
+                getOrDefault(parameters.returnCacheDiagnostics(), false),
+                parameters.previousMessageId());
 
         boolean returnThinking = getOrDefault(parameters.returnThinking(), false);
         client.createMessage(

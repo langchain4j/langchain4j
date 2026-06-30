@@ -33,7 +33,23 @@ class AnthropicSkillsTest {
 
     private static AnthropicCreateMessageRequest requestWithSkills(List<AnthropicSkill> skills) {
         return createAnthropicRequest(
-                chatRequest(), null, true, false, NO_CACHE, NO_CACHE, false, null, null, null, null, null, skills, null, null);
+                chatRequest(),
+                null,
+                true,
+                false,
+                NO_CACHE,
+                NO_CACHE,
+                false,
+                null,
+                null,
+                null,
+                null,
+                null,
+                skills,
+                null,
+                null,
+                false,
+                null);
     }
 
     @Test
@@ -79,6 +95,8 @@ class AnthropicSkillsTest {
                 null,
                 List.of(AnthropicSkill.PDF),
                 null,
+                null,
+                false,
                 null);
 
         assertThat(request.tools).extracting(tool -> tool.name).containsExactly("code_execution");
@@ -113,6 +131,8 @@ class AnthropicSkillsTest {
                 null,
                 List.of(AnthropicSkill.XLSX),
                 null,
+                null,
+                false,
                 null);
 
         // the regular tool name must not suppress the required code_execution server tool

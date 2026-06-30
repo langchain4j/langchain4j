@@ -25,6 +25,8 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
     private final String toolChoiceName;
     private final Boolean disableParallelToolUse;
     private final String userId;
+    private final Boolean returnCacheDiagnostics;
+    private final String previousMessageId;
 
     private AnthropicChatRequestParameters(Builder builder) {
         super(builder);
@@ -38,6 +40,8 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
         this.toolChoiceName = builder.toolChoiceName;
         this.disableParallelToolUse = builder.disableParallelToolUse;
         this.userId = builder.userId;
+        this.returnCacheDiagnostics = builder.returnCacheDiagnostics;
+        this.previousMessageId = builder.previousMessageId;
     }
 
     public Boolean cacheSystemMessages() {
@@ -80,6 +84,35 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
         return userId;
     }
 
+    /**
+     * Whether to request a (beta) cache-diagnostics comparison for this request.
+     *
+     * @see AnthropicCacheDiagnostics
+     */
+    public Boolean returnCacheDiagnostics() {
+        return returnCacheDiagnostics;
+    }
+
+    /**
+     * The {@code id} of the previous response to compare against when {@link #returnCacheDiagnostics()}
+     * is enabled. Pass {@code null} on the first turn of a conversation to opt in without a prior
+     * message to compare, and the {@code id} of the previous {@link AnthropicChatResponseMetadata} on
+     * every subsequent turn.
+     * <p>
+     * <b>This field and {@link #returnCacheDiagnostics()} are always merged as a unit, sourced from
+     * the same {@link ChatRequestParameters} object — set them together.</b> Unlike this class's other
+     * optional fields, {@code null} is a meaningful, required value here, so it can't be merged
+     * independently with {@code getOrDefault}-style "last non-null value wins" semantics (that could
+     * never override a previously-set non-null default back to {@code null}). Whenever a layer
+     * (a model-level default or a per-request override) specifies {@code returnCacheDiagnostics}
+     * explicitly, this field is taken verbatim from that same layer, {@code null} or not.
+     *
+     * @see AnthropicCacheDiagnostics
+     */
+    public String previousMessageId() {
+        return previousMessageId;
+    }
+
     @Override
     public AnthropicChatRequestParameters overrideWith(ChatRequestParameters that) {
         return AnthropicChatRequestParameters.builder()
@@ -111,7 +144,9 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 && Objects.equals(returnThinking, that.returnThinking)
                 && Objects.equals(toolChoiceName, that.toolChoiceName)
                 && Objects.equals(disableParallelToolUse, that.disableParallelToolUse)
-                && Objects.equals(userId, that.userId);
+                && Objects.equals(userId, that.userId)
+                && Objects.equals(returnCacheDiagnostics, that.returnCacheDiagnostics)
+                && Objects.equals(previousMessageId, that.previousMessageId);
     }
 
     @Override
@@ -127,7 +162,9 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 returnThinking,
                 toolChoiceName,
                 disableParallelToolUse,
-                userId);
+                userId,
+                returnCacheDiagnostics,
+                previousMessageId);
     }
 
     @Override
@@ -154,6 +191,8 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 + ", toolChoiceName=" + toolChoiceName
                 + ", disableParallelToolUse=" + disableParallelToolUse
                 + ", userId=" + userId
+                + ", returnCacheDiagnostics=" + returnCacheDiagnostics
+                + ", previousMessageId=" + previousMessageId
                 + '}';
     }
 
@@ -177,6 +216,8 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
         private String toolChoiceName;
         private Boolean disableParallelToolUse;
         private String userId;
+        private Boolean returnCacheDiagnostics;
+        private String previousMessageId;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
@@ -193,6 +234,11 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 disableParallelToolUse(
                         getOrDefault(anthropicParameters.disableParallelToolUse(), disableParallelToolUse));
                 userId(getOrDefault(anthropicParameters.userId(), userId));
+                // returnCacheDiagnostics + previousMessageId are merged as a unit; see previousMessageId() javadoc.
+                if (anthropicParameters.returnCacheDiagnostics() != null) {
+                    returnCacheDiagnostics(anthropicParameters.returnCacheDiagnostics());
+                    previousMessageId(anthropicParameters.previousMessageId());
+                }
             }
             return this;
         }
@@ -248,6 +294,35 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
 
         public Builder userId(String userId) {
             this.userId = userId;
+            return this;
+        }
+
+        /**
+         * Enables Anthropic's (beta) cache diagnostics for this request, requesting a comparison
+         * against the request identified by {@link #previousMessageId(String)} — set both together;
+         * see {@link AnthropicChatRequestParameters#previousMessageId()} for why.
+         * Requires the {@code cache-diagnosis-2026-04-07} beta header to be set on the model
+         * (see {@code beta(String)} on {@link AnthropicChatModel.AnthropicChatModelBuilder} /
+         * {@link AnthropicStreamingChatModel.AnthropicStreamingChatModelBuilder}).
+         *
+         * @see AnthropicCacheDiagnostics
+         */
+        public Builder returnCacheDiagnostics(Boolean returnCacheDiagnostics) {
+            this.returnCacheDiagnostics = returnCacheDiagnostics;
+            return this;
+        }
+
+        /**
+         * The {@code id} of the previous response to compare against; see
+         * {@link AnthropicChatRequestParameters#previousMessageId()} for the full contract. Pass
+         * {@code null} (the default) on the first turn of a conversation to opt in without a prior
+         * message to compare, and the {@code id} of the previous {@link AnthropicChatResponseMetadata}
+         * on every subsequent turn.
+         *
+         * @see AnthropicCacheDiagnostics
+         */
+        public Builder previousMessageId(String previousMessageId) {
+            this.previousMessageId = previousMessageId;
             return this;
         }
 
