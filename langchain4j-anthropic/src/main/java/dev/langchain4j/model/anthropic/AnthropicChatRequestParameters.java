@@ -228,7 +228,8 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 thinkingType(getOrDefault(anthropicParameters.thinkingType(), thinkingType));
                 thinkingBudgetTokens(getOrDefault(anthropicParameters.thinkingBudgetTokens(), thinkingBudgetTokens));
                 sendThinking(getOrDefault(anthropicParameters.sendThinking(), sendThinking));
-                midConversationSystemMessages(getOrDefault(anthropicParameters.midConversationSystemMessages(), midConversationSystemMessages));
+                midConversationSystemMessages(getOrDefault(
+                        anthropicParameters.midConversationSystemMessages(), midConversationSystemMessages));
                 returnThinking(getOrDefault(anthropicParameters.returnThinking(), returnThinking));
                 toolChoiceName(getOrDefault(anthropicParameters.toolChoiceName(), toolChoiceName));
                 disableParallelToolUse(

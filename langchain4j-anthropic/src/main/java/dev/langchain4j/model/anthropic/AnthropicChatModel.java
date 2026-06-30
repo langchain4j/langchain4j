@@ -137,8 +137,8 @@ public class AnthropicChatModel implements ChatModel {
                 .thinkingBudgetTokens(
                         getOrDefault(builder.thinkingBudgetTokens, anthropicDefaults.thinkingBudgetTokens()))
                 .sendThinking(getOrDefault(builder.sendThinking, anthropicDefaults.sendThinking()))
-                .midConversationSystemMessages(
-                        getOrDefault(builder.midConversationSystemMessages, anthropicDefaults.midConversationSystemMessages()))
+                .midConversationSystemMessages(getOrDefault(
+                        builder.midConversationSystemMessages, anthropicDefaults.midConversationSystemMessages()))
                 .returnThinking(getOrDefault(builder.returnThinking, anthropicDefaults.returnThinking()))
                 .toolChoiceName(getOrDefault(builder.toolChoiceName, anthropicDefaults.toolChoiceName()))
                 .disableParallelToolUse(
