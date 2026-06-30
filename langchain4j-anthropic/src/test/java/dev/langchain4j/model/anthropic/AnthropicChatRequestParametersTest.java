@@ -248,4 +248,52 @@ class AnthropicChatRequestParametersTest {
         assertThat(copy.disableParallelToolUse()).isTrue();
         assertThat(copy.userId()).isEqualTo("test-user-123");
     }
+
+    @Test
+    void mid_conversation_system_messages_is_plumbed_through_builder_override_defaultedBy_and_copy() {
+        // build + getter
+        assertThat(AnthropicChatRequestParameters.builder()
+                        .midConversationSystemMessages(true)
+                        .build()
+                        .midConversationSystemMessages())
+                .isTrue();
+
+        // defaults to null
+        assertThat(AnthropicChatRequestParameters.EMPTY.midConversationSystemMessages()).isNull();
+
+        // overrideWith takes the other value when set
+        AnthropicChatRequestParameters overridden = AnthropicChatRequestParameters.builder()
+                .midConversationSystemMessages(true)
+                .build()
+                .overrideWith(AnthropicChatRequestParameters.builder()
+                        .midConversationSystemMessages(false)
+                        .build());
+        assertThat(overridden.midConversationSystemMessages()).isFalse();
+
+        // defaultedBy keeps the original value
+        AnthropicChatRequestParameters defaulted = AnthropicChatRequestParameters.builder()
+                .midConversationSystemMessages(true)
+                .build()
+                .defaultedBy(AnthropicChatRequestParameters.builder()
+                        .midConversationSystemMessages(false)
+                        .build());
+        assertThat(defaulted.midConversationSystemMessages()).isTrue();
+
+        // equals/hashCode distinguish the field
+        AnthropicChatRequestParameters on = AnthropicChatRequestParameters.builder()
+                .midConversationSystemMessages(true)
+                .build();
+        AnthropicChatRequestParameters onCopy = AnthropicChatRequestParameters.builder()
+                .midConversationSystemMessages(true)
+                .build();
+        AnthropicChatRequestParameters off = AnthropicChatRequestParameters.builder()
+                .midConversationSystemMessages(false)
+                .build();
+        assertThat(on).isEqualTo(onCopy).hasSameHashCodeAs(onCopy);
+        assertThat(on).isNotEqualTo(off);
+
+        // toBuilder round-trips the field
+        assertThat(on.toBuilder().build()).isEqualTo(on);
+        assertThat(on.toBuilder().build().midConversationSystemMessages()).isTrue();
+    }
 }

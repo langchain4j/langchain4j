@@ -211,29 +211,52 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
         // WhereFilter cannot reliably filter nested map fields.
         // Therefore we fallback to client-side filtering.
 
-        List<String> idsToDelete = client.data().objectsGetter().withClassName(objectClass).run().getResult().stream()
-                .filter(obj -> {
-                    if (obj.getProperties() == null) {
-                        return false;
-                    }
+        List<WeaviateObject> objects =
+                client.data().objectsGetter().withClassName(objectClass).run().getResult();
 
-                    Object metadataObj = obj.getProperties().get(metadataFieldName);
+        if (objects == null || objects.isEmpty()) {
+            return;
+        }
 
-                    if (!(metadataObj instanceof Map)) {
-                        return false;
-                    }
-
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> metadata = (Map<String, Object>) metadataObj;
-
-                    return filter.test(new Metadata(metadata));
-                })
+        List<String> idsToDelete = objects.stream()
+                .filter(obj -> obj.getProperties() != null
+                        && matchesFilter(obj.getProperties(), metadataFieldName, textFieldName, filter))
                 .map(WeaviateObject::getId)
                 .collect(Collectors.toList());
 
         if (!idsToDelete.isEmpty()) {
             removeAll(idsToDelete);
         }
+    }
+
+    /**
+     * Tests a stored object's properties against the given filter, mirroring the dual storage modes
+     * of {@link #toMetadata(Map)}. In nested mode the metadata is read from {@code metadataFieldName};
+     * in root mode ({@code metadataFieldName} is empty) the metadata is taken from the properties
+     * themselves, excluding the text field and Weaviate's internal index flags, which are not valid
+     * {@link Metadata} values.
+     */
+    static boolean matchesFilter(
+            Map<String, Object> properties, String metadataFieldName, String textFieldName, Filter filter) {
+        Map<String, Object> metadata;
+        if (metadataFieldName.isEmpty()) {
+            metadata = new HashMap<>(properties);
+            metadata.remove(textFieldName);
+            metadata.remove(ADDITIONALS);
+            metadata.remove("indexFilterable");
+            metadata.remove("indexSearchable");
+            metadata.values().removeIf(NULL_VALUE::equals);
+        } else {
+            Object metadataObj = properties.get(metadataFieldName);
+            if (!(metadataObj instanceof Map)) {
+                return false;
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> nested = (Map<String, Object>) metadataObj;
+            metadata = nested;
+        }
+
+        return filter.test(new Metadata(metadata));
     }
 
     /**
