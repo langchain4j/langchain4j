@@ -84,10 +84,14 @@ import mutiny.zero.ZeroPublisher;
  * <p>
  * <b>Back-pressure.</b> The model's streaming response is consumed with unbounded demand and its events are
  * relayed to the subscriber through a <b>bounded</b> buffer ({@value #DEFAULT_BUFFER_SIZE} entries by default,
- * overridable per AI Service via {@code AiServices.streamingBufferSize(int)}). The LLM itself is deliberately
- * not throttled — see {@code onSubscribe} — so a subscriber that consumes slower than the model produces and
- * overflows the buffer terminates with an {@link IllegalStateException} rather than dropping events (which
- * would corrupt the assembled response) or buffering unbounded (which risks {@link OutOfMemoryError}).
+ * overridable per AI Service via {@code AiServices.streamingBufferSize(int)}). The model stream <i>could</i> be
+ * throttled — its subscription demand maps to TCP / HTTP-2 flow control (see {@code onSubscribe}) — but we
+ * deliberately request unbounded: throttling the socket cannot slow token <i>generation</i> (already produced and
+ * billed server-side) and only risks an idle-timeout reset of the in-flight response, so the sole thing it would
+ * protect is heap — which the bounded buffer already guards. Consequently a subscriber that consumes slower than
+ * the model produces and overflows the buffer terminates with an {@link IllegalStateException} rather than
+ * dropping events (which would corrupt the assembled response) or buffering unbounded (which risks
+ * {@link OutOfMemoryError}).
  * Consumers must therefore not block in {@code onNext}; offload heavy per-event work. If a slow-but-correct
  * consumer trips the buffer on a long response, raise it via {@code AiServices.streamingBufferSize(int)}
  * (or set it to {@link Integer#MAX_VALUE} for an effectively unbounded buffer, accepting the OOM risk).

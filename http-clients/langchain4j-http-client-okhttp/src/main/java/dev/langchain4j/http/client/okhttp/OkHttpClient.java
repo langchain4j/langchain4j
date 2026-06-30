@@ -36,8 +36,11 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
 public class OkHttpClient implements HttpClient {
+
+    static final int DEFAULT_STREAMING_BUFFER_SIZE = 16384;
 
     private final okhttp3.OkHttpClient client;
     private final int streamingBufferSize;
@@ -54,7 +57,8 @@ public class OkHttpClient implements HttpClient {
         }
 
         this.client = okBuilder.build();
-        this.streamingBufferSize = builder.streamingBufferSize();
+        this.streamingBufferSize = ensureGreaterThanZero(
+                getOrDefault(builder.streamingBufferSize(), DEFAULT_STREAMING_BUFFER_SIZE), "streamingBufferSize");
     }
 
     public static OkHttpClientBuilder builder() {

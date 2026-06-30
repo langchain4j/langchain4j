@@ -3,16 +3,12 @@ package dev.langchain4j.http.client.okhttp;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import java.time.Duration;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
-
 public class OkHttpClientBuilder implements HttpClientBuilder {
-
-    private static final int DEFAULT_STREAMING_BUFFER_SIZE = 16384;
 
     private okhttp3.OkHttpClient.Builder okHttpClientBuilder;
     private Duration connectTimeout;
     private Duration readTimeout;
-    private int streamingBufferSize = DEFAULT_STREAMING_BUFFER_SIZE;
+    private Integer streamingBufferSize;
 
     public okhttp3.OkHttpClient.Builder okHttpClientBuilder() {
         return okHttpClientBuilder;
@@ -45,7 +41,7 @@ public class OkHttpClientBuilder implements HttpClientBuilder {
         return this;
     }
 
-    public int streamingBufferSize() {
+    public Integer streamingBufferSize() {
         return streamingBufferSize;
     }
 
@@ -54,13 +50,13 @@ public class OkHttpClientBuilder implements HttpClientBuilder {
      * path. Server-sent events are relayed to the subscriber through this buffer; if the subscriber consumes
      * slower than the server produces and the buffer overflows, the stream terminates with an error.
      * <p>
-     * The default is {@code 16384}.
+     * The default is {@value OkHttpClient#DEFAULT_STREAMING_BUFFER_SIZE}.
      *
      * @param streamingBufferSize the buffer size; must be greater than zero
      * @return the builder instance
      */
-    public OkHttpClientBuilder streamingBufferSize(int streamingBufferSize) {
-        this.streamingBufferSize = ensureGreaterThanZero(streamingBufferSize, "streamingBufferSize");
+    public OkHttpClientBuilder streamingBufferSize(Integer streamingBufferSize) {
+        this.streamingBufferSize = streamingBufferSize;
         return this;
     }
 

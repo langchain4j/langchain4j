@@ -159,6 +159,14 @@ library — chosen so the core does not depend on a full reactive framework.
   response) or buffering unbounded (OOM risk).
 - The buffer size is **configurable per AI Service** via `AiServices.streamingBufferSize(int)` (and per HTTP/model
   client builder); set it to `Integer.MAX_VALUE` for an effectively unbounded buffer.
+- **Why unbounded demand toward the model (rather than socket-level back-pressure)?** The byte/event stream
+  *can* be throttled — the JDK HTTP client's demand maps to TCP receive-window and HTTP/2 `WINDOW_UPDATE` flow
+  control — but we deliberately don't. Throttling the socket cannot reach token **generation**: providers
+  decouple generation from delivery (batched GPU inference into a server-side buffer), the tokens are produced
+  and billed regardless of read speed, and intermediary proxies often buffer the full response anyway. The only
+  thing client back-pressure would protect is **our heap**, and stalling a half-read response risks an
+  idle-timeout connection reset. So we read eagerly and bound memory at the `Tube` buffer instead — a local,
+  fail-fast guard that doesn't hold the network call hostage to a slow consumer.
 
 ## 4. Supported types
 

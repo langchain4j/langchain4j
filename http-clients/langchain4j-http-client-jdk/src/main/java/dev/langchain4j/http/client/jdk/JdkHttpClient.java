@@ -295,7 +295,12 @@ public class JdkHttpClient implements HttpClient {
                                 subscription.cancel();
                                 return;
                             }
-                            subscription.request(Long.MAX_VALUE); // TODO
+                            // Unbounded demand on purpose. The JDK client's demand maps to TCP / HTTP-2 flow
+                            // control, so we *could* throttle the socket — but it is pointless here: it cannot
+                            // slow token generation (already produced and billed server-side), and stalling the
+                            // read risks an idle-timeout reset mid-stream. Heap is bounded by the Tube buffer
+                            // downstream, which fails fast on overflow rather than reading unbounded.
+                            subscription.request(Long.MAX_VALUE);
                         }
 
                         @Override

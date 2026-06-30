@@ -2,6 +2,7 @@ package dev.langchain4j.http.client.apache;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static java.util.stream.Collectors.joining;
 
 import dev.langchain4j.exception.HttpException;
@@ -56,6 +57,8 @@ import org.apache.hc.core5.util.Timeout;
 
 public class ApacheHttpClient implements HttpClient {
 
+    static final int DEFAULT_STREAMING_BUFFER_SIZE = 16384;
+
     private final CloseableHttpClient syncClient;
     private final CloseableHttpAsyncClient asyncClient;
     private final int streamingBufferSize;
@@ -83,7 +86,8 @@ public class ApacheHttpClient implements HttpClient {
         this.syncClient = syncHttpClientBuilder.build();
         this.asyncClient = asyncHttpClientBuilder.build();
         this.asyncClient.start();
-        this.streamingBufferSize = builder.streamingBufferSize();
+        this.streamingBufferSize = ensureGreaterThanZero(
+                getOrDefault(builder.streamingBufferSize(), DEFAULT_STREAMING_BUFFER_SIZE), "streamingBufferSize");
     }
 
     public static ApacheHttpClientBuilder builder() {
