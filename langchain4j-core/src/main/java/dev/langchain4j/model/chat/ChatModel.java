@@ -129,7 +129,7 @@ public interface ChatModel {
         CompletableFuture<ChatResponse> result = source.whenComplete((chatResponse, error) -> {
             if (error != null) {
                 Throwable cause = unwrapCompletionException(error);
-                if (!(cause instanceof CancellationException)) { // TODO
+                if (!(cause instanceof CancellationException)) {
                     onError(cause, finalChatRequest, provider(), attributes, listeners);
                 }
             } else {
@@ -180,6 +180,8 @@ public interface ChatModel {
 
         return chat(chatRequest);
     }
+
+    // TODO chatAsync convenience methods
 
     default Set<Capability> supportedCapabilities() {
         return Set.of();

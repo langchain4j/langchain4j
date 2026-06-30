@@ -183,7 +183,6 @@ public abstract class AbstractBaseChatModelIT<M> {
                 assertThat(threads).hasSize(1);
                 assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
             }
-            // TODO verify publisher events?
         }
     }
 
@@ -736,7 +735,6 @@ public abstract class AbstractBaseChatModelIT<M> {
                 inOrder.verifyNoMoreInteractions();
                 verifyNoMoreInteractions(handler);
             } else if (metadata.mode() == StreamingMode.PUBLISHER) {
-                // TODO verify all events and their order
                 verifyToolEvents(metadata, toolExecutionRequest.id());
             }
 
@@ -833,8 +831,6 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     /** Verifies the collected streaming metadata contains the expected tool calls (publisher API). */
     protected void verifyToolEvents(StreamingMetadata metadata, ExpectedToolCall... expected) {
-        // TODO verify order: partial(0), partial(0) ... complete(0), partial(1), partial(1), ... complete(1)
-
         // Every partial chunk must belong to one of the expected tool calls (no strays)...
         assertThat(metadata.partialToolCalls())
                 .isNotEmpty()
@@ -857,7 +853,7 @@ public abstract class AbstractBaseChatModelIT<M> {
 
     private static boolean matches(PartialToolCall partial, ExpectedToolCall expected) {
         return partial.index() == expected.index()
-                && Objects.equals(partial.id(), expected.id()) // TODO?
+                && Objects.equals(partial.id(), expected.id())
                 && partial.name().equals(expected.name())
                 // tools with empty "{}" arguments may stream blank-but-non-null partial arguments TODO sure?
                 && (expected.arguments().equals("{}")
@@ -868,7 +864,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     private static boolean matches(CompleteToolCall complete, ExpectedToolCall expected) {
         ToolExecutionRequest request = complete.toolExecutionRequest();
         return complete.index() == expected.index()
-                && Objects.equals(request.id(), expected.id()) // TODO?
+                && Objects.equals(request.id(), expected.id())
                 && request.name().equals(expected.name())
                 && request.arguments().replace(" ", "").equals(expected.arguments());
     }
@@ -948,7 +944,6 @@ public abstract class AbstractBaseChatModelIT<M> {
                 inOrder.verifyNoMoreInteractions();
                 verifyNoMoreInteractions(handler);
             } else if (metadata.mode() == StreamingMode.PUBLISHER) {
-                // TODO verify all events and their order
                 verifyToolEvents(metadata, getCurrentTime(toolExecutionRequest.id()));
             }
 
@@ -1132,7 +1127,6 @@ public abstract class AbstractBaseChatModelIT<M> {
                 inOrder.verifyNoMoreInteractions();
                 verifyNoMoreInteractions(handler);
             } else if (metadata.mode() == StreamingMode.PUBLISHER) {
-                // TODO verify all events and their order
                 verifyToolEvents(metadata,
                         toolExecutionRequests.get(0).id(),
                         toolExecutionRequests.get(1).id());

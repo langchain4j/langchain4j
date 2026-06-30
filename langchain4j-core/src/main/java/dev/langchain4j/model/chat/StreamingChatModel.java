@@ -1,10 +1,5 @@
 package dev.langchain4j.model.chat;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.ModelProvider.OTHER;
-import static dev.langchain4j.model.chat.ChatModelListenerUtils.onRequest;
-import static dev.langchain4j.model.chat.ChatModelListenerUtils.onResponse;
-
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
@@ -13,16 +8,8 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.CompleteToolCall;
-import dev.langchain4j.model.chat.response.PartialResponse;
-import dev.langchain4j.model.chat.response.PartialResponseContext;
-import dev.langchain4j.model.chat.response.PartialThinking;
-import dev.langchain4j.model.chat.response.PartialThinkingContext;
-import dev.langchain4j.model.chat.response.PartialToolCall;
-import dev.langchain4j.model.chat.response.PartialToolCallContext;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.model.chat.response.*;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,6 +19,10 @@ import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
 
 import static dev.langchain4j.internal.InternalFlowUtils.EMPTY_SUBSCRIPTION;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.ModelProvider.OTHER;
+import static dev.langchain4j.model.chat.ChatModelListenerUtils.onRequest;
+import static dev.langchain4j.model.chat.ChatModelListenerUtils.onResponse;
 
 /**
  * Represents a language model that has a chat API and can stream a response one token at a time.
@@ -145,6 +136,10 @@ public interface StreamingChatModel {
         return OTHER;
     }
 
+    default Set<Capability> supportedCapabilities() {
+        return Set.of();
+    }
+
     default void chat(String userMessage, StreamingChatResponseHandler handler) {
 
         ChatRequest chatRequest =
@@ -158,10 +153,6 @@ public interface StreamingChatModel {
         ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
 
         chat(chatRequest, handler);
-    }
-
-    default Set<Capability> supportedCapabilities() {
-        return Set.of();
     }
 
     /**
@@ -204,8 +195,25 @@ public interface StreamingChatModel {
      * buffering and, once the buffer is exhausted, a terminal error. Subscribers should request liberally
      * (e.g. {@code Long.MAX_VALUE}) and must <b>not</b> block or perform heavy work in {@code onNext} — offload
      * it to another thread.
+     *
+     * @since 1.17.0
      */
     default Publisher<StreamingEvent> chat(ChatRequest request) {
+        return chat(request, ChatRequestOptions.EMPTY);
+    }
+
+    /**
+     * Reactive entry point with additional invocation options; see {@link #chat(ChatRequest)} for the full
+     * contract (event ordering, {@link ChatModelListener} invocation, cancellation, and demand / back-pressure
+     * expectations).
+     *
+     * @param request a {@link ChatRequest}, containing all the inputs to the LLM
+     * @param options a {@link ChatRequestOptions} carrying listener attributes and other per-call metadata
+     * @return a cold {@link Publisher} of {@link StreamingEvent}s
+     * @see #chat(ChatRequest)
+     * @since 1.17.0
+     */
+    default Publisher<StreamingEvent> chat(ChatRequest request, ChatRequestOptions options) {
 
         ChatRequest finalChatRequest = ChatRequest.builder()
                 .messages(request.messages())
@@ -216,12 +224,14 @@ public interface StreamingChatModel {
 
         ModelProvider provider = provider();
 
+        ChatRequestOptions effectiveOptions = getOrDefault(options, ChatRequestOptions.EMPTY);
+
         return new Publisher<StreamingEvent>() {
 
             @Override
             public void subscribe(Subscriber<? super StreamingEvent> downstream) {
 
-                Map<Object, Object> attributes = new ConcurrentHashMap<>();
+                Map<Object, Object> attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
 
                 Publisher<StreamingEvent> innerPublisher;
                 try {
@@ -268,8 +278,6 @@ public interface StreamingChatModel {
             }
         };
     }
-
-    // TODO accepting options
 
     /**
      * Provider-specific implementation of the reactive stream returned by {@link #chat(ChatRequest)} (which wraps

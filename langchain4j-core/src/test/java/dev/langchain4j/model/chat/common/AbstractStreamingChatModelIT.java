@@ -168,7 +168,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
 
     @Override
     protected boolean assertThreads() {
-        return streamingModes().equals(List.of(StreamingMode.HANDLER)); // TODO assert for publisher mode as well?
+        return streamingModes().equals(List.of(StreamingMode.HANDLER));
     }
 
     @Test
