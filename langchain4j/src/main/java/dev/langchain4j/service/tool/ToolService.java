@@ -3,6 +3,7 @@ package dev.langchain4j.service.tool;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.allConcreteMethods;
 import static dev.langchain4j.internal.Utils.copy;
@@ -944,16 +945,6 @@ public class ToolService {
         return cancellation != null && cancellation.isCancelled();
     }
 
-    private static void propagateCancellation(CompletableFuture<?> from, CompletableFuture<?> to) {
-        if (from == null) {
-            return;
-        }
-        from.whenComplete((ignored, error) -> {
-            if (from.isCancelled()) {
-                to.cancel(true);
-            }
-        });
-    }
 
     /**
      * Per-round bookkeeping shared by every AI Service mode (sync, {@code CompletableFuture}, {@code TokenStream},

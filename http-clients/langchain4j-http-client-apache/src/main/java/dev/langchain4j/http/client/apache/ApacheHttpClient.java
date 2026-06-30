@@ -135,8 +135,6 @@ public class ApacheHttpClient implements HttpClient {
                     }
                 });
 
-        // Forward cancellation to the underlying request: cancelling the returned future aborts the
-        // in-flight exchange and releases the connection.
         future.whenComplete((response, error) -> {
             if (future.isCancelled()) {
                 apacheFuture.cancel(true);

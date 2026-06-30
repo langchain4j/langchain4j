@@ -1,5 +1,7 @@
 package dev.langchain4j.model.openai.internal;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
@@ -66,16 +68,13 @@ class RequestExecutor<Response> implements SyncOrAsyncOrStreaming<Response> {
     @Override
     public CompletableFuture<ParsedAndRawResponse<Response>> executeRawAsync() {
         CompletableFuture<SuccessfulHttpResponse> httpFuture = httpClient.executeAsync(httpRequest);
+
         CompletableFuture<ParsedAndRawResponse<Response>> result = httpFuture.thenApply(rawHttpResponse -> {
             Response parsedResponse = Json.fromJson(rawHttpResponse.body(), responseClass);
             return new ParsedAndRawResponse<>(parsedResponse, rawHttpResponse);
         });
-        // forward cancellation to the underlying HTTP call
-        result.whenComplete((response, error) -> {
-            if (result.isCancelled()) {
-                httpFuture.cancel(true);
-            }
-        });
+
+        propagateCancellation(result, httpFuture);
         return result;
     }
 

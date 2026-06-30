@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -187,6 +188,7 @@ public class OpenAiChatModel implements ChatModel {
         // maps provider exceptions to langchain4j exceptions but does not retry yet. TODO retries for async
         CompletableFuture<ParsedAndRawResponse<ChatCompletionResponse>> rawFuture =
                 client.chatCompletion(openAiRequest).executeRawAsync();
+
         CompletableFuture<ChatResponse> result = rawFuture.thenApply(this::toChatResponse)
                 .exceptionallyCompose(throwable -> {
                     Throwable cause = throwable instanceof CompletionException && throwable.getCause() != null
@@ -198,12 +200,8 @@ public class OpenAiChatModel implements ChatModel {
                     }
                     return CompletableFuture.failedFuture(ExceptionMapper.DEFAULT.mapException(cause));
                 });
-        // forward cancellation to the underlying HTTP call
-        result.whenComplete((response, error) -> {
-            if (result.isCancelled()) {
-                rawFuture.cancel(true);
-            }
-        });
+
+        propagateCancellation(result, rawFuture);
         return result;
     }
 

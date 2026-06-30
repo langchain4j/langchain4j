@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.OTHER;
 import static dev.langchain4j.model.chat.ChatModelListenerUtils.onError;
@@ -130,8 +131,7 @@ public interface ChatModel {
                 Throwable cause = error instanceof CompletionException && error.getCause() != null
                         ? error.getCause()
                         : error;
-                // a cancellation is not a model error - do not notify listeners
-                if (!(cause instanceof CancellationException)) {
+                if (!(cause instanceof CancellationException)) { // TODO
                     onError(cause, finalChatRequest, provider(), attributes, listeners);
                 }
             } else {
@@ -139,13 +139,7 @@ public interface ChatModel {
             }
         });
 
-        // Forward cancellation to the implementation's future so that cancelling the returned future
-        // aborts the in-flight request (if the implementation and HTTP client support it).
-        result.whenComplete((chatResponse, error) -> {
-            if (result.isCancelled()) {
-                source.cancel(true);
-            }
-        });
+        propagateCancellation(result, source);
         return result;
     }
 

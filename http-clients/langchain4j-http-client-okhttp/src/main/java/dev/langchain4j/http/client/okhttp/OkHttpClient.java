@@ -101,8 +101,6 @@ public class OkHttpClient implements HttpClient {
             }
         });
 
-        // Forward cancellation to the underlying call: cancelling the returned future aborts the
-        // in-flight request and releases the connection.
         future.whenComplete((response, error) -> {
             if (future.isCancelled()) {
                 call.cancel();

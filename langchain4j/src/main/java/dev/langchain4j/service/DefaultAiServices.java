@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
@@ -821,15 +822,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                         return error instanceof CompletionException && error.getCause() != null
                                 ? error.getCause()
                                 : error;
-                    }
-
-                    private static void propagateCancellation(
-                            CompletableFuture<?> from, CompletableFuture<?> to) {
-                        from.whenComplete((ignored, error) -> {
-                            if (from.isCancelled()) {
-                                to.cancel(true);
-                            }
-                        });
                     }
 
                     // Returned by immediateToolReturnResult when the immediate-tool-return case does not actually

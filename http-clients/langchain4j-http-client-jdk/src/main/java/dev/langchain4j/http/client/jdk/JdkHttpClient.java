@@ -38,6 +38,7 @@ import java.util.concurrent.Flow.Subscription;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.joining;
@@ -112,13 +113,7 @@ public class JdkHttpClient implements HttpClient {
             }
         });
 
-        // Forward cancellation to the underlying HTTP exchange: cancelling the returned future cancels the
-        // JDK send, which aborts the in-flight request and releases the connection.
-        result.whenComplete((response, error) -> {
-            if (result.isCancelled()) {
-                sendFuture.cancel(true);
-            }
-        });
+        propagateCancellation(result, sendFuture);
         return result;
     }
 
