@@ -54,6 +54,7 @@ public class LlmDecompositionStrategy implements DecompositionStrategy {
     private final int maxDepth;
     private final int currentDepth;
     private final DecomposerAgent decomposerAgent;
+    private List<TaskNode> cachedResult;
 
     public LlmDecompositionStrategy(ChatModel chatModel, String contextKey, Class<?>... candidateAgentTypes) {
         this(chatModel, contextKey, 1, candidateAgentTypes);
@@ -91,6 +92,10 @@ public class LlmDecompositionStrategy implements DecompositionStrategy {
 
     @Override
     public List<TaskNode> decompose(AgenticScope scope, Map<Class<?>, AgentInstance> agentsByType) {
+        if (cachedResult != null) {
+            return cachedResult;
+        }
+
         String context = scope.readState(contextKey, "");
         if (context.isBlank()) {
             return List.of();
@@ -129,6 +134,9 @@ public class LlmDecompositionStrategy implements DecompositionStrategy {
                         new LlmDecompositionStrategy(chatModel, subKey, maxDepth,
                                 currentDepth + 1, candidateFilter)));
             }
+        }
+        if (!result.isEmpty()) {
+            cachedResult = result;
         }
         return result;
     }
