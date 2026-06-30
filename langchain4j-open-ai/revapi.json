@@ -58,6 +58,16 @@
           "code": "java.field.removed",
           "old": "field dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_TURBO_PREVIEW",
           "justification": "Deprecated OpenAI model removed"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.audio.TextToSpeechRequest",
+          "justification": "TextToSpeechRequest is intentionally exposed by OpenAiTextToSpeechModel because it implements the core TextToSpeechModel API"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.audio.TextToSpeechResponse",
+          "justification": "TextToSpeechResponse is intentionally exposed by OpenAiTextToSpeechModel because it implements the core TextToSpeechModel API"
         }
       ]
     }
