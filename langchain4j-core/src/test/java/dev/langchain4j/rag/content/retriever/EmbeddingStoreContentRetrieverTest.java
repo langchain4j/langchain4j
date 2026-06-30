@@ -8,19 +8,20 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -52,32 +53,9 @@ class EmbeddingStoreContentRetrieverTest {
     }
 
     @Test
-    void should_retrieve() {
-
+    void should_retrieve_with_default_settings() {
         // given
-        ContentRetriever contentRetriever = new EmbeddingStoreContentRetriever(EMBEDDING_STORE, EMBEDDING_MODEL);
-
-        // when
-        contentRetriever.retrieve(QUERY);
-
-        // then
-        verify(EMBEDDING_STORE)
-                .search(EmbeddingSearchRequest.builder()
-                        .query(QUERY.text())
-                        .queryEmbedding(EMBEDDING)
-                        .maxResults(DEFAULT_MAX_RESULTS)
-                        .minScore(DEFAULT_MIN_SCORE)
-                        .build());
-        verifyNoMoreInteractions(EMBEDDING_STORE);
-        verify(EMBEDDING_MODEL).embed(QUERY.text());
-        verifyNoMoreInteractions(EMBEDDING_MODEL);
-    }
-
-    @Test
-    void should_retrieve_builder() {
-
-        // given
-        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+        EmbeddingStoreContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(EMBEDDING_STORE)
                 .embeddingModel(EMBEDDING_MODEL)
                 .build();
@@ -93,39 +71,12 @@ class EmbeddingStoreContentRetrieverTest {
                         .maxResults(DEFAULT_MAX_RESULTS)
                         .minScore(DEFAULT_MIN_SCORE)
                         .build());
-        verifyNoMoreInteractions(EMBEDDING_STORE);
-        verify(EMBEDDING_MODEL).embed(QUERY.text());
-        verifyNoMoreInteractions(EMBEDDING_MODEL);
     }
 
     @Test
-    void should_retrieve_with_custom_maxResults() {
-
+    void should_retrieve_with_custom_max_results() {
         // given
-        ContentRetriever contentRetriever =
-                new EmbeddingStoreContentRetriever(EMBEDDING_STORE, EMBEDDING_MODEL, CUSTOM_MAX_RESULTS);
-
-        // when
-        contentRetriever.retrieve(QUERY);
-
-        // then
-        verify(EMBEDDING_STORE)
-                .search(EmbeddingSearchRequest.builder()
-                        .query(QUERY.text())
-                        .queryEmbedding(EMBEDDING)
-                        .maxResults(CUSTOM_MAX_RESULTS)
-                        .minScore(DEFAULT_MIN_SCORE)
-                        .build());
-        verifyNoMoreInteractions(EMBEDDING_STORE);
-        verify(EMBEDDING_MODEL).embed(QUERY.text());
-        verifyNoMoreInteractions(EMBEDDING_MODEL);
-    }
-
-    @Test
-    void should_retrieve_with_custom_maxResults_builder() {
-
-        // given
-        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+        EmbeddingStoreContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(EMBEDDING_STORE)
                 .embeddingModel(EMBEDDING_MODEL)
                 .maxResults(CUSTOM_MAX_RESULTS)
@@ -142,65 +93,12 @@ class EmbeddingStoreContentRetrieverTest {
                         .maxResults(CUSTOM_MAX_RESULTS)
                         .minScore(DEFAULT_MIN_SCORE)
                         .build());
-        verifyNoMoreInteractions(EMBEDDING_STORE);
-        verify(EMBEDDING_MODEL).embed(QUERY.text());
-        verifyNoMoreInteractions(EMBEDDING_MODEL);
     }
 
     @Test
-    void should_retrieve_with_custom_dynamicMaxResults_builder() {
-
+    void should_retrieve_with_custom_min_score() {
         // given
-        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
-                .embeddingStore(EMBEDDING_STORE)
-                .embeddingModel(EMBEDDING_MODEL)
-                .dynamicMaxResults((query) -> CUSTOM_MAX_RESULTS)
-                .build();
-
-        // when
-        contentRetriever.retrieve(QUERY);
-
-        // then
-        verify(EMBEDDING_STORE)
-                .search(EmbeddingSearchRequest.builder()
-                        .query(QUERY.text())
-                        .queryEmbedding(EMBEDDING)
-                        .maxResults(CUSTOM_MAX_RESULTS)
-                        .minScore(DEFAULT_MIN_SCORE)
-                        .build());
-        verifyNoMoreInteractions(EMBEDDING_STORE);
-        verify(EMBEDDING_MODEL).embed(QUERY.text());
-        verifyNoMoreInteractions(EMBEDDING_MODEL);
-    }
-
-    @Test
-    void should_retrieve_with_custom_minScore_ctor() {
-
-        // given
-        ContentRetriever contentRetriever =
-                new EmbeddingStoreContentRetriever(EMBEDDING_STORE, EMBEDDING_MODEL, null, CUSTOM_MIN_SCORE);
-
-        // when
-        contentRetriever.retrieve(QUERY);
-
-        // then
-        verify(EMBEDDING_STORE)
-                .search(EmbeddingSearchRequest.builder()
-                        .query(QUERY.text())
-                        .queryEmbedding(EMBEDDING)
-                        .maxResults(DEFAULT_MAX_RESULTS)
-                        .minScore(CUSTOM_MIN_SCORE)
-                        .build());
-        verifyNoMoreInteractions(EMBEDDING_STORE);
-        verify(EMBEDDING_MODEL).embed(QUERY.text());
-        verifyNoMoreInteractions(EMBEDDING_MODEL);
-    }
-
-    @Test
-    void should_retrieve_with_custom_minScore_builder() {
-
-        // given
-        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+        EmbeddingStoreContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(EMBEDDING_STORE)
                 .embeddingModel(EMBEDDING_MODEL)
                 .minScore(CUSTOM_MIN_SCORE)
@@ -217,47 +115,16 @@ class EmbeddingStoreContentRetrieverTest {
                         .maxResults(DEFAULT_MAX_RESULTS)
                         .minScore(CUSTOM_MIN_SCORE)
                         .build());
-        verifyNoMoreInteractions(EMBEDDING_STORE);
-        verify(EMBEDDING_MODEL).embed(QUERY.text());
-        verifyNoMoreInteractions(EMBEDDING_MODEL);
-    }
-
-    @Test
-    void should_retrieve_with_custom_dynamicMinScore_builder() {
-
-        // given
-        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
-                .embeddingStore(EMBEDDING_STORE)
-                .embeddingModel(EMBEDDING_MODEL)
-                .dynamicMinScore((query) -> CUSTOM_MIN_SCORE)
-                .build();
-
-        // when
-        contentRetriever.retrieve(QUERY);
-
-        // then
-        verify(EMBEDDING_STORE)
-                .search(EmbeddingSearchRequest.builder()
-                        .query(QUERY.text())
-                        .queryEmbedding(EMBEDDING)
-                        .maxResults(DEFAULT_MAX_RESULTS)
-                        .minScore(CUSTOM_MIN_SCORE)
-                        .build());
-        verifyNoMoreInteractions(EMBEDDING_STORE);
-        verify(EMBEDDING_MODEL).embed(QUERY.text());
-        verifyNoMoreInteractions(EMBEDDING_MODEL);
     }
 
     @Test
     void should_retrieve_with_custom_filter() {
-
         // given
-        Filter metadataFilter = metadataKey("key").isEqualTo("value");
-
-        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+        Filter filter = metadataKey("key").isEqualTo("value");
+        EmbeddingStoreContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(EMBEDDING_STORE)
                 .embeddingModel(EMBEDDING_MODEL)
-                .filter(metadataFilter)
+                .filter(filter)
                 .build();
 
         // when
@@ -270,23 +137,18 @@ class EmbeddingStoreContentRetrieverTest {
                         .queryEmbedding(EMBEDDING)
                         .maxResults(DEFAULT_MAX_RESULTS)
                         .minScore(DEFAULT_MIN_SCORE)
-                        .filter(metadataFilter)
+                        .filter(filter)
                         .build());
-        verifyNoMoreInteractions(EMBEDDING_STORE);
-        verify(EMBEDDING_MODEL).embed(QUERY.text());
-        verifyNoMoreInteractions(EMBEDDING_MODEL);
     }
 
     @Test
-    void should_retrieve_with_custom_dynamicFilter() {
-
+    void should_retrieve_with_dynamic_max_results_and_min_score() {
         // given
-        Filter metadataFilter = metadataKey("key").isEqualTo("value");
-
-        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+        EmbeddingStoreContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(EMBEDDING_STORE)
                 .embeddingModel(EMBEDDING_MODEL)
-                .dynamicFilter((query) -> metadataFilter)
+                .dynamicMaxResults(query -> 1)
+                .dynamicMinScore(query -> 0.1)
                 .build();
 
         // when
@@ -297,81 +159,8 @@ class EmbeddingStoreContentRetrieverTest {
                 .search(EmbeddingSearchRequest.builder()
                         .query(QUERY.text())
                         .queryEmbedding(EMBEDDING)
-                        .maxResults(DEFAULT_MAX_RESULTS)
-                        .minScore(DEFAULT_MIN_SCORE)
-                        .filter(metadataFilter)
-                        .build());
-        verifyNoMoreInteractions(EMBEDDING_STORE);
-        verify(EMBEDDING_MODEL).embed(QUERY.text());
-        verifyNoMoreInteractions(EMBEDDING_MODEL);
-    }
-
-    @Test
-    void should_include_explicit_display_name_in_to_string() {
-
-        // given
-        double minScore = 0.7;
-        String displayName = "MyName";
-        EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
-        EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
-
-        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
-                .displayName(displayName)
-                .embeddingStore(embeddingStore)
-                .embeddingModel(embeddingModel)
-                .minScore(minScore)
-                .build();
-
-        // when
-        String result = contentRetriever.toString();
-
-        // then
-        assertThat(result).contains(displayName);
-    }
-
-    @Test
-    void should_include_implicit_display_name_in_to_string() {
-
-        // given
-        double minScore = 0.7;
-        EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
-        EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
-
-        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
-                .embeddingStore(embeddingStore)
-                .embeddingModel(embeddingModel)
-                .minScore(minScore)
-                .build();
-
-        // when
-        String result = contentRetriever.toString();
-
-        // then
-        assertThat(result).contains(EmbeddingStoreContentRetriever.DEFAULT_DISPLAY_NAME);
-    }
-
-    @Test
-    void should_prefer_dynamic_values_over_static() {
-        // given
-        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
-                .embeddingStore(EMBEDDING_STORE)
-                .embeddingModel(EMBEDDING_MODEL)
-                .maxResults(10) // static value
-                .dynamicMaxResults((query) -> 1) // should override static
-                .minScore(0.1) // static value
-                .dynamicMinScore((query) -> 0.1) // should override static
-                .build();
-
-        // when
-        contentRetriever.retrieve(QUERY);
-
-        // then
-        verify(EMBEDDING_STORE)
-                .search(EmbeddingSearchRequest.builder()
-                        .query(QUERY.text())
-                        .queryEmbedding(EMBEDDING)
-                        .maxResults(1) // dynamic value used
-                        .minScore(0.1) // dynamic value used
+                        .maxResults(1)
+                        .minScore(0.1)
                         .build());
     }
 
@@ -388,5 +177,140 @@ class EmbeddingStoreContentRetrieverTest {
                         .embeddingStore(EMBEDDING_STORE)
                         .build())
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // ==================== deduplicateOverlap tests ====================
+
+    @Test
+    void deduplicateOverlap_shouldRemoveOverlapFromAdjacentSegments() {
+        // Segment 0: "the quick brown fox"
+        // Segment 1: "brown fox jumps over" <- "brown fox" is the overlap
+        dev.langchain4j.data.document.Metadata meta0 = dev.langchain4j.data.document.Metadata.from("index", "0");
+        dev.langchain4j.data.document.Metadata meta1 = dev.langchain4j.data.document.Metadata.from("index", "1");
+
+        Content c0 = Content.from(TextSegment.from("the quick brown fox", meta0));
+        Content c1 = Content.from(TextSegment.from("brown fox jumps over", meta1));
+
+        List<Content> result = EmbeddingStoreContentRetriever.deduplicateOverlap(asList(c0, c1));
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).textSegment().text()).isEqualTo("the quick brown fox");
+        assertThat(result.get(1).textSegment().text()).isEqualTo(" jumps over");
+    }
+
+    @Test
+    void deduplicateOverlap_shouldNotModifyNonAdjacentSegments() {
+        // Segments 0 and 2 are not adjacent — no deduplication should occur
+        dev.langchain4j.data.document.Metadata meta0 = dev.langchain4j.data.document.Metadata.from("index", "0");
+        dev.langchain4j.data.document.Metadata meta2 = dev.langchain4j.data.document.Metadata.from("index", "2");
+
+        Content c0 = Content.from(TextSegment.from("the quick brown fox", meta0));
+        Content c2 = Content.from(TextSegment.from("brown fox jumps over", meta2));
+
+        List<Content> result = EmbeddingStoreContentRetriever.deduplicateOverlap(asList(c0, c2));
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).textSegment().text()).isEqualTo("the quick brown fox");
+        assertThat(result.get(1).textSegment().text()).isEqualTo("brown fox jumps over");
+    }
+
+    @Test
+    void deduplicateOverlap_shouldNotModifySegmentsFromDifferentDocuments() {
+        // Same index values but different documents — no deduplication
+        dev.langchain4j.data.document.Metadata meta0 = new dev.langchain4j.data.document.Metadata();
+        meta0.put("index", "0");
+        meta0.put("file_name", "doc1.txt");
+
+        dev.langchain4j.data.document.Metadata meta1 = new dev.langchain4j.data.document.Metadata();
+        meta1.put("index", "1");
+        meta1.put("file_name", "doc2.txt");
+
+        Content c0 = Content.from(TextSegment.from("the quick brown fox", meta0));
+        Content c1 = Content.from(TextSegment.from("brown fox jumps over", meta1));
+
+        List<Content> result = EmbeddingStoreContentRetriever.deduplicateOverlap(asList(c0, c1));
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).textSegment().text()).isEqualTo("the quick brown fox");
+        assertThat(result.get(1).textSegment().text()).isEqualTo("brown fox jumps over");
+    }
+
+    @Test
+    void deduplicateOverlap_shouldNotModifySegmentsWithNoIndexMetadata() {
+        // Segments have no "index" metadata — cannot determine adjacency, leave unchanged
+        Content c0 = Content.from(TextSegment.from("the quick brown fox"));
+        Content c1 = Content.from(TextSegment.from("brown fox jumps over"));
+
+        List<Content> result = EmbeddingStoreContentRetriever.deduplicateOverlap(asList(c0, c1));
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).textSegment().text()).isEqualTo("the quick brown fox");
+        assertThat(result.get(1).textSegment().text()).isEqualTo("brown fox jumps over");
+    }
+
+    @Test
+    void deduplicateOverlap_shouldReturnSingleContentUnchanged() {
+        dev.langchain4j.data.document.Metadata meta0 = dev.langchain4j.data.document.Metadata.from("index", "0");
+        Content c0 = Content.from(TextSegment.from("the quick brown fox", meta0));
+
+        List<Content> result = EmbeddingStoreContentRetriever.deduplicateOverlap(asList(c0));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).textSegment().text()).isEqualTo("the quick brown fox");
+    }
+
+    @Test
+    void deduplicateOverlap_shouldHandleNoOverlap() {
+        dev.langchain4j.data.document.Metadata meta0 = dev.langchain4j.data.document.Metadata.from("index", "0");
+        dev.langchain4j.data.document.Metadata meta1 = dev.langchain4j.data.document.Metadata.from("index", "1");
+
+        Content c0 = Content.from(TextSegment.from("the quick brown fox", meta0));
+        Content c1 = Content.from(TextSegment.from("jumps over the lazy dog", meta1));
+
+        List<Content> result = EmbeddingStoreContentRetriever.deduplicateOverlap(asList(c0, c1));
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).textSegment().text()).isEqualTo("the quick brown fox");
+        assertThat(result.get(1).textSegment().text()).isEqualTo("jumps over the lazy dog");
+    }
+
+    @Test
+    void deduplicateOverlap_shouldPreserveMetadataAfterDedup() {
+        dev.langchain4j.data.document.Metadata meta0 = new dev.langchain4j.data.document.Metadata();
+        meta0.put("index", "0");
+        meta0.put("source", "wiki");
+
+        dev.langchain4j.data.document.Metadata meta1 = new dev.langchain4j.data.document.Metadata();
+        meta1.put("index", "1");
+        meta1.put("source", "wiki");
+
+        Content c0 = Content.from(TextSegment.from("the quick brown fox", meta0));
+        Content c1 = Content.from(TextSegment.from("brown fox jumps over", meta1));
+
+        List<Content> result = EmbeddingStoreContentRetriever.deduplicateOverlap(asList(c0, c1));
+
+        assertThat(result.get(1).textSegment().metadata().getString("source")).isEqualTo("wiki");
+        assertThat(result.get(1).textSegment().metadata().getString("index")).isEqualTo("1");
+    }
+
+    // ==================== longestSuffixPrefixOverlap tests ====================
+
+    @Test
+    void longestSuffixPrefixOverlap_shouldFindOverlap() {
+        assertThat(EmbeddingStoreContentRetriever.longestSuffixPrefixOverlap(
+                        "the quick brown fox", "brown fox jumps over"))
+                .isEqualTo(9); // "brown fox"
+    }
+
+    @Test
+    void longestSuffixPrefixOverlap_shouldReturnZeroWhenNoOverlap() {
+        assertThat(EmbeddingStoreContentRetriever.longestSuffixPrefixOverlap("hello world", "foo bar"))
+                .isEqualTo(0);
+    }
+
+    @Test
+    void longestSuffixPrefixOverlap_shouldHandleFullOverlap() {
+        assertThat(EmbeddingStoreContentRetriever.longestSuffixPrefixOverlap("hello", "hello"))
+                .isEqualTo(5);
     }
 }

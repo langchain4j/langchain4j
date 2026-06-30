@@ -17,9 +17,12 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -53,12 +56,20 @@ import java.util.stream.Collectors;
  * - {@code dynamicFilter}: It is a {@link Function} that accepts a {@link Query} and returns a {@code filter} value.
  * It can be used to dynamically define {@code filter} value, depending on factors such as the query,
  * the user (using Metadata#chatMemoryId()} from {@link Query#metadata()}), etc.
+ * <br>
+ * - {@code removeDuplicateOverlap}: When documents are split with overlap, adjacent retrieved {@link TextSegment}s
+ * from the same document share a repeated suffix/prefix. When {@code true} (default), this duplicate overlap
+ * text is detected and removed from the start of the later segment, preventing the LLM from receiving redundant
+ * content. Set to {@code false} to disable this behaviour and return segments as-is.
  */
 public class EmbeddingStoreContentRetriever implements ContentRetriever {
+
+    static final String INDEX_METADATA_KEY = "index";
 
     public static final Function<Query, Integer> DEFAULT_MAX_RESULTS = (query) -> 3;
     public static final Function<Query, Double> DEFAULT_MIN_SCORE = (query) -> 0.0;
     public static final Function<Query, Filter> DEFAULT_FILTER = (query) -> null;
+    public static final boolean DEFAULT_REMOVE_DUPLICATE_OVERLAP = true;
 
     public static final String DEFAULT_DISPLAY_NAME = "Default";
 
@@ -68,6 +79,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
     private final Function<Query, Integer> maxResultsProvider;
     private final Function<Query, Double> minScoreProvider;
     private final Function<Query, Filter> filterProvider;
+    private final boolean removeDuplicateOverlap;
 
     private final String displayName;
 
@@ -78,7 +90,8 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                 embeddingModel,
                 DEFAULT_MAX_RESULTS,
                 DEFAULT_MIN_SCORE,
-                DEFAULT_FILTER);
+                DEFAULT_FILTER,
+                DEFAULT_REMOVE_DUPLICATE_OVERLAP);
     }
 
     public EmbeddingStoreContentRetriever(
@@ -89,7 +102,8 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                 embeddingModel,
                 (query) -> maxResults,
                 DEFAULT_MIN_SCORE,
-                DEFAULT_FILTER);
+                DEFAULT_FILTER,
+                DEFAULT_REMOVE_DUPLICATE_OVERLAP);
     }
 
     public EmbeddingStoreContentRetriever(
@@ -101,18 +115,37 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                 DEFAULT_DISPLAY_NAME,
                 embeddingStore,
                 embeddingModel,
-                (query) -> maxResults,
-                (query) -> minScore,
-                DEFAULT_FILTER);
+                maxResults != null ? (query) -> maxResults : DEFAULT_MAX_RESULTS,
+                minScore != null ? (query) -> minScore : DEFAULT_MIN_SCORE,
+                DEFAULT_FILTER,
+                DEFAULT_REMOVE_DUPLICATE_OVERLAP);
     }
 
-    private EmbeddingStoreContentRetriever(
+    public EmbeddingStoreContentRetriever(
             String displayName,
             EmbeddingStore<TextSegment> embeddingStore,
             EmbeddingModel embeddingModel,
             Function<Query, Integer> dynamicMaxResults,
             Function<Query, Double> dynamicMinScore,
             Function<Query, Filter> dynamicFilter) {
+        this(
+                displayName,
+                embeddingStore,
+                embeddingModel,
+                dynamicMaxResults,
+                dynamicMinScore,
+                dynamicFilter,
+                DEFAULT_REMOVE_DUPLICATE_OVERLAP);
+    }
+
+    public EmbeddingStoreContentRetriever(
+            String displayName,
+            EmbeddingStore<TextSegment> embeddingStore,
+            EmbeddingModel embeddingModel,
+            Function<Query, Integer> dynamicMaxResults,
+            Function<Query, Double> dynamicMinScore,
+            Function<Query, Filter> dynamicFilter,
+            boolean removeDuplicateOverlap) {
         this.displayName = getOrDefault(displayName, DEFAULT_DISPLAY_NAME);
         this.embeddingStore = ensureNotNull(embeddingStore, "embeddingStore");
         this.embeddingModel = ensureNotNull(
@@ -120,6 +153,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
         this.maxResultsProvider = getOrDefault(dynamicMaxResults, DEFAULT_MAX_RESULTS);
         this.minScoreProvider = getOrDefault(dynamicMinScore, DEFAULT_MIN_SCORE);
         this.filterProvider = getOrDefault(dynamicFilter, DEFAULT_FILTER);
+        this.removeDuplicateOverlap = removeDuplicateOverlap;
     }
 
     private static EmbeddingModel loadEmbeddingModel() {
@@ -128,11 +162,9 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
             throw new RuntimeException("Conflict: multiple embedding models have been found in the classpath. "
                     + "Please explicitly specify the one you wish to use.");
         }
-
         for (EmbeddingModelFactory factory : factories) {
             return factory.create();
         }
-
         return null;
     }
 
@@ -148,6 +180,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
         private Function<Query, Integer> dynamicMaxResults;
         private Function<Query, Double> dynamicMinScore;
         private Function<Query, Filter> dynamicFilter;
+        private Boolean removeDuplicateOverlap;
 
         EmbeddingStoreContentRetrieverBuilder() {}
 
@@ -202,6 +235,20 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
             return this;
         }
 
+        /**
+         * When documents are split with overlap, adjacent retrieved {@link TextSegment}s from the same document
+         * share a repeated suffix/prefix. When set to {@code true} (default), this duplicate overlap text is
+         * detected and removed from the start of the later segment, preventing the LLM from receiving redundant
+         * content. Set to {@code false} to disable this behaviour and return segments as-is.
+         *
+         * @param removeDuplicateOverlap whether to remove duplicate overlap (default: true)
+         * @return this builder
+         */
+        public EmbeddingStoreContentRetrieverBuilder removeDuplicateOverlap(boolean removeDuplicateOverlap) {
+            this.removeDuplicateOverlap = removeDuplicateOverlap;
+            return this;
+        }
+
         public EmbeddingStoreContentRetriever build() {
             return new EmbeddingStoreContentRetriever(
                     this.displayName,
@@ -209,7 +256,10 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                     this.embeddingModel,
                     this.dynamicMaxResults,
                     this.dynamicMinScore,
-                    this.dynamicFilter);
+                    this.dynamicFilter,
+                    this.removeDuplicateOverlap != null
+                            ? this.removeDuplicateOverlap
+                            : DEFAULT_REMOVE_DUPLICATE_OVERLAP);
         }
     }
 
@@ -236,13 +286,123 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
 
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(searchRequest);
 
-        return searchResult.matches().stream()
+        List<Content> contents = searchResult.matches().stream()
                 .map(embeddingMatch -> Content.from(
                         embeddingMatch.embedded(),
                         Map.of(
                                 ContentMetadata.SCORE, embeddingMatch.score(),
                                 ContentMetadata.EMBEDDING_ID, embeddingMatch.embeddingId())))
                 .collect(Collectors.toList());
+
+        if (removeDuplicateOverlap) {
+            contents = deduplicateOverlap(contents);
+        }
+
+        return contents;
+    }
+
+    /**
+     * Removes duplicate overlap text from sequential {@link TextSegment}s retrieved from the same document.
+     *
+     * <p>When a document is split with overlap, adjacent segments share a repeated suffix/prefix.
+     * This method groups retrieved contents by document identity (all metadata except {@code "index"}),
+     * then for each pair of consecutive segments (index N and N+1), finds the longest common
+     * suffix-prefix overlap and removes it from the start of the later segment.
+     *
+     * <p>Segments without an {@code "index"} metadata key, or that are non-adjacent, are left unchanged.
+     *
+     * @param contents the list of retrieved contents
+     * @return a new list with duplicate overlap removed from sequential segments
+     */
+    static List<Content> deduplicateOverlap(List<Content> contents) {
+        if (contents.size() < 2) {
+            return contents;
+        }
+
+        // Group contents by document identity: all metadata except "index"
+        Map<Map<String, Object>, TreeMap<Integer, Content>> docGroups = new HashMap<>();
+
+        for (Content content : contents) {
+            TextSegment segment = content.textSegment();
+            String indexStr = segment.metadata().getString(INDEX_METADATA_KEY);
+            if (indexStr == null) {
+                continue;
+            }
+            int index;
+            try {
+                index = Integer.parseInt(indexStr);
+            } catch (NumberFormatException e) {
+                continue;
+            }
+
+            // Document identity = all metadata except "index"
+            Map<String, Object> docId = new HashMap<>(segment.metadata().toMap());
+            docId.remove(INDEX_METADATA_KEY);
+
+            docGroups.computeIfAbsent(docId, k -> new TreeMap<>()).put(index, content);
+        }
+
+        // Build replacement map: original Content -> deduplicated Content
+        Map<Content, Content> replacements = new HashMap<>();
+
+        for (TreeMap<Integer, Content> indexedContents : docGroups.values()) {
+            List<Map.Entry<Integer, Content>> entries = new ArrayList<>(indexedContents.entrySet());
+            for (int i = 0; i < entries.size() - 1; i++) {
+                Map.Entry<Integer, Content> curr = entries.get(i);
+                Map.Entry<Integer, Content> next = entries.get(i + 1);
+
+                // Only process truly adjacent segments (index N and N+1)
+                if (next.getKey() != curr.getKey() + 1) {
+                    continue;
+                }
+
+                String currText = curr.getValue().textSegment().text();
+                String nextText = next.getValue().textSegment().text();
+
+                int overlapLen = longestSuffixPrefixOverlap(currText, nextText);
+                if (overlapLen > 0) {
+                    String deduplicated = nextText.substring(overlapLen);
+                    if (deduplicated.isBlank()) {
+                        continue; // do not produce a blank segment
+                    }
+                    TextSegment newSegment = TextSegment.from(
+                            deduplicated, next.getValue().textSegment().metadata());
+                    Content newContent =
+                            Content.from(newSegment, next.getValue().metadata());
+                    replacements.put(next.getValue(), newContent);
+                }
+            }
+        }
+
+        if (replacements.isEmpty()) {
+            return contents;
+        }
+
+        return contents.stream().map(c -> replacements.getOrDefault(c, c)).collect(Collectors.toList());
+    }
+
+    /**
+     * Finds the length of the longest suffix of {@code a} that is also a prefix of {@code b}.
+     *
+     * <p>For example:
+     * <pre>
+     *   a = "the quick brown fox"
+     *   b = "brown fox jumps over"
+     *   result = 9  ("brown fox")
+     * </pre>
+     *
+     * @param a the earlier segment text
+     * @param b the later segment text
+     * @return the length of the longest overlapping suffix/prefix, or 0 if none
+     */
+    static int longestSuffixPrefixOverlap(String a, String b) {
+        int maxOverlap = Math.min(a.length(), b.length());
+        for (int len = maxOverlap; len > 0; len--) {
+            if (a.regionMatches(a.length() - len, b, 0, len)) {
+                return len;
+            }
+        }
+        return 0;
     }
 
     @Override
