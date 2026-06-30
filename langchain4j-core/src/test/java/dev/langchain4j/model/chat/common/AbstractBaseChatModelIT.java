@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat.common;
 
+import static dev.langchain4j.MockitoUtils.ignoreInteractions;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.chat.request.ToolChoice.REQUIRED;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
@@ -717,6 +718,8 @@ public abstract class AbstractBaseChatModelIT<M> {
             InOrder inOrder = inOrder(handler);
             verifyToolCallbacks(handler, inOrder, toolExecutionRequest.id(), (StreamingChatModel) model);
             inOrder.verify(handler).onCompleteResponse(chatResponse);
+            // onUnmappedRawEvent may be invoked for provider events not mapped to a typed callback
+            ignoreInteractions(handler).onUnmappedRawEvent(any());
             inOrder.verifyNoMoreInteractions();
             verifyNoMoreInteractions(handler);
 
@@ -849,6 +852,8 @@ public abstract class AbstractBaseChatModelIT<M> {
             InOrder inOrder = inOrder(handler);
             verifyToolCallbacks(handler, inOrder, (StreamingChatModel) model);
             inOrder.verify(handler).onCompleteResponse(chatResponse);
+            // onUnmappedRawEvent may be invoked for provider events not mapped to a typed callback
+            ignoreInteractions(handler).onUnmappedRawEvent(any());
             inOrder.verifyNoMoreInteractions();
             verifyNoMoreInteractions(handler);
 
@@ -1026,6 +1031,8 @@ public abstract class AbstractBaseChatModelIT<M> {
                     toolExecutionRequests.get(1).id(),
                     (StreamingChatModel) model);
             inOrder.verify(handler).onCompleteResponse(chatResponse);
+            // onUnmappedRawEvent may be invoked for provider events not mapped to a typed callback
+            ignoreInteractions(handler).onUnmappedRawEvent(any());
             inOrder.verifyNoMoreInteractions();
             verifyNoMoreInteractions(handler);
 

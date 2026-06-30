@@ -6,9 +6,9 @@ import static java.util.stream.Collectors.joining;
 
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
+import dev.langchain4j.http.client.FormDataFile;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
-import dev.langchain4j.http.client.FormDataFile;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
@@ -21,6 +21,7 @@ import java.net.http.HttpRequest.BodyPublisher;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.net.http.HttpTimeoutException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
 
@@ -48,17 +49,18 @@ public class JdkHttpClient implements HttpClient {
         try {
             java.net.http.HttpRequest jdkRequest = toJdkRequest(request);
 
-            java.net.http.HttpResponse<String> jdkResponse = delegate.send(jdkRequest, BodyHandlers.ofString());
+            java.net.http.HttpResponse<byte[]> jdkResponse = delegate.send(jdkRequest, BodyHandlers.ofByteArray());
 
             if (!isSuccessful(jdkResponse)) {
-                throw new HttpException(jdkResponse.statusCode(), jdkResponse.body());
+                throw new HttpException(
+                        jdkResponse.statusCode(), new String(jdkResponse.body(), StandardCharsets.UTF_8));
             }
 
             return fromJdkResponse(jdkResponse, jdkResponse.body());
         } catch (HttpTimeoutException e) {
             throw new TimeoutException(e);
         } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();  
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -116,6 +118,7 @@ public class JdkHttpClient implements HttpClient {
             }
         } else {
             bodyPublisher = ofMultipartData(request.formDataFields(), request.formDataFiles());
+            builder.setHeader("Content-Type", MultipartBodyPublisher.contentType());
         }
         builder.method(request.method().name(), bodyPublisher);
 
@@ -137,7 +140,7 @@ public class JdkHttpClient implements HttpClient {
         return publisher.build();
     }
 
-    private static SuccessfulHttpResponse fromJdkResponse(java.net.http.HttpResponse<?> response, String body) {
+    private static SuccessfulHttpResponse fromJdkResponse(java.net.http.HttpResponse<?> response, byte[] body) {
         return SuccessfulHttpResponse.builder()
                 .statusCode(response.statusCode())
                 .headers(response.headers().map())

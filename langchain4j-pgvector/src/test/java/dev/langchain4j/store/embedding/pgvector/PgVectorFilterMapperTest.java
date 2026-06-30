@@ -75,8 +75,7 @@ class PgVectorFilterMapperTest {
     @Test
     void sqlInjectionViaKey_shouldBeEscaped_jsonMapper() {
         // A crafted key that tries to break out of the ->>'...' string literal and inject "OR 1=1".
-        Filter filter =
-                metadataKey("x') IS NOT NULL OR 1=1 OR (metadata->>'y").isEqualTo("no-such-value");
+        Filter filter = metadataKey("x') IS NOT NULL OR 1=1 OR (metadata->>'y").isEqualTo("no-such-value");
 
         String sql = jsonMapper.map(filter);
 
@@ -110,5 +109,38 @@ class PgVectorFilterMapperTest {
         Filter filter = metadataKey("id) OR (1=1").isIn("a", "b");
 
         assertThatThrownBy(() -> columnMapper.map(filter)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void mapContains_shouldUseLiteralSubstringNotRegex_jsonMapper() {
+        // A value with regex metacharacters must be matched literally (ContainsString is str.contains),
+        // not interpreted as a POSIX regular expression by the "~" operator.
+        Filter filter = metadataKey("path").containsString("a.b");
+
+        String sql = jsonMapper.map(filter);
+
+        assertThat(sql)
+                .isEqualTo("(metadata->>'path')::text is not null"
+                        + " and position('a.b' in (metadata->>'path')::text) > 0");
+    }
+
+    @Test
+    void mapContains_shouldUseLiteralSubstringNotRegex_columnMapper() {
+        Filter filter = metadataKey("path").containsString("a.b");
+
+        String sql = columnMapper.map(filter);
+
+        assertThat(sql).isEqualTo("path::text is not null and position('a.b' in path::text) > 0");
+    }
+
+    @Test
+    void mapContains_shouldEscapeSingleQuoteInValue_jsonMapper() {
+        Filter filter = metadataKey("name").containsString("O'Brien");
+
+        String sql = jsonMapper.map(filter);
+
+        assertThat(sql)
+                .isEqualTo("(metadata->>'name')::text is not null"
+                        + " and position('O''Brien' in (metadata->>'name')::text) > 0");
     }
 }

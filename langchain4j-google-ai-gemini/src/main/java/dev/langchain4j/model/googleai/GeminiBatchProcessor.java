@@ -84,7 +84,8 @@ final class GeminiBatchProcessor<REQUEST, RESPONSE, API_REQUEST, API_RESPONSE> {
      */
     void writeBatch(JsonLinesWriter writer, Iterable<BatchFileRequest<REQUEST>> requests) throws IOException {
         for (var request : requests) {
-            var inlinedRequest = preparer.createInlinedRequest(request.request());
+            var preparedRequest = preparer.prepareRequest(request.request());
+            var inlinedRequest = preparer.createInlinedRequest(preparedRequest);
             writer.write(new BatchFileRequest<>(request.key(), inlinedRequest));
         }
     }
