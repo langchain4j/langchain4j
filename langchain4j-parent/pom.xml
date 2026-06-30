@@ -69,6 +69,8 @@
         <retrofit.version>2.9.0</retrofit.version>
         <slf4j.version>2.0.18</slf4j.version>
         <testcontainers.version>1.21.4</testcontainers.version>
+        <testng.version>7.3.0</testng.version>
+        <testng-engine.version>1.0.5</testng-engine.version>
         <tinylog.version>2.7.0</tinylog.version>
         <wiremock.version>3.13.2</wiremock.version>
         <hibernate.version>7.4.2.Final</hibernate.version>
@@ -192,6 +194,20 @@
             </dependency>
 
             <dependency>
+                <groupId>org.testng</groupId>
+                <artifactId>testng</artifactId>
+                <version>${testng.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.junit.support</groupId>
+                <artifactId>testng-engine</artifactId>
+                <version>${testng-engine.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
                 <groupId>org.mockito</groupId>
                 <artifactId>mockito-bom</artifactId>
                 <version>${mockito.version}</version>
@@ -299,6 +315,14 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-params</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- JUnit Platform engine for TestNG: lets surefire run TestNG tests (e.g. Reactive Streams TCK /
+             BlockHound checks) in the same pass as JUnit Jupiter tests. Declared for every module so no
+             module can silently skip its TestNG tests. Brings org.testng:testng transitively (test scope). -->
+        <dependency>
+            <groupId>org.junit.support</groupId>
+            <artifactId>testng-engine</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
