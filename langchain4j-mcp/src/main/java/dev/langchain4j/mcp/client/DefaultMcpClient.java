@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client;
 
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -48,7 +49,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
@@ -402,8 +402,7 @@ public class DefaultMcpClient implements McpClient {
         return resultFuture.orTimeout(timeoutMillis, TimeUnit.MILLISECONDS).handle((result, error) -> {
             pendingOperations.remove(operationId);
             if (error != null) {
-                Throwable cause =
-                        error instanceof CompletionException && error.getCause() != null ? error.getCause() : error;
+                Throwable cause = unwrapCompletionException(error);
                 if (cause instanceof TimeoutException timeout) {
                     return handleToolTimeout(context, operationId, timeout);
                 }

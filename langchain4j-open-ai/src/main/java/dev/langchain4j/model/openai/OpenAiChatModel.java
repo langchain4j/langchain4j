@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai;
 
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -45,7 +46,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 
@@ -191,9 +191,7 @@ public class OpenAiChatModel implements ChatModel {
 
         CompletableFuture<ChatResponse> result = rawFuture.thenApply(this::toChatResponse)
                 .exceptionallyCompose(throwable -> {
-                    Throwable cause = throwable instanceof CompletionException && throwable.getCause() != null
-                            ? throwable.getCause()
-                            : throwable;
+                    Throwable cause = unwrapCompletionException(throwable);
                     if (cause instanceof CancellationException) {
                         // a cancellation is not a provider error - propagate it as-is, do not map it
                         return CompletableFuture.failedFuture(cause);

@@ -5,6 +5,7 @@ import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.runtime;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.allConcreteMethods;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
@@ -60,7 +61,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
@@ -1686,8 +1686,7 @@ public class ToolService {
             return handleToolError(e, toolRequest, invocationContext, argumentsErrorHandler, executionErrorHandler);
         }
         return futureToolResult.exceptionallyCompose(error -> {
-            Throwable cause =
-                    error instanceof CompletionException && error.getCause() != null ? error.getCause() : error;
+            Throwable cause = unwrapCompletionException(error);
             Exception exception = cause instanceof Exception e ? e : new RuntimeException(cause);
             return handleToolError(
                     exception, toolRequest, invocationContext, argumentsErrorHandler, executionErrorHandler);

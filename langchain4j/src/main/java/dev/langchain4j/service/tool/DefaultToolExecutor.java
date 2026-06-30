@@ -1,5 +1,6 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
 import static dev.langchain4j.internal.Utils.allConcreteMethods;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -163,9 +164,7 @@ public class DefaultToolExecutor implements ToolExecutor {
             return futureResult
                     .handle((value, error) -> {
                         if (error != null) {
-                            Throwable cause = error instanceof CompletionException && error.getCause() != null
-                                    ? error.getCause()
-                                    : error;
+                            Throwable cause = unwrapCompletionException(error);
                             return toFailedOrErrorResult(cause);
                         }
                         return CompletableFuture.completedFuture(toToolExecutionResult(value, futureValueType()));

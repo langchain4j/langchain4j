@@ -4,6 +4,7 @@ import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
@@ -82,7 +83,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Flow;
@@ -360,7 +360,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                             asyncAppendOutputFormat))
                                     .whenComplete((guardedInput, guardrailError) -> {
                                         if (guardrailError != null) {
-                                            result.completeExceptionally(unwrapCompletion(guardrailError));
+                                            result.completeExceptionally(unwrapCompletionException(guardrailError));
                                             return;
                                         }
                                         assembleMessagesAsync(
@@ -370,7 +370,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                         originalUserMessage)
                                                 .whenComplete((assembledMessages, assemblyError) -> {
                                                     if (assemblyError != null) {
-                                                        result.completeExceptionally(unwrapCompletion(assemblyError));
+                                                        result.completeExceptionally(unwrapCompletionException(assemblyError));
                                                         return;
                                                     }
                                                     try {
@@ -433,7 +433,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .whenComplete((guardedInput, guardrailError) -> {
                                         if (guardrailError != null) {
                                             subscriber.onSubscribe(NOOP_SUBSCRIPTION);
-                                            subscriber.onError(unwrapCompletion(guardrailError));
+                                            subscriber.onError(unwrapCompletionException(guardrailError));
                                             return;
                                         }
                                         assembleMessagesAsync(
@@ -444,7 +444,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                 .whenComplete((assembledMessages, assemblyError) -> {
                                                     if (assemblyError != null) {
                                                         subscriber.onSubscribe(NOOP_SUBSCRIPTION);
-                                                        subscriber.onError(unwrapCompletion(assemblyError));
+                                                        subscriber.onError(unwrapCompletionException(assemblyError));
                                                         return;
                                                     }
                                                     AiServiceStreamingEventPublisher publisher;
@@ -481,7 +481,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                                 context.streamingBufferSize);
                                                     } catch (Throwable t) {
                                                         subscriber.onSubscribe(NOOP_SUBSCRIPTION);
-                                                        subscriber.onError(unwrapCompletion(t));
+                                                        subscriber.onError(unwrapCompletionException(t));
                                                         return;
                                                     }
                                                     publisher.subscribe(subscriber);
@@ -665,9 +665,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         commonGuardrailParam))
                                 .whenComplete((value, error) -> {
                                     if (error != null) {
-                                        Throwable cause = error instanceof CompletionException && error.getCause() != null
-                                                ? error.getCause()
-                                                : error;
+                                        Throwable cause = unwrapCompletionException(error);
                                         // cancellation is neither a successful completion nor an error to report
                                         if (!result.isCancelled() && !(cause instanceof CancellationException)) {
                                             context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
@@ -747,7 +745,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         propagateCancellation(result, inner);
                         inner.whenComplete((value, error) -> {
                             if (error != null) {
-                                result.completeExceptionally(unwrapCompletion(error));
+                                result.completeExceptionally(unwrapCompletionException(error));
                             } else {
                                 result.complete(value);
                             }
@@ -816,12 +814,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                         } catch (Throwable t) {
                             return CompletableFuture.failedFuture(t);
                         }
-                    }
-
-                    private static Throwable unwrapCompletion(Throwable error) {
-                        return error instanceof CompletionException && error.getCause() != null
-                                ? error.getCause()
-                                : error;
                     }
 
                     // Returned by immediateToolReturnResult when the immediate-tool-return case does not actually

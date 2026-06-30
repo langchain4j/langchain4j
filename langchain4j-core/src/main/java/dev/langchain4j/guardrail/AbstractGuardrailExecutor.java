@@ -1,5 +1,6 @@
 package dev.langchain4j.guardrail;
 
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Internal;
@@ -13,7 +14,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 
 /**
  * Abstract base class for {@link GuardrailExecutor}s.
@@ -175,7 +175,7 @@ public abstract sealed class AbstractGuardrailExecutor<
         try {
             return guardrail.validateAsync(request).handle((result, error) -> {
                 if (error != null) {
-                    Throwable cause = unwrap(error);
+                    Throwable cause = unwrapCompletionException(error);
                     throw createGuardrailException(cause.getMessage(), cause);
                 }
                 return result.validatedBy(guardrail.getClass());
@@ -227,10 +227,6 @@ public abstract sealed class AbstractGuardrailExecutor<
             var nextResult = composeResult(accumulatedResult, result);
             return executeGuardrailsAsync(originalRequest, nextRequest, nextResult, index + 1);
         });
-    }
-
-    private static Throwable unwrap(Throwable error) {
-        return (error instanceof CompletionException && error.getCause() != null) ? error.getCause() : error;
     }
 
     protected R composeResult(R oldResult, R newResult) {

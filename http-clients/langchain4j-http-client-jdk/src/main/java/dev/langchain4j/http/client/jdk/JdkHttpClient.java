@@ -31,7 +31,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
@@ -39,6 +38,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -100,9 +100,7 @@ public class JdkHttpClient implements HttpClient {
         CompletableFuture<SuccessfulHttpResponse> result = new CompletableFuture<>();
         sendFuture.whenComplete((jdkResponse, throwable) -> {
             if (throwable != null) {
-                Throwable cause = throwable instanceof CompletionException && throwable.getCause() != null
-                        ? throwable.getCause()
-                        : throwable;
+                Throwable cause = unwrapCompletionException(throwable);
                 if (cause instanceof HttpTimeoutException) {
                     result.completeExceptionally(new TimeoutException(cause));
                 } else {

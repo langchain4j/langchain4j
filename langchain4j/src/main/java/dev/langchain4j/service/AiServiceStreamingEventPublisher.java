@@ -1,6 +1,7 @@
 package dev.langchain4j.service;
 
 import static dev.langchain4j.internal.Exceptions.runtime;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -54,7 +55,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
@@ -637,11 +637,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
             if (tube.cancelled()) {
                 return;
             }
-            // Unwrap the CompletionException that future composition wraps around the real cause, so consumers
-            // see the actual error (consistent with the CompletableFuture single-response path).
-            Throwable cause = error instanceof CompletionException && error.getCause() != null
-                    ? error.getCause()
-                    : error;
+            Throwable cause = unwrapCompletionException(error);
             fireErrorReceived(cause);
             tube.fail(cause);
         }

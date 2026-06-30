@@ -1,6 +1,7 @@
 package dev.langchain4j.model.chat;
 
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.OTHER;
 import static dev.langchain4j.model.chat.ChatModelListenerUtils.onError;
@@ -20,7 +21,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -128,9 +128,7 @@ public interface ChatModel {
 
         CompletableFuture<ChatResponse> result = source.whenComplete((chatResponse, error) -> {
             if (error != null) {
-                Throwable cause = error instanceof CompletionException && error.getCause() != null
-                        ? error.getCause()
-                        : error;
+                Throwable cause = unwrapCompletionException(error);
                 if (!(cause instanceof CancellationException)) { // TODO
                     onError(cause, finalChatRequest, provider(), attributes, listeners);
                 }
