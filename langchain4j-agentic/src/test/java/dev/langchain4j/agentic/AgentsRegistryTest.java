@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Enumeration;
 import java.util.Map;
+import java.util.ServiceLoader;
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
 import org.junit.jupiter.api.Test;
@@ -47,25 +48,20 @@ class AgentsRegistryTest {
     @Test
     void spi_loaded_registry_provides_agents() throws Exception {
         try (CompiledRegistry compiled = compileTestRegistry()) {
-            ClassLoader originalCL = Thread.currentThread().getContextClassLoader();
-            Thread.currentThread().setContextClassLoader(compiled.classLoader());
-            try {
-                AgentsRegistry registry = AgentsRegistry.get();
+            AgentsRegistry registry = ServiceLoader.load(AgentsRegistry.class, compiled.classLoader())
+                    .findFirst().orElseThrow();
 
-                Map<String, AgentInstance> agents = registry.allAgents();
-                assertThat(agents).containsKey("testAgent");
-                assertThat(agents).hasSize(1);
+            Map<String, AgentInstance> agents = registry.allAgents();
+            assertThat(agents).containsKey("testAgent");
+            assertThat(agents).hasSize(1);
 
-                AgentInstance agent = registry.getAgent("testAgent");
-                assertThat(agent.name()).isEqualTo("testAgent");
-                assertThat(agent.description()).isEqualTo("A test agent from SPI");
+            AgentInstance agent = registry.getAgent("testAgent");
+            assertThat(agent.name()).isEqualTo("testAgent");
+            assertThat(agent.description()).isEqualTo("A test agent from SPI");
 
-                assertThatThrownBy(() -> registry.getAgent("nonexistent"))
-                        .isInstanceOf(RuntimeException.class)
-                        .hasMessageContaining("nonexistent");
-            } finally {
-                Thread.currentThread().setContextClassLoader(originalCL);
-            }
+            assertThatThrownBy(() -> registry.getAgent("nonexistent"))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("nonexistent");
         }
     }
 

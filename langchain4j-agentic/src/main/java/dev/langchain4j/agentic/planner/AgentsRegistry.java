@@ -42,17 +42,34 @@ public interface AgentsRegistry {
     <T> T getAgent(Class<T> agentType);
 
     /**
-     * Loads the {@link AgentsRegistry} via {@link ServiceLoader}.
-     * Returns the first provider found, or an empty registry if none is available.
+     * Returns the {@link AgentsRegistry} discovered via {@link ServiceLoader}.
+     * The result is lazily initialized on first access and cached for subsequent calls.
+     * Call {@link #refresh()} to force re-discovery.
      *
-     * @return the loaded registry
+     * @return the loaded registry, or an empty registry if no provider is available
      */
     static AgentsRegistry get() {
-        ServiceLoader<AgentsRegistry> loader = ServiceLoader.load(AgentsRegistry.class);
-        for (AgentsRegistry registry : loader) {
-            return registry;
+        return LazyHolder.INSTANCE;
+    }
+
+    /**
+     * Forces re-discovery of the {@link AgentsRegistry} via {@link ServiceLoader}.
+     * Subsequent calls to {@link #get()} will return the newly discovered registry.
+     */
+    static void refresh() {
+        LazyHolder.INSTANCE = LazyHolder.discover();
+    }
+
+    class LazyHolder {
+        private static AgentsRegistry INSTANCE = discover();
+
+        private static AgentsRegistry discover() {
+            ServiceLoader<AgentsRegistry> loader = ServiceLoader.load(AgentsRegistry.class);
+            for (AgentsRegistry registry : loader) {
+                return registry;
+            }
+            return new EmptyAgentsRegistry();
         }
-        return new EmptyAgentsRegistry();
     }
 
     class EmptyAgentsRegistry implements AgentsRegistry {

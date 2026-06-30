@@ -21,6 +21,8 @@ import java.util.Enumeration;
 import java.util.Map;
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -30,36 +32,82 @@ class AgentsRegistryIT {
     private static final String SPI_SERVICE_FILE =
             "META-INF/services/dev.langchain4j.agentic.planner.AgentsRegistry";
 
+    private static URLClassLoader registryClassLoader;
+    private static Path tempDir;
+    private static ClassLoader originalClassLoader;
+
+    @BeforeAll
+    static void setUp() throws Exception {
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        assertThat(compiler).as("These tests require a JDK").isNotNull();
+
+        tempDir = Files.createTempDirectory("compiled-registry-it-");
+
+        Path sourceFile = tempDir.resolve("dev/langchain4j/agentic/test/WriterAgentsRegistry.java");
+        Files.createDirectories(sourceFile.getParent());
+        Files.writeString(sourceFile, registrySource(), StandardCharsets.UTF_8);
+
+        int result = compiler.run(
+                null, null, null,
+                "-classpath", System.getProperty("java.class.path"),
+                "-d", tempDir.toString(),
+                sourceFile.toString());
+        assertThat(result).as("Registry compilation must succeed").isZero();
+
+        Path servicesFile = tempDir.resolve(SPI_SERVICE_FILE);
+        Files.createDirectories(servicesFile.getParent());
+        Files.writeString(servicesFile, "dev.langchain4j.agentic.test.WriterAgentsRegistry", StandardCharsets.UTF_8);
+
+        registryClassLoader = new URLClassLoader(
+                new URL[]{tempDir.toUri().toURL()}, AgentsRegistryIT.class.getClassLoader()) {
+            @Override
+            public Enumeration<URL> getResources(String name) throws IOException {
+                if (name.equals(SPI_SERVICE_FILE)) {
+                    return findResources(name);
+                }
+                return super.getResources(name);
+            }
+        };
+
+        originalClassLoader = Thread.currentThread().getContextClassLoader();
+        Thread.currentThread().setContextClassLoader(registryClassLoader);
+    }
+
+    @AfterAll
+    static void tearDown() throws Exception {
+        Thread.currentThread().setContextClassLoader(originalClassLoader);
+        registryClassLoader.close();
+        deleteRecursively(tempDir);
+    }
+
     @Test
     void sequence_with_local_and_registry_agents() {
-        withRegistry(() -> {
-            AgentsRegistry registry = AgentsRegistry.get();
+        AgentsRegistry registry = AgentsRegistry.get();
 
-            Map<String, AgentInstance> allAgents = registry.allAgents();
-            assertThat(allAgents).containsKeys("audienceEditor", "styleEditor");
-            assertThat(allAgents).hasSize(2);
+        Map<String, AgentInstance> allAgents = registry.allAgents();
+        assertThat(allAgents).containsKeys("audienceEditor", "styleEditor");
+        assertThat(allAgents).hasSize(2);
 
-            CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
-                    .chatModel(baseModel())
-                    .outputKey("story")
-                    .build();
+        CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
 
-            AgentInstance audienceEditor = registry.getAgent("audienceEditor");
-            Agents.StyleEditor styleEditor = registry.getAgent(Agents.StyleEditor.class);
+        AgentInstance audienceEditor = registry.getAgent("audienceEditor");
+        Agents.StyleEditor styleEditor = registry.getAgent(Agents.StyleEditor.class);
 
-            UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
-                    .subAgents(creativeWriter, audienceEditor, styleEditor)
-                    .outputKey("story")
-                    .build();
+        UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+                .subAgents(creativeWriter, audienceEditor, styleEditor)
+                .outputKey("story")
+                .build();
 
-            Map<String, Object> input = Map.of(
-                    "topic", "dragons and wizards",
-                    "style", "fantasy",
-                    "audience", "young adults");
+        Map<String, Object> input = Map.of(
+                "topic", "dragons and wizards",
+                "style", "fantasy",
+                "audience", "young adults");
 
-            String story = (String) novelCreator.invoke(input);
-            assertThat(story).isNotBlank();
-        });
+        String story = (String) novelCreator.invoke(input);
+        assertThat(story).isNotBlank();
     }
 
     public interface AudienceEditorFromRegistry {
@@ -87,80 +135,22 @@ class AgentsRegistryIT {
 
     @Test
     void declarative_sequence_with_registry_agents() {
-        withRegistry(() -> {
-            DeclarativeStoryCreator storyCreator =
-                    AgenticServices.createAgenticSystem(DeclarativeStoryCreator.class);
+        DeclarativeStoryCreator storyCreator =
+                AgenticServices.createAgenticSystem(DeclarativeStoryCreator.class);
 
-            String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
-            assertThat(story).isNotBlank();
-        });
+        String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
+        assertThat(story).isNotBlank();
     }
 
-    private static void withRegistry(Runnable runnable) {
-        try (CompiledRegistry compiled = compileTestRegistry()) {
-            ClassLoader originalCL = Thread.currentThread().getContextClassLoader();
-            Thread.currentThread().setContextClassLoader(compiled.classLoader());
-            try {
-                runnable.run();
-            } finally {
-                Thread.currentThread().setContextClassLoader(originalCL);
-            }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private record CompiledRegistry(URLClassLoader classLoader, Path tempDir) implements AutoCloseable {
-        @Override
-        public void close() throws Exception {
-            classLoader.close();
-            deleteRecursively(tempDir);
-        }
-
-        private static void deleteRecursively(Path path) throws IOException {
-            if (Files.isDirectory(path)) {
-                try (var entries = Files.list(path)) {
-                    for (Path entry : entries.toList()) {
-                        deleteRecursively(entry);
-                    }
+    private static void deleteRecursively(Path path) throws IOException {
+        if (Files.isDirectory(path)) {
+            try (var entries = Files.list(path)) {
+                for (Path entry : entries.toList()) {
+                    deleteRecursively(entry);
                 }
             }
-            Files.deleteIfExists(path);
         }
-    }
-
-    private static CompiledRegistry compileTestRegistry() throws Exception {
-        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        assertThat(compiler).as("These tests require a JDK").isNotNull();
-
-        Path tempDir = Files.createTempDirectory("compiled-registry-it-");
-
-        Path sourceFile = tempDir.resolve("dev/langchain4j/agentic/test/WriterAgentsRegistry.java");
-        Files.createDirectories(sourceFile.getParent());
-        Files.writeString(sourceFile, registrySource(), StandardCharsets.UTF_8);
-
-        int result = compiler.run(
-                null, null, null,
-                "-classpath", System.getProperty("java.class.path"),
-                "-d", tempDir.toString(),
-                sourceFile.toString());
-        assertThat(result).as("Registry compilation must succeed").isZero();
-
-        Path servicesFile = tempDir.resolve(SPI_SERVICE_FILE);
-        Files.createDirectories(servicesFile.getParent());
-        Files.writeString(servicesFile, "dev.langchain4j.agentic.test.WriterAgentsRegistry", StandardCharsets.UTF_8);
-
-        URLClassLoader classLoader = new URLClassLoader(
-                new URL[]{tempDir.toUri().toURL()}, AgentsRegistryIT.class.getClassLoader()) {
-            @Override
-            public Enumeration<URL> getResources(String name) throws IOException {
-                if (name.equals(SPI_SERVICE_FILE)) {
-                    return findResources(name);
-                }
-                return super.getResources(name);
-            }
-        };
-        return new CompiledRegistry(classLoader, tempDir);
+        Files.deleteIfExists(path);
     }
 
     private static String registrySource() {
@@ -168,7 +158,7 @@ class AgentsRegistryIT {
                 package dev.langchain4j.agentic.test;
 
                 import static dev.langchain4j.agentic.Models.baseModel;
-                
+
                 import dev.langchain4j.agentic.AgenticServices;
                 import dev.langchain4j.agentic.Agents;
                 import dev.langchain4j.agentic.planner.AgentInstance;
