@@ -6,10 +6,11 @@ import dev.langchain4j.http.client.FormDataFile;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.HttpResponseReceived;
+import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-import dev.langchain4j.http.client.sse.StreamingHttpEvent;
 import mutiny.zero.BackpressureStrategy;
 import mutiny.zero.TubeConfiguration;
 import mutiny.zero.ZeroPublisher;
@@ -151,8 +152,8 @@ public class JdkHttpClient implements HttpClient {
     }
 
     @Override
-    public Publisher<StreamingHttpEvent> stream(HttpRequest request, ServerSentEventParser parser) {
-        return new StreamingHttpEventPublisher(delegate, toJdkRequest(request), parser, streamingBufferSize);
+    public Publisher<HttpStreamingEvent> stream(HttpRequest request, ServerSentEventParser parser) {
+        return new HttpStreamingEventPublisher(delegate, toJdkRequest(request), parser, streamingBufferSize);
     }
 
     java.net.http.HttpRequest toJdkRequest(HttpRequest request) {
@@ -220,20 +221,20 @@ public class JdkHttpClient implements HttpClient {
 
     /**
      * Cold {@link Publisher} that drives the JDK {@code HttpClient} on each subscribe and delivers
-     * parsed {@link StreamingHttpEvent}s through a Mutiny Zero {@code Tube}. Fully non-blocking:
+     * parsed {@link HttpStreamingEvent}s through a Mutiny Zero {@code Tube}. Fully non-blocking:
      * the response body arrives as a {@link Publisher}{@code <List<ByteBuffer>>} from the JDK
      * (via {@code BodyHandlers.ofPublisher()}), bytes are pushed through the supplied
      * {@link ServerSentEventParser}'s incremental mode, and complete events are forwarded to the
      * downstream subscriber. No thread is pinned for the lifetime of the stream.
      */
-    static class StreamingHttpEventPublisher implements Publisher<StreamingHttpEvent> {
+    static class HttpStreamingEventPublisher implements Publisher<HttpStreamingEvent> {
 
         private final java.net.http.HttpClient client;
         private final java.net.http.HttpRequest request;
         private final ServerSentEventParser parser;
         private final int bufferSize;
 
-        StreamingHttpEventPublisher(java.net.http.HttpClient client,
+        HttpStreamingEventPublisher(java.net.http.HttpClient client,
                                     java.net.http.HttpRequest request,
                                     ServerSentEventParser parser,
                                     int bufferSize) {
@@ -244,7 +245,7 @@ public class JdkHttpClient implements HttpClient {
         }
 
         @Override
-        public void subscribe(Subscriber<? super StreamingHttpEvent> subscriber) {
+        public void subscribe(Subscriber<? super HttpStreamingEvent> subscriber) {
             if (subscriber == null) {
                 throw new NullPointerException("subscriber");
             }
@@ -253,7 +254,7 @@ public class JdkHttpClient implements HttpClient {
                     .withBackpressureStrategy(BackpressureStrategy.BUFFER)
                     .withBufferSize(bufferSize);
 
-            Publisher<StreamingHttpEvent> publisher = ZeroPublisher.create(config, tube -> {
+            Publisher<HttpStreamingEvent> publisher = ZeroPublisher.create(config, tube -> {
                 CompletableFuture<HttpResponse<Publisher<List<ByteBuffer>>>> future =
                         client.sendAsync(request, BodyHandlers.ofPublisher());
 
@@ -283,7 +284,7 @@ public class JdkHttpClient implements HttpClient {
                         });
                         return;
                     }
-                    tube.send(fromJdkResponse(jdkResponse, null));
+                    tube.send(new HttpResponseReceived(fromJdkResponse(jdkResponse, null)));
 
                     ServerSentEventParser.Incremental incremental = parser.incremental();
                     jdkResponse.body().subscribe(new Subscriber<>() {

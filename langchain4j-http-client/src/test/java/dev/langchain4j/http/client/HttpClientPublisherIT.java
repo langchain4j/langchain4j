@@ -3,7 +3,7 @@ package dev.langchain4j.http.client;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
-import dev.langchain4j.http.client.sse.StreamingHttpEvent;
+import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -63,7 +63,7 @@ public abstract class HttpClientPublisherIT {
                     .build();
 
             // Building the publisher is cold: no request is sent until someone subscribes.
-            Flow.Publisher<StreamingHttpEvent> publisher = client.stream(request);
+            Flow.Publisher<HttpStreamingEvent> publisher = client.stream(request);
             wireMockServer.verify(0, postRequestedFor(urlEqualTo(PATH)));
 
             // First subscription -> one request, events delivered.
@@ -76,7 +76,7 @@ public abstract class HttpClientPublisherIT {
         }
     }
 
-    private static List<ServerSentEvent> collectEvents(Flow.Publisher<StreamingHttpEvent> publisher) throws Exception {
+    private static List<ServerSentEvent> collectEvents(Flow.Publisher<HttpStreamingEvent> publisher) throws Exception {
         List<ServerSentEvent> events = new ArrayList<>();
         CompletableFuture<Void> done = new CompletableFuture<>();
         publisher.subscribe(new Flow.Subscriber<>() {
@@ -86,7 +86,7 @@ public abstract class HttpClientPublisherIT {
             }
 
             @Override
-            public void onNext(StreamingHttpEvent item) {
+            public void onNext(HttpStreamingEvent item) {
                 if (item instanceof ServerSentEvent event) {
                     events.add(event);
                 }

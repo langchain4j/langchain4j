@@ -17,7 +17,7 @@ import static org.reactivestreams.FlowAdapters.toPublisher;
 
 /**
  * Reactive Streams TCK for the full {@link OpenAiStreamingChatModel#chat(ChatRequest)} pipeline:
- * {@code JdkHttpClient.StreamingHttpEventPublisher -> DefaultOpenAiClient.chatCompletionPublisher -> downstream}.
+ * {@code JdkHttpClient.HttpStreamingEventPublisher -> DefaultOpenAiClient.chatCompletionPublisher -> downstream}.
  * Uses WireMock to emit deterministic OpenAI-style SSE responses.
  */
 public class OpenAiStreamingChatModelPublisherTckTest extends PublisherVerification<StreamingEvent> {

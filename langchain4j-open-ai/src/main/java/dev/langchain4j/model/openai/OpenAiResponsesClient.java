@@ -31,10 +31,11 @@ import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
+import dev.langchain4j.http.client.sse.HttpResponseReceived;
+import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
-import dev.langchain4j.http.client.sse.StreamingHttpEvent;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils;
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
@@ -247,7 +248,7 @@ class OpenAiResponsesClient {
             TubeBackedStreamingChatResponseHandler handler = new TubeBackedStreamingChatResponseHandler(tube);
             ResponsesApiEventListener listener = new ResponsesApiEventListener(handler);
 
-            Publisher<StreamingHttpEvent> upstream =
+            Publisher<HttpStreamingEvent> upstream =
                     httpClient.stream(request, new DefaultServerSentEventParser());
             upstream.subscribe(new Subscriber<>() {
 
@@ -262,13 +263,13 @@ class OpenAiResponsesClient {
                 }
 
                 @Override
-                public void onNext(StreamingHttpEvent item) {
+                public void onNext(HttpStreamingEvent item) {
                     if (tube.cancelled()) {
                         return;
                     }
                     try {
-                        if (item instanceof SuccessfulHttpResponse httpResponse) {
-                            listener.onOpen(httpResponse);
+                        if (item instanceof HttpResponseReceived responseReceived) {
+                            listener.onOpen(responseReceived.response());
                         } else if (item instanceof ServerSentEvent sse) {
                             listener.onEvent(sse);
                         }

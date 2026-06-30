@@ -5,11 +5,12 @@ import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.HttpResponseReceived;
+import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-import dev.langchain4j.http.client.sse.StreamingHttpEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -197,14 +198,14 @@ public class LoggingHttpClient implements HttpClient {
      * this logging does not perform blocking IO on that non-blocking thread.
      */
     @Override
-    public Flow.Publisher<StreamingHttpEvent> stream(HttpRequest request, ServerSentEventParser parser) {
+    public Flow.Publisher<HttpStreamingEvent> stream(HttpRequest request, ServerSentEventParser parser) {
 
-        Flow.Publisher<StreamingHttpEvent> upstream = delegateHttpClient.stream(request, parser);
+        Flow.Publisher<HttpStreamingEvent> upstream = delegateHttpClient.stream(request, parser);
 
-        return new Flow.Publisher<StreamingHttpEvent>() {
+        return new Flow.Publisher<HttpStreamingEvent>() {
 
             @Override
-            public void subscribe(Flow.Subscriber<? super StreamingHttpEvent> downstream) {
+            public void subscribe(Flow.Subscriber<? super HttpStreamingEvent> downstream) {
 
                 if (logRequests) {
                     HttpRequestLogger.log(log, request);
@@ -223,9 +224,9 @@ public class LoggingHttpClient implements HttpClient {
                     }
 
                     @Override
-                    public void onNext(StreamingHttpEvent event) {
-                        if (event instanceof SuccessfulHttpResponse response) {
-                            HttpResponseLogger.log(log, response);
+                    public void onNext(HttpStreamingEvent event) {
+                        if (event instanceof HttpResponseReceived responseReceived) {
+                            HttpResponseLogger.log(log, responseReceived.response());
                         } else if (event instanceof ServerSentEvent sse) {
                             log.debug("{}", sse);
                         }

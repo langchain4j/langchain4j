@@ -6,12 +6,13 @@ import dev.langchain4j.http.client.FormDataFile;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.HttpResponseReceived;
+import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import dev.langchain4j.http.client.sse.ServerSentEventParsingHandle;
-import dev.langchain4j.http.client.sse.StreamingHttpEvent;
 import mutiny.zero.BackpressureStrategy;
 import mutiny.zero.TubeConfiguration;
 import mutiny.zero.ZeroPublisher;
@@ -121,7 +122,7 @@ public class OkHttpClient implements HttpClient {
      * subscription cancels the underlying SSE parsing (which closes the stream and frees the thread). TODO
      */
     @Override
-    public Flow.Publisher<StreamingHttpEvent> stream(HttpRequest request, ServerSentEventParser parser) {
+    public Flow.Publisher<HttpStreamingEvent> stream(HttpRequest request, ServerSentEventParser parser) {
         TubeConfiguration config = new TubeConfiguration()
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
                 .withBufferSize(streamingBufferSize);
@@ -137,7 +138,7 @@ public class OkHttpClient implements HttpClient {
                 @Override
                 public void onOpen(SuccessfulHttpResponse response) {
                     if (!tube.cancelled()) {
-                        tube.send(response);
+                        tube.send(new HttpResponseReceived(response));
                     }
                 }
 

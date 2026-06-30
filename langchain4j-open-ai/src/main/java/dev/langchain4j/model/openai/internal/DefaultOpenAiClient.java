@@ -17,7 +17,8 @@ import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
-import dev.langchain4j.http.client.sse.StreamingHttpEvent;
+import dev.langchain4j.http.client.sse.HttpResponseReceived;
+import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.chat.response.StreamingEvent;
@@ -194,13 +195,13 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .withBufferSize(streamingBufferSize);
 
         return ZeroPublisher.create(config, tube -> {
-            Publisher<StreamingHttpEvent> upstream = httpClient.stream(httpRequest);
+            Publisher<HttpStreamingEvent> upstream = httpClient.stream(httpRequest);
             upstream.subscribe(new ChatCompletionEventSubscriber(tube, options));
         });
     }
 
     // TODO try to generalize and extract from this module
-    private static final class ChatCompletionEventSubscriber implements Subscriber<StreamingHttpEvent> {
+    private static final class ChatCompletionEventSubscriber implements Subscriber<HttpStreamingEvent> {
 
         private static final String DONE_MARKER = "[DONE]";
 
@@ -231,12 +232,12 @@ public class DefaultOpenAiClient extends OpenAiClient {
         }
 
         @Override
-        public void onNext(StreamingHttpEvent item) {
+        public void onNext(HttpStreamingEvent item) {
             if (tube.cancelled()) {
                 return;
             }
-            if (item instanceof SuccessfulHttpResponse httpResponse) {
-                this.rawHttpResponse = httpResponse;
+            if (item instanceof HttpResponseReceived responseReceived) {
+                this.rawHttpResponse = responseReceived.response();
                 return;
             }
             if (!(item instanceof ServerSentEvent sse)) {

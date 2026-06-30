@@ -3,7 +3,7 @@ package dev.langchain4j.http.client.jdk;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
-import dev.langchain4j.http.client.sse.StreamingHttpEvent;
+import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,7 +50,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * stack. BlockHound is JVM-global, so the recorded violations are shared static state;
  * {@link #resetViolations()} clears them before each test, which keeps the tests order-independent
  * (they must run sequentially). This is an {@code *IT} so its global BlockHound install runs in the
- * failsafe JVM, isolated from the surefire-run {@link StreamingHttpEventPublisherTckTest}.
+ * failsafe JVM, isolated from the surefire-run {@link HttpStreamingEventPublisherTckTest}.
  */
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
 class JdkHttpClientNonBlockingIT {
@@ -175,8 +175,8 @@ class JdkHttpClientNonBlockingIT {
     }
 
     private static Capture awaitEvents(HttpClient client, HttpRequest request) throws Exception {
-        Flow.Publisher<StreamingHttpEvent> publisher = client.stream(request);
-        List<StreamingHttpEvent> received = new CopyOnWriteArrayList<>();
+        Flow.Publisher<HttpStreamingEvent> publisher = client.stream(request);
+        List<HttpStreamingEvent> received = new CopyOnWriteArrayList<>();
         AtomicReference<Throwable> error = new AtomicReference<>();
         // Names of every thread that delivered an event, so the caller can assert the pipeline ran on
         // policed threads (otherwise an empty violations list would prove nothing).
@@ -190,7 +190,7 @@ class JdkHttpClientNonBlockingIT {
             }
 
             @Override
-            public void onNext(StreamingHttpEvent event) {
+            public void onNext(HttpStreamingEvent event) {
                 deliveryThreads.add(Thread.currentThread().getName());
                 received.add(event);
             }
@@ -211,5 +211,5 @@ class JdkHttpClientNonBlockingIT {
         return new Capture(received, deliveryThreads, error.get());
     }
 
-    private record Capture(List<StreamingHttpEvent> received, Set<String> deliveryThreads, Throwable error) {}
+    private record Capture(List<HttpStreamingEvent> received, Set<String> deliveryThreads, Throwable error) {}
 }

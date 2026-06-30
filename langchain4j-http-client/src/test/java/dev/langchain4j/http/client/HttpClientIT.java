@@ -22,7 +22,8 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-import dev.langchain4j.http.client.sse.StreamingHttpEvent;
+import dev.langchain4j.http.client.sse.HttpResponseReceived;
+import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -152,10 +153,10 @@ public abstract class HttpClientIT {
                 }
 
                 @Override
-                public void onNext(StreamingHttpEvent item) {
+                public void onNext(HttpStreamingEvent item) {
                     threads.add(Thread.currentThread());
-                    if (item instanceof SuccessfulHttpResponse r) {
-                        response.set(r);
+                    if (item instanceof HttpResponseReceived r) {
+                        response.set(r.response());
                     } else if (item instanceof ServerSentEvent e) {
                         events.add(e);
                     }
@@ -481,7 +482,7 @@ public abstract class HttpClientIT {
                     }
 
                     @Override
-                    public void onNext(StreamingHttpEvent item) {
+                    public void onNext(HttpStreamingEvent item) {
                         if (item instanceof ServerSentEvent
                                 && eventCounter.incrementAndGet() >= eventsBeforeCancellation) {
                             subscription.get().cancel();

@@ -2,7 +2,7 @@ package dev.langchain4j.http.client;
 
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
-import dev.langchain4j.http.client.sse.StreamingHttpEvent;
+import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
 
@@ -88,7 +88,7 @@ public interface HttpClient {
 
     /**
      * Executes a streaming HTTP request and exposes the parsed events as a cold
-     * {@link Publisher} of {@link StreamingHttpEvent}s. Each {@code subscribe()} initiates a new request.
+     * {@link Publisher} of {@link HttpStreamingEvent}s. Each {@code subscribe()} initiates a new request.
      * <p>
      * This interface gives no guarantee about thread-pinning or whether events are delivered incrementally;
      * such guarantees depend on the implementation. Consult the chosen implementation's javadoc.
@@ -97,7 +97,7 @@ public interface HttpClient {
      *
      * @since 1.17.0
      */
-    default Publisher<StreamingHttpEvent> stream(HttpRequest request) {
+    default Publisher<HttpStreamingEvent> stream(HttpRequest request) {
         return stream(request, new DefaultServerSentEventParser());
     }
 
@@ -106,7 +106,7 @@ public interface HttpClient {
      *
      * @since 1.17.0
      */
-    default Publisher<StreamingHttpEvent> stream(HttpRequest request, ServerSentEventParser parser) {
+    default Publisher<HttpStreamingEvent> stream(HttpRequest request, ServerSentEventParser parser) {
         throw new UnsupportedOperationException("Not implemented yet for " + getClass().getName());
     }
 }

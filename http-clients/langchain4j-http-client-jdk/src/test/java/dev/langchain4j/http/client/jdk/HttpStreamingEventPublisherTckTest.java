@@ -4,7 +4,7 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
-import dev.langchain4j.http.client.sse.StreamingHttpEvent;
+import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.tck.PublisherVerification;
 import org.reactivestreams.tck.TestEnvironment;
@@ -18,7 +18,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static org.reactivestreams.FlowAdapters.toPublisher;
 
-public class StreamingHttpEventPublisherTckTest extends PublisherVerification<StreamingHttpEvent> {
+public class HttpStreamingEventPublisherTckTest extends PublisherVerification<HttpStreamingEvent> {
 
     // Our publisher (including createFailedPublisher) performs a real HTTP round-trip to WireMock before it can
     // emit the first item or signal onError, so the budget for *expected* signals must accommodate connection
@@ -37,7 +37,7 @@ public class StreamingHttpEventPublisherTckTest extends PublisherVerification<St
     private static WireMockServer wireMockServer;
     private static HttpClient jdkClient;
 
-    public StreamingHttpEventPublisherTckTest() {
+    public HttpStreamingEventPublisherTckTest() {
         super(
                 new TestEnvironment(DEFAULT_TIMEOUT_MILLIS, DEFAULT_NO_SIGNALS_TIMEOUT_MILLIS, DEFAULT_POLL_TIMEOUT_MILLIS),
                 PUBLISHER_REFERENCE_CLEANUP_TIMEOUT_MILLIS);
@@ -70,7 +70,7 @@ public class StreamingHttpEventPublisherTckTest extends PublisherVerification<St
     }
 
     @Override
-    public Publisher<StreamingHttpEvent> createPublisher(long elements) {
+    public Publisher<HttpStreamingEvent> createPublisher(long elements) {
         // elements == total downstream items we must emit before onComplete.
         // Our publisher emits 1 SuccessfulHttpResponse first, then one ServerSentEvent per SSE block
         // from the response body. So stub the server to return (elements - 1) SSE blocks.
@@ -86,11 +86,11 @@ public class StreamingHttpEventPublisherTckTest extends PublisherVerification<St
     }
 
     @Override
-    public Publisher<StreamingHttpEvent> createFailedPublisher() {
+    public Publisher<HttpStreamingEvent> createFailedPublisher() {
         return newPublisher(FAIL_PATH);
     }
 
-    private Publisher<StreamingHttpEvent> newPublisher(String path) {
+    private Publisher<HttpStreamingEvent> newPublisher(String path) {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(String.format("http://localhost:%d%s", wireMockServer.port(), path))
@@ -98,7 +98,7 @@ public class StreamingHttpEventPublisherTckTest extends PublisherVerification<St
                 .build();
 
         java.net.http.HttpRequest jdkRequest = JdkHttpClient.builder().build().toJdkRequest(httpRequest);
-        JdkHttpClient.StreamingHttpEventPublisher publisher = new JdkHttpClient.StreamingHttpEventPublisher(
+        JdkHttpClient.HttpStreamingEventPublisher publisher = new JdkHttpClient.HttpStreamingEventPublisher(
                 jdkClient, jdkRequest, new DefaultServerSentEventParser(), 1024);
         return toPublisher(publisher);
     }
