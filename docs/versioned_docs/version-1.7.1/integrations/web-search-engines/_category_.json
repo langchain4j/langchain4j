@@ -1,0 +1,8 @@
+{
+  "label": "Web Search Engines",
+  "position": 19,
+  "link": {
+    "type": "generated-index",
+    "description": "Web search engines can be used as `ContentRetriever`s in a [RAG pipeline](https://docs.langchain4j.dev/tutorials/rag#web-search-content-retriever) or as `@Tool`s."
+  }
+}
