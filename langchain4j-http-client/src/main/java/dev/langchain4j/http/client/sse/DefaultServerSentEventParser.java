@@ -36,10 +36,15 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
                     event = line.substring("event:".length()).trim();
                 } else if (line.startsWith("data:")) {
                     String content = line.substring("data:".length());
+                    // Per the WHATWG HTML Living Standard (Server-sent events), if the field value
+                    // starts with a single U+0020 SPACE, only that one space is removed.
+                    if (content.startsWith(" ")) {
+                        content = content.substring(1);
+                    }
                     if (!data.isEmpty()) {
                         data.append("\n");
                     }
-                    data.append(content.trim());
+                    data.append(content);
                 }
             }
 
