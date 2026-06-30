@@ -661,6 +661,8 @@ tokenStream
     .beforeToolExecution((BeforeToolExecution beforeToolExecution) -> System.out.println(beforeToolExecution))
      // This will be invoked right after a tool is executed. ToolExecution contains ToolExecutionRequest and tool execution result.
     .onToolExecuted((ToolExecution toolExecution) -> System.out.println(toolExecution))
+     // This will be invoked for raw provider streaming events that are not already exposed via the typed callbacks above (e.g. server-tool lifecycle events). See the "Unmapped Raw Events" section of Response Streaming.
+    .onUnmappedRawEvent((Object rawEvent) -> System.out.println(rawEvent))
     .onCompleteResponse((ChatResponse response) -> futureResponse.complete(response))
     .onError((Throwable error) -> futureResponse.completeExceptionally(error))
     .start();
@@ -698,7 +700,7 @@ For this, please import `langchain4j-reactor` module:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-reactor</artifactId>
-    <version>1.11.8-beta19</version>
+    <version>1.17.0-beta27</version>
 </dependency>
 ```
 ```java

@@ -40,9 +40,38 @@ class DockerMcpTransportTest {
         assertThat(extractHost(client).getSchemeName()).isEqualTo("http");
     }
 
+    @Test
+    void shouldSetTlsVerifyFromCorrectlySpelledBuilderMethod() throws Exception {
+        DockerMcpTransport transport = DockerMcpTransport.builder()
+                .dockerHost("tcp://localhost:2375")
+                .image("alpine")
+                .dockerTlsVerify(true)
+                .build();
+
+        assertThat(extractDockerTlsVerify(transport)).isTrue();
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    void shouldSetTlsVerifyFromDeprecatedMisspelledBuilderMethod() throws Exception {
+        DockerMcpTransport transport = DockerMcpTransport.builder()
+                .dockerHost("tcp://localhost:2375")
+                .image("alpine")
+                .dockerTslVerify(true)
+                .build();
+
+        assertThat(extractDockerTlsVerify(transport)).isTrue();
+    }
+
     private static HttpHost extractHost(DockerHttpClient client) throws Exception {
         Field field = client.getClass().getSuperclass().getDeclaredField("host");
         field.setAccessible(true);
         return (HttpHost) field.get(client);
+    }
+
+    private static Boolean extractDockerTlsVerify(DockerMcpTransport transport) throws Exception {
+        Field field = DockerMcpTransport.class.getDeclaredField("dockerTlsVerify");
+        field.setAccessible(true);
+        return (Boolean) field.get(transport);
     }
 }

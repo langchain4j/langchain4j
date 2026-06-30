@@ -10,6 +10,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
@@ -130,6 +131,80 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
                 .overrideWith(that)
                 .overrideWith(this)
                 .build();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        WatsonxChatRequestParameters that = (WatsonxChatRequestParameters) o;
+        return Objects.equals(projectId, that.projectId)
+                && Objects.equals(spaceId, that.spaceId)
+                && Objects.equals(thinking, that.thinking)
+                && Objects.equals(logitBias, that.logitBias)
+                && Objects.equals(logprobs, that.logprobs)
+                && Objects.equals(topLogprobs, that.topLogprobs)
+                && Objects.equals(seed, that.seed)
+                && Objects.equals(toolChoiceName, that.toolChoiceName)
+                && Objects.equals(guidedChoice, that.guidedChoice)
+                && Objects.equals(guidedRegex, that.guidedRegex)
+                && Objects.equals(guidedGrammar, that.guidedGrammar)
+                && Objects.equals(repetitionPenalty, that.repetitionPenalty)
+                && Objects.equals(lengthPenalty, that.lengthPenalty)
+                && Objects.equals(deploymentId, that.deploymentId)
+                && Objects.equals(timeout, that.timeout);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(
+                super.hashCode(),
+                projectId,
+                spaceId,
+                thinking,
+                logitBias,
+                logprobs,
+                topLogprobs,
+                seed,
+                toolChoiceName,
+                guidedChoice,
+                guidedRegex,
+                guidedGrammar,
+                repetitionPenalty,
+                lengthPenalty,
+                deploymentId,
+                timeout);
+    }
+
+    @Override
+    public String toString() {
+        return "WatsonxChatRequestParameters{" + "modelName="
+                + modelName() + ", temperature="
+                + temperature() + ", topP="
+                + topP() + ", topK="
+                + topK() + ", frequencyPenalty="
+                + frequencyPenalty() + ", presencePenalty="
+                + presencePenalty() + ", maxOutputTokens="
+                + maxOutputTokens() + ", stopSequences="
+                + stopSequences() + ", toolSpecifications="
+                + toolSpecifications() + ", toolChoice="
+                + toolChoice() + ", responseFormat="
+                + responseFormat() + ", projectId="
+                + projectId + ", spaceId="
+                + spaceId + ", thinking="
+                + thinking + ", logitBias="
+                + logitBias + ", logprobs="
+                + logprobs + ", topLogprobs="
+                + topLogprobs + ", seed="
+                + seed + ", toolChoiceName="
+                + toolChoiceName + ", guidedChoice="
+                + guidedChoice + ", guidedRegex="
+                + guidedRegex + ", guidedGrammar="
+                + guidedGrammar + ", repetitionPenalty="
+                + repetitionPenalty + ", lengthPenalty="
+                + lengthPenalty + ", deploymentId="
+                + deploymentId + ", timeout="
+                + timeout + '}';
     }
 
     public static class Builder extends DefaultChatRequestParameters.Builder<Builder> {

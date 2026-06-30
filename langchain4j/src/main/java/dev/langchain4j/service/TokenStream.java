@@ -161,6 +161,29 @@ public interface TokenStream {
     }
 
     /**
+     * The provided consumer will be invoked when a provider emits a raw streaming event that is <b>not</b> already
+     * exposed through one of the typed callbacks (such as {@link #onPartialResponse(Consumer)},
+     * {@link #onPartialThinking(Consumer)} or {@link #onToolExecuted(Consumer)}).
+     * <p>
+     * This acts as an escape hatch for provider-specific events that langchain4j does not model, such as
+     * server-tool lifecycle events (e.g., OpenAI's {@code web_search_call.in_progress}). Events that are already
+     * delivered as partial responses, thinking or tool calls are not repeated here.
+     * <p>
+     * The event type depends on the provider implementation. Implementations using the
+     * {@code dev.langchain4j.http.client.HttpClient} abstraction (e.g., OpenAI, Anthropic, Google AI Gemini)
+     * typically expose {@code ServerSentEvent}; other implementations can expose provider-specific event objects
+     * (e.g., the OpenAI official Responses model exposes the SDK's {@code ResponseStreamEvent}).
+     *
+     * @param rawEventHandler lambda that consumes raw provider streaming events
+     * @return token stream instance used to configure or start stream processing
+     * @since 1.17.0
+     */
+    @Experimental
+    default TokenStream onUnmappedRawEvent(Consumer<Object> rawEventHandler) {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    /**
      * The provided consumer will be invoked right after a tool is executed.
      * <p>
      * The invocation happens after the tool method has finished and before any other tool is executed.

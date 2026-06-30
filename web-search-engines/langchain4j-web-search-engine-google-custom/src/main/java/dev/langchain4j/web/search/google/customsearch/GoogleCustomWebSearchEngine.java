@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * An implementation of a {@link WebSearchEngine} that uses
@@ -126,16 +127,7 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
         if (Boolean.TRUE.equals(includeImages) && !searchTypeImage) {
             requestQuery.setSearchType("image");
             Search imagesSearch = googleCustomSearchApiClient.searchResults(requestQuery);
-            if (!isNullOrEmpty(imagesSearch.getItems())) {
-                List<ImageSearchResult> images = imagesSearch.getItems().stream()
-                        .map(result -> ImageSearchResult.from(
-                                result.getTitle(),
-                                createUriSafely(result.getLink()),
-                                createUriSafely(result.getImage().getContextLink()),
-                                createUriSafely(result.getImage().getThumbnailLink())))
-                        .collect(toList());
-                addImagesToSearchInformation(searchInformationMetadata, images);
-            }
+            addImagesToSearchInformation(searchInformationMetadata, toImageSearchResults(imagesSearch));
         }
 
         return WebSearchResults.from(
@@ -155,6 +147,28 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
         if (!isNullOrEmpty(images)) {
             searchInformationMetadata.put("images", images);
         }
+    }
+
+    static List<ImageSearchResult> toImageSearchResults(Search imagesSearch) {
+        if (isNullOrEmpty(imagesSearch.getItems())) {
+            return new ArrayList<>();
+        }
+        return imagesSearch.getItems().stream()
+                .map(result -> {
+                    // Skip results whose primary image link cannot be resolved into a URI,
+                    // so a single unresolvable link does not abort the whole search.
+                    URI imageLink = createUriSafely(result.getLink());
+                    if (imageLink == null) {
+                        return null;
+                    }
+                    return ImageSearchResult.from(
+                            result.getTitle(),
+                            imageLink,
+                            createUriSafely(result.getImage().getContextLink()),
+                            createUriSafely(result.getImage().getThumbnailLink()));
+                })
+                .filter(Objects::nonNull)
+                .collect(toList());
     }
 
     private static Map<String, Object> toSearchMetadata(Search search, boolean searchTypeImage) {
@@ -203,19 +217,27 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
         return Collections.emptyMap();
     }
 
-    private static List<WebSearchOrganicResult> toWebSearchOrganicResults(Search search, Boolean searchTypeImage) {
-        List<WebSearchOrganicResult> organicResults = new ArrayList<>();
-        if (!isNullOrEmpty(search.getItems())) {
-            organicResults = search.getItems().stream()
-                    .map(result -> WebSearchOrganicResult.from(
+    static List<WebSearchOrganicResult> toWebSearchOrganicResults(Search search, Boolean searchTypeImage) {
+        if (isNullOrEmpty(search.getItems())) {
+            return new ArrayList<>();
+        }
+        return search.getItems().stream()
+                .map(result -> {
+                    // Skip results whose link cannot be resolved into a URI,
+                    // so a single unresolvable link does not abort the whole search.
+                    URI url = createUriSafely(result.getLink());
+                    if (url == null) {
+                        return null;
+                    }
+                    return WebSearchOrganicResult.from(
                             result.getTitle(),
-                            createUriSafely(result.getLink()),
+                            url,
                             result.getSnippet(),
                             null, // by default google custom search api does not return content
-                            toResultMetadataMap(result, searchTypeImage)))
-                    .collect(toList());
-        }
-        return organicResults;
+                            toResultMetadataMap(result, searchTypeImage));
+                })
+                .filter(Objects::nonNull)
+                .collect(toList());
     }
 
     private static Integer calculatePageNumberFromQueries(GenericJson query) {
