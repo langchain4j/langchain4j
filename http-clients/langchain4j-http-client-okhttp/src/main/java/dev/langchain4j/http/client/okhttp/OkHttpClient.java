@@ -118,7 +118,7 @@ public class OkHttpClient implements HttpClient {
      * <p>
      * Note: OkHttp reads the response body on a blocking call thread, so — unlike the JDK client — this
      * publisher pins an OkHttp dispatcher thread for the lifetime of the stream. Cancelling the
-     * subscription cancels the underlying SSE parsing (which closes the stream and frees the thread).
+     * subscription cancels the underlying SSE parsing (which closes the stream and frees the thread). TODO
      */
     @Override
     public Flow.Publisher<StreamingHttpEvent> stream(HttpRequest request, ServerSentEventParser parser) {

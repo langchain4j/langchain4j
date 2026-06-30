@@ -45,7 +45,7 @@ public interface ChatExecutor {
      * @since 1.17.0
      */
     default CompletableFuture<ChatResponse> executeAsync() {
-        return CompletableFuture.completedFuture(execute());
+        return CompletableFuture.completedFuture(execute()); // TODO
     }
 
     /**
@@ -60,7 +60,7 @@ public interface ChatExecutor {
      * @since 1.17.0
      */
     default CompletableFuture<ChatResponse> executeAsync(List<ChatMessage> chatMessages) {
-        return CompletableFuture.completedFuture(execute(chatMessages));
+        return CompletableFuture.completedFuture(execute(chatMessages)); // TODO
     }
 
     /**

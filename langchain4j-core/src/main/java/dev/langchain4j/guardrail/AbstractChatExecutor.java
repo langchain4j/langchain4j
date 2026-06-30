@@ -93,9 +93,15 @@ abstract class AbstractChatExecutor implements ChatExecutor {
 
     /**
      * Non-blocking counterpart of {@link #execute(ChatRequest)}.
+     * <p>
+     * The default implementation throws {@link UnsupportedOperationException}; subclasses that support
+     * non-blocking execution should override it (consistent with {@code ChatModel#doChatAsync} and
+     * {@code HttpClient#executeAsync}).
      *
      * @param chatRequest the chat request to process, containing the input messages and any necessary configurations
      * @return a {@link CompletableFuture} that completes with the chat response
      */
-    protected abstract CompletableFuture<ChatResponse> executeAsync(ChatRequest chatRequest);
+    protected CompletableFuture<ChatResponse> executeAsync(ChatRequest chatRequest) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
 }
