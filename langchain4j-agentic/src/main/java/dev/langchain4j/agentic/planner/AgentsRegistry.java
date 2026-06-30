@@ -1,14 +1,17 @@
 package dev.langchain4j.agentic.planner;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 
 /**
  * SPI for discovering and providing {@link AgentInstance}s by name or type.
  *
- * <p>Implementations are loaded via {@link ServiceLoader}. At most one provider
- * is supported; if none is found, an empty registry that throws on every lookup
- * is returned.
+ * <p>Implementations are loaded via {@link ServiceLoader}. Multiple providers
+ * are supported and automatically merged; duplicate agent names across providers
+ * cause an exception at discovery time. If no provider is found, an empty registry
+ * that throws on every lookup is returned.
  *
  * <p>Registry-provided agents can be mixed with locally defined agents in any
  * agentic pattern (sequence, supervisor, planner, etc.).
@@ -64,11 +67,53 @@ public interface AgentsRegistry {
         private static AgentsRegistry INSTANCE = discover();
 
         private static AgentsRegistry discover() {
-            ServiceLoader<AgentsRegistry> loader = ServiceLoader.load(AgentsRegistry.class);
-            for (AgentsRegistry registry : loader) {
-                return registry;
+            List<AgentsRegistry> registries = ServiceLoader.load(AgentsRegistry.class)
+                    .stream()
+                    .map(ServiceLoader.Provider::get)
+                    .toList();
+            return switch (registries.size()) {
+                case 0 -> new EmptyAgentsRegistry();
+                case 1 -> registries.get(0);
+                default -> new CompositeAgentsRegistry(registries);
+            };
+        }
+    }
+
+    class CompositeAgentsRegistry implements AgentsRegistry {
+
+        private final Map<String, AgentInstance> mergedAgents = new HashMap<>();
+
+        CompositeAgentsRegistry(List<AgentsRegistry> registries) {
+            for (AgentsRegistry registry : registries) {
+                for (Map.Entry<String, AgentInstance> entry : registry.allAgents().entrySet()) {
+                    if (mergedAgents.put(entry.getKey(), entry.getValue()) != null) {
+                        throw new RuntimeException("Duplicate agent name across registries: " + entry.getKey());
+                    }
+                }
             }
-            return new EmptyAgentsRegistry();
+        }
+
+        @Override
+        public Map<String, AgentInstance> allAgents() {
+            return mergedAgents;
+        }
+
+        @Override
+        public AgentInstance getAgent(String name) {
+            AgentInstance agent = mergedAgents.get(name);
+            if (agent == null) {
+                throw new RuntimeException("No agent found with name: " + name);
+            }
+            return agent;
+        }
+
+        @Override
+        public <T> T getAgent(Class<T> agentType) {
+            return mergedAgents.values().stream()
+                    .filter(a -> agentType.isAssignableFrom(a.type()))
+                    .map(agentType::cast)
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("No agent found with type: " + agentType.getName()));
         }
     }
 
