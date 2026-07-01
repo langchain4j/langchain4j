@@ -23,6 +23,7 @@ import dev.langchain4j.model.chat.StreamingChatModelHelper;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.CompleteResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
@@ -328,8 +329,8 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     // ChatResponse is held back: the AI Service stream decides whether the round is an
                     // intermediate (tool-calling) one or the final answer. Raw provider events are relayed
                     // as-is via RawEvent.
-                    if (event instanceof ChatResponse chatResponse) {
-                        this.roundResponse = chatResponse;
+                    if (event instanceof CompleteResponse completeResponse) {
+                        this.roundResponse = completeResponse.chatResponse();
                     } else if (event instanceof PartialResponse partialResponse) {
                         // While output guardrails are configured, hold partial responses back until the final
                         // response has passed validation (see emitFinalResponse). Other event types still flow

@@ -10,6 +10,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.CompleteResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.RawStreamingEvent;
@@ -135,7 +136,7 @@ class StreamingEventChatModelMock implements StreamingChatModel {
                     if (tube.cancelled()) {
                         return;
                     }
-                    tube.send(ChatResponse.builder().aiMessage(aiMessage).build());
+                    tube.send(new CompleteResponse(ChatResponse.builder().aiMessage(aiMessage).build()));
                     tube.complete();
                 } catch (Throwable error) {
                     tube.fail(error);

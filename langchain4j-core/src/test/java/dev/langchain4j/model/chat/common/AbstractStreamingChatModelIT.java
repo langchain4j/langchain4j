@@ -587,8 +587,8 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
                     partialToolCalls.add(partial);
                 } else if (event instanceof CompleteToolCall complete) {
                     completeToolCalls.add(complete);
-                } else if (event instanceof ChatResponse response) {
-                    chatResponse = response;
+                } else if (event instanceof CompleteResponse complete) {
+                    chatResponse = complete.chatResponse();
                     timesOnCompleteResponseWasCalled.incrementAndGet();
                 }
                 // Other event types (e.g. RawStreamingEvent, or types introduced later) are intentionally
@@ -657,11 +657,11 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
                 .isNotEmpty()
                 .doesNotContain(callerThread);
 
-        long completeResponses = events.stream().filter(event -> event instanceof ChatResponse).count();
-        assertThat(completeResponses).as("exactly one terminal ChatResponse event").isEqualTo(1);
+        long completeResponses = events.stream().filter(event -> event instanceof CompleteResponse).count();
+        assertThat(completeResponses).as("exactly one terminal CompleteResponse event").isEqualTo(1);
         assertThat(events.get(events.size() - 1))
-                .as("ChatResponse must be the last event")
-                .isInstanceOf(ChatResponse.class);
+                .as("CompleteResponse must be the last event")
+                .isInstanceOf(CompleteResponse.class);
 
         for (int i = 0; i < events.size(); i++) {
             if (events.get(i) instanceof CompleteToolCall complete) {

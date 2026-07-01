@@ -166,7 +166,7 @@ public interface StreamingChatModel {
      *     <li>0..N {@link dev.langchain4j.model.chat.response.PartialToolCall} (tool-call argument chunks),</li>
      *     <li>0..N {@link dev.langchain4j.model.chat.response.CompleteToolCall} (assembled tool calls),</li>
      *     // TODO raw events
-     *     <li>exactly one terminal {@link ChatResponse} (the aggregated final response),</li>
+     *     <li>exactly one terminal {@link CompleteResponse} (wrapping the aggregated final {@link ChatResponse}),</li>
      * </ul>
      * followed by {@code onComplete}. On failure, {@code onError} is signaled after {@code onSubscribe}.
      * <p>
@@ -199,21 +199,6 @@ public interface StreamingChatModel {
      * @since 1.17.0
      */
     default Publisher<StreamingEvent> chat(ChatRequest request) {
-        return chat(request, ChatRequestOptions.EMPTY);
-    }
-
-    /**
-     * Reactive entry point with additional invocation options; see {@link #chat(ChatRequest)} for the full
-     * contract (event ordering, {@link ChatModelListener} invocation, cancellation, and demand / back-pressure
-     * expectations).
-     *
-     * @param request a {@link ChatRequest}, containing all the inputs to the LLM
-     * @param options a {@link ChatRequestOptions} carrying listener attributes and other per-call metadata
-     * @return a cold {@link Publisher} of {@link StreamingEvent}s
-     * @see #chat(ChatRequest)
-     * @since 1.17.0
-     */
-    default Publisher<StreamingEvent> chat(ChatRequest request, ChatRequestOptions options) {
 
         ChatRequest finalChatRequest = ChatRequest.builder()
                 .messages(request.messages())
@@ -224,14 +209,12 @@ public interface StreamingChatModel {
 
         ModelProvider provider = provider();
 
-        ChatRequestOptions effectiveOptions = getOrDefault(options, ChatRequestOptions.EMPTY);
-
         return new Publisher<StreamingEvent>() {
 
             @Override
             public void subscribe(Subscriber<? super StreamingEvent> downstream) {
 
-                Map<Object, Object> attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
+                Map<Object, Object> attributes = new ConcurrentHashMap<>();
 
                 Publisher<StreamingEvent> innerPublisher;
                 try {
@@ -255,8 +238,8 @@ public interface StreamingChatModel {
 
                     @Override
                     public void onNext(StreamingEvent event) {
-                        if (event instanceof ChatResponse chatResponse) {
-                            completeResponse = chatResponse;
+                        if (event instanceof CompleteResponse completeResponseEvent) {
+                            completeResponse = completeResponseEvent.chatResponse();
                         }
                         downstream.onNext(event);
                     }

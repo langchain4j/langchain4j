@@ -2,6 +2,7 @@ package dev.langchain4j.model.openai.internal;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.CompleteResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.PartialResponseContext;
@@ -83,7 +84,7 @@ public final class TubeBackedStreamingChatResponseHandler implements StreamingCh
     @Override
     public void onCompleteResponse(ChatResponse completeResponse) {
         if (!tube.cancelled()) {
-            tube.send(completeResponse);
+            tube.send(new CompleteResponse(completeResponse));
             tube.complete();
         }
     }

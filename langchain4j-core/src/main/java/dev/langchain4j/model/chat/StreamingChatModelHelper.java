@@ -3,6 +3,7 @@ package dev.langchain4j.model.chat;
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.CompleteResponse;
 import dev.langchain4j.model.chat.response.StreamingEvent;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
@@ -48,8 +49,8 @@ public final class StreamingChatModelHelper {
 
             @Override
             public void onNext(StreamingEvent event) {
-                if (event instanceof ChatResponse chatResponse) {
-                    this.response = chatResponse;
+                if (event instanceof CompleteResponse completeResponse) {
+                    this.response = completeResponse.chatResponse();
                 }
             }
 
