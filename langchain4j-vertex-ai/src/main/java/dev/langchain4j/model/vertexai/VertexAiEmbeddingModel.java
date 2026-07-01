@@ -30,7 +30,7 @@ import java.util.Optional;
  * See details <a href="https://cloud.google.com/vertex-ai/docs/generative-ai/embeddings/get-text-embeddings">here</a>.
  * <br>
  * <br>
- * This embedding model transparently handles call batching, however the underlying API has imposes
+ * This embedding model transparently handles call batching, however the underlying API imposes
  * a maximum of 250 embeddings per call, with a max of 20,000 tokens per call.
  * You can tweak those two parameters with the <code>maxSegmentsPerBatch()</code> and
  * <code>maxTokensPerBatch()</code> builder methods.
