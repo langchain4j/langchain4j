@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.ServiceLoader;
 
 /**
- * SPI for discovering and providing {@link AgentInstance}s by name or type.
+ * SPI for discovering and providing {@link AgentInstance}s by name.
  *
  * <p>Implementations are loaded via {@link ServiceLoader}. Multiple providers
  * are supported and automatically merged; duplicate agent names across providers
@@ -35,16 +35,6 @@ public interface AgentsRegistry {
     AgentInstance getAgent(String name);
 
     /**
-     * Returns the agent matching the given type.
-     *
-     * @param agentType the agent class to look up
-     * @param <T> the agent type
-     * @return the matching agent, cast to {@code T}
-     * @throws RuntimeException if no agent of the given type is found
-     */
-    <T> T getAgent(Class<T> agentType);
-
-    /**
      * Returns the {@link AgentsRegistry} discovered via {@link ServiceLoader}.
      * The result is lazily initialized on first access and cached for subsequent calls.
      * Call {@link #refresh()} to force re-discovery.
@@ -64,7 +54,9 @@ public interface AgentsRegistry {
     }
 
     class LazyHolder {
-        private static AgentsRegistry INSTANCE = discover();
+        private static volatile AgentsRegistry INSTANCE = discover();
+
+        private LazyHolder() { }
 
         private static AgentsRegistry discover() {
             List<AgentsRegistry> registries = ServiceLoader.load(AgentsRegistry.class)
@@ -107,14 +99,6 @@ public interface AgentsRegistry {
             return agent;
         }
 
-        @Override
-        public <T> T getAgent(Class<T> agentType) {
-            return mergedAgents.values().stream()
-                    .filter(a -> agentType.isAssignableFrom(a.type()))
-                    .map(agentType::cast)
-                    .findFirst()
-                    .orElseThrow(() -> new RuntimeException("No agent found with type: " + agentType.getName()));
-        }
     }
 
     class EmptyAgentsRegistry implements AgentsRegistry {
@@ -129,11 +113,6 @@ public interface AgentsRegistry {
         @Override
         public AgentInstance getAgent(String name) {
             throw new RuntimeException("No agent found with name: " + name);
-        }
-
-        @Override
-        public <T> T getAgent(Class<T> agentType) {
-            throw new RuntimeException("No agent found with type: " + agentType.getName());
         }
     }
 }

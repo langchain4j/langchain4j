@@ -94,7 +94,7 @@ class AgentsRegistryIT {
                 .build();
 
         AgentInstance audienceEditor = registry.getAgent("audienceEditor");
-        Agents.StyleEditor styleEditor = registry.getAgent(Agents.StyleEditor.class);
+        AgentInstance styleEditor = registry.getAgent("styleEditor");
 
         UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
                 .subAgents(creativeWriter, audienceEditor, styleEditor)
@@ -205,15 +205,6 @@ class AgentsRegistryIT {
                         return agent;
                     }
 
-                    @Override
-                    public <T> T getAgent(Class<T> agentType) {
-                        return agents.values().stream()
-                                .filter(a -> agentType.isAssignableFrom(a.type()))
-                                .map(agentType::cast)
-                                .findFirst()
-                                .orElseThrow(() -> new RuntimeException(
-                                        "No agent found with type: " + agentType.getName()));
-                    }
                 }
                 """;
     }

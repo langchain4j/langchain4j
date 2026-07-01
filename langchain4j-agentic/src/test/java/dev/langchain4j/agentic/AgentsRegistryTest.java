@@ -38,14 +38,6 @@ class AgentsRegistryTest {
     }
 
     @Test
-    void default_registry_throws_on_get_by_type() {
-        AgentsRegistry registry = AgentsRegistry.get();
-        assertThatThrownBy(() -> registry.getAgent(Runnable.class))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Runnable");
-    }
-
-    @Test
     void spi_loaded_registry_provides_agents() throws Exception {
         try (CompiledRegistry compiled = compileTestRegistry()) {
             AgentsRegistry registry = ServiceLoader.load(AgentsRegistry.class, compiled.classLoader())
@@ -152,10 +144,6 @@ class AgentsRegistryTest {
                         throw new RuntimeException("No agent found with name: " + name);
                     }
 
-                    @Override
-                    public <T> T getAgent(Class<T> agentType) {
-                        throw new RuntimeException("No agent found with type: " + agentType.getName());
-                    }
                 }
                 """.formatted(className, agentName, agentName, agentDescription, agentName, agentName);
     }
@@ -286,10 +274,6 @@ class AgentsRegistryTest {
                         return agent;
                     }
 
-                    @Override
-                    public <T> T getAgent(Class<T> agentType) {
-                        throw new RuntimeException("No agent found with type: " + agentType.getName());
-                    }
                 }
                 """;
     }
