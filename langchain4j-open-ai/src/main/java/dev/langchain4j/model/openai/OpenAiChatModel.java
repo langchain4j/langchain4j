@@ -193,7 +193,7 @@ public class OpenAiChatModel implements ChatModel {
                 .exceptionallyCompose(throwable -> {
                     Throwable cause = unwrapCompletionException(throwable);
                     if (cause instanceof CancellationException) {
-                        // a cancellation is not a provider error - propagate it as-is, do not map it
+                        // a cancellation is not a provider error - propagate it as-is, do not map it TODO ignore cancellations?
                         return CompletableFuture.failedFuture(cause);
                     }
                     return CompletableFuture.failedFuture(ExceptionMapper.DEFAULT.mapException(cause));

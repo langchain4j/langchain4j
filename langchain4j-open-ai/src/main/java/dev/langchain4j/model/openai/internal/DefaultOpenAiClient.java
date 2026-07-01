@@ -200,7 +200,6 @@ public class DefaultOpenAiClient extends OpenAiClient {
         });
     }
 
-    // TODO try to generalize and extract from this module
     private static final class ChatCompletionEventSubscriber implements Subscriber<HttpStreamingEvent> {
 
         private static final String DONE_MARKER = "[DONE]";
@@ -254,8 +253,9 @@ public class DefaultOpenAiClient extends OpenAiClient {
                                 .rawServerSentEvent(sse)
                                 .streamingHandle(tubeHandler.streamingHandle())
                                 .build();
-                handler.resetMappingTracking();
                 responseBuilder.append(parsedAndRaw);
+
+                handler.resetMappingTracking();
                 handle(parsedAndRaw, toolCallBuilder, handler, options.returnThinking());
                 if (!handler.wasMapped()) {
                     onUnmappedRawEvent(handler, sse);

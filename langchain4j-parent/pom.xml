@@ -317,9 +317,6 @@
             <artifactId>junit-jupiter-params</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- JUnit Platform engine for TestNG: lets surefire run TestNG tests (e.g. Reactive Streams TCK /
-             BlockHound checks) in the same pass as JUnit Jupiter tests. Declared for every module so no
-             module can silently skip its TestNG tests. Brings org.testng:testng transitively (test scope). -->
         <dependency>
             <groupId>org.junit.support</groupId>
             <artifactId>testng-engine</artifactId>

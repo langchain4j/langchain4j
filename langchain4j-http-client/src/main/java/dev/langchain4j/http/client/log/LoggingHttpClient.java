@@ -103,7 +103,10 @@ public class LoggingHttpClient implements HttpClient {
             HttpRequestLogger.log(log, request);
         }
 
-        // TODO for logRequests = false do not wrap the delegateListener?
+        if (!logResponses) {
+            this.delegateHttpClient.execute(request, delegateListener);
+            return;
+        }
 
         this.delegateHttpClient.execute(request, new ServerSentEventListener() {
 
@@ -150,7 +153,10 @@ public class LoggingHttpClient implements HttpClient {
             HttpRequestLogger.log(log, request);
         }
 
-        // TODO for logRequests = false do not wrap the delegateListener?
+        if (!logResponses) {
+            this.delegateHttpClient.execute(request, parser, delegateListener);
+            return;
+        }
 
         this.delegateHttpClient.execute(request, parser, new ServerSentEventListener() {
 

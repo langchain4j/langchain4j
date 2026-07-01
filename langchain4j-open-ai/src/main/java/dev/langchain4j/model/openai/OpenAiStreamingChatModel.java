@@ -256,7 +256,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         private Map<String, String> customQueryParams;
         private Map<String, Object> customParameters;
         private List<ChatModelListener> listeners;
-        private int streamingBufferSize = OpenAiClient.DEFAULT_STREAMING_BUFFER_SIZE;
+        private int streamingBufferSize = OpenAiClient.DEFAULT_STREAMING_BUFFER_SIZE; // TODO
 
         public OpenAiStreamingChatModelBuilder() {
             // This is public so it can be extended

@@ -182,7 +182,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         private Boolean logResponses;
         private List<ChatModelListener> listeners;
         private ChatRequestParameters defaultRequestParameters;
-        private int streamingBufferSize = OpenAiClient.DEFAULT_STREAMING_BUFFER_SIZE;
+        private int streamingBufferSize = OpenAiClient.DEFAULT_STREAMING_BUFFER_SIZE; // TODO
 
         public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;

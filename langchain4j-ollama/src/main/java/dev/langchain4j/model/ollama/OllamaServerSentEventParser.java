@@ -40,6 +40,9 @@ class OllamaServerSentEventParser implements ServerSentEventParser {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(httpResponseBody, UTF_8))) {
             String line;
             while (!parsingHandle.isCancelled() && (line = reader.readLine()) != null) {
+                if (line.isEmpty()) {
+                    continue; // skip blank lines (consistent with the incremental parser)
+                }
                 ServerSentEvent sse = new ServerSentEvent(null, line);
                 ignoringExceptions(() -> listener.onEvent(sse, context));
             }

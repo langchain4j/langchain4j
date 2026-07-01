@@ -248,8 +248,7 @@ class OpenAiResponsesClient {
             TubeBackedStreamingChatResponseHandler handler = new TubeBackedStreamingChatResponseHandler(tube);
             ResponsesApiEventListener listener = new ResponsesApiEventListener(handler);
 
-            Publisher<HttpStreamingEvent> upstream =
-                    httpClient.stream(request, new DefaultServerSentEventParser());
+            Publisher<HttpStreamingEvent> upstream = httpClient.stream(request);
             upstream.subscribe(new Subscriber<>() {
 
                 @Override
@@ -288,10 +287,7 @@ class OpenAiResponsesClient {
                 }
 
                 @Override
-                public void onComplete() {
-                    // Completion is driven by the response.completed/incomplete event, which invokes
-                    // handler.onCompleteResponse and terminates the tube. Nothing to do here.
-                }
+                public void onComplete() {}
             });
         });
     }
@@ -859,7 +855,7 @@ class OpenAiResponsesClient {
         private String organizationId;
         private boolean logRequests;
         private boolean logResponses;
-        private int streamingBufferSize = OpenAiClient.DEFAULT_STREAMING_BUFFER_SIZE;
+        private int streamingBufferSize = OpenAiClient.DEFAULT_STREAMING_BUFFER_SIZE; // TODO
 
         Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -962,9 +958,8 @@ class OpenAiResponsesClient {
 
             handler.resetMappingTracking();
             handleDelta(data);
-
             if (!handler.wasMapped()) {
-                InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent(handler, event);
+                onUnmappedRawEvent(handler, event);
             }
         }
 

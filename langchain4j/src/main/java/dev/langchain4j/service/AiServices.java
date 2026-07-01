@@ -716,7 +716,7 @@ public abstract class AiServices<T> {
      * @since 1.17.0
      */
     public AiServices<T> streamingBufferSize(int streamingBufferSize) {
-        context.streamingBufferSize = ensureGreaterThanZero(streamingBufferSize, "streamingBufferSize");
+        context.streamingBufferSize = ensureGreaterThanZero(streamingBufferSize, "streamingBufferSize"); // TODO
         return this;
     }
 

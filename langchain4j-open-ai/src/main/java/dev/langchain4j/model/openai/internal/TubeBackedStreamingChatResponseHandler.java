@@ -16,6 +16,8 @@ import dev.langchain4j.model.chat.response.StreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import mutiny.zero.Tube;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 /**
  * Bridge from the handler-based {@link StreamingChatResponseHandler} contract to a
  * {@link Tube} of {@link StreamingEvent}s. Lets the same dispatch logic that drives the
@@ -25,13 +27,13 @@ import mutiny.zero.Tube;
  * terminates the tube; {@code onError} fails it. Calls after cancellation are silently dropped.
  */
 @Internal
-public final class TubeBackedStreamingChatResponseHandler implements StreamingChatResponseHandler {
+public final class TubeBackedStreamingChatResponseHandler implements StreamingChatResponseHandler { // TODO extract into common
 
     private final Tube<StreamingEvent> tube;
     private final StreamingHandle streamingHandle;
 
     public TubeBackedStreamingChatResponseHandler(Tube<StreamingEvent> tube) {
-        this.tube = tube;
+        this.tube = ensureNotNull(tube, "tube");
         // The dispatcher constructs PartialResponseContext etc. with this handle (it must be
         // non-null per their constructors). isCancelled() reflects the tube's state; cancel() is a
         // no-op — publisher-path consumers use Flow.Subscription.cancel() instead, which propagates
@@ -45,6 +47,8 @@ public final class TubeBackedStreamingChatResponseHandler implements StreamingCh
     public StreamingHandle streamingHandle() {
         return streamingHandle;
     }
+
+    // TODO how to make sure new default methods are not forgotten?
 
     @Override
     public void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {

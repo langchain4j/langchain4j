@@ -93,7 +93,7 @@ public abstract class OpenAiClient {
         public Logger logger;
         public Supplier<Map<String, String>> customHeadersSupplier;
         public Map<String, String> customQueryParams;
-        public int streamingBufferSize = DEFAULT_STREAMING_BUFFER_SIZE;
+        public int streamingBufferSize = DEFAULT_STREAMING_BUFFER_SIZE; // TODO
 
         public abstract T build();
 
@@ -220,7 +220,7 @@ public abstract class OpenAiClient {
          * @return builder
          */
         public B streamingBufferSize(int streamingBufferSize) {
-            this.streamingBufferSize = ensureGreaterThanZero(streamingBufferSize, "streamingBufferSize");
+            this.streamingBufferSize = ensureGreaterThanZero(streamingBufferSize, "streamingBufferSize"); // TODO
             return (B) this;
         }
     }
