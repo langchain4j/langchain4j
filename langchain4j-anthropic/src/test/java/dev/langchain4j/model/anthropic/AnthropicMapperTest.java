@@ -10,6 +10,7 @@ import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.to
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSchema;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTool;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toCacheDiagnostics;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
@@ -31,8 +32,10 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheMissReason;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicDiagnostics;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicImageContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMessageContent;
@@ -712,6 +715,43 @@ class AnthropicMapperTest {
                         new AnthropicMessage(USER, singletonList(new AnthropicToolResultContent("1", "4", null))),
                         new AnthropicMessage(SYSTEM, singletonList(new AnthropicTextContent("be concise"))),
                         new AnthropicMessage(USER, singletonList(new AnthropicTextContent("thanks"))));
+    }
+
+    @Test
+    void should_map_null_diagnostics_to_null() {
+        assertThat(toCacheDiagnostics(null)).isNull();
+    }
+
+    @Test
+    void should_map_diagnostics_with_no_cache_miss_reason_to_null_reason_type() {
+        // Given
+        AnthropicDiagnostics anthropicDiagnostics = new AnthropicDiagnostics();
+        anthropicDiagnostics.cacheMissReason = null;
+
+        // When
+        AnthropicCacheDiagnostics cacheDiagnostics = toCacheDiagnostics(anthropicDiagnostics);
+
+        // Then
+        assertThat(cacheDiagnostics).isNotNull();
+        assertThat(cacheDiagnostics.cacheMissReasonType()).isNull();
+        assertThat(cacheDiagnostics.cacheMissedInputTokens()).isNull();
+    }
+
+    @Test
+    void should_map_diagnostics_with_cache_miss_reason() {
+        // Given
+        AnthropicCacheMissReason reason = new AnthropicCacheMissReason();
+        reason.type = "system_changed";
+        reason.cacheMissedInputTokens = 41850;
+        AnthropicDiagnostics anthropicDiagnostics = new AnthropicDiagnostics();
+        anthropicDiagnostics.cacheMissReason = reason;
+
+        // When
+        AnthropicCacheDiagnostics cacheDiagnostics = toCacheDiagnostics(anthropicDiagnostics);
+
+        // Then
+        assertThat(cacheDiagnostics.cacheMissReasonType()).isEqualTo("system_changed");
+        assertThat(cacheDiagnostics.cacheMissedInputTokens()).isEqualTo(41850);
     }
 
     @SafeVarargs

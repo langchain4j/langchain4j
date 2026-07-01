@@ -20,6 +20,7 @@ import static dev.langchain4j.model.anthropic.internal.client.Json.toJson;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.REDACTED_THINKING_KEY;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.SERVER_TOOL_RESULTS_KEY;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.THINKING_SIGNATURE_KEY;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toCacheDiagnostics;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
 import static java.util.Collections.synchronizedList;
 import static java.util.stream.Collectors.joining;
@@ -47,6 +48,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicCountTokensRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicDelta;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicDiagnostics;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicModelsListResponse;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicResponseMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingData;
@@ -299,6 +301,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
             final AtomicReference<String> responseId = new AtomicReference<>();
             final AtomicReference<String> responseModel = new AtomicReference<>();
+            final AtomicReference<AnthropicDiagnostics> responseDiagnostics = new AtomicReference<>();
 
             volatile String stopReason;
             volatile StreamingHandle streamingHandle;
@@ -388,6 +391,9 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     }
                     if (message.model != null) {
                         responseModel.set(message.model);
+                    }
+                    if (message.diagnostics != null) {
+                        responseDiagnostics.set(message.diagnostics);
                     }
                 }
             }
@@ -613,6 +619,9 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 }
                 if (!rawServerSentEvents.isEmpty()) {
                     metadataBuilder.rawServerSentEvents(new ArrayList<>(rawServerSentEvents));
+                }
+                if (responseDiagnostics.get() != null) {
+                    metadataBuilder.cacheDiagnostics(toCacheDiagnostics(responseDiagnostics.get()));
                 }
                 return metadataBuilder.build();
             }

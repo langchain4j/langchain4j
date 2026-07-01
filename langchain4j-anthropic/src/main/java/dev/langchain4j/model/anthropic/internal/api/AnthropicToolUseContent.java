@@ -6,7 +6,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import java.util.Map;
 import java.util.Objects;
 
 @JsonInclude(NON_NULL)
@@ -16,6 +15,7 @@ public class AnthropicToolUseContent extends AnthropicMessageContent {
 
     public String id;
     public String name;
+
     @com.fasterxml.jackson.annotation.JsonRawValue
     public String input;
 
