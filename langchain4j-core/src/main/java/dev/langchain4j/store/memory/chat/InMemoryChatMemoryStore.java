@@ -5,6 +5,8 @@ import dev.langchain4j.data.message.ChatMessage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -34,5 +36,22 @@ public class InMemoryChatMemoryStore implements ChatMemoryStore {
     @Override
     public void deleteMessages(Object memoryId) {
         messagesByMemoryId.remove(memoryId);
+    }
+
+    @Override
+    public CompletionStage<List<ChatMessage>> getMessagesAsync(Object memoryId) {
+        return CompletableFuture.completedFuture(getMessages(memoryId));
+    }
+
+    @Override
+    public CompletionStage<Void> updateMessagesAsync(Object memoryId, List<ChatMessage> messages) {
+        updateMessages(memoryId, messages);
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public CompletionStage<Void> deleteMessagesAsync(Object memoryId) {
+        deleteMessages(memoryId);
+        return CompletableFuture.completedFuture(null);
     }
 }

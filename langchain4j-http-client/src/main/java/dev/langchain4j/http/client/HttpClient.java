@@ -2,8 +2,12 @@ package dev.langchain4j.http.client;
 
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
+import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Flow.Publisher;
 
 /**
  * A client for executing HTTP requests both synchronously and asynchronously.
@@ -21,6 +25,21 @@ public interface HttpClient {
      * @throws RuntimeException if an unexpected error occurs during request execution (e.g., network issues, timeouts)
      */
     SuccessfulHttpResponse execute(HttpRequest request) throws HttpException, RuntimeException;
+
+    /**
+     * Non-blocking counterpart of {@link #execute(HttpRequest)}.
+     * Returns immediately with a {@link CompletableFuture} that completes with the
+     * {@link SuccessfulHttpResponse} once the full response has been received, without blocking the
+     * calling thread. The future completes exceptionally with an {@link HttpException} for non-2XX
+     * responses, or with the underlying error (e.g. a timeout or network failure) otherwise.
+     *
+     * @param request the HTTP request to be executed.
+     * @return a {@link CompletableFuture} of the {@link SuccessfulHttpResponse}.
+     * @since 1.17.0
+     */
+    default CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
 
     /**
      * Executes a given HTTP request asynchronously with server-sent events (SSE) handling.
@@ -66,4 +85,28 @@ public interface HttpClient {
      * @param listener the listener to receive parsed events and error notifications.
      */
     void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener);
+
+    /**
+     * Executes a streaming HTTP request and exposes the parsed events as a cold
+     * {@link Publisher} of {@link HttpStreamingEvent}s. Each {@code subscribe()} initiates a new request.
+     * <p>
+     * This interface gives no guarantee about thread-pinning or whether events are delivered incrementally;
+     * such guarantees depend on the implementation. Consult the chosen implementation's javadoc.
+     * <p>
+     * Uses {@link DefaultServerSentEventParser} for SSE parsing.
+     *
+     * @since 1.17.0
+     */
+    default Publisher<HttpStreamingEvent> stream(HttpRequest request) {
+        return stream(request, new DefaultServerSentEventParser());
+    }
+
+    /**
+     * Like {@link #stream(HttpRequest)}, but with a caller-supplied {@link ServerSentEventParser}.
+     *
+     * @since 1.17.0
+     */
+    default Publisher<HttpStreamingEvent> stream(HttpRequest request, ServerSentEventParser parser) {
+        throw new UnsupportedOperationException("Not implemented yet for " + getClass().getName());
+    }
 }

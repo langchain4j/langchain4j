@@ -10,6 +10,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Abstract base class for chat executors that provides a common structure and shared functionality
@@ -66,6 +67,22 @@ abstract class AbstractChatExecutor implements ChatExecutor {
         return execute(chatRequest);
     }
 
+    @Override
+    public CompletableFuture<ChatResponse> executeAsync(List<ChatMessage> chatMessages) {
+        var newChatRequest = this.chatRequest.toBuilder().messages(chatMessages).build();
+        return executeInternalAsync(newChatRequest);
+    }
+
+    @Override
+    public CompletableFuture<ChatResponse> executeAsync() {
+        return executeInternalAsync(this.chatRequest);
+    }
+
+    private CompletableFuture<ChatResponse> executeInternalAsync(ChatRequest chatRequest) {
+        fireRequestIssuedEvent(chatRequest);
+        return executeAsync(chatRequest);
+    }
+
     /**
      * Executes a given chat request and returns the corresponding chat response.
      *
@@ -73,4 +90,18 @@ abstract class AbstractChatExecutor implements ChatExecutor {
      * @return the chat response generated as a result of processing the given chat request
      */
     protected abstract ChatResponse execute(ChatRequest chatRequest);
+
+    /**
+     * Non-blocking counterpart of {@link #execute(ChatRequest)}.
+     * <p>
+     * The default implementation throws {@link UnsupportedOperationException}; subclasses that support
+     * non-blocking execution should override it (consistent with {@code ChatModel#doChatAsync} and
+     * {@code HttpClient#executeAsync}).
+     *
+     * @param chatRequest the chat request to process, containing the input messages and any necessary configurations
+     * @return a {@link CompletableFuture} that completes with the chat response
+     */
+    protected CompletableFuture<ChatResponse> executeAsync(ChatRequest chatRequest) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
 }

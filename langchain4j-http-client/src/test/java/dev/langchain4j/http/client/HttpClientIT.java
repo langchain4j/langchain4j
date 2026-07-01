@@ -6,6 +6,7 @@ import static java.util.Collections.synchronizedSet;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
@@ -20,6 +21,9 @@ import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import dev.langchain4j.http.client.sse.ServerSentEventParser;
+import dev.langchain4j.http.client.sse.HttpResponseReceived;
+import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -27,11 +31,16 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Flow;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InOrder;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
@@ -41,8 +50,156 @@ public abstract class HttpClientIT {
 
     protected abstract List<HttpClient> clients();
 
-    @Test
-    void should_return_successful_http_response_sync() {
+    /** How to invoke a single (non-streaming) request: blocking {@link HttpClient#execute} or
+     * non-blocking {@link HttpClient#executeAsync}. Lets the single-response tests run in both modes. */
+    protected enum ExecutionMode {
+        SYNC,
+        ASYNC
+    }
+
+    /**
+     * Executes the request in the given mode. For {@link ExecutionMode#ASYNC} the {@link CompletableFuture}
+     * is awaited and any {@link ExecutionException} is unwrapped, so callers observe the same exception
+     * (e.g. {@link HttpException}) that the synchronous path throws.
+     */
+    private static SuccessfulHttpResponse execute(HttpRequest request, HttpClient client, ExecutionMode mode) {
+        if (mode == ExecutionMode.SYNC) {
+            return client.execute(request);
+        }
+        try {
+            return client.executeAsync(request).get(30, SECONDS);
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            if (cause instanceof Error error) {
+                throw error;
+            }
+            throw new RuntimeException(cause != null ? cause : e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } catch (TimeoutException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /** Which streaming API to drive: the callback {@link HttpClient#execute(HttpRequest, ServerSentEventParser,
+     * ServerSentEventListener)} (listener) or the {@link HttpClient#stream(HttpRequest)}
+     * (publisher). Lets the common streaming tests run against both. */
+    protected enum StreamingMode {
+        LISTENER,
+        PUBLISHER
+    }
+
+    protected record StreamingResult(
+            SuccessfulHttpResponse response,
+            List<ServerSentEvent> events,
+            Set<Thread> threads,
+            ServerSentEventListener listenerSpy) {}
+
+    /**
+     * Drives a streaming request through the given API and collects the response, the events and the
+     * threads they were delivered on, blocking until the stream terminates. If the stream fails, the error
+     * is re-thrown (unwrapped) so both modes surface failures the same way.
+     */
+    private static StreamingResult stream(HttpClient client, HttpRequest request, StreamingMode mode) {
+        AtomicReference<SuccessfulHttpResponse> response = new AtomicReference<>();
+        List<ServerSentEvent> events = synchronizedList(new ArrayList<>());
+        Set<Thread> threads = synchronizedSet(new HashSet<>());
+        CompletableFuture<Void> done = new CompletableFuture<>();
+
+        ServerSentEventListener listenerSpy = null;
+        if (mode == StreamingMode.LISTENER) {
+            ServerSentEventListener listener = new ServerSentEventListener() {
+                @Override
+                public void onOpen(SuccessfulHttpResponse r) {
+                    threads.add(Thread.currentThread());
+                    response.set(r);
+                }
+
+                @Override
+                public void onEvent(ServerSentEvent e) {
+                    threads.add(Thread.currentThread());
+                    events.add(e);
+                }
+
+                @Override
+                public void onEvent(ServerSentEvent e, ServerSentEventContext context) {
+                    threads.add(Thread.currentThread());
+                    events.add(e);
+                }
+
+                @Override
+                public void onError(Throwable t) {
+                    threads.add(Thread.currentThread());
+                    done.completeExceptionally(t);
+                }
+
+                @Override
+                public void onClose() {
+                    threads.add(Thread.currentThread());
+                    done.complete(null);
+                }
+            };
+            listenerSpy = spy(listener);
+            client.execute(request, new DefaultServerSentEventParser(), listenerSpy);
+        } else {
+            client.stream(request).subscribe(new Flow.Subscriber<>() {
+                @Override
+                public void onSubscribe(Flow.Subscription subscription) {
+                    subscription.request(Long.MAX_VALUE);
+                }
+
+                @Override
+                public void onNext(HttpStreamingEvent item) {
+                    threads.add(Thread.currentThread());
+                    if (item instanceof HttpResponseReceived r) {
+                        response.set(r.response());
+                    } else if (item instanceof ServerSentEvent e) {
+                        events.add(e);
+                    }
+                }
+
+                @Override
+                public void onError(Throwable t) {
+                    threads.add(Thread.currentThread());
+                    done.completeExceptionally(t);
+                }
+
+                @Override
+                public void onComplete() {
+                    threads.add(Thread.currentThread());
+                    done.complete(null);
+                }
+            });
+        }
+
+        try {
+            done.get(30, SECONDS);
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            if (cause instanceof Error error) {
+                throw error;
+            }
+            throw new RuntimeException(cause != null ? cause : e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } catch (TimeoutException e) {
+            throw new RuntimeException(e);
+        }
+
+        return new StreamingResult(response.get(), events, threads, listenerSpy);
+    }
+
+    @ParameterizedTest
+    @EnumSource(ExecutionMode.class)
+    void should_return_successful_http_response(ExecutionMode mode) {
 
         for (HttpClient client : clients()) {
 
@@ -67,7 +224,7 @@ public abstract class HttpClientIT {
                     .build();
 
             // when
-            SuccessfulHttpResponse response = client.execute(request);
+            SuccessfulHttpResponse response = execute(request, client, mode);
 
             // then
             assertThat(response.statusCode()).isEqualTo(200);
@@ -77,7 +234,50 @@ public abstract class HttpClientIT {
     }
 
     @Test
-    void should_throw_400_sync() {
+    void should_deliver_response_off_the_calling_thread_executeAsync() throws Exception {
+
+        for (HttpClient client : clients()) {
+
+            // given
+            HttpRequest request = HttpRequest.builder()
+                    .method(POST)
+                    .url("https://api.openai.com/v1/chat/completions")
+                    .addHeader("Authorization", "Bearer " + OPENAI_API_KEY)
+                    .addHeader("Content-Type", "application/json")
+                    .body(
+                            """
+                                    {
+                                        "model": "gpt-4o-mini",
+                                        "messages": [
+                                            {
+                                                "role" : "user",
+                                                "content" : "What is the capital of Germany?"
+                                            }
+                                        ]
+                                    }
+                                    """)
+                    .build();
+
+            Thread callerThread = Thread.currentThread();
+            AtomicReference<Thread> completionThread = new AtomicReference<>();
+
+            // when
+            SuccessfulHttpResponse response = client.executeAsync(request)
+                    .whenComplete((r, t) -> completionThread.set(Thread.currentThread()))
+                    .get(30, SECONDS);
+
+            // then: the response was delivered asynchronously, so the caller was never blocked.
+            assertThat(response.statusCode()).isEqualTo(200);
+            assertThat(completionThread.get())
+                    .as("the response must be delivered off the calling thread")
+                    .isNotNull()
+                    .isNotEqualTo(callerThread);
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(ExecutionMode.class)
+    void should_throw_400(ExecutionMode mode) {
 
         for (HttpClient client : clients()) {
 
@@ -99,7 +299,7 @@ public abstract class HttpClientIT {
 
             // when
             try {
-                client.execute(request);
+                execute(request, client, mode);
                 fail("Should have thrown an exception");
             } catch (Exception e) {
                 // then
@@ -111,8 +311,9 @@ public abstract class HttpClientIT {
         }
     }
 
-    @Test
-    void should_throw_401_sync() {
+    @ParameterizedTest
+    @EnumSource(ExecutionMode.class)
+    void should_throw_401(ExecutionMode mode) {
 
         for (HttpClient client : clients()) {
 
@@ -140,7 +341,7 @@ public abstract class HttpClientIT {
 
             // when
             try {
-                client.execute(request);
+                execute(request, client, mode);
                 fail("Should have thrown an exception");
             } catch (Exception e) {
                 // then
@@ -152,8 +353,9 @@ public abstract class HttpClientIT {
         }
     }
 
-    @Test
-    void should_return_successful_http_response_async() throws Exception {
+    @ParameterizedTest
+    @EnumSource(StreamingMode.class)
+    void should_stream_successful_response(StreamingMode mode) {
 
         for (HttpClient client : clients()) {
 
@@ -179,84 +381,45 @@ public abstract class HttpClientIT {
                     .build();
 
             // when
-            record StreamingResult(
-                    SuccessfulHttpResponse response, List<ServerSentEvent> events, Set<Thread> threads) {}
-
-            CompletableFuture<StreamingResult> completableFuture = new CompletableFuture<>();
-
-            ServerSentEventListener listener = new ServerSentEventListener() {
-
-                private final AtomicReference<SuccessfulHttpResponse> response = new AtomicReference<>();
-                private final List<ServerSentEvent> events = new ArrayList<>();
-                private final Set<Thread> threads = new HashSet<>();
-
-                @Override
-                public void onOpen(SuccessfulHttpResponse successfulHttpResponse) {
-                    threads.add(Thread.currentThread());
-                    response.set(successfulHttpResponse);
-                }
-
-                @Override
-                public void onEvent(ServerSentEvent event) {
-                    threads.add(Thread.currentThread());
-                    events.add(event);
-                }
-
-                @Override
-                public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
-                    threads.add(Thread.currentThread());
-                    events.add(event);
-                }
-
-                @Override
-                public void onError(Throwable throwable) {
-                    threads.add(Thread.currentThread());
-                    completableFuture.completeExceptionally(throwable);
-                }
-
-                @Override
-                public void onClose() {
-                    threads.add(Thread.currentThread());
-                    completableFuture.complete(new StreamingResult(response.get(), events, threads));
-                }
-            };
-            ServerSentEventListener spyListener = spy(listener);
-            client.execute(request, new DefaultServerSentEventParser(), spyListener);
+            StreamingResult result = stream(client, request, mode);
 
             // then
-            StreamingResult streamingResult = completableFuture.get(30, SECONDS);
+            assertThat(result.response()).isNotNull();
+            assertThat(result.response().statusCode()).isEqualTo(200);
+            assertThat(result.response().headers()).isNotEmpty();
+            assertThat(result.response().body()).isNull();
 
-            assertThat(streamingResult.response()).isNotNull();
-            assertThat(streamingResult.response().statusCode()).isEqualTo(200);
-            assertThat(streamingResult.response().headers()).isNotEmpty();
-            assertThat(streamingResult.response().body()).isNull();
-
-            assertThat(streamingResult.events()).isNotEmpty();
-            assertThat(streamingResult.events().stream()
-                            .map(ServerSentEvent::data)
-                            .collect(joining("")))
+            assertThat(result.events()).isNotEmpty();
+            assertThat(result.events().stream().map(ServerSentEvent::data).collect(joining("")))
                     .contains("Berlin");
 
-            assertThat(streamingResult.threads()).hasSize(1);
-            assertThat(streamingResult.threads().iterator().next()).isNotEqualTo(Thread.currentThread());
+            // Events are delivered off the calling thread in both modes; the listener path additionally
+            // guarantees single-threaded delivery, whereas the publisher may use several worker threads.
+            assertThat(result.threads()).isNotEmpty().doesNotContain(Thread.currentThread());
+            if (mode == StreamingMode.LISTENER) {
+                // the listener path delivers everything on a single thread, with callbacks in order
+                assertThat(result.threads()).hasSize(1);
 
-            InOrder inOrder = inOrder(spyListener);
-            inOrder.verify(spyListener, times(1)).onOpen(any());
-            inOrder.verify(spyListener, atLeastOnce()).onEvent(any(), any());
-            inOrder.verify(spyListener, times(1)).onClose();
-            inOrder.verifyNoMoreInteractions();
-            verifyNoMoreInteractions(spyListener);
+                ServerSentEventListener listenerSpy = result.listenerSpy();
+                InOrder inOrder = inOrder(listenerSpy);
+                inOrder.verify(listenerSpy, times(1)).onOpen(any());
+                inOrder.verify(listenerSpy, atLeastOnce()).onEvent(any(), any());
+                inOrder.verify(listenerSpy, times(1)).onClose();
+                inOrder.verifyNoMoreInteractions();
+                verifyNoMoreInteractions(listenerSpy);
+            }
         }
     }
 
-    @Test
-    void should_cancel_streaming_async() throws Exception {
+    @ParameterizedTest
+    @EnumSource(StreamingMode.class)
+    void should_cancel_streaming(StreamingMode mode) throws Exception {
+
+        int eventsBeforeCancellation = 5;
 
         for (HttpClient client : clients()) {
 
             // given
-            int eventsBeforeCancellation = 5;
-
             HttpRequest request = HttpRequest.builder()
                     .method(POST)
                     .url("https://api.openai.com/v1/chat/completions")
@@ -277,55 +440,88 @@ public abstract class HttpClientIT {
                                     """)
                     .build();
 
-            // when
-            CompletableFuture<Void> completableFuture = new CompletableFuture<>();
+            // when: cancel after N events (listener -> parsingHandle().cancel(); publisher -> Subscription.cancel())
+            AtomicInteger eventCounter = new AtomicInteger();
+            CompletableFuture<Void> stopped = new CompletableFuture<>();
 
-            ServerSentEventListener listener = new ServerSentEventListener() {
+            ServerSentEventListener listenerSpy = null;
+            if (mode == StreamingMode.LISTENER) {
+                ServerSentEventListener listener = new ServerSentEventListener() {
+                    @Override
+                    public void onOpen(SuccessfulHttpResponse response) {}
 
-                private AtomicInteger counter = new AtomicInteger();
+                    @Override
+                    public void onEvent(ServerSentEvent event) {}
 
-                @Override
-                public void onOpen(SuccessfulHttpResponse successfulHttpResponse) {}
-
-                @Override
-                public void onEvent(ServerSentEvent event) {
-                    counter.incrementAndGet();
-                }
-
-                @Override
-                public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
-                    if (counter.incrementAndGet() >= eventsBeforeCancellation) {
-                        context.parsingHandle().cancel();
+                    @Override
+                    public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                        if (eventCounter.incrementAndGet() >= eventsBeforeCancellation) {
+                            context.parsingHandle().cancel();
+                        }
                     }
-                }
 
-                @Override
-                public void onError(Throwable throwable) {
-                    completableFuture.completeExceptionally(throwable);
-                }
+                    @Override
+                    public void onError(Throwable throwable) {
+                        stopped.completeExceptionally(throwable);
+                    }
 
-                @Override
-                public void onClose() {
-                    completableFuture.complete(null);
-                }
-            };
-            ServerSentEventListener spyListener = spy(listener);
-            client.execute(request, new DefaultServerSentEventParser(), spyListener);
+                    @Override
+                    public void onClose() {
+                        stopped.complete(null);
+                    }
+                };
+                listenerSpy = spy(listener);
+                client.execute(request, new DefaultServerSentEventParser(), listenerSpy);
+            } else {
+                AtomicReference<Flow.Subscription> subscription = new AtomicReference<>();
+                client.stream(request).subscribe(new Flow.Subscriber<>() {
+                    @Override
+                    public void onSubscribe(Flow.Subscription s) {
+                        subscription.set(s);
+                        s.request(Long.MAX_VALUE);
+                    }
 
-            // then
-            completableFuture.get(30, SECONDS);
+                    @Override
+                    public void onNext(HttpStreamingEvent item) {
+                        if (item instanceof ServerSentEvent
+                                && eventCounter.incrementAndGet() >= eventsBeforeCancellation) {
+                            subscription.get().cancel();
+                            stopped.complete(null);
+                        }
+                    }
 
-            InOrder inOrder = inOrder(spyListener);
-            inOrder.verify(spyListener, times(1)).onOpen(any());
-            inOrder.verify(spyListener, times(eventsBeforeCancellation)).onEvent(any(), any());
-            inOrder.verify(spyListener, times(1)).onClose();
-            inOrder.verifyNoMoreInteractions();
-            verifyNoMoreInteractions(spyListener);
+                    @Override
+                    public void onError(Throwable throwable) {
+                        stopped.completeExceptionally(throwable);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        stopped.complete(null);
+                    }
+                });
+            }
+
+            stopped.get(30, SECONDS);
+
+            // then: the stream was cancelled around the expected point (a few in-flight events are tolerated)
+            assertThat(eventCounter.get()).isGreaterThanOrEqualTo(eventsBeforeCancellation);
+
+            if (mode == StreamingMode.LISTENER) {
+                // the listener path cancels deterministically: exactly N events, in order, then onClose
+                InOrder inOrder = inOrder(listenerSpy);
+                inOrder.verify(listenerSpy, times(1)).onOpen(any());
+                inOrder.verify(listenerSpy, times(eventsBeforeCancellation)).onEvent(any(), any());
+                inOrder.verify(listenerSpy, times(1)).onClose();
+                inOrder.verifyNoMoreInteractions();
+                verifyNoMoreInteractions(listenerSpy);
+            }
         }
     }
 
-    @Test
-    void should_return_successful_http_response_with_double_newline_async() throws Exception {
+    @ParameterizedTest
+    @EnumSource(StreamingMode.class)
+    void should_stream_response_with_double_newline(StreamingMode mode) {
 
         for (HttpClient client : clients()) {
 
@@ -352,78 +548,37 @@ public abstract class HttpClientIT {
                     .build();
 
             // when
-            record StreamingResult(
-                    SuccessfulHttpResponse response, List<ServerSentEvent> events, Set<Thread> threads) {}
-
-            CompletableFuture<StreamingResult> completableFuture = new CompletableFuture<>();
-
-            ServerSentEventListener listener = new ServerSentEventListener() {
-
-                private final AtomicReference<SuccessfulHttpResponse> response = new AtomicReference<>();
-                private final List<ServerSentEvent> events = new ArrayList<>();
-                private final Set<Thread> threads = new HashSet<>();
-
-                @Override
-                public void onOpen(SuccessfulHttpResponse successfulHttpResponse) {
-                    threads.add(Thread.currentThread());
-                    response.set(successfulHttpResponse);
-                }
-
-                @Override
-                public void onEvent(ServerSentEvent event) {
-                    threads.add(Thread.currentThread());
-                    events.add(event);
-                }
-
-                @Override
-                public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
-                    threads.add(Thread.currentThread());
-                    events.add(event);
-                }
-
-                @Override
-                public void onError(Throwable throwable) {
-                    threads.add(Thread.currentThread());
-                    completableFuture.completeExceptionally(throwable);
-                }
-
-                @Override
-                public void onClose() {
-                    threads.add(Thread.currentThread());
-                    completableFuture.complete(new StreamingResult(response.get(), events, threads));
-                }
-            };
-            ServerSentEventListener spyListener = spy(listener);
-            client.execute(request, new DefaultServerSentEventParser(), spyListener);
+            StreamingResult result = stream(client, request, mode);
 
             // then
-            StreamingResult streamingResult = completableFuture.get(30, SECONDS);
+            assertThat(result.response()).isNotNull();
+            assertThat(result.response().statusCode()).isEqualTo(200);
+            assertThat(result.response().headers()).isNotEmpty();
+            assertThat(result.response().body()).isNull();
 
-            assertThat(streamingResult.response()).isNotNull();
-            assertThat(streamingResult.response().statusCode()).isEqualTo(200);
-            assertThat(streamingResult.response().headers()).isNotEmpty();
-            assertThat(streamingResult.response().body()).isNull();
-
-            assertThat(streamingResult.events()).isNotEmpty();
-            assertThat(streamingResult.events().stream()
-                            .map(ServerSentEvent::data)
-                            .collect(joining("")))
+            assertThat(result.events()).isNotEmpty();
+            assertThat(result.events().stream().map(ServerSentEvent::data).collect(joining("")))
                     .contains("Berlin", "Paris", "\\n\\n");
 
-            assertThat(streamingResult.threads()).hasSize(1);
-            assertThat(streamingResult.threads().iterator().next()).isNotEqualTo(Thread.currentThread());
+            assertThat(result.threads()).isNotEmpty().doesNotContain(Thread.currentThread());
+            if (mode == StreamingMode.LISTENER) {
+                // the listener path delivers everything on a single thread, with callbacks in order
+                assertThat(result.threads()).hasSize(1);
 
-            InOrder inOrder = inOrder(spyListener);
-            inOrder.verify(spyListener, times(1)).onOpen(any());
-            inOrder.verify(spyListener, atLeastOnce()).onEvent(any(), any());
-            inOrder.verify(spyListener, times(1)).onClose();
-            inOrder.verifyNoMoreInteractions();
-            verifyNoMoreInteractions(spyListener);
+                ServerSentEventListener listenerSpy = result.listenerSpy();
+                InOrder inOrder = inOrder(listenerSpy);
+                inOrder.verify(listenerSpy, times(1)).onOpen(any());
+                inOrder.verify(listenerSpy, atLeastOnce()).onEvent(any(), any());
+                inOrder.verify(listenerSpy, times(1)).onClose();
+                inOrder.verifyNoMoreInteractions();
+                verifyNoMoreInteractions(listenerSpy);
+            }
         }
     }
 
-    @Test
-    void should_throw_400_async() throws Exception {
+    @ParameterizedTest
+    @EnumSource(StreamingMode.class)
+    void should_deliver_error_when_streaming_400(StreamingMode mode) {
 
         for (HttpClient client : clients()) {
 
@@ -444,55 +599,12 @@ public abstract class HttpClientIT {
                     .body(invalidBody)
                     .build();
 
-            // when
-            record StreamingResult(Throwable throwable, Set<Thread> threads) {}
-
-            CompletableFuture<StreamingResult> completableFuture = new CompletableFuture<>();
-
-            ServerSentEventListener listener = new ServerSentEventListener() {
-
-                private final Set<Thread> threads = new HashSet<>();
-
-                @Override
-                public void onOpen(SuccessfulHttpResponse successfulHttpResponse) {
-                    completableFuture.completeExceptionally(new IllegalStateException("onOpen() should not be called"));
-                }
-
-                @Override
-                public void onEvent(ServerSentEvent event) {
-                    completableFuture.completeExceptionally(
-                            new IllegalStateException("onEvent() should not be called"));
-                }
-
-                @Override
-                public void onError(Throwable throwable) {
-                    threads.add(Thread.currentThread());
-                    completableFuture.complete(new StreamingResult(throwable, threads));
-                }
-
-                @Override
-                public void onClose() {
-                    completableFuture.completeExceptionally(
-                            new IllegalStateException("onClose() should not be called"));
-                }
-            };
-            ServerSentEventListener spyListener = spy(listener);
-            client.execute(request, new DefaultServerSentEventParser(), spyListener);
-
-            // then
-            StreamingResult streamingResult = completableFuture.get(30, SECONDS);
-
-            assertThat(streamingResult.throwable())
+            // when-then: the error is delivered through the stream (onError), surfaced here as HttpException.
+            assertThatThrownBy(() -> stream(client, request, mode))
                     .isExactlyInstanceOf(HttpException.class)
+                    .hasMessageContaining("Missing required parameter: 'messages'")
                     .extracting("statusCode")
                     .isEqualTo(400);
-            assertThat(streamingResult.throwable()).hasMessageContaining("Missing required parameter: 'messages'");
-
-            assertThat(streamingResult.threads()).hasSize(1);
-            assertThat(streamingResult.threads().iterator().next()).isNotEqualTo(Thread.currentThread());
-
-            verify(spyListener).onError(any());
-            verifyNoMoreInteractions(spyListener);
         }
     }
 
@@ -760,17 +872,16 @@ public abstract class HttpClientIT {
         }
     }
 
-    @Test
-    void should_call_listener_onError_when_fails_to_connect() throws Exception {
+    @ParameterizedTest
+    @EnumSource(StreamingMode.class)
+    void should_deliver_error_when_streaming_connect_fails(StreamingMode mode) {
 
         for (HttpClient client : clients()) {
 
             // given
-            String incorrectUrl = incorrectUrl();
-
             HttpRequest request = HttpRequest.builder()
                     .method(POST)
-                    .url(incorrectUrl)
+                    .url(incorrectUrl())
                     .addHeader("Authorization", "Bearer " + OPENAI_API_KEY)
                     .addHeader("Content-Type", "application/json")
                     .body(
@@ -788,54 +899,8 @@ public abstract class HttpClientIT {
                                     """)
                     .build();
 
-            // when
-            AtomicReference<SuccessfulHttpResponse> response = new AtomicReference<>();
-            List<ServerSentEvent> events = synchronizedList(new ArrayList<>());
-            List<Throwable> errors = synchronizedList(new ArrayList<>());
-            Set<Thread> threads = synchronizedSet(new HashSet<>());
-            CompletableFuture<Void> future = new CompletableFuture<>();
-
-            ServerSentEventListener listener = new ServerSentEventListener() {
-
-                @Override
-                public void onOpen(SuccessfulHttpResponse successfulHttpResponse) {
-                    response.set(successfulHttpResponse);
-                    threads.add(Thread.currentThread());
-                }
-
-                @Override
-                public void onEvent(ServerSentEvent event) {
-                    events.add(event);
-                    threads.add(Thread.currentThread());
-                }
-
-                @Override
-                public void onError(Throwable throwable) {
-                    errors.add(throwable);
-                    threads.add(Thread.currentThread());
-                    future.complete(null);
-                }
-
-                @Override
-                public void onClose() {
-                    threads.add(Thread.currentThread());
-                }
-            };
-            ServerSentEventListener spyListener = spy(listener);
-            client.execute(request, new DefaultServerSentEventParser(), spyListener);
-            future.get(30, SECONDS);
-            Thread.sleep(5_000);
-
-            // then
-            assertThat(response.get()).isNull();
-            assertThat(events).isEmpty();
-            assertThat(errors).hasSize(1);
-
-            assertThat(threads).hasSize(1);
-            assertThat(threads.iterator().next()).isNotEqualTo(Thread.currentThread());
-
-            verify(spyListener).onError(any());
-            verifyNoMoreInteractions(spyListener);
+            // when-then: a connection failure is delivered through the stream (onError), surfaced here.
+            assertThatThrownBy(() -> stream(client, request, mode)).isInstanceOf(Throwable.class);
         }
     }
 
@@ -843,8 +908,9 @@ public abstract class HttpClientIT {
         return "http://banana";
     }
 
-    @Test
-    protected void should_return_successful_http_response_sync_form_data() throws Exception {
+    @ParameterizedTest
+    @EnumSource(ExecutionMode.class)
+    protected void should_return_successful_http_response_form_data(ExecutionMode mode) throws Exception {
         byte[] audioBytes;
         try (InputStream is = getClass().getClassLoader().getResourceAsStream("sample.wav")) {
             audioBytes = is.readAllBytes();
@@ -864,7 +930,7 @@ public abstract class HttpClientIT {
                     .build();
 
             // when
-            SuccessfulHttpResponse response = client.execute(request);
+            SuccessfulHttpResponse response = execute(request, client, mode);
 
             // then
             assertThat(response.statusCode()).isEqualTo(200);

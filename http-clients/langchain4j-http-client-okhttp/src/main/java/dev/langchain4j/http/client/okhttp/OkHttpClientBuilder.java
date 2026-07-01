@@ -8,6 +8,7 @@ public class OkHttpClientBuilder implements HttpClientBuilder {
     private okhttp3.OkHttpClient.Builder okHttpClientBuilder;
     private Duration connectTimeout;
     private Duration readTimeout;
+    private Integer streamingBufferSize;
 
     public okhttp3.OkHttpClient.Builder okHttpClientBuilder() {
         return okHttpClientBuilder;
@@ -37,6 +38,25 @@ public class OkHttpClientBuilder implements HttpClientBuilder {
     @Override
     public OkHttpClientBuilder readTimeout(Duration readTimeout) {
         this.readTimeout = readTimeout;
+        return this;
+    }
+
+    public Integer streamingBufferSize() {
+        return streamingBufferSize;
+    }
+
+    /**
+     * Sets the size of the bounded back-pressure buffer used by the streaming ({@code stream})
+     * path. Server-sent events are relayed to the subscriber through this buffer; if the subscriber consumes
+     * slower than the server produces and the buffer overflows, the stream terminates with an error.
+     * <p>
+     * The default is {@value OkHttpClient#DEFAULT_STREAMING_BUFFER_SIZE}.
+     *
+     * @param streamingBufferSize the buffer size; must be greater than zero
+     * @return the builder instance
+     */
+    public OkHttpClientBuilder streamingBufferSize(Integer streamingBufferSize) {
+        this.streamingBufferSize = streamingBufferSize;
         return this;
     }
 

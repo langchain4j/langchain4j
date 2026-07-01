@@ -6,6 +6,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * A concrete implementation of the {@link ChatExecutor} interface that executes
@@ -19,7 +20,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
  * the {@link SynchronousBuilder}.
  */
 @Internal
-final class SynchronousChatExecutor extends AbstractChatExecutor {
+final class SynchronousChatExecutor extends AbstractChatExecutor { // TODO rename? not sync any more
     private final ChatModel chatModel;
 
     protected SynchronousChatExecutor(SynchronousBuilder builder) {
@@ -30,5 +31,10 @@ final class SynchronousChatExecutor extends AbstractChatExecutor {
     @Override
     protected ChatResponse execute(ChatRequest chatRequest) {
         return this.chatModel.chat(chatRequest);
+    }
+
+    @Override
+    protected CompletableFuture<ChatResponse> executeAsync(ChatRequest chatRequest) {
+        return this.chatModel.chatAsync(chatRequest); // TODO
     }
 }

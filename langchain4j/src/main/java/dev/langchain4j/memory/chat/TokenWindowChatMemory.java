@@ -17,6 +17,8 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
 /**
@@ -71,12 +73,38 @@ public class TokenWindowChatMemory implements ChatMemory {
     @Override
     public void add(ChatMessage message) {
         List<ChatMessage> messages = messages();
+        if (appendMessage(messages, message)) {
+            store.updateMessages(id, messages);
+        }
+    }
 
+    @Override
+    public CompletionStage<Void> addAsync(List<ChatMessage> messagesToAdd) {
+        return store.getMessagesAsync(id).thenCompose(stored -> {
+            List<ChatMessage> messages = windowed(stored);
+            boolean changed = false;
+            for (ChatMessage message : messagesToAdd) {
+                changed |= appendMessage(messages, message);
+            }
+            if (changed) {
+                return store.updateMessagesAsync(id, messages);
+            }
+            return CompletableFuture.completedFuture(null);
+        });
+    }
+
+    /**
+     * Appends {@code message} to {@code messages} applying the sliding-window and {@link SystemMessage} rules.
+     *
+     * @return {@code true} if the messages were modified and should be persisted, {@code false} if the message was
+     *         ignored (a {@code SystemMessage} identical to the existing one).
+     */
+    private boolean appendMessage(List<ChatMessage> messages, ChatMessage message) {
         if (message instanceof SystemMessage) {
             Optional<SystemMessage> maybeSystemMessage = SystemMessage.findFirst(messages);
             if (maybeSystemMessage.isPresent()) {
                 if (maybeSystemMessage.get().equals(message)) {
-                    return; // do not add the same system message
+                    return false; // do not add the same system message
                 } else {
                     messages.remove(maybeSystemMessage.get()); // need to replace existing system message
                 }
@@ -93,7 +121,7 @@ public class TokenWindowChatMemory implements ChatMemory {
         ensureGreaterThanZero(maxTokens, "maxTokens");
         ensureCapacity(messages, maxTokens, tokenCountEstimator);
 
-        store.updateMessages(id, messages);
+        return true;
     }
 
     @Override
@@ -115,10 +143,28 @@ public class TokenWindowChatMemory implements ChatMemory {
     }
 
     @Override
-    public List<ChatMessage> messages() {
+    public CompletionStage<Void> setAsync(List<ChatMessage> messages) {
         Integer maxTokens = maxTokensProvider.apply(id);
         ensureGreaterThanZero(maxTokens, "maxTokens");
-        List<ChatMessage> messages = new LinkedList<>(store.getMessages(id));
+        List<ChatMessage> windowed = new ArrayList<>(messages);
+        ensureCapacity(windowed, maxTokens, tokenCountEstimator);
+        return store.updateMessagesAsync(id, windowed);
+    }
+
+    @Override
+    public List<ChatMessage> messages() {
+        return windowed(store.getMessages(id));
+    }
+
+    @Override
+    public CompletionStage<List<ChatMessage>> messagesAsync() {
+        return store.getMessagesAsync(id).thenApply(this::windowed);
+    }
+
+    private List<ChatMessage> windowed(List<ChatMessage> stored) {
+        Integer maxTokens = maxTokensProvider.apply(id);
+        ensureGreaterThanZero(maxTokens, "maxTokens");
+        List<ChatMessage> messages = new LinkedList<>(stored);
         ensureCapacity(messages, maxTokens, tokenCountEstimator);
         return messages;
     }

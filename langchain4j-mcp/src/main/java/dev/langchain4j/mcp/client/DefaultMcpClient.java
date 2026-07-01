@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client;
 
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -335,16 +336,7 @@ public class DefaultMcpClient implements McpClient {
     @Override
     public ToolExecutionResult executeTool(ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
         assertNotClosed();
-        ObjectNode arguments = null;
-        try {
-            String args = executionRequest.arguments();
-            if (isNullOrBlank(args)) {
-                args = "{}";
-            }
-            arguments = OBJECT_MAPPER.readValue(args, ObjectNode.class);
-        } catch (JsonProcessingException e) {
-            throw new ToolArgumentsException(e);
-        }
+        ObjectNode arguments = parseToolArguments(executionRequest);
         long operationId = idGenerator.getAndIncrement();
         String progressToken = progressHandler != null ? String.valueOf(operationId) : null;
         McpCallToolRequest operation =
@@ -359,11 +351,7 @@ public class DefaultMcpClient implements McpClient {
             resultFuture = transport.executeOperationWithResponse(context);
             result = resultFuture.get(timeoutMillis, TimeUnit.MILLISECONDS);
         } catch (TimeoutException timeout) {
-            notifyListeners(l -> l.onExecuteToolError(context, timeout));
-            McpCancellationNotification cancellation = new McpCancellationNotification(operationId, "Timeout");
-            applyMeta(cancellation, null);
-            transport.executeOperationWithoutResponse(cancellation);
-            return ToolExecutionHelper.extractResult(RESULT_TIMEOUT, false, toolResultExtractor);
+            return handleToolTimeout(context, operationId, timeout);
         } catch (ExecutionException e) {
             notifyListeners(l -> l.onExecuteToolError(context, e));
             throw new ToolExecutionException(e.getCause());
@@ -373,7 +361,79 @@ public class DefaultMcpClient implements McpClient {
         } finally {
             pendingOperations.remove(operationId);
         }
-        final JsonNode finalResult = result;
+        return extractResultAndNotifyListeners(context, result);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Truly non-blocking: the MCP transport is asynchronous, so this composes the transport's response
+     * future — no thread is held while the tool executes on the server. Timeout (including the cancellation
+     * notification sent to the server), error mapping and listener notifications mirror
+     * {@link #executeTool(ToolExecutionRequest, InvocationContext)}.
+     */
+    @Override
+    public CompletableFuture<ToolExecutionResult> executeToolAsync(
+            ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
+        assertNotClosed();
+        ObjectNode arguments;
+        try {
+            arguments = parseToolArguments(executionRequest);
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
+        long operationId = idGenerator.getAndIncrement();
+        String progressToken = progressHandler != null ? String.valueOf(operationId) : null;
+        McpCallToolRequest operation =
+                new McpCallToolRequest(operationId, executionRequest.name(), arguments, progressToken);
+        long timeoutMillis = toolExecutionTimeout.toMillis() == 0 ? Integer.MAX_VALUE : toolExecutionTimeout.toMillis();
+        McpCallContext context = new McpCallContext(invocationContext, operation);
+
+        CompletableFuture<JsonNode> resultFuture;
+        try {
+            notifyListeners(l -> l.beforeExecuteTool(context));
+            applyMeta(operation, context);
+            resultFuture = transport.executeOperationWithResponse(context);
+        } catch (Exception e) {
+            pendingOperations.remove(operationId);
+            return CompletableFuture.failedFuture(e);
+        }
+
+        return resultFuture.orTimeout(timeoutMillis, TimeUnit.MILLISECONDS).handle((result, error) -> {
+            pendingOperations.remove(operationId);
+            if (error != null) {
+                Throwable cause = unwrapCompletionException(error);
+                if (cause instanceof TimeoutException timeout) {
+                    return handleToolTimeout(context, operationId, timeout);
+                }
+                notifyListeners(l -> l.onExecuteToolError(context, cause));
+                throw new ToolExecutionException(cause);
+            }
+            return extractResultAndNotifyListeners(context, result);
+        });
+    }
+
+    private static ObjectNode parseToolArguments(ToolExecutionRequest executionRequest) {
+        try {
+            String args = executionRequest.arguments();
+            if (isNullOrBlank(args)) {
+                args = "{}";
+            }
+            return OBJECT_MAPPER.readValue(args, ObjectNode.class);
+        } catch (JsonProcessingException e) {
+            throw new ToolArgumentsException(e);
+        }
+    }
+
+    private ToolExecutionResult handleToolTimeout(McpCallContext context, long operationId, Exception timeout) {
+        notifyListeners(l -> l.onExecuteToolError(context, timeout));
+        McpCancellationNotification cancellation = new McpCancellationNotification(operationId, "Timeout");
+        applyMeta(cancellation, null);
+        transport.executeOperationWithoutResponse(cancellation);
+        return ToolExecutionHelper.extractResult(RESULT_TIMEOUT, false, toolResultExtractor);
+    }
+
+    private ToolExecutionResult extractResultAndNotifyListeners(McpCallContext context, JsonNode finalResult) {
         try {
             ToolExecutionResult toolResult = ToolExecutionHelper.extractResult(finalResult, false, toolResultExtractor);
             notifyListeners(l -> l.afterExecuteTool(

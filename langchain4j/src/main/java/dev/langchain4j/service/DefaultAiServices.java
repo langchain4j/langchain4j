@@ -2,8 +2,12 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
@@ -14,6 +18,7 @@ import static dev.langchain4j.service.IllegalConfigurationException.illegalConfi
 import static dev.langchain4j.service.TypeUtils.getRawClass;
 import static dev.langchain4j.service.TypeUtils.isImageType;
 import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
+import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterType;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -46,6 +51,7 @@ import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
+import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.rag.AugmentationRequest;
@@ -58,6 +64,8 @@ import dev.langchain4j.service.output.ServiceOutputParser;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.ToolServiceResult;
+import dev.langchain4j.spi.services.CompletableFutureAdapter;
+import dev.langchain4j.spi.services.PublisherAdapter;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
@@ -75,8 +83,11 @@ import java.util.Optional;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
+import java.util.concurrent.Flow;
 import java.util.stream.Collectors;
 
 @Internal
@@ -84,9 +95,22 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
     private final Collection<TokenStreamAdapter> tokenStreamAdapters = loadFactories(TokenStreamAdapter.class);
+    private final Collection<CompletableFutureAdapter> completableFutureAdapters =
+            loadFactories(CompletableFutureAdapter.class);
+    private final Collection<PublisherAdapter> publisherAdapters = loadFactories(PublisherAdapter.class);
 
     private static final Set<Class<? extends Annotation>> VALID_PARAM_ANNOTATIONS =
             Set.of(dev.langchain4j.service.UserMessage.class, V.class, MemoryId.class, UserName.class);
+
+    // Used to satisfy the Reactive Streams contract (onError must be preceded by onSubscribe) when the reactive
+    // publisher fails before any real subscription exists - e.g. if the deferred chat-memory assembly fails.
+    private static final Flow.Subscription NOOP_SUBSCRIPTION = new Flow.Subscription() {
+        @Override
+        public void request(long n) {}
+
+        @Override
+        public void cancel() {}
+    };
 
     DefaultAiServices(AiServiceContext context) {
         super(context);
@@ -109,6 +133,10 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     public T build() {
         validate();
+
+        context.streamingBufferSize = ensureGreaterThanZero(
+                getOrDefault(context.streamingBufferSize, AiServiceStreamingEventPublisher.DEFAULT_BUFFER_SIZE),
+                "streamingBufferSize");
 
         Object proxyInstance = Proxy.newProxyInstance(
                 context.aiServiceClass.getClassLoader(),
@@ -240,45 +268,257 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .variables(variables)
                                 .build();
 
-                        userMessage = invokeInputGuardrails(
-                                context.guardrailService(), method, userMessage, commonGuardrailParam);
+                        // Input guardrails run here only on the synchronous/TokenStream paths (further below). The
+                        // asynchronous (CompletableFuture/CompletionStage) and reactive (Flow.Publisher) paths defer
+                        // them off the caller thread, so the whole execution can be non-blocking.
 
-                        Type returnType =
+                        Type declaredReturnType =
                                 context.returnType != null ? context.returnType : method.getGenericReturnType();
+                        // The async return type, if any: CompletableFuture / CompletionStage (handled natively),
+                        // or a type plugged in via a CompletableFutureAdapter (e.g. Reactor Mono, Mutiny Uni).
+                        CompletableFutureAdapter completableFutureAdapter = findCompletableFutureAdapter(declaredReturnType);
+                        boolean asyncReturnType = typeHasRawClass(declaredReturnType, CompletableFuture.class)
+                                || typeHasRawClass(declaredReturnType, CompletionStage.class)
+                                || completableFutureAdapter != null;
+                        Type returnType = declaredReturnType;
+                        if (asyncReturnType) {
+                            returnType = resolveFirstGenericParameterType(declaredReturnType);
+                        }
                         boolean streaming = returnType == TokenStream.class || canAdaptTokenStreamTo(returnType);
+                        if (asyncReturnType && streaming) {
+                            throw illegalConfiguration(
+                                    "The method '%s' cannot return an asynchronous wrapper of a streaming type. "
+                                            + "Please use the streaming type directly as the return type.",
+                                    method.getName());
+                        }
+
+                        // A truly non-blocking reactive streaming return type: Flow.Publisher (handled natively),
+                        // or a type plugged in via a PublisherAdapter (e.g. Reactor Flux, Mutiny Multi).
+                        PublisherAdapter publisherAdapter = findPublisherAdapter(returnType);
+                        boolean reactiveStreaming =
+                                typeHasRawClass(returnType, Flow.Publisher.class) || publisherAdapter != null;
+                        if (asyncReturnType && reactiveStreaming) {
+                            throw illegalConfiguration(
+                                    "The method '%s' cannot return an asynchronous wrapper of a reactive streaming type. "
+                                            + "Please use the reactive streaming type directly as the return type.",
+                                    method.getName());
+                        }
+
+                        // Moderation is not supported on the new asynchronous (CompletableFuture/CompletionStage)
+                        // and reactive (Flow.Publisher) return types: fail fast rather than silently skip it.
+                        if ((asyncReturnType || reactiveStreaming) && method.isAnnotationPresent(Moderate.class)) {
+                            throw illegalConfiguration(
+                                    "The method '%s' cannot be annotated with @Moderate when it returns an asynchronous "
+                                            + "(CompletableFuture/CompletionStage) or reactive (Flow.Publisher) type. "
+                                            + "Moderation is supported only for synchronous return types.",
+                                    method.getName());
+                        }
 
                         // TODO should it be called when returnType==String?
                         boolean supportsJsonSchema = supportsJsonSchema();
                         Optional<JsonSchema> jsonSchema = Optional.empty();
                         boolean returnsImage = isImage(returnType);
 
-                        if (supportsJsonSchema && !streaming && !returnsImage) {
+                        if (supportsJsonSchema && !streaming && !reactiveStreaming && !returnsImage) {
                             jsonSchema = serviceOutputParser.jsonSchema(returnType);
                         }
-                        if ((!supportsJsonSchema || jsonSchema.isEmpty()) && !streaming && !returnsImage) {
+                        // Whether the output-format instructions must be appended to the user message. Applied (to
+                        // the guardrailed user message) per path below, since input guardrails may rewrite it.
+                        boolean appendOutputFormat = (!supportsJsonSchema || jsonSchema.isEmpty())
+                                && !streaming
+                                && !reactiveStreaming
+                                && !returnsImage;
+
+                        ResponseFormat responseFormat = null;
+                        if (supportsJsonSchema && jsonSchema.isPresent()) {
+                            responseFormat = ResponseFormat.builder()
+                                    .type(JSON)
+                                    .jsonSchema(jsonSchema.get())
+                                    .build();
+                        }
+
+                        boolean isReturnTypeResult = typeHasRawClass(returnType, Result.class);
+
+                        // The asynchronous (CompletableFuture/CompletionStage) path defers the (potentially
+                        // blocking) chat-memory assembly off the caller thread: the future is returned immediately
+                        // and the memory read/writes, request building, model call and tool loop all run composed.
+                        if (asyncReturnType) {
+                            final InvocationContext baseInvocationContext = invocationContext;
+                            final Optional<SystemMessage> asyncSystemMessage = systemMessage;
+                            final ResponseFormat asyncResponseFormat = responseFormat;
+                            final UserMessage asyncInputUserMessage = userMessage;
+                            final AugmentationResult asyncAugmentationResult = augmentationResult;
+                            final Type asyncReturnType2 = returnType;
+                            final boolean asyncAppendOutputFormat = appendOutputFormat;
+                            CompletableFuture<Object> result = new CompletableFuture<>();
+                            // Input guardrails run off the caller thread; the user-message-dependent prelude, memory
+                            // assembly, model call and tool loop then all run composed. Cancelling the returned future
+                            // cancels the in-flight input guardrails (best-effort); the model call and the output
+                            // guardrails are cancelled via propagateCancellation on the inner loop future.
+                            CompletableFuture<UserMessage> inputGuardrails = invokeInputGuardrailsAsync(
+                                    context.guardrailService(), method, asyncInputUserMessage, commonGuardrailParam);
+                            propagateCancellation(result, inputGuardrails);
+                            inputGuardrails
+                                    .thenApply(guardedUserMessage -> prepareGuardedInput(
+                                            guardedUserMessage,
+                                            baseInvocationContext,
+                                            asyncReturnType2,
+                                            asyncAppendOutputFormat))
+                                    .whenComplete((guardedInput, guardrailError) -> {
+                                        if (guardrailError != null) {
+                                            result.completeExceptionally(unwrapCompletionException(guardrailError));
+                                            return;
+                                        }
+                                        assembleMessagesAsync(
+                                                        chatMemory,
+                                                        asyncSystemMessage,
+                                                        guardedInput.userMessage(),
+                                                        originalUserMessage)
+                                                .whenComplete((assembledMessages, assemblyError) -> {
+                                                    if (assemblyError != null) {
+                                                        result.completeExceptionally(unwrapCompletionException(assemblyError));
+                                                        return;
+                                                    }
+                                                    try {
+                                                        dispatchAsync(
+                                                                result,
+                                                                method,
+                                                                args,
+                                                                guardedInput.invocationContext(),
+                                                                memoryId,
+                                                                chatMemory,
+                                                                assembledMessages,
+                                                                guardedInput.userMessage(),
+                                                                asyncResponseFormat,
+                                                                commonGuardrailParam,
+                                                                asyncAugmentationResult,
+                                                                asyncReturnType2,
+                                                                returnsImage,
+                                                                isReturnTypeResult);
+                                                    } catch (Throwable t) {
+                                                        result.completeExceptionally(t);
+                                                    }
+                                                });
+                                    });
+                            return completableFutureAdapter != null
+                                    ? completableFutureAdapter.fromCompletableFuture(declaredReturnType, result)
+                                    : result;
+                        }
+
+                        // The reactive (Flow.Publisher) path is a cold stream: the (potentially blocking) chat-memory
+                        // assembly is deferred to subscribe time, so building the publisher never blocks the caller.
+                        if (reactiveStreaming) {
+                            Type elementType = resolveFirstGenericParameterType(returnType);
+                            if (elementType != AiServiceStreamingEvent.class && elementType != String.class) {
+                                throw illegalConfiguration(
+                                        "The method '%s' returns a reactive stream of an unsupported element type '%s'. "
+                                                + "Supported element types are %s and String.",
+                                        method.getName(), elementType, AiServiceStreamingEvent.class.getName());
+                            }
+
+                            final InvocationContext baseInvocationContext = invocationContext;
+                            final Optional<SystemMessage> reactiveSystemMessage = systemMessage;
+                            final ChatMemory reactiveChatMemory = chatMemory;
+                            final UserMessage reactiveInputUserMessage = userMessage;
+                            final AugmentationResult reactiveAugmentationResult = augmentationResult;
+                            final Type reactiveReturnType = returnType;
+                            final boolean reactiveAppendOutputFormat = appendOutputFormat;
+
+                            // Cold stream: at subscribe time the input guardrails run off the caller thread, then the
+                            // user-message-dependent prelude and chat-memory assembly, so nothing blocks the caller.
+                            Flow.Publisher<AiServiceStreamingEvent> events = subscriber -> invokeInputGuardrailsAsync(
+                                            context.guardrailService(),
+                                            method,
+                                            reactiveInputUserMessage,
+                                            commonGuardrailParam)
+                                    .thenApply(guardedUserMessage -> prepareGuardedInput(
+                                            guardedUserMessage,
+                                            baseInvocationContext,
+                                            reactiveReturnType,
+                                            reactiveAppendOutputFormat))
+                                    .whenComplete((guardedInput, guardrailError) -> {
+                                        if (guardrailError != null) {
+                                            subscriber.onSubscribe(NOOP_SUBSCRIPTION);
+                                            subscriber.onError(unwrapCompletionException(guardrailError));
+                                            return;
+                                        }
+                                        assembleMessagesAsync(
+                                                        reactiveChatMemory,
+                                                        reactiveSystemMessage,
+                                                        guardedInput.userMessage(),
+                                                        originalUserMessage)
+                                                .whenComplete((assembledMessages, assemblyError) -> {
+                                                    if (assemblyError != null) {
+                                                        subscriber.onSubscribe(NOOP_SUBSCRIPTION);
+                                                        subscriber.onError(unwrapCompletionException(assemblyError));
+                                                        return;
+                                                    }
+                                                    AiServiceStreamingEventPublisher publisher;
+                                                    try {
+                                                        ToolServiceContext reactiveToolServiceContext =
+                                                                context.toolService.createContext(
+                                                                        guardedInput.invocationContext(),
+                                                                        guardedInput.userMessage(),
+                                                                        assembledMessages);
+                                                        var streamingEventStreamParameters =
+                                                                AiServiceTokenStreamParameters.builder()
+                                                                        .messages(assembledMessages)
+                                                                        .toolServiceContext(reactiveToolServiceContext)
+                                                                        .toolArgumentsErrorHandler(
+                                                                                context.toolService
+                                                                                        .argumentsErrorHandler())
+                                                                        .toolExecutionErrorHandler(
+                                                                                context.toolService
+                                                                                        .executionErrorHandler())
+                                                                        .toolExecutor(context.toolService.executor())
+                                                                        .retrievedContents(
+                                                                                reactiveAugmentationResult != null
+                                                                                        ? reactiveAugmentationResult
+                                                                                                .contents()
+                                                                                        : null)
+                                                                        .context(context)
+                                                                        .invocationContext(
+                                                                                guardedInput.invocationContext())
+                                                                        .commonGuardrailParams(commonGuardrailParam)
+                                                                        .methodKey(method)
+                                                                        .build();
+                                                        publisher = new AiServiceStreamingEventPublisher(
+                                                                streamingEventStreamParameters,
+                                                                context.streamingBufferSize);
+                                                    } catch (Throwable t) {
+                                                        subscriber.onSubscribe(NOOP_SUBSCRIPTION);
+                                                        subscriber.onError(unwrapCompletionException(t));
+                                                        return;
+                                                    }
+                                                    publisher.subscribe(subscriber);
+                                                });
+                                    });
+
+                            Flow.Publisher<?> mapped = elementType == AiServiceStreamingEvent.class
+                                    ? events
+                                    : AiServiceStreamingEventPublisher.toTextPublisher(events, context.streamingBufferSize);
+
+                            return publisherAdapter != null
+                                    ? publisherAdapter.fromPublisher(returnType, mapped)
+                                    : mapped;
+                        }
+
+                        // Synchronous and TokenStream modes run the input guardrails inline on the caller thread,
+                        // then apply the user-message-dependent prelude and assemble messages synchronously (the
+                        // synchronous ChatMemory methods).
+                        userMessage = invokeInputGuardrails(
+                                context.guardrailService(), method, userMessage, commonGuardrailParam);
+                        if (appendOutputFormat) {
                             userMessage = appendOutputFormatInstructions(returnType, userMessage);
                         }
-
-                        List<ChatMessage> messages = new ArrayList<>();
-                        if (context.hasChatMemory()) {
-                            systemMessage.ifPresent(chatMemory::add);
-                            messages.addAll(chatMemory.messages());
-                            if (context.storeRetrievedContentInChatMemory) {
-                                chatMemory.add(userMessage);
-                            } else {
-                                chatMemory.add(originalUserMessage);
-                            }
-                            messages.add(userMessage);
-                        } else {
-                            systemMessage.ifPresent(messages::add);
-                            messages.add(userMessage);
-                        }
-
                         invocationContext = invocationContext.toBuilder()
                                 .userMessage(userMessage)
                                 .build();
 
-                        Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
+                        List<ChatMessage> messages =
+                                assembleMessages(chatMemory, systemMessage, userMessage, originalUserMessage);
+
+                        CompletableFuture<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
                         ToolServiceContext toolServiceContext =
                                 context.toolService.createContext(invocationContext, userMessage, messages);
@@ -304,14 +544,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                             } else {
                                 return adapt(tokenStream, returnType);
                             }
-                        }
-
-                        ResponseFormat responseFormat = null;
-                        if (supportsJsonSchema && jsonSchema.isPresent()) {
-                            responseFormat = ResponseFormat.builder()
-                                    .type(JSON)
-                                    .jsonSchema(jsonSchema.get())
-                                    .build();
                         }
 
                         ChatRequestParameters parameters =
@@ -340,8 +572,6 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         verifyModerationIfNeeded(moderationFuture);
 
-                        boolean isReturnTypeResult = typeHasRawClass(returnType, Result.class);
-
                         ToolServiceResult toolServiceResult = context.toolService.executeInferenceAndToolsLoop(
                                 context,
                                 memoryId,
@@ -353,53 +583,274 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 toolServiceContext,
                                 context.chatModel::chat);
 
-                        if (toolServiceResult.immediateToolReturn()) {
-                            if (isReturnTypeResult) {
-                                var result = Result.builder()
-                                        .content(null)
-                                        .tokenUsage(toolServiceResult.aggregateTokenUsage())
-                                        .sources(augmentationResult == null ? null : augmentationResult.contents())
-                                        .finishReason(TOOL_EXECUTION)
-                                        .toolExecutions(toolServiceResult.toolExecutions())
-                                        .intermediateResponses(toolServiceResult.intermediateResponses())
-                                        .finalResponse(toolServiceResult.finalResponse())
-                                        .build();
+                        return processToolServiceResult(
+                                method,
+                                invocationContext,
+                                returnType,
+                                returnsImage,
+                                isReturnTypeResult,
+                                augmentationResult,
+                                toolServiceContext,
+                                toolServiceResult,
+                                chatExecutor,
+                                memoryId,
+                                parameters,
+                                commonGuardrailParam);
+                    }
 
-                                return fireEventAndReturn(invocationContext, result);
-                            }
-                            if (returnType == void.class) {
-                                return fireEventAndReturn(invocationContext, null);
-                            }
-                            Set<ReturnBehavior> returnBehaviors = toolServiceResult.toolExecutions().stream()
-                                    .map(execution -> toolServiceContext.returnBehavior(
-                                            execution.request().name()))
-                                    .collect(Collectors.toSet());
-                            if (returnBehaviors.stream()
-                                    .allMatch(returnBehavior -> returnBehavior == ReturnBehavior.IMMEDIATE
-                                            || returnBehavior == ReturnBehavior.IMMEDIATE_IF_LAST)) {
-                                int numNullResults = 0;
-                                ToolExecution lastNonNull = null;
-                                for (ToolExecution execution : toolServiceResult.toolExecutions()) {
-                                    if (execution.resultObject() == null) {
-                                        numNullResults++;
+                    private CompletableFuture<Object> invokeAsync(
+                            Method method,
+                            InvocationContext invocationContext,
+                            Object memoryId,
+                            ChatMemory chatMemory,
+                            List<ChatMessage> messages,
+                            ChatRequest chatRequest,
+                            ChatExecutor chatExecutor,
+                            ChatRequestParameters parameters,
+                            CompletableFuture<Moderation> moderationFuture,
+                            ToolServiceContext toolServiceContext,
+                            GuardrailRequestParams commonGuardrailParam,
+                            AugmentationResult augmentationResult,
+                            Type returnType,
+                            boolean returnsImage,
+                            boolean isReturnTypeResult) {
+
+                        context.eventListenerRegistrar.fireEvent(AiServiceRequestIssuedEvent.builder()
+                                .invocationContext(invocationContext)
+                                .request(chatRequest)
+                                .build());
+
+                        // The future handed to the caller. Returned separately (rather than the composed
+                        // pipeline) so that cancelling it can be observed and propagated: it is used as the
+                        // cancellation signal for the tool loop and cancels the in-flight model call.
+                        CompletableFuture<Object> result = new CompletableFuture<>();
+
+                        CompletableFuture<ChatResponse> firstModelCall = context.chatModel.chatAsync(chatRequest);
+                        propagateCancellation(result, firstModelCall);
+
+                        firstModelCall
+                                .thenCompose(chatResponse -> {
+                                    context.eventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
+                                            .invocationContext(invocationContext)
+                                            .response(chatResponse)
+                                            .request(chatRequest)
+                                            .build());
+
+                                    CompletableFuture<Void> moderationVerified = moderationFuture == null
+                                            ? CompletableFuture.completedFuture(null)
+                                            : moderationFuture.thenAccept(AiServices::verifyModeration);
+
+                                    return moderationVerified.thenCompose(
+                                            ignored -> context.toolService.executeInferenceAndToolsLoopAsync(
+                                                    context,
+                                                    memoryId,
+                                                    chatResponse,
+                                                    parameters,
+                                                    messages,
+                                                    chatMemory,
+                                                    invocationContext,
+                                                    toolServiceContext,
+                                                    result));
+                                })
+                                // Post-processing: the output guardrails — including any reprompt round-trips to the
+                                // model — run without blocking the model-delivery thread (see
+                                // GuardrailService.executeGuardrailsAsync); the CPU-bound output parsing then runs in
+                                // the resulting completion stage.
+                                .thenCompose(toolServiceResult -> processToolServiceResultAsync(
+                                        method,
+                                        invocationContext,
+                                        returnType,
+                                        returnsImage,
+                                        isReturnTypeResult,
+                                        augmentationResult,
+                                        toolServiceContext,
+                                        toolServiceResult,
+                                        chatExecutor,
+                                        memoryId,
+                                        parameters,
+                                        commonGuardrailParam))
+                                .whenComplete((value, error) -> {
+                                    if (error != null) {
+                                        Throwable cause = unwrapCompletionException(error);
+                                        // cancellation is neither a successful completion nor an error to report
+                                        if (!result.isCancelled() && !(cause instanceof CancellationException)) {
+                                            context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
+                                                    .invocationContext(invocationContext)
+                                                    .error(cause instanceof Exception exception
+                                                            ? exception
+                                                            : new RuntimeException(cause))
+                                                    .build());
+                                        }
+                                        result.completeExceptionally(cause);
                                     } else {
-                                        lastNonNull = execution;
+                                        result.complete(value);
                                     }
-                                }
-                                if (numNullResults
-                                        == toolServiceResult.toolExecutions().size()) {
-                                    return fireEventAndReturn(invocationContext, null);
-                                } else if (numNullResults + 1
-                                                == toolServiceResult
-                                                        .toolExecutions()
-                                                        .size()
-                                        && resolvesToType(lastNonNull.resultObject(), returnType)) {
-                                    // if only one non-null result, return it if it resolves to the return type
-                                    return fireEventAndReturn(invocationContext, lastNonNull.resultObject());
-                                }
-                                throw illegalConfiguration(
-                                        "AI Service method '%s' call cannot resolve return type from tool executions with ReturnBehavior.%s/%s. Use %s as your return type.",
-                                        method.getName(), IMMEDIATE, IMMEDIATE_IF_LAST, Result.class.getName());
+                                });
+
+                        return result;
+                    }
+
+                    /**
+                     * Builds the request artifacts from the (already assembled) messages and runs the asynchronous
+                     * pipeline, piping the outcome into {@code result}. Invoked off the caller thread once
+                     * {@link #assembleMessagesAsync} has resolved, so no chat-memory I/O blocks the caller.
+                     */
+                    private void dispatchAsync(
+                            CompletableFuture<Object> result,
+                            Method method,
+                            Object[] args,
+                            InvocationContext invocationContext,
+                            Object memoryId,
+                            ChatMemory chatMemory,
+                            List<ChatMessage> messages,
+                            UserMessage userMessage,
+                            ResponseFormat responseFormat,
+                            GuardrailRequestParams commonGuardrailParam,
+                            AugmentationResult augmentationResult,
+                            Type returnType,
+                            boolean returnsImage,
+                            boolean isReturnTypeResult) {
+
+                        if (result.isCancelled()) {
+                            return;
+                        }
+
+                        ToolServiceContext toolServiceContext =
+                                context.toolService.createContext(invocationContext, userMessage, messages);
+                        ChatRequestParameters parameters =
+                                chatRequestParameters(method, args, toolServiceContext, responseFormat);
+                        ChatRequest chatRequest = context.chatRequestTransformer.apply(
+                                ChatRequest.builder()
+                                        .messages(messages)
+                                        .parameters(parameters)
+                                        .build(),
+                                memoryId);
+                        ChatExecutor chatExecutor = ChatExecutor.builder(context.chatModel)
+                                .chatRequest(chatRequest)
+                                .invocationContext(invocationContext)
+                                .eventListenerRegistrar(context.eventListenerRegistrar)
+                                .build();
+
+                        // Moderation is forbidden on asynchronous return types, so no moderation future is needed.
+                        CompletableFuture<Object> inner = invokeAsync(
+                                method,
+                                invocationContext,
+                                memoryId,
+                                chatMemory,
+                                messages,
+                                chatRequest,
+                                chatExecutor,
+                                parameters,
+                                null,
+                                toolServiceContext,
+                                commonGuardrailParam,
+                                augmentationResult,
+                                returnType,
+                                returnsImage,
+                                isReturnTypeResult);
+                        propagateCancellation(result, inner);
+                        inner.whenComplete((value, error) -> {
+                            if (error != null) {
+                                result.completeExceptionally(unwrapCompletionException(error));
+                            } else {
+                                result.complete(value);
+                            }
+                        });
+                    }
+
+                    /**
+                     * Assembles the messages to send (system message, prior memory, user message), reading and
+                     * writing chat memory synchronously. Used by the synchronous, {@code TokenStream} and reactive
+                     * modes.
+                     */
+                    private List<ChatMessage> assembleMessages(
+                            ChatMemory chatMemory,
+                            Optional<SystemMessage> systemMessage,
+                            UserMessage userMessage,
+                            UserMessage originalUserMessage) {
+                        List<ChatMessage> messages = new ArrayList<>();
+                        if (context.hasChatMemory()) {
+                            systemMessage.ifPresent(chatMemory::add);
+                            messages.addAll(chatMemory.messages());
+                            if (context.storeRetrievedContentInChatMemory) {
+                                chatMemory.add(userMessage);
+                            } else {
+                                chatMemory.add(originalUserMessage);
+                            }
+                            messages.add(userMessage);
+                        } else {
+                            systemMessage.ifPresent(messages::add);
+                            messages.add(userMessage);
+                        }
+                        return messages;
+                    }
+
+                    /**
+                     * Non-blocking counterpart of {@link #assembleMessages}: reads and writes chat memory via the
+                     * asynchronous {@link ChatMemory} methods so the caller thread is not blocked on (potentially
+                     * I/O-backed) memory. The writes are chained (never concurrent) so the underlying
+                     * read-modify-write stays ordered.
+                     */
+                    private CompletionStage<List<ChatMessage>> assembleMessagesAsync(
+                            ChatMemory chatMemory,
+                            Optional<SystemMessage> systemMessage,
+                            UserMessage userMessage,
+                            UserMessage originalUserMessage) {
+                        if (!context.hasChatMemory()) {
+                            List<ChatMessage> messages = new ArrayList<>();
+                            systemMessage.ifPresent(messages::add);
+                            messages.add(userMessage);
+                            return CompletableFuture.completedFuture(messages);
+                        }
+
+                        try {
+                            CompletionStage<Void> addSystem = systemMessage.isPresent()
+                                    ? chatMemory.addAsync(List.of(systemMessage.get()))
+                                    : CompletableFuture.completedFuture(null);
+                            ChatMessage userMessageToStore =
+                                    context.storeRetrievedContentInChatMemory ? userMessage : originalUserMessage;
+                            return addSystem.thenCompose(ignored -> chatMemory.messagesAsync())
+                                    .thenCompose(history -> {
+                                        List<ChatMessage> messages = new ArrayList<>(history);
+                                        return chatMemory.addAsync(List.of(userMessageToStore)).thenApply(ignored2 -> {
+                                            messages.add(userMessage);
+                                            return messages;
+                                        });
+                                    });
+                        } catch (Throwable t) {
+                            return CompletableFuture.failedFuture(t);
+                        }
+                    }
+
+                    // Returned by immediateToolReturnResult when the immediate-tool-return case does not actually
+                    // resolve a value and processing must continue down the normal (guardrail + parse) path.
+                    private final Object fallThroughToOutputProcessing = new Object();
+
+                    private Object processToolServiceResult(
+                            Method method,
+                            InvocationContext invocationContext,
+                            Type returnType,
+                            boolean returnsImage,
+                            boolean isReturnTypeResult,
+                            AugmentationResult augmentationResult,
+                            ToolServiceContext toolServiceContext,
+                            ToolServiceResult toolServiceResult,
+                            ChatExecutor chatExecutor,
+                            Object memoryId,
+                            ChatRequestParameters parameters,
+                            GuardrailRequestParams commonGuardrailParam) {
+
+                        if (toolServiceResult.immediateToolReturn()) {
+                            Object immediate = immediateToolReturnResult(
+                                    method,
+                                    invocationContext,
+                                    returnType,
+                                    isReturnTypeResult,
+                                    augmentationResult,
+                                    toolServiceContext,
+                                    toolServiceResult);
+                            if (immediate != fallThroughToOutputProcessing) {
+                                return immediate;
                             }
                         }
 
@@ -420,6 +871,152 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 aggregateResponse,
                                 toolAwareRepromptExecutor,
                                 commonGuardrailParam);
+
+                        return finishToolServiceResult(
+                                response,
+                                invocationContext,
+                                returnType,
+                                returnsImage,
+                                isReturnTypeResult,
+                                augmentationResult,
+                                toolServiceResult);
+                    }
+
+                    /**
+                     * Non-blocking counterpart of {@link #processToolServiceResult}: the output guardrails (and any
+                     * reprompt round-trips to the model) run via {@link GuardrailService#executeGuardrailsAsync} so the
+                     * model-delivery thread is never blocked; the (CPU-bound) output parsing then runs in the
+                     * completion stage.
+                     */
+                    private CompletableFuture<Object> processToolServiceResultAsync(
+                            Method method,
+                            InvocationContext invocationContext,
+                            Type returnType,
+                            boolean returnsImage,
+                            boolean isReturnTypeResult,
+                            AugmentationResult augmentationResult,
+                            ToolServiceContext toolServiceContext,
+                            ToolServiceResult toolServiceResult,
+                            ChatExecutor chatExecutor,
+                            Object memoryId,
+                            ChatRequestParameters parameters,
+                            GuardrailRequestParams commonGuardrailParam) {
+
+                        if (toolServiceResult.immediateToolReturn()) {
+                            Object immediate = immediateToolReturnResult(
+                                    method,
+                                    invocationContext,
+                                    returnType,
+                                    isReturnTypeResult,
+                                    augmentationResult,
+                                    toolServiceContext,
+                                    toolServiceResult);
+                            if (immediate != fallThroughToOutputProcessing) {
+                                return CompletableFuture.completedFuture(immediate);
+                            }
+                        }
+
+                        ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
+
+                        // Output-guardrail reprompts go through a tool-aware executor: when a reprompt's response
+                        // requests tools, they are resolved (via the async tool loop) so the guardrail only ever
+                        // sees a final textual response.
+                        ChatExecutor toolAwareRepromptExecutor = ToolAwareRepromptExecutor.wrapAsync(
+                                chatExecutor,
+                                context,
+                                memoryId,
+                                parameters,
+                                invocationContext,
+                                toolServiceContext,
+                                context.chatModel::chatAsync);
+
+                        return DefaultAiServices.this
+                                .<Object>invokeOutputGuardrailsAsync(
+                                        context.guardrailService(),
+                                        method,
+                                        aggregateResponse,
+                                        toolAwareRepromptExecutor,
+                                        commonGuardrailParam)
+                                .thenApply(response -> finishToolServiceResult(
+                                        response,
+                                        invocationContext,
+                                        returnType,
+                                        returnsImage,
+                                        isReturnTypeResult,
+                                        augmentationResult,
+                                        toolServiceResult));
+                    }
+
+                    private Object immediateToolReturnResult(
+                            Method method,
+                            InvocationContext invocationContext,
+                            Type returnType,
+                            boolean isReturnTypeResult,
+                            AugmentationResult augmentationResult,
+                            ToolServiceContext toolServiceContext,
+                            ToolServiceResult toolServiceResult) {
+
+                        if (isReturnTypeResult) {
+                            var result = Result.builder()
+                                    .content(null)
+                                    .tokenUsage(toolServiceResult.aggregateTokenUsage())
+                                    .sources(augmentationResult == null ? null : augmentationResult.contents())
+                                    .finishReason(TOOL_EXECUTION)
+                                    .toolExecutions(toolServiceResult.toolExecutions())
+                                    .intermediateResponses(toolServiceResult.intermediateResponses())
+                                    .finalResponse(toolServiceResult.finalResponse())
+                                    .build();
+
+                            return fireEventAndReturn(invocationContext, result);
+                        }
+                        if (returnType == void.class || returnType == Void.class) {
+                            return fireEventAndReturn(invocationContext, null);
+                        }
+                        Set<ReturnBehavior> returnBehaviors = toolServiceResult.toolExecutions().stream()
+                                .map(execution -> toolServiceContext.returnBehavior(
+                                        execution.request().name()))
+                                .collect(Collectors.toSet());
+                        if (returnBehaviors.stream()
+                                .allMatch(returnBehavior -> returnBehavior == ReturnBehavior.IMMEDIATE
+                                        || returnBehavior == ReturnBehavior.IMMEDIATE_IF_LAST)) {
+                            int numNullResults = 0;
+                            ToolExecution lastNonNull = null;
+                            for (ToolExecution execution : toolServiceResult.toolExecutions()) {
+                                if (execution.resultObject() == null) {
+                                    numNullResults++;
+                                } else {
+                                    lastNonNull = execution;
+                                }
+                            }
+                            if (numNullResults
+                                    == toolServiceResult.toolExecutions().size()) {
+                                return fireEventAndReturn(invocationContext, null);
+                            } else if (numNullResults + 1
+                                            == toolServiceResult
+                                                    .toolExecutions()
+                                                    .size()
+                                    && resolvesToType(lastNonNull.resultObject(), returnType)) {
+                                // if only one non-null result, return it if it resolves to the return type
+                                return fireEventAndReturn(invocationContext, lastNonNull.resultObject());
+                            }
+                            throw illegalConfiguration(
+                                    "AI Service method '%s' call cannot resolve return type from tool executions with ReturnBehavior.%s/%s. Use %s as your return type.",
+                                    method.getName(), IMMEDIATE, IMMEDIATE_IF_LAST, Result.class.getName());
+                        }
+
+                        // Not an immediate return after all; signal the caller to continue down the normal
+                        // (output guardrail + parse) path.
+                        return fallThroughToOutputProcessing;
+                    }
+
+                    private Object finishToolServiceResult(
+                            Object response,
+                            InvocationContext invocationContext,
+                            Type returnType,
+                            boolean returnsImage,
+                            boolean isReturnTypeResult,
+                            AugmentationResult augmentationResult,
+                            ToolServiceResult toolServiceResult) {
 
                         if (response != null) {
                             if (returnsImage && response instanceof ChatResponse cResponse) {
@@ -506,6 +1103,24 @@ class DefaultAiServices<T> extends AiServices<T> {
                         return false;
                     }
 
+                    private CompletableFutureAdapter findCompletableFutureAdapter(Type returnType) {
+                        for (CompletableFutureAdapter adapter : completableFutureAdapters) {
+                            if (adapter.canAdapt(returnType)) {
+                                return adapter;
+                            }
+                        }
+                        return null;
+                    }
+
+                    private PublisherAdapter findPublisherAdapter(Type returnType) {
+                        for (PublisherAdapter adapter : publisherAdapters) {
+                            if (adapter.canAdapt(returnType)) {
+                                return adapter;
+                            }
+                        }
+                        return null;
+                    }
+
                     private Object adapt(TokenStream tokenStream, Type returnType) {
                         for (TokenStreamAdapter tokenStreamAdapter : tokenStreamAdapters) {
                             if (tokenStreamAdapter.canAdaptTokenStreamTo(returnType)) {
@@ -518,6 +1133,25 @@ class DefaultAiServices<T> extends AiServices<T> {
                     private boolean supportsJsonSchema() {
                         return context.chatModel != null
                                 && context.chatModel.supportedCapabilities().contains(RESPONSE_FORMAT_JSON_SCHEMA);
+                    }
+
+                    /**
+                     * Applies the user-message-dependent prelude after input guardrails have produced the
+                     * (possibly rewritten) user message: optionally appends the output-format instructions and
+                     * rebuilds the {@link InvocationContext} to carry the final user message.
+                     */
+                    private GuardedInput prepareGuardedInput(
+                            UserMessage guardedUserMessage,
+                            InvocationContext baseInvocationContext,
+                            Type returnType,
+                            boolean appendOutputFormat) {
+                        UserMessage userMessage = appendOutputFormat
+                                ? appendOutputFormatInstructions(returnType, guardedUserMessage)
+                                : guardedUserMessage;
+                        InvocationContext invocationContext = baseInvocationContext.toBuilder()
+                                .userMessage(userMessage)
+                                .build();
+                        return new GuardedInput(userMessage, invocationContext);
                     }
 
                     private UserMessage appendOutputFormatInstructions(Type returnType, UserMessage userMessage) {
@@ -545,15 +1179,18 @@ class DefaultAiServices<T> extends AiServices<T> {
                         return userMessage.toBuilder().contents(contents).build();
                     }
 
-                    private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {
+                    private CompletableFuture<Moderation> triggerModerationIfNeeded(
+                            Method method, List<ChatMessage> messages) {
                         if (method.isAnnotationPresent(Moderate.class)) {
                             ExecutorService executor = DefaultExecutorProvider.getDefaultExecutorService();
-                            return executor.submit(() -> {
-                                List<ChatMessage> messagesToModerate = removeToolMessages(messages);
-                                return context.moderationModel
-                                        .moderate(messagesToModerate)
-                                        .content();
-                            });
+                            return CompletableFuture.supplyAsync(
+                                    () -> {
+                                        List<ChatMessage> messagesToModerate = removeToolMessages(messages);
+                                        return context.moderationModel
+                                                .moderate(messagesToModerate)
+                                                .content();
+                                    },
+                                    executor);
                         }
                         return null;
                     }
@@ -584,6 +1221,29 @@ class DefaultAiServices<T> extends AiServices<T> {
         return userMessage;
     }
 
+    private CompletableFuture<UserMessage> invokeInputGuardrailsAsync(
+            GuardrailService guardrailService,
+            Method method,
+            UserMessage userMessage,
+            GuardrailRequestParams commonGuardrailParams) {
+
+        if (guardrailService.hasInputGuardrails(method)) {
+            var inputGuardrailRequest = InputGuardrailRequest.builder()
+                    .userMessage(userMessage)
+                    .commonParams(commonGuardrailParams)
+                    .build();
+            return guardrailService.executeGuardrailsAsync(method, inputGuardrailRequest);
+        }
+
+        return CompletableFuture.completedFuture(userMessage);
+    }
+
+    /**
+     * The (possibly rewritten) user message produced by the input guardrails together with the
+     * {@link InvocationContext} carrying it, as prepared for dispatch.
+     */
+    private record GuardedInput(UserMessage userMessage, InvocationContext invocationContext) {}
+
     private <T> T invokeOutputGuardrails(
             GuardrailService guardrailService,
             Method method,
@@ -601,6 +1261,25 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
 
         return (T) responseFromLLM;
+    }
+
+    private <T> CompletableFuture<T> invokeOutputGuardrailsAsync(
+            GuardrailService guardrailService,
+            Method method,
+            ChatResponse responseFromLLM,
+            ChatExecutor chatExecutor,
+            GuardrailRequestParams commonGuardrailParams) {
+
+        if (guardrailService.hasOutputGuardrails(method)) {
+            var outputGuardrailRequest = OutputGuardrailRequest.builder()
+                    .responseFromLLM(responseFromLLM)
+                    .chatExecutor(chatExecutor)
+                    .requestParams(commonGuardrailParams)
+                    .build();
+            return guardrailService.executeGuardrailsAsync(method, outputGuardrailRequest);
+        }
+
+        return CompletableFuture.completedFuture((T) responseFromLLM);
     }
 
     private Optional<SystemMessage> prepareSystemMessage(

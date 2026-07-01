@@ -662,6 +662,25 @@ public abstract class AiServices<T> {
     }
 
     /**
+     * Explicitly enables or disables concurrent tool execution, overriding the per-mode default.
+     * <p>
+     * The asynchronous AI Service modes — methods returning a {@link java.util.concurrent.CompletableFuture}
+     * or a reactive {@link java.util.concurrent.Flow.Publisher} — execute tools concurrently (off the model
+     * response thread) <b>by default</b>. Pass {@code false} to force sequential execution on those modes.
+     * The synchronous and {@link TokenStream} modes execute tools sequentially by default; pass {@code true}
+     * (or call {@link #executeToolsConcurrently()}) to enable concurrency there.
+     *
+     * @param concurrent whether tools should be executed concurrently
+     * @return builder
+     * @see #executeToolsConcurrently()
+     * @since 1.17.0
+     */
+    public AiServices<T> executeToolsConcurrently(boolean concurrent) {
+        context.toolService.executeToolsConcurrently(concurrent);
+        return this;
+    }
+
+    /**
      * Sets the maximum number of tool calling round trips (i.e. LLM responses containing tool calls).
      * If this limit is exceeded, an exception is thrown and the AI service invocation is terminated.
      *
@@ -678,6 +697,25 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> maxToolCallingRoundTrips(int maxToolCallingRoundTrips) {
         context.toolService.maxToolCallingRoundTrips(maxToolCallingRoundTrips);
+        return this;
+    }
+
+    /**
+     * Sets the size of the bounded back-pressure buffer used by the reactive ({@code Flow.Publisher}) streaming
+     * path. Events are relayed to the subscriber through this buffer; if the subscriber consumes slower than the
+     * model produces and the buffer overflows, the stream terminates with an {@link IllegalStateException}.
+     * <p>
+     * The default is {@value AiServiceStreamingEventPublisher#DEFAULT_BUFFER_SIZE}. Raise it for a slow-but-correct
+     * consumer on long responses, or set it to {@link Integer#MAX_VALUE} for an effectively unbounded buffer
+     * (accepting the {@link OutOfMemoryError} risk). Has no effect on the synchronous, {@code CompletableFuture}
+     * or {@code TokenStream} return types.
+     *
+     * @param streamingBufferSize the buffer size; must be greater than zero
+     * @return the builder instance
+     * @since 1.17.0
+     */
+    public AiServices<T> streamingBufferSize(int streamingBufferSize) {
+        context.streamingBufferSize = streamingBufferSize;
         return this;
     }
 
@@ -1280,14 +1318,17 @@ public abstract class AiServices<T> {
     public static void verifyModerationIfNeeded(Future<Moderation> moderationFuture) {
         if (moderationFuture != null) {
             try {
-                Moderation moderation = moderationFuture.get();
-                if (moderation.flagged()) {
-                    throw new ModerationException(
-                            String.format("Text \"%s\" violates content policy", moderation.flaggedText()), moderation);
-                }
+                verifyModeration(moderationFuture.get());
             } catch (InterruptedException | ExecutionException e) {
                 throw new RuntimeException(e);
             }
+        }
+    }
+
+    static void verifyModeration(Moderation moderation) { // TODO no moderation for async/reactive
+        if (moderation.flagged()) {
+            throw new ModerationException(
+                    String.format("Text \"%s\" violates content policy", moderation.flaggedText()), moderation);
         }
     }
 }

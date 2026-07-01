@@ -6,6 +6,7 @@ import dev.langchain4j.data.message.ChatMessageSerializer;
 import dev.langchain4j.memory.ChatMemory;
 
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 
 /**
  * Represents a store for the {@link ChatMemory} state.
@@ -44,4 +45,59 @@ public interface ChatMemoryStore {
      * @param memoryId The ID of the chat memory.
      */
     void deleteMessages(Object memoryId);
+
+    /**
+     * Non-blocking counterpart of {@link #getMessages(Object)}, used by the asynchronous
+     * ({@link java.util.concurrent.CompletableFuture}/{@link CompletionStage}) and reactive
+     * ({@link java.util.concurrent.Flow.Publisher}) AI Service APIs.
+     * <p>
+     * The default implementation throws {@link UnsupportedOperationException}: a store backed by blocking I/O is
+     * <b>not</b> silently offloaded to a worker thread, because that would hide the fact that it is not truly
+     * non-blocking. Implement this method to return the messages without blocking the calling thread (e.g. using a
+     * reactive client), or, if the underlying client is blocking, offload it to an executor explicitly.
+     *
+     * @param memoryId The ID of the chat memory.
+     * @return A stage that completes with the list of messages for the specified chat memory. Must not be null.
+     * @since 1.17.0
+     */
+    default CompletionStage<List<ChatMessage>> getMessagesAsync(Object memoryId) {
+        throw new UnsupportedOperationException(
+                "getMessagesAsync() is not implemented by " + getClass().getName());
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #updateMessages(Object, List)}, used by the asynchronous
+     * ({@link java.util.concurrent.CompletableFuture}/{@link CompletionStage}) and reactive
+     * ({@link java.util.concurrent.Flow.Publisher}) AI Service APIs.
+     * <p>
+     * The default implementation throws {@link UnsupportedOperationException}; see {@link #getMessagesAsync(Object)}
+     * for the rationale.
+     *
+     * @param memoryId The ID of the chat memory.
+     * @param messages List of messages for the specified chat memory, that represent the current state of the
+     *                 {@link ChatMemory}.
+     * @return A stage that completes when the messages have been stored.
+     * @since 1.17.0
+     */
+    default CompletionStage<Void> updateMessagesAsync(Object memoryId, List<ChatMessage> messages) {
+        throw new UnsupportedOperationException(
+                "updateMessagesAsync() is not implemented by " + getClass().getName());
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #deleteMessages(Object)}, used by the asynchronous
+     * ({@link java.util.concurrent.CompletableFuture}/{@link CompletionStage}) and reactive
+     * ({@link java.util.concurrent.Flow.Publisher}) AI Service APIs.
+     * <p>
+     * The default implementation throws {@link UnsupportedOperationException}; see {@link #getMessagesAsync(Object)}
+     * for the rationale.
+     *
+     * @param memoryId The ID of the chat memory.
+     * @return A stage that completes when the messages have been deleted.
+     * @since 1.17.0
+     */
+    default CompletionStage<Void> deleteMessagesAsync(Object memoryId) {
+        throw new UnsupportedOperationException(
+                "deleteMessagesAsync() is not implemented by " + getClass().getName());
+    }
 }

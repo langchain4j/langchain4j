@@ -4,10 +4,12 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.StreamingChatModelHelper;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -45,6 +47,11 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
         return Optional.ofNullable(responseHandler.getResponse()).orElseGet(ChatResponse.builder()::build);
     }
 
+    @Override
+    protected CompletableFuture<ChatResponse> executeAsync(ChatRequest chatRequest) {
+        return StreamingChatModelHelper.chatAsync(this.streamingChatModel, chatRequest, errorHandler); // TODO
+    }
+
     private static class StreamingToSyncResponseHandler implements StreamingChatResponseHandler {
         private static final Logger LOG = LoggerFactory.getLogger(StreamingToSyncResponseHandler.class);
         private final Consumer<Throwable> errorHandler;
@@ -54,9 +61,6 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
         StreamingToSyncResponseHandler(Consumer<Throwable> errorHandler) {
             this.errorHandler = errorHandler;
         }
-
-        @Override
-        public void onPartialResponse(String partialResponse) {}
 
         @Override
         public void onCompleteResponse(ChatResponse completeResponse) {

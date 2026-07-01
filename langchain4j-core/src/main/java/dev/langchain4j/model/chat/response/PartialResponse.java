@@ -11,7 +11,7 @@ import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
  */
 @Experimental
 @JacocoIgnoreCoverageGenerated
-public class PartialResponse {
+public class PartialResponse implements StreamingEvent {
 
     private final String text;
 

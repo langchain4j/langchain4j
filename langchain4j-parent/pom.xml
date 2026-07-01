@@ -69,6 +69,8 @@
         <retrofit.version>2.9.0</retrofit.version>
         <slf4j.version>2.0.18</slf4j.version>
         <testcontainers.version>1.21.4</testcontainers.version>
+        <testng.version>7.3.0</testng.version>
+        <testng-engine.version>1.0.5</testng-engine.version>
         <tinylog.version>2.7.0</tinylog.version>
         <wiremock.version>3.13.2</wiremock.version>
         <hibernate.version>7.4.2.Final</hibernate.version>
@@ -192,6 +194,20 @@
             </dependency>
 
             <dependency>
+                <groupId>org.testng</groupId>
+                <artifactId>testng</artifactId>
+                <version>${testng.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.junit.support</groupId>
+                <artifactId>testng-engine</artifactId>
+                <version>${testng-engine.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
                 <groupId>org.mockito</groupId>
                 <artifactId>mockito-bom</artifactId>
                 <version>${mockito.version}</version>
@@ -299,6 +315,11 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-params</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.support</groupId>
+            <artifactId>testng-engine</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -555,6 +576,10 @@
                                     <item>
                                         <code>java.missing.newClass</code>
                                         <justification>Dependencies are not checked, so their classes are expectedly missing</justification>
+                                    </item>
+                                    <item>
+                                        <code>java.class.externalClassExposedInAPI</code>
+                                        <justification>Dependencies are not checked (checkDependencies=false), so a dependency class surfaced in a module's public API (e.g. langchain4j-core types such as the streaming response/event classes, or the mutiny-zero reactive types used by @Internal plumbing) is expectedly reported as external/missing. Exposing our own core types in module APIs is intentional and not a break for consumers.</justification>
                                     </item>
                                     <item>
                                         <code>java.field.enumConstantOrderChanged</code>
@@ -912,6 +937,11 @@
                                 <license>
                                     <name>(The MIT License|MIT License|MIT)</name>
                                     <url>(https?://opensource.org/licenses/MIT)</url>
+                                </license>
+                                <!-- MIT No Attribution; used by org.reactivestreams:reactive-streams(-tck) -->
+                                <license>
+                                    <name>MIT-0</name>
+                                    <url>https://spdx\.org/licenses/MIT-0\.html</url>
                                 </license>
                                 <license>
                                     <name>Eclipse Public License v2.0</name>

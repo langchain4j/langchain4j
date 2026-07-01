@@ -14,4 +14,5 @@ public record StreamingMetadata(
         List<CompleteToolCall> completeToolCalls,
         int timesOnCompleteResponseWasCalled,
         Set<Thread> threads,
-        StreamingChatResponseHandler handler) {}
+        StreamingChatResponseHandler handler,
+        StreamingMode mode) {}
