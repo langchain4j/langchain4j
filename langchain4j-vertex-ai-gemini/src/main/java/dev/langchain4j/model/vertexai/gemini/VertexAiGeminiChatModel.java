@@ -14,7 +14,6 @@ import static java.util.Collections.emptyList;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.Content;
-import com.google.cloud.vertexai.api.FunctionCall;
 import com.google.cloud.vertexai.api.FunctionCallingConfig;
 import com.google.cloud.vertexai.api.GenerateContentRequest;
 import com.google.cloud.vertexai.api.GenerateContentResponse;
@@ -26,7 +25,6 @@ import com.google.cloud.vertexai.api.ToolConfig;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import com.google.cloud.vertexai.generativeai.ResponseHandler;
 import com.google.common.annotations.VisibleForTesting;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -101,6 +99,8 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
     private final Set<Capability> supportedCapabilities;
 
     private final Map<String, String> labels;
+    private final boolean returnThinking;
+    private final boolean sendThinking;
 
     public VertexAiGeminiChatModel(VertexAiGeminiChatModelBuilder builder) {
         ensureNotBlank(builder.modelName, "modelName");
@@ -217,6 +217,8 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
         this.labels = copy(builder.labels);
+        this.returnThinking = getOrDefault(builder.returnThinking, false);
+        this.sendThinking = getOrDefault(builder.sendThinking, false);
     }
 
     /**
@@ -345,6 +347,8 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.supportedCapabilities = copy(supportedCapabilities);
         this.labels = Collections.emptyMap();
+        this.returnThinking = false;
+        this.sendThinking = false;
     }
 
     public VertexAiGeminiChatModel(GenerativeModel generativeModel, GenerationConfig generationConfig) {
@@ -371,6 +375,8 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         this.listeners = Collections.emptyList();
         this.supportedCapabilities = Set.of();
         this.labels = Collections.emptyMap();
+        this.returnThinking = false;
+        this.sendThinking = false;
     }
 
     @Override
@@ -436,7 +442,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
                 .withToolConfig(this.toolConfig);
 
         ContentsMapper.InstructionAndContent instructionAndContent =
-                ContentsMapper.splitInstructionAndContent(messages);
+                ContentsMapper.splitInstructionAndContent(messages, sendThinking);
 
         if (instructionAndContent.systemInstruction != null) {
             model = model.withSystemInstruction(instructionAndContent.systemInstruction);
@@ -513,18 +519,14 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
 
         Content content = ResponseHandler.getContent(response);
 
-        List<FunctionCall> functionCalls = content.getPartsList().stream()
-                .filter(Part::hasFunctionCall)
-                .map(Part::getFunctionCall)
-                .toList();
+        List<Part> functionCallParts =
+                content.getPartsList().stream().filter(Part::hasFunctionCall).toList();
 
         final Response<AiMessage> finalResponse;
         final AiMessage aiMessage;
 
-        if (!functionCalls.isEmpty()) {
-            List<ToolExecutionRequest> toolExecutionRequests = FunctionCallHelper.fromFunctionCalls(functionCalls);
-
-            aiMessage = AiMessage.from(toolExecutionRequests);
+        if (!functionCallParts.isEmpty()) {
+            aiMessage = FunctionCallHelper.fromFunctionCallParts(functionCallParts, returnThinking);
         } else {
             aiMessage = AiMessage.from(ResponseHandler.getText(response));
         }
@@ -569,6 +571,14 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
     @VisibleForTesting
     Map<String, String> labels() {
         return this.labels;
+    }
+
+    public boolean returnThinking() {
+        return returnThinking;
+    }
+
+    public boolean sendThinking() {
+        return sendThinking;
     }
 
     // mirrors the SDK's private GenerativeModel.buildGenerateContentRequest envelope and
@@ -656,6 +666,8 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         private GoogleCredentials credentials;
         private String apiEndpoint;
         private Map<String, String> labels;
+        private Boolean returnThinking;
+        private Boolean sendThinking;
 
         public VertexAiGeminiChatModelBuilder() {
             // This is public so it can be extended
@@ -810,6 +822,16 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
          */
         public VertexAiGeminiChatModelBuilder labels(Map<String, String> labels) {
             this.labels = labels;
+            return this;
+        }
+
+        public VertexAiGeminiChatModelBuilder returnThinking(Boolean returnThinking) {
+            this.returnThinking = returnThinking;
+            return this;
+        }
+
+        public VertexAiGeminiChatModelBuilder sendThinking(Boolean sendThinking) {
+            this.sendThinking = sendThinking;
             return this;
         }
 
