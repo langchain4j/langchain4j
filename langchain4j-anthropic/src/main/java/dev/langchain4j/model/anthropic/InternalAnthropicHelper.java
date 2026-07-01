@@ -24,7 +24,6 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -50,34 +49,7 @@ class InternalAnthropicHelper {
 
     private static final String CODE_EXECUTION_TOOL_NAME = "code_execution";
 
-    /**
-     * {@code anthropic-beta} tokens required to use Skills and download the files they produce.
-     */
-    private static final List<String> SKILLS_BETA_FEATURES =
-            List.of("code-execution-2025-08-25", "skills-2025-10-02", "files-api-2025-04-14");
-
     private InternalAnthropicHelper() {}
-
-    /**
-     * Returns the {@code anthropic-beta} header value augmented with the tokens required by {@link AnthropicSkill},
-     * preserving any user-supplied beta features and avoiding duplicates. Returns {@code beta} unchanged when no
-     * skills are configured.
-     */
-    static String addSkillsBeta(String beta, List<AnthropicSkill> skills) {
-        if (isNullOrEmpty(skills)) {
-            return beta;
-        }
-        Set<String> features = new LinkedHashSet<>();
-        if (beta != null && !beta.isBlank()) {
-            for (String feature : beta.split(",")) {
-                if (!feature.isBlank()) {
-                    features.add(feature.trim());
-                }
-            }
-        }
-        features.addAll(SKILLS_BETA_FEATURES);
-        return String.join(",", features);
-    }
 
     private static AnthropicContainer toAnthropicContainer(List<AnthropicSkill> skills) {
         // Drop nulls and duplicates: the API rejects duplicate skill entries, and a null would NPE below.

@@ -212,6 +212,7 @@ AnthropicChatModel model = AnthropicChatModel.builder()
         .apiKey(System.getenv("ANTHROPIC_API_KEY"))
         .modelName("claude-opus-4-8")
         .maxTokens(4096)
+        .beta("code-execution-2025-08-25,skills-2025-10-02,files-api-2025-04-14")
         .skills(AnthropicSkill.XLSX, AnthropicSkill.PPTX)
         .returnServerToolResults(true)
         .build();
@@ -222,8 +223,12 @@ ChatResponse response = model.chat("Create an Excel spreadsheet with the numbers
 Enabling skills automatically:
 
 - adds the `container.skills` block to the request,
-- adds the required `code_execution` server tool (unless one is already configured via `serverTools(...)`),
-- merges the required `anthropic-beta` headers with any value you supplied via `beta(...)`.
+- adds the required `code_execution` server tool (unless one is already configured via `serverTools(...)`).
+
+You must opt into the required beta features yourself via `beta(...)`, as shown above. These are beta
+headers and their values change over time, so they are not injected for you — check the
+[Agent Skills documentation](https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview)
+for the current set.
 
 Combine with `returnServerToolResults(true)` to surface the generated file ids under the
 `"server_tool_results"` key of `AiMessage.attributes()` (see [Retrieving Server Tool

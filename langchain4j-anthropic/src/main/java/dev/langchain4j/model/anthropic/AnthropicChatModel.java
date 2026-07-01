@@ -4,7 +4,6 @@ import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
-import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.addSkillsBeta;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createAnthropicRequest;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.validate;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.EPHEMERAL;
@@ -87,7 +86,7 @@ public class AnthropicChatModel implements ChatModel {
                 .baseUrl(getOrDefault(builder.baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(builder.apiKey)
                 .version(getOrDefault(builder.version, ANTHROPIC_VERSION))
-                .beta(addSkillsBeta(builder.beta, builder.skills))
+                .beta(builder.beta)
                 .timeout(builder.timeout)
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
@@ -473,9 +472,14 @@ public class AnthropicChatModel implements ChatModel {
          *     .returnServerToolResults(true)
          *     .build();
          * </pre>
-         * Enabling skills automatically adds the {@code container.skills} block, the {@code code_execution} server tool
-         * (unless already configured via {@link #serverTools(List)}) and the required {@code anthropic-beta} headers, so
-         * none of that needs to be wired up manually.
+         * Enabling skills automatically adds the {@code container.skills} block and the {@code code_execution} server
+         * tool (unless already configured via {@link #serverTools(List)}), so that does not need to be wired up manually.
+         * <p>
+         * You must, however, opt into the required beta features yourself via {@link #beta(String)}, for example
+         * {@code .beta("code-execution-2025-08-25,skills-2025-10-02,files-api-2025-04-14")}. These are beta headers
+         * and their values change over time; see the
+         * <a href="https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview">Agent Skills docs</a>
+         * for the current set.
          * <p>
          * Combine with {@link #returnServerToolResults(Boolean)} to surface the generated file ids under the
          * {@code "server_tool_results"} key of {@link AiMessage#attributes()}.
