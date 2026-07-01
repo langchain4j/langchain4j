@@ -1,7 +1,7 @@
 package dev.langchain4j.data.message;
 
 import static dev.langchain4j.data.message.ChatMessageType.SYSTEM;
-import static dev.langchain4j.internal.Utils.quoted;
+import static dev.langchain4j.internal.Utils.contentDescription;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 import java.util.List;
@@ -52,7 +52,7 @@ public class SystemMessage implements ChatMessage {
 
     @Override
     public String toString() {
-        return "SystemMessage {" + " text = " + quoted(text) + " }";
+        return "SystemMessage {" + " text = " + contentDescription(text) + " }";
     }
 
     /**

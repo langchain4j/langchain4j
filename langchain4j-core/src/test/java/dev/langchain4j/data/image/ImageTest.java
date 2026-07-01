@@ -44,7 +44,7 @@ class ImageTest implements WithAssertions {
 
         assertThat(image)
                 .hasToString(
-                        "Image { url = \"https://example.com/image.png\", base64Data = \"base64Data\", mimeType = \"image/png\", revisedPrompt = \"revisedPrompt\" }");
+                        "Image { url = \"https://example.com/image.png\", base64Data = [length=10], mimeType = \"image/png\", revisedPrompt = [length=13] }");
     }
 
     @Test

@@ -1,5 +1,6 @@
 package dev.langchain4j.internal;
 
+import static dev.langchain4j.internal.Utils.contentDescription;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.merge;
 import static dev.langchain4j.internal.Utils.quoted;
@@ -253,6 +254,20 @@ class UtilsTest {
                 Arguments.of("", "\"\""),
                 Arguments.of(" ", "\" \""),
                 Arguments.of("hello", "\"hello\""));
+    }
+
+    @MethodSource
+    @ParameterizedTest
+    void test_contentDescription(String content, String expected) {
+        assertThat(contentDescription(content)).isEqualTo(expected);
+    }
+
+    static Stream<Arguments> test_contentDescription() {
+        return Stream.of(
+                Arguments.of(null, "null"),
+                Arguments.of("", "[length=0]"),
+                Arguments.of("hello", "[length=5]"),
+                Arguments.of("a".repeat(10000), "[length=10000]"));
     }
 
     @Test

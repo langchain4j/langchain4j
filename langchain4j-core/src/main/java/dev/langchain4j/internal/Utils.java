@@ -25,8 +25,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
@@ -301,6 +301,20 @@ public class Utils {
             return "null";
         }
         return "\"" + object + "\"";
+    }
+
+    /**
+     * Returns a safe description of potentially sensitive or large text content for use in {@code toString()}.
+     * The raw content is never included.
+     *
+     * @param content The content to describe.
+     * @return A description containing the content length, or {@code "null"} if the content is {@code null}.
+     */
+    public static String contentDescription(String content) {
+        if (content == null) {
+            return "null";
+        }
+        return "[length=" + content.length() + "]";
     }
 
     /**
@@ -586,8 +600,8 @@ public class Utils {
         }
     }
 
-    private static void collectInterfaceMethods(Class<?> clazz, Set<MethodSignature> seen,
-                                                List<Method> result, Set<Class<?>> visited) {
+    private static void collectInterfaceMethods(
+            Class<?> clazz, Set<MethodSignature> seen, List<Method> result, Set<Class<?>> visited) {
         if (clazz == null) {
             return;
         }
