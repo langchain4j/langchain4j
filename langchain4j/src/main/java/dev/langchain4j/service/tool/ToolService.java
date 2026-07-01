@@ -1720,23 +1720,8 @@ public class ToolService {
             ToolArgumentsErrorHandler argumentsErrorHandler,
             ToolExecutionErrorHandler executionErrorHandler) {
         try {
-            ToolErrorContext errorContext = ToolErrorContext.builder()
-                    .toolExecutionRequest(toolRequest)
-                    .invocationContext(invocationContext)
-                    .rawError(e)
-                    .build();
-
-            ToolErrorHandlerResult errorHandlerResult;
-            if (e instanceof ToolArgumentsException) {
-                errorHandlerResult = argumentsErrorHandler.handle(getCause(e), errorContext);
-            } else {
-                errorHandlerResult = executionErrorHandler.handle(getCause(e), errorContext);
-            }
-
-            return CompletableFuture.completedFuture(ToolExecutionResult.builder()
-                    .isError(true)
-                    .resultText(errorHandlerResult.text())
-                    .build());
+            return CompletableFuture.completedFuture(toolErrorResult(
+                    e, toolRequest, invocationContext, argumentsErrorHandler, executionErrorHandler));
         } catch (Exception handlerException) {
             return CompletableFuture.failedFuture(handlerException);
         }
@@ -1855,24 +1840,36 @@ public class ToolService {
         try {
             return toolExecutor.executeWithContext(toolRequest, invocationContext);
         } catch (Exception e) {
-            ToolErrorContext errorContext = ToolErrorContext.builder()
-                    .toolExecutionRequest(toolRequest)
-                    .invocationContext(invocationContext)
-                    .rawError(e)
-                    .build();
-
-            ToolErrorHandlerResult errorHandlerResult;
-            if (e instanceof ToolArgumentsException) {
-                errorHandlerResult = argumentsErrorHandler.handle(getCause(e), errorContext);
-            } else {
-                errorHandlerResult = executionErrorHandler.handle(getCause(e), errorContext);
-            }
-
-            return ToolExecutionResult.builder()
-                    .isError(true)
-                    .resultText(errorHandlerResult.text())
-                    .build();
+            return toolErrorResult(e, toolRequest, invocationContext, argumentsErrorHandler, executionErrorHandler);
         }
+    }
+
+    /**
+     * Routes a tool failure to the appropriate error handler ({@link ToolArgumentsErrorHandler} for an argument
+     * problem, {@link ToolExecutionErrorHandler} otherwise) and turns the handler's response into an error
+     * {@link ToolExecutionResult}. Shared by the synchronous and asynchronous execution paths.
+     */
+    private static ToolExecutionResult toolErrorResult(
+            Exception e,
+            ToolExecutionRequest toolRequest,
+            InvocationContext invocationContext,
+            ToolArgumentsErrorHandler argumentsErrorHandler,
+            ToolExecutionErrorHandler executionErrorHandler) {
+
+        ToolErrorContext errorContext = ToolErrorContext.builder()
+                .toolExecutionRequest(toolRequest)
+                .invocationContext(invocationContext)
+                .rawError(e)
+                .build();
+
+        ToolErrorHandlerResult errorHandlerResult = e instanceof ToolArgumentsException
+                ? argumentsErrorHandler.handle(getCause(e), errorContext)
+                : executionErrorHandler.handle(getCause(e), errorContext);
+
+        return ToolExecutionResult.builder()
+                .isError(true)
+                .resultText(errorHandlerResult.text())
+                .build();
     }
 
     static ToolExecutionResultMessage toResultMessage(ToolExecutionRequest request, ToolExecutionResult result) {
