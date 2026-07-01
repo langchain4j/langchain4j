@@ -85,49 +85,111 @@ public abstract class AbstractServiceBuilder<T, S> {
         return agenticMethod == null ? Object.class : agenticMethod.getGenericReturnType();
     }
 
+    /**
+     * Sets a callback to execute before the agent is invoked, allowing initialization of the
+     * {@link AgenticScope}.
+     *
+     * @param beforeCall the callback to run before each agent invocation
+     * @return {@code this}
+     */
     public S beforeCall(Consumer<AgenticScope> beforeCall) {
         this.beforeCall = beforeCall;
         return (S) this;
     }
 
+    /**
+     * Sets the name of the agent, used for identification in multi-agent workflows.
+     *
+     * @param name the agent name
+     * @return {@code this}
+     */
     public S name(String name) {
         this.name = name;
         return (S) this;
     }
 
+    /**
+     * Sets a human-readable description of the agent's purpose or capabilities.
+     *
+     * @param description the agent description
+     * @return {@code this}
+     */
     public S description(String description) {
         this.description = description;
         return (S) this;
     }
 
+    /**
+     * Sets the key under which the agent's output is stored in the {@link AgenticScope}.
+     *
+     * @param outputKey the output key name
+     * @return {@code this}
+     */
     public S outputKey(String outputKey) {
         this.outputKey = outputKey;
         return (S) this;
     }
 
+    /**
+     * Sets the output key using a {@link TypedKey} class, deriving the key name from the class.
+     *
+     * @param outputKey the typed key class
+     * @return {@code this}
+     */
     public S outputKey(Class<? extends TypedKey<?>> outputKey) {
         return outputKey(keyName(outputKey));
     }
 
+    /**
+     * Sets a function to extract the agent's output value from the {@link AgenticScope}.
+     *
+     * @param output the output extraction function
+     * @return {@code this}
+     */
     public S output(Function<AgenticScope, Object> output) {
         this.output = output;
         return (S) this;
     }
 
+    /**
+     * Registers sub-agents that this agent can delegate work to.
+     *
+     * @param agents the sub-agents (varargs)
+     * @return {@code this}
+     */
     public S subAgents(Object... agents) {
         return subAgents(List.of(agents));
     }
 
+    /**
+     * Registers sub-agents that this agent can delegate work to.
+     *
+     * @param agents the collection of sub-agents
+     * @return {@code this}
+     */
     public S subAgents(Collection<?> agents) {
         addSubagents(agentsToExecutors(agents));
         return (S) this;
     }
 
+    /**
+     * Sets a handler to recover from errors that occur during agent execution.
+     *
+     * @param errorHandler the error recovery function
+     * @return {@code this}
+     */
     public S errorHandler(Function<ErrorContext, ErrorRecoveryResult> errorHandler) {
         this.errorHandler = errorHandler;
         return (S) this;
     }
 
+    /**
+     * Registers an {@link AgentListener} to observe agent lifecycle events. Multiple listeners can
+     * be added; they are composed automatically.
+     *
+     * @param agentListener the listener to register
+     * @return {@code this}
+     */
     public S listener(AgentListener agentListener) {
         if (this.agentListener == null) {
             this.agentListener = agentListener;
@@ -139,11 +201,23 @@ public abstract class AbstractServiceBuilder<T, S> {
         return (S) this;
     }
 
+    /**
+     * Sets a factory function used to wrap the internal agent handler into a custom instance type.
+     *
+     * @param factory the factory function
+     * @return {@code this}
+     */
     public S agentInstanceFactory(Function<InternalAgent, Object> factory) {
         this.agentInstanceFactory = factory;
         return (S) this;
     }
 
+    /**
+     * Sets the {@link Executor} used for asynchronous agent operations.
+     *
+     * @param executor the executor
+     * @return {@code this}
+     */
     public S executor(Executor executor) {
         this.executor = executor;
         return (S) this;
@@ -153,6 +227,13 @@ public abstract class AbstractServiceBuilder<T, S> {
         this.subagents.addAll(agents);
     }
 
+    /**
+     * Builds the agent service using the supplied {@link Planner}, wiring in monitoring if the
+     * service class implements {@link MonitoredAgent}.
+     *
+     * @param plannerSupplier supplier of the planner used to orchestrate agent execution
+     * @return the built agent service instance
+     */
     public T build(Supplier<Planner> plannerSupplier) {
         AgentMonitor monitor = listenerOfType(agentListener, AgentMonitor.class);
         if (MonitoredAgent.class.isAssignableFrom(agentServiceClass) && monitor == null) {
@@ -166,6 +247,12 @@ public abstract class AbstractServiceBuilder<T, S> {
         return (T) agent;
     }
 
+    /**
+     * Builds the agent service using the provided {@link InvocationHandler}.
+     *
+     * @param invocationHandler the invocation handler that processes agent method calls
+     * @return the built agent service instance
+     */
     public T build(InvocationHandler invocationHandler) {
         if (agentInstanceFactory != null) {
             return (T) agentInstanceFactory.apply((InternalAgent) invocationHandler);

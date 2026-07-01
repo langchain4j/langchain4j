@@ -167,46 +167,104 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String indexName = "default";
         private OpenSearchClient openSearchClient;
 
+        /**
+         * Sets the OpenSearch server URL (e.g. {@code "https://my-cluster:9200"}).
+         * Required unless {@link #openSearchClient(OpenSearchClient)} is provided.
+         *
+         * @param serverUrl the OpenSearch server URL
+         * @return {@code this}
+         */
         public Builder serverUrl(String serverUrl) {
             this.serverUrl = serverUrl;
             return this;
         }
 
+        /**
+         * Sets the API key for authentication with OpenSearch. Optional.
+         *
+         * @param apiKey the API key
+         * @return {@code this}
+         */
         public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
         }
 
+        /**
+         * Sets the username for basic authentication with OpenSearch. Optional.
+         *
+         * @param userName the username
+         * @return {@code this}
+         */
         public Builder userName(String userName) {
             this.userName = userName;
             return this;
         }
 
+        /**
+         * Sets the password for basic authentication with OpenSearch. Optional.
+         *
+         * @param password the password
+         * @return {@code this}
+         */
         public Builder password(String password) {
             this.password = password;
             return this;
         }
 
+        /**
+         * Sets the AWS signing service name for Amazon OpenSearch Service.
+         * Use {@code "es"} for Amazon OpenSearch or {@code "aoss"} for Amazon OpenSearch Serverless.
+         *
+         * @param serviceName the AWS service name
+         * @return {@code this}
+         */
         public Builder serviceName(String serviceName) {
             this.serviceName = serviceName;
             return this;
         }
 
+        /**
+         * Sets the AWS region used when signing requests for Amazon OpenSearch Service.
+         * Should match the region in the {@link #serverUrl(String)}.
+         *
+         * @param region the AWS region (e.g. {@code "us-east-1"})
+         * @return {@code this}
+         */
         public Builder region(String region) {
             this.region = region;
             return this;
         }
 
+        /**
+         * Sets the AWS SDK transport options, including credentials, for Amazon OpenSearch Service.
+         *
+         * @param options the transport options
+         * @return {@code this}
+         */
         public Builder options(AwsSdk2TransportOptions options) {
             this.options = options;
             return this;
         }
 
+        /**
+         * Sets the OpenSearch index name. Defaults to {@code "default"}.
+         *
+         * @param indexName the index name
+         * @return {@code this}
+         */
         public Builder indexName(String indexName) {
             this.indexName = indexName;
             return this;
         }
 
+        /**
+         * Sets a pre-configured {@link OpenSearchClient}. When provided, all other connection
+         * parameters ({@link #serverUrl}, {@link #apiKey}, etc.) are ignored.
+         *
+         * @param openSearchClient the pre-configured client
+         * @return {@code this}
+         */
         public Builder openSearchClient(OpenSearchClient openSearchClient) {
             this.openSearchClient = openSearchClient;
             return this;
