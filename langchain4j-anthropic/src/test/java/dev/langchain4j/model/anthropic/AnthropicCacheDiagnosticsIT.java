@@ -48,10 +48,8 @@ class AnthropicCacheDiagnosticsIT {
                 .messages(UserMessage.from(prompt))
                 .parameters(AnthropicChatRequestParameters.builder()
                         .modelName(CLAUDE_SONNET_4_5_20250929)
-                        // returnCacheDiagnostics must be re-stated here alongside previousMessageId --
-                        // the two are merged as a unit, sourced from the same parameters object (see
-                        // AnthropicChatRequestParameters#previousMessageId() javadoc).
-                        .returnCacheDiagnostics(true)
+                        // returnCacheDiagnostics is already enabled on the model, so only previousMessageId
+                        // needs to be supplied per request (see AnthropicChatRequestParameters#previousMessageId()).
                         .previousMessageId(metadata1.id())
                         .build())
                 .build());

@@ -241,9 +241,9 @@ class AnthropicChatRequestCacheParametersTest {
 
     @Test
     void should_clear_previous_message_id_per_request_even_when_model_default_is_set() {
-        // Regression test: overrideWith() must not silently fall back to a stale model-level
-        // default when a request explicitly opts in to diagnostics fresh (previousMessageId == null),
-        // since null is a meaningful, required value here (see AnthropicDiagnosticsParameters).
+        // Regression test: previousMessageId is a per-request value and is never carried as a
+        // model-level default, so a stale id placed on defaultRequestParameters must not leak into a
+        // request that opts in fresh with previousMessageId == null (a meaningful first-turn value).
         AnthropicChatModel model = modelBuilder()
                 .defaultRequestParameters(AnthropicChatRequestParameters.builder()
                         .previousMessageId("msg_stale_default")
@@ -267,11 +267,9 @@ class AnthropicChatRequestCacheParametersTest {
 
     @Test
     void should_not_pair_unrelated_default_previous_message_id_with_model_level_diagnostics_toggle() {
-        // Regression test: the model's own baseline defaultRequestParameters must apply the same
-        // "merge as a unit" rule as overrideWith() does. Without it, a previousMessageId carried on an
-        // unrelated defaultRequestParameters() object (with no returnCacheDiagnostics of its own) could
-        // get paired with an unrelated model-level returnCacheDiagnostics(true) toggle, sending a stale
-        // id the caller never associated with diagnostics.
+        // Regression test: a previousMessageId carried on an unrelated defaultRequestParameters() object
+        // must not leak onto the wire just because returnCacheDiagnostics(true) is toggled on at the model
+        // level -- previousMessageId is per-request only and is never sourced from a model-level default.
         AnthropicChatModel model = modelBuilder()
                 .returnCacheDiagnostics(true)
                 .defaultRequestParameters(AnthropicChatRequestParameters.builder()
@@ -285,6 +283,27 @@ class AnthropicChatRequestCacheParametersTest {
         assertThat(body).contains("\"diagnostics\"");
         assertThat(body).contains("\"previous_message_id\" : null");
         assertThat(body).doesNotContain("msg_unrelated");
+    }
+
+    @Test
+    void should_send_per_request_previous_message_id_when_diagnostics_enabled_at_model_level() {
+        // The ergonomic path: enable diagnostics once on the model, then only vary previousMessageId
+        // per request (without re-stating returnCacheDiagnostics every turn). The per-request id must
+        // reach the wire instead of being silently dropped in favour of a null previous_message_id.
+        AnthropicChatModel model = modelBuilder().returnCacheDiagnostics(true).build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("Hi"))
+                .parameters(AnthropicChatRequestParameters.builder()
+                        .previousMessageId("msg_previous")
+                        .build())
+                .build();
+
+        model.chat(request);
+
+        String body = lastRequestBody();
+        assertThat(body).contains("\"diagnostics\"");
+        assertThat(body).contains("\"previous_message_id\" : \"msg_previous\"");
     }
 
     private static ToolSpecification weatherTool() {

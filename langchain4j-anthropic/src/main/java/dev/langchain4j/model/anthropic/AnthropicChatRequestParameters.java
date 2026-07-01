@@ -99,13 +99,10 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
      * message to compare, and the {@code id} of the previous {@link AnthropicChatResponseMetadata} on
      * every subsequent turn.
      * <p>
-     * <b>This field and {@link #returnCacheDiagnostics()} are always merged as a unit, sourced from
-     * the same {@link ChatRequestParameters} object — set them together.</b> Unlike this class's other
-     * optional fields, {@code null} is a meaningful, required value here, so it can't be merged
-     * independently with {@code getOrDefault}-style "last non-null value wins" semantics (that could
-     * never override a previously-set non-null default back to {@code null}). Whenever a layer
-     * (a model-level default or a per-request override) specifies {@code returnCacheDiagnostics}
-     * explicitly, this field is taken verbatim from that same layer, {@code null} or not.
+     * This is a per-request value: it changes on every turn and there is intentionally no model-level
+     * setter for it. It can therefore be varied per request on its own, while
+     * {@link #returnCacheDiagnostics()} is enabled once on the model builder — the per-request
+     * {@code previousMessageId} is not paired with, or gated on, {@code returnCacheDiagnostics}.
      *
      * @see AnthropicCacheDiagnostics
      */
@@ -235,11 +232,9 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 disableParallelToolUse(
                         getOrDefault(anthropicParameters.disableParallelToolUse(), disableParallelToolUse));
                 userId(getOrDefault(anthropicParameters.userId(), userId));
-                // returnCacheDiagnostics + previousMessageId are merged as a unit; see previousMessageId() javadoc.
-                if (anthropicParameters.returnCacheDiagnostics() != null) {
-                    returnCacheDiagnostics(anthropicParameters.returnCacheDiagnostics());
-                    previousMessageId(anthropicParameters.previousMessageId());
-                }
+                returnCacheDiagnostics(
+                        getOrDefault(anthropicParameters.returnCacheDiagnostics(), returnCacheDiagnostics));
+                previousMessageId(getOrDefault(anthropicParameters.previousMessageId(), previousMessageId));
             }
             return this;
         }
@@ -300,8 +295,7 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
 
         /**
          * Enables Anthropic's (beta) cache diagnostics for this request, requesting a comparison
-         * against the request identified by {@link #previousMessageId(String)} — set both together;
-         * see {@link AnthropicChatRequestParameters#previousMessageId()} for why.
+         * against the request identified by {@link #previousMessageId(String)}.
          * Requires the {@code cache-diagnosis-2026-04-07} beta header to be set on the model
          * (see {@code beta(String)} on {@link AnthropicChatModel.AnthropicChatModelBuilder} /
          * {@link AnthropicStreamingChatModel.AnthropicStreamingChatModelBuilder}).

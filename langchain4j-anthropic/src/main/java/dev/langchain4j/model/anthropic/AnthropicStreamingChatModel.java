@@ -141,10 +141,8 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 .userId(getOrDefault(builder.userId, anthropicDefaults.userId()))
                 .returnCacheDiagnostics(
                         getOrDefault(builder.returnCacheDiagnostics, anthropicDefaults.returnCacheDiagnostics()))
-                .previousMessageId(
-                        anthropicDefaults.returnCacheDiagnostics() != null
-                                ? anthropicDefaults.previousMessageId()
-                                : null)
+                // previousMessageId is a per-request value (it changes every turn); it is never carried
+                // as a model-level default, only supplied via per-request AnthropicChatRequestParameters.
                 .build();
     }
 

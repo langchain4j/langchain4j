@@ -514,9 +514,8 @@ String previousMessageId = ((AnthropicChatResponseMetadata) response1.metadata()
 ChatResponse response2 = model.chat(ChatRequest.builder()
         .messages(UserMessage.from("Summarize section 1."), UserMessage.from("Now summarize section 2."))
         .parameters(AnthropicChatRequestParameters.builder()
-                // returnCacheDiagnostics and previousMessageId must be set together on the same
-                // AnthropicChatRequestParameters — they are not merged independently with the model's defaults
-                .returnCacheDiagnostics(true)
+                // returnCacheDiagnostics is already enabled on the model above, so on subsequent turns
+                // you only need to supply the previousMessageId (it changes every turn).
                 .previousMessageId(previousMessageId)
                 .build())
         .build());
