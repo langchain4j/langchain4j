@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,6 +63,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
     private final String vertexSearchDatastore;
     private final Map<String, String> labels;
     private final String cachedContent;
+    private final Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
     private final ExecutorService executor;
 
@@ -80,6 +82,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         this.vertexSearchDatastore = builder.vertexSearchDatastore;
         this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
         this.cachedContent = builder.cachedContent;
+        this.generateContentConfigCustomizer = builder.generateContentConfigCustomizer;
 
         this.client = builder.client != null
                 ? builder.client
@@ -119,7 +122,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(chatRequest.messages());
         List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages());
 
-        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+        GenerateContentConfig builtConfig = GoogleGenAiConfigBuilder.buildConfig(
                 chatRequest.parameters(),
                 systemInstruction,
                 safetySettings,
@@ -133,6 +136,8 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 vertexSearchDatastore,
                 labels,
                 cachedContent);
+        GenerateContentConfig config =
+                GoogleGenAiConfigBuilder.applyCustomizer(builtConfig, generateContentConfigCustomizer);
 
         if (logRequests) {
             log.info(
@@ -295,6 +300,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         private String cachedContent;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
         /**
          * Sets a pre-configured Google GenAI {@link Client}.
@@ -706,6 +712,20 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         public Builder logRequestsAndResponses(Boolean logRequestsAndResponses) {
             this.logRequests = logRequestsAndResponses;
             this.logResponses = logRequestsAndResponses;
+            return this;
+        }
+
+        /**
+         * Registers a customizer applied to the {@link GenerateContentConfig.Builder} after this integration has
+         * populated it (generation parameters, tools, system instruction, etc.), so it can set any underlying
+         * Google Gen AI SDK option that is not exposed here, or override a value set above.
+         *
+         * @param generateContentConfigCustomizer a consumer that mutates the {@link GenerateContentConfig.Builder}
+         * @see GenerateContentConfig
+         */
+        public Builder generateContentConfigCustomizer(
+                Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
+            this.generateContentConfigCustomizer = generateContentConfigCustomizer;
             return this;
         }
 
