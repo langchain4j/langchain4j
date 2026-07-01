@@ -2804,6 +2804,51 @@ ResultWithAgenticScope<String> result = workflow.converse("hello");
 
 In this sequence, the first agent sends a message with no `contextId`/`taskId` (they are `null` in the scope). The server creates a new task and context. The response IDs are written to the scope. When the second agent runs, it reads the now-populated `contextId` and `taskId` from the scope and sends them on the message envelope, continuing the same conversation.
 
+### Configuring the A2A transport
+
+By default an A2A client agent communicates with the remote server over the JSON-RPC transport using its default configuration. It is possible to select and customize the transport, for instance to register call interceptors adding authentication, custom headers or OpenTelemetry context propagation, by passing an `A2AClientTransportConfigurer` to the builder:
+
+```java
+A2AClientTransportConfigurer transport = A2AClientTransportConfigurer.transport(
+        JSONRPCTransport.class,
+        new JSONRPCTransportConfigBuilder().addInterceptor(myOpenTelemetryInterceptor));
+
+A2ACreativeWriter creativeWriter = AgenticServices
+        .a2aBuilder(A2A_SERVER_URL, A2ACreativeWriter.class)
+        .clientTransport(transport)
+        .outputKey("story")
+        .build();
+```
+
+The `A2AClientTransportConfigurer.transport(...)` factory covers the common case of choosing a transport and its configuration builder, mirroring the A2A SDK `ClientBuilder.withTransport(...)` method. For full control, an `A2AClientTransportConfigurer` is a functional interface receiving the underlying A2A `ClientBuilder`, so any configuration supported by the SDK (transport selection, interceptors, custom HTTP client, client configuration, ...) can be applied:
+
+```java
+A2ACreativeWriter creativeWriter = AgenticServices
+        .a2aBuilder(A2A_SERVER_URL, A2ACreativeWriter.class)
+        .clientTransport((A2AClientTransportConfigurer) clientBuilder -> clientBuilder.withTransport(
+                JSONRPCTransport.class,
+                new JSONRPCTransportConfigBuilder().addInterceptor(myOpenTelemetryInterceptor)))
+        .outputKey("story")
+        .build();
+```
+
+When using the declarative API, the transport can be configured by adding a static method annotated with `@A2AClientTransportSupplier` that returns the `A2AClientTransportConfigurer` to the agent interface:
+
+```java
+public interface A2ACreativeWriter {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", outputKey = "story")
+    String generateStory(@V("topic") String topic);
+
+    @A2AClientTransportSupplier
+    static A2AClientTransportConfigurer transport() {
+        return A2AClientTransportConfigurer.transport(
+                JSONRPCTransport.class,
+                new JSONRPCTransportConfigBuilder().addInterceptor(myOpenTelemetryInterceptor));
+    }
+}
+```
+
 ## MCP-based Tool Agents
 
 The additional `langchain4j-agentic-mcp` module allows wrapping a single [MCP](https://modelcontextprotocol.io/) tool as a non-AI agent in the agentic system. Unlike regular agents that use an LLM, an MCP tool agent simply executes the MCP tool directly and returns its result. This makes it possible to compose MCP tools with other agents in larger agentic systems, without involving an LLM for the tool execution itself.

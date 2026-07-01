@@ -2,9 +2,25 @@ package dev.langchain4j.agentic.a2a;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import dev.langchain4j.agentic.UntypedAgent;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
+import org.a2aproject.sdk.A2A;
+import org.a2aproject.sdk.client.Client;
+import org.a2aproject.sdk.client.ClientBuilder;
+import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransport;
+import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransportConfigBuilder;
+import org.a2aproject.sdk.spec.AgentCard;
 import org.a2aproject.sdk.spec.Artifact;
 import org.a2aproject.sdk.spec.Message;
 import org.a2aproject.sdk.spec.Part;
@@ -13,6 +29,7 @@ import org.a2aproject.sdk.spec.TaskState;
 import org.a2aproject.sdk.spec.TaskStatus;
 import org.a2aproject.sdk.spec.TextPart;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 
 class DefaultA2AClientBuilderTest {
 
@@ -90,5 +107,87 @@ class DefaultA2AClientBuilderTest {
 
         assertThat(future).isCompleted();
         assertThat(future.get()).isEmpty();
+    }
+
+    @Test
+    void transportConfigurer_factory_appliesTransportAndConfigBuilderToClientBuilder() {
+        ClientBuilder clientBuilder = mock(ClientBuilder.class);
+        JSONRPCTransportConfigBuilder transportConfigBuilder = new JSONRPCTransportConfigBuilder();
+
+        A2AClientTransportConfigurer configurer =
+                A2AClientTransportConfigurer.transport(JSONRPCTransport.class, transportConfigBuilder);
+        configurer.configure(clientBuilder);
+
+        verify(clientBuilder).withTransport(JSONRPCTransport.class, transportConfigBuilder);
+    }
+
+    @Test
+    void transportConfigurer_factory_rejectsNullArguments() {
+        assertThatThrownBy(() -> A2AClientTransportConfigurer.transport(null, new JSONRPCTransportConfigBuilder()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("transportClass");
+
+        assertThatThrownBy(() -> A2AClientTransportConfigurer.transport(JSONRPCTransport.class, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("transportConfigBuilder");
+    }
+
+    @Test
+    void buildClient_withoutConfigurer_usesDefaultJsonRpcTransport() {
+        try (MockedStatic<Client> clientStatic = mockStatic(Client.class)) {
+            ClientBuilder clientBuilder = mock(ClientBuilder.class);
+            Client client = mock(Client.class);
+            clientStatic.when(() -> Client.builder(any())).thenReturn(clientBuilder);
+            when(clientBuilder.build()).thenReturn(client);
+
+            Client result = DefaultA2AClientBuilder.buildClient(null, null);
+
+            assertThat(result).isSameAs(client);
+            verify(clientBuilder).withTransport(eq(JSONRPCTransport.class), any(JSONRPCTransportConfigBuilder.class));
+            verify(clientBuilder).build();
+        }
+    }
+
+    @Test
+    void buildClient_withConfigurer_appliesConfigurerInsteadOfDefault() {
+        try (MockedStatic<Client> clientStatic = mockStatic(Client.class)) {
+            ClientBuilder clientBuilder = mock(ClientBuilder.class);
+            Client client = mock(Client.class);
+            clientStatic.when(() -> Client.builder(any())).thenReturn(clientBuilder);
+            when(clientBuilder.build()).thenReturn(client);
+
+            AtomicBoolean configured = new AtomicBoolean(false);
+            A2AClientTransportConfigurer configurer = builder -> {
+                assertThat(builder).isSameAs(clientBuilder);
+                configured.set(true);
+            };
+
+            Client result = DefaultA2AClientBuilder.buildClient(null, configurer);
+
+            assertThat(result).isSameAs(client);
+            assertThat(configured).isTrue();
+            // the default JSON-RPC transport must not be applied when a configurer is supplied
+            verify(clientBuilder, never())
+                    .withTransport(eq(JSONRPCTransport.class), any(JSONRPCTransportConfigBuilder.class));
+            verify(clientBuilder).build();
+        }
+    }
+
+    @Test
+    void clientTransport_rejectsUnexpectedTypeAndAcceptsNull() {
+        try (MockedStatic<A2A> a2aStatic = mockStatic(A2A.class)) {
+            AgentCard agentCard = mock(AgentCard.class);
+            when(agentCard.name()).thenReturn("test-agent");
+            a2aStatic.when(() -> A2A.getAgentCard(anyString())).thenReturn(agentCard);
+
+            DefaultA2AClientBuilder<UntypedAgent> builder =
+                    new DefaultA2AClientBuilder<>("http://localhost:1234", UntypedAgent.class);
+
+            assertThatThrownBy(() -> builder.clientTransport("not a configurer"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("A2AClientTransportConfigurer");
+
+            assertThat(builder.clientTransport(null)).isSameAs(builder);
+        }
     }
 }

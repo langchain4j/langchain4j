@@ -17,6 +17,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import dev.langchain4j.agentic.agent.AgentBuilder;
 import dev.langchain4j.agentic.agent.UntypedAgentBuilder;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
+import dev.langchain4j.agentic.declarative.A2AClientTransportSupplier;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
@@ -28,16 +29,16 @@ import dev.langchain4j.agentic.declarative.ParallelAgent;
 import dev.langchain4j.agentic.declarative.ParallelMapperAgent;
 import dev.langchain4j.agentic.declarative.PlannerAgent;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
-import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.A2AService;
+import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
 import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.AgentUtil;
-import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.internal.McpService;
 import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgenticService;
 import dev.langchain4j.agentic.planner.PlannerBasedService;
 import dev.langchain4j.agentic.planner.PlannerBasedServiceImpl;
@@ -709,6 +710,9 @@ public class AgenticServices {
                         .toArray(String[]::new))
                 .outputKey(AgentUtil.outputKey(a2aClient.outputKey(), a2aClient.typedOutputKey()))
                 .async(a2aClient.async());
+
+        getAnnotatedMethodOnClass(agentServiceClass, A2AClientTransportSupplier.class)
+                .ifPresent(method -> a2aClientBuilder.clientTransport(invokeStatic(method)));
 
         getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
                 .ifPresent(method -> {

@@ -32,6 +32,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.a2aproject.sdk.A2A;
 import org.a2aproject.sdk.client.Client;
+import org.a2aproject.sdk.client.ClientBuilder;
 import org.a2aproject.sdk.client.ClientEvent;
 import org.a2aproject.sdk.client.MessageEvent;
 import org.a2aproject.sdk.client.TaskEvent;
@@ -60,7 +61,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private static final Logger LOG = LoggerFactory.getLogger(DefaultA2AClientBuilder.class);
 
     private final AgentCard agentCard;
-    private final Client a2aClient;
+    private Client a2aClient;
 
     private final String name;
     private String agentId;
@@ -71,18 +72,12 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private boolean async;
 
     private AgentListener agentListener;
+    private A2AClientTransportConfigurer transportConfigurer;
 
     DefaultA2AClientBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
         this.agentCard = agentCard(a2aServerUrl);
         this.name = agentCard.name();
         this.agentId = this.name;
-        try {
-            this.a2aClient = Client.builder(agentCard)
-                    .withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder())
-                    .build();
-        } catch (A2AClientException e) {
-            throw new RuntimeException(e);
-        }
         this.agentServiceClass = agentServiceClass;
     }
 
@@ -94,11 +89,31 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         }
     }
 
+    /**
+     * Builds the underlying A2A {@link Client}, applying the given {@link A2AClientTransportConfigurer} when provided
+     * and falling back to the default JSON-RPC transport otherwise.
+     */
+    static Client buildClient(AgentCard agentCard, A2AClientTransportConfigurer transportConfigurer) {
+        ClientBuilder clientBuilder = Client.builder(agentCard);
+        if (transportConfigurer != null) {
+            transportConfigurer.configure(clientBuilder);
+        } else {
+            clientBuilder.withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder());
+        }
+        try {
+            return clientBuilder.build();
+        } catch (A2AClientException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @Override
     public T build() {
         if (agentServiceClass == UntypedAgent.class && inputKeys == null) {
             throw new IllegalArgumentException("Input names must be provided for UntypedAgent.");
         }
+
+        this.a2aClient = buildClient(agentCard, transportConfigurer);
 
         Object agent = Proxy.newProxyInstance(
                 agentServiceClass.getClassLoader(), new Class<?>[] {agentServiceClass, A2AClientInstance.class}, this);
@@ -312,6 +327,17 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     @Override
     public DefaultA2AClientBuilder<T> listener(AgentListener agentListener) {
         this.agentListener = agentListener;
+        return this;
+    }
+
+    @Override
+    public DefaultA2AClientBuilder<T> clientTransport(Object transportConfigurer) {
+        if (transportConfigurer != null && !(transportConfigurer instanceof A2AClientTransportConfigurer)) {
+            throw new IllegalArgumentException("clientTransport() expects an instance of "
+                    + A2AClientTransportConfigurer.class.getName() + " but got "
+                    + transportConfigurer.getClass().getName());
+        }
+        this.transportConfigurer = (A2AClientTransportConfigurer) transportConfigurer;
         return this;
     }
 
