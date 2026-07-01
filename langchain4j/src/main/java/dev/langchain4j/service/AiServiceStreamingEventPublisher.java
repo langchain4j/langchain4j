@@ -604,7 +604,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
 
             // Output guardrails (and any reprompt round-trips to the model) run on the virtual-thread executor,
             // never on the model-delivery thread: a blocking guardrail or a reprompt blocks a virtual thread
-            // (non-pinning), not the delivery thread.
+            // (non-pinning), not the delivery thread. TODO
             CompletableFuture<ChatResponse> guarded =
                     context.guardrailService().executeGuardrailsAsync(methodKey, request);
             guardrailsFuture.set(guarded);
