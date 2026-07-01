@@ -919,6 +919,23 @@ enum Priority {
 ```
 :::
 
+### Tool parameter schema options
+
+By default, JSON schemas generated for tool parameters include only fields declared directly on the
+parameter class, and fields annotated with Jackson's `@JsonIgnore` are still included. This preserves
+the existing behavior.
+
+When registering `@Tool` objects through an AI Service builder, these behaviors can be enabled explicitly:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(model)
+        .includeInheritedFields(true)
+        .respectJsonIgnoreAnnotations(true)
+        .tools(new MyTools())
+        .build();
+```
+
 ### `InvocationParameters`
 If you wish to pass extra data into the tool when invoking AI Service, you can do it with
 `InvocationParameters`:
