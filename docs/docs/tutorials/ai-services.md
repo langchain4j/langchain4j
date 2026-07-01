@@ -138,6 +138,20 @@ Friend friend = AiServices.builder(Friend.class)
 ```
 As you can see, you can provide different system messages based on a chat memory ID (user or conversation).
 
+When you need access to the current AI Service invocation, use `systemMessageProviderWithContext`.
+This exposes `InvocationContext`, including the method name, chat memory ID and method arguments.
+The `UserMessage` is prepared later, so use the method arguments to inspect the current user input:
+
+```java
+Friend friend = AiServices.builder(Friend.class)
+    .chatModel(model)
+    .systemMessageProviderWithContext(context -> {
+        Object userInput = context.methodArguments().get(0);
+        return "You are a good friend of mine. The current user input is: " + userInput;
+    })
+    .build();
+```
+
 ### System Message Transformer
 
 A system message transformer allows you to dynamically modify the system message on every invocation,
