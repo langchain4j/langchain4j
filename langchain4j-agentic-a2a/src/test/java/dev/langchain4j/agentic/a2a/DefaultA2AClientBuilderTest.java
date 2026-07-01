@@ -11,16 +11,23 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.declarative.A2AClientAgent;
+import dev.langchain4j.agentic.declarative.A2AClientTransportSupplier;
+import dev.langchain4j.service.V;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import org.a2aproject.sdk.A2A;
 import org.a2aproject.sdk.client.Client;
 import org.a2aproject.sdk.client.ClientBuilder;
 import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransport;
 import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransportConfigBuilder;
+import org.a2aproject.sdk.spec.AgentCapabilities;
 import org.a2aproject.sdk.spec.AgentCard;
+import org.a2aproject.sdk.spec.AgentInterface;
 import org.a2aproject.sdk.spec.Artifact;
 import org.a2aproject.sdk.spec.Message;
 import org.a2aproject.sdk.spec.Part;
@@ -173,11 +180,23 @@ class DefaultA2AClientBuilderTest {
         }
     }
 
+    private static AgentCard minimalAgentCard(String name) {
+        return AgentCard.builder()
+                .name(name)
+                .description("test agent")
+                .version("1.0")
+                .capabilities(new AgentCapabilities(false, false, false, List.of()))
+                .defaultInputModes(List.of("text"))
+                .defaultOutputModes(List.of("text"))
+                .skills(List.of())
+                .supportedInterfaces(List.of(new AgentInterface("JSONRPC", "http://localhost:1234")))
+                .build();
+    }
+
     @Test
     void clientTransport_rejectsUnexpectedTypeAndAcceptsNull() {
         try (MockedStatic<A2A> a2aStatic = mockStatic(A2A.class)) {
-            AgentCard agentCard = mock(AgentCard.class);
-            when(agentCard.name()).thenReturn("test-agent");
+            AgentCard agentCard = minimalAgentCard("test-agent");
             a2aStatic.when(() -> A2A.getAgentCard(anyString())).thenReturn(agentCard);
 
             DefaultA2AClientBuilder<UntypedAgent> builder =
@@ -188,6 +207,40 @@ class DefaultA2AClientBuilderTest {
                     .hasMessageContaining("A2AClientTransportConfigurer");
 
             assertThat(builder.clientTransport(null)).isSameAs(builder);
+        }
+    }
+
+    static final AtomicReference<ClientBuilder> DECLARATIVE_CONFIGURED_BUILDER = new AtomicReference<>();
+
+    public interface TransportConfiguredAgent {
+
+        @A2AClientAgent(a2aServerUrl = "http://localhost:1234", outputKey = "response")
+        String ask(@V("question") String question);
+
+        @A2AClientTransportSupplier
+        static A2AClientTransportConfigurer transport() {
+            return DECLARATIVE_CONFIGURED_BUILDER::set;
+        }
+    }
+
+    @Test
+    void declarativeAgent_appliesTransportConfigurerFromSupplier() {
+        DECLARATIVE_CONFIGURED_BUILDER.set(null);
+        try (MockedStatic<A2A> a2aStatic = mockStatic(A2A.class);
+                MockedStatic<Client> clientStatic = mockStatic(Client.class)) {
+            AgentCard agentCard = minimalAgentCard("declarative-agent");
+            a2aStatic.when(() -> A2A.getAgentCard(anyString())).thenReturn(agentCard);
+            ClientBuilder clientBuilder = mock(ClientBuilder.class);
+            clientStatic.when(() -> Client.builder(any())).thenReturn(clientBuilder);
+            when(clientBuilder.build()).thenReturn(mock(Client.class));
+
+            AgenticServices.createAgenticSystem(TransportConfiguredAgent.class);
+
+            // the configurer returned by the @A2AClientTransportSupplier method must be applied to the client builder
+            assertThat(DECLARATIVE_CONFIGURED_BUILDER.get()).isSameAs(clientBuilder);
+            // and the default JSON-RPC transport must not be applied when a supplier is present
+            verify(clientBuilder, never())
+                    .withTransport(eq(JSONRPCTransport.class), any(JSONRPCTransportConfigBuilder.class));
         }
     }
 }

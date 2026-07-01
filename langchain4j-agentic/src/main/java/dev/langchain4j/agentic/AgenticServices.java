@@ -712,7 +712,14 @@ public class AgenticServices {
                 .async(a2aClient.async());
 
         getAnnotatedMethodOnClass(agentServiceClass, A2AClientTransportSupplier.class)
-                .ifPresent(method -> a2aClientBuilder.clientTransport(invokeStatic(method)));
+                .ifPresent(method -> {
+                    if (!Modifier.isStatic(method.getModifiers()) || method.getParameterCount() != 0) {
+                        throw new IllegalArgumentException(
+                                "A method annotated with @A2AClientTransportSupplier must be "
+                                        + "static and take no arguments: " + method);
+                    }
+                    a2aClientBuilder.clientTransport(invokeStatic(method));
+                });
 
         getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
                 .ifPresent(method -> {

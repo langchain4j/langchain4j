@@ -25,7 +25,11 @@ public interface A2AClientBuilder<T> {
      * @param transportConfigurer the transport configurer to apply, or {@code null} to use the default transport.
      * @return this builder.
      */
-    A2AClientBuilder<T> clientTransport(Object transportConfigurer);
+    default A2AClientBuilder<T> clientTransport(Object transportConfigurer) {
+        // Default no-op so that pre-existing third-party implementations keep working unchanged; implementations
+        // supporting transport configuration (such as the one in langchain4j-agentic-a2a) override this method.
+        return this;
+    }
 
     T build();
 }
