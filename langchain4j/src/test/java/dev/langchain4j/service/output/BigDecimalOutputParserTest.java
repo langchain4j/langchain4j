@@ -3,7 +3,10 @@ package dev.langchain4j.service.output;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 import java.math.BigDecimal;
+import java.util.Optional;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -70,5 +73,21 @@ class BigDecimalOutputParserTest {
 
         // then
         assertThat(instructions).isEqualTo("floating point number");
+    }
+
+    @Test
+    void json_schema() {
+        // when
+        Optional<JsonSchema> jsonSchema = parser.jsonSchema();
+
+        // then
+        assertThat(jsonSchema)
+                .hasValue(JsonSchema.builder()
+                        .name("number")
+                        .rootElement(JsonObjectSchema.builder()
+                                .addNumberProperty("value")
+                                .required("value")
+                                .build())
+                        .build());
     }
 }
