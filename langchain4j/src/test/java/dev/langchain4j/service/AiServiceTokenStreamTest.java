@@ -22,6 +22,7 @@ import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
@@ -57,6 +58,7 @@ class AiServiceTokenStreamTest {
     static Consumer<PartialToolCall> DUMMY_PARTIAL_TOOL_CALL_HANDLER = (partialToolCall) -> {};
     static BiConsumer<PartialToolCall, PartialToolCallContext> DUMMY_PARTIAL_TOOL_CALL_WITH_CONTEXT_HANDLER =
             (partialToolCall, partialToolCallContext) -> {};
+    static Consumer<StreamingHandle> DUMMY_STREAMING_HANDLE_HANDLER = (streamingHandle) -> {};
     static Consumer<Throwable> DUMMY_ERROR_HANDLER = (error) -> {};
     static Consumer<ChatResponse> DUMMY_CHAT_RESPONSE_HANDLER = (chatResponse) -> {};
     static Consumer<BeforeToolExecution> DUMMY_BEFORE_TOOL_EXECUTION_HANDLER = (beforeToolExecution) -> {};
@@ -283,6 +285,18 @@ class AiServiceTokenStreamTest {
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("onCompleteResponse can be invoked on TokenStream at most 1 time");
+    }
+
+    @Test
+    void start_onStreamingHandleInvokedMultipleTimes_shouldThrowException() {
+        tokenStream
+                .onStreamingHandle(DUMMY_STREAMING_HANDLE_HANDLER)
+                .onStreamingHandle(DUMMY_STREAMING_HANDLE_HANDLER)
+                .ignoreErrors();
+
+        assertThatThrownBy(() -> tokenStream.start())
+                .isExactlyInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("onStreamingHandle can be invoked on TokenStream at most 1 time");
     }
 
     @Test
