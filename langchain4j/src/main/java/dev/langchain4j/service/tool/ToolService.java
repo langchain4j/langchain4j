@@ -773,161 +773,193 @@ public class ToolService {
             ToolServiceContext toolServiceContext,
             CompletableFuture<?> cancellation,
             Function<ChatRequest, CompletableFuture<ChatResponse>> chatModelInvoker) {
-        return executeInferenceAndToolsLoopAsync(
-                context,
-                memoryId,
-                chatResponse,
-                parameters,
-                messages,
-                chatMemory,
-                invocationContext,
-                toolServiceContext,
-                cancellation,
-                chatResponse.metadata().tokenUsage(),
-                new ArrayList<>(),
-                new ArrayList<>(),
-                newCompensableExecutionsAccumulator(),
-                maxToolCallingRoundTrips,
-                chatModelInvoker);
+        return new AsyncToolLoop(context, memoryId, chatMemory, invocationContext, cancellation, chatModelInvoker)
+                .run(
+                        chatResponse,
+                        parameters,
+                        messages,
+                        toolServiceContext,
+                        chatResponse.metadata().tokenUsage(),
+                        maxToolCallingRoundTrips);
     }
 
-    private CompletableFuture<ToolServiceResult> executeInferenceAndToolsLoopAsync(
-            AiServiceContext context,
-            Object memoryId,
-            ChatResponse chatResponse,
-            ChatRequestParameters parameters,
-            List<ChatMessage> messages,
-            ChatMemory chatMemory,
-            InvocationContext invocationContext,
-            ToolServiceContext toolServiceContext,
-            CompletableFuture<?> cancellation,
-            TokenUsage aggregateTokenUsage,
-            List<ToolExecution> toolExecutions,
-            List<ChatResponse> intermediateResponses,
-            List<CompensableToolExecution> compensableExecutions,
-            int roundTripsLeft,
-            Function<ChatRequest, CompletableFuture<ChatResponse>> chatModelInvoker) {
+    /**
+     * Drives the non-blocking tool-calling loop for the {@code CompletableFuture} and reactive AI Service modes.
+     * <p>
+     * The invariants that never change across tool-calling rounds (the model invoker, memory, context, cancellation)
+     * and the accumulators shared across rounds (tool executions, intermediate responses, compensable executions) are
+     * held as fields, so each step takes only the per-round state as arguments. This keeps the loop a linear sequence
+     * of composed steps ({@link #run} -> {@link #afterToolsExecuted} -> {@link #callModelAndContinue} -> {@link #run})
+     * instead of a single deeply nested lambda.
+     */
+    private final class AsyncToolLoop {
 
-        if (isCancelled(cancellation)) {
-            return CompletableFuture.failedFuture(new CancellationException());
+        private final AiServiceContext context;
+        private final Object memoryId;
+        private final ChatMemory chatMemory;
+        private final InvocationContext invocationContext;
+        private final CompletableFuture<?> cancellation;
+        private final Function<ChatRequest, CompletableFuture<ChatResponse>> chatModelInvoker;
+
+        private final List<ToolExecution> toolExecutions = new ArrayList<>();
+        private final List<ChatResponse> intermediateResponses = new ArrayList<>();
+        private final List<CompensableToolExecution> compensableExecutions = newCompensableExecutionsAccumulator();
+
+        AsyncToolLoop(
+                AiServiceContext context,
+                Object memoryId,
+                ChatMemory chatMemory,
+                InvocationContext invocationContext,
+                CompletableFuture<?> cancellation,
+                Function<ChatRequest, CompletableFuture<ChatResponse>> chatModelInvoker) {
+            this.context = context;
+            this.memoryId = memoryId;
+            this.chatMemory = chatMemory;
+            this.invocationContext = invocationContext;
+            this.cancellation = cancellation;
+            this.chatModelInvoker = chatModelInvoker;
         }
 
-        if (roundTripsLeft == 0) {
-            return CompletableFuture.failedFuture(runtime(
-                    "Something is wrong, exceeded %s tool calling round trips (maxToolCallingRoundTrips)",
-                    maxToolCallingRoundTrips));
-        }
+        /**
+         * Runs one round: adds the model's message to memory, and either finishes (no tool calls) or executes the
+         * requested tools and hands off to {@link #afterToolsExecuted}. Recurses for the next round.
+         */
+        CompletableFuture<ToolServiceResult> run(
+                ChatResponse chatResponse,
+                ChatRequestParameters parameters,
+                List<ChatMessage> messages,
+                ToolServiceContext toolServiceContext,
+                TokenUsage aggregateTokenUsage,
+                int roundTripsLeft) {
 
-        AiMessage aiMessage = chatResponse.aiMessage();
+            if (isCancelled(cancellation)) {
+                return CompletableFuture.failedFuture(new CancellationException());
+            }
 
-        final List<ChatMessage> accumulator;
-        final CompletionStage<Void> aiMessageAdded;
-        if (chatMemory != null) {
-            aiMessageAdded = chatMemory.addAsync(List.of(aiMessage));
-            accumulator = messages;
-        } else {
-            List<ChatMessage> updated = new ArrayList<>(messages);
-            updated.add(aiMessage);
-            accumulator = updated;
-            aiMessageAdded = CompletableFuture.completedFuture(null);
-        }
+            if (roundTripsLeft == 0) {
+                return CompletableFuture.failedFuture(runtime(
+                        "Something is wrong, exceeded %s tool calling round trips (maxToolCallingRoundTrips)",
+                        maxToolCallingRoundTrips));
+            }
 
-        return aiMessageAdded
-                .thenCompose(ignored -> {
-                    if (!aiMessage.hasToolExecutionRequests()) {
-                        return CompletableFuture.completedFuture(finalToolServiceResult(
-                                chatResponse, intermediateResponses, toolExecutions, aggregateTokenUsage));
-                    }
+            AiMessage aiMessage = chatResponse.aiMessage();
 
-                    intermediateResponses.add(chatResponse);
+            final List<ChatMessage> accumulator;
+            final CompletionStage<Void> aiMessageAdded;
+            if (chatMemory != null) {
+                aiMessageAdded = chatMemory.addAsync(List.of(aiMessage));
+                accumulator = messages;
+            } else {
+                List<ChatMessage> updated = new ArrayList<>(messages);
+                updated.add(aiMessage);
+                accumulator = updated;
+                aiMessageAdded = CompletableFuture.completedFuture(null);
+            }
 
-                    List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
-                    return executeToolsAsync(
-                                    toolExecutionRequests, toolServiceContext.toolExecutors(), invocationContext)
-                            .thenCompose(toolResults -> {
-                                ToolResultsOutcome outcome = processToolResults(
-                                        context,
-                                        toolExecutionRequests,
-                                        toolResults,
-                                        toolExecutions,
-                                        invocationContext,
-                                        toolServiceContext);
+            return aiMessageAdded
+                    .thenCompose(ignored -> {
+                        if (!aiMessage.hasToolExecutionRequests()) {
+                            return CompletableFuture.completedFuture(finalToolServiceResult(
+                                    chatResponse, intermediateResponses, toolExecutions, aggregateTokenUsage));
+                        }
 
-                                CompletableFuture<Void> compensated = compensateIfNeededAsync(
-                                        toolExecutionRequests,
-                                        toolResults,
-                                        outcome.resultMessages(),
-                                        compensableExecutions,
-                                        outcome.anyToolErrored(),
-                                        chatMemory,
+                        intermediateResponses.add(chatResponse);
+
+                        List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
+                        return executeToolsAsync(
+                                        toolExecutionRequests, toolServiceContext.toolExecutors(), invocationContext)
+                                .thenCompose(toolResults -> afterToolsExecuted(
+                                        parameters,
                                         accumulator,
-                                        invocationContext);
+                                        toolServiceContext,
+                                        aggregateTokenUsage,
+                                        roundTripsLeft,
+                                        toolExecutionRequests,
+                                        toolResults));
+                    })
+                    .toCompletableFuture();
+        }
 
-                                return compensated.thenCompose(ignoredCompensation -> {
-                                    if (shouldReturnImmediately(
-                                            outcome.anyToolErrored(), outcome.returnBehaviors())) {
-                                        return CompletableFuture.completedFuture(immediateToolServiceResult(
-                                                intermediateResponses, toolExecutions, aggregateTokenUsage));
-                                    }
+        /**
+         * After the round's tools have executed: records their results, compensates if a tool errored, and either
+         * returns immediately (per {@link ReturnBehavior}) or persists the results and continues via
+         * {@link #callModelAndContinue}.
+         */
+        private CompletableFuture<ToolServiceResult> afterToolsExecuted(
+                ChatRequestParameters parameters,
+                List<ChatMessage> accumulator,
+                ToolServiceContext toolServiceContext,
+                TokenUsage aggregateTokenUsage,
+                int roundTripsLeft,
+                List<ToolExecutionRequest> toolExecutionRequests,
+                Map<ToolExecutionRequest, ToolExecutionResult> toolResults) {
 
-                                    // a cancellation may have arrived while the tools were executing - do not start
-                                    // a new model call in that case
-                                    if (isCancelled(cancellation)) {
-                                        return CompletableFuture.<ToolServiceResult>failedFuture(
-                                                new CancellationException());
-                                    }
+            ToolResultsOutcome outcome = processToolResults(
+                    context, toolExecutionRequests, toolResults, toolExecutions, invocationContext, toolServiceContext);
 
-                                    return persistToolResultsAndResolveMessages(
-                                                    context,
-                                                    chatMemory,
-                                                    accumulator,
-                                                    outcome.resultMessages(),
-                                                    invocationContext)
-                                            .thenCompose(nextMessages -> {
-                                            NextChatRequest next = prepareNextChatRequest(
-                                                    context,
-                                                    memoryId,
-                                                    nextMessages,
-                                                    invocationContext,
-                                                    toolServiceContext,
-                                                    toolResults,
-                                                    parameters);
+            return compensateIfNeededAsync(
+                            toolExecutionRequests,
+                            toolResults,
+                            outcome.resultMessages(),
+                            compensableExecutions,
+                            outcome.anyToolErrored(),
+                            chatMemory,
+                            accumulator,
+                            invocationContext)
+                    .thenCompose(ignored -> {
+                        if (shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors())) {
+                            return CompletableFuture.completedFuture(immediateToolServiceResult(
+                                    intermediateResponses, toolExecutions, aggregateTokenUsage));
+                        }
 
-                                            CompletableFuture<ChatResponse> nextModelCall =
-                                                    chatModelInvoker.apply(next.chatRequest());
-                                            propagateCancellation(cancellation, nextModelCall);
-                                            return nextModelCall.thenCompose(nextChatResponse -> {
-                                                fireResponseReceivedEvent(
-                                                        next.chatRequest(),
-                                                        nextChatResponse,
-                                                        invocationContext,
-                                                        context.eventListenerRegistrar);
-                                                return executeInferenceAndToolsLoopAsync(
-                                                        context,
-                                                        memoryId,
-                                                        nextChatResponse,
-                                                        next.parameters(),
-                                                        next.messages(),
-                                                        chatMemory,
-                                                        invocationContext,
-                                                        next.toolServiceContext(),
-                                                        cancellation,
-                                                        TokenUsage.sum(
-                                                                aggregateTokenUsage,
-                                                                nextChatResponse
-                                                                        .metadata()
-                                                                        .tokenUsage()),
-                                                        toolExecutions,
-                                                        intermediateResponses,
-                                                        compensableExecutions,
-                                                        roundTripsLeft - 1,
-                                                        chatModelInvoker);
-                                            });
-                                        });
-                                });
-                            });
-                })
-                .toCompletableFuture();
+                        // a cancellation may have arrived while the tools were executing - do not start
+                        // a new model call in that case
+                        if (isCancelled(cancellation)) {
+                            return CompletableFuture.<ToolServiceResult>failedFuture(new CancellationException());
+                        }
+
+                        return persistToolResultsAndResolveMessages(
+                                        context, chatMemory, accumulator, outcome.resultMessages(), invocationContext)
+                                .thenCompose(nextMessages -> callModelAndContinue(
+                                        parameters,
+                                        toolServiceContext,
+                                        aggregateTokenUsage,
+                                        roundTripsLeft,
+                                        toolResults,
+                                        nextMessages))
+                                .toCompletableFuture();
+                    });
+        }
+
+        /**
+         * Builds the next chat request, re-invokes the model without blocking, and recurses into {@link #run} for the
+         * next round.
+         */
+        private CompletableFuture<ToolServiceResult> callModelAndContinue(
+                ChatRequestParameters parameters,
+                ToolServiceContext toolServiceContext,
+                TokenUsage aggregateTokenUsage,
+                int roundTripsLeft,
+                Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+                List<ChatMessage> nextMessages) {
+
+            NextChatRequest next = prepareNextChatRequest(
+                    context, memoryId, nextMessages, invocationContext, toolServiceContext, toolResults, parameters);
+
+            CompletableFuture<ChatResponse> nextModelCall = chatModelInvoker.apply(next.chatRequest());
+            propagateCancellation(cancellation, nextModelCall);
+            return nextModelCall.thenCompose(nextChatResponse -> {
+                fireResponseReceivedEvent(
+                        next.chatRequest(), nextChatResponse, invocationContext, context.eventListenerRegistrar);
+                return run(
+                        nextChatResponse,
+                        next.parameters(),
+                        next.messages(),
+                        next.toolServiceContext(),
+                        TokenUsage.sum(aggregateTokenUsage, nextChatResponse.metadata().tokenUsage()),
+                        roundTripsLeft - 1);
+            });
+        }
     }
 
     private static boolean isCancelled(CompletableFuture<?> cancellation) {
@@ -1476,7 +1508,6 @@ public class ToolService {
             List<ToolExecutionRequest> toolRequests,
             Map<String, ToolExecutor> toolExecutors,
             InvocationContext invocationContext) {
-        // CompletableFuture AI Service path: tools run concurrently by default (unless explicitly disabled).
         return executeToolsAsync(
                 toolRequests, toolExecutors, invocationContext, null, null, effectiveToolExecutor(true));
     }

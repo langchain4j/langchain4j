@@ -1325,7 +1325,7 @@ public abstract class AiServices<T> {
         }
     }
 
-    static void verifyModeration(Moderation moderation) {
+    static void verifyModeration(Moderation moderation) { // TODO no moderation for async/reactive
         if (moderation.flagged()) {
             throw new ModerationException(
                     String.format("Text \"%s\" violates content policy", moderation.flaggedText()), moderation);
