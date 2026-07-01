@@ -17,9 +17,11 @@ sidebar_position: 19
 ## APIs
 
 - `VoyageAiEmbeddingModel`
+- `VoyageAiContextualizedEmbeddingModel`
 
 
 ## Examples
 
 - [VoyageAiEmbeddingModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-voyage-ai/src/test/java/dev/langchain4j/model/voyageai/VoyageAiEmbeddingModelIT.java)
+- [VoyageAiContextualizedEmbeddingModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-voyage-ai/src/test/java/dev/langchain4j/model/voyageai/VoyageAiContextualizedEmbeddingModelIT.java)
 - [VoyageAiEmbeddingModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/voyage-ai-examples/src/main/java/VoyageAiEmbeddingModelExample.java)
