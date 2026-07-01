@@ -11,6 +11,7 @@ import com.google.genai.ResponseStream;
 import com.google.genai.types.Candidate;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
+import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.Part;
 import com.google.genai.types.SafetySetting;
@@ -19,14 +20,12 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import java.lang.reflect.Field;
-import org.mockito.ArgumentCaptor;
-import com.google.genai.types.GenerateContentConfig;
-import dev.langchain4j.model.chat.request.ChatRequest;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.HashMap;
@@ -36,6 +35,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class GoogleGenAiStreamingChatModelTest {
 
@@ -346,8 +346,7 @@ class GoogleGenAiStreamingChatModelTest {
         @SuppressWarnings("unchecked")
         ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
 
-        ArgumentCaptor<GenerateContentConfig> configCaptor = 
-                ArgumentCaptor.forClass(GenerateContentConfig.class);
+        ArgumentCaptor<GenerateContentConfig> configCaptor = ArgumentCaptor.forClass(GenerateContentConfig.class);
 
         when(models.generateContentStream(any(String.class), any(List.class), configCaptor.capture()))
                 .thenReturn(stream);
@@ -370,8 +369,10 @@ class GoogleGenAiStreamingChatModelTest {
         model.chat(request, new StreamingChatResponseHandler() {
             @Override
             public void onPartialResponse(String partialResponse) {}
+
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {}
+
             @Override
             public void onError(Throwable error) {}
         });

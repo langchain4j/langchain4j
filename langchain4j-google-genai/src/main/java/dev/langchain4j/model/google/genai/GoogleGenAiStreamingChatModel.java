@@ -119,9 +119,8 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(chatRequest.messages());
         List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages());
 
-        String requestCachedContent = chatRequest.parameters() instanceof GoogleGenAiChatRequestParameters p
-                ? p.cachedContent()
-                : null;
+        String requestCachedContent =
+                chatRequest.parameters() instanceof GoogleGenAiChatRequestParameters p ? p.cachedContent() : null;
         String finalCachedContent = getOrDefault(requestCachedContent, cachedContent);
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(

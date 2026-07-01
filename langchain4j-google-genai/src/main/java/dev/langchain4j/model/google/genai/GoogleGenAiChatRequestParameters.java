@@ -1,12 +1,11 @@
 package dev.langchain4j.model.google.genai;
 
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
-
-import java.util.Objects;
-
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.quoted;
+
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import java.util.Objects;
 
 public class GoogleGenAiChatRequestParameters extends DefaultChatRequestParameters {
 
@@ -50,20 +49,19 @@ public class GoogleGenAiChatRequestParameters extends DefaultChatRequestParamete
 
     @Override
     public String toString() {
-        return "GoogleGenAiChatRequestParameters{" +
-                "modelName=" + quoted(modelName()) +
-                ", temperature=" + temperature() +
-                ", topP=" + topP() +
-                ", topK=" + topK() +
-                ", frequencyPenalty=" + frequencyPenalty() +
-                ", presencePenalty=" + presencePenalty() +
-                ", maxOutputTokens=" + maxOutputTokens() +
-                ", stopSequences=" + stopSequences() +
-                ", toolSpecifications=" + toolSpecifications() +
-                ", toolChoice=" + toolChoice() +
-                ", responseFormat=" + responseFormat() +
-                ", cachedContent=" + quoted(cachedContent) +
-                '}';
+        return "GoogleGenAiChatRequestParameters{" + "modelName="
+                + quoted(modelName()) + ", temperature="
+                + temperature() + ", topP="
+                + topP() + ", topK="
+                + topK() + ", frequencyPenalty="
+                + frequencyPenalty() + ", presencePenalty="
+                + presencePenalty() + ", maxOutputTokens="
+                + maxOutputTokens() + ", stopSequences="
+                + stopSequences() + ", toolSpecifications="
+                + toolSpecifications() + ", toolChoice="
+                + toolChoice() + ", responseFormat="
+                + responseFormat() + ", cachedContent="
+                + quoted(cachedContent) + '}';
     }
 
     public static Builder builder() {
