@@ -123,7 +123,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
     private final InvocationContext invocationContext;
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
-    private final int bufferSize;
+    private final int bufferSize; // TODO
 
     private final Flow.Publisher<AiServiceStreamingEvent> delegate;
 
@@ -306,7 +306,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
             // Empty unless tools execute concurrently. Accessed only from the (serial) model delivery thread.
             Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> startedTools = new LinkedHashMap<>();
 
-            context.streamingChatModel.chat(chatRequest).subscribe(new Flow.Subscriber<StreamingEvent>() {
+            context.streamingChatModel.chat(chatRequest).subscribe(new Flow.Subscriber<>() {
 
                 private ChatResponse roundResponse;
 
