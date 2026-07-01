@@ -210,7 +210,7 @@ public class GitHubDocumentLoader {
                         "Content must be a file, and not a directory: " + content.getHtmlUrl());
             }
         } catch (IOException ioException) {
-            throw new RuntimeException("Failed to load document from GitHub: {}", ioException);
+            throw new RuntimeException("Failed to load document from GitHub: " + content.getHtmlUrl(), ioException);
         }
     }
 
