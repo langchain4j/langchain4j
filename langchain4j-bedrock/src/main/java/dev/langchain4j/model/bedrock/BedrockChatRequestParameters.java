@@ -19,6 +19,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
     private final CacheTTL cacheTtl;
     private final BedrockGuardrailConfiguration bedrockGuardrailConfiguration;
     private final BedrockServiceTier serviceTier;
+    private final Boolean strictTools;
 
     private BedrockChatRequestParameters(Builder builder) {
         super(builder);
@@ -27,6 +28,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
         this.cacheTtl = builder.cacheTtl;
         this.bedrockGuardrailConfiguration = builder.bedrockGuardrailConfiguration;
         this.serviceTier = builder.serviceTier;
+        this.strictTools = builder.strictTools;
     }
 
     @Override
@@ -69,6 +71,14 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
         return serviceTier;
     }
 
+    /**
+     * Returns whether Bedrock tool definitions should use strict schema enforcement by default.
+     * Individual tools can override this setting via {@link dev.langchain4j.agent.tool.ToolSpecification#strict()}.
+     */
+    public Boolean strictTools() {
+        return strictTools;
+    }
+
     public static class Builder extends DefaultChatRequestParameters.Builder<Builder> {
 
         private Map<String, Object> additionalModelRequestFields;
@@ -76,6 +86,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
         private CacheTTL cacheTtl;
         private BedrockGuardrailConfiguration bedrockGuardrailConfiguration;
         private BedrockServiceTier serviceTier;
+        private Boolean strictTools;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
@@ -95,6 +106,7 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
                 this.bedrockGuardrailConfiguration = getOrDefault(
                         bedrockRequestParameters.bedrockGuardrailConfiguration, bedrockGuardrailConfiguration);
                 this.serviceTier = getOrDefault(bedrockRequestParameters.serviceTier, serviceTier);
+                this.strictTools = getOrDefault(bedrockRequestParameters.strictTools, strictTools);
             }
             return this;
         }
@@ -204,6 +216,15 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
          */
         public Builder serviceTier(BedrockServiceTier serviceTier) {
             this.serviceTier = serviceTier;
+            return this;
+        }
+
+        /**
+         * Controls whether Bedrock tool definitions should use strict schema enforcement by default.
+         * Individual tools can override this setting via {@link dev.langchain4j.agent.tool.ToolSpecification#strict()}.
+         */
+        public Builder strictTools(Boolean strictTools) {
+            this.strictTools = strictTools;
             return this;
         }
 

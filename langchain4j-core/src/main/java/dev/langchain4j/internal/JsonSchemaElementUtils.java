@@ -444,7 +444,8 @@ public class JsonSchemaElementUtils {
                 map.put("additionalProperties", false);
             }
 
-            if (!jsonObjectSchema.definitions().isEmpty()) {
+            if (jsonObjectSchema.definitions() != null
+                    && !jsonObjectSchema.definitions().isEmpty()) {
                 map.put("$defs", toMap(jsonObjectSchema.definitions(), strict));
             }
 
