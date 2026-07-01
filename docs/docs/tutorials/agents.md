@@ -2691,6 +2691,138 @@ scope.completePendingResponse("manager-approval", "APPROVED by manager");
 
 This unblocks the waiting thread and the workflow continues to the shipping step without any restart.
 
+## Agents Registry
+
+The `langchain4j-agentic` module provides an SPI (Service Provider Interface) for an `AgentsRegistry`, allowing external providers to register agents that can be discovered by name and wired into any agentic pattern. This is especially useful for integrating agents provided by external systems, such as remote A2A protocol agents, into locally defined agentic workflows.
+
+The `AgentsRegistry` interface defines two methods for discovering agents:
+
+```java
+public interface AgentsRegistry {
+
+    Map<String, AgentInstance> allAgents();
+
+    AgentInstance getAgent(String name);
+
+    static AgentsRegistry get() { ... }
+}
+```
+
+- `allAgents()` returns a map of all registered agents keyed by their name.
+- `getAgent(String name)` returns the agent with the given name, throwing a `RuntimeException` if not found.
+
+The static `get()` method uses Java's `ServiceLoader` to discover registry implementations. Multiple providers are supported and automatically merged into a single composite registry; duplicate agent names across providers cause an exception at discovery time. If no provider is found, an empty registry is returned that throws on any lookup.
+
+To provide a registry implementation, create a class that implements the `AgentsRegistry` interface and register it via the standard Java SPI mechanism by creating a file `META-INF/services/dev.langchain4j.agentic.planner.AgentsRegistry` containing the fully qualified name of your implementation class.
+
+```java
+public class MyAgentsRegistry implements AgentsRegistry {
+
+    private final Map<String, AgentInstance> agents;
+
+    public MyAgentsRegistry() {
+        AgentInstance audienceEditor = (AgentInstance) AgenticServices
+                .agentBuilder(AudienceEditor.class)
+                .chatModel(myModel())
+                .outputKey("story")
+                .build();
+
+        AgentInstance styleEditor = (AgentInstance) AgenticServices
+                .agentBuilder(StyleEditor.class)
+                .chatModel(myModel())
+                .outputKey("story")
+                .build();
+
+        this.agents = Map.of(
+                "audienceEditor", audienceEditor,
+                "styleEditor", styleEditor);
+    }
+
+    @Override
+    public Map<String, AgentInstance> allAgents() {
+        return agents;
+    }
+
+    @Override
+    public AgentInstance getAgent(String name) {
+        AgentInstance agent = agents.get(name);
+        if (agent == null) {
+            throw new RuntimeException("No agent found with name: " + name);
+        }
+        return agent;
+    }
+}
+```
+
+The agents returned by the registry are standard `AgentInstance` objects, typically built using `AgenticServices.agentBuilder()`, so they are ready to be used as subagents in any agentic pattern.
+
+Once a registry is available via SPI, agents can be loaded and mixed with locally defined agents in any agentic pattern:
+
+```java
+AgentsRegistry registry = AgentsRegistry.get();
+
+CreativeWriter creativeWriter = AgenticServices
+        .agentBuilder(CreativeWriter.class)
+        .chatModel(BASE_MODEL)
+        .outputKey("story")
+        .build();
+
+AgentInstance audienceEditor = registry.getAgent("audienceEditor");
+AgentInstance styleEditor = registry.getAgent("styleEditor");
+
+UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+        .subAgents(creativeWriter, audienceEditor, styleEditor)
+        .outputKey("story")
+        .build();
+
+String story = (String) novelCreator.invoke(Map.of(
+        "topic", "dragons and wizards",
+        "style", "fantasy",
+        "audience", "young adults"));
+```
+
+Here the `CreativeWriter` is built locally while the `AudienceEditor` and `StyleEditor` are loaded from the registry by name and used as subagents alongside locally defined ones.
+
+The `@RegistryAgent` annotation allows loading agents from the registry in the declarative API. To use it, define a simple interface with a method annotated with `@RegistryAgent`, specifying the name of the agent in the registry:
+
+```java
+public interface AudienceEditorFromRegistry {
+    @RegistryAgent("audienceEditor")
+    String editStory(@V("story") String story, @V("audience") String audience);
+}
+
+public interface StyleEditorFromRegistry {
+    @RegistryAgent("styleEditor")
+    String editStory(@V("story") String story, @V("style") String style);
+}
+```
+
+These interfaces can then be used as subagents in a fully declarative agentic system definition:
+
+```java
+public interface DeclarativeStoryCreator {
+
+    @SequenceAgent(outputKey = "story",
+            subAgents = {CreativeWriter.class, AudienceEditorFromRegistry.class, StyleEditorFromRegistry.class})
+    String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
+
+    @ChatModelSupplier
+    static ChatModel chatModel() {
+        return BASE_MODEL;
+    }
+}
+```
+
+and instantiated as usual with `AgenticServices.createAgenticSystem()`:
+
+```java
+DeclarativeStoryCreator storyCreator = AgenticServices.createAgenticSystem(DeclarativeStoryCreator.class);
+
+String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
+```
+
+When the declarative system encounters a `@RegistryAgent` annotation, it automatically loads the corresponding agent from the registry by name and wires it into the agentic system. This allows mixing locally defined agents (like `CreativeWriter` with its `@ChatModelSupplier`) and registry-provided agents in the same declarative workflow.
+
 ## A2A Integration
 
 The additional `langchain4j-agentic-a2a` module provides a seamless integration with the [A2A](https://a2aprotocol.ai/) protocol, allowing to build agentic systems that can use remote A2A server agents and eventually mixing them with other locally defined agents.
