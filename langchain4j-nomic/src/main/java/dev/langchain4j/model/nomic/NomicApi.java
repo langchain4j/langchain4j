@@ -9,6 +9,6 @@ import retrofit2.http.POST;
 interface NomicApi {
 
     @POST("embedding/text")
-    @Headers({"Content-Type: application/json"})
+    @Headers({"Content-Type: application/json", "User-Agent: langchain4j-nomic"})
     Call<EmbeddingResponse> embed(@Body EmbeddingRequest request, @Header("Authorization") String authorizationHeader);
 }

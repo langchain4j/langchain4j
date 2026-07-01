@@ -76,7 +76,8 @@ public class WorkersAiClient {
         public Response intercept(Chain chain) throws IOException {
             Request.Builder builder = chain
                     .request().newBuilder()
-                    .header("Authorization", "Bearer " + apiToken);
+                    .header("Authorization", "Bearer " + apiToken)
+                    .header("User-Agent", "langchain4j-workers-ai");
             Request request = builder.build();
             return chain.proceed(request);
         }

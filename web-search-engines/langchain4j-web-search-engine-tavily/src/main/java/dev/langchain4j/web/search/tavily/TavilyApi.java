@@ -8,7 +8,7 @@ import retrofit2.http.POST;
 interface TavilyApi {
 
     @POST("search")
-    @Headers({"Content-Type: application/json"})
+    @Headers({"Content-Type: application/json", "User-Agent: langchain4j-web-search-engine-tavily"})
     Call<TavilyResponse> search(@Body TavilySearchRequest request);
 }
 

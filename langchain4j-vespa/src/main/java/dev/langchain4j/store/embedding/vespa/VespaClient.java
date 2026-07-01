@@ -59,6 +59,9 @@ class VespaClient {
                             .build();
                     request = request.newBuilder().url(url).build();
                 }
+                request = request.newBuilder()
+                        .addHeader("User-Agent", "langchain4j-vespa")
+                        .build();
                 return chain.proceed(request);
             });
 
