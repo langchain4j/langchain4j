@@ -1,6 +1,5 @@
 package dev.langchain4j.model.openai.internal;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.chat.response.StreamingEvent;
@@ -93,7 +92,7 @@ public abstract class OpenAiClient {
         public Logger logger;
         public Supplier<Map<String, String>> customHeadersSupplier;
         public Map<String, String> customQueryParams;
-        public int streamingBufferSize = DEFAULT_STREAMING_BUFFER_SIZE; // TODO
+        public Integer streamingBufferSize;
 
         public abstract T build();
 
@@ -219,8 +218,8 @@ public abstract class OpenAiClient {
          * @param streamingBufferSize the buffer size; must be greater than zero
          * @return builder
          */
-        public B streamingBufferSize(int streamingBufferSize) {
-            this.streamingBufferSize = ensureGreaterThanZero(streamingBufferSize, "streamingBufferSize"); // TODO
+        public B streamingBufferSize(Integer streamingBufferSize) {
+            this.streamingBufferSize = streamingBufferSize;
             return (B) this;
         }
     }

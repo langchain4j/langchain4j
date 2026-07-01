@@ -256,7 +256,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         private Map<String, String> customQueryParams;
         private Map<String, Object> customParameters;
         private List<ChatModelListener> listeners;
-        private int streamingBufferSize = OpenAiClient.DEFAULT_STREAMING_BUFFER_SIZE; // TODO
+        private Integer streamingBufferSize;
 
         public OpenAiStreamingChatModelBuilder() {
             // This is public so it can be extended
@@ -554,7 +554,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
          * model produces and the buffer overflows, the stream terminates with an {@link IllegalStateException}.
          * Defaults to {@value dev.langchain4j.model.openai.internal.OpenAiClient#DEFAULT_STREAMING_BUFFER_SIZE}.
          */
-        public OpenAiStreamingChatModelBuilder streamingBufferSize(int streamingBufferSize) {
+        public OpenAiStreamingChatModelBuilder streamingBufferSize(Integer streamingBufferSize) {
             this.streamingBufferSize = streamingBufferSize;
             return this;
         }

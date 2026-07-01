@@ -4,6 +4,7 @@ import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -100,7 +101,8 @@ public class DefaultOpenAiClient extends OpenAiClient {
         this.defaultHeaders = defaultHeaders;
         this.customHeadersSupplier = getOrDefault(builder.customHeadersSupplier, () -> Map::of);
         this.customQueryParams = builder.customQueryParams;
-        this.streamingBufferSize = builder.streamingBufferSize;
+        this.streamingBufferSize = ensureGreaterThanZero(
+                getOrDefault(builder.streamingBufferSize, DEFAULT_STREAMING_BUFFER_SIZE), "streamingBufferSize");
     }
 
     public static Builder builder() {

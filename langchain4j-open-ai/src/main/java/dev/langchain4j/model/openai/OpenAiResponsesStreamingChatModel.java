@@ -182,7 +182,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         private Boolean logResponses;
         private List<ChatModelListener> listeners;
         private ChatRequestParameters defaultRequestParameters;
-        private int streamingBufferSize = OpenAiClient.DEFAULT_STREAMING_BUFFER_SIZE; // TODO
+        private Integer streamingBufferSize;
 
         public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -208,7 +208,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
          * Sets the size of the bounded back-pressure buffer for the reactive streaming path. Defaults to
          * {@value dev.langchain4j.model.openai.internal.OpenAiClient#DEFAULT_STREAMING_BUFFER_SIZE}.
          */
-        public Builder streamingBufferSize(int streamingBufferSize) {
+        public Builder streamingBufferSize(Integer streamingBufferSize) {
             this.streamingBufferSize = streamingBufferSize;
             return this;
         }

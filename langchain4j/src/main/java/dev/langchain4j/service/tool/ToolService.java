@@ -349,9 +349,6 @@ public class ToolService {
                 if (acceptsToolExecution) {
                     method.setAccessible(true);
                     Method compensatingMethod = method;
-                    // The compensating method may return void (synchronous) or a CompletableFuture/CompletionStage
-                    // (asynchronous) — a blocking compensating action should return a future to stay off the
-                    // delivery thread, mirroring async @Tool methods and guardrails.
                     compensatingActions.put(toolName, (toolExecution, ctx) -> {
                         try {
                             return toVoidFuture(compensatingMethod.invoke(objectWithTools, toolExecution));
@@ -366,7 +363,6 @@ public class ToolService {
                             .methodToInvoke(method)
                             .propagateToolExecutionExceptions(true)
                             .build();
-                    // executeAsync handles both synchronous and CompletableFuture-returning compensating methods.
                     compensatingActions.put(toolName, (toolExecution, ctx) -> executor.executeAsync(
                                     toolExecution.request(), ctx)
                             .thenApply(result -> (Void) null));
@@ -679,8 +675,6 @@ public class ToolService {
 
             List<ToolExecutionResultMessage> resultMessages = outcome.resultMessages();
 
-            // Tool compensation (synchronous path): if any tool errored, roll back the successful compensable tools
-            // executed so far in this invocation, rewriting chat memory and this round's result messages in place.
             compensateIfNeeded(
                     toolExecutionRequests,
                     toolResults,
@@ -826,8 +820,6 @@ public class ToolService {
 
         AiMessage aiMessage = chatResponse.aiMessage();
 
-        // The AI message is written to memory without blocking the delivery thread (addAsync). When no memory is
-        // configured, it is appended to a local accumulator instead.
         final List<ChatMessage> accumulator;
         final CompletionStage<Void> aiMessageAdded;
         if (chatMemory != null) {
@@ -861,9 +853,6 @@ public class ToolService {
                                         invocationContext,
                                         toolServiceContext);
 
-                                // Tool compensation runs without blocking the delivery thread: a compensating
-                                // action that performs blocking I/O returns a CompletableFuture, and the chat-memory
-                                // rewrite uses ChatMemory.setAsync.
                                 CompletableFuture<Void> compensated = compensateIfNeededAsync(
                                         toolExecutionRequests,
                                         toolResults,

@@ -878,6 +878,7 @@ class AiServiceStreamingPublisherTest {
 
     @Test
     void streaming_buffer_size_must_be_positive() {
+        // Validation happens eagerly at build() time (not in the streamingBufferSize(...) setter).
         assertThatThrownBy(() -> AiServices.builder(EventStreamer.class)
                         .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hi")))
                         .streamingBufferSize(0)

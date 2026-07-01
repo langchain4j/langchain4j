@@ -123,7 +123,6 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
     private final InvocationContext invocationContext;
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
-    private final int bufferSize; // TODO
 
     private final Flow.Publisher<AiServiceStreamingEvent> delegate;
 
@@ -137,7 +136,6 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         this.invocationContext = parameters.invocationContext();
         this.commonGuardrailParams = parameters.commonGuardrailParams();
         this.methodKey = parameters.methodKey();
-        this.bufferSize = bufferSize;
 
         TubeConfiguration config = new TubeConfiguration()
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)

@@ -1,6 +1,5 @@
 package dev.langchain4j.service;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.spi.ServiceHelper.loadFactory;
@@ -716,7 +715,7 @@ public abstract class AiServices<T> {
      * @since 1.17.0
      */
     public AiServices<T> streamingBufferSize(int streamingBufferSize) {
-        context.streamingBufferSize = ensureGreaterThanZero(streamingBufferSize, "streamingBufferSize"); // TODO
+        context.streamingBufferSize = streamingBufferSize;
         return this;
     }
 
