@@ -1502,4 +1502,17 @@ class SqlFilterParserTest {
                         .isEqualTo(2024L)
                         .and(metadataKey("genre").isIn("comedy", "drama")));
     }
+
+    @Test
+    void should_support_date_functions_in_WHERE_clause() {
+
+        assertThat(parser.parse("SELECT * FROM movies WHERE WEEKOFYEAR(publish_date) = WEEKOFYEAR(CURDATE())"))
+                .isEqualTo(metadataKey("publish_date").isEqualTo(currentWeek()));
+        assertThat(parser.parse("SELECT * FROM movies WHERE DAYOFYEAR(publish_date) = DAYOFYEAR(CURDATE())"))
+                .isEqualTo(metadataKey("publish_date").isEqualTo(currentDayOfYear()));
+        assertThat(parser.parse("SELECT * FROM movies WHERE DAYOFMONTH(publish_date) = DAYOFMONTH(CURDATE())"))
+                .isEqualTo(metadataKey("publish_date").isEqualTo(currentDayOfMonth()));
+        assertThat(parser.parse("SELECT * FROM movies WHERE DAYOFWEEK(publish_date) = DAYOFWEEK(CURDATE())"))
+                .isEqualTo(metadataKey("publish_date").isEqualTo(currentDayOfWeek()));
+    }
 }
