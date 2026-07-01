@@ -51,6 +51,7 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .toolMetadataKeysToSend(...)
     .cacheSystemMessages(...)
     .cacheTools(...)
+    .returnCacheDiagnostics(...)
     .thinkingType(...)
     .thinkingBudgetTokens(...)
     .thinkingDisplay(...)
@@ -72,9 +73,10 @@ See the description of some of the parameters above [here](https://docs.anthropi
 
 ### Per-Request Parameters
 
-The Anthropic-specific options shown above (`cacheSystemMessages`, `cacheTools`, `thinkingType`,
-`thinkingBudgetTokens`, `sendThinking`, `returnThinking`, `midConversationSystemMessages`, `toolChoiceName`,
-`disableParallelToolUse` and `userId`)
+The Anthropic-specific options shown above (`cacheSystemMessages`, `cacheTools`, `returnCacheDiagnostics`,
+`thinkingType`, `thinkingBudgetTokens`, `sendThinking`, `returnThinking`, `midConversationSystemMessages`,
+`toolChoiceName`, `disableParallelToolUse` and `userId`), as well as `previousMessageId` (request-only, see
+[Cache Diagnostics](#cache-diagnostics)),
 can also be set per request via `AnthropicChatRequestParameters`, overriding the values configured on the model
 builder. This lets a single shared model instance vary these options from one call to the next — for example,
 enabling prompt caching for a long-running agent loop while skipping it for a cheap one-shot completion, without
@@ -491,6 +493,47 @@ To enable prompt caching for a `UserMessage`, you need to set the `cache_control
 UserMessage userMessage = UserMessage.from("Hello cached world");
 userMessage.attributes().put("cache_control", "ephemeral");
 ```
+
+### Cache Diagnostics
+
+Anthropic's (beta) [cache diagnostics](https://docs.anthropic.com/en/docs/build-with-claude/cache-diagnostics)
+feature reports *why* a prompt-cache hit was missed (model, system prompt, tools or message history changed),
+instead of only showing `cacheReadInputTokens` drop to zero.
+
+It requires the `cache-diagnosis-2026-04-07` beta header and is enabled via `returnCacheDiagnostics`. Pass
+`previousMessageId` as `null` on the first turn of a conversation to opt in, and the `id` of the previous
+response on every subsequent turn:
+
+```java
+AnthropicChatModel model = AnthropicChatModel.builder()
+        .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+        .beta("cache-diagnosis-2026-04-07")
+        .returnCacheDiagnostics(true)
+        .build();
+
+ChatResponse response1 = model.chat(ChatRequest.builder()
+        .messages(UserMessage.from("Summarize section 1."))
+        .build());
+String previousMessageId = ((AnthropicChatResponseMetadata) response1.metadata()).id();
+
+ChatResponse response2 = model.chat(ChatRequest.builder()
+        .messages(UserMessage.from("Summarize section 1."), UserMessage.from("Now summarize section 2."))
+        .parameters(AnthropicChatRequestParameters.builder()
+                // returnCacheDiagnostics is already enabled on the model above, so on subsequent turns
+                // you only need to supply the previousMessageId (it changes every turn).
+                .previousMessageId(previousMessageId)
+                .build())
+        .build());
+
+AnthropicCacheDiagnostics diagnostics = ((AnthropicChatResponseMetadata) response2.metadata()).cacheDiagnostics();
+if (diagnostics != null && diagnostics.cacheMissReasonType() != null) {
+    // e.g. "model_changed", "system_changed", "tools_changed", "messages_changed",
+    // "previous_message_not_found" or "unavailable"
+    System.out.println(diagnostics.cacheMissReasonType());
+}
+```
+
+`cacheDiagnostics()` is `null` when diagnostics weren't requested or no divergence was found.
 
 ## Thinking
 
