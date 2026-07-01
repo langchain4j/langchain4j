@@ -13,7 +13,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic</artifactId>
-    <version>1.17.0</version>
+    <version>1.17.1</version>
 </dependency>
 ```
 
@@ -56,6 +56,7 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .thinkingDisplay(...)
     .returnThinking(...)
     .sendThinking(...)
+    .midConversationSystemMessages(...)
     .timeout(...)
     .maxRetries(...)
     .logRequests(...)
@@ -72,7 +73,8 @@ See the description of some of the parameters above [here](https://docs.anthropi
 ### Per-Request Parameters
 
 The Anthropic-specific options shown above (`cacheSystemMessages`, `cacheTools`, `thinkingType`,
-`thinkingBudgetTokens`, `sendThinking`, `returnThinking`, `toolChoiceName`, `disableParallelToolUse` and `userId`)
+`thinkingBudgetTokens`, `sendThinking`, `returnThinking`, `midConversationSystemMessages`, `toolChoiceName`,
+`disableParallelToolUse` and `userId`)
 can also be set per request via `AnthropicChatRequestParameters`, overriding the values configured on the model
 builder. This lets a single shared model instance vary these options from one call to the next — for example,
 enabling prompt caching for a long-running agent loop while skipping it for a cheap one-shot completion, without
@@ -198,6 +200,38 @@ for (AnthropicServerToolResult result : results) {
 ```
 
 This is disabled by default to avoid storing potentially large data in ChatMemory.
+
+## Skills
+
+Anthropic's [Agent Skills](https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview)
+let Claude generate real downloadable documents (`.xlsx`, `.pptx`, `.docx`, `.pdf`) by running pre-built
+skills inside the code execution container. Enable them via the typed `skills` parameter:
+
+```java
+AnthropicChatModel model = AnthropicChatModel.builder()
+        .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+        .modelName("claude-opus-4-8")
+        .maxTokens(4096)
+        .skills(AnthropicSkill.XLSX, AnthropicSkill.PPTX)
+        .returnServerToolResults(true)
+        .build();
+
+ChatResponse response = model.chat("Create an Excel spreadsheet with the numbers 1 to 5 in column A");
+```
+
+Enabling skills automatically:
+
+- adds the `container.skills` block to the request,
+- adds the required `code_execution` server tool (unless one is already configured via `serverTools(...)`),
+- merges the required `anthropic-beta` headers with any value you supplied via `beta(...)`.
+
+Combine with `returnServerToolResults(true)` to surface the generated file ids under the
+`"server_tool_results"` key of `AiMessage.attributes()` (see [Retrieving Server Tool
+Results](#retrieving-server-tool-results) above); the files are downloadable for 24 hours through
+Anthropic's Files API.
+
+Skills are supported on Claude Sonnet 4 / 4.5, Opus 4 and later. At most 8 skills may be enabled per
+request. The same `skills(...)` parameter is available on `AnthropicStreamingChatModel`.
 
 ## Tool Search Tool
 
@@ -493,6 +527,52 @@ ChatModel model = AnthropicChatModel.builder()
         .build();
 ```
 
+## Mid-Conversation System Messages
+
+By default, every `SystemMessage` is folded into the top-level `system` prompt regardless of where it appears
+in the message list. This matches how Anthropic has always worked and is unchanged.
+
+Claude Opus 4.8 additionally supports
+[mid-conversation system messages](https://platform.claude.com/docs/en/build-with-claude/mid-conversation-system-messages):
+a `SystemMessage` that appears *after* the conversation has started can be sent inline as a `system` entry in the
+`messages` array, so it takes effect from that point in the conversation onward (for example, to change the
+assistant's instructions partway through a session). Enable this with `midConversationSystemMessages(true)`:
+
+```java
+AnthropicChatModel model = AnthropicChatModel.builder()
+    .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+    .modelName("claude-opus-4-8")
+    .midConversationSystemMessages(true)
+    .build();
+
+ChatResponse response = model.chat(ChatRequest.builder()
+    .messages(
+        SystemMessage.from("You are a helpful assistant."), // leading -> top-level "system" prompt
+        UserMessage.from("Hello"),
+        AiMessage.from("Hi! How can I help?"),
+        SystemMessage.from("From now on, answer only in French."), // mid-conversation -> inline
+        UserMessage.from("What is the capital of Spain?"))
+    .build());
+```
+
+When enabled, **leading** `SystemMessage`s (those before the first user/assistant message) still populate the
+top-level `system` prompt; only those appearing after the conversation has started are sent inline. This is not
+just a convention — Anthropic requires it: a `system` message cannot be the first entry in the `messages` array,
+and the base system prompt belongs in the stable, cacheable prefix anyway. With the option disabled (the
+default), behaviour is unchanged and all `SystemMessage`s go to the top-level `system` prompt.
+
+It can also be set per request via `AnthropicChatRequestParameters` (see [Per-Request Parameters](#per-request-parameters)).
+
+:::note
+Anthropic constrains where a mid-conversation system message may be placed: it must immediately follow a `user`
+turn (including a `user` turn carrying tool results), must precede an `assistant` turn or end the array, and must
+not sit between a `tool_use` block and its `tool_result`. Consecutive `system` messages are also not allowed.
+Note that, with the option disabled, langchain4j merges multiple `SystemMessage`s into the top-level `system`
+field; with it enabled, two adjacent mid-conversation `SystemMessage`s would be sent as consecutive inline
+`system` entries and rejected. langchain4j does not reorder or merge inline messages — it sends them at the
+position you provide — so an unsupported model or an invalid placement results in a `400` from the Anthropic API.
+:::
+
 ## PDF Support
 
 Anthropic Claude supports processing PDF documents. You can send PDFs either via URL or base64-encoded data.
@@ -613,7 +693,7 @@ Import Spring Boot starter for Anthropic:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic-spring-boot-starter</artifactId>
-    <version>1.17.0-beta27</version>
+    <version>1.17.1-beta27</version>
 </dependency>
 ```
 

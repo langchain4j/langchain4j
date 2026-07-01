@@ -9,8 +9,8 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTANT;
+import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.SYSTEM;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
-import static dev.langchain4j.model.anthropic.internal.client.Json.fromJson;
 import static dev.langchain4j.model.anthropic.internal.client.Json.toJson;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.OTHER;
@@ -79,21 +79,38 @@ public class AnthropicMapper {
     public static final String CACHE_CONTROL = "cache_control";
 
     public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages) {
-        return toAnthropicMessages(messages, false);
+        return toAnthropicMessages(messages, false, false);
     }
 
     public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages, boolean sendThinking) {
+        return toAnthropicMessages(messages, sendThinking, false);
+    }
+
+    public static List<AnthropicMessage> toAnthropicMessages(
+            List<ChatMessage> messages, boolean sendThinking, boolean midConversationSystemMessages) {
 
         List<AnthropicMessage> anthropicMessages = new ArrayList<>();
         List<AnthropicMessageContent> toolContents = new ArrayList<>();
+        boolean conversationStarted = false;
 
         for (ChatMessage message : messages) {
 
             if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+                conversationStarted = true;
                 toolContents.add(toAnthropicToolResultContent(toolExecutionResultMessage));
-            } else if (message instanceof SystemMessage) {
-                // ignore, it is handled in the "toAnthropicSystemPrompt" method
+            } else if (message instanceof SystemMessage systemMessage) {
+                // a leading system message is handled in "toAnthropicSystemPrompt"; a mid-conversation one
+                // is emitted inline as a role:"system" message only when midConversationSystemMessages is enabled
+                if (midConversationSystemMessages && conversationStarted) {
+                    if (!toolContents.isEmpty()) {
+                        anthropicMessages.add(new AnthropicMessage(USER, toolContents));
+                        toolContents = new ArrayList<>();
+                    }
+                    anthropicMessages.add(
+                            new AnthropicMessage(SYSTEM, List.of(new AnthropicTextContent(systemMessage.text()))));
+                }
             } else {
+                conversationStarted = true;
                 if (!toolContents.isEmpty()) {
                     anthropicMessages.add(new AnthropicMessage(USER, toolContents));
                     toolContents = new ArrayList<>();
@@ -235,10 +252,24 @@ public class AnthropicMapper {
 
     public static List<AnthropicTextContent> toAnthropicSystemPrompt(
             List<ChatMessage> messages, AnthropicCacheType cacheType) {
-        List<SystemMessage> systemMessages = messages.stream()
-                .filter(SystemMessage.class::isInstance)
-                .map(SystemMessage.class::cast)
-                .toList();
+        return toAnthropicSystemPrompt(messages, cacheType, false);
+    }
+
+    public static List<AnthropicTextContent> toAnthropicSystemPrompt(
+            List<ChatMessage> messages, AnthropicCacheType cacheType, boolean midConversationSystemMessages) {
+        List<SystemMessage> systemMessages = new ArrayList<>();
+        boolean conversationStarted = false;
+        for (ChatMessage message : messages) {
+            if (message instanceof SystemMessage systemMessage) {
+                // when midConversationSystemMessages is enabled, only leading system messages go to the top-level
+                // "system" field; mid-conversation ones are emitted inline by "toAnthropicMessages"
+                if (!midConversationSystemMessages || !conversationStarted) {
+                    systemMessages.add(systemMessage);
+                }
+            } else {
+                conversationStarted = true;
+            }
+        }
 
         SystemMessage lastSystemMessage =
                 systemMessages.isEmpty() ? null : systemMessages.get(systemMessages.size() - 1);

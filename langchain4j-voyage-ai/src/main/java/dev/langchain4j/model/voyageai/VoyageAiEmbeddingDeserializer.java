@@ -4,9 +4,9 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -29,7 +29,8 @@ class VoyageAiEmbeddingDeserializer extends StdDeserializer<List<EmbeddingRespon
     }
 
     @Override
-    public List<EmbeddingResponse.EmbeddingData> deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+    public List<EmbeddingResponse.EmbeddingData> deserialize(JsonParser p, DeserializationContext ctxt)
+            throws IOException {
         JsonNode dataNode = p.getCodec().readTree(p);
 
         if (dataNode != null && dataNode.isArray()) {
@@ -50,7 +51,10 @@ class VoyageAiEmbeddingDeserializer extends StdDeserializer<List<EmbeddingRespon
                     throw new RuntimeException("Unexpected embedding " + embeddingNode);
                 }
 
-                embeddings.add(new EmbeddingResponse.EmbeddingData(data.get("object").asText(), embedding, data.get("index").asInt()));
+                embeddings.add(new EmbeddingResponse.EmbeddingData(
+                        data.get("object").asText(),
+                        embedding,
+                        data.get("index").asInt()));
             }
 
             return embeddings;
@@ -62,7 +66,7 @@ class VoyageAiEmbeddingDeserializer extends StdDeserializer<List<EmbeddingRespon
     private List<Float> decodeBase64ToFloatList(String base64String) {
         byte[] bytes = BASE64_DECODER.decode(base64String);
         List<Float> embedding = new ArrayList<>();
-        ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
+        ByteBuffer byteBuffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
 
         while (byteBuffer.remaining() >= Float.BYTES) {
             embedding.add(byteBuffer.getFloat());
