@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.models.BlobProperties;
+import com.azure.storage.blob.models.ListBlobsOptions;
 import com.azure.storage.blob.specialized.BlobInputStream;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentLoader;
@@ -44,16 +45,37 @@ public class AzureBlobStorageDocumentLoader {
      * @return A list of documents.
      */
     public List<Document> loadDocuments(String containerName, DocumentParser parser) {
+        return loadDocuments(containerName, null, parser);
+    }
+
+    /**
+     * Loads all documents from an Azure Blob Storage container.
+     * Skips any documents that fail to load.
+     *
+     * @param containerName The name of the container to load from.
+     * @param prefix Only blobs whose names start with this prefix are loaded; {@code null} loads all blobs.
+     * @param parser The parser to be used for parsing text from the blob.
+     * @return A list of documents.
+     */
+    public List<Document> loadDocuments(String containerName, String prefix, DocumentParser parser) {
         List<Document> documents = new ArrayList<>();
 
-        blobServiceClient.getBlobContainerClient(containerName).listBlobs().forEach(blob -> {
-            try {
-                documents.add(loadDocument(containerName, blob.getName(), parser));
-            } catch (Exception e) {
-                log.warn(
-                        "Failed to load blob '{}' from container '{}', skipping it.", blob.getName(), containerName, e);
-            }
-        });
+        ListBlobsOptions options = new ListBlobsOptions().setPrefix(prefix);
+
+        blobServiceClient
+                .getBlobContainerClient(containerName)
+                .listBlobs(options, null)
+                .forEach(blob -> {
+                    try {
+                        documents.add(loadDocument(containerName, blob.getName(), parser));
+                    } catch (Exception e) {
+                        log.warn(
+                                "Failed to load blob '{}' from container '{}', skipping it.",
+                                blob.getName(),
+                                containerName,
+                                e);
+                    }
+                });
 
         return documents;
     }
