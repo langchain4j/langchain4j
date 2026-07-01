@@ -178,8 +178,8 @@ You can find more information on `JsonObjectSchema` [here](/tutorials/structured
 - `ToolSpecifications.toolSpecificationFrom(Method)`
 
 ```java
-class WeatherTools { 
-  
+class WeatherTools {
+
     @Tool("Returns the weather forecast for a given city")
     String getWeather(
             @P("The city for which the weather forecast should be returned") String city,
@@ -723,12 +723,12 @@ Any Java method annotated with `@Tool`
 and _explicitly_ specified during the build of an AI Service can be executed by the LLM:
 ```java
 interface MathGenius {
-    
+
     String ask(String question);
 }
 
 class Calculator {
-    
+
     @Tool
     double add(int a, int b) {
         return a + b;
@@ -909,10 +909,10 @@ enum Priority {
 
     @Description("Critical issues such as payment gateway failures or security breaches.") // this is ignored
     CRITICAL,
-    
+
     @Description("High-priority issues like major feature malfunctions or widespread outages.") // this is ignored
     HIGH,
-    
+
     @Description("Low-priority issues such as minor bugs or cosmetic problems.") // this is ignored
     LOW
 }
@@ -1384,7 +1384,7 @@ reprocessing by the LLM. This can be done by configuring the `returnBehavior` fi
 
 ```java
 class CalculatorWithImmediateReturn {
-    
+
     @Tool(returnBehavior = ReturnBehavior.IMMEDIATE)
     double add(int a, int b) {
         return a + b;
@@ -1498,6 +1498,159 @@ a response made up only of `IMMEDIATE` and/or `IMMEDIATE_IF_LAST` tools returns 
 regardless of which one is last (still subject to the no-errors rule).
 
 Like `IMMEDIATE`, `IMMEDIATE_IF_LAST` is only allowed on AI services with a `Result<T>` return type.
+
+#### `SUSPEND` for human-in-the-loop and async workflows
+
+`ReturnBehavior.SUSPEND` pauses the AI Service execution loop after the tool runs, leaving
+the tool call **pending** in chat memory without producing a `ToolExecutionResultMessage`.
+The tool method itself is still executed (e.g. to kick off a long-running job or persist a
+request), but its return value is discarded — the real result will be supplied later.
+
+This enables two common patterns:
+
+- **Human-in-the-loop** — the tool records a request that needs external input; the caller
+  fulfills the pending tool call once the user responds and resumes the conversation.
+- **Async / long-running jobs** — the tool starts a background process; the caller resumes
+  when the process completes and the real result is available.
+
+```java
+class OrderService {
+
+    @Tool(returnBehavior = ReturnBehavior.SUSPEND)
+    String placeOrder(String item, int quantity) {
+        String orderId = persistOrder(item, quantity);
+        externalService.processAsync(orderId); // kicks off async work
+        return orderId; // value is discarded — not sent to the LLM
+    }
+}
+```
+
+The AI Service must return `Result<T>` so the caller can detect the suspension:
+
+```java
+interface Assistant {
+    Result<String> chat(String userMessage);
+    Result<String> chat(@MemoryId String memoryId, String userMessage);
+}
+```
+
+When the LLM returns a response containing a `SUSPEND` tool (and no tool errored), the loop
+suspends: results of any non-`SUSPEND` tools in the same response are still recorded in chat
+memory, while the `SUSPEND` tool call(s) stay pending. The `Result` is returned with
+`finishReason == TOOL_EXECUTION` and `content == null`. A tool error anywhere in the response
+cancels the suspension so the LLM can react to the error on the next turn.
+
+When the same `AiMessage` contains both `SUSPEND` and `TO_LLM` (or `IMMEDIATE`) tools,
+only the non-suspend tools are recorded — the `SUSPEND` tool call stays pending. This partial
+state is valid and does not break the chat memory.
+
+:::note
+`SUSPEND` is only allowed on AI services returning `Result<T>`. Using it on a service with
+a different return type causes an `IllegalConfigurationException`.
+:::
+
+##### Resuming a suspended conversation
+
+To resume, the AI Service must implement the `ToolExecutionResumer` interface
+(or `StreamingToolExecutionResumer` for streaming). These are marker interfaces — no method
+body is needed; the framework dispatches `resume(...)` calls via the AI Service proxy.
+
+```java
+interface Assistant extends ToolExecutionResumer {
+    Result<String> chat(String userMessage);
+}
+```
+
+Once the external process completes (or the user provides input), build a
+`ToolExecutionResultMessage` and call `resume`:
+
+```java
+ToolExecutionResultMessage toolResult = ToolExecutionResultMessage.builder()
+        .id(toolExecutionRequest.id())
+        .toolName(toolExecutionRequest.name())
+        .text(orderService.getOrderStatus(orderId)) // the real result
+        .build();
+
+Result<String> result = assistant.resume(memoryId, toolResult);
+```
+
+`resume` appends the real result to chat memory and re-enters the execution loop — the LLM
+continues from where it left off. If the result triggers another `SUSPEND` tool, the loop
+suspends again and the caller can resume later.
+
+For streaming, use `StreamingToolExecutionResumer`:
+
+```java
+interface StreamingAssistant extends StreamingToolExecutionResumer {
+    TokenStream chat(String userMessage);
+}
+```
+
+```java
+TokenStream stream = streamingAssistant.resume(memoryId, toolResult);
+```
+
+:::note
+`resume` / `resumeStream` require a persistent `ChatMemory` (e.g. backed by a database).
+Without persistence, suspend/resume only works within the same process.
+:::
+
+### Async Tool Execution
+
+`@Tool` methods can return `CompletableFuture<T>` (or any `CompletionStage<T>`), which lets the
+tool body kick off or compose non-blocking work (e.g. an async HTTP call) instead of blocking
+inside the method. The framework then joins the future to obtain the result before passing it to
+the LLM.
+
+```java
+class ExternalApiService {
+
+    @Tool
+    CompletableFuture<String> fetchOrderStatus(String orderId) {
+        return httpClient.sendAsync(orderRequest, handler)
+                .thenApply(response -> parseStatus(response));
+    }
+
+    @Tool
+    CompletableFuture<Pojo> fetchOrderDetails(String orderId) {
+        return httpClient.sendAsync(orderRequest, handler)
+                .thenApply(response -> parseDetails(response));
+    }
+}
+```
+
+Type resolution follows the same rules as synchronous tools:
+- `CompletableFuture<String>` produces a text result.
+- `CompletableFuture<Pojo>` produces a JSON result (the generic type argument is inspected).
+
+If the future completes exceptionally, the exception is unwrapped and treated the same way as
+a synchronous tool error — the error message is sent back to the LLM for reprocessing.
+
+:::note
+Joining the future is a **blocking** operation, so the AI Service call stays synchronous — it does
+not return until the future completes. Returning a `CompletableFuture` lets a tool *compose* async
+work (`thenApply`, `thenCompose`, ...) and plug in async clients without you calling `.get()` or
+`.block()`; it does **not** make the surrounding invocation non-blocking, and it is not a
+parallelism mechanism. By default, tools — async or not — run one after another on the calling
+thread (each future is joined before the next tool is invoked). Running tools in parallel is a
+separate, opt-in feature, `executeToolsConcurrently(Executor)`, that applies to synchronous tools
+just as well.
+:::
+
+#### Reactor / Project Reactor integration
+
+Native `Mono`/`Flux` return types are **not** supported directly in the core module.
+Use a `Mono`-to-`CompletableFuture` adapter in your tool method, or configure a Reactor-aware
+adapter in the `langchain4j-reactor` module (see the module's README for details).
+
+```java
+@Tool
+CompletableFuture<String> fetchWithReactor(String orderId) {
+    return monoService.fetch(orderId)
+            .map(this::parseStatus)
+            .toFuture(); // Mono → CompletableFuture
+}
+```
 
 ### Error Handling
 

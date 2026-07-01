@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
+import static dev.langchain4j.agent.tool.ReturnBehavior.SUSPEND;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
@@ -25,6 +26,7 @@ import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
@@ -55,7 +57,9 @@ import dev.langchain4j.service.guardrail.GuardrailService;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.service.output.ServiceOutputParser;
+import dev.langchain4j.service.tool.StreamingToolExecutionResumer;
 import dev.langchain4j.service.tool.ToolExecution;
+import dev.langchain4j.service.tool.ToolExecutionResumer;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import dev.langchain4j.service.tool.ToolServiceResult;
 import dev.langchain4j.spi.services.TokenStreamAdapter;
@@ -137,6 +141,14 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         if (method.getDeclaringClass() == ChatMemoryAccess.class) {
                             return handleChatMemoryAccess(method, args);
+                        }
+
+                        if (method.getDeclaringClass() == ToolExecutionResumer.class) {
+                            return resume(args[0], (ToolExecutionResultMessage) args[1]);
+                        }
+
+                        if (method.getDeclaringClass() == StreamingToolExecutionResumer.class) {
+                            return resumeStream(args[0], (ToolExecutionResultMessage) args[1]);
                         }
 
                         // TODO do it once, when creating AI Service?
@@ -353,6 +365,25 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 toolServiceContext,
                                 context.chatModel::chat);
 
+                        if (toolServiceResult.suspended()) {
+                            if (!isReturnTypeResult) {
+                                throw illegalConfiguration(
+                                        "AI Service method '%s' uses a tool with ReturnBehavior.%s but does not return %s. "
+                                                + "Use %s as the return type to detect the suspension and access the pending tool calls.",
+                                        method.getName(), SUSPEND, Result.class.getName(), Result.class.getName());
+                            }
+                            var result = Result.builder()
+                                    .content(null)
+                                    .tokenUsage(toolServiceResult.aggregateTokenUsage())
+                                    .sources(augmentationResult == null ? null : augmentationResult.contents())
+                                    .finishReason(TOOL_EXECUTION)
+                                    .toolExecutions(toolServiceResult.toolExecutions())
+                                    .intermediateResponses(toolServiceResult.intermediateResponses())
+                                    .finalResponse(toolServiceResult.finalResponse())
+                                    .build();
+                            return fireEventAndReturn(invocationContext, result);
+                        }
+
                         if (toolServiceResult.immediateToolReturn()) {
                             if (isReturnTypeResult) {
                                 var result = Result.builder()
@@ -447,6 +478,162 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 : parsedResponse;
 
                         return fireEventAndReturn(invocationContext, actualResponse);
+                    }
+
+                    private Result<String> resume(Object memoryId, ToolExecutionResultMessage toolResult) {
+                        if (!context.hasChatMemory()) {
+                            throw illegalConfiguration(
+                                    "Cannot resume a conversation: AI Service '%s' is not configured with a ChatMemory. "
+                                            + "Suspended conversation state is stored in the ChatMemory identified by memoryId.",
+                                    context.aiServiceClass.getName());
+                        }
+                        if (context.chatModel == null) {
+                            throw illegalConfiguration(
+                                    "Cannot resume a conversation: AI Service '%s' is not configured with a (synchronous) ChatModel.",
+                                    context.aiServiceClass.getName());
+                        }
+
+                        ChatMemory chatMemory = context.chatMemoryService.getOrCreateChatMemory(memoryId);
+                        // fulfill the tool call left pending by the SUSPEND tool
+                        chatMemory.add(toolResult);
+
+                        InvocationContext invocationContext = InvocationContext.builder()
+                                .invocationId(UUID.randomUUID())
+                                .interfaceName(context.aiServiceClass.getName())
+                                .methodName("resume")
+                                .methodArguments(Arrays.asList(memoryId, toolResult))
+                                .chatMemoryId(memoryId)
+                                .defaultRequestParameters(determineChatRequestParameters(context))
+                                .modelProvider(determineModelProvider(context))
+                                .invocationParameters(new InvocationParameters())
+                                .managedParameters(LangChain4jManaged.current())
+                                .timestampNow()
+                                .build();
+
+                        List<ChatMessage> messages = chatMemory.messages();
+                        UserMessage lastUserMessage =
+                                UserMessage.findLast(messages).orElse(null);
+
+                        context.eventListenerRegistrar.fireEvent(AiServiceStartedEvent.builder()
+                                .invocationContext(invocationContext)
+                                .systemMessage(Optional.empty())
+                                .userMessage(lastUserMessage)
+                                .build());
+
+                        ToolServiceContext toolServiceContext =
+                                context.toolService.createContext(invocationContext, lastUserMessage, messages);
+
+                        ChatRequestParameters defaultParameters = determineChatRequestParameters(context);
+                        ChatRequestParameters parameters = (defaultParameters != null
+                                        ? defaultParameters
+                                        : ChatRequestParameters.builder().build())
+                                .overrideWith(ChatRequestParameters.builder()
+                                        .toolSpecifications(toolServiceContext.effectiveTools())
+                                        .build());
+
+                        ChatRequest chatRequest = context.chatRequestTransformer.apply(
+                                ChatRequest.builder()
+                                        .messages(messages)
+                                        .parameters(parameters)
+                                        .build(),
+                                memoryId);
+
+                        ChatExecutor chatExecutor = ChatExecutor.builder(context.chatModel)
+                                .chatRequest(chatRequest)
+                                .invocationContext(invocationContext)
+                                .eventListenerRegistrar(context.eventListenerRegistrar)
+                                .build();
+
+                        ChatResponse chatResponse = chatExecutor.execute();
+
+                        context.eventListenerRegistrar.fireEvent(AiServiceResponseReceivedEvent.builder()
+                                .invocationContext(invocationContext)
+                                .response(chatResponse)
+                                .request(chatRequest)
+                                .build());
+
+                        ToolServiceResult toolServiceResult = context.toolService.executeInferenceAndToolsLoop(
+                                context,
+                                memoryId,
+                                chatResponse,
+                                parameters,
+                                messages,
+                                chatMemory,
+                                invocationContext,
+                                toolServiceContext,
+                                context.chatModel::chat);
+
+                        ChatResponse finalResponse = toolServiceResult.finalResponse();
+                        boolean toolBoundary = toolServiceResult.suspended() || toolServiceResult.immediateToolReturn();
+                        Result<String> result = Result.<String>builder()
+                                .content(
+                                        toolBoundary
+                                                ? null
+                                                : finalResponse.aiMessage().text())
+                                .tokenUsage(toolServiceResult.aggregateTokenUsage())
+                                .finishReason(toolBoundary ? TOOL_EXECUTION : finalResponse.finishReason())
+                                .toolExecutions(toolServiceResult.toolExecutions())
+                                .intermediateResponses(toolServiceResult.intermediateResponses())
+                                .finalResponse(finalResponse)
+                                .build();
+                        fireEventAndReturn(invocationContext, result);
+                        return result;
+                    }
+
+                    private TokenStream resumeStream(Object memoryId, ToolExecutionResultMessage toolResult) {
+                        if (!context.hasChatMemory()) {
+                            throw illegalConfiguration(
+                                    "Cannot resume a conversation: AI Service '%s' is not configured with a ChatMemory. "
+                                            + "Suspended conversation state is stored in the ChatMemory identified by memoryId.",
+                                    context.aiServiceClass.getName());
+                        }
+                        if (context.streamingChatModel == null) {
+                            throw illegalConfiguration(
+                                    "Cannot resume a streaming conversation: AI Service '%s' is not configured with a StreamingChatModel.",
+                                    context.aiServiceClass.getName());
+                        }
+
+                        ChatMemory chatMemory = context.chatMemoryService.getOrCreateChatMemory(memoryId);
+                        // fulfill the tool call left pending by the SUSPEND tool
+                        chatMemory.add(toolResult);
+
+                        InvocationContext invocationContext = InvocationContext.builder()
+                                .invocationId(UUID.randomUUID())
+                                .interfaceName(context.aiServiceClass.getName())
+                                .methodName("resume")
+                                .methodArguments(Arrays.asList(memoryId, toolResult))
+                                .chatMemoryId(memoryId)
+                                .defaultRequestParameters(determineChatRequestParameters(context))
+                                .modelProvider(determineModelProvider(context))
+                                .invocationParameters(new InvocationParameters())
+                                .managedParameters(LangChain4jManaged.current())
+                                .timestampNow()
+                                .build();
+
+                        List<ChatMessage> messages = chatMemory.messages();
+                        UserMessage lastUserMessage =
+                                UserMessage.findLast(messages).orElse(null);
+
+                        context.eventListenerRegistrar.fireEvent(AiServiceStartedEvent.builder()
+                                .invocationContext(invocationContext)
+                                .systemMessage(Optional.empty())
+                                .userMessage(lastUserMessage)
+                                .build());
+
+                        ToolServiceContext toolServiceContext =
+                                context.toolService.createContext(invocationContext, lastUserMessage, messages);
+
+                        var tokenStreamParameters = AiServiceTokenStreamParameters.builder()
+                                .messages(messages)
+                                .toolServiceContext(toolServiceContext)
+                                .toolArgumentsErrorHandler(context.toolService.argumentsErrorHandler())
+                                .toolExecutionErrorHandler(context.toolService.executionErrorHandler())
+                                .toolExecutor(context.toolService.executor())
+                                .context(context)
+                                .invocationContext(invocationContext)
+                                .build();
+
+                        return new AiServiceTokenStream(tokenStreamParameters);
                     }
 
                     private Object fireEventAndReturn(InvocationContext invocationContext, Object result) {

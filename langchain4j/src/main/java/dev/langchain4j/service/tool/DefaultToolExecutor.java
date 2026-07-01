@@ -32,6 +32,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
 
 public class DefaultToolExecutor implements ToolExecutor {
 
@@ -161,6 +164,12 @@ public class DefaultToolExecutor implements ToolExecutor {
     private ToolExecutionResult execute(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
         Object result = methodToInvoke.invoke(object, arguments);
 
+        Class<?> returnType = methodToInvoke.getReturnType();
+        if (result instanceof CompletionStage<?> stage) {
+            result = unwrapAsyncResult(stage);
+            returnType = asyncResultClass();
+        }
+
         List<Content> resultContents = toContents(result);
         if (resultContents != null) {
             return ToolExecutionResult.builder()
@@ -169,10 +178,37 @@ public class DefaultToolExecutor implements ToolExecutor {
                     .build();
         }
 
+        Object resolvedResult = result;
+        Class<?> resolvedReturnType = returnType;
         return ToolExecutionResult.builder()
                 .result(result)
-                .resultTextSupplier(() -> toText(result))
+                .resultTextSupplier(() -> toText(resolvedResult, resolvedReturnType))
                 .build();
+    }
+
+    private static Object unwrapAsyncResult(CompletionStage<?> stage) throws InvocationTargetException {
+        try {
+            return stage.toCompletableFuture().join();
+        } catch (CompletionException e) {
+            throw new InvocationTargetException(e.getCause() != null ? e.getCause() : e);
+        } catch (CancellationException e) {
+            throw new InvocationTargetException(e);
+        }
+    }
+
+    private Class<?> asyncResultClass() {
+        Type genericReturnType = methodToInvoke.getGenericReturnType();
+        if (genericReturnType instanceof ParameterizedType parameterizedType) {
+            Type actualType = parameterizedType.getActualTypeArguments()[0];
+            if (actualType instanceof Class<?> actualClass) {
+                return actualClass;
+            }
+            if (actualType instanceof ParameterizedType actualParameterizedType
+                    && actualParameterizedType.getRawType() instanceof Class<?> rawClass) {
+                return rawClass;
+            }
+        }
+        return Object.class;
     }
 
     private List<Content> toContents(Object result) {
@@ -193,8 +229,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         return null;
     }
 
-    private String toText(Object result) {
-        Class<?> returnType = methodToInvoke.getReturnType();
+    private String toText(Object result, Class<?> returnType) {
         if (returnType == void.class) {
             return "Success";
         } else if (returnType == String.class) {
