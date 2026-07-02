@@ -1,9 +1,11 @@
 package dev.langchain4j.agentic.a2a;
 
+import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
+
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.observability.AgentListener;
-import dev.langchain4j.agentic.internal.A2AClientBuilder;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
@@ -14,6 +16,20 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.service.output.ServiceOutputParser;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Proxy;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import org.a2aproject.sdk.A2A;
 import org.a2aproject.sdk.client.Client;
 import org.a2aproject.sdk.client.ClientEvent;
@@ -30,28 +46,13 @@ import org.a2aproject.sdk.spec.Part;
 import org.a2aproject.sdk.spec.Task;
 import org.a2aproject.sdk.spec.TaskState;
 import org.a2aproject.sdk.spec.TextPart;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Proxy;
-import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
-
 public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, InternalAgent, InvocationHandler {
 
-    private record A2AInvocationResult(Object parsedResult, String contextIdKey, String contextId, String taskIdKey, String taskId) {}
+    private record A2AInvocationResult(
+            Object parsedResult, String contextIdKey, String contextId, String taskIdKey, String taskId) {}
 
     private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser();
 
@@ -100,8 +101,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         }
 
         Object agent = Proxy.newProxyInstance(
-                agentServiceClass.getClassLoader(),
-                new Class<?>[] {agentServiceClass, A2AClientInstance.class}, this);
+                agentServiceClass.getClassLoader(), new Class<?>[] {agentServiceClass, A2AClientInstance.class}, this);
 
         return (T) agent;
     }
@@ -117,8 +117,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                 case "agentCard" -> agentCard;
                 case "inputKeys" -> inputKeys;
                 default ->
-                        throw new UnsupportedOperationException(
-                                "Unknown method on A2AClientInstance class : " + method.getName());
+                    throw new UnsupportedOperationException(
+                            "Unknown method on A2AClientInstance class : " + method.getName());
             };
         }
 
@@ -141,9 +141,9 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             scope.writeState(result.taskIdKey, result.taskId);
         }
 
-        return method.getReturnType() == ResultWithAgenticScope.class ?
-                new ResultWithAgenticScope<>(scope, result.parsedResult) :
-                result.parsedResult;
+        return method.getReturnType() == ResultWithAgenticScope.class
+                ? new ResultWithAgenticScope<>(scope, result.parsedResult)
+                : result.parsedResult;
     }
 
     private static Type getReturnType(Method method) {
@@ -190,7 +190,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             }
         }
 
-        Message.Builder messageBuilder = Message.builder().role(Message.Role.ROLE_USER).parts(parts);
+        Message.Builder messageBuilder =
+                Message.builder().role(Message.Role.ROLE_USER).parts(parts);
         if (contextId != null) {
             messageBuilder.contextId(contextId);
         }
@@ -236,7 +237,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             String responseText = messageResponse.get();
             LOG.debug("Response: {}", responseText);
             Object parsedResult = serviceOutputParser.parseText(returnType, responseText);
-            return new A2AInvocationResult(parsedResult, finalContextIdKey, responseContextId.get(), finalTaskIdKey, responseTaskId.get());
+            return new A2AInvocationResult(
+                    parsedResult, finalContextIdKey, responseContextId.get(), finalTaskIdKey, responseTaskId.get());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             LOG.error("Failed to get response: {}", e.getMessage(), e);
@@ -252,12 +254,26 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         taskId.set(task.id());
     }
 
-    private static void completeFromTask(Task task, CompletableFuture<String> messageResponse) {
-        if (!isTerminalState(task.status().state()) && task.artifacts().isEmpty()) {
+    static void completeFromTask(Task task, CompletableFuture<String> messageResponse) {
+        TaskState state = task.status().state();
+        if (!isTerminalState(state) && task.artifacts().isEmpty()) {
+            return;
+        }
+        if (isFailureState(state)) {
+            Message statusMessage = task.status().message();
+            String reason = statusMessage != null ? extractTextFromParts(statusMessage.parts()) : "";
+            messageResponse.completeExceptionally(new RuntimeException("A2A task " + task.id()
+                    + " ended in terminal state " + state + (reason.isEmpty() ? "" : ": " + reason)));
             return;
         }
         messageResponse.complete(extractTextFromParts(
                 task.artifacts().stream().flatMap(a -> a.parts().stream()).toList()));
+    }
+
+    private static boolean isFailureState(TaskState state) {
+        return state == TaskState.TASK_STATE_FAILED
+                || state == TaskState.TASK_STATE_CANCELED
+                || state == TaskState.TASK_STATE_REJECTED;
     }
 
     private static boolean isTerminalState(TaskState state) {

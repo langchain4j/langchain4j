@@ -8,6 +8,7 @@ import dev.langchain4j.model.chat.common.AbstractChatModelIT;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
+import dev.langchain4j.model.googleai.GoogleAiGeminiChatRequestParameters;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatResponseMetadata;
 import dev.langchain4j.model.googleai.GoogleAiGeminiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
@@ -47,14 +48,14 @@ class GoogleAiGeminiChatModelIT extends AbstractChatModelIT {
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
                 .defaultRequestParameters(parameters)
                 .modelName(getOrDefault(parameters.modelName(), "gemini-2.5-flash-lite"))
-                .logRequests(true)
+                .logRequests(false)
                 .logResponses(true)
                 .build();
     }
 
     @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
-        return ChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
+        return GoogleAiGeminiChatRequestParameters.builder().maxOutputTokens(maxOutputTokens).build();
     }
 
     @Override

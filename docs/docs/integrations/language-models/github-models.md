@@ -35,7 +35,7 @@ Once you are ready to bring your application to production, you can switch to a 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-github-models</artifactId>
-    <version>1.16.3-beta26</version>
+    <version>1.17.1-beta27</version>
 </dependency>
 ```
 

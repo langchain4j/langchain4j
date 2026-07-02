@@ -13,6 +13,7 @@ https://ai.google.dev/gemini-api/docs
 - [Models Available](#models-available)
 - [GoogleAiGeminiChatModel](#googleaigeminichatmodel)
     - [Configuring](#configuring)
+    - [Default Request Parameters](#default-request-parameters)
 - [GoogleAiGeminiStreamingChatModel](#googleaigeministreamingchatmodel)
 - [Tools](#tools)
 - [Structured Outputs](#structured-outputs)
@@ -38,7 +39,7 @@ https://ai.google.dev/gemini-api/docs
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>1.16.3</version>
+    <version>1.17.1</version>
 </dependency>
 ```
 
@@ -124,6 +125,45 @@ ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .listeners(...)
     .supportedCapabilities(...)
     .build();
+```
+
+### Default Request Parameters
+
+Instead of (or in addition to) the individual builder methods shown above, you can supply a single
+`ChatRequestParameters` object via `defaultRequestParameters(...)`. These parameters are applied to every
+request issued by the model, unless they are overridden by the parameters of an individual `ChatRequest`.
+
+You can pass either common `ChatRequestParameters` or Gemini-specific `GoogleAiGeminiChatRequestParameters`.
+The latter additionally exposes Gemini-only options such as `aspectRatio` and `imageSize`:
+
+```java
+GoogleAiGeminiChatRequestParameters parameters = GoogleAiGeminiChatRequestParameters.builder()
+    .modelName("gemini-2.5-flash")
+    .temperature(1.0)
+    .maxOutputTokens(8192)
+    .aspectRatio("16:9") // Gemini-specific
+    .imageSize("2K")     // Gemini-specific
+    .build();
+
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .defaultRequestParameters(parameters)
+    .build();
+```
+
+When the same parameter is set both via `defaultRequestParameters(...)` and via an individual builder method
+(e.g., `modelName(String)`), the value set via the individual builder method takes precedence:
+
+```java
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .defaultRequestParameters(GoogleAiGeminiChatRequestParameters.builder()
+        .modelName("gemini-2.5-flash")
+        .temperature(1.0)
+        .build())
+    .temperature(0.0) // overrides temperature from defaultRequestParameters
+    .build();
+// effective parameters: modelName=gemini-2.5-flash, temperature=0.0
 ```
 
 ## GoogleAiGeminiStreamingChatModel
@@ -441,7 +481,7 @@ If you want a guaranteed application of a JSON schema, you should define a respo
 
 ## Python code execution
 
-Beyond function calling, Google AI Gemini allows to create and execute Python code in a sandboxed environment.
+Beyond function calling, Google AI Gemini allows you to create and execute Python code in a sandboxed environment.
 This is particularly interesting for situations where more advanced calculations or logic is needed.
 
 ```java

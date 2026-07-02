@@ -2,6 +2,7 @@ package dev.langchain4j.model.azure;
 
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.aiMessageFrom;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -43,10 +44,12 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 @Execution(ExecutionMode.CONCURRENT)
 class InternalAzureOpenAiHelperTest {
 
+    private static final String SERVICE_VERSION = "2024-02-01";
+
     @Test
     void setupOpenAIClientShouldReturnClientWithCorrectConfiguration() {
         String endpoint = "test-endpoint";
-        String serviceVersion = "test-service-version";
+        String serviceVersion = SERVICE_VERSION;
         String apiKey = "test-api-key";
         Duration timeout = Duration.ofSeconds(30);
         Integer maxRetries = 5;
@@ -71,7 +74,7 @@ class InternalAzureOpenAiHelperTest {
     @Test
     void setupOpenAIAsyncClientShouldReturnClientWithCorrectConfiguration() {
         String endpoint = "test-endpoint";
-        String serviceVersion = "test-service-version";
+        String serviceVersion = SERVICE_VERSION;
         String apiKey = "test-api-key";
         Duration timeout = Duration.ofSeconds(30);
         Integer maxRetries = 5;
@@ -103,10 +106,34 @@ class InternalAzureOpenAiHelperTest {
     }
 
     @Test
-    void getOpenAIServiceVersionShouldReturnLatestVersionIfIncorrect() {
+    void getOpenAIServiceVersionShouldThrowIfIncorrect() {
         String serviceVersion = "1901-01-01";
 
-        OpenAIServiceVersion version = InternalAzureOpenAiHelper.getOpenAIServiceVersion(serviceVersion);
+        assertThatThrownBy(() -> InternalAzureOpenAiHelper.getOpenAIServiceVersion(serviceVersion))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported Azure OpenAI service version")
+                .hasMessageContaining(serviceVersion);
+    }
+
+    @Test
+    void getOpenAIServiceVersionShouldReturnLatestVersionIfNull() {
+        OpenAIServiceVersion version = InternalAzureOpenAiHelper.getOpenAIServiceVersion(null);
+
+        assertThat(version.getVersion())
+                .isEqualTo(OpenAIServiceVersion.getLatest().getVersion());
+    }
+
+    @Test
+    void getOpenAIServiceVersionShouldReturnLatestVersionIfEmpty() {
+        OpenAIServiceVersion version = InternalAzureOpenAiHelper.getOpenAIServiceVersion("");
+
+        assertThat(version.getVersion())
+                .isEqualTo(OpenAIServiceVersion.getLatest().getVersion());
+    }
+
+    @Test
+    void getOpenAIServiceVersionShouldReturnLatestVersionIfBlank() {
+        OpenAIServiceVersion version = InternalAzureOpenAiHelper.getOpenAIServiceVersion("   ");
 
         assertThat(version.getVersion())
                 .isEqualTo(OpenAIServiceVersion.getLatest().getVersion());
@@ -155,8 +182,7 @@ class InternalAzureOpenAiHelperTest {
         String functionName = "current_time";
         String functionArguments = "{}";
         // language=json
-        String responseJson =
-                """
+        String responseJson = """
                 {
                         "role": "ASSISTANT",
                         "content": "Hello",

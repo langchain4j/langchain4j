@@ -431,9 +431,18 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                         .executeUpdate();
             });
         } else {
-            sessionFactory
-                    .getSchemaManager()
-                    .truncateTable(entityPersister.getIdentifierTableMapping().getTableName());
+            try {
+                sessionFactory
+                        .getSchemaManager()
+                        .truncateTable(entityPersister.getIdentifierTableMapping().getTableName());
+            }
+            catch (UnsupportedOperationException ex) {
+                // Workaround HHH-20500 since we can't reliably detect the Hibernate ORM version
+                sessionFactory.inStatelessTransaction(session -> {
+                    session.createMutationQuery("delete from " + entityPersister.getEntityName())
+                            .executeUpdate();
+                });
+            }
         }
     }
 
@@ -834,7 +843,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                                         .comparisonValue()
                                         .replace("\\", "\\\\")
                                         .replace("%", "\\%")
-                                        .replace("?", "\\?")
+                                        .replace("_", "\\_")
                                 + "%",
                         '\\'));
     }

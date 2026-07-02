@@ -301,6 +301,41 @@ class GoogleAiGeminiChatModelTest {
             // Then
             assertThat(chatResponse.metadata().finishReason()).isEqualTo(FinishReason.LENGTH);
         }
+
+        @Test
+        void shouldMapImageRecitationToContentFilter() {
+            // Given
+            var candidate = new GeminiCandidate(
+                    new GeminiContent(
+                            List.of(GeminiContent.GeminiPart.builder()
+                                    .text("Image response")
+                                    .build()),
+                            "model"),
+                    GeminiFinishReason.IMAGE_RECITATION,
+                    null,
+                    null);
+
+            var geminiResponse = new GeminiGenerateContentResponse(
+                    "image-recitation-id", "gemini-pro-v1", List.of(candidate), createUsageMetadata(10, 20, 30), null);
+
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(geminiResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .build(mockGeminiService);
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(new UserMessage("Generate image"))
+                    .build();
+
+            // When
+            var chatResponse = subject.chat(chatRequest);
+
+            // Then
+            assertThat(chatResponse.metadata().finishReason()).isEqualTo(FinishReason.CONTENT_FILTER);
+        }
     }
 
     @Nested
@@ -361,6 +396,7 @@ class GoogleAiGeminiChatModelTest {
                             .seed(42)
                             .candidateCount(1)
                             .responseLogprobs(false)
+                            .enableEnhancedCivicAnswers(false)
                             .build());
         }
 
@@ -380,6 +416,77 @@ class GoogleAiGeminiChatModelTest {
 
             var chatRequest = ChatRequest.builder()
                     .messages(new UserMessage("Generate image"))
+                    .build();
+
+            // When
+            subject.chat(chatRequest);
+
+            // Then
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            var request = requestCaptor.getValue();
+
+            assertThat(request.generationConfig()).isNotNull();
+            assertThat(request.generationConfig().imageConfig())
+                    .isEqualTo(GeminiImageConfig.builder()
+                            .aspectRatio("16:9")
+                            .imageSize("2K")
+                            .build());
+        }
+
+        @Test
+        void shouldUseRequestLevelImageConfigWhenProvided() {
+            // Given
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .imageAspectRatio("16:9")
+                    .imageSize("2K")
+                    .build(mockGeminiService);
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(new UserMessage("Generate image"))
+                    .parameters(GoogleAiGeminiChatRequestParameters.builder()
+                            .imageAspectRatio("1:1")
+                            .imageSize("1K")
+                            .build())
+                    .build();
+
+            // When
+            subject.chat(chatRequest);
+
+            // Then
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            var request = requestCaptor.getValue();
+
+            assertThat(request.generationConfig()).isNotNull();
+            assertThat(request.generationConfig().imageConfig())
+                    .isEqualTo(GeminiImageConfig.builder()
+                            .aspectRatio("1:1")
+                            .imageSize("1K")
+                            .build());
+        }
+
+        @Test
+        void shouldFallbackToBuilderImageConfigWhenRequestLevelNotProvided() {
+            // Given
+            var expectedResponse = createGeminiResponse("Response");
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+                    .thenReturn(expectedResponse);
+
+            var subject = GoogleAiGeminiChatModel.builder()
+                    .apiKey("test-api-key")
+                    .modelName(TEST_MODEL_NAME)
+                    .imageAspectRatio("16:9")
+                    .imageSize("2K")
+                    .build(mockGeminiService);
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(new UserMessage("Generate image"))
+                    .parameters(ChatRequestParameters.builder().temperature(0.2).build())
                     .build();
 
             // When
