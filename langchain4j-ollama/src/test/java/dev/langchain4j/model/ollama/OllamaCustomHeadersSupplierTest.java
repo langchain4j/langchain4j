@@ -13,6 +13,28 @@ import org.junit.jupiter.api.Test;
 class OllamaCustomHeadersSupplierTest {
 
     @Test
+    void should_send_user_agent_header() {
+        // given
+        MockHttpClient mockHttpClient = new MockHttpClient();
+
+        OllamaChatModel model = OllamaChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .baseUrl("http://localhost:11434")
+                .modelName("llama3")
+                .maxRetries(0)
+                .build();
+
+        // when
+        try {
+            model.chat("test");
+        } catch (Exception ignored) {
+        }
+
+        // then
+        assertThat(mockHttpClient.request().headers()).containsEntry("User-Agent", List.of("langchain4j-ollama"));
+    }
+
+    @Test
     void should_invoke_supplier_and_propagate_headers() {
         // given
         AtomicInteger callCount = new AtomicInteger(0);
