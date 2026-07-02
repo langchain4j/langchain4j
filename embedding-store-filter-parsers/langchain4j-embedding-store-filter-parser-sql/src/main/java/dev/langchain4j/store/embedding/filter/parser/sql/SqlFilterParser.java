@@ -324,7 +324,7 @@ public class SqlFilterParser implements FilterParser {
                             return currentHour();
                         case "MINUTE":
                             return currentMinute();
-                            // TODO add other
+                        // TODO add other
                     }
                 } else {
                     // TODO parse timestamp?
