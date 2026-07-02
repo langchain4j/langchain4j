@@ -434,9 +434,9 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             try {
                 sessionFactory
                         .getSchemaManager()
-                        .truncateTable(entityPersister.getIdentifierTableMapping().getTableName());
-            }
-            catch (UnsupportedOperationException ex) {
+                        .truncateTable(
+                                entityPersister.getIdentifierTableMapping().getTableName());
+            } catch (UnsupportedOperationException ex) {
                 // Workaround HHH-20500 since we can't reliably detect the Hibernate ORM version
                 sessionFactory.inStatelessTransaction(session -> {
                     session.createMutationQuery("delete from " + entityPersister.getEntityName())
@@ -1353,41 +1353,97 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             this.entityClass = entityClass;
         }
 
+        /**
+         * Sets the name of the entity attribute that stores the embedding vector.
+         * If not set, the attribute annotated with {@code @EmbeddingVector} or {@code @Embedding}
+         * on the entity class is used automatically.
+         *
+         * @param embeddingAttributeName the embedding attribute name
+         * @return {@code this}
+         */
         public Builder<E> embeddingAttributeName(String embeddingAttributeName) {
             this.embeddingAttributeName = embeddingAttributeName;
             return this;
         }
 
+        /**
+         * Sets the name of the entity attribute that stores the embedded text.
+         * If not set, the attribute annotated with {@code @EmbeddedText} on the entity class is used automatically.
+         *
+         * @param embeddedTextAttributeName the embedded text attribute name
+         * @return {@code this}
+         */
         public Builder<E> embeddedTextAttributeName(String embeddedTextAttributeName) {
             this.embeddedTextAttributeName = embeddedTextAttributeName;
             return this;
         }
 
+        /**
+         * Sets the name of the entity attribute that stores metadata as an unstructured map.
+         * If not set, the attribute annotated with {@code @UnmappedMetadata} is used automatically.
+         *
+         * @param unmappedMetadataAttributeName the unmapped metadata attribute name
+         * @return {@code this}
+         */
         public Builder<E> unmappedMetadataAttributeName(String unmappedMetadataAttributeName) {
             this.unmappedMetadataAttributeName = unmappedMetadataAttributeName;
             return this;
         }
 
+        /**
+         * Sets the names of entity attributes that store individual mapped metadata fields.
+         * If not set, attributes annotated with {@code @MetadataAttribute} are collected automatically.
+         *
+         * @param metadataAttributeNames the metadata attribute names
+         * @return {@code this}
+         */
         public Builder<E> metadataAttributeNames(String... metadataAttributeNames) {
             this.metadataAttributeNames = metadataAttributeNames;
             return this;
         }
 
+        /**
+         * Sets the Hibernate {@link SessionFactory} used to interact with the database.
+         *
+         * @param sessionFactory the session factory
+         * @return {@code this}
+         */
         public Builder<E> sessionFactory(SessionFactory sessionFactory) {
             this.sessionFactory = sessionFactory;
             return this;
         }
 
+        /**
+         * Sets the {@link DatabaseKind} to select the correct vector SQL dialect.
+         * If not set, it is inferred automatically from the Hibernate dialect.
+         *
+         * @param databaseKind the database kind
+         * @return {@code this}
+         */
         public Builder<E> databaseKind(DatabaseKind databaseKind) {
             this.databaseKind = databaseKind;
             return this;
         }
 
+        /**
+         * Sets the distance function used for similarity search.
+         * Defaults to {@link DistanceFunction#COSINE} when not specified via
+         * the {@code @EmbeddingVector} annotation.
+         *
+         * @param distanceFunction the distance function
+         * @return {@code this}
+         */
         public Builder<E> distanceFunction(DistanceFunction distanceFunction) {
             this.distanceFunction = ensureNotNull(distanceFunction, "distanceFunction");
             return this;
         }
 
+        /**
+         * Builds the {@link HibernateEmbeddingStore} using the provided entity class and session factory.
+         * Auto-discovers attribute mappings from entity annotations when not explicitly configured.
+         *
+         * @return the configured {@link HibernateEmbeddingStore}
+         */
         public HibernateEmbeddingStore<E> build() {
             final String embeddingAttributeName;
             final String embeddedTextAttributeName;
@@ -1607,46 +1663,107 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             return cfg.buildSessionFactory();
         }
 
+        /**
+         * Sets the {@link DatabaseKind} to select the correct vector SQL dialect.
+         * Required when the database kind cannot be inferred from the JDBC URL.
+         *
+         * @param databaseKind the database kind
+         * @return {@code this}
+         */
         public BaseBuilder<E> databaseKind(DatabaseKind databaseKind) {
             this.databaseKind = databaseKind;
             return this;
         }
 
+        /**
+         * Sets the database table name used to store embeddings.
+         *
+         * @param table the table name
+         * @return {@code this}
+         */
         public BaseBuilder<E> table(String table) {
             this.table = table;
             return this;
         }
 
+        /**
+         * Sets the dimensionality of the embedding vectors to store. Required.
+         *
+         * @param dimension the vector dimension
+         * @return {@code this}
+         */
         public BaseBuilder<E> dimension(Integer dimension) {
             this.dimension = dimension;
             return this;
         }
 
+        /**
+         * Whether to create a vector index on the embedding column after table creation.
+         * Defaults to {@code false}.
+         *
+         * @param createIndex {@code true} to create an index
+         * @return {@code this}
+         */
         public BaseBuilder<E> createIndex(Boolean createIndex) {
             this.createIndex = createIndex;
             return this;
         }
 
+        /**
+         * Sets the index type (e.g. {@code "hnsw"} or {@code "ivfflat"}).
+         * Only used when {@link #createIndex(Boolean)} is {@code true}.
+         *
+         * @param indexType the index type
+         * @return {@code this}
+         */
         public BaseBuilder<E> indexType(String indexType) {
             this.indexType = indexType;
             return this;
         }
 
+        /**
+         * Sets additional index options appended to the {@code CREATE INDEX} DDL statement.
+         * Only used when {@link #createIndex(Boolean)} is {@code true}.
+         *
+         * @param indexOptions the index options string
+         * @return {@code this}
+         */
         public BaseBuilder<E> indexOptions(String indexOptions) {
             this.indexOptions = indexOptions;
             return this;
         }
 
+        /**
+         * Whether to create the embedding table on startup if it does not exist.
+         * Defaults to {@code false}.
+         *
+         * @param createTable {@code true} to create the table
+         * @return {@code this}
+         */
         public BaseBuilder<E> createTable(Boolean createTable) {
             this.createTable = createTable;
             return this;
         }
 
+        /**
+         * Whether to drop and recreate the embedding table on startup.
+         * Defaults to {@code false}.
+         *
+         * @param dropTableFirst {@code true} to drop the table before creation
+         * @return {@code this}
+         */
         public BaseBuilder<E> dropTableFirst(Boolean dropTableFirst) {
             this.dropTableFirst = dropTableFirst;
             return this;
         }
 
+        /**
+         * Sets the distance function used for similarity search.
+         * Defaults to {@link DistanceFunction#COSINE}.
+         *
+         * @param distanceFunction the distance function
+         * @return {@code this}
+         */
         public BaseBuilder<E> distanceFunction(DistanceFunction distanceFunction) {
             this.distanceFunction = ensureNotNull(distanceFunction, "distanceFunction");
             return this;
@@ -1663,31 +1780,75 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
 
         DynamicBuilder() {}
 
+        /**
+         * Sets the database server hostname. Used together with {@link #port(int)} and
+         * {@link #database(String)} to build the JDBC URL automatically.
+         * Ignored when {@link #jdbcUrl(String)} is provided directly.
+         *
+         * @param host the database hostname
+         * @return {@code this}
+         */
         public DynamicBuilder host(String host) {
             this.host = host;
             return this;
         }
 
+        /**
+         * Sets the database server port. Used together with {@link #host(String)} and
+         * {@link #database(String)} to build the JDBC URL automatically.
+         * Ignored when {@link #jdbcUrl(String)} is provided directly.
+         *
+         * @param port the database port
+         * @return {@code this}
+         */
         public DynamicBuilder port(int port) {
             this.port = port;
             return this;
         }
 
+        /**
+         * Sets the database name. Used together with {@link #host(String)} and {@link #port(int)}
+         * to build the JDBC URL automatically.
+         * Ignored when {@link #jdbcUrl(String)} is provided directly.
+         *
+         * @param database the database name
+         * @return {@code this}
+         */
         public DynamicBuilder database(String database) {
             this.database = database;
             return this;
         }
 
+        /**
+         * Sets the full JDBC URL (e.g. {@code "jdbc:postgresql://localhost:5432/mydb"}).
+         * When provided, {@link #host(String)}, {@link #port(int)}, and {@link #database(String)}
+         * are ignored, and the {@link DatabaseKind} is inferred from the URL.
+         *
+         * @param jdbcUrl the full JDBC URL
+         * @return {@code this}
+         */
         public DynamicBuilder jdbcUrl(String jdbcUrl) {
             this.jdbcUrl = jdbcUrl;
             return this;
         }
 
+        /**
+         * Sets the database username for JDBC authentication.
+         *
+         * @param user the database username
+         * @return {@code this}
+         */
         public DynamicBuilder user(String user) {
             this.user = user;
             return this;
         }
 
+        /**
+         * Sets the database password for JDBC authentication.
+         *
+         * @param password the database password
+         * @return {@code this}
+         */
         public DynamicBuilder password(String password) {
             this.password = password;
             return this;
@@ -1747,6 +1908,13 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        /**
+         * Builds the {@link HibernateEmbeddingStore} by establishing a JDBC connection using either
+         * the provided {@link #jdbcUrl(String)} or the combination of {@link #host(String)},
+         * {@link #port(int)}, and {@link #database(String)}.
+         *
+         * @return the configured {@link HibernateEmbeddingStore}
+         */
         public HibernateEmbeddingStore<EmbeddingEntity> build() {
             final Configuration cfg = createConfiguration();
             final DatabaseKind databaseKind;
@@ -1799,6 +1967,13 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
 
         DynamicDatasourceBuilder() {}
 
+        /**
+         * Sets the {@link DataSource} used to obtain JDBC connections.
+         * When provided, Hibernate uses this data source instead of managing its own connection pool.
+         *
+         * @param datasource the data source
+         * @return {@code this}
+         */
         public DynamicDatasourceBuilder dataSource(DataSource datasource) {
             this.dataSource = datasource;
             return this;
@@ -1858,6 +2033,11 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        /**
+         * Builds the {@link HibernateEmbeddingStore} using the configured {@link DataSource}.
+         *
+         * @return the configured {@link HibernateEmbeddingStore}
+         */
         public HibernateEmbeddingStore<EmbeddingEntity> build() {
             final Configuration cfg = createConfiguration();
             cfg.getProperties().put(JdbcSettings.JAKARTA_NON_JTA_DATASOURCE, ensureNotNull(dataSource, "dataSource"));
