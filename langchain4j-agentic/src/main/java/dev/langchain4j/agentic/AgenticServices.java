@@ -17,6 +17,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import dev.langchain4j.agentic.agent.AgentBuilder;
 import dev.langchain4j.agentic.agent.UntypedAgentBuilder;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
+import dev.langchain4j.agentic.declarative.A2AClientCustomizer;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
@@ -709,6 +710,13 @@ public class AgenticServices {
                         .toArray(String[]::new))
                 .outputKey(AgentUtil.outputKey(a2aClient.outputKey(), a2aClient.typedOutputKey()))
                 .async(a2aClient.async());
+
+        selectMethod(agentServiceClass,
+                     method ->
+                                method.isAnnotationPresent(A2AClientCustomizer.class)
+                                        && method.getParameterCount() == 1)
+                .ifPresent(method ->
+                        a2aClientBuilder.clientCustomizer( cb -> invokeStatic(method, cb)));
 
         getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
                 .ifPresent(method -> {

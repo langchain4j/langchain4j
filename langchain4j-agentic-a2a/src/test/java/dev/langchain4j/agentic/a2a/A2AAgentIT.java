@@ -8,6 +8,7 @@ import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.a2a.Agents.CreativeWriter;
 import dev.langchain4j.agentic.a2a.Agents.DeclarativeA2ACreativeWriter;
+import dev.langchain4j.agentic.a2a.Agents.StoryCreatorWithCustomizedWriter;
 import dev.langchain4j.agentic.a2a.Agents.StoryCreatorWithReview;
 import dev.langchain4j.agentic.a2a.Agents.StyleEditor;
 import dev.langchain4j.agentic.a2a.Agents.StyleReviewLoop;
@@ -24,6 +25,10 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.service.V;
 import java.util.List;
+import org.a2aproject.sdk.client.ClientBuilder;
+import org.a2aproject.sdk.client.config.ClientConfig;
+import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransport;
+import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransportConfigBuilder;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -327,5 +332,62 @@ public class A2AAgentIT {
                 .contains("contextId=" + contextId)
                 .contains("taskId=" + taskId)
                 .contains("input=hello");
+    }
+
+    @Test
+    @Disabled("Requires A2A server to be running")
+    void a2a_agent_with_programmatic_client_customizer() {
+        UntypedAgent creativeWriter = AgenticServices.a2aBuilder(A2A_SERVER_URL)
+                .clientCustomizer((ClientBuilder cb) ->
+                        cb.withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder()))
+                .inputKeys("topic")
+                .outputKey("story")
+                .build();
+
+        StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
+                .chatModel(baseModel())
+                .outputKey("score")
+                .build();
+
+        UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
+                .subAgents(styleScorer, styleEditor)
+                .maxIterations(5)
+                .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+                .build();
+
+        StyledWriter styledWriter = AgenticServices.sequenceBuilder(StyledWriter.class)
+                .subAgents(creativeWriter, styleReviewLoop)
+                .outputKey("story")
+                .build();
+
+        ResultWithAgenticScope<String> result = styledWriter.writeStoryWithStyle("dragons and wizards", "comedy");
+        String story = result.result();
+        System.out.println(story);
+
+        AgenticScope agenticScope = result.agenticScope();
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
+    }
+
+    @Test
+    @Disabled("Requires A2A server to be running")
+    void declarative_a2a_agent_with_customizer() {
+        StoryCreatorWithCustomizedWriter storyCreator =
+                AgenticServices.createAgenticSystem(StoryCreatorWithCustomizedWriter.class, baseModel());
+
+        ResultWithAgenticScope<String> result = storyCreator.write("dragons and wizards", "comedy");
+        String story = result.result();
+        assertThat(story).isNotBlank();
+
+        AgenticScope agenticScope = result.agenticScope();
+        assertThat(agenticScope.readState("topic")).isEqualTo("dragons and wizards");
+        assertThat(agenticScope.readState("style")).isEqualTo("comedy");
+        assertThat(story).isEqualTo(agenticScope.readState("story"));
+        assertThat(agenticScope.readState("score", 0.0)).isGreaterThanOrEqualTo(0.8);
     }
 }
