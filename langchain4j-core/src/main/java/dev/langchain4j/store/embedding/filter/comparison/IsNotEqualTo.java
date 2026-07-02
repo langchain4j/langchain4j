@@ -1,15 +1,13 @@
 package dev.langchain4j.store.embedding.filter.comparison;
 
-import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.store.embedding.filter.Filter;
-
-import java.util.Objects;
-import java.util.UUID;
-
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.compareAsBigDecimals;
-import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensureTypesAreCompatible;
+import static dev.langchain4j.store.embedding.filter.comparison.ComparisonUtils.isEqualTo;
+
+import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.store.embedding.filter.Filter;
+import java.util.Collection;
+import java.util.Objects;
 
 public class IsNotEqualTo implements Filter {
 
@@ -40,25 +38,18 @@ public class IsNotEqualTo implements Filter {
         }
 
         Object actualValue = metadata.toMap().get(key);
-        ensureTypesAreCompatible(actualValue, comparisonValue, key);
-
-        if (actualValue instanceof Number) {
-            return compareAsBigDecimals(actualValue, comparisonValue) != 0;
+        if (actualValue instanceof Collection<?> actualValues) {
+            return actualValues.stream().noneMatch(it -> isEqualTo(it, comparisonValue, key));
         }
 
-        if (comparisonValue instanceof UUID && actualValue instanceof String) {
-            return !actualValue.equals(comparisonValue.toString());
-        }
-
-        return !actualValue.equals(comparisonValue);
+        return !isEqualTo(actualValue, comparisonValue, key);
     }
 
     public boolean equals(final Object o) {
         if (o == this) return true;
         if (!(o instanceof IsNotEqualTo other)) return false;
 
-        return Objects.equals(this.key, other.key)
-                && Objects.equals(this.comparisonValue, other.comparisonValue);
+        return Objects.equals(this.key, other.key) && Objects.equals(this.comparisonValue, other.comparisonValue);
     }
 
     public int hashCode() {

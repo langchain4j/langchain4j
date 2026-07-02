@@ -233,7 +233,9 @@ It stores meta information about the `Document`, such as its name, source, last 
 or any other relevant details.
 
 The `Metadata` is stored as a key-value map, where the key is of the `String` type,
-and the value can be one of the following types: `String`, `Integer`, `Long`, `Float`, `Double`, `UUID`.
+and the value can be one of the following types: `String`, `Integer`, `Long`, `Float`, `Double`, `UUID`,
+or a `Collection` containing either `String` or `UUID` values.
+Support for storing and filtering by collection values depends on the `EmbeddingStore` implementation.
 
 `Metadata` is useful for several reasons:
 - When including the content of the `Document` in a prompt to the LLM,
@@ -252,8 +254,9 @@ and update it in the `EmbeddingStore` as well to keep it in sync.
 
 - `Metadata.from(Map)` creates `Metadata` from a `Map`
 - `Metadata.put(String key, String value)` / `put(String, int)` / etc., adds an entry to the `Metadata`
+- `Metadata.put(String key, Collection<?> values)` adds a collection entry containing only `String`s or only `UUID`s to the `Metadata`
 - `Metadata.putAll(Map)` adds multiple entries to the `Metadata`
-- `Metadata.getString(String key)` / `getInteger(String key)` / etc., returns a value of the `Metadata` entry, casting it to the required type
+- `Metadata.getString(String key)` / `getInteger(String key)` / `getStrings(String key)` / `getUUIDs(String key)` / etc., returns a value of the `Metadata` entry, casting it to the required type
 - `Metadata.containsKey(String key)` checks whether `Metadata` contains an entry with the specified key
 - `Metadata.remove(String key)` removes an entry from the `Metadata` by key
 - `Metadata.copy()` returns a copy of the `Metadata`
