@@ -1,6 +1,6 @@
 ---
 title: OpenAI-Compatible Language Models
-sidebar_position: 17
+sidebar_position: 16
 ---
 
 # OpenAI-Compatible Language Models

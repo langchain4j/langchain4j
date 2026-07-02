@@ -1,5 +1,5 @@
 ---
-sidebar_position: 22
+sidebar_position: 21
 ---
 
 # watsonx.ai
