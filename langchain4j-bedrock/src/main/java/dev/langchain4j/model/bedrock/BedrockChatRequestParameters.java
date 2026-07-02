@@ -131,6 +131,31 @@ public class BedrockChatRequestParameters extends DefaultChatRequestParameters {
         }
 
         /**
+         * Enables <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/inference-reasoning.html">adaptive reasoning</a>,
+         * required for Claude Opus 4.7+ where the legacy {@code budget_tokens} reasoning configuration is no longer accepted.
+         * Older models (e.g. Claude Opus 4.6, Sonnet 4.6) continue to work with {@link #enableReasoning(Integer)}.
+         *
+         * @param effort controls reasoning intensity, serialized to Bedrock's {@code output_config.effort} field.
+         *               Accepted values: {@code "low"}, {@code "medium"}, {@code "high"}.
+         *               If {@code null}, only {@code reasoning_config.type = "adaptive"} is set and Bedrock applies its default.
+         * @see BedrockChatModel.Builder#returnThinking(Boolean)
+         * @see BedrockChatModel.Builder#sendThinking(Boolean)
+         */
+        public Builder enableAdaptiveReasoning(String effort) {
+            if (additionalModelRequestFields == null) {
+                additionalModelRequestFields = new HashMap<>();
+            }
+            Map<?, ?> reasoningConfig = Map.ofEntries(Map.entry("type", "adaptive"));
+            additionalModelRequestFields.put("reasoning_config", reasoningConfig);
+
+            if (effort != null) {
+                Map<?, ?> outputConfig = Map.ofEntries(Map.entry("effort", effort));
+                additionalModelRequestFields.put("output_config", outputConfig);
+            }
+            return this;
+        }
+
+        /**
          * Enables prompt caching and sets where to place the cache point in the conversation.
          * Cache points mark where to cache content for reuse across API calls.
          * The cache has a 5-minute TTL by default which resets on each cache hit.

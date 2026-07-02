@@ -1,5 +1,13 @@
 package dev.langchain4j.store.embedding.milvus;
 
+import static com.google.gson.ToNumberPolicy.LONG_OR_DOUBLE;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.queryForVectors;
+import static dev.langchain4j.store.embedding.milvus.Generator.generateEmptyJsons;
+import static dev.langchain4j.store.embedding.milvus.Generator.generateEmptyScalars;
+import static java.util.stream.Collectors.toList;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
@@ -12,10 +20,10 @@ import dev.langchain4j.store.embedding.RelevanceScore;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.common.clientenum.ConsistencyLevelEnum;
 import io.milvus.exception.ParamException;
+import io.milvus.param.MetricType;
 import io.milvus.response.QueryResultsWrapper;
 import io.milvus.response.QueryResultsWrapper.RowRecord;
 import io.milvus.response.SearchResultsWrapper;
-
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -23,27 +31,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.google.gson.ToNumberPolicy.LONG_OR_DOUBLE;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.queryForVectors;
-import static dev.langchain4j.store.embedding.milvus.Generator.generateEmptyJsons;
-import static dev.langchain4j.store.embedding.milvus.Generator.generateEmptyScalars;
-import static java.util.stream.Collectors.toList;
-
 class Mapper {
 
-    private static final Gson GSON = new GsonBuilder()
-            .setObjectToNumberStrategy(LONG_OR_DOUBLE)
-            .create();
+    private static final Gson GSON =
+            new GsonBuilder().setObjectToNumberStrategy(LONG_OR_DOUBLE).create();
 
-    private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>() {
-    }.getType();
+    private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>() {}.getType();
 
     static List<List<Float>> toVectors(List<Embedding> embeddings) {
-        return embeddings.stream()
-                .map(Embedding::vectorAsList)
-                .collect(toList());
+        return embeddings.stream().map(Embedding::vectorAsList).collect(toList());
     }
 
     static List<String> toScalars(List<TextSegment> textSegments, int size) {
@@ -51,30 +47,36 @@ class Mapper {
     }
 
     static List<JsonObject> toMetadataJsons(List<TextSegment> textSegments, int size) {
-        return isNullOrEmpty(textSegments) ? generateEmptyJsons(size) : textSegments.stream()
-                .map(segment -> GSON.toJsonTree(segment.metadata().toMap()).getAsJsonObject())
-                .collect(toList());
+        return isNullOrEmpty(textSegments)
+                ? generateEmptyJsons(size)
+                : textSegments.stream()
+                        .map(segment ->
+                                GSON.toJsonTree(segment.metadata().toMap()).getAsJsonObject())
+                        .collect(toList());
     }
 
     static List<String> textSegmentsToScalars(List<TextSegment> textSegments) {
-        return textSegments.stream()
-                .map(TextSegment::text)
-                .collect(toList());
+        return textSegments.stream().map(TextSegment::text).collect(toList());
     }
 
-    static List<EmbeddingMatch<TextSegment>> toEmbeddingMatches(MilvusServiceClient milvusClient,
-                                                                SearchResultsWrapper resultsWrapper,
-                                                                String collectionName,
-                                                                FieldDefinition fieldDefinition,
-                                                                ConsistencyLevelEnum consistencyLevel,
-                                                                boolean queryForVectorOnSearch) {
+    static List<EmbeddingMatch<TextSegment>> toEmbeddingMatches(
+            MilvusServiceClient milvusClient,
+            SearchResultsWrapper resultsWrapper,
+            String collectionName,
+            FieldDefinition fieldDefinition,
+            ConsistencyLevelEnum consistencyLevel,
+            boolean queryForVectorOnSearch,
+            MetricType metricType) {
         List<EmbeddingMatch<TextSegment>> matches = new ArrayList<>();
 
         Map<String, Embedding> idToEmbedding = new HashMap<>();
         if (queryForVectorOnSearch && !resultsWrapper.getRowRecords().isEmpty()) {
             try {
-                List<String> rowIds = (List<String>) resultsWrapper.getFieldWrapper(fieldDefinition.getIdFieldName()).getFieldData();
-                idToEmbedding.putAll(queryEmbeddings(milvusClient, collectionName, fieldDefinition, rowIds, consistencyLevel));
+                List<String> rowIds = (List<String>) resultsWrapper
+                        .getFieldWrapper(fieldDefinition.getIdFieldName())
+                        .getFieldData();
+                idToEmbedding.putAll(
+                        queryEmbeddings(milvusClient, collectionName, fieldDefinition, rowIds, consistencyLevel));
             } catch (ParamException e) {
                 // There is no way to check if the result is empty or not.
                 // If the result is empty, the exception will be thrown.
@@ -85,17 +87,23 @@ class Mapper {
             double score = resultsWrapper.getIDScore(0).get(i).getScore();
             String rowId = resultsWrapper.getIDScore(0).get(i).getStrID();
             Embedding embedding = idToEmbedding.get(rowId);
-            TextSegment textSegment = toTextSegment(resultsWrapper.getRowRecords().get(i), fieldDefinition);
-            EmbeddingMatch<TextSegment> embeddingMatch = new EmbeddingMatch<>(
-                    RelevanceScore.fromCosineSimilarity(score),
-                    rowId,
-                    embedding,
-                    textSegment
-            );
+            TextSegment textSegment =
+                    toTextSegment(resultsWrapper.getRowRecords().get(i), fieldDefinition);
+
+            EmbeddingMatch<TextSegment> embeddingMatch =
+                    new EmbeddingMatch<>(toRelevanceScore(score, metricType), rowId, embedding, textSegment);
             matches.add(embeddingMatch);
         }
 
         return matches;
+    }
+
+    static double toRelevanceScore(double score, MetricType metricType) {
+        if (metricType == MetricType.L2) {
+            return 1.0 / (1.0 + score);
+        }
+
+        return RelevanceScore.fromCosineSimilarity(score);
     }
 
     private static TextSegment toTextSegment(RowRecord rowRecord, FieldDefinition fieldDefinition) {
@@ -125,18 +133,14 @@ class Mapper {
         return Metadata.from(metadataMap);
     }
 
-    private static Map<String, Embedding> queryEmbeddings(MilvusServiceClient milvusClient,
-                                                          String collectionName,
-                                                          FieldDefinition fieldDefinition,
-                                                          List<String> rowIds,
-                                                          ConsistencyLevelEnum consistencyLevel) {
-        QueryResultsWrapper queryResultsWrapper = queryForVectors(
-                milvusClient,
-                collectionName,
-                fieldDefinition,
-                rowIds,
-                consistencyLevel
-        );
+    private static Map<String, Embedding> queryEmbeddings(
+            MilvusServiceClient milvusClient,
+            String collectionName,
+            FieldDefinition fieldDefinition,
+            List<String> rowIds,
+            ConsistencyLevelEnum consistencyLevel) {
+        QueryResultsWrapper queryResultsWrapper =
+                queryForVectors(milvusClient, collectionName, fieldDefinition, rowIds, consistencyLevel);
 
         Map<String, Embedding> idToEmbedding = new HashMap<>();
         for (RowRecord row : queryResultsWrapper.getRowRecords()) {

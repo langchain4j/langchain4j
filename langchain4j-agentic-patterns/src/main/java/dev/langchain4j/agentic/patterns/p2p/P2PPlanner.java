@@ -91,8 +91,10 @@ public class P2PPlanner implements Planner {
         }
 
         AgentActivator lastExecutedAgent = agentActivators.get(planningContext.previousAgentInvocation().agentId());
-        lastExecutedAgent.finishExecution();
-        agentActivators.values().forEach(a -> a.onStateChanged(lastExecutedAgent.agent.outputKey()));
+        if (lastExecutedAgent != null) {
+            lastExecutedAgent.finishExecution();
+            agentActivators.values().forEach(a -> a.onStateChanged(lastExecutedAgent.agent.outputKey()));
+        }
 
         return nextCallAction(planningContext.agenticScope());
     }

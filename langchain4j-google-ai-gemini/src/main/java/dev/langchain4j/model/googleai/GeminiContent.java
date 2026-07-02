@@ -131,11 +131,13 @@ record GeminiContent(
 
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiFunctionCall(
+                @JsonProperty("id") String id,
                 @JsonProperty("name") String name,
                 @JsonProperty("args") Map<String, Object> args) {}
 
         @JsonIgnoreProperties(ignoreUnknown = true)
         record GeminiFunctionResponse(
+                @JsonProperty("id") String id,
                 @JsonProperty("name") String name,
                 @JsonProperty("response") Map<String, String> response) {}
 

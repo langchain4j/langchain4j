@@ -11,7 +11,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-document-parser-apache-tika</artifactId>
-    <version>1.14.1-beta24</version>
+    <version>1.17.1-beta27</version>
 </dependency>
 ```
 

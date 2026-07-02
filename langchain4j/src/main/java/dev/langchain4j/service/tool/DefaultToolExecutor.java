@@ -1,6 +1,7 @@
 package dev.langchain4j.service.tool;
 
 import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
+import static dev.langchain4j.internal.Utils.allConcreteMethods;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -65,10 +66,14 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.propagateToolExecutionExceptions = false;
     }
 
+    public Method originalMethod() {
+        return originalMethod;
+    }
+
     private Method findMethod(Object object, ToolExecutionRequest toolExecutionRequest) {
         String requestedMethodName = toolExecutionRequest.name();
 
-        for (Method method : object.getClass().getDeclaredMethods()) {
+        for (Method method : allConcreteMethods(object.getClass())) {
             if (method.getName().equals(requestedMethodName)) {
                 return method;
             }
@@ -143,7 +148,7 @@ public class DefaultToolExecutor implements ToolExecutor {
     private Object[] prepareArguments(ToolExecutionRequest toolExecutionRequest, InvocationContext context) {
         try {
             Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
-            return prepareArguments(originalMethod, argumentsMap, context);
+            return prepareArguments(originalMethod, toolExecutionRequest.name(), argumentsMap, context);
         } catch (Exception e) {
             if (wrapToolArgumentsExceptions) {
                 throw new ToolArgumentsException(unwrapRuntimeException(e));
@@ -171,6 +176,9 @@ public class DefaultToolExecutor implements ToolExecutor {
     }
 
     private List<Content> toContents(Object result) {
+        if (result == null) {
+            return null;
+        }
         if (result instanceof Image image) {
             return List.of(ImageContent.from(image));
         } else if (result instanceof Content content) {
@@ -190,13 +198,17 @@ public class DefaultToolExecutor implements ToolExecutor {
         if (returnType == void.class) {
             return "Success";
         } else if (returnType == String.class) {
+            if (result == null) {
+                return "null";
+            }
             return (String) result;
         } else {
             return Json.toJson(result);
         }
     }
 
-    static Object[] prepareArguments(Method method, Map<String, Object> argumentsMap, InvocationContext context) {
+    static Object[] prepareArguments(
+            Method method, String toolName, Map<String, Object> argumentsMap, InvocationContext context) {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
 
@@ -233,6 +245,15 @@ public class DefaultToolExecutor implements ToolExecutor {
                 arguments[i] = createOptional(argument, parameterName, parameterType);
             } else if (argument != null) {
                 arguments[i] = coerceArgument(argument, parameterName, parameterClass, parameterType);
+            } else {
+                P pAnnotation = parameter.getAnnotation(P.class);
+                if (pAnnotation != null && !P.NO_DEFAULT.equals(pAnnotation.defaultValue())) {
+                    arguments[i] =
+                            parseDefaultValue(pAnnotation.defaultValue(), parameterName, parameterClass, parameterType);
+                } else if (parameterClass.isPrimitive()) {
+                    throw new IllegalArgumentException(String.format(
+                            "Required parameter \"%s\" of tool \"%s\" is missing", parameterName, toolName));
+                }
             }
         }
 
@@ -271,6 +292,29 @@ public class DefaultToolExecutor implements ToolExecutor {
         Class<?> actualClass = extractActualClass(actualType);
         Object coercedValue = coerceArgument(argument, parameterName, actualClass, actualType);
         return Optional.of(coercedValue);
+    }
+
+    static Object parseDefaultValue(
+            String defaultValue, String parameterName, Class<?> parameterClass, Type parameterType) {
+        if (parameterClass == String.class || parameterClass.isEnum() || parameterClass == UUID.class) {
+            return coerceArgument(defaultValue, parameterName, parameterClass, parameterType);
+        }
+        Object jsonParsed;
+        try {
+            jsonParsed = Json.fromJson(defaultValue, Object.class);
+        } catch (Exception e) {
+            throw new IllegalArgumentException(
+                    String.format(
+                            "Cannot parse @P(defaultValue = \"%s\") for parameter \"%s\" of type %s: %s",
+                            defaultValue, parameterName, parameterClass.getName(), e.getMessage()),
+                    e);
+        }
+        if (jsonParsed == null) {
+            throw new IllegalArgumentException(String.format(
+                    "@P(defaultValue = \"%s\") parses to null for parameter \"%s\" of type %s",
+                    defaultValue, parameterName, parameterClass.getName()));
+        }
+        return coerceArgument(jsonParsed, parameterName, parameterClass, parameterType);
     }
 
     static Object coerceArgument(Object argument, String parameterName, Class<?> parameterClass, Type parameterType) {

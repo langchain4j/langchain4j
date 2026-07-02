@@ -8,6 +8,11 @@
           "code": "java.class.nonPublicPartOfAPI",
           "old": "class dev.langchain4j.model.ollama.OllamaClient",
           "justification": "OllamaBaseChatModel is package-private, so the protected field cannot leak to external subclasses"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.data.image.Image",
+          "justification": "Image is intentionally exposed by OllamaImageModel because it implements the core ImageModel API and returns generated images through the core Image type"
         }
       ]
     }

@@ -180,16 +180,36 @@ public class WatsonxTokenCountEstimator implements TokenCountEstimator {
 
         private Builder() {}
 
+        /**
+         * Sets the watsonx.ai model ID used for token counting, e.g. {@code "ibm/granite-3-8b-instruct"}.
+         *
+         * @param modelName the model ID
+         * @return {@code this}
+         */
         public Builder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
+        /**
+         * Sets the IBM Cloud project ID that owns the watsonx.ai resources.
+         * Exactly one of {@code projectId} or {@code spaceId} must be set.
+         *
+         * @param projectId the IBM Cloud project ID
+         * @return {@code this}
+         */
         public Builder projectId(String projectId) {
             this.projectId = projectId;
             return this;
         }
 
+        /**
+         * Sets the IBM Cloud deployment space ID.
+         * Exactly one of {@code projectId} or {@code spaceId} must be set.
+         *
+         * @param spaceId the IBM Cloud deployment space ID
+         * @return {@code this}
+         */
         public Builder spaceId(String spaceId) {
             this.spaceId = spaceId;
             return this;

@@ -15,6 +15,8 @@ import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.LangChain4jManaged;
@@ -37,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
@@ -53,13 +56,15 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
     private final AgentBuilder<?, ?> builder;
     private final Object agent;
     private final boolean agenticScopeDependent;
+    private final Function<AgenticScope, ChatModel> chatModelProvider;
+    private final Function<AgenticScope, StreamingChatModel> streamingChatModelProvider;
     private String agentId;
     private InternalAgent parent;
     private AgentListener agentListener;
 
     private final Map<Object, AiServiceResponseReceivedEvent> lastResponseEvents = new ConcurrentHashMap<>();
 
-    AgentInvocationHandler(
+    public AgentInvocationHandler(
             AiServiceContext context,
             Object agent,
             AgentBuilder<?, ?> builder,
@@ -70,6 +75,8 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         this.agentId = builder.name;
         this.agenticScopeDependent = agenticScopeDependent;
         this.agentListener = builder.agentListener;
+        this.chatModelProvider = builder.chatModelProvider;
+        this.streamingChatModelProvider = builder.streamingChatModelProvider;
     }
 
     @Override
@@ -115,9 +122,8 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
                         yield proxy;
                     }
                     Object agentProxy = ((DefaultAgenticScope) args[0]).getOrCreateAgent(agentId, builder::build);
-                    AgentInvocationHandler agent = (AgentInvocationHandler) Proxy.getInvocationHandler(agentProxy);
-                    agent.setParent(parent);
-                    agent.agentId = agentId;
+                    ((InternalAgent) agentProxy).setParent(parent);
+                    ((InternalAgent) agentProxy).setAgentId(agentId);
                     yield agentProxy;
                 }
                 case "registry" ->
@@ -144,7 +150,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         }
 
         if (method.getDeclaringClass() == AgentInstance.class || method.getDeclaringClass() == InternalAgent.class) {
-            return method.invoke(Proxy.getInvocationHandler(proxy), args);
+            return method.invoke(this, args);
         }
 
         if (method.getDeclaringClass() == MonitoredAgent.class) {
@@ -162,7 +168,15 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         }
 
         AgenticScope agenticScope = LangChain4jManaged.current(AgenticScope.class);
-        return agenticScope != null ? method.invoke(agent, args) : invokeStandaloneAgent(method, args);
+        if (agenticScope != null) {
+            if (chatModelProvider != null) {
+                context.chatModel = chatModelProvider.apply(agenticScope);
+            } else if (streamingChatModelProvider != null) {
+                context.streamingChatModel = streamingChatModelProvider.apply(agenticScope);
+            }
+            return method.invoke(agent, args);
+        }
+        return invokeStandaloneAgent(method, args);
     }
 
     private Object invokeStandaloneAgent(Method method, Object[] args) {
@@ -250,6 +264,11 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
     @Override
     public void appendId(String idSuffix) {
         this.agentId = this.agentId + idSuffix;
+    }
+
+    @Override
+    public void setAgentId(String agentId) {
+        this.agentId = agentId;
     }
 
     @Override

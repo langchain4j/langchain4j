@@ -2,6 +2,7 @@ package dev.langchain4j.model.openai.internal;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -88,21 +89,31 @@ public class OpenAiUtils {
     public static final String DEFAULT_USER_AGENT = "langchain4j-openai";
 
     public static List<Message> toOpenAiMessages(List<ChatMessage> messages) {
-        return toOpenAiMessages(messages, false, null);
+        return toOpenAiMessages(messages, false, null, false);
     }
 
     public static List<Message> toOpenAiMessages(
             List<ChatMessage> messages, boolean sendThinking, String thinkingFieldName) {
+        return toOpenAiMessages(messages, sendThinking, thinkingFieldName, false);
+    }
+
+    public static List<Message> toOpenAiMessages(
+            List<ChatMessage> messages, boolean sendThinking, String thinkingFieldName, boolean useInputImageFormat) {
         return messages.stream()
-                .map(message -> toOpenAiMessage(message, sendThinking, thinkingFieldName))
+                .map(message -> toOpenAiMessage(message, sendThinking, thinkingFieldName, useInputImageFormat))
                 .collect(toList());
     }
 
     public static Message toOpenAiMessage(ChatMessage message) {
-        return toOpenAiMessage(message, false, null);
+        return toOpenAiMessage(message, false, null, false);
     }
 
     public static Message toOpenAiMessage(ChatMessage message, boolean sendThinking, String thinkingFieldName) {
+        return toOpenAiMessage(message, sendThinking, thinkingFieldName, false);
+    }
+
+    public static Message toOpenAiMessage(
+            ChatMessage message, boolean sendThinking, String thinkingFieldName, boolean useInputImageFormat) {
         if (message instanceof SystemMessage) {
             return dev.langchain4j.model.openai.internal.chat.SystemMessage.from(((SystemMessage) message).text());
         }
@@ -116,7 +127,7 @@ public class OpenAiUtils {
             } else {
                 return dev.langchain4j.model.openai.internal.chat.UserMessage.builder()
                         .content(userMessage.contents().stream()
-                                .map(OpenAiUtils::toOpenAiContent)
+                                .map(content -> toOpenAiContent(content, useInputImageFormat))
                                 .collect(toList()))
                         .name(userMessage.name())
                         .build();
@@ -189,11 +200,12 @@ public class OpenAiUtils {
         throw illegalArgument("Unknown message type: " + message.type());
     }
 
-    private static dev.langchain4j.model.openai.internal.chat.Content toOpenAiContent(Content content) {
+    private static dev.langchain4j.model.openai.internal.chat.Content toOpenAiContent(
+            Content content, boolean useInputImageFormat) {
         if (content instanceof TextContent) {
             return toOpenAiContent((TextContent) content);
         } else if (content instanceof ImageContent) {
-            return toOpenAiContent((ImageContent) content);
+            return toOpenAiContent((ImageContent) content, useInputImageFormat);
         } else if (content instanceof VideoContent videoContent) {
             return toOpenAiContent(videoContent);
         } else if (content instanceof AudioContent audioContent) {
@@ -212,7 +224,15 @@ public class OpenAiUtils {
                 .build();
     }
 
-    private static dev.langchain4j.model.openai.internal.chat.Content toOpenAiContent(ImageContent content) {
+    private static dev.langchain4j.model.openai.internal.chat.Content toOpenAiContent(
+            ImageContent content, boolean useInputImageFormat) {
+        if (useInputImageFormat) {
+            return dev.langchain4j.model.openai.internal.chat.Content.builder()
+                    .type(ContentType.INPUT_IMAGE)
+                    .inputImageUrl(toUrl(content.image()))
+                    .build();
+        }
+
         return dev.langchain4j.model.openai.internal.chat.Content.builder()
                 .type(ContentType.IMAGE_URL)
                 .imageUrl(ImageUrl.builder()
@@ -295,11 +315,12 @@ public class OpenAiUtils {
     }
 
     private static Tool toTool(ToolSpecification toolSpecification, boolean strict) {
+        boolean effectiveStrict = isEffectivelyStrict(toolSpecification, strict);
         Function.Builder functionBuilder = Function.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())
-                .parameters(toOpenAiParameters(toolSpecification.parameters(), strict));
-        if (strict) {
+                .parameters(toOpenAiParameters(toolSpecification.parameters(), effectiveStrict));
+        if (effectiveStrict) {
             functionBuilder.strict(true);
         }
         Function function = functionBuilder.build();
@@ -351,6 +372,11 @@ public class OpenAiUtils {
     public static AiMessage aiMessageFrom(ChatCompletionResponse response, boolean returnThinking) {
         if (isNullOrEmpty(response.choices())) {
             throw new InternalServerException("Chat completion failed: no choices returned in response");
+        }
+        if (response.choices().size() > 1) {
+            throw new InternalServerException(format(
+                    "Chat completion failed: expected exactly one choice, but got %s choices",
+                    response.choices().size()));
         }
         AssistantMessage assistantMessage = response.choices().get(0).message();
 
@@ -547,9 +573,22 @@ public class OpenAiUtils {
             String thinkingFieldName,
             Boolean strictTools,
             Boolean strictJsonSchema) {
+        return toOpenAiChatRequest(
+                chatRequest, parameters, sendThinking, thinkingFieldName, strictTools, strictJsonSchema, false);
+    }
+
+    public static ChatCompletionRequest.Builder toOpenAiChatRequest(
+            ChatRequest chatRequest,
+            OpenAiChatRequestParameters parameters,
+            boolean sendThinking,
+            String thinkingFieldName,
+            Boolean strictTools,
+            Boolean strictJsonSchema,
+            boolean useInputImageFormat) {
 
         return ChatCompletionRequest.builder()
-                .messages(toOpenAiMessages(chatRequest.messages(), sendThinking, thinkingFieldName))
+                .messages(
+                        toOpenAiMessages(chatRequest.messages(), sendThinking, thinkingFieldName, useInputImageFormat))
                 // common parameters
                 .model(parameters.modelName())
                 .temperature(parameters.temperature())

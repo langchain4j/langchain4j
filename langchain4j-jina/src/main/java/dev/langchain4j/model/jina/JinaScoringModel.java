@@ -1,5 +1,12 @@
 package dev.langchain4j.model.jina;
 
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.time.Duration.ofSeconds;
+import static java.util.Comparator.comparingInt;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.jina.internal.api.JinaRerankingRequest;
 import dev.langchain4j.model.jina.internal.api.JinaRerankingResponse;
@@ -7,17 +14,9 @@ import dev.langchain4j.model.jina.internal.client.JinaClient;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;
-import org.slf4j.Logger;
-
 import java.time.Duration;
 import java.util.List;
-
-import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.time.Duration.ofSeconds;
-import static java.util.Comparator.comparingInt;
-import static java.util.stream.Collectors.toList;
+import org.slf4j.Logger;
 
 /**
  * An implementation of a {@link ScoringModel} that uses
@@ -32,13 +31,14 @@ public class JinaScoringModel implements ScoringModel {
     private final Integer maxRetries;
 
     @Deprecated(forRemoval = true, since = "1.4.0")
-    public JinaScoringModel(String baseUrl,
-                            String apiKey,
-                            String modelName,
-                            Duration timeout,
-                            Integer maxRetries,
-                            Boolean logRequests,
-                            Boolean logResponses) {
+    public JinaScoringModel(
+            String baseUrl,
+            String apiKey,
+            String modelName,
+            Duration timeout,
+            Integer maxRetries,
+            Boolean logRequests,
+            Boolean logResponses) {
         this.client = JinaClient.builder()
                 .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
                 .apiKey(ensureNotBlank(apiKey, "apiKey"))
@@ -73,10 +73,8 @@ public class JinaScoringModel implements ScoringModel {
         JinaRerankingRequest request = JinaRerankingRequest.builder()
                 .model(modelName)
                 .query(query)
-                .documents(segments.stream()
-                        .map(TextSegment::text)
-                        .collect(toList()))
-                .returnDocuments(false)  // decreasing response size, do not include text in response
+                .documents(segments.stream().map(TextSegment::text).collect(toList()))
+                .returnDocuments(false) // decreasing response size, do not include text in response
                 .build();
 
         JinaRerankingResponse response = withRetryMappingExceptions(() -> client.rerank(request), maxRetries);
@@ -86,11 +84,7 @@ public class JinaScoringModel implements ScoringModel {
                 .map(result -> result.relevanceScore)
                 .collect(toList());
 
-        TokenUsage tokenUsage = new TokenUsage(
-                response.usage.promptTokens,
-                0,
-                response.usage.totalTokens
-        );
+        TokenUsage tokenUsage = new TokenUsage(response.usage.promptTokens, 0, response.usage.totalTokens);
         return Response.from(scores, tokenUsage);
     }
 
@@ -104,8 +98,7 @@ public class JinaScoringModel implements ScoringModel {
         private Boolean logResponses;
         private Logger logger;
 
-        JinaScoringModelBuilder() {
-        }
+        JinaScoringModelBuilder() {}
 
         public JinaScoringModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -156,7 +149,10 @@ public class JinaScoringModel implements ScoringModel {
         }
 
         public String toString() {
-            return "JinaScoringModel.JinaScoringModelBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", modelName=" + this.modelName + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+            return "JinaScoringModel.JinaScoringModelBuilder(baseUrl=" + this.baseUrl + ", apiKey="
+                    + (this.apiKey == null ? null : "********") + ", modelName=" + this.modelName + ", timeout="
+                    + this.timeout + ", maxRetries=" + this.maxRetries + ", logRequests=" + this.logRequests
+                    + ", logResponses=" + this.logResponses + ")";
         }
     }
 }

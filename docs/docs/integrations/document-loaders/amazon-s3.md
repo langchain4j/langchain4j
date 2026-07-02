@@ -11,7 +11,7 @@ sidebar_position: 1
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-document-loader-amazon-s3</artifactId>
-    <version>1.14.1-beta24</version>
+    <version>1.17.1-beta27</version>
 </dependency>
 ```
 

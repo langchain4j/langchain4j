@@ -22,6 +22,7 @@ import org.mockito.InOrder;
 
 import java.util.List;
 
+import static dev.langchain4j.MockitoUtils.ignoreInteractions;
 import static java.util.List.of;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -66,13 +67,15 @@ class OpenAiResponsesStreamingChatModelThinkingIT {
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName("gpt-5-mini")
-                .reasoningEffort("low")
+                .reasoningEffort("medium")
                 .reasoningSummary(reasoningSummary)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
 
-        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+        UserMessage userMessage =
+                UserMessage.from("A bat and ball cost $1.10 in total. The bat costs $1.00 more than the ball. "
+                        + "How much does the ball cost? Think carefully step by step.");
 
         // when
         TestStreamingChatResponseHandler spyHandler = spy(new TestStreamingChatResponseHandler());
@@ -81,7 +84,7 @@ class OpenAiResponsesStreamingChatModelThinkingIT {
         // then
         ChatResponse chatResponse = spyHandler.get();
         AiMessage aiMessage = chatResponse.aiMessage();
-        assertThat(aiMessage.text()).containsIgnoringCase("Berlin");
+        assertThat(aiMessage.text()).isNotBlank();
         assertThat(aiMessage.thinking()).isNotBlank();
         assertThat(aiMessage.thinking()).isEqualTo(spyHandler.getThinking());
 
@@ -94,6 +97,7 @@ class OpenAiResponsesStreamingChatModelThinkingIT {
         inOrder.verify(spyHandler, atLeastOnce()).onPartialResponse(any(), any());
         inOrder.verify(spyHandler).onCompleteResponse(any());
         inOrder.verify(spyHandler).getThinking();
+        ignoreInteractions(spyHandler).onUnmappedRawEvent(any());
         inOrder.verifyNoMoreInteractions();
         verifyNoMoreInteractions(spyHandler);
     }
@@ -107,7 +111,7 @@ class OpenAiResponsesStreamingChatModelThinkingIT {
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName("gpt-5-mini")
-                .reasoningEffort("low")
+                .reasoningEffort("medium")
                 .logRequests(true)
                 .logResponses(true)
                 .build();

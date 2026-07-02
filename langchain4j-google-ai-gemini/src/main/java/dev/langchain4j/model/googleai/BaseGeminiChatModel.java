@@ -55,9 +55,8 @@ class BaseGeminiChatModel {
     protected final Boolean enableEnhancedCivicAnswers;
     protected final GeminiMediaResolutionLevel mediaResolution;
     protected final boolean mediaResolutionPerPartEnabled;
-    protected final GeminiGenerationConfig.GeminiImageConfig imageConfig;
 
-    protected final ChatRequestParameters defaultRequestParameters;
+    protected final GoogleAiGeminiChatRequestParameters defaultRequestParameters;
 
     protected BaseGeminiChatModel(GoogleAiGeminiChatModelBaseBuilder<?> builder, GeminiService geminiService) {
         this.geminiService = geminiService;
@@ -80,27 +79,36 @@ class BaseGeminiChatModel {
         this.logprobs = builder.logprobs;
         this.mediaResolution = builder.mediaResolution;
         this.mediaResolutionPerPartEnabled = getOrDefault(builder.mediaResolutionPerPartEnabled, false);
-        this.imageConfig = buildImageConfig(builder.aspectRatio, builder.imageSize);
 
-        ChatRequestParameters parameters;
+        ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
-            parameters = builder.defaultRequestParameters;
+            commonParameters = builder.defaultRequestParameters;
         } else {
-            parameters = DefaultChatRequestParameters.EMPTY;
+            commonParameters = DefaultChatRequestParameters.EMPTY;
         }
 
-        this.defaultRequestParameters = ChatRequestParameters.builder()
-                .modelName(getOrDefault(builder.modelName, parameters.modelName()))
-                .temperature(getOrDefault(builder.temperature, parameters.temperature()))
-                .topP(getOrDefault(builder.topP, parameters.topP()))
-                .topK(getOrDefault(builder.topK, parameters.topK()))
-                .frequencyPenalty(getOrDefault(builder.frequencyPenalty, parameters.frequencyPenalty()))
-                .presencePenalty(getOrDefault(builder.presencePenalty, parameters.presencePenalty()))
-                .maxOutputTokens(getOrDefault(builder.maxOutputTokens, parameters.maxOutputTokens()))
-                .stopSequences(getOrDefault(builder.stopSequences, parameters.stopSequences()))
-                .toolSpecifications(parameters.toolSpecifications())
-                .toolChoice(getOrDefault(toToolChoice(functionCallingConfig), parameters.toolChoice()))
-                .responseFormat(getOrDefault(builder.responseFormat, parameters.responseFormat()))
+        GoogleAiGeminiChatRequestParameters geminiParameters =
+                builder.defaultRequestParameters instanceof GoogleAiGeminiChatRequestParameters googleAiParameters
+                        ? googleAiParameters
+                        : GoogleAiGeminiChatRequestParameters.EMPTY;
+
+        this.defaultRequestParameters = GoogleAiGeminiChatRequestParameters.builder()
+                // common parameters
+                .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
+                .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
+                .topP(getOrDefault(builder.topP, commonParameters.topP()))
+                .topK(getOrDefault(builder.topK, commonParameters.topK()))
+                .frequencyPenalty(getOrDefault(builder.frequencyPenalty, commonParameters.frequencyPenalty()))
+                .presencePenalty(getOrDefault(builder.presencePenalty, commonParameters.presencePenalty()))
+                .maxOutputTokens(getOrDefault(builder.maxOutputTokens, commonParameters.maxOutputTokens()))
+                .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
+                .toolSpecifications(commonParameters.toolSpecifications())
+                .toolChoice(getOrDefault(toToolChoice(functionCallingConfig), commonParameters.toolChoice()))
+                .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                // Gemini-specific parameters
+                .aspectRatio(getOrDefault(builder.aspectRatio, geminiParameters.aspectRatio()))
+                .imageSize(getOrDefault(builder.imageSize, geminiParameters.imageSize()))
+                .cachedContentName(getOrDefault(builder.cachedContentName, geminiParameters.cachedContentName()))
                 .build();
     }
 
@@ -118,7 +126,9 @@ class BaseGeminiChatModel {
     }
 
     protected GeminiGenerateContentRequest createGenerateContentRequest(ChatRequest chatRequest) {
-        ChatRequestParameters parameters = chatRequest.parameters();
+        GoogleAiGeminiChatRequestParameters parameters = (GoogleAiGeminiChatRequestParameters) chatRequest.parameters();
+        GeminiGenerationConfig.GeminiImageConfig effectiveImageConfig =
+                buildImageConfig(parameters.aspectRatio(), parameters.imageSize());
 
         GeminiContent systemInstruction = new GeminiContent(List.of(), GeminiRole.MODEL.toString());
         List<GeminiContent> geminiContentList = fromMessageToGContent(
@@ -155,10 +165,11 @@ class BaseGeminiChatModel {
                         .presencePenalty(parameters.presencePenalty())
                         .frequencyPenalty(parameters.frequencyPenalty())
                         .responseLogprobs(responseLogprobs)
+                        .enableEnhancedCivicAnswers(enableEnhancedCivicAnswers)
                         .logprobs(logprobs)
                         .thinkingConfig(this.thinkingConfig)
                         .mediaResolution(this.mediaResolution)
-                        .imageConfig(this.imageConfig)
+                        .imageConfig(effectiveImageConfig)
                         .build())
                 .safetySettings(this.safetySettings)
                 .tools(fromToolSpecsToGTools(
@@ -169,6 +180,7 @@ class BaseGeminiChatModel {
                         this.allowGoogleMaps,
                         this.retrieveGoogleMapsWidgetToken))
                 .toolConfig(toToolConfig(parameters.toolChoice(), this.functionCallingConfig))
+                .cachedContent(parameters.cachedContentName())
                 .build();
     }
 
@@ -347,6 +359,7 @@ class BaseGeminiChatModel {
         protected Boolean mediaResolutionPerPartEnabled;
         protected String aspectRatio;
         protected String imageSize;
+        protected String cachedContentName;
         protected Supplier<Map<String, String>> customHeadersSupplier;
 
         @SuppressWarnings("unchecked")
@@ -359,6 +372,13 @@ class BaseGeminiChatModel {
             return builder();
         }
 
+        /**
+         * Sets default common {@link ChatRequestParameters} or
+         * Gemini-specific {@link GoogleAiGeminiChatRequestParameters}.
+         * <br>
+         * When a parameter is set via an individual builder method (e.g., {@link #modelName(String)}),
+         * its value takes precedence over the same parameter set via {@link ChatRequestParameters}.
+         */
         public B defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
             this.defaultRequestParameters = defaultRequestParameters;
             return builder();
@@ -744,6 +764,24 @@ class BaseGeminiChatModel {
          */
         public B imageSize(String imageSize) {
             this.imageSize = imageSize;
+            return builder();
+        }
+
+        /**
+         * Sets the resource name of a previously created cache (e.g. {@code "cachedContents/abc123"}) to attach
+         * to every {@code generateContent} / {@code streamGenerateContent} request issued by this model. The cached
+         * context (system instructions, documents, etc.) will be reused server-side, reducing latency and token
+         * cost.
+         *
+         * <p>This integration does not manage the cache lifecycle (create / list / delete); callers are expected
+         * to create the cache out of band via the
+         * <a href="https://ai.google.dev/gemini-api/docs/caching">Gemini context caching API</a> and pass the
+         * returned resource name here.</p>
+         *
+         * <p>Can be overridden per-request via {@link GoogleAiGeminiChatRequestParameters#cachedContentName()}.</p>
+         */
+        public B cachedContentName(String cachedContentName) {
+            this.cachedContentName = cachedContentName;
             return builder();
         }
 

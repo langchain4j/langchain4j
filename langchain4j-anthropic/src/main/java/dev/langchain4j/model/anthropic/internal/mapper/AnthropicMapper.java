@@ -2,14 +2,15 @@ package dev.langchain4j.model.anthropic.internal.mapper;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.ToolSpecificationUtils.isEffectivelyStrict;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTANT;
+import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.SYSTEM;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
-import static dev.langchain4j.model.anthropic.internal.client.Json.fromJson;
 import static dev.langchain4j.model.anthropic.internal.client.Json.toJson;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.OTHER;
@@ -32,11 +33,14 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.pdf.PdfFile;
+import dev.langchain4j.model.anthropic.AnthropicCacheDiagnostics;
 import dev.langchain4j.model.anthropic.AnthropicServerTool;
 import dev.langchain4j.model.anthropic.AnthropicServerToolResult;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheMissReason;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicDiagnostics;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicImageContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMessageContent;
@@ -78,21 +82,38 @@ public class AnthropicMapper {
     public static final String CACHE_CONTROL = "cache_control";
 
     public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages) {
-        return toAnthropicMessages(messages, false);
+        return toAnthropicMessages(messages, false, false);
     }
 
     public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages, boolean sendThinking) {
+        return toAnthropicMessages(messages, sendThinking, false);
+    }
+
+    public static List<AnthropicMessage> toAnthropicMessages(
+            List<ChatMessage> messages, boolean sendThinking, boolean midConversationSystemMessages) {
 
         List<AnthropicMessage> anthropicMessages = new ArrayList<>();
         List<AnthropicMessageContent> toolContents = new ArrayList<>();
+        boolean conversationStarted = false;
 
         for (ChatMessage message : messages) {
 
             if (message instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+                conversationStarted = true;
                 toolContents.add(toAnthropicToolResultContent(toolExecutionResultMessage));
-            } else if (message instanceof SystemMessage) {
-                // ignore, it is handled in the "toAnthropicSystemPrompt" method
+            } else if (message instanceof SystemMessage systemMessage) {
+                // a leading system message is handled in "toAnthropicSystemPrompt"; a mid-conversation one
+                // is emitted inline as a role:"system" message only when midConversationSystemMessages is enabled
+                if (midConversationSystemMessages && conversationStarted) {
+                    if (!toolContents.isEmpty()) {
+                        anthropicMessages.add(new AnthropicMessage(USER, toolContents));
+                        toolContents = new ArrayList<>();
+                    }
+                    anthropicMessages.add(
+                            new AnthropicMessage(SYSTEM, List.of(new AnthropicTextContent(systemMessage.text()))));
+                }
             } else {
+                conversationStarted = true;
                 if (!toolContents.isEmpty()) {
                     anthropicMessages.add(new AnthropicMessage(USER, toolContents));
                     toolContents = new ArrayList<>();
@@ -223,21 +244,35 @@ public class AnthropicMapper {
         return contents;
     }
 
-    private static Map<String, Object> toAnthropicInput(ToolExecutionRequest toolExecutionRequest) {
+    private static String toAnthropicInput(ToolExecutionRequest toolExecutionRequest) {
         String arguments = toolExecutionRequest.arguments();
         if (isNullOrBlank(arguments)) {
-            return Map.of();
+            return "{}";
         }
 
-        return fromJson(arguments, Map.class);
+        return arguments;
     }
 
     public static List<AnthropicTextContent> toAnthropicSystemPrompt(
             List<ChatMessage> messages, AnthropicCacheType cacheType) {
-        List<SystemMessage> systemMessages = messages.stream()
-                .filter(SystemMessage.class::isInstance)
-                .map(SystemMessage.class::cast)
-                .toList();
+        return toAnthropicSystemPrompt(messages, cacheType, false);
+    }
+
+    public static List<AnthropicTextContent> toAnthropicSystemPrompt(
+            List<ChatMessage> messages, AnthropicCacheType cacheType, boolean midConversationSystemMessages) {
+        List<SystemMessage> systemMessages = new ArrayList<>();
+        boolean conversationStarted = false;
+        for (ChatMessage message : messages) {
+            if (message instanceof SystemMessage systemMessage) {
+                // when midConversationSystemMessages is enabled, only leading system messages go to the top-level
+                // "system" field; mid-conversation ones are emitted inline by "toAnthropicMessages"
+                if (!midConversationSystemMessages || !conversationStarted) {
+                    systemMessages.add(systemMessage);
+                }
+            } else {
+                conversationStarted = true;
+            }
+        }
 
         SystemMessage lastSystemMessage =
                 systemMessages.isEmpty() ? null : systemMessages.get(systemMessages.size() - 1);
@@ -340,6 +375,17 @@ public class AnthropicMapper {
                 .build();
     }
 
+    public static AnthropicCacheDiagnostics toCacheDiagnostics(AnthropicDiagnostics anthropicDiagnostics) {
+        if (anthropicDiagnostics == null) {
+            return null;
+        }
+        AnthropicCacheMissReason cacheMissReason = anthropicDiagnostics.cacheMissReason;
+        return AnthropicCacheDiagnostics.builder()
+                .cacheMissReasonType(cacheMissReason == null ? null : cacheMissReason.type)
+                .cacheMissedInputTokens(cacheMissReason == null ? null : cacheMissReason.cacheMissedInputTokens)
+                .build();
+    }
+
     public static FinishReason toFinishReason(String anthropicStopReason) {
         if (anthropicStopReason == null) {
             return null;
@@ -409,18 +455,21 @@ public class AnthropicMapper {
             Boolean strictTools) {
         JsonObjectSchema parameters = toolSpecification.parameters();
 
-        // prevent NPE during unboxing
-        boolean strict = Boolean.TRUE.equals(strictTools);
+        boolean strict = isEffectivelyStrict(toolSpecification, Boolean.TRUE.equals(strictTools));
+
+        AnthropicToolSchema.Builder inputSchemaBuilder = AnthropicToolSchema.builder()
+                .properties(parameters != null ? toMap(parameters.properties(), strict) : emptyMap())
+                .required(parameters != null ? parameters.required() : emptyList())
+                .additionalProperties(strict ? Boolean.FALSE : null);
+        if (parameters != null && !parameters.definitions().isEmpty()) {
+            inputSchemaBuilder.defs(mapDefs(parameters.definitions()));
+        }
 
         AnthropicTool.Builder toolBuilder = AnthropicTool.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())
                 .strict(strict ? Boolean.TRUE : null)
-                .inputSchema(AnthropicToolSchema.builder()
-                        .properties(parameters != null ? toMap(parameters.properties(), strict) : emptyMap())
-                        .required(parameters != null ? parameters.required() : emptyList())
-                        .additionalProperties(strict ? Boolean.FALSE : null)
-                        .build());
+                .inputSchema(inputSchemaBuilder.build());
 
         if (cacheToolsPrompt != AnthropicCacheType.NO_CACHE) {
             toolBuilder.cacheControl(cacheToolsPrompt.cacheControl());
@@ -479,6 +528,11 @@ public class AnthropicMapper {
             // All Anthropic object schemas require setting additionalProperties=false
             // https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-schema-limitations
             map.put("additionalProperties", false);
+
+            if (!objectSchema.definitions().isEmpty()) {
+                map.put("$defs", mapDefs(objectSchema.definitions()));
+            }
+
             return map;
         }
         if (schemaElement instanceof JsonArraySchema arraySchema) {

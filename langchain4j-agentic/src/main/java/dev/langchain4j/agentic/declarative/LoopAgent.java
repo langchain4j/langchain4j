@@ -1,10 +1,9 @@
 package dev.langchain4j.agentic.declarative;
 
-import dev.langchain4j.agentic.Agent;
-
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+import dev.langchain4j.agentic.Agent;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
@@ -63,7 +62,7 @@ public @interface LoopAgent {
     Class<? extends TypedKey<?>> typedOutputKey() default Agent.NoTypedKey.class;
 
     /**
-     * Array of sub-agents that will be invoked in parallel.
+     * Array of sub-agents that will be invoked in sequence at each loop iteration.
      *
      * @return array of sub-agents.
      */

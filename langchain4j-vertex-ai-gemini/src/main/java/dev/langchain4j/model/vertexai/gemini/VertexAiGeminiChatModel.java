@@ -16,6 +16,7 @@ import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.Content;
 import com.google.cloud.vertexai.api.FunctionCall;
 import com.google.cloud.vertexai.api.FunctionCallingConfig;
+import com.google.cloud.vertexai.api.GenerateContentRequest;
 import com.google.cloud.vertexai.api.GenerateContentResponse;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.api.Part;
@@ -98,6 +99,8 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
 
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
+
+    private final Map<String, String> labels;
 
     public VertexAiGeminiChatModel(VertexAiGeminiChatModelBuilder builder) {
         ensureNotBlank(builder.modelName, "modelName");
@@ -213,6 +216,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         this.logResponses = getOrDefault(builder.logResponses, false);
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
+        this.labels = copy(builder.labels);
     }
 
     /**
@@ -340,6 +344,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
 
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.supportedCapabilities = copy(supportedCapabilities);
+        this.labels = Collections.emptyMap();
     }
 
     public VertexAiGeminiChatModel(GenerativeModel generativeModel, GenerationConfig generationConfig) {
@@ -365,6 +370,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         this.logResponses = false;
         this.listeners = Collections.emptyList();
         this.supportedCapabilities = Set.of();
+        this.labels = Collections.emptyMap();
     }
 
     @Override
@@ -476,7 +482,17 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         final GenerateContentResponse response;
         try {
             response = withRetryMappingExceptions(
-                    () -> finalModel.generateContent(instructionAndContent.contents), maxRetries);
+                    () -> {
+                        if (labels.isEmpty()) {
+                            return finalModel.generateContent(instructionAndContent.contents);
+                        }
+                        GenerateContentRequest request = buildGenerateContentRequest(
+                                finalModel, vertexAI, instructionAndContent.contents, labels);
+                        return vertexAI.getPredictionServiceClient()
+                                .generateContentCallable()
+                                .call(request);
+                    },
+                    maxRetries);
         } catch (Exception e) {
             listeners.forEach(listener -> {
                 try {
@@ -550,6 +566,48 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         return this.vertexAI;
     }
 
+    @VisibleForTesting
+    Map<String, String> labels() {
+        return this.labels;
+    }
+
+    // mirrors the SDK's private GenerativeModel.buildGenerateContentRequest envelope and
+    // adds putAllLabels; only called when labels are non-empty
+    static GenerateContentRequest buildGenerateContentRequest(
+            GenerativeModel model, VertexAI vertexAI, List<Content> contents, Map<String, String> labels) {
+        GenerateContentRequest.Builder requestBuilder = GenerateContentRequest.newBuilder()
+                .setModel(buildResourceName(model.getModelName(), vertexAI))
+                .addAllContents(contents)
+                .setGenerationConfig(model.getGenerationConfig())
+                .addAllSafetySettings(model.getSafetySettings())
+                .addAllTools(model.getTools());
+
+        model.getToolConfig().ifPresent(requestBuilder::setToolConfig);
+        model.getSystemInstruction().ifPresent(requestBuilder::setSystemInstruction);
+
+        if (labels != null && !labels.isEmpty()) {
+            requestBuilder.putAllLabels(labels);
+        }
+
+        return requestBuilder.build();
+    }
+
+    // mirrors the SDK's private GenerativeModel.getResourceName rules
+    static String buildResourceName(String modelName, VertexAI vertexAI) {
+        if (modelName.startsWith("projects/")) {
+            return modelName;
+        }
+        String projectId = vertexAI.getProjectId();
+        String location = vertexAI.getLocation();
+        if (modelName.startsWith("publishers/")) {
+            return String.format("projects/%s/locations/%s/%s", projectId, location, modelName);
+        }
+        if (modelName.startsWith("models/")) {
+            return String.format("projects/%s/locations/%s/publishers/google/%s", projectId, location, modelName);
+        }
+        return String.format("projects/%s/locations/%s/publishers/google/models/%s", projectId, location, modelName);
+    }
+
     @Override
     public Set<Capability> supportedCapabilities() {
         return supportedCapabilities;
@@ -597,6 +655,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         private Map<String, String> customHeaders;
         private GoogleCredentials credentials;
         private String apiEndpoint;
+        private Map<String, String> labels;
 
         public VertexAiGeminiChatModelBuilder() {
             // This is public so it can be extended
@@ -729,6 +788,28 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
          */
         public VertexAiGeminiChatModelBuilder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets billing/reporting labels that will be attached to every request the model issues.
+         *
+         * <p>Vertex AI's {@code generateContent} request body has a top-level {@code labels} map
+         * intended for billing and reporting only. The labels surface in Cloud Billing reports
+         * (Group by → Labels) and in Cloud Logging audit entries when Data Access audit logs are
+         * enabled, allowing per-tenant cost attribution and request filtering.
+         *
+         * <p>Per the
+         * <a href="https://cloud.google.com/vertex-ai/generative-ai/docs/reference/rest/v1/projects.locations.endpoints/generateContent#request-body">official
+         * spec</a>: keys must start with a letter; keys and values may use lowercase letters,
+         * digits, underscores, and dashes (international characters are allowed); each is at most
+         * 63 Unicode code points; up to 64 labels per request.
+         *
+         * @param labels a map of label keys and their corresponding values
+         * @return the updated instance of {@code VertexAiGeminiChatModelBuilder}
+         */
+        public VertexAiGeminiChatModelBuilder labels(Map<String, String> labels) {
+            this.labels = labels;
             return this;
         }
 

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - 'release/**'
     paths-ignore:
       - '.gitignore'
       - '*.md'
@@ -15,6 +16,7 @@ on:
   pull_request:
     branches:
       - main
+      - 'release/**'
     paths-ignore:
       - '.gitignore'
       - '*.md'
@@ -40,7 +42,7 @@ jobs:
           - 25
     steps:
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           fetch-depth: 0
 
@@ -51,13 +53,10 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Print Maven version
-        run: mvn --version
-
       - name: Compile and unit test with JDK ${{ matrix.java_version }}
         run: |
           set -o pipefail
-          mvn -B -U -DembeddingsSkipCache -T8C test javadoc:aggregate 2>&1 | tee maven-output.log
+          mvn -B -U -DembeddingsSkipDownload -T8C test javadoc:aggregate 2>&1 | tee maven-output.log
 
       - name: Surface build errors
         if: failure()
@@ -74,6 +73,8 @@ jobs:
     needs: compile_and_unit_test
     runs-on: ubuntu-latest
     continue-on-error: true
+    env:
+      GCP_CREDENTIALS_JSON: ${{ secrets.GCP_CREDENTIALS_JSON }}
     strategy:
       fail-fast: false
       matrix:
@@ -81,7 +82,7 @@ jobs:
           - 21
     steps:
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           fetch-depth: 0
 
@@ -103,6 +104,15 @@ jobs:
           java-version: ${{ matrix.java_version }}
           distribution: 'temurin'
           cache: 'maven'
+
+      - name: Authenticate to Google Cloud
+        # Required for Google modules (e.g., langchain4j-vertex-ai)
+        # Skipped for PRs from forks where secrets are not available
+        if: ${{ env.GCP_CREDENTIALS_JSON != '' }}
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
 
       - name: Setup JBang
         # Required for MCP module
@@ -182,7 +192,7 @@ jobs:
   compliance:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       - name: Set up JDK 17
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with:
@@ -209,7 +219,7 @@ jobs:
   spotless:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           fetch-depth: 0
       - name: Set up JDK 17
