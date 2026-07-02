@@ -83,7 +83,7 @@ public class GoogleGenAiChatModel implements ChatModel {
         ChatRequestParameters commonParameters =
                 getOrDefault(builder.defaultRequestParameters, DefaultChatRequestParameters.EMPTY);
 
-        this.defaultRequestParameters = DefaultChatRequestParameters.builder()
+        this.defaultRequestParameters = GoogleGenAiChatRequestParameters.builder()
                 .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
@@ -103,6 +103,10 @@ public class GoogleGenAiChatModel implements ChatModel {
         Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(chatRequest.messages());
         List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages());
 
+        String requestCachedContent =
+                chatRequest.parameters() instanceof GoogleGenAiChatRequestParameters p ? p.cachedContent() : null;
+        String finalCachedContent = getOrDefault(requestCachedContent, cachedContent);
+
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
                 chatRequest.parameters(),
                 systemInstruction,
@@ -116,7 +120,7 @@ public class GoogleGenAiChatModel implements ChatModel {
                 allowedFunctionNames,
                 vertexSearchDatastore,
                 labels,
-                cachedContent);
+                finalCachedContent);
 
         if (logRequests) {
             log.info(
