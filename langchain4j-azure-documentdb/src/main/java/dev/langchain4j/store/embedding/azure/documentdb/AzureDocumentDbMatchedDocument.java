@@ -1,38 +1,26 @@
-package dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore;
+package dev.langchain4j.store.embedding.azure.documentdb;
 
 import java.util.List;
 import java.util.Map;
-import org.bson.codecs.pojo.annotations.BsonId;
 
-/**
- * @deprecated Replaced by
- * {@code dev.langchain4j.store.embedding.azure.documentdb.AzureDocumentDbDocument}
- * in the {@code langchain4j-azure-documentdb} module. See
- * {@link AzureCosmosDbMongoVCoreEmbeddingStore} for migration details.
- */
-@Deprecated(forRemoval = true)
-public class AzureCosmosDbMongoVCoreDocument {
+public class AzureDocumentDbMatchedDocument {
 
-    @BsonId
     private String id;
-
     private List<Float> embedding;
     private String text;
     private Map<String, String> metadata;
+    private Double score;
 
-    public AzureCosmosDbMongoVCoreDocument(
-            String id, List<Float> embedding, String text, Map<String, String> metadata) {
+    public AzureDocumentDbMatchedDocument(
+            String id, List<Float> embedding, String text, Map<String, String> metadata, Double score) {
         this.id = id;
         this.embedding = embedding;
         this.text = text;
         this.metadata = metadata;
+        this.score = score;
     }
 
-    public AzureCosmosDbMongoVCoreDocument() {}
-
-    public static AzureCosmosDbMongoVCoreDocumentBuilder builder() {
-        return new AzureCosmosDbMongoVCoreDocumentBuilder();
-    }
+    public AzureDocumentDbMatchedDocument() {}
 
     public String getId() {
         return this.id;
@@ -48,6 +36,10 @@ public class AzureCosmosDbMongoVCoreDocument {
 
     public Map<String, String> getMetadata() {
         return this.metadata;
+    }
+
+    public Double getScore() {
+        return this.score;
     }
 
     public void setId(String id) {
@@ -66,10 +58,14 @@ public class AzureCosmosDbMongoVCoreDocument {
         this.metadata = metadata;
     }
 
+    public void setScore(Double score) {
+        this.score = score;
+    }
+
     public boolean equals(final Object o) {
         if (o == this) return true;
-        if (!(o instanceof AzureCosmosDbMongoVCoreDocument)) return false;
-        final AzureCosmosDbMongoVCoreDocument other = (AzureCosmosDbMongoVCoreDocument) o;
+        if (!(o instanceof AzureDocumentDbMatchedDocument)) return false;
+        final AzureDocumentDbMatchedDocument other = (AzureDocumentDbMatchedDocument) o;
         if (!other.canEqual((Object) this)) return false;
         final Object this$id = this.getId();
         final Object other$id = other.getId();
@@ -83,11 +79,14 @@ public class AzureCosmosDbMongoVCoreDocument {
         final Object this$metadata = this.getMetadata();
         final Object other$metadata = other.getMetadata();
         if (this$metadata == null ? other$metadata != null : !this$metadata.equals(other$metadata)) return false;
+        final Object this$score = this.getScore();
+        final Object other$score = other.getScore();
+        if (this$score == null ? other$score != null : !this$score.equals(other$score)) return false;
         return true;
     }
 
     protected boolean canEqual(final Object other) {
-        return other instanceof AzureCosmosDbMongoVCoreDocument;
+        return other instanceof AzureDocumentDbMatchedDocument;
     }
 
     public int hashCode() {
@@ -101,49 +100,13 @@ public class AzureCosmosDbMongoVCoreDocument {
         result = result * PRIME + ($text == null ? 43 : $text.hashCode());
         final Object $metadata = this.getMetadata();
         result = result * PRIME + ($metadata == null ? 43 : $metadata.hashCode());
+        final Object $score = this.getScore();
+        result = result * PRIME + ($score == null ? 43 : $score.hashCode());
         return result;
     }
 
     public String toString() {
-        return "AzureCosmosDbMongoVCoreDocument(id=" + this.getId() + ", embedding=" + this.getEmbedding() + ", text="
-                + this.getText() + ", metadata=" + this.getMetadata() + ")";
-    }
-
-    public static class AzureCosmosDbMongoVCoreDocumentBuilder {
-        private String id;
-        private List<Float> embedding;
-        private String text;
-        private Map<String, String> metadata;
-
-        AzureCosmosDbMongoVCoreDocumentBuilder() {}
-
-        public AzureCosmosDbMongoVCoreDocumentBuilder id(String id) {
-            this.id = id;
-            return this;
-        }
-
-        public AzureCosmosDbMongoVCoreDocumentBuilder embedding(List<Float> embedding) {
-            this.embedding = embedding;
-            return this;
-        }
-
-        public AzureCosmosDbMongoVCoreDocumentBuilder text(String text) {
-            this.text = text;
-            return this;
-        }
-
-        public AzureCosmosDbMongoVCoreDocumentBuilder metadata(Map<String, String> metadata) {
-            this.metadata = metadata;
-            return this;
-        }
-
-        public AzureCosmosDbMongoVCoreDocument build() {
-            return new AzureCosmosDbMongoVCoreDocument(this.id, this.embedding, this.text, this.metadata);
-        }
-
-        public String toString() {
-            return "AzureCosmosDbMongoVCoreDocument.AzureCosmosDbMongoVCoreDocumentBuilder(id=" + this.id
-                    + ", embedding=" + this.embedding + ", text=" + this.text + ", metadata=" + this.metadata + ")";
-        }
+        return "AzureDocumentDbMatchedDocument(id=" + this.getId() + ", embedding=" + this.getEmbedding() + ", text="
+                + this.getText() + ", metadata=" + this.getMetadata() + ", score=" + this.getScore() + ")";
     }
 }
