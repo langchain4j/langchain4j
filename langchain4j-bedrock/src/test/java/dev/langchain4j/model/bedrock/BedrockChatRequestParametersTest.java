@@ -2,6 +2,7 @@ package dev.langchain4j.model.bedrock;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class BedrockChatRequestParametersTest {
@@ -280,5 +281,45 @@ class BedrockChatRequestParametersTest {
         assertThat(params.serviceTier()).isEqualTo(BedrockServiceTier.FLEX);
         assertThat(params.cachePointPlacement()).isEqualTo(BedrockCachePointPlacement.AFTER_SYSTEM);
         assertThat(params.bedrockGuardrailConfiguration().guardrailIdentifier()).isEqualTo("12345");
+    }
+
+    @Test
+    void enableAdaptiveReasoning_with_effort_should_set_reasoning_config_and_output_config() {
+        // Given & When
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .enableAdaptiveReasoning("low")
+                .build();
+
+        // Then
+        assertThat(params.additionalModelRequestFields())
+                .isNotNull()
+                .containsKey("reasoning_config")
+                .containsKey("output_config");
+
+        Map<String, Object> reasoningConfig =
+                (Map<String, Object>) params.additionalModelRequestFields().get("reasoning_config");
+        assertThat(reasoningConfig).containsEntry("type", "adaptive").doesNotContainKey("budget_tokens");
+
+        Map<String, Object> outputConfig =
+                (Map<String, Object>) params.additionalModelRequestFields().get("output_config");
+        assertThat(outputConfig).containsEntry("effort", "low");
+    }
+
+    @Test
+    void enableAdaptiveReasoning_without_effort_should_only_set_reasoning_config() {
+        // Given & When
+        BedrockChatRequestParameters params = BedrockChatRequestParameters.builder()
+                .enableAdaptiveReasoning(null)
+                .build();
+
+        // Then
+        assertThat(params.additionalModelRequestFields())
+                .isNotNull()
+                .containsKey("reasoning_config")
+                .doesNotContainKey("output_config");
+
+        Map<String, Object> reasoningConfig =
+                (Map<String, Object>) params.additionalModelRequestFields().get("reasoning_config");
+        assertThat(reasoningConfig).containsEntry("type", "adaptive");
     }
 }

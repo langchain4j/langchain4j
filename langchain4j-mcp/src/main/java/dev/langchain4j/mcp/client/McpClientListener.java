@@ -242,6 +242,16 @@ public interface McpClientListener {
      */
     default void onNotificationProgress(McpProgressNotification notification) {}
 
+    /**
+     * Called when the server sends a {@code notifications/cancelled} notification to abort
+     * a previously accepted request. The corresponding pending operation, if any, is
+     * completed exceptionally before this listener is invoked.
+     *
+     * @param requestId the id of the cancelled request, as supplied by the server
+     * @param reason    an optional server-supplied reason for the cancellation; may be {@code null}
+     */
+    default void onNotificationCancelled(long requestId, String reason) {}
+
     // ========== Server-initiated requests ==========
 
     /**

@@ -23,9 +23,11 @@ import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
@@ -275,6 +277,29 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> systemMessageProvider(Function<Object, String> systemMessageProvider) {
         context.systemMessageProvider = systemMessageProvider.andThen(Optional::ofNullable);
+        return this;
+    }
+
+    /**
+     * Configures a system message provider that provides a system message each time an AI service is invoked.
+     * <p>
+     * This is similar to {@link #systemMessageProvider(Function)}, but the provider receives the full
+     * {@link InvocationContext}, which exposes the {@link ChatRequestParameters} and {@link ModelProvider}
+     * of the {@link ChatModel} or {@link StreamingChatModel} configured for this AI service,
+     * allowing the system message to vary based on the model used.
+     * <p>
+     * When both {@code @SystemMessage} and this provider are configured,
+     * {@code @SystemMessage} takes precedence.
+     *
+     * @param systemMessageProvider A {@link Function} that accepts an {@link InvocationContext}
+     *                              and returns a system message to be used.
+     *                              The returned {@link String} can be either a complete system message
+     *                              or a system message template containing unresolved template variables (e.g. "{{name}}"),
+     *                              which will be resolved using the values of method parameters annotated with @{@link V}.
+     * @return builder
+     */
+    public AiServices<T> systemMessageProviderWithContext(Function<InvocationContext, String> systemMessageProvider) {
+        context.systemMessageProviderWithContext = systemMessageProvider;
         return this;
     }
 
@@ -1215,6 +1240,20 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> storeRetrievedContentInChatMemory(boolean storeRetrievedContentInChatMemory) {
         context.storeRetrievedContentInChatMemory = storeRetrievedContentInChatMemory;
+        return this;
+    }
+
+    /**
+     * Enables or disables compensating actions on tool errors.
+     * When enabled, if any tool execution fails, all previously executed tools'
+     * compensating actions (declared via {@link dev.langchain4j.agent.tool.CompensateFor}) are called
+     * in reverse order to undo the effects of the successful tool calls.
+     *
+     * @param compensateOnToolErrors whether to run compensating actions on tool errors
+     * @return builder
+     */
+    public AiServices<T> compensateOnToolErrors(boolean compensateOnToolErrors) {
+        context.toolService.compensateOnToolErrors(compensateOnToolErrors);
         return this;
     }
 

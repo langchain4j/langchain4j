@@ -89,7 +89,7 @@ public class CustomMimeTypesFileTypeDetector extends FileTypeDetector {
         defaultMappings.put("avi",    "video/avi");
         defaultMappings.put("flv",    "video/x-flv");
         defaultMappings.put("webm",   "video/webm");
-        defaultMappings.put("mmv",    "video/wmv");
+        defaultMappings.put("wmv", "video/wmv");
         defaultMappings.put("3gpp",   "video/3gpp");
     }
 

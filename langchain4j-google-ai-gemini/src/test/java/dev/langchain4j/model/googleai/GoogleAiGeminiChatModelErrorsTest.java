@@ -28,7 +28,7 @@ class GoogleAiGeminiChatModelErrorsTest {
 
     private static final MockGemini MOCK = new MockGemini();
 
-    public static final String MODEL_NAME = "gemini-2.0-flash";
+    public static final String MODEL_NAME = "dummy-model-name";
 
     final ChatModel model = GoogleAiGeminiChatModel.builder()
             .apiKey("dummy-api-key")

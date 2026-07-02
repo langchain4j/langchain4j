@@ -31,7 +31,7 @@ LangChain4j provides 3 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.11.7</version>
+    <version>1.17.1</version>
 </dependency>
 ```
 
@@ -40,7 +40,7 @@ LangChain4j provides 3 different integrations with OpenAI for using chat models,
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.11.7-beta19</version>
+    <version>1.17.1-beta27</version>
 </dependency>
 ```
 
@@ -294,6 +294,86 @@ langchain4j.open-ai.moderation-model.timeout=...
 ```
 
 
+## Creating `OpenAiTextToSpeechModel`
+
+`OpenAiTextToSpeechModel` performs text-to-speech (TTS) using the
+[OpenAI Speech API](https://platform.openai.com/docs/api-reference/audio/createSpeech).
+It returns the generated audio as raw bytes wrapped in an `Audio` object.
+
+The supported models are `tts-1`, `tts-1-hd`, `gpt-4o-mini-tts`, and `gpt-4o-mini-tts-2025-12-15`
+(see `OpenAiTextToSpeechModelName`). The default voice is `alloy`.
+
+### Plain Java
+```java
+import dev.langchain4j.model.audio.TextToSpeechModel;
+import dev.langchain4j.model.audio.TextToSpeechRequest;
+import dev.langchain4j.model.audio.TextToSpeechResponse;
+import dev.langchain4j.model.openai.OpenAiTextToSpeechModel;
+import dev.langchain4j.model.openai.OpenAiTextToSpeechModelName;
+
+TextToSpeechModel model = OpenAiTextToSpeechModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName(OpenAiTextToSpeechModelName.TTS_1)
+        .voice("alloy") // optional, defaults to "alloy"
+        .build();
+
+// Convenience method (uses the model's default voice):
+TextToSpeechResponse response = model.synthesize("Hello world!");
+
+// Or with an explicit request (the voice here overrides the model default):
+TextToSpeechRequest request = TextToSpeechRequest.builder()
+        .text("Hello world!")
+        .voice("nova")
+        .build();
+TextToSpeechResponse response2 = model.synthesize(request);
+
+byte[] audioBytes = response.audio().binaryData(); // e.g. write to an .mp3 file
+String mimeType = response.audio().mimeType();      // e.g. "audio/mpeg"
+```
+
+The input text must not exceed 4096 characters (the OpenAI Speech API limit);
+longer input causes an `IllegalArgumentException`.
+
+## Creating `OpenAiTextToSpeechModel`
+
+`OpenAiTextToSpeechModel` performs text-to-speech (TTS) using the
+[OpenAI Speech API](https://platform.openai.com/docs/api-reference/audio/createSpeech).
+It returns the generated audio as raw bytes wrapped in an `Audio` object.
+
+The supported models are `tts-1`, `tts-1-hd`, `gpt-4o-mini-tts`, and `gpt-4o-mini-tts-2025-12-15`
+(see `OpenAiTextToSpeechModelName`). The default voice is `alloy`.
+
+### Plain Java
+```java
+import dev.langchain4j.model.audio.TextToSpeechModel;
+import dev.langchain4j.model.audio.TextToSpeechRequest;
+import dev.langchain4j.model.audio.TextToSpeechResponse;
+import dev.langchain4j.model.openai.OpenAiTextToSpeechModel;
+import dev.langchain4j.model.openai.OpenAiTextToSpeechModelName;
+
+TextToSpeechModel model = OpenAiTextToSpeechModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName(OpenAiTextToSpeechModelName.TTS_1)
+        .voice("alloy") // optional, defaults to "alloy"
+        .build();
+
+// Convenience method (uses the model's default voice):
+TextToSpeechResponse response = model.synthesize("Hello world!");
+
+// Or with an explicit request (the voice here overrides the model default):
+TextToSpeechRequest request = TextToSpeechRequest.builder()
+        .text("Hello world!")
+        .voice("nova")
+        .build();
+TextToSpeechResponse response2 = model.synthesize(request);
+
+byte[] audioBytes = response.audio().binaryData(); // e.g. write to an .mp3 file
+String mimeType = response.audio().mimeType();      // e.g. "audio/mpeg"
+```
+
+The input text must not exceed 4096 characters (the OpenAI Speech API limit);
+longer input causes an `IllegalArgumentException`.
+
 ## Creating `OpenAiTokenCountEstimator`
 
 ```java
@@ -437,6 +517,57 @@ ChatRequest chatRequest = ChatRequest.builder()
                 .build())
         .build();
 ```
+
+### Configuring built-in / server tools
+
+The OpenAI Responses API integration supports OpenAI built-in tools through `serverTools`.
+
+- `serverTools` is used for OpenAI built-in tools in raw OpenAI-shaped form
+
+Use `serverTools` when you want to send built-in tools such as `web_search`, `file_search`, or other
+OpenAI Responses API tool objects without introducing an additional typed wrapper:
+
+```java
+ChatModel model = OpenAiResponsesChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-5.4")
+        .serverTools(List.of(
+                Map.of(
+                        "type", "web_search",
+                        "filters", Map.of("allowed_domains", List.of("openai.com", "developers.openai.com")),
+                        "user_location", Map.of(
+                                "type", "approximate",
+                                "country", "US")),
+                Map.of(
+                        "type", "file_search",
+                        "vector_store_ids", List.of("vs_abc123"),
+                        "max_num_results", 3,
+                        "filters", Map.of(
+                                "type", "eq",
+                                "key", "category",
+                                "value", "blog"))))
+        .build();
+```
+
+You can also configure built-in tools per request:
+
+```java
+ChatRequest chatRequest = ChatRequest.builder()
+        .messages(UserMessage.from("What's the weather in Berlin?"))
+        .parameters(OpenAiResponsesChatRequestParameters.builder()
+                .serverTools(List.of(Map.of("type", "web_search")))
+                .build())
+        .build();
+
+ChatResponse response = model.chat(chatRequest);
+```
+
+`serverTools` can be configured either on the model builder as a default, or per request via
+`OpenAiResponsesChatRequestParameters`. When both are provided, the per-request value takes
+precedence and replaces the model-level `serverTools` for that request.
+
+`serverTools` is provider-specific and intentionally mirrors the OpenAI wire format, so nested tool fields
+should be provided as regular `Map` / `List` values.
 
 ### Thinking / Reasoning
 OpenAI reasoning models (e.g. `gpt-5.4`, `gpt-5-mini`) support

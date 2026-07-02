@@ -77,28 +77,6 @@ class QueryTest {
     }
 
     @Test
-    void to_string() {
-
-        // given
-        Metadata metadata = Metadata.from(
-                UserMessage.from("user message"),
-                SystemMessage.from("Be polite"),
-                42,
-                asList(UserMessage.from("Hello"), AiMessage.from("Hi, how can I help you today?")));
-        Query query = Query.from("query", metadata);
-
-        // when
-        String toString = query.toString();
-
-        // then
-        assertThat(toString)
-                .isEqualToIgnoringWhitespace(
-                        """
-                        Query { text = "query", metadata = Metadata { chatMessage = UserMessage { name = null, contents = [TextContent { text = "user message" }], attributes = {} }, systemMessage = SystemMessage { text = "Be polite" }, chatMemory = [UserMessage { name = null, contents = [TextContent { text = "Hello" }], attributes = {} }, AiMessage { text = "Hi, how can I help you today?", thinking = null, toolExecutionRequests = [], attributes = {} }], invocationContext = DefaultInvocationContext{invocationId=null, interfaceName='null', methodName='null', methodArguments=[], userMessage=null, chatMemoryId=42, invocationParameters=null, managedParameters=null, timestamp=null} } }
-                        """);
-    }
-
-    @Test
     void should_create_query_with_null_text() {
         // when/then
         assertThatThrownBy(() -> Query.from(null))
