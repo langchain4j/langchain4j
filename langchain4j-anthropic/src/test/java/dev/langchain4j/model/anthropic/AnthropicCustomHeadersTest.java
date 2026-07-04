@@ -113,6 +113,7 @@ class AnthropicCustomHeadersTest {
         assertThat(headers).containsEntry("x-custom-header", "custom-value");
         assertThat(headers).containsEntry("x-api-key", "my-real-key");
         assertThat(headers).containsKey("anthropic-version");
+        assertThat(headers).containsEntry("user-agent", "LangChain4j");
     }
 
     @Test
