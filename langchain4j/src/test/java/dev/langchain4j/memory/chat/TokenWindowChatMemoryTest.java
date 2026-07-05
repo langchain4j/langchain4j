@@ -19,6 +19,9 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.openai.OpenAiChatModelName;
 import dev.langchain4j.model.openai.OpenAiTokenCountEstimator;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.function.Function;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
@@ -839,5 +842,42 @@ class TokenWindowChatMemoryTest implements WithAssertions {
             chatMemory.set(userMessage("world"), aiMessage("hi"));
         });
         assertThat(counts).isEqualTo(new HitCountChatMemoryStore.HitCounts(0, 1, 0));
+    }
+
+    @Test
+    void set_with_varargs_should_not_throw_when_eviction_is_needed() {
+
+        // given
+        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(25, TOKEN_COUNT_ESTIMATOR);
+        UserMessage m1 = userMessageWithTokens(10);
+        UserMessage m2 = userMessageWithTokens(10);
+        UserMessage m3 = userMessageWithTokens(10);
+
+        // when-then: must not throw UnsupportedOperationException (Arrays.asList is fixed-size)
+        chatMemory.set(m1, m2, m3);
+
+        assertThat(chatMemory.messages()).containsExactly(m2, m3);
+    }
+
+    @Test
+    void set_with_list_should_not_mutate_or_alias_the_caller_provided_list() {
+
+        // given
+        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(25, TOKEN_COUNT_ESTIMATOR);
+        UserMessage m1 = userMessageWithTokens(10);
+        UserMessage m2 = userMessageWithTokens(10);
+        UserMessage m3 = userMessageWithTokens(10);
+        List<ChatMessage> callerList = new ArrayList<>(Arrays.asList(m1, m2, m3));
+
+        // when
+        chatMemory.set(callerList);
+
+        // then: the caller's list must remain untouched
+        assertThat(callerList).containsExactly(m1, m2, m3);
+        assertThat(chatMemory.messages()).containsExactly(m2, m3);
+
+        // and further mutation of the caller's list must not affect stored memory
+        callerList.add(userMessageWithTokens(10));
+        assertThat(chatMemory.messages()).containsExactly(m2, m3);
     }
 }
