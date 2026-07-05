@@ -13,11 +13,12 @@ class SearchApiWebSearchRequest {
     /**
      * @param additionalRequestParameters overrides optionalParameters for matching keys
      */
-    SearchApiWebSearchRequest(String engine,
-                              String apiKey,
-                              String query,
-                              Map<String, Object> optionalParameters,
-                              Map<String, Object> additionalRequestParameters) {
+    SearchApiWebSearchRequest(
+            String engine,
+            String apiKey,
+            String query,
+            Map<String, Object> optionalParameters,
+            Map<String, Object> additionalRequestParameters) {
         this.engine = engine;
         this.apiKey = apiKey;
         this.query = query;
@@ -54,8 +55,7 @@ class SearchApiWebSearchRequest {
         private Map<String, Object> optionalParameters;
         private Map<String, Object> additionalRequestParameters;
 
-        SearchApiWebSearchRequestBuilder() {
-        }
+        SearchApiWebSearchRequestBuilder() {}
 
         public SearchApiWebSearchRequestBuilder engine(String engine) {
             this.engine = engine;
@@ -77,17 +77,22 @@ class SearchApiWebSearchRequest {
             return this;
         }
 
-        public SearchApiWebSearchRequestBuilder additionalRequestParameters(Map<String, Object> additionalRequestParameters) {
+        public SearchApiWebSearchRequestBuilder additionalRequestParameters(
+                Map<String, Object> additionalRequestParameters) {
             this.additionalRequestParameters = additionalRequestParameters;
             return this;
         }
 
         public SearchApiWebSearchRequest build() {
-            return new SearchApiWebSearchRequest(this.engine, this.apiKey, this.query, this.optionalParameters, this.additionalRequestParameters);
+            return new SearchApiWebSearchRequest(
+                    this.engine, this.apiKey, this.query, this.optionalParameters, this.additionalRequestParameters);
         }
 
         public String toString() {
-            return "SearchApiWebSearchRequest.SearchApiWebSearchRequestBuilder(engine=" + this.engine + ", apiKey=" + this.apiKey + ", query=" + this.query + ", optionalParameters=" + this.optionalParameters + ", additionalRequestParameters=" + this.additionalRequestParameters + ")";
+            return "SearchApiWebSearchRequest.SearchApiWebSearchRequestBuilder(engine=" + this.engine + ", apiKey="
+                    + (this.apiKey == null ? null : "********") + ", query=" + this.query + ", optionalParameters="
+                    + this.optionalParameters + ", additionalRequestParameters=" + this.additionalRequestParameters
+                    + ")";
         }
     }
 }

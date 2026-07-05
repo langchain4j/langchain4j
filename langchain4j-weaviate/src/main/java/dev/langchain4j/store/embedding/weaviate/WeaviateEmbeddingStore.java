@@ -543,7 +543,8 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public String toString() {
-            return "WeaviateEmbeddingStore.WeaviateEmbeddingStoreBuilder(apiKey=" + this.apiKey + ", scheme="
+            return "WeaviateEmbeddingStore.WeaviateEmbeddingStoreBuilder(apiKey="
+                    + (this.apiKey == null ? null : "********") + ", scheme="
                     + this.scheme + ", host=" + this.host + ", port=" + this.port + ", useGrpcForInserts="
                     + this.useGrpcForInserts + ", securedGrpc=" + this.securedGrpc + ", grpcPort=" + this.grpcPort
                     + ", objectClass=" + this.objectClass + ", avoidDups=" + this.avoidDups + ", consistencyLevel="

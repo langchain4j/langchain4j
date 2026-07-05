@@ -1,5 +1,8 @@
 package dev.langchain4j.web.search.google.customsearch;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestInitializer;
@@ -7,15 +10,11 @@ import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.customsearch.v1.CustomSearchAPI;
 import com.google.api.services.customsearch.v1.CustomSearchAPIRequest;
 import com.google.api.services.customsearch.v1.model.Search;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.time.Duration;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class GoogleCustomSearchApiClient {
 
@@ -25,50 +24,70 @@ class GoogleCustomSearchApiClient {
     private final CustomSearchAPIRequest<Search> customSearchRequest;
     private final boolean logResponses;
 
-    GoogleCustomSearchApiClient(String apiKey,
-                                String csi,
-                                Boolean siteRestrict,
-                                Duration timeout,
-                                Integer maxRetries,
-                                boolean logRequests,
-                                boolean logResponses) {
+    GoogleCustomSearchApiClient(
+            String apiKey,
+            String csi,
+            Boolean siteRestrict,
+            Duration timeout,
+            Integer maxRetries,
+            boolean logRequests,
+            boolean logResponses) {
 
         try {
-            ensureNotBlank(apiKey, "%s", "Google Custom Search API Key must be defined. " +
-                    "It can be generated here: https://console.developers.google.com/apis/credentials");
-            ensureNotBlank(csi, "%s", "Google Custom Search Engine ID must be defined. " +
-                    "It can be created here: https://cse.google.com/cse/create/new");
+            ensureNotBlank(
+                    apiKey,
+                    "%s",
+                    "Google Custom Search API Key must be defined. "
+                            + "It can be generated here: https://console.developers.google.com/apis/credentials");
+            ensureNotBlank(
+                    csi,
+                    "%s",
+                    "Google Custom Search Engine ID must be defined. "
+                            + "It can be created here: https://cse.google.com/cse/create/new");
 
             this.logResponses = logResponses;
 
-            CustomSearchAPI.Builder customSearchAPIBuilder = new CustomSearchAPI.Builder(GoogleNetHttpTransport.newTrustedTransport(), new GsonFactory(), new HttpRequestInitializer() {
-                @Override
-                public void initialize(HttpRequest httpRequest) {
-                    httpRequest.setConnectTimeout(Math.toIntExact(timeout.toMillis()));
-                    httpRequest.setReadTimeout(Math.toIntExact(timeout.toMillis()));
-                    httpRequest.setWriteTimeout(Math.toIntExact(timeout.toMillis()));
-                    httpRequest.setNumberOfRetries(maxRetries);
-                    if (logRequests) {
-                        httpRequest.setInterceptor(new GoogleSearchApiHttpRequestLoggingInterceptor());
-                    }
-                    if (logResponses) {
-                        httpRequest.setResponseInterceptor(new GoogleSearchApiHttpResponseLoggingInterceptor());
-                    }
-                }
-            }).setApplicationName("LangChain4j");
+            CustomSearchAPI.Builder customSearchAPIBuilder = new CustomSearchAPI.Builder(
+                            GoogleNetHttpTransport.newTrustedTransport(),
+                            new GsonFactory(),
+                            new HttpRequestInitializer() {
+                                @Override
+                                public void initialize(HttpRequest httpRequest) {
+                                    httpRequest.setConnectTimeout(Math.toIntExact(timeout.toMillis()));
+                                    httpRequest.setReadTimeout(Math.toIntExact(timeout.toMillis()));
+                                    httpRequest.setWriteTimeout(Math.toIntExact(timeout.toMillis()));
+                                    httpRequest.setNumberOfRetries(maxRetries);
+                                    if (logRequests) {
+                                        httpRequest.setInterceptor(new GoogleSearchApiHttpRequestLoggingInterceptor());
+                                    }
+                                    if (logResponses) {
+                                        httpRequest.setResponseInterceptor(
+                                                new GoogleSearchApiHttpResponseLoggingInterceptor());
+                                    }
+                                }
+                            })
+                    .setApplicationName("LangChain4j");
 
             CustomSearchAPI customSearchAPI = customSearchAPIBuilder.build();
 
             if (siteRestrict) {
-                customSearchRequest = customSearchAPI.cse().siterestrict().list().setKey(apiKey).setCx(csi);
+                customSearchRequest = customSearchAPI
+                        .cse()
+                        .siterestrict()
+                        .list()
+                        .setKey(apiKey)
+                        .setCx(csi);
             } else {
-                customSearchRequest = customSearchAPI.cse().list().setKey(apiKey).setCx(csi);
+                customSearchRequest =
+                        customSearchAPI.cse().list().setKey(apiKey).setCx(csi);
             }
         } catch (IOException e) {
             LOGGER.error("Error occurred while creating Google Custom Search API client", e);
             throw new RuntimeException(e);
         } catch (GeneralSecurityException e) {
-            LOGGER.error("Error occurred while creating Google Custom Search API client using GoogleNetHttpTransport.newTrustedTransport()", e);
+            LOGGER.error(
+                    "Error occurred while creating Google Custom Search API client using GoogleNetHttpTransport.newTrustedTransport()",
+                    e);
             throw new RuntimeException(e);
         }
     }
@@ -111,9 +130,9 @@ class GoogleCustomSearchApiClient {
                         .setCr(requestQuery.getCr())
                         .setGooglehost(requestQuery.getGoogleHost())
                         .setStart(calculateIndexStartPage(
-                                getDefaultNaturalNumber(requestQuery.getStartPage()),
-                                getDefaultNaturalNumber(requestQuery.getStartIndex())
-                        ).longValue())
+                                        getDefaultNaturalNumber(requestQuery.getStartPage()),
+                                        getDefaultNaturalNumber(requestQuery.getStartIndex()))
+                                .longValue())
                         .setFilter(requestQuery.getFilter())
                         .execute();
             } else if (customSearchRequest instanceof CustomSearchAPI.Cse.List) {
@@ -147,9 +166,9 @@ class GoogleCustomSearchApiClient {
                         .setCr(requestQuery.getCr())
                         .setGooglehost(requestQuery.getGoogleHost())
                         .setStart(calculateIndexStartPage(
-                                getDefaultNaturalNumber(requestQuery.getStartPage()),
-                                getDefaultNaturalNumber(requestQuery.getStartIndex())
-                        ).longValue())
+                                        getDefaultNaturalNumber(requestQuery.getStartPage()),
+                                        getDefaultNaturalNumber(requestQuery.getStartIndex()))
+                                .longValue())
                         .setFilter(requestQuery.getFilter())
                         .execute();
             } else {
@@ -195,8 +214,7 @@ class GoogleCustomSearchApiClient {
         private boolean logRequests;
         private boolean logResponses;
 
-        GoogleCustomSearchApiClientBuilder() {
-        }
+        GoogleCustomSearchApiClientBuilder() {}
 
         public GoogleCustomSearchApiClientBuilder apiKey(String apiKey) {
             this.apiKey = apiKey;
@@ -234,11 +252,21 @@ class GoogleCustomSearchApiClient {
         }
 
         public GoogleCustomSearchApiClient build() {
-            return new GoogleCustomSearchApiClient(this.apiKey, this.csi, this.siteRestrict, this.timeout, this.maxRetries, this.logRequests, this.logResponses);
+            return new GoogleCustomSearchApiClient(
+                    this.apiKey,
+                    this.csi,
+                    this.siteRestrict,
+                    this.timeout,
+                    this.maxRetries,
+                    this.logRequests,
+                    this.logResponses);
         }
 
         public String toString() {
-            return "GoogleCustomSearchApiClient.GoogleCustomSearchApiClientBuilder(apiKey=" + this.apiKey + ", csi=" + this.csi + ", siteRestrict=" + this.siteRestrict + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+            return "GoogleCustomSearchApiClient.GoogleCustomSearchApiClientBuilder(apiKey="
+                    + (this.apiKey == null ? null : "********") + ", csi=" + this.csi + ", siteRestrict="
+                    + this.siteRestrict + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries
+                    + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
         }
     }
 }

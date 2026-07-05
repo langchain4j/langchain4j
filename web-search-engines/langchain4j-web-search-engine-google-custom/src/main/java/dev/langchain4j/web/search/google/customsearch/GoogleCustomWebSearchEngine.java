@@ -385,7 +385,8 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
         }
 
         public String toString() {
-            return "GoogleCustomWebSearchEngine.GoogleCustomWebSearchEngineBuilder(apiKey=" + this.apiKey + ", csi="
+            return "GoogleCustomWebSearchEngine.GoogleCustomWebSearchEngineBuilder(apiKey="
+                    + (this.apiKey == null ? null : "********") + ", csi="
                     + this.csi + ", siteRestrict=" + this.siteRestrict + ", includeImages=" + this.includeImages
                     + ", timeout=" + this.timeout + ", maxRetries=" + this.maxRetries + ", logRequests="
                     + this.logRequests + ", logResponses=" + this.logResponses + ")";

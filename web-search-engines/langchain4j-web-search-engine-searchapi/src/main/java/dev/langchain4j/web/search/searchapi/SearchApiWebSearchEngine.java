@@ -169,7 +169,8 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
         }
 
         public String toString() {
-            return "SearchApiWebSearchEngine.SearchApiWebSearchEngineBuilder(apiKey=" + this.apiKey + ", baseUrl="
+            return "SearchApiWebSearchEngine.SearchApiWebSearchEngineBuilder(apiKey="
+                    + (this.apiKey == null ? null : "********") + ", baseUrl="
                     + this.baseUrl + ", timeout=" + this.timeout + ", engine=" + this.engine + ", optionalParameters="
                     + this.optionalParameters + ")";
         }

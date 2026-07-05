@@ -897,7 +897,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         public String toString() {
             return "PgVectorEmbeddingStore.PgVectorEmbeddingStoreBuilder(host=" + this.host + ", port=" + this.port
-                    + ", user=" + this.user + ", password=" + this.password + ", database=" + this.database + ", table="
+                    + ", user=" + this.user + ", password=" + (this.password == null ? null : "********")
+                    + ", database=" + this.database + ", table="
                     + this.table + ", dimension=" + this.dimension + ", useIndex=" + this.useIndex + ", indexListSize="
                     + this.indexListSize + ", createTable=" + this.createTable + ", dropTableFirst="
                     + this.dropTableFirst + ", skipCreateVectorExtension=" + this.skipCreateVectorExtension

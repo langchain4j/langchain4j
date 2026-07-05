@@ -13,7 +13,15 @@ class TavilySearchRequest {
     private List<String> includeDomains;
     private List<String> excludeDomains;
 
-    TavilySearchRequest(String apiKey, String query, String searchDepth, Boolean includeAnswer, Boolean includeRawContent, Integer maxResults, List<String> includeDomains, List<String> excludeDomains) {
+    TavilySearchRequest(
+            String apiKey,
+            String query,
+            String searchDepth,
+            Boolean includeAnswer,
+            Boolean includeRawContent,
+            Integer maxResults,
+            List<String> includeDomains,
+            List<String> excludeDomains) {
         this.apiKey = apiKey;
         this.query = query;
         this.searchDepth = searchDepth;
@@ -70,8 +78,7 @@ class TavilySearchRequest {
         private List<String> includeDomains;
         private List<String> excludeDomains;
 
-        TavilySearchRequestBuilder() {
-        }
+        TavilySearchRequestBuilder() {}
 
         public TavilySearchRequestBuilder apiKey(String apiKey) {
             this.apiKey = apiKey;
@@ -114,11 +121,23 @@ class TavilySearchRequest {
         }
 
         public TavilySearchRequest build() {
-            return new TavilySearchRequest(this.apiKey, this.query, this.searchDepth, this.includeAnswer, this.includeRawContent, this.maxResults, this.includeDomains, this.excludeDomains);
+            return new TavilySearchRequest(
+                    this.apiKey,
+                    this.query,
+                    this.searchDepth,
+                    this.includeAnswer,
+                    this.includeRawContent,
+                    this.maxResults,
+                    this.includeDomains,
+                    this.excludeDomains);
         }
 
         public String toString() {
-            return "TavilySearchRequest.TavilySearchRequestBuilder(apiKey=" + this.apiKey + ", query=" + this.query + ", searchDepth=" + this.searchDepth + ", includeAnswer=" + this.includeAnswer + ", includeRawContent=" + this.includeRawContent + ", maxResults=" + this.maxResults + ", includeDomains=" + this.includeDomains + ", excludeDomains=" + this.excludeDomains + ")";
+            return "TavilySearchRequest.TavilySearchRequestBuilder(apiKey=" + (this.apiKey == null ? null : "********")
+                    + ", query=" + this.query + ", searchDepth=" + this.searchDepth + ", includeAnswer="
+                    + this.includeAnswer + ", includeRawContent=" + this.includeRawContent + ", maxResults="
+                    + this.maxResults + ", includeDomains=" + this.includeDomains + ", excludeDomains="
+                    + this.excludeDomains + ")";
         }
     }
 }
