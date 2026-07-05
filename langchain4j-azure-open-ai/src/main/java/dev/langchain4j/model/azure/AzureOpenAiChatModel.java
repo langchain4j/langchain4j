@@ -61,7 +61,7 @@ import java.util.Set;
  * You need to provide the OpenAI API Key as a parameter, using the apiKey() method in the Builder, or the apiKey parameter in the constructor:
  * For example, you would use `builder.apiKey("{key}")`.
  * <p>
- * 2. non-Azure OpenAI API Key Authentication: this method allows to use the OpenAI service, instead of Azure OpenAI.
+ * 2. non-Azure OpenAI API Key Authentication: this method allows you to use the OpenAI service, instead of Azure OpenAI.
  * You can use the nonAzureApiKey() method in the Builder, which will also automatically set the endpoint to "https://api.openai.com/v1".
  * For example, you would use `builder.nonAzureApiKey("{key}")`.
  * The constructor requires a KeyCredential instance, which can be created using `new AzureKeyCredential("{key}")`, and doesn't set up the endpoint.

@@ -13,7 +13,7 @@ https://weaviate.io/
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-weaviate</artifactId>
-    <version>1.15.1-beta25</version>
+    <version>1.17.1-beta27</version>
 </dependency>
 ```
 

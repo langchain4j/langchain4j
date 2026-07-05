@@ -5,7 +5,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-internal-test-retry</artifactId>
-    <version>1.16.0-beta26-SNAPSHOT</version>
+    <version>1.18.0-beta28-SNAPSHOT</version>
     <name>LangChain4j :: Test Retry</name>
     <description>Internal LangChain4j JUnit extension for retrying flaky tests</description>
     <url>https://github.com/langchain4j/langchain4j/tree/main</url>
@@ -29,7 +29,7 @@
         <java.version>17</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.build.outputTimestamp>1778862032</project.build.outputTimestamp>
+        <project.build.outputTimestamp>1782485336</project.build.outputTimestamp>
     </properties>
 
     <dependencies>
@@ -63,6 +63,11 @@
                     <!-- waitMaxTime is specified in seconds-->
                     <waitMaxTime>3600</waitMaxTime>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.5.0</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

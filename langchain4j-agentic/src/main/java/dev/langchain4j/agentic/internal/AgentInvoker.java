@@ -56,11 +56,13 @@ public interface AgentInvoker extends AgentInstance, InternalAgent {
     }
 
     static AgentInvoker fromSpec(AgentSpecsProvider spec, Method agenticMethod, String name) {
-        List<AgentArgument> arguments = List.of(new AgentArgument(AgenticScope.class, AGENTIC_SCOPE_ARG_NAME));
+        List<AgentArgument> arguments = spec.arguments() != null
+                ? spec.arguments()
+                : List.of(new AgentArgument(AgenticScope.class, AGENTIC_SCOPE_ARG_NAME));
         InternalAgent agentInstance = new NonAiAgentInstance(agenticMethod.getDeclaringClass(),
                 name, spec.description(), agenticMethod.getGenericReturnType(), spec.outputKey(), spec.async(), arguments,
                 spec.listener());
-        return new MethodAgentInvoker(agenticMethod, agentInstance);
+        return new SpecAgentInvoker(agenticMethod, agentInstance);
     }
 
     static AgentInvoker fromMethod(InternalAgent agent, Method method) {

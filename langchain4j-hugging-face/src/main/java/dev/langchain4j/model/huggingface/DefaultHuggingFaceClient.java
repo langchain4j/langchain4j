@@ -1,5 +1,6 @@
 package dev.langchain4j.model.huggingface;
 
+import static dev.langchain4j.internal.Utils.ensureTrailingForwardSlash;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 import dev.langchain4j.model.huggingface.client.EmbeddingRequest;
@@ -33,7 +34,7 @@ class DefaultHuggingFaceClient implements HuggingFaceClient {
                 .build();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(Objects.isNull(baseUrl) ? BASE_URL : baseUrl)
+                .baseUrl(ensureTrailingForwardSlash(Objects.isNull(baseUrl) ? BASE_URL : baseUrl))
                 .client(okHttpClient)
                 .addConverterFactory(JacksonConverterFactory.create())
                 .build();

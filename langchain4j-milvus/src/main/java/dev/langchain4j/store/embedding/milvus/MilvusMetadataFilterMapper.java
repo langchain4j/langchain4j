@@ -46,10 +46,29 @@ class MilvusMetadataFilterMapper {
     }
 
     private static String mapContains(ContainsString containsString, String metadataFieldName) {
+        // ContainsString is a literal substring match (see Filter / ContainsString#test, which uses
+        // String#contains). Milvus LIKE treats % and _ as wildcards, so any % or _ in the user-supplied
+        // value must be escaped to be matched literally; only the surrounding % we add are real wildcards.
         return format(
                 "%s LIKE %s",
                 formatKey(containsString.key(), metadataFieldName),
-                formatValue("%" + containsString.comparisonValue() + "%"));
+                formatLikePattern(containsString.comparisonValue()));
+    }
+
+    /**
+     * Builds a quoted Milvus LIKE pattern that matches the given value as a literal substring. The value's
+     * own LIKE wildcards ({@code %} and {@code _}) are escaped with a backslash so they are matched
+     * literally, while the surrounding {@code %} characters remain wildcards for the "contains" semantics.
+     * Backslash and double quote are escaped as in {@link #formatValue(Object)} so the value stays inside
+     * the string literal.
+     */
+    private static String formatLikePattern(String value) {
+        // Escape backslash first, then the LIKE wildcards % and _, then the string-literal double quote.
+        String escaped = value.replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_")
+                .replace("\"", "\\\"");
+        return "\"%" + escaped + "%\"";
     }
 
     private static String mapEqual(IsEqualTo isEqualTo, String metadataFieldName) {
@@ -116,8 +135,8 @@ class MilvusMetadataFilterMapper {
 
     private static String formatValue(Object value) {
         if (value instanceof String stringValue) {
-            // Escape double quotes by replacing them with \"
-            final String escapedValue = stringValue.replace("\"", "\\\"");
+            // Escape backslashes first, then double quotes (Milvus treats backslash as the escape character)
+            final String escapedValue = stringValue.replace("\\", "\\\\").replace("\"", "\\\"");
             return "\"" + escapedValue + "\"";
         } else if (value instanceof UUID) {
             return "\"" + value + "\"";

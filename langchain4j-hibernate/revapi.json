@@ -1,0 +1,15 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.EmbeddingModel",
+          "justification": "The Hibernate ORM EmbeddingStore API has utility methods for filling embedding vector fields of entities and needs the EmbeddingModel to generate the embedding vector"
+        }
+      ]
+    }
+  }
+]

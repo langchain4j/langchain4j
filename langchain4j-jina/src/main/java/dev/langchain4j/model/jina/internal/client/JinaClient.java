@@ -1,5 +1,8 @@
 package dev.langchain4j.model.jina.internal.client;
 
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.jina.internal.api.JinaApi;
@@ -7,16 +10,12 @@ import dev.langchain4j.model.jina.internal.api.JinaEmbeddingRequest;
 import dev.langchain4j.model.jina.internal.api.JinaEmbeddingResponse;
 import dev.langchain4j.model.jina.internal.api.JinaRerankingRequest;
 import dev.langchain4j.model.jina.internal.api.JinaRerankingResponse;
+import java.io.IOException;
+import java.time.Duration;
 import okhttp3.OkHttpClient;
 import org.slf4j.Logger;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
-
-import java.io.IOException;
-import java.time.Duration;
-
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 public class JinaClient {
 
@@ -25,7 +24,8 @@ public class JinaClient {
     private final JinaApi jinaApi;
     private final String authorizationHeader;
 
-    JinaClient(String baseUrl, String apiKey, Duration timeout, boolean logRequests, boolean logResponses, Logger logger) {
+    JinaClient(
+            String baseUrl, String apiKey, Duration timeout, boolean logRequests, boolean logResponses, Logger logger) {
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
@@ -98,8 +98,7 @@ public class JinaClient {
         private boolean logResponses;
         private Logger logger;
 
-        JinaClientBuilder() {
-        }
+        JinaClientBuilder() {}
 
         public JinaClientBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -132,11 +131,14 @@ public class JinaClient {
         }
 
         public JinaClient build() {
-            return new JinaClient(this.baseUrl, this.apiKey, this.timeout, this.logRequests, this.logResponses, this.logger);
+            return new JinaClient(
+                    this.baseUrl, this.apiKey, this.timeout, this.logRequests, this.logResponses, this.logger);
         }
 
         public String toString() {
-            return "JinaClient.JinaClientBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", timeout=" + this.timeout + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+            return "JinaClient.JinaClientBuilder(baseUrl=" + this.baseUrl + ", apiKey="
+                    + (this.apiKey == null ? null : "********") + ", timeout=" + this.timeout + ", logRequests="
+                    + this.logRequests + ", logResponses=" + this.logResponses + ")";
         }
     }
 }

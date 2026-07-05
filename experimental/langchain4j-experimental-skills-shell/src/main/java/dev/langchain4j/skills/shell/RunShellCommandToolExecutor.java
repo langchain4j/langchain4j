@@ -1,5 +1,8 @@
 package dev.langchain4j.skills.shell;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
@@ -8,13 +11,9 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.skills.shell.ShellCommandRunner.Result;
-
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Map;
-
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 class RunShellCommandToolExecutor implements ToolExecutor {
 
@@ -49,9 +48,7 @@ class RunShellCommandToolExecutor implements ToolExecutor {
                             <stdout>%s</stdout>
                             <stderr>%s</stderr>""".formatted(workingDir, stdOut, stdErr);
                 }
-                return ToolExecutionResult.builder()
-                        .resultText(resultText)
-                        .build();
+                return ToolExecutionResult.builder().resultText(resultText).build();
             } else {
                 String stdErr = formatStdErr(result.stdErr());
                 String resultText = """
@@ -95,10 +92,11 @@ class RunShellCommandToolExecutor implements ToolExecutor {
     }
 
     private String getRequiredArgument(String argumentName, Map<String, Object> arguments) {
-        if (isNullOrEmpty(arguments) || !arguments.containsKey(argumentName)) {
+        Object value = isNullOrEmpty(arguments) ? null : arguments.get(argumentName);
+        if (value == null) {
             throwException("Missing required tool argument '%s'".formatted(argumentName));
         }
-        return arguments.get(argumentName).toString();
+        return value.toString();
     }
 
     private void throwException(String message) {
@@ -107,13 +105,9 @@ class RunShellCommandToolExecutor implements ToolExecutor {
 
     private void throwException(String message, Exception e) {
         if (config.throwToolArgumentsExceptions) {
-            throw e == null
-                    ? new ToolArgumentsException(message)
-                    : new ToolArgumentsException(message, e);
+            throw e == null ? new ToolArgumentsException(message) : new ToolArgumentsException(message, e);
         } else {
-            throw e == null
-                    ? new ToolExecutionException(message)
-                    : new ToolExecutionException(message, e);
+            throw e == null ? new ToolExecutionException(message) : new ToolExecutionException(message, e);
         }
     }
 

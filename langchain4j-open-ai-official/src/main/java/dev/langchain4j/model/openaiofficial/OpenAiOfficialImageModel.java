@@ -16,16 +16,22 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Represents an OpenAI image generation model.
+ * Find the parameters description <a href="https://developers.openai.com/api/reference/resources/images/methods/generate">here</a>.
+ */
 public class OpenAiOfficialImageModel implements ImageModel {
 
     private final OpenAIClient client;
     private final String modelName;
     private final ImageGenerateParams.Size size;
     private final ImageGenerateParams.Quality quality;
-    private final ImageGenerateParams.Style style;
     private final String user;
     private final Duration timeout;
-    private final ImageGenerateParams.ResponseFormat responseFormat;
+    private final ImageGenerateParams.Background background;
+    private final ImageGenerateParams.OutputFormat outputFormat;
+    private final Long outputCompression;
+    private final ImageGenerateParams.Moderation moderation;
 
     public OpenAiOfficialImageModel(Builder builder) {
 
@@ -51,10 +57,12 @@ public class OpenAiOfficialImageModel implements ImageModel {
         this.modelName = builder.modelName;
         this.size = builder.size;
         this.quality = builder.quality;
-        this.style = builder.style;
         this.user = builder.user;
         this.timeout = builder.timeout;
-        this.responseFormat = builder.responseFormat;
+        this.background = builder.background;
+        this.outputFormat = builder.outputFormat;
+        this.outputCompression = builder.outputCompression;
+        this.moderation = builder.moderation;
     }
 
     public String modelName() {
@@ -65,21 +73,23 @@ public class OpenAiOfficialImageModel implements ImageModel {
     public Response<Image> generate(String prompt) {
 
         ImageGenerateParams imageGenerateParams =
-                impageGenerateParamsBuilder(prompt).build();
+                imageGenerateParamsBuilder(prompt).build();
 
         ImagesResponse response = client.images().generate(imageGenerateParams, requestOptions());
 
         if (response.data().isEmpty() || response.data().get().isEmpty()) {
             throw new IllegalArgumentException("Image generation failed: no image returned");
         }
-        return Response.from(fromOpenAiImage(response.data().get().get(0)));
+
+        String mimeType = response.outputFormat().map(of -> "image/" + of).orElse(null);
+        return Response.from(fromOpenAiImage(response.data().get().get(0), mimeType));
     }
 
     @Override
     public Response<List<Image>> generate(String prompt, int n) {
 
         ImageGenerateParams imageGenerateParams =
-                impageGenerateParamsBuilder(prompt).n(n).build();
+                imageGenerateParamsBuilder(prompt).n(n).build();
 
         ImagesResponse response = client.images().generate(imageGenerateParams, requestOptions());
 
@@ -87,12 +97,13 @@ public class OpenAiOfficialImageModel implements ImageModel {
             throw new IllegalArgumentException("Image generation failed: no image returned");
         }
 
+        String mimeType = response.outputFormat().map(of -> "image/" + of).orElse(null);
         return Response.from(response.data().get().stream()
-                .map(OpenAiOfficialImageModel::fromOpenAiImage)
+                .map(img -> fromOpenAiImage(img, mimeType))
                 .toList());
     }
 
-    private ImageGenerateParams.Builder impageGenerateParamsBuilder(String prompt) {
+    private ImageGenerateParams.Builder imageGenerateParamsBuilder(String prompt) {
         ImageGenerateParams.Builder builder = ImageGenerateParams.builder();
         builder.model(modelName);
         builder.prompt(prompt);
@@ -103,14 +114,20 @@ public class OpenAiOfficialImageModel implements ImageModel {
         if (quality != null) {
             builder.quality(quality);
         }
-        if (style != null) {
-            builder.style(style);
-        }
-        if (responseFormat != null) {
-            builder.responseFormat(responseFormat);
-        }
         if (user != null) {
             builder.user(user);
+        }
+        if (background != null) {
+            builder.background(background);
+        }
+        if (outputFormat != null) {
+            builder.outputFormat(outputFormat);
+        }
+        if (outputCompression != null) {
+            builder.outputCompression(outputCompression);
+        }
+        if (moderation != null) {
+            builder.moderation(moderation);
         }
         return builder;
     }
@@ -123,7 +140,7 @@ public class OpenAiOfficialImageModel implements ImageModel {
         return builder.build();
     }
 
-    private static Image fromOpenAiImage(com.openai.models.images.Image openAiImage) {
+    private static Image fromOpenAiImage(com.openai.models.images.Image openAiImage, String mimeType) {
         Image.Builder imageBuilder = Image.builder();
 
         if (openAiImage.url().isPresent()) {
@@ -137,6 +154,11 @@ public class OpenAiOfficialImageModel implements ImageModel {
         if (openAiImage.revisedPrompt().isPresent()) {
             imageBuilder.revisedPrompt(openAiImage.revisedPrompt().get());
         }
+
+        if (mimeType != null) {
+            imageBuilder.mimeType(mimeType);
+        }
+
         return imageBuilder.build();
     }
 
@@ -158,13 +180,15 @@ public class OpenAiOfficialImageModel implements ImageModel {
         private String modelName;
         private ImageGenerateParams.Size size;
         private ImageGenerateParams.Quality quality;
-        private ImageGenerateParams.Style style;
         private String user;
-        private ImageGenerateParams.ResponseFormat responseFormat;
         private Duration timeout;
         private Integer maxRetries;
         private Proxy proxy;
         private Map<String, String> customHeaders;
+        private ImageGenerateParams.Background background;
+        private ImageGenerateParams.OutputFormat outputFormat;
+        private Long outputCompression;
+        private ImageGenerateParams.Moderation moderation;
 
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -259,28 +283,43 @@ public class OpenAiOfficialImageModel implements ImageModel {
             return this;
         }
 
-        public Builder style(String style) {
-            this.style = ImageGenerateParams.Style.of(style);
-            return this;
-        }
-
-        public Builder style(ImageGenerateParams.Style style) {
-            this.style = style;
-            return this;
-        }
-
         public Builder user(String user) {
             this.user = user;
             return this;
         }
 
-        public Builder responseFormat(String responseFormat) {
-            this.responseFormat = ImageGenerateParams.ResponseFormat.of(responseFormat);
+        public Builder background(String background) {
+            this.background = ImageGenerateParams.Background.of(background);
             return this;
         }
 
-        public Builder responseFormat(ImageGenerateParams.ResponseFormat responseFormat) {
-            this.responseFormat = responseFormat;
+        public Builder background(ImageGenerateParams.Background background) {
+            this.background = background;
+            return this;
+        }
+
+        public Builder outputFormat(String outputFormat) {
+            this.outputFormat = ImageGenerateParams.OutputFormat.of(outputFormat);
+            return this;
+        }
+
+        public Builder outputFormat(ImageGenerateParams.OutputFormat outputFormat) {
+            this.outputFormat = outputFormat;
+            return this;
+        }
+
+        public Builder outputCompression(Long outputCompression) {
+            this.outputCompression = outputCompression;
+            return this;
+        }
+
+        public Builder moderation(String moderation) {
+            this.moderation = ImageGenerateParams.Moderation.of(moderation);
+            return this;
+        }
+
+        public Builder moderation(ImageGenerateParams.Moderation moderation) {
+            this.moderation = moderation;
             return this;
         }
 

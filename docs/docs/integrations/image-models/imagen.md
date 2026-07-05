@@ -13,7 +13,7 @@ sidebar_position: 4
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-vertex-ai</artifactId>
-    <version>1.15.1-beta25</version>
+    <version>1.17.1-beta27</version>
 </dependency>
 ```
 
