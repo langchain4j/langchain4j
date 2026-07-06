@@ -137,7 +137,7 @@ public class HuggingFaceEmbeddingModel extends DimensionAwareEmbeddingModel {
         }
 
         public String toString() {
-            return "HuggingFaceEmbeddingModel.HuggingFaceEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", accessToken=" + this.accessToken + ", modelId=" + this.modelId + ", waitForModel=" + this.waitForModel + ", timeout=" + this.timeout + ")";
+            return "HuggingFaceEmbeddingModel.HuggingFaceEmbeddingModelBuilder(baseUrl=" + this.baseUrl + ", accessToken=" + (this.accessToken == null ? null : "********") + ", modelId=" + this.modelId + ", waitForModel=" + this.waitForModel + ", timeout=" + this.timeout + ")";
         }
     }
 }

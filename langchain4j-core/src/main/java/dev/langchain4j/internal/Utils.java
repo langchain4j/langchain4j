@@ -563,6 +563,20 @@ public class Utils {
      * Bridge and synthetic methods are filtered out.
      */
     public static List<Method> allConcreteMethods(Class<?> clazz) {
+        return allMethods(clazz, true);
+    }
+
+    /**
+     * Returns all methods from the given class, its superclasses (excluding {@link Object}),
+     * and all implemented interfaces.
+     * If a subclass overrides a method, only the subclass version is included.
+     * Bridge and synthetic methods are filtered out.
+     */
+    public static List<Method> allMethods(Class<?> clazz) {
+        return allMethods(clazz, false);
+    }
+
+    private static List<Method> allMethods(Class<?> clazz, boolean concreteOnly) {
         List<Method> allMethods = new ArrayList<>();
         Set<MethodSignature> seen = new HashSet<>();
         Class<?> current = clazz;
@@ -570,7 +584,7 @@ public class Utils {
             collectConcreteMethods(current, seen, allMethods);
             current = current.getSuperclass();
         }
-        collectInterfaceMethods(clazz, seen, allMethods, new HashSet<>());
+        collectInterfaceMethods(clazz, seen, allMethods, new HashSet<>(), concreteOnly);
         return List.copyOf(allMethods);
     }
 
@@ -587,7 +601,8 @@ public class Utils {
     }
 
     private static void collectInterfaceMethods(Class<?> clazz, Set<MethodSignature> seen,
-                                                List<Method> result, Set<Class<?>> visited) {
+                                                List<Method> result, Set<Class<?>> visited,
+                                                boolean concreteOnly) {
         if (clazz == null) {
             return;
         }
@@ -596,7 +611,8 @@ public class Utils {
                 continue;
             }
             for (Method method : iface.getDeclaredMethods()) {
-                if (method.isBridge() || method.isSynthetic() || Modifier.isAbstract(method.getModifiers())) {
+                if (method.isBridge() || method.isSynthetic() ||
+                        (concreteOnly && Modifier.isAbstract(method.getModifiers()))) {
                     continue;
                 }
                 MethodSignature sig = new MethodSignature(method.getName(), List.of(method.getParameterTypes()));
@@ -604,9 +620,9 @@ public class Utils {
                     result.add(method);
                 }
             }
-            collectInterfaceMethods(iface, seen, result, visited);
+            collectInterfaceMethods(iface, seen, result, visited, concreteOnly);
         }
-        collectInterfaceMethods(clazz.getSuperclass(), seen, result, visited);
+        collectInterfaceMethods(clazz.getSuperclass(), seen, result, visited, concreteOnly);
     }
 
     /**

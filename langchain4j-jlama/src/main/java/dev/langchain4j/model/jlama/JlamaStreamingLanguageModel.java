@@ -151,7 +151,7 @@ public class JlamaStreamingLanguageModel implements StreamingLanguageModel {
 
         public String toString() {
             return "JlamaStreamingLanguageModel.JlamaStreamingLanguageModelBuilder(modelCachePath="
-                    + this.modelCachePath + ", modelName=" + this.modelName + ", authToken=" + this.authToken
+                    + this.modelCachePath + ", modelName=" + this.modelName + ", authToken=" + (this.authToken == null ? null : "********")
                     + ", threadCount=" + this.threadCount + ", quantizeModelAtRuntime=" + this.quantizeModelAtRuntime
                     + ", workingDirectory=" + this.workingDirectory + ", workingQuantizedType="
                     + this.workingQuantizedType + ", temperature=" + this.temperature + ", maxTokens=" + this.maxTokens
