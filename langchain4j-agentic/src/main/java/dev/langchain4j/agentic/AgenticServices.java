@@ -28,6 +28,7 @@ import dev.langchain4j.agentic.declarative.McpClientSupplier;
 import dev.langchain4j.agentic.declarative.ParallelAgent;
 import dev.langchain4j.agentic.declarative.ParallelMapperAgent;
 import dev.langchain4j.agentic.declarative.PlannerAgent;
+import dev.langchain4j.agentic.declarative.RegistryAgent;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
@@ -36,6 +37,8 @@ import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgentsRegistry;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.internal.McpService;
 import dev.langchain4j.agentic.observability.AgentListener;
@@ -676,6 +679,11 @@ public class AgenticServices {
             return createA2AClientAgent(agentServiceClass, a2aClientMethod.get());
         }
 
+        Optional<Method> registryAgentMethod = getAnnotatedMethodOnClass(agentServiceClass, RegistryAgent.class);
+        if (registryAgentMethod.isPresent()) {
+            return createRegistryAgent(registryAgentMethod.get());
+        }
+
         Optional<Method> mcpClientMethod = getAnnotatedMethodOnClass(agentServiceClass, McpClientAgent.class);
         if (mcpClientMethod.isPresent()) {
             return createMcpClientAgent(agentServiceClass, mcpClientMethod.get());
@@ -700,6 +708,12 @@ public class AgenticServices {
 
     private static AgentExecutor createA2AClientAgent(Class<?> agentServiceClass, Method a2aMethod) {
         return agentToExecutor(createA2AClient(agentServiceClass, a2aMethod));
+    }
+
+    private static AgentExecutor createRegistryAgent(Method registryMethod) {
+        String registryName = registryMethod.getAnnotation(RegistryAgent.class).value();
+        AgentInstance agent = AgentsRegistry.get().getAgent(registryName);
+        return agentToExecutor(agent);
     }
 
     private static <T> T createA2AClient(Class<T> agentServiceClass, Method a2aMethod) {
