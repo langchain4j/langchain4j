@@ -11,6 +11,10 @@
     <artifactId>langchain4j-voyage-ai</artifactId>
     <name>LangChain4j :: Integration :: Voyage AI</name>
 
+    <properties>
+        <automaticModuleNameSource>dev.langchain4j.voyageai</automaticModuleNameSource>
+    </properties>
+
     <dependencies>
 
         <dependency>

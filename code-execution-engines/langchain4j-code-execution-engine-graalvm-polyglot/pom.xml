@@ -14,6 +14,7 @@
     <description>Implementation of JavaScript and Python code execution engines and tools using GraalVM Polyglot/Truffle</description>
 
     <properties>
+        <automaticModuleNameSource>dev.langchain4j.codeexecutionengine.graalvm.polyglot</automaticModuleNameSource>
         <graalvm.version>24.1.1</graalvm.version>
     </properties>
 
@@ -36,6 +37,7 @@
             <artifactId>js</artifactId>
             <version>${graalvm.version}</version>
             <type>pom</type>
+            <scope>runtime</scope>
         </dependency>
 
         <dependency>
@@ -43,6 +45,7 @@
             <artifactId>python</artifactId>
             <version>${graalvm.version}</version>
             <type>pom</type>
+            <scope>runtime</scope>
         </dependency>
 
         <dependency>

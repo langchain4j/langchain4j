@@ -4,7 +4,6 @@ import static dev.langchain4j.data.document.Document.URL;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.joining;
-import static org.jsoup.internal.StringUtil.in;
 import static org.jsoup.select.NodeTraversor.traverse;
 
 import dev.langchain4j.data.document.Document;
@@ -117,14 +116,22 @@ public class HtmlToTextDocumentTransformer implements DocumentTransformer {
             if (node instanceof TextNode) textBuilder.append(((TextNode) node).text());
             else if (name.equals("li")) textBuilder.append("\n * ");
             else if (name.equals("dt")) textBuilder.append("  ");
-            else if (in(name, "p", "h1", "h2", "h3", "h4", "h5", "h6", "tr")) textBuilder.append("\n");
+            else {
+                switch (name) {
+                    case "p", "h1", "h2", "h3", "h4", "h5", "h6", "tr" -> textBuilder.append("\n");
+                    default -> {}
+                }
+            }
         }
 
         @Override
         public void tail(Node node, int depth) { // hit when all the node's children (if any) have been visited
             String name = node.nodeName();
-            if (in(name, "br", "dd", "dt", "p", "h1", "h2", "h3", "h4", "h5", "h6")) textBuilder.append("\n");
-            else if (includeLinks && name.equals("a")) {
+            switch (name) {
+                case "br", "dd", "dt", "p", "h1", "h2", "h3", "h4", "h5", "h6" -> textBuilder.append("\n");
+                default -> {}
+            }
+            if (includeLinks && name.equals("a")) {
                 String link = node.absUrl("href");
                 if (link.isEmpty() && node.baseUri().isEmpty()) {
                     log.warn("No 'URL' metadata found for document. Link will be empty");

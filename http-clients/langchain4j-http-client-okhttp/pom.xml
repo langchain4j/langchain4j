@@ -13,6 +13,10 @@
     <artifactId>langchain4j-http-client-okhttp</artifactId>
     <name>LangChain4j :: HTTP Client :: OkHttp</name>
 
+    <properties>
+        <automaticModuleNameSource>dev.langchain4j.httpclient.okhttp</automaticModuleNameSource>
+    </properties>
+
     <dependencyManagement>
         <dependencies>
             <dependency>

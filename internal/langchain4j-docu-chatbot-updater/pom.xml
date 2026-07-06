@@ -13,6 +13,7 @@
     <name>LangChain4j :: Internal :: Documentation Chatbot Updater</name>
 
     <properties>
+        <automaticModuleNameSource>dev.langchain4j.docu.chatbotupdater</automaticModuleNameSource>
         <enforcer.skipRules>dependencyConvergence,requireUpperBoundDeps</enforcer.skipRules>
     </properties>
 

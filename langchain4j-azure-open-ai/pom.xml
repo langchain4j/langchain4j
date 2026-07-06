@@ -23,6 +23,7 @@
     </developers>
 
     <properties>
+        <automaticModuleNameSource>dev.langchain4j.azure.openai</automaticModuleNameSource>
         <azure-ai-openai.version>1.0.0-beta.16</azure-ai-openai.version>
     </properties>
 
@@ -140,5 +141,23 @@
         </dependency>
 
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <configuration>
+                            <legacyMode>true</legacyMode>
+                            <useModulePath>false</useModulePath>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

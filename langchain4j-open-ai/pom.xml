@@ -13,6 +13,10 @@
     <version>1.19.0-SNAPSHOT</version>
     <name>LangChain4j :: Integration :: OpenAI</name>
 
+    <properties>
+        <automaticModuleNameSource>dev.langchain4j.openai</automaticModuleNameSource>
+    </properties>
+
     <dependencies>
 
         <dependency>
@@ -54,7 +58,6 @@
             <artifactId>jtokkit</artifactId>
             <version>${jtokkit.version}</version>
         </dependency>
-
 
         <!-- test dependencies -->
 

@@ -35,6 +35,9 @@
     </scm>
 
     <properties>
+        <!-- Default JPMS module name; submodules can override this property when some artifactId
+             separators are only for readability and should stay grouped in the JPMS name. -->
+        <automaticModuleNameSource>dev.${project.artifactId}</automaticModuleNameSource>
         <langchain4j.beta.version>1.19.0-beta29-SNAPSHOT</langchain4j.beta.version>
         <java.version>17</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
@@ -397,6 +400,15 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-jar-plugin</artifactId>
                     <version>3.5.0</version>
+                    <configuration>
+                        <archive>
+                            <manifestEntries>
+                                <!-- Stable JPMS module name so the jars can be required from the module path.
+                                     Derived from the artifactId by the build-helper execution below. -->
+                                <Automatic-Module-Name>${automaticModuleName}</Automatic-Module-Name>
+                            </manifestEntries>
+                        </archive>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -576,6 +588,36 @@
         </pluginManagement>
 
         <plugins>
+
+            <plugin>
+                <!-- Derive the JPMS Automatic-Module-Name from the current automaticModuleNameSource value by
+                     translating remaining '-' separators to '.'. Submodules can override automaticModuleNameSource
+                     directly when some separators are only for readability, e.g. "open-ai" -> "openai". -->
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <id>derive-automatic-module-name</id>
+                        <goals>
+                            <goal>regex-property</goal>
+                        </goals>
+                        <phase>validate</phase>
+                        <configuration>
+                            <name>automaticModuleName</name>
+                            <value>${automaticModuleNameSource}</value>
+                            <regex>-</regex>
+                            <replacement>.</replacement>
+                            <failIfNoMatch>false</failIfNoMatch>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+            </plugin>
 
             <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
