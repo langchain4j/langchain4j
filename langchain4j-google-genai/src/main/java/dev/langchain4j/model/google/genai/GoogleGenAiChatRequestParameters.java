@@ -9,6 +9,9 @@ import java.util.Objects;
 
 public class GoogleGenAiChatRequestParameters extends DefaultChatRequestParameters {
 
+    public static final GoogleGenAiChatRequestParameters EMPTY =
+            GoogleGenAiChatRequestParameters.builder().build();
+
     private final String cachedContent;
 
     private GoogleGenAiChatRequestParameters(Builder builder) {
@@ -30,6 +33,14 @@ public class GoogleGenAiChatRequestParameters extends DefaultChatRequestParamete
         return GoogleGenAiChatRequestParameters.builder()
                 .overrideWith(this)
                 .overrideWith(that)
+                .build();
+    }
+
+    @Override
+    public GoogleGenAiChatRequestParameters defaultedBy(ChatRequestParameters that) {
+        return GoogleGenAiChatRequestParameters.builder()
+                .overrideWith(that)
+                .overrideWith(this)
                 .build();
     }
 

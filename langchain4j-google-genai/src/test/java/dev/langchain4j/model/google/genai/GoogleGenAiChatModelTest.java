@@ -19,6 +19,7 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import java.lang.reflect.Field;
 import java.time.Duration;
@@ -182,6 +183,7 @@ class GoogleGenAiChatModelTest {
         GoogleGenAiChatModel.Builder builder = GoogleGenAiChatModel.builder();
 
         assertThat(builder.googleCredentials(null)).isSameAs(builder);
+        assertThat(builder.projectId("project")).isSameAs(builder);
         assertThat(builder.location("us-central1")).isSameAs(builder);
     }
 
@@ -225,5 +227,34 @@ class GoogleGenAiChatModelTest {
         assertThat(configCaptor.getValue().cachedContent().isPresent()).isTrue();
         assertThat(configCaptor.getValue().cachedContent().get())
                 .isEqualTo("projects/123/locations/us-central1/cachedContents/per-request");
+    }
+
+    @Test
+    void global_cached_content_should_be_reflected_in_default_request_parameters() {
+        GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
+                .client(mock(Client.class))
+                .modelName("gemini-3.1-flash-lite")
+                .cachedContent("projects/123/locations/us-central1/cachedContents/global")
+                .build();
+
+        assertThat(model.defaultRequestParameters()).isInstanceOf(GoogleGenAiChatRequestParameters.class);
+        assertThat(((GoogleGenAiChatRequestParameters) model.defaultRequestParameters()).cachedContent())
+                .isEqualTo("projects/123/locations/us-central1/cachedContents/global");
+    }
+
+    @Test
+    void defaulted_by_should_preserve_cached_content() {
+        GoogleGenAiChatRequestParameters requestParameters = GoogleGenAiChatRequestParameters.builder()
+                .cachedContent("projects/123/locations/us-central1/cachedContents/per-request")
+                .build();
+
+        // Mirrors how AiServiceParamsUtil merges request parameters with defaults.
+        ChatRequestParameters merged = requestParameters.defaultedBy(
+                GoogleGenAiChatRequestParameters.builder().temperature(0.5).build());
+
+        assertThat(merged).isInstanceOf(GoogleGenAiChatRequestParameters.class);
+        assertThat(((GoogleGenAiChatRequestParameters) merged).cachedContent())
+                .isEqualTo("projects/123/locations/us-central1/cachedContents/per-request");
+        assertThat(merged.temperature()).isEqualTo(0.5);
     }
 }
