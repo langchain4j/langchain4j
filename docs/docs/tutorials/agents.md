@@ -2804,6 +2804,39 @@ ResultWithAgenticScope<String> result = workflow.converse("hello");
 
 In this sequence, the first agent sends a message with no `contextId`/`taskId` (they are `null` in the scope). The server creates a new task and context. The response IDs are written to the scope. When the second agent runs, it reads the now-populated `contextId` and `taskId` from the scope and sends them on the message envelope, continuing the same conversation.
 
+### Customizing the A2A client
+
+By default, A2A agents use a JSONRPC transport with a default configuration. The `clientCustomizer` method exposes the underlying a2a-java SDK `ClientBuilder`, allowing you to configure a different transport, set a custom HTTP client, add interceptors, or change any other client setting.
+
+When building an A2A agent programmatically, pass a `Consumer<ClientBuilder>` to `clientCustomizer`:
+
+```java
+UntypedAgent creativeWriter = AgenticServices
+        .a2aBuilder(A2A_SERVER_URL)
+        .clientCustomizer((ClientBuilder cb) ->
+                cb.withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder()))
+        .inputKeys("topic")
+        .outputKey("story")
+        .build();
+```
+
+When a customizer is provided, it replaces the default transport setup entirely, giving full control over how the `Client` is constructed.
+
+For declarative agents, annotate a static method with `@A2AClientCustomizer`. The method must take a single `ClientBuilder` parameter and return `void`:
+
+```java
+public interface DeclarativeA2AWithCustomizer {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", outputKey = "story")
+    String generateStory(@V("topic") String topic);
+
+    @A2AClientCustomizer
+    static void customizer(ClientBuilder cb) {
+        cb.withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder());
+    }
+}
+```
+
 ## MCP-based Tool Agents
 
 The additional `langchain4j-agentic-mcp` module allows wrapping a single [MCP](https://modelcontextprotocol.io/) tool as a non-AI agent in the agentic system. Unlike regular agents that use an LLM, an MCP tool agent simply executes the MCP tool directly and returns its result. This makes it possible to compose MCP tools with other agents in larger agentic systems, without involving an LLM for the tool execution itself.
