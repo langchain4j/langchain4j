@@ -25,6 +25,7 @@ https://ai.google.dev/gemini-api/docs
     - [Uploading Files](#uploading-files)
     - [Managing Files](#managing-files)
     - [File States](#file-states)
+- [Context Caching](#context-caching)
 - [Batch Processing](#batch-processing)
     - [GoogleAiBatchChatModel](#googleaibatchchatmodel)
     - [Creating Batch Jobs](#creating-batch-jobs)
@@ -809,6 +810,42 @@ if (file.isActive()) {
     System.out.println("File processing failed");
 }
 ```
+
+## Context Caching
+
+The [context caching API](https://ai.google.dev/gemini-api/docs/caching) stores large, frequently reused context (a system instruction, long documents) on Google's servers once, so subsequent requests reference it by name instead of resending it, reducing input-token cost and latency.
+
+`GeminiCaches` manages the cache lifecycle (create / get / list / delete). The messages are cached using the same message mapping the chat models use, so you stay in the LangChain4j `ChatMessage` domain:
+
+```java
+GeminiCaches caches = GeminiCaches.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .build();
+
+// Cache a large, reusable context (a system instruction plus a long document)
+GeminiCachedContent cache = caches.createCache(
+    "gemini-2.5-flash",
+    List.of(
+        SystemMessage.from("You are a precise assistant answering questions about the attached document."),
+        UserMessage.from(longDocumentText)),
+    Duration.ofHours(1));
+
+// Reuse it across many requests via cachedContentName
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .modelName("gemini-2.5-flash")
+    .cachedContentName(cache.name())
+    .build();
+
+String answer = gemini.chat("Summarize the cached document in 3 bullet points.");
+
+// Manage the cache lifecycle
+caches.getCache(cache.name());
+caches.listCaches();
+caches.deleteCache(cache.name());
+```
+
+> Note: explicit context caching requires a paid tier; it is not available on the free tier.
 
 ## Batch Processing
 
