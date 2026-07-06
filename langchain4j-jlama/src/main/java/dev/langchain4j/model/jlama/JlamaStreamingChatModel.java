@@ -289,7 +289,7 @@ public class JlamaStreamingChatModel implements StreamingChatModel {
 
         public String toString() {
             return "JlamaStreamingChatModel.JlamaStreamingChatModelBuilder(modelCachePath=" + this.modelCachePath
-                    + ", modelName=" + this.modelName + ", authToken=" + this.authToken + ", threadCount="
+                    + ", modelName=" + this.modelName + ", authToken=" + (this.authToken == null ? null : "********") + ", threadCount="
                     + this.threadCount + ", quantizeModelAtRuntime=" + this.quantizeModelAtRuntime
                     + ", workingDirectory=" + this.workingDirectory + ", workingQuantizedType="
                     + this.workingQuantizedType + ", temperature=" + this.temperature + ", maxTokens=" + this.maxTokens
