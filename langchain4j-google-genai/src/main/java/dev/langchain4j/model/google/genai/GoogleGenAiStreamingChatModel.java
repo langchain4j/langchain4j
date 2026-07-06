@@ -62,7 +62,6 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
     private final List<String> allowedFunctionNames;
     private final String vertexSearchDatastore;
     private final Map<String, String> labels;
-    private final String cachedContent;
     private final Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
     private final ExecutorService executor;
@@ -81,7 +80,6 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         this.safetySettings = copy(builder.safetySettings);
         this.vertexSearchDatastore = builder.vertexSearchDatastore;
         this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
-        this.cachedContent = builder.cachedContent;
         this.generateContentConfigCustomizer = builder.generateContentConfigCustomizer;
 
         this.client = builder.client != null
@@ -98,7 +96,12 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         ChatRequestParameters commonParameters =
                 getOrDefault(builder.defaultRequestParameters, DefaultChatRequestParameters.EMPTY);
 
-        this.defaultRequestParameters = DefaultChatRequestParameters.builder()
+        GoogleGenAiChatRequestParameters genAiParameters =
+                builder.defaultRequestParameters instanceof GoogleGenAiChatRequestParameters googleGenAiParameters
+                        ? googleGenAiParameters
+                        : GoogleGenAiChatRequestParameters.EMPTY;
+
+        this.defaultRequestParameters = GoogleGenAiChatRequestParameters.builder()
                 .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
@@ -110,6 +113,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                .cachedContent(getOrDefault(builder.cachedContent, genAiParameters.cachedContent()))
                 .build();
 
         this.executor = getOrDefault(builder.executor, DefaultExecutorProvider::getDefaultExecutorService);
@@ -122,8 +126,10 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(chatRequest.messages());
         List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages());
 
+        GoogleGenAiChatRequestParameters parameters = (GoogleGenAiChatRequestParameters) chatRequest.parameters();
+
         GenerateContentConfig builtConfig = GoogleGenAiConfigBuilder.buildConfig(
-                chatRequest.parameters(),
+                parameters,
                 systemInstruction,
                 safetySettings,
                 thinkingBudget,
@@ -135,7 +141,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 allowedFunctionNames,
                 vertexSearchDatastore,
                 labels,
-                cachedContent);
+                parameters.cachedContent());
         GenerateContentConfig config =
                 GoogleGenAiConfigBuilder.applyCustomizer(builtConfig, generateContentConfigCustomizer);
 

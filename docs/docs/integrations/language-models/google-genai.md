@@ -40,7 +40,7 @@ https://github.com/googleapis/java-genai
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-genai</artifactId>
-    <version>1.17.1-beta27</version>
+    <version>1.17.2-beta27</version>
 </dependency>
 ```
 
@@ -389,6 +389,40 @@ String response = gemini.chat("Summarize the cached document in 3 bullet points.
 ```
 
 This feature is available on `GoogleGenAiChatModel`, `GoogleGenAiStreamingChatModel`, and `GoogleGenAiBatchChatModel`.
+
+### Creating and managing caches
+
+Instead of creating the cache out-of-band, you can create and manage it directly from LangChain4j with `GoogleGenAiCaches`, which wraps the SDK's cache lifecycle (create / get / list / update TTL / delete). The messages are cached using the same `GoogleGenAiContentMapper` the chat models use, so you stay in the LangChain4j `ChatMessage` domain.
+
+```java
+GoogleGenAiCaches caches = GoogleGenAiCaches.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .build();
+
+// Cache a large, reusable context (a system instruction plus a long document)
+CachedContent cache = caches.createCache(
+    "gemini-2.5-flash",
+    List.of(
+        SystemMessage.from("You are a precise assistant answering questions about the attached document."),
+        UserMessage.from(longDocumentText)),
+    Duration.ofHours(1));
+
+// Reuse it across many requests via cachedContent
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash")
+    .cachedContent(cache.name().orElseThrow())
+    .build();
+
+String answer = gemini.chat("Summarize the cached document in 3 bullet points.");
+
+// Manage the cache lifecycle
+caches.updateCacheTtl(cache.name().orElseThrow(), Duration.ofHours(2));
+caches.listCaches();
+caches.deleteCache(cache.name().orElseThrow());
+```
+
+> Note: explicit context caching requires a paid tier; it is not available on the free tier.
 
 ## Thinking Models (Gemini 3.0+)
 

@@ -349,7 +349,7 @@ public class SupervisorAgentIT {
                 description =
                         "A money exchanger that converts a given amount of money from the original to the target currency",
                 outputKey = "exchange")
-        public Double exchange(
+        Double exchange(
                 @V("originalCurrency") String originalCurrency,
                 @V("amount") Double amount,
                 @V("targetCurrency") String targetCurrency) {

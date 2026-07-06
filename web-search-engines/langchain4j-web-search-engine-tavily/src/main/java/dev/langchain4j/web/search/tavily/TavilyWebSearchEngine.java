@@ -174,7 +174,7 @@ public class TavilyWebSearchEngine implements WebSearchEngine {
 
         public String toString() {
             return "TavilyWebSearchEngine.TavilyWebSearchEngineBuilder(baseUrl=" + this.baseUrl + ", apiKey="
-                    + this.apiKey + ", timeout=" + this.timeout + ", searchDepth=" + this.searchDepth
+                    + (this.apiKey == null ? null : "********") + ", timeout=" + this.timeout + ", searchDepth=" + this.searchDepth
                     + ", includeAnswer=" + this.includeAnswer + ", includeRawContent=" + this.includeRawContent
                     + ", includeDomains=" + this.includeDomains + ", excludeDomains=" + this.excludeDomains + ")";
         }
