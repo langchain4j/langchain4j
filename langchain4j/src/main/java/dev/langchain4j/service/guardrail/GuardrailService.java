@@ -40,6 +40,10 @@ public interface GuardrailService {
 
     /**
      * Non-blocking counterpart of {@link #executeInputGuardrails(Object, InputGuardrailRequest)}.
+     * <p>
+     * The default implementation throws {@link UnsupportedOperationException}; the internal implementation
+     * ({@code AbstractGuardrailService}) overrides it, and only implementors that opt into the non-blocking
+     * AI Service modes need to provide it.
      *
      * @param method The method whose input guardrails are to be executed.
      * @param request The parameters to validate against the input guardrails. Must not be null.
@@ -47,8 +51,11 @@ public interface GuardrailService {
      * @param <MethodKey> The type of the method key, representing a unique identifier for methods.
      * @since 1.17.0
      */
-    <MethodKey> CompletableFuture<InputGuardrailResult> executeInputGuardrailsAsync(
-            MethodKey method, InputGuardrailRequest request);
+    default <MethodKey> CompletableFuture<InputGuardrailResult> executeInputGuardrailsAsync(
+            MethodKey method, InputGuardrailRequest request) {
+        throw new UnsupportedOperationException(
+                "executeInputGuardrailsAsync() is not implemented by " + getClass().getName());
+    }
 
     /**
      * Executes the input guardrails associated with the given method and parameters,
@@ -90,6 +97,10 @@ public interface GuardrailService {
 
     /**
      * Non-blocking counterpart of {@link #executeOutputGuardrails(Object, OutputGuardrailRequest)}.
+     * <p>
+     * The default implementation throws {@link UnsupportedOperationException}; the internal implementation
+     * ({@code AbstractGuardrailService}) overrides it, and only implementors that opt into the non-blocking
+     * AI Service modes need to provide it.
      *
      * @param method The method whose output guardrails are to be executed.
      * @param request The parameters to validate against the output guardrails. Must not be null.
@@ -97,8 +108,11 @@ public interface GuardrailService {
      * @param <MethodKey> The type of the method key, representing a unique identifier for methods.
      * @since 1.17.0
      */
-    <MethodKey> CompletableFuture<OutputGuardrailResult> executeOutputGuardrailsAsync(
-            MethodKey method, OutputGuardrailRequest request);
+    default <MethodKey> CompletableFuture<OutputGuardrailResult> executeOutputGuardrailsAsync(
+            MethodKey method, OutputGuardrailRequest request) {
+        throw new UnsupportedOperationException(
+                "executeOutputGuardrailsAsync() is not implemented by " + getClass().getName());
+    }
 
     /**
      * Whether or not a method has any input guardrails associated with it

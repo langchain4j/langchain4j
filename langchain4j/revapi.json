@@ -13,16 +13,6 @@
           "code": "java.annotation.removed",
           "new": "class dev.langchain4j.service.tool.AiServiceTool",
           "justification": "@Internal removed intentionally: AiServiceTool is now part of the public API and can be constructed and passed to AiServices directly by users (e.g. via AiServices.tools(List<AiServiceTool>))."
-        },
-        {
-          "code": "java.method.addedToInterface",
-          "new": "method <MethodKey> java.util.concurrent.CompletableFuture<dev.langchain4j.guardrail.InputGuardrailResult> dev.langchain4j.service.guardrail.GuardrailService::executeInputGuardrailsAsync(MethodKey, dev.langchain4j.guardrail.InputGuardrailRequest)",
-          "justification": "GuardrailService is implemented only internally (AbstractGuardrailService/DefaultGuardrailService) and constructed via the builder SPI; its primary execute methods are already abstract. Adding the non-blocking executeInputGuardrailsAsync counterpart mirrors the existing abstract executeInputGuardrails and is not a break for API consumers, who implement Guardrail/InputGuardrail/OutputGuardrail rather than GuardrailService."
-        },
-        {
-          "code": "java.method.addedToInterface",
-          "new": "method <MethodKey> java.util.concurrent.CompletableFuture<dev.langchain4j.guardrail.OutputGuardrailResult> dev.langchain4j.service.guardrail.GuardrailService::executeOutputGuardrailsAsync(MethodKey, dev.langchain4j.guardrail.OutputGuardrailRequest)",
-          "justification": "GuardrailService is implemented only internally (AbstractGuardrailService/DefaultGuardrailService) and constructed via the builder SPI; its primary execute methods are already abstract. Adding the non-blocking executeOutputGuardrailsAsync counterpart mirrors the existing abstract executeOutputGuardrails and is not a break for API consumers, who implement Guardrail/InputGuardrail/OutputGuardrail rather than GuardrailService."
         }
       ]
     }
