@@ -208,33 +208,13 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         private final AtomicReference<Flow.Subscription> modelSubscription = new AtomicReference<>();
         private final AtomicReference<CompletableFuture<?>> toolsFuture = new AtomicReference<>();
         private final AtomicReference<CompletableFuture<?>> guardrailsFuture = new AtomicReference<>();
-
-        // Accumulates this invocation's successful compensable tool executions across rounds (null when tool
-        // compensation is disabled), so a later tool failure can roll them back.
         private final List<ToolService.CompensableToolExecution> compensableExecutions =
                 context.toolService.newCompensableExecutionsAccumulator();
-
-        // Output guardrails for the reactive path mirror the handler-based path's buffer-then-validate: while
-        // output guardrails are configured, partial responses are buffered (not streamed) until the assembled
-        // final response has passed the guardrails, so a guardrail that rewrites or reprompts is never visible
-        // to the subscriber as already-emitted tokens. The guardrails (and any reprompt round-trips to the
-        // model) run off the model-delivery thread via GuardrailService.executeGuardrailsAsync.
         private final boolean hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
         private final List<PartialResponse> bufferedPartialResponses = new ArrayList<>();
-
-        // Built lazily in start() (it needs the first ChatRequest) and reused for output-guardrail reprompts,
-        // mirroring the handler-based path.
         private ChatExecutor chatExecutor;
-
-        // The reactive Publisher path runs tools concurrently by default (off the model delivery thread),
-        // unless the user explicitly disabled it via executeToolsConcurrently(false). When concurrent, each
-        // tool is started as soon as its CompleteToolCall arrives (rather than waiting for the whole model
-        // response), so concurrent tools overlap each other and the tail of the model stream — mirroring the
-        // handler-based path's onCompleteToolCall scheduling. When sequential, tools run inline (toolExecutor
-        // is null).
         private final Executor toolExecutor = context.toolService.effectiveToolExecutor(true);
         private final boolean startToolsEagerly = toolExecutor != null;
-
         private TokenUsage tokenUsage = new TokenUsage();
         private int roundTripsLeft = context.toolService.maxToolCallingRoundTrips();
 
@@ -253,8 +233,6 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 if (tools != null) {
                     tools.cancel(true);
                 }
-                // Best-effort: cancel an in-flight output-guardrail validation (and any reprompt model round-trip
-                // that honors cancellation). Won't interrupt a guardrail already running on a worker thread.
                 CompletableFuture<?> guardrails = guardrailsFuture.get();
                 if (guardrails != null) {
                     guardrails.cancel(true);
@@ -262,7 +240,6 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
             });
 
             try {
-                // Mirrors TokenStream.onRetrieved: surface retrieved RAG content once, before the first response.
                 if (retrievedContents != null && !retrievedContents.isEmpty()) {
                     tube.send(new RetrievedContentsEvent(retrievedContents, invocationContext));
                 }
@@ -275,16 +252,12 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                         ChatRequest.builder().messages(messages).parameters(parameters).build(),
                         invocationContext.chatMemoryId());
 
-                // Used by output guardrails to reprompt the model (bridged from streaming to synchronous, run
-                // off the delivery thread). Built once with the first request, mirroring the handler-based path.
                 chatExecutor = ChatExecutor.builder(context.streamingChatModel)
                         .chatRequest(chatRequest)
                         .invocationContext(invocationContext)
                         .eventListenerRegistrar(context.eventListenerRegistrar)
                         .build();
 
-                // The first round's request-issued event is fired here; subsequent rounds' events are fired by
-                // ToolService.prepareNextChatRequest (shared with the other AI Service modes).
                 fireRequestIssuedEvent(chatRequest);
 
                 startRound(chatRequest, toolServiceContext, parameters);
@@ -300,8 +273,6 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 return;
             }
 
-            // Tools started eagerly (on CompleteToolCall) for this round, keyed by request in arrival order.
-            // Empty unless tools execute concurrently. Accessed only from the (serial) model delivery thread.
             Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> startedTools = new LinkedHashMap<>();
 
             context.streamingChatModel.chat(chatRequest).subscribe(new Flow.Subscriber<>() {
@@ -323,16 +294,9 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     if (tube.cancelled()) {
                         return;
                     }
-                    // Map each low-level model event to its high-level AI Service counterpart. The terminal
-                    // ChatResponse is held back: the AI Service stream decides whether the round is an
-                    // intermediate (tool-calling) one or the final answer. Raw provider events are relayed
-                    // as-is via RawEvent.
                     if (event instanceof CompleteResponse completeResponse) {
                         this.roundResponse = completeResponse.chatResponse();
                     } else if (event instanceof PartialResponse partialResponse) {
-                        // While output guardrails are configured, hold partial responses back until the final
-                        // response has passed validation (see emitFinalResponse). Other event types still flow
-                        // immediately, mirroring the handler-based path which buffers only partial responses.
                         if (hasOutputGuardrails) {
                             bufferedPartialResponses.add(partialResponse);
                         } else {
@@ -389,10 +353,6 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
 
             AiMessage aiMessage = chatResponse.aiMessage();
 
-            // The AI message is written to memory without blocking the delivery thread (addAsync). The rest of the
-            // round is gated on that write so the AI message is persisted before the tool-result messages, keeping
-            // the conversation order intact. Tools may already be running (started eagerly on CompleteToolCall),
-            // independently of this write.
             getMemory().addAsync(List.of(aiMessage)).whenComplete((ignored, error) -> {
                 if (error != null) {
                     fail(error);
@@ -494,9 +454,6 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 List<ToolExecutionRequest> toolRequests,
                 Map<ToolExecutionRequest, ToolExecutionResult> toolResults) {
 
-            // Shared per-round bookkeeping (ToolExecutedEvent, returnBehavior accumulation, result-message
-            // collection). The per-tool BeforeToolExecution/ToolExecution stream events were already emitted by the
-            // tube::send consumers passed to executeToolsAsync, as the tools ran.
             ToolService.ToolResultsOutcome outcome = context.toolService.processToolResults(
                     context,
                     toolRequests,
@@ -505,9 +462,6 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     invocationContext,
                     currentToolContext);
 
-            // Tool compensation runs without blocking the model-delivery thread: a compensating action that
-            // performs blocking I/O returns a CompletableFuture, and the chat-memory rewrite uses
-            // ChatMemory.setAsync. A no-op unless compensation is enabled and a tool errored.
             CompletableFuture<Void> compensated = context.toolService.compensateIfNeededAsync(
                     toolRequests,
                     toolResults,
@@ -533,8 +487,6 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
 
                 tokenUsage = TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage());
 
-                // Persist the tool-result messages and resolve the next messages without blocking the delivery
-                // thread, then build and dispatch the next request (shared with the sync/async/TokenStream modes).
                 context.toolService
                         .persistToolResultsAndResolveMessages(
                                 context, getMemory(), null, outcome.resultMessages(), invocationContext)
@@ -573,8 +525,6 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     .build();
 
             if (!hasOutputGuardrails || commonGuardrailParams == null) {
-                // No output guardrails (or no params to run them with): flush any buffered partials and finish.
-                // bufferedPartialResponses is empty unless hasOutputGuardrails, so this is a no-op in that case.
                 flushBufferedPartialResponses();
                 completeWithFinalResponse(finalChatResponse);
                 return;
@@ -583,9 +533,6 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
             GuardrailRequestParams guardrailParams =
                     commonGuardrailParams.toBuilder().chatMemory(getMemory()).build();
 
-            // Output-guardrail reprompts go through a tool-aware executor driven by the streaming model: when a
-            // reprompt's response requests tools, they are resolved (via the async tool loop, re-calling the
-            // streaming model) so the guardrail only ever sees a final textual response.
             ChatExecutor toolAwareRepromptExecutor = ToolAwareRepromptExecutor.wrapAsync(
                     chatExecutor,
                     context,
