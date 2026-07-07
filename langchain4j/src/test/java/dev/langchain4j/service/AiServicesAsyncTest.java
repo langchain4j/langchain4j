@@ -1122,12 +1122,12 @@ class AiServicesAsyncTest {
                 AiMessage.from(temperatureRequest, humidityRequest), AiMessage.from("42 degrees, 69 percent"));
         SequentialAsyncTools tools = new SequentialAsyncTools();
 
-        // executeToolsConcurrently(false): opt out of the async path's concurrent-by-default tool execution,
-        // so the loop chains the async tools (thenCompose), one after another
+        // A single-threaded executor runs the (async) tools one at a time, in request order, while keeping them
+        // off the model-response thread — the recommended way to get sequential tool execution on the async path.
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
                 .tools(tools)
-                .executeToolsConcurrently(false)
+                .executeToolsConcurrently(Executors.newSingleThreadExecutor())
                 .build();
 
         String answer = assistant.chat("What is the weather?").get(10, SECONDS);

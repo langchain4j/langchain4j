@@ -124,9 +124,6 @@ public class ToolService {
     private final Set<ToolProvider> toolProviders = new LinkedHashSet<>();
     private boolean compensateOnToolErrors;
     private Executor executor;
-    // The user's explicit concurrent-vs-sequential choice: null = unset (each AI Service mode applies its own
-    // default — async modes concurrent, sync/TokenStream sequential), TRUE = concurrent, FALSE = sequential.
-    private Boolean concurrentToolExecution; // TODO use enum
     private int maxToolCallingRoundTrips = 100;
     private ToolArgumentsErrorHandler argumentsErrorHandler;
     private ToolExecutionErrorHandler executionErrorHandler;
@@ -377,7 +374,6 @@ public class ToolService {
      */
     public void executeToolsConcurrently() {
         this.executor = defaultExecutor();
-        this.concurrentToolExecution = true;
     }
 
     /**
@@ -385,39 +381,17 @@ public class ToolService {
      */
     public void executeToolsConcurrently(Executor executor) {
         this.executor = getOrDefault(executor, ToolService::defaultExecutor);
-        this.concurrentToolExecution = true;
     }
 
     /**
-     * Explicitly enables or disables concurrent tool execution, overriding the per-mode default. Passing
-     * {@code false} forces sequential execution even on the asynchronous AI Service modes
-     * ({@code CompletableFuture}, reactive {@code Flow.Publisher}), which otherwise execute tools concurrently
-     * by default.
+     * Resolves the {@link Executor} that the asynchronous AI Service modes run tools on: the one set via
+     * {@link #executeToolsConcurrently(Executor)} / {@link #executeToolsConcurrently()}, or the default
+     * virtual-thread executor when none was set. Never {@code null}, so async tools are always offloaded and
+     * never block the model-response thread. Pass a single-threaded executor to run them serially.
      *
      * @since 1.17.0
      */
-    public void executeToolsConcurrently(boolean concurrent) {
-        if (concurrent) {
-            executeToolsConcurrently();
-        } else {
-            this.executor = null;
-            this.concurrentToolExecution = false;
-        }
-    }
-
-    /**
-     * Resolves the {@link Executor} to run tools on, given a mode-specific default. Returns {@code null} when
-     * tools should run sequentially on the calling thread; a non-null executor when they should be offloaded
-     * (and run concurrently). The user's explicit {@link #executeToolsConcurrently(boolean)} choice, if any,
-     * takes precedence over {@code concurrentByDefault}.
-     *
-     * @since 1.17.0
-     */
-    public Executor effectiveToolExecutor(boolean concurrentByDefault) {
-        boolean concurrent = concurrentToolExecution != null ? concurrentToolExecution : concurrentByDefault;
-        if (!concurrent) {
-            return null;
-        }
+    public Executor effectiveToolExecutor() {
         return getOrDefault(executor, ToolService::defaultExecutor);
     }
 
@@ -1498,18 +1472,17 @@ public class ToolService {
      * {@link ToolExecutor#executeAsync(ToolExecutionRequest, InvocationContext)} so that tools backed by
      * an asynchronous client never hold a thread while their result is in flight.
      * <p>
-     * When a tool executor is configured (see {@link #executeToolsConcurrently()}), every tool execution
-     * (even a single one) is initiated on it, so the thread that delivered the model response is never
-     * blocked by a synchronous tool. When no executor is configured, tools are executed one after another,
-     * initiated on the current thread, and a failure aborts the remaining ones — mirroring the synchronous
-     * path.
+     * Every tool execution (even a single one) is initiated on the {@linkplain #effectiveToolExecutor()
+     * effective executor}, so the thread that delivered the model response is never blocked by a synchronous
+     * tool. Tools run concurrently, unless a single-threaded executor was configured via
+     * {@link #executeToolsConcurrently(Executor)}, in which case they run serially in request order.
      */
     private CompletableFuture<Map<ToolExecutionRequest, ToolExecutionResult>> executeToolsAsync(
             List<ToolExecutionRequest> toolRequests,
             Map<String, ToolExecutor> toolExecutors,
             InvocationContext invocationContext) {
         return executeToolsAsync(
-                toolRequests, toolExecutors, invocationContext, null, null, effectiveToolExecutor(true));
+                toolRequests, toolExecutors, invocationContext, null, null, effectiveToolExecutor());
     }
 
     /**
@@ -1518,10 +1491,10 @@ public class ToolService {
      * (in addition to the ones configured on this service). Used by the non-blocking streaming AI Service to
      * emit these notifications into its reactive stream as the tools run.
      * <p>
-     * When {@code executor} is non-null, every tool execution (even a single one) is initiated on it, so the
-     * thread that delivered the model response is never blocked by a synchronous tool, and tools run
-     * concurrently. When {@code executor} is null, tools are executed one after another, initiated on the
-     * current thread, and a failure aborts the remaining ones — mirroring the synchronous path.
+     * Every tool execution (even a single one) is initiated on {@code executor} (which must not be
+     * {@code null}), so the thread that delivered the model response is never blocked by a synchronous tool.
+     * Tools run concurrently, unless {@code executor} is single-threaded, in which case they run serially in
+     * request order.
      *
      * @since 1.17.0
      */
@@ -1532,24 +1505,6 @@ public class ToolService {
             Consumer<BeforeToolExecution> externalBeforeToolExecution,
             Consumer<ToolExecution> externalAfterToolExecution,
             Executor executor) {
-        if (executor == null) {
-            CompletableFuture<Map<ToolExecutionRequest, ToolExecutionResult>> chainedFuture =
-                    CompletableFuture.completedFuture(new LinkedHashMap<>());
-            for (ToolExecutionRequest toolRequest : toolRequests) {
-                chainedFuture = chainedFuture.thenCompose(toolResults -> executeToolAsync(
-                                invocationContext,
-                                toolExecutors,
-                                toolRequest,
-                                externalBeforeToolExecution,
-                                externalAfterToolExecution)
-                        .thenApply(toolResult -> {
-                            toolResults.put(toolRequest, toolResult);
-                            return toolResults;
-                        }));
-            }
-            return chainedFuture;
-        }
-
         Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> futures = new LinkedHashMap<>();
         for (ToolExecutionRequest toolRequest : toolRequests) {
             futures.put(

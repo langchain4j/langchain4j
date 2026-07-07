@@ -79,8 +79,9 @@ the throwing defaults until implemented (see §8).
 - The scarce **model-delivery thread** is never blocked — enforced by BlockHound (§6).
 
 ### 3.2 Concurrency & error defaults for the new APIs
-- **Tools run concurrently by default** for the async/reactive modes (legacy modes stay sequential); opt out with
-  `executeToolsConcurrently(false)`.
+- **Tools run concurrently by default** for the async/reactive modes (legacy modes stay sequential). To run them
+  serially instead, pass a single-threaded executor to `executeToolsConcurrently(Executor)` — tools are then
+  submitted in request order and executed one at a time, still off the model-delivery thread.
 - **Reversed, safer tool-error defaults** for the new APIs: a tool **execution** error **fails** the invocation; a
   tool **argument-parse** error is **sent back to the LLM**. (Old APIs keep their existing behavior.)
 - On the publisher path, tools start **as soon as** their call completes streaming (`onCompleteToolCall`),

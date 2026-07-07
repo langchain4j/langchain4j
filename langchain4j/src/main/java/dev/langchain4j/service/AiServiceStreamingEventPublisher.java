@@ -213,8 +213,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         private final boolean hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
         private final List<PartialResponse> bufferedPartialResponses = new ArrayList<>();
         private ChatExecutor chatExecutor;
-        private final Executor toolExecutor = context.toolService.effectiveToolExecutor(true);
-        private final boolean startToolsEagerly = toolExecutor != null;
+        private final Executor toolExecutor = context.toolService.effectiveToolExecutor();
         private TokenUsage tokenUsage = new TokenUsage();
         private int roundTripsLeft = context.toolService.maxToolCallingRoundTrips();
 
@@ -308,16 +307,14 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                         tube.send(new PartialToolCallEvent(partialToolCall, invocationContext));
                     } else if (event instanceof CompleteToolCall completeToolCall) {
                         tube.send(new CompleteToolCallEvent(completeToolCall, invocationContext));
-                        if (startToolsEagerly) {
-                            ToolExecutionRequest toolRequest = completeToolCall.toolExecutionRequest();
-                            startedTools.put(toolRequest, context.toolService.startTool(
-                                    toolRequest,
-                                    currentToolContext.toolExecutors(),
-                                    invocationContext,
-                                    Loop.this::emitBeforeToolExecution,
-                                    Loop.this::emitAfterToolExecution,
-                                    toolExecutor));
-                        }
+                        ToolExecutionRequest toolRequest = completeToolCall.toolExecutionRequest();
+                        startedTools.put(toolRequest, context.toolService.startTool(
+                                toolRequest,
+                                currentToolContext.toolExecutors(),
+                                invocationContext,
+                                Loop.this::emitBeforeToolExecution,
+                                Loop.this::emitAfterToolExecution,
+                                toolExecutor));
                     } else if (event instanceof RawStreamingEvent rawStreamingEvent) {
                         tube.send(new RawEvent(rawStreamingEvent, invocationContext));
                     }
@@ -392,15 +389,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
             List<ToolExecutionRequest> toolRequests = aiMessage.toolExecutionRequests();
 
             CompletableFuture<Map<ToolExecutionRequest, ToolExecutionResult>> toolResultsFuture =
-                    startToolsEagerly
-                            ? combineEagerlyStartedTools(toolRequests, startedTools, currentToolContext)
-                            : context.toolService.executeToolsAsync(
-                                    toolRequests,
-                                    currentToolContext.toolExecutors(),
-                                    invocationContext,
-                                    this::emitBeforeToolExecution,
-                                    this::emitAfterToolExecution,
-                                    toolExecutor);
+                    combineEagerlyStartedTools(toolRequests, startedTools, currentToolContext);
             toolsFuture.set(toolResultsFuture);
 
             toolResultsFuture.whenComplete((toolResults, error) -> {

@@ -650,6 +650,15 @@ public abstract class AiServices<T> {
      * See {@link #executeToolsConcurrently()}'s Javadoc for more info.
      * <p>
      * If {@code null} is specified, the default {@link Executor} will be used.
+     * <p>
+     * <b>Running tools sequentially.</b> The asynchronous AI Service modes (methods returning a
+     * {@link java.util.concurrent.CompletableFuture} or a reactive {@link java.util.concurrent.Flow.Publisher})
+     * execute tools concurrently by default. To run them one at a time instead — e.g. for tools that are not
+     * thread-safe, that must preserve the order of their side effects, or that need to be rate-limited — pass a
+     * single-threaded executor such as {@link java.util.concurrent.Executors#newSingleThreadExecutor()}. Tools
+     * are then submitted in request order and executed serially, while still being kept off the
+     * model-response thread. (The synchronous and {@link TokenStream} modes already execute tools sequentially
+     * by default.)
      *
      * @param executor The {@link Executor} to be used to execute tools.
      * @return builder
@@ -658,25 +667,6 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> executeToolsConcurrently(Executor executor) {
         context.toolService.executeToolsConcurrently(executor);
-        return this;
-    }
-
-    /**
-     * Explicitly enables or disables concurrent tool execution, overriding the per-mode default.
-     * <p>
-     * The asynchronous AI Service modes — methods returning a {@link java.util.concurrent.CompletableFuture}
-     * or a reactive {@link java.util.concurrent.Flow.Publisher} — execute tools concurrently (off the model
-     * response thread) <b>by default</b>. Pass {@code false} to force sequential execution on those modes.
-     * The synchronous and {@link TokenStream} modes execute tools sequentially by default; pass {@code true}
-     * (or call {@link #executeToolsConcurrently()}) to enable concurrency there.
-     *
-     * @param concurrent whether tools should be executed concurrently
-     * @return builder
-     * @see #executeToolsConcurrently()
-     * @since 1.17.0
-     */
-    public AiServices<T> executeToolsConcurrently(boolean concurrent) {
-        context.toolService.executeToolsConcurrently(concurrent);
         return this;
     }
 

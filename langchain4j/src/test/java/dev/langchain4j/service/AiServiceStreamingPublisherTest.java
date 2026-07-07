@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -206,12 +207,9 @@ class AiServiceStreamingPublisherTest {
         StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
                 AiMessage.from(temperatureRequest()), AiMessage.from("It is 42 degrees"));
 
-        // sequential execution (opt out of concurrent-by-default) so the event ordering below is deterministic:
-        // with concurrent/eager execution, BeforeToolExecutionEvent can precede IntermediateResponseEvent
         EventStreamer assistant = AiServices.builder(EventStreamer.class)
                 .streamingChatModel(model)
                 .tools(new Tools())
-                .executeToolsConcurrently(false)
                 .build();
 
         Collected<AiServiceStreamingEvent> collected = collect(assistant.chat("What is the temperature in Berlin?"));
@@ -249,12 +247,12 @@ class AiServiceStreamingPublisherTest {
                 .reduce("", String::concat);
         assertThat(partialText).isEqualTo("It is 42 degrees");
 
-        // ordering: IntermediateResponse -> BeforeToolExecution -> AfterToolExecution -> partials -> final
-        int intermediateIndex = indexOfType(collected.items, IntermediateResponseEvent.class);
+        // ordering: BeforeToolExecution -> AfterToolExecution -> partials of the final answer -> final.
+        // Tools start eagerly on their CompleteToolCall, so a tool's BeforeToolExecutionEvent may be emitted
+        // before the round's IntermediateResponseEvent; that relative order is intentionally not asserted.
         int beforeIndex = indexOfType(collected.items, BeforeToolExecutionEvent.class);
         int executedIndex = indexOfType(collected.items, AfterToolExecutionEvent.class);
         int firstPartialOfFinalAnswer = firstPartialAfter(collected.items, executedIndex);
-        assertThat(intermediateIndex).isLessThan(beforeIndex);
         assertThat(beforeIndex).isLessThan(executedIndex);
         assertThat(executedIndex).isLessThan(firstPartialOfFinalAnswer);
 
@@ -341,16 +339,18 @@ class AiServiceStreamingPublisherTest {
                 AiMessage.from("42 degrees, 69 percent"));
         MultipleTools tools = new MultipleTools();
 
+        // A single-threaded executor runs the tools one at a time, in request order (still off the delivery
+        // thread) — the recommended way to get sequential tool execution.
         EventStreamer assistant = AiServices.builder(EventStreamer.class)
                 .streamingChatModel(model)
                 .tools(tools)
-                .executeToolsConcurrently(false)
+                .executeToolsConcurrently(Executors.newSingleThreadExecutor())
                 .build();
 
         Collected<AiServiceStreamingEvent> collected = collect(assistant.chat("What is the weather in Berlin?"));
 
         assertThat(collected.error).isNull();
-        // sequential (opt-out) -> tools run one after another, in request order
+        // single-threaded executor -> tools run one after another, in request order
         assertThat(tools.invoked).containsExactly("currentTemperature", "currentHumidity");
         assertThat(afterToolExecutions(collected)).hasSize(2);
         assertThat(finalText(collected)).isEqualTo("42 degrees, 69 percent");
