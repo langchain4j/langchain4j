@@ -3,6 +3,7 @@ package dev.langchain4j.model.googleai;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -13,6 +14,8 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 
 /**
@@ -41,7 +44,7 @@ public final class GeminiCaches {
                 builder.logResponses,
                 builder.logger,
                 builder.timeout,
-                null);
+                builder.customHeadersSupplier);
     }
 
     public static Builder builder() {
@@ -61,6 +64,9 @@ public final class GeminiCaches {
     public GeminiCachedContent createCache(String modelName, List<ChatMessage> messages, Duration ttl) {
         ensureNotBlank(modelName, "modelName");
         ensureNotEmpty(messages, "messages");
+        if (ttl != null) {
+            ensureTrue(!ttl.isNegative(), "ttl cannot be negative");
+        }
         return geminiService.createCachedContent(toCreateRequest(modelName, messages, ttl));
     }
 
@@ -165,6 +171,7 @@ public final class GeminiCaches {
         private boolean logResponses;
         private Logger logger;
         private Duration timeout;
+        private Supplier<Map<String, String>> customHeadersSupplier;
 
         public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -203,6 +210,16 @@ public final class GeminiCaches {
 
         public Builder timeout(Duration timeout) {
             this.timeout = timeout;
+            return this;
+        }
+
+        public Builder customHeaders(Map<String, String> customHeaders) {
+            this.customHeadersSupplier = () -> customHeaders;
+            return this;
+        }
+
+        public Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
+            this.customHeadersSupplier = customHeadersSupplier;
             return this;
         }
 
