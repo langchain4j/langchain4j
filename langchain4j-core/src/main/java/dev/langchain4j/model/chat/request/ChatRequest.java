@@ -8,7 +8,6 @@ import static java.util.Arrays.asList;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-
 import java.util.List;
 import java.util.Objects;
 
@@ -188,11 +187,23 @@ public class ChatRequest {
             this.parameters = chatRequest.parameters;
         }
 
+        /**
+         * Sets the list of chat messages for this request.
+         *
+         * @param messages the chat messages
+         * @return {@code this}
+         */
         public Builder messages(List<ChatMessage> messages) {
             this.messages = messages;
             return this;
         }
 
+        /**
+         * Sets the chat messages for this request.
+         *
+         * @param messages the chat messages (varargs)
+         * @return {@code this}
+         */
         public Builder messages(ChatMessage... messages) {
             return messages(asList(messages));
         }
@@ -210,65 +221,154 @@ public class ChatRequest {
             return this;
         }
 
+        /**
+         * Sets the model name for this request, overriding the corresponding field in
+         * {@link #parameters(ChatRequestParameters)}.
+         *
+         * @param modelName the model name
+         * @return {@code this}
+         */
         public Builder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
+        /**
+         * Sets the sampling temperature, overriding the corresponding field in
+         * {@link #parameters(ChatRequestParameters)}.
+         *
+         * @param temperature the sampling temperature
+         * @return {@code this}
+         */
         public Builder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
+        /**
+         * Sets the nucleus sampling probability (top-p), overriding the corresponding field in
+         * {@link #parameters(ChatRequestParameters)}.
+         *
+         * @param topP the nucleus sampling probability
+         * @return {@code this}
+         */
         public Builder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
+        /**
+         * Sets the top-K sampling limit, overriding the corresponding field in
+         * {@link #parameters(ChatRequestParameters)}.
+         *
+         * @param topK the top-K value
+         * @return {@code this}
+         */
         public Builder topK(Integer topK) {
             this.topK = topK;
             return this;
         }
 
+        /**
+         * Sets the frequency penalty, overriding the corresponding field in
+         * {@link #parameters(ChatRequestParameters)}.
+         *
+         * @param frequencyPenalty the frequency penalty
+         * @return {@code this}
+         */
         public Builder frequencyPenalty(Double frequencyPenalty) {
             this.frequencyPenalty = frequencyPenalty;
             return this;
         }
 
+        /**
+         * Sets the presence penalty, overriding the corresponding field in
+         * {@link #parameters(ChatRequestParameters)}.
+         *
+         * @param presencePenalty the presence penalty
+         * @return {@code this}
+         */
         public Builder presencePenalty(Double presencePenalty) {
             this.presencePenalty = presencePenalty;
             return this;
         }
 
+        /**
+         * Sets the maximum number of output tokens, overriding the corresponding field in
+         * {@link #parameters(ChatRequestParameters)}.
+         *
+         * @param maxOutputTokens the maximum number of tokens to generate
+         * @return {@code this}
+         */
         public Builder maxOutputTokens(Integer maxOutputTokens) {
             this.maxOutputTokens = maxOutputTokens;
             return this;
         }
 
+        /**
+         * Sets the stop sequences, overriding the corresponding field in
+         * {@link #parameters(ChatRequestParameters)}.
+         *
+         * @param stopSequences the sequences that stop generation when encountered
+         * @return {@code this}
+         */
         public Builder stopSequences(List<String> stopSequences) {
             this.stopSequences = stopSequences;
             return this;
         }
 
+        /**
+         * Sets the tool specifications available to the model, overriding the corresponding field in
+         * {@link #parameters(ChatRequestParameters)}.
+         *
+         * @param toolSpecifications the list of tool specifications
+         * @return {@code this}
+         */
         public Builder toolSpecifications(List<ToolSpecification> toolSpecifications) {
             this.toolSpecifications = toolSpecifications;
             return this;
         }
 
+        /**
+         * Sets the tool specifications available to the model, overriding the corresponding field in
+         * {@link #parameters(ChatRequestParameters)}.
+         *
+         * @param toolSpecifications the tool specifications (varargs)
+         * @return {@code this}
+         */
         public Builder toolSpecifications(ToolSpecification... toolSpecifications) {
             return toolSpecifications(asList(toolSpecifications));
         }
 
+        /**
+         * Sets the tool choice strategy, overriding the corresponding field in
+         * {@link #parameters(ChatRequestParameters)}.
+         *
+         * @param toolChoice the tool choice
+         * @return {@code this}
+         */
         public Builder toolChoice(ToolChoice toolChoice) {
             this.toolChoice = toolChoice;
             return this;
         }
 
+        /**
+         * Sets the response format for structured output, overriding the corresponding field in
+         * {@link #parameters(ChatRequestParameters)}.
+         *
+         * @param responseFormat the response format
+         * @return {@code this}
+         */
         public Builder responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
             return this;
         }
 
+        /**
+         * Builds the {@link ChatRequest}.
+         *
+         * @return the configured {@link ChatRequest}
+         */
         public ChatRequest build() {
             return new ChatRequest(this);
         }

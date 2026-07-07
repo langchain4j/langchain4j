@@ -151,6 +151,14 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
 
         EmbeddingStoreContentRetrieverBuilder() {}
 
+        /**
+         * Sets the maximum number of {@link Content}s to retrieve per query.
+         * Defaults to {@code 3} when not set. Has no effect when {@code null}.
+         * Use {@link #dynamicMaxResults(Function)} to vary the limit per query.
+         *
+         * @param maxResults the maximum number of results
+         * @return {@code this}
+         */
         public EmbeddingStoreContentRetrieverBuilder maxResults(Integer maxResults) {
             if (maxResults != null) {
                 dynamicMaxResults = (query) -> ensureGreaterThanZero(maxResults, "maxResults");
@@ -158,6 +166,15 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
             return this;
         }
 
+        /**
+         * Sets the minimum relevance score threshold for retrieved {@link Content}s.
+         * Contents scoring below this threshold are excluded from results.
+         * Defaults to {@code 0.0} when not set. Has no effect when {@code null}.
+         * Use {@link #dynamicMinScore(Function)} to vary the threshold per query.
+         *
+         * @param minScore the minimum score, in the range {@code [0.0, 1.0]}
+         * @return {@code this}
+         */
         public EmbeddingStoreContentRetrieverBuilder minScore(Double minScore) {
             if (minScore != null) {
                 dynamicMinScore = (query) -> ensureBetween(minScore, 0, 1, "minScore");
@@ -165,6 +182,14 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
             return this;
         }
 
+        /**
+         * Sets a static {@link Filter} applied to metadata on every query.
+         * Has no effect when {@code null}.
+         * Use {@link #dynamicFilter(Function)} to vary the filter per query.
+         *
+         * @param filter the metadata filter
+         * @return {@code this}
+         */
         public EmbeddingStoreContentRetrieverBuilder filter(Filter filter) {
             if (filter != null) {
                 dynamicFilter = (query) -> filter;
@@ -172,36 +197,81 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
             return this;
         }
 
+        /**
+         * Sets the display name used for logging when multiple retrievers are in use.
+         * Defaults to {@code "Default"} when not set.
+         *
+         * @param displayName the display name
+         * @return {@code this}
+         */
         public EmbeddingStoreContentRetrieverBuilder displayName(String displayName) {
             this.displayName = displayName;
             return this;
         }
 
+        /**
+         * Sets the {@link EmbeddingStore} to search for relevant content.
+         *
+         * @param embeddingStore the embedding store
+         * @return {@code this}
+         */
         public EmbeddingStoreContentRetrieverBuilder embeddingStore(EmbeddingStore<TextSegment> embeddingStore) {
             this.embeddingStore = embeddingStore;
             return this;
         }
 
+        /**
+         * Sets the {@link EmbeddingModel} used to embed queries before searching the store.
+         *
+         * @param embeddingModel the embedding model
+         * @return {@code this}
+         */
         public EmbeddingStoreContentRetrieverBuilder embeddingModel(EmbeddingModel embeddingModel) {
             this.embeddingModel = embeddingModel;
             return this;
         }
 
+        /**
+         * Sets a function that computes the maximum number of results per {@link Query}.
+         * Overrides any value set via {@link #maxResults(Integer)}.
+         *
+         * @param dynamicMaxResults the function to compute max results
+         * @return {@code this}
+         */
         public EmbeddingStoreContentRetrieverBuilder dynamicMaxResults(Function<Query, Integer> dynamicMaxResults) {
             this.dynamicMaxResults = dynamicMaxResults;
             return this;
         }
 
+        /**
+         * Sets a function that computes the minimum score threshold per {@link Query}.
+         * Overrides any value set via {@link #minScore(Double)}.
+         *
+         * @param dynamicMinScore the function to compute min score
+         * @return {@code this}
+         */
         public EmbeddingStoreContentRetrieverBuilder dynamicMinScore(Function<Query, Double> dynamicMinScore) {
             this.dynamicMinScore = dynamicMinScore;
             return this;
         }
 
+        /**
+         * Sets a function that computes the metadata {@link Filter} per {@link Query}.
+         * Overrides any value set via {@link #filter(Filter)}.
+         *
+         * @param dynamicFilter the function to compute the filter
+         * @return {@code this}
+         */
         public EmbeddingStoreContentRetrieverBuilder dynamicFilter(Function<Query, Filter> dynamicFilter) {
             this.dynamicFilter = dynamicFilter;
             return this;
         }
 
+        /**
+         * Builds the {@link EmbeddingStoreContentRetriever}.
+         *
+         * @return the configured {@link EmbeddingStoreContentRetriever}
+         */
         public EmbeddingStoreContentRetriever build() {
             return new EmbeddingStoreContentRetriever(
                     this.displayName,
