@@ -386,6 +386,8 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
 
             tube.send(new IntermediateResponseEvent(chatResponse, invocationContext));
 
+            bufferedPartialResponses.clear();
+
             List<ToolExecutionRequest> toolRequests = aiMessage.toolExecutionRequests();
 
             CompletableFuture<Map<ToolExecutionRequest, ToolExecutionResult>> toolResultsFuture =

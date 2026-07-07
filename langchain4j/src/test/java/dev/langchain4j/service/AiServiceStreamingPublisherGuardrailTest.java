@@ -9,6 +9,7 @@ import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.service.AiServiceStreamingEvent.FinalResponseEvent;
+import dev.langchain4j.service.AiServiceStreamingEvent.IntermediateResponseEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.PartialResponseEvent;
 import dev.langchain4j.service.guardrail.OutputGuardrails;
 import java.util.ArrayList;
@@ -189,11 +190,59 @@ class AiServiceStreamingPublisherGuardrailTest {
         assertThat(tool.calls).hasValue(1);
     }
 
+    @Test
+    void output_guardrail_does_not_replay_intermediate_tool_round_partials_before_the_final_response()
+            throws Exception {
+        // Regression test for the shared cross-round partial-response buffer. A tool-calling (intermediate) round
+        // streams preamble text alongside its tool call; the final round streams the answer. With output guardrails
+        // buffering partial responses, only the FINAL round's partials must be flushed — the intermediate round's
+        // buffered partials must be discarded, not replayed before the final response (mirroring the handler-based
+        // path, where each round has its own buffer). The intermediate text is still observable via the
+        // IntermediateResponseEvent; it is simply not re-emitted as PartialResponseEvents at the end.
+        WeatherTool tool = new WeatherTool();
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+                AiMessage.builder()
+                        .text("Let me check. ")
+                        .toolExecutionRequests(List.of(ToolExecutionRequest.builder()
+                                .id("1")
+                                .name("weather")
+                                .arguments("{\"arg0\": \"Paris\"}")
+                                .build()))
+                        .build(),
+                AiMessage.from("It is sunny in Paris."));
+
+        PassingEventStreamer assistant = AiServices.builder(PassingEventStreamer.class)
+                .streamingChatModel(model)
+                .tools(tool)
+                .build();
+
+        Collected collected = collect(assistant.chat("What is the weather in Paris?"));
+
+        assertThat(collected.error).isNull();
+        assertThat(tool.calls).hasValue(1);
+        // Only the final round's partials are streamed; the intermediate "Let me check. " preamble is NOT replayed.
+        // (Before the fix, the shared buffer was never cleared between rounds, so this was "Let me check. It is
+        // sunny in Paris.")
+        assertThat(partialText(collected)).isEqualTo("It is sunny in Paris.");
+        assertThat(finalText(collected)).isEqualTo("It is sunny in Paris.");
+        // The intermediate round's preamble text is not lost — it is carried by the IntermediateResponseEvent.
+        assertThat(intermediateText(collected)).isEqualTo("Let me check. ");
+        assertThat(collected.items.get(collected.items.size() - 1)).isInstanceOf(FinalResponseEvent.class);
+    }
+
     private static String partialText(Collected collected) {
         return collected.items.stream()
                 .filter(e -> e instanceof PartialResponseEvent)
                 .map(e -> ((PartialResponseEvent) e).partialResponse().text())
                 .reduce("", String::concat);
+    }
+
+    private static String intermediateText(Collected collected) {
+        return collected.items.stream()
+                .filter(e -> e instanceof IntermediateResponseEvent)
+                .map(e -> ((IntermediateResponseEvent) e).chatResponse().aiMessage().text())
+                .findFirst()
+                .orElse(null);
     }
 
     private static String finalText(Collected collected) {
