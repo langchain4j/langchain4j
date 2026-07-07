@@ -2351,6 +2351,114 @@ To customize the convergence check or the number of rounds:
         positions.stream().allMatch(p -> p.toString().contains("AGREE"))))  // custom convergence
 ```
 
+### BDI (Belief-Desire-Intention) agentic pattern
+
+The BDI (Belief-Desire-Intention) pattern models the classic AI concept of an agent that maintains explicit goals, evaluates which goals are currently achievable, and reactively switches between them when the environment changes. The planner implementing this pattern maintains three structures — Beliefs (the current world state from the `AgenticScope`), Desires (a set of prioritized goals), and Intentions (the committed plan currently being executed). At each step, the planner checks whether a higher-priority desire has become achievable and, if so, drops the current intention and re-deliberates. This makes BDI naturally suited for dynamic environments where multiple competing goals must be balanced and priorities can shift at any time.
+
+A `Desire` is defined as a record combining a name, a priority level, an achievability predicate, a satisfaction predicate, and the ordered list of agent types that form the intention for pursuing that desire:
+
+```java
+public record Desire(String name, int priority,
+                     Predicate<AgenticScope> achievable,
+                     Predicate<AgenticScope> satisfied,
+                     List<Class<?>> agentTypes) {
+
+    public static Desire of(String name, int priority,
+                            Predicate<AgenticScope> achievable,
+                            Predicate<AgenticScope> satisfied,
+                            Class<?>... agentTypes) {
+        return new Desire(name, priority, achievable, satisfied, List.of(agentTypes));
+    }
+
+    public static Desire of(String name, int priority,
+                            String achievableStateKey,
+                            String satisfiedStateKey,
+                            Class<?>... agentTypes) {
+        return new Desire(name, priority,
+                scope -> scope.hasState(achievableStateKey),
+                scope -> scope.hasState(satisfiedStateKey),
+                List.of(agentTypes));
+    }
+}
+```
+
+The `BDIPlanner` takes a list of `Desire` instances and implements the deliberation cycle. During initialization, it maps each registered sub-agent by its type so that desires can reference agents by class. When execution begins, the planner filters all desires to find those that are currently achievable and not yet satisfied, selects the one with the highest priority, and commits to its intention — the ordered sequence of agents defined by that desire. On each subsequent step, the planner runs three checks: first, **preemption** — if a higher-priority desire has become achievable due to belief changes (new values written to the `AgenticScope`), the current intention is dropped and a new one is selected; second, **viability** — if the current desire is still achievable and unsatisfied, the planner advances to the next agent in the intention sequence; third, **re-deliberation** — if the current intention is complete or the desire is no longer viable, the planner picks the next best desire. Execution terminates when all desires are satisfied (or none are achievable), or when a configurable maximum invocation count is reached.
+
+To illustrate this pattern, consider an autonomous trading system with five AI agents and one non-AI agent. The `MarketRecommendationAgent` returns a `MarketRecommendation` enum, and hedging is only triggered when the recommendation is `SELL` or `STRONG_SELL`. The `HedgingStrategyDefaulter` is a non-AI agent that ensures `hedgingStrategy` is always present in scope (defaulting to empty string when hedging was skipped), so the `RebalancingAgent` can always receive it as input:
+
+```java
+public enum MarketRecommendation {
+    STRONG_BUY, BUY, HOLD, SELL, STRONG_SELL
+}
+
+public interface MarketAnalysisAgent {
+    @UserMessage("Analyze the market data and portfolio. Market: {{marketData}} Portfolio: {{portfolio}}")
+    @Agent(value = "Analyze market conditions", outputKey = "marketAnalysis")
+    String analyzeMarket(@V("marketData") String marketData, @V("portfolio") String portfolio);
+}
+
+public interface MarketRecommendationAgent {
+    @UserMessage("Based on the market analysis, provide a trading recommendation. Market analysis: {{marketAnalysis}}")
+    @Agent(value = "Provide a trading recommendation", outputKey = "recommendation")
+    MarketRecommendation recommend(@V("marketAnalysis") String marketAnalysis);
+}
+
+public static class HedgingStrategyDefaulter {
+    @Agent(outputKey = "hedgingStrategy")
+    public String defaultHedging(AgenticScope scope) {
+        return scope.hasState("hedgingStrategy") ? (String) scope.readState("hedgingStrategy") : "";
+    }
+}
+
+public interface RebalancingAgent {
+    @UserMessage("Suggest rebalancing based on: {{marketAnalysis}} Hedging strategy: {{hedgingStrategy}} Portfolio: {{portfolio}}")
+    @Agent(value = "Rebalance portfolio", outputKey = "rebalancingPlan")
+    String rebalance(@V("marketAnalysis") String marketAnalysis,
+                     @V("hedgingStrategy") String hedgingStrategy,
+                     @V("portfolio") String portfolio);
+}
+
+public interface HedgingAgent {
+    @UserMessage("Recommend hedging strategies based on: {{marketAnalysis}}")
+    @Agent(value = "Hedge against risks", outputKey = "hedgingStrategy")
+    String hedge(@V("marketAnalysis") String marketAnalysis);
+}
+
+public interface LiquidityAgent {
+    @UserMessage("Assess liquidity for portfolio: {{portfolio}}")
+    @Agent(value = "Maintain liquidity", outputKey = "liquidityAssessment")
+    String assessLiquidity(@V("portfolio") String portfolio);
+}
+```
+
+These agents are wired into a BDI-based trading system with four desires of different priorities. Note how the "hedge risks" desire uses a predicate-based achievability check that inspects the recommendation value, and the "rebalance portfolio" desire includes the `HedgingStrategyDefaulter` before the `RebalancingAgent` to guarantee the `hedgingStrategy` scope value is present:
+
+```java
+TradingSystem tradingSystem = AgenticServices.plannerBuilder(TradingSystem.class)
+        .subAgents(marketAnalysis, recommendation, new HedgingStrategyDefaulter(),
+                   rebalancing, hedging, liquidity)
+        .planner(() -> new BDIPlanner(List.of(
+                Desire.of("analyze market", 1,
+                        "marketData", "recommendation",
+                        MarketAnalysisAgent.class, MarketRecommendationAgent.class),
+                Desire.of("hedge risks", 2,
+                        scope -> scope.hasState("recommendation")
+                                && Set.of(MarketRecommendation.SELL, MarketRecommendation.STRONG_SELL)
+                                    .contains(scope.readState("recommendation")),
+                        scope -> scope.hasState("hedgingStrategy"),
+                        HedgingAgent.class),
+                Desire.of("rebalance portfolio", 1,
+                        "recommendation", "rebalancingPlan",
+                        HedgingStrategyDefaulter.class, RebalancingAgent.class),
+                Desire.of("maintain liquidity", 1,
+                        "portfolio", "liquidityAssessment",
+                        LiquidityAgent.class)
+        )))
+        .build();
+```
+
+When invoked with market data and portfolio state, the planner's deliberation cycle works as follows: the "analyze market" and "maintain liquidity" desires are initially achievable. Once the `MarketAnalysisAgent` and `MarketRecommendationAgent` complete, the recommendation determines the next step. If the recommendation is `SELL` or `STRONG_SELL`, the "hedge risks" desire (priority 2) becomes achievable and preempts any lower-priority work, causing the planner to invoke the `HedgingAgent`. After hedging completes, the planner re-deliberates: the "rebalance portfolio" desire runs `HedgingStrategyDefaulter` (which preserves the existing hedging strategy) followed by `RebalancingAgent`, which receives the hedging strategy as input. If the recommendation is not `SELL` or `STRONG_SELL`, hedging is skipped entirely, and the `HedgingStrategyDefaulter` writes an empty string so that `RebalancingAgent` can still proceed. This reactive, condition-driven switching is the essence of BDI — the system adapts its behavior based on changing beliefs rather than following a rigid plan.
+
 ## Non-AI agents
 
 All the agents discussed so far are AI agents, meaning that they are based on LLMs and can be invoked to perform tasks that require natural language understanding and generation. However, the `langchain4j-agentic` module also supports non-AI agents, which can be used to perform tasks that do not require natural language processing, like invoking a REST API or executing a command. These non-AI agents are indeed more similar to tools, but in this context it is convenient to model them as agents, so that they can be used in the same way as AI agents, and mixed with them to compose more powerful and complete agentic systems.
