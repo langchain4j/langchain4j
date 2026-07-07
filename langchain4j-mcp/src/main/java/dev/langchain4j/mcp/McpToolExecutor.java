@@ -48,7 +48,7 @@ public class McpToolExecutor implements ToolExecutor {
     /**
      * {@inheritDoc}
      * <p>
-     * Truly non-blocking: delegates to
+     * Non-blocking: delegates to
      * {@link McpClient#executeToolAsync(ToolExecutionRequest, InvocationContext)}, so no thread is held
      * while the tool executes on the MCP server.
      */

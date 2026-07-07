@@ -65,7 +65,7 @@ import mutiny.zero.TubeConfiguration;
 import mutiny.zero.ZeroPublisher;
 
 /**
- * A cold, truly non-blocking reactive stream for an AI Service method that returns a
+ * A cold, non-blocking reactive stream for an AI Service method that returns a
  * {@link Flow.Publisher} of {@link AiServiceStreamingEvent}s.
  * <p>
  * It consumes the model's reactive {@link dev.langchain4j.model.chat.StreamingChatModel#chat(ChatRequest)}

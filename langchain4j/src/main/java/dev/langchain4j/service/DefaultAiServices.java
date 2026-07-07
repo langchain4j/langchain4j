@@ -292,8 +292,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     method.getName());
                         }
 
-                        // A truly non-blocking reactive streaming return type: Flow.Publisher (handled natively),
-                        // or a type plugged in via a PublisherAdapter (e.g. Reactor Flux, Mutiny Multi).
                         PublisherAdapter publisherAdapter = findPublisherAdapter(returnType);
                         boolean reactiveStreaming =
                                 typeHasRawClass(returnType, Flow.Publisher.class) || publisherAdapter != null;

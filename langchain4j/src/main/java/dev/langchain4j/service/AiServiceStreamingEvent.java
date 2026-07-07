@@ -35,7 +35,7 @@ import java.util.List;
  * @since 1.17.0
  */
 @Experimental
-public interface AiServiceStreamingEvent {
+public interface AiServiceStreamingEvent { // TODO nested events?
 
     // TODO consistent naming
 

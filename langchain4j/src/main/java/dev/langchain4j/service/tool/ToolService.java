@@ -126,7 +126,7 @@ public class ToolService {
     private Executor executor;
     // The user's explicit concurrent-vs-sequential choice: null = unset (each AI Service mode applies its own
     // default — async modes concurrent, sync/TokenStream sequential), TRUE = concurrent, FALSE = sequential.
-    private Boolean concurrentToolExecution;
+    private Boolean concurrentToolExecution; // TODO use enum
     private int maxToolCallingRoundTrips = 100;
     private ToolArgumentsErrorHandler argumentsErrorHandler;
     private ToolExecutionErrorHandler executionErrorHandler;

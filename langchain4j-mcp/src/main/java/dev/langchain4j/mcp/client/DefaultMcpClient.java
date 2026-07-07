@@ -367,7 +367,7 @@ public class DefaultMcpClient implements McpClient {
     /**
      * {@inheritDoc}
      * <p>
-     * Truly non-blocking: the MCP transport is asynchronous, so this composes the transport's response
+     * Non-blocking: the MCP transport is asynchronous, so this composes the transport's response
      * future — no thread is held while the tool executes on the server. Timeout (including the cancellation
      * notification sent to the server), error mapping and listener notifications mirror
      * {@link #executeTool(ToolExecutionRequest, InvocationContext)}.
