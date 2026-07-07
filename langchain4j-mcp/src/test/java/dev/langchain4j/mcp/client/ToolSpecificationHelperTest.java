@@ -344,6 +344,82 @@ class ToolSpecificationHelperTest {
     }
 
     @Test
+    void toolWithAnyOfAlongsideObjectTypeAtRoot() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "fetch_artifacts",
+                    "description": "Fetch build artifacts",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "version": {
+                          "type": "string",
+                          "description": "Version identifier. Provide this, run_url, or both."
+                        },
+                        "run_url": {
+                          "type": "string",
+                          "description": "Execution run URL. Provide this, version, or both."
+                        },
+                        "filter": {
+                          "type": "string",
+                          "description": "Comma-separated list of names to fetch."
+                        },
+                        "signed": {
+                          "type": "boolean",
+                          "description": "If true, returns signed URLs."
+                        }
+                      },
+                      "anyOf": [
+                        { "required": ["version"] },
+                        { "required": ["run_url"] }
+                      ]
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+
+        assertThat(toolSpecifications).hasSize(1);
+        ToolSpecification toolSpecification = toolSpecifications.get(0);
+        assertThat(toolSpecification.name()).isEqualTo("fetch_artifacts");
+        JsonObjectSchema parameters = toolSpecification.parameters();
+        assertThat(parameters.properties()).containsOnlyKeys("version", "run_url", "filter", "signed");
+        assertThat(parameters.properties().get("version")).isInstanceOf(JsonStringSchema.class);
+        assertThat(parameters.properties().get("signed")).isInstanceOf(JsonBooleanSchema.class);
+    }
+
+    @Test
+    void toolWithAnyOfAlongsideObjectTypeAndPropertiesInBranches() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "fetch_by_key",
+                    "inputSchema": {
+                      "type": "object",
+                      "anyOf": [
+                        {
+                          "properties": { "version": { "type": "string" } },
+                          "required": ["version"]
+                        },
+                        {
+                          "properties": { "run_url": { "type": "string" } },
+                          "required": ["run_url"]
+                        }
+                      ]
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+
+        assertThat(toolSpecifications).hasSize(1);
+        assertThat(toolSpecifications.get(0).parameters()).isInstanceOf(JsonObjectSchema.class);
+    }
+
+    @Test
     void nullTypeName() throws JsonProcessingException {
         // the 'value' parameter has an empty definition, so it can be anything
         String text = """

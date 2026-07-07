@@ -11,6 +11,7 @@ import com.google.genai.ResponseStream;
 import com.google.genai.types.Candidate;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
+import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.Part;
 import com.google.genai.types.SafetySetting;
@@ -19,6 +20,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -33,6 +35,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class GoogleGenAiStreamingChatModelTest {
 
@@ -330,5 +333,55 @@ class GoogleGenAiStreamingChatModelTest {
         ChatResponse response = future.get(5, TimeUnit.SECONDS);
 
         assertThat(response.metadata().finishReason()).isEqualTo(FinishReason.LENGTH);
+    }
+
+    @Test
+    void should_use_request_level_cached_content() throws Exception {
+        Client client = mock(Client.class);
+        Models models = mock(Models.class);
+        Field modelsField = Client.class.getDeclaredField("models");
+        modelsField.setAccessible(true);
+        modelsField.set(client, models);
+
+        @SuppressWarnings("unchecked")
+        ResponseStream<GenerateContentResponse> stream = mock(ResponseStream.class);
+
+        ArgumentCaptor<GenerateContentConfig> configCaptor = ArgumentCaptor.forClass(GenerateContentConfig.class);
+
+        when(models.generateContentStream(any(String.class), any(List.class), configCaptor.capture()))
+                .thenReturn(stream);
+
+        when(stream.iterator()).thenReturn(List.<GenerateContentResponse>of().iterator());
+
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.1-flash-lite")
+                .cachedContent("projects/123/locations/us-central1/cachedContents/global")
+                .build();
+
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("Hello"))
+                .parameters(GoogleGenAiChatRequestParameters.builder()
+                        .cachedContent("projects/123/locations/us-central1/cachedContents/per-request")
+                        .build())
+                .build();
+
+        model.chat(request, new StreamingChatResponseHandler() {
+            @Override
+            public void onPartialResponse(String partialResponse) {}
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {}
+
+            @Override
+            public void onError(Throwable error) {}
+        });
+
+        // Wait a little bit for the executor to run
+        Thread.sleep(100);
+
+        assertThat(configCaptor.getValue().cachedContent().isPresent()).isTrue();
+        assertThat(configCaptor.getValue().cachedContent().get())
+                .isEqualTo("projects/123/locations/us-central1/cachedContents/per-request");
     }
 }

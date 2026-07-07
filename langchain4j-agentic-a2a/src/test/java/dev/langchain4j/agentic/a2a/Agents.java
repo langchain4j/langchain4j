@@ -4,6 +4,7 @@ import static dev.langchain4j.agentic.a2a.A2AAgentIT.A2A_SERVER_URL;
 
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
+import dev.langchain4j.agentic.declarative.A2AClientCustomizer;
 import dev.langchain4j.agentic.declarative.ExitCondition;
 import dev.langchain4j.agentic.declarative.LoopAgent;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
@@ -11,6 +12,10 @@ import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
+import org.a2aproject.sdk.client.ClientBuilder;
+import org.a2aproject.sdk.client.config.ClientConfig;
+import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransport;
+import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransportConfigBuilder;
 
 public class Agents {
 
@@ -93,6 +98,26 @@ public class Agents {
                 outputKey = "story",
                 subAgents = { DeclarativeA2ACreativeWriter.class, StyleReviewLoopAgent.class }
     )
+        ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
+    }
+
+    public interface DeclarativeA2AWithCustomizer {
+
+        @A2AClientAgent(a2aServerUrl = A2A_SERVER_URL, outputKey = "story")
+        String generateStory(@V("topic") String topic);
+
+        @A2AClientCustomizer
+        static void customizer(ClientBuilder cb) {
+            cb.withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder());
+        }
+    }
+
+    public interface StoryCreatorWithCustomizedWriter {
+
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = { DeclarativeA2AWithCustomizer.class, StyleReviewLoopAgent.class }
+        )
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
     }
 }

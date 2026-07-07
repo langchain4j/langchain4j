@@ -4,12 +4,12 @@ import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
-import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.addSkillsBeta;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createAnthropicRequest;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.validate;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.EPHEMERAL;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.NO_CACHE;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAiMessage;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toCacheDiagnostics;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toTokenUsage;
 import static java.util.Arrays.asList;
@@ -87,7 +87,7 @@ public class AnthropicChatModel implements ChatModel {
                 .baseUrl(getOrDefault(builder.baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(builder.apiKey)
                 .version(getOrDefault(builder.version, ANTHROPIC_VERSION))
-                .beta(addSkillsBeta(builder.beta, builder.skills))
+                .beta(builder.beta)
                 .timeout(builder.timeout)
                 .logRequests(getOrDefault(builder.logRequests, false))
                 .logResponses(getOrDefault(builder.logResponses, false))
@@ -136,13 +136,17 @@ public class AnthropicChatModel implements ChatModel {
                 .thinkingBudgetTokens(
                         getOrDefault(builder.thinkingBudgetTokens, anthropicDefaults.thinkingBudgetTokens()))
                 .sendThinking(getOrDefault(builder.sendThinking, anthropicDefaults.sendThinking()))
-                .midConversationSystemMessages(
-                        getOrDefault(builder.midConversationSystemMessages, anthropicDefaults.midConversationSystemMessages()))
+                .midConversationSystemMessages(getOrDefault(
+                        builder.midConversationSystemMessages, anthropicDefaults.midConversationSystemMessages()))
                 .returnThinking(getOrDefault(builder.returnThinking, anthropicDefaults.returnThinking()))
                 .toolChoiceName(getOrDefault(builder.toolChoiceName, anthropicDefaults.toolChoiceName()))
                 .disableParallelToolUse(
                         getOrDefault(builder.disableParallelToolUse, anthropicDefaults.disableParallelToolUse()))
                 .userId(getOrDefault(builder.userId, anthropicDefaults.userId()))
+                .returnCacheDiagnostics(
+                        getOrDefault(builder.returnCacheDiagnostics, anthropicDefaults.returnCacheDiagnostics()))
+                // previousMessageId is a per-request value (it changes every turn); it is never carried
+                // as a model-level default, only supplied via per-request AnthropicChatRequestParameters.
                 .build();
     }
 
@@ -192,6 +196,7 @@ public class AnthropicChatModel implements ChatModel {
         private Boolean strictTools;
         private Set<Capability> supportedCapabilities;
         private Supplier<Map<String, String>> customHeadersSupplier;
+        private Boolean returnCacheDiagnostics;
 
         /**
          * Sets a custom {@link HttpClientBuilder} for the underlying HTTP client.
@@ -473,9 +478,14 @@ public class AnthropicChatModel implements ChatModel {
          *     .returnServerToolResults(true)
          *     .build();
          * </pre>
-         * Enabling skills automatically adds the {@code container.skills} block, the {@code code_execution} server tool
-         * (unless already configured via {@link #serverTools(List)}) and the required {@code anthropic-beta} headers, so
-         * none of that needs to be wired up manually.
+         * Enabling skills automatically adds the {@code container.skills} block and the {@code code_execution} server
+         * tool (unless already configured via {@link #serverTools(List)}), so that does not need to be wired up manually.
+         * <p>
+         * You must, however, opt into the required beta features yourself via {@link #beta(String)}, for example
+         * {@code .beta("code-execution-2025-08-25,skills-2025-10-02,files-api-2025-04-14")}. These are beta headers
+         * and their values change over time; see the
+         * <a href="https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview">Agent Skills docs</a>
+         * for the current set.
          * <p>
          * Combine with {@link #returnServerToolResults(Boolean)} to surface the generated file ids under the
          * {@code "server_tool_results"} key of {@link AiMessage#attributes()}.
@@ -735,6 +745,22 @@ public class AnthropicChatModel implements ChatModel {
         }
 
         /**
+         * Enables Anthropic's (beta) cache diagnostics for every request.
+         * <p>
+         * Requires the {@code cache-diagnosis-2026-04-07} beta header to also be set via {@link #beta(String)}.
+         * There is intentionally no model-level default for the {@code id} to compare against — it must be
+         * set per-request via {@link AnthropicChatRequestParameters.Builder#previousMessageId(String)}; see
+         * {@link AnthropicChatRequestParameters#previousMessageId()} for why.
+         *
+         * @see AnthropicChatRequestParameters.Builder#returnCacheDiagnostics(Boolean)
+         * @see AnthropicCacheDiagnostics
+         */
+        public AnthropicChatModelBuilder returnCacheDiagnostics(Boolean returnCacheDiagnostics) {
+            this.returnCacheDiagnostics = returnCacheDiagnostics;
+            return this;
+        }
+
+        /**
          * Sets arbitrary extra parameters to include in the Anthropic API request body.
          * Use this for experimental or provider-specific fields not yet covered by dedicated builder methods.
          *
@@ -829,7 +855,9 @@ public class AnthropicChatModel implements ChatModel {
                 parameters.userId(),
                 this.skills,
                 this.customParameters,
-                this.strictTools);
+                this.strictTools,
+                getOrDefault(parameters.returnCacheDiagnostics(), false),
+                parameters.previousMessageId());
 
         ParsedAndRawResponse response =
                 withRetryMappingExceptions(() -> client.createMessageWithRawResponse(anthropicRequest), maxRetries);
@@ -846,6 +874,7 @@ public class AnthropicChatModel implements ChatModel {
                 .tokenUsage(toTokenUsage(response.usage))
                 .finishReason(toFinishReason(response.stopReason))
                 .rawHttpResponse(parsedAndRawResponse.rawResponse())
+                .cacheDiagnostics(toCacheDiagnostics(response.diagnostics))
                 .build();
 
         return ChatResponse.builder()
