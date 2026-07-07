@@ -52,8 +52,6 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
 
-        <!-- Reactive substrate used to build the non-blocking streaming AI Service publisher
-             (same tiny, dependency-free library the providers and HTTP clients already use). -->
         <dependency>
             <groupId>io.smallrye.reactive</groupId>
             <artifactId>mutiny-zero</artifactId>
