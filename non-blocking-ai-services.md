@@ -76,6 +76,15 @@ the throwing defaults until implemented (see §8).
   real async I/O.
 - **Guardrails:** async SPI (§3.5) — a guardrail that does blocking I/O implements `validateAsync` to stay off the
   delivery thread.
+- **Thread-local context does not follow the async hops.** Because a single invocation now crosses several
+  threads (async model I/O → the virtual-thread tool executor → arbitrary future-completion threads), ambient
+  `ThreadLocal` state — MDC logging context, tracing / OpenTelemetry spans, security / authentication context —
+  is **not** automatically propagated the way it is in the fully-synchronous mode (which runs on one caller
+  thread). `InvocationContext` is unaffected: it is passed **explicitly** as a parameter, never through a
+  thread-local. Callers that rely on ambient context must propagate it themselves — e.g. wrap the executor given
+  to `executeToolsConcurrently(Executor)` (and any memory / guardrail executor) in a context-capturing decorator
+  (Micrometer Context Propagation, an MDC-copying `Executor`, etc.). This is inherent to any async/reactive
+  model, and it now applies **by default** since tools run concurrently for the new modes (§3.2).
 - The scarce **model-delivery thread** is never blocked — enforced by BlockHound (§6).
 
 ### 3.2 Concurrency & error defaults for the new APIs
