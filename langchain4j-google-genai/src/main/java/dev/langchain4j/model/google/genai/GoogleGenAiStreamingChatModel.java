@@ -128,7 +128,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
 
         GoogleGenAiChatRequestParameters parameters = (GoogleGenAiChatRequestParameters) chatRequest.parameters();
 
-        GenerateContentConfig builtConfig = GoogleGenAiConfigBuilder.buildConfig(
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
                 parameters,
                 systemInstruction,
                 safetySettings,
@@ -141,9 +141,8 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 allowedFunctionNames,
                 vertexSearchDatastore,
                 labels,
-                parameters.cachedContent());
-        GenerateContentConfig config =
-                GoogleGenAiConfigBuilder.applyCustomizer(builtConfig, generateContentConfigCustomizer);
+                parameters.cachedContent(),
+                generateContentConfigCustomizer);
 
         if (logRequests) {
             log.info(

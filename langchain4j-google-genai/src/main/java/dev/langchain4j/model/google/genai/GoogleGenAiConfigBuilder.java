@@ -43,6 +43,38 @@ class GoogleGenAiConfigBuilder {
             String vertexSearchDatastore,
             Map<String, String> labels,
             String cachedContent) {
+        return buildConfig(
+                parameters,
+                systemInstruction,
+                safetySettings,
+                thinkingBudget,
+                thinkingLevel,
+                seed,
+                googleSearchEnabled,
+                googleMapsEnabled,
+                urlContextEnabled,
+                allowedFunctionNames,
+                vertexSearchDatastore,
+                labels,
+                cachedContent,
+                null);
+    }
+
+    static GenerateContentConfig buildConfig(
+            ChatRequestParameters parameters,
+            Content systemInstruction,
+            List<SafetySetting> safetySettings,
+            Integer thinkingBudget,
+            String thinkingLevel,
+            Integer seed,
+            boolean googleSearchEnabled,
+            boolean googleMapsEnabled,
+            boolean urlContextEnabled,
+            List<String> allowedFunctionNames,
+            String vertexSearchDatastore,
+            Map<String, String> labels,
+            String cachedContent,
+            Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
 
         GenerateContentConfig.Builder configBuilder = GenerateContentConfig.builder();
 
@@ -122,16 +154,9 @@ class GoogleGenAiConfigBuilder {
                 allowedFunctionNames,
                 vertexSearchDatastore);
 
-        return configBuilder.build();
-    }
-
-    static GenerateContentConfig applyCustomizer(
-            GenerateContentConfig config, Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
-        if (generateContentConfigCustomizer == null) {
-            return config;
+        if (generateContentConfigCustomizer != null) {
+            generateContentConfigCustomizer.accept(configBuilder);
         }
-        GenerateContentConfig.Builder configBuilder = config.toBuilder();
-        generateContentConfigCustomizer.accept(configBuilder);
         return configBuilder.build();
     }
 

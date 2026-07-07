@@ -468,20 +468,48 @@ class GoogleGenAiConfigBuilderTest {
 
     @Test
     void should_apply_generate_content_config_customizer() {
-        GenerateContentConfig base = GenerateContentConfig.builder().build();
+        ChatRequestParameters parameters =
+                DefaultChatRequestParameters.builder().build();
 
-        GenerateContentConfig config = GoogleGenAiConfigBuilder.applyCustomizer(base, builder -> builder.seed(123));
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
+                false,
+                null,
+                null,
+                null,
+                null,
+                builder -> builder.seed(123));
 
         assertThat(config.seed().get()).isEqualTo(123);
     }
 
     @Test
     void should_let_customizer_override_existing_values() {
-        GenerateContentConfig base =
-                GenerateContentConfig.builder().temperature(0.7f).build();
+        ChatRequestParameters parameters =
+                DefaultChatRequestParameters.builder().temperature(0.7).build();
 
-        GenerateContentConfig config =
-                GoogleGenAiConfigBuilder.applyCustomizer(base, builder -> builder.temperature(0.2f));
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
+                false,
+                null,
+                null,
+                null,
+                null,
+                builder -> builder.temperature(0.2f));
 
         assertThat(config.temperature().get()).isEqualTo(0.2f);
     }
@@ -495,22 +523,35 @@ class GoogleGenAiConfigBuilderTest {
         ChatRequestParameters parameters = DefaultChatRequestParameters.builder()
                 .toolSpecifications(List.of(toolSpec))
                 .build();
-        GenerateContentConfig base = GoogleGenAiConfigBuilder.buildConfig(
-                parameters, null, null, null, null, null, false, false, false, null, null, null, null);
 
-        GenerateContentConfig config = GoogleGenAiConfigBuilder.applyCustomizer(base, builder -> builder.seed(7));
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
+                false,
+                null,
+                null,
+                null,
+                null,
+                builder -> builder.seed(7));
 
         assertThat(config.tools().get()).isNotEmpty();
         assertThat(config.seed().get()).isEqualTo(7);
     }
 
     @Test
-    void should_return_config_unchanged_when_customizer_is_null() {
-        GenerateContentConfig base =
-                GenerateContentConfig.builder().temperature(0.7f).build();
+    void should_build_config_unchanged_when_customizer_is_null() {
+        ChatRequestParameters parameters =
+                DefaultChatRequestParameters.builder().temperature(0.7).build();
 
-        GenerateContentConfig config = GoogleGenAiConfigBuilder.applyCustomizer(base, null);
+        GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
+                parameters, null, null, null, null, null, false, false, false, null, null, null, null, null);
 
-        assertThat(config).isSameAs(base);
+        assertThat(config.temperature().get()).isEqualTo(0.7f);
     }
 }
