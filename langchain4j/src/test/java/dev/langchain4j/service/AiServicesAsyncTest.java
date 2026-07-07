@@ -52,6 +52,7 @@ import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
@@ -68,6 +69,45 @@ class AiServicesAsyncTest {
     interface Assistant {
 
         CompletableFuture<String> chat(String userMessage);
+    }
+
+    interface CompletionStageAssistant {
+
+        CompletionStage<String> chat(String userMessage);
+    }
+
+    @SuppressWarnings("rawtypes")
+    interface RawCompletionStageAssistant {
+
+        CompletionStage chat(String userMessage);
+    }
+
+    @Test
+    void should_reject_raw_completion_stage_return_type_at_build_time() {
+
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
+
+        assertThatThrownBy(() -> AiServices.builder(RawCompletionStageAssistant.class)
+                        .chatModel(chatModel)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must be parameterized with a concrete type");
+    }
+
+    @Test
+    void should_accept_parameterized_completion_stage_return_type() throws Exception {
+
+        ChatModelMock chatModel = spy(ChatModelMock.thatAlwaysResponds("Berlin"));
+
+        CompletionStageAssistant assistant = AiServices.builder(CompletionStageAssistant.class)
+                .chatModel(chatModel)
+                .build();
+
+        CompletionStage<String> result = assistant.chat("What is the capital of Germany?");
+
+        assertThat(result.toCompletableFuture().get(10, SECONDS)).isEqualTo("Berlin");
+        verify(chatModel).doChatAsync(any());
+        verify(chatModel, never()).doChat(any());
     }
 
     @Test
@@ -1122,12 +1162,12 @@ class AiServicesAsyncTest {
                 AiMessage.from(temperatureRequest, humidityRequest), AiMessage.from("42 degrees, 69 percent"));
         SequentialAsyncTools tools = new SequentialAsyncTools();
 
-        // A single-threaded executor runs the (async) tools one at a time, in request order, while keeping them
-        // off the model-response thread — the recommended way to get sequential tool execution on the async path.
+        // executeToolsConcurrently(false): opt out of the async path's concurrent-by-default tool execution,
+        // so the loop chains the async tools (thenCompose), one after another
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
                 .tools(tools)
-                .executeToolsConcurrently(Executors.newSingleThreadExecutor())
+                .executeToolsConcurrently(false)
                 .build();
 
         String answer = assistant.chat("What is the weather?").get(10, SECONDS);
