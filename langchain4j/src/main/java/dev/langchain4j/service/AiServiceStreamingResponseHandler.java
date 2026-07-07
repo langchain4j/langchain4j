@@ -290,8 +290,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 intermediateResponseHandler.accept(chatResponse);
             }
 
-            // Execute tools (blocking on the TokenStream path), collecting one result per request. User-facing
-            // beforeToolExecution/onToolExecuted handlers are delivered by execute(...) as the tools run.
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults = new LinkedHashMap<>();
             if (toolExecutor != null) {
                 for (Future<ToolRequestResult> toolExecutionFuture : toolExecutionFutures) {
@@ -315,8 +313,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 }
             }
 
-            // Shared per-round bookkeeping (memory writes, ToolExecutedEvent, returnBehavior accumulation),
-            // identical across all AI Service modes (sync, CompletableFuture, TokenStream, Flow.Publisher).
             ToolService.ToolResultsOutcome outcome = context.toolService.processToolResults(
                     context,
                     aiMessage.toolExecutionRequests(),
@@ -325,7 +321,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     invocationContext,
                     toolServiceContext);
 
-            // TokenStream uses the synchronous ChatMemory methods (getMemory() is never null).
             List<ChatMessage> nextMessages = context.toolService.persistToolResultsAndResolveMessagesSync(
                     context, getMemory(), null, outcome.resultMessages(), invocationContext);
 
@@ -339,8 +334,6 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 return;
             }
 
-            // Shared next-request construction (messages-to-send, dynamic providers, tool search, parameter
-            // tool refresh, transformer, request-issued event).
             ChatRequestParameters parameters =
                     chatRequestParameters(invocationContext.methodArguments(), toolServiceContext.effectiveTools());
             ToolService.NextChatRequest next = context.toolService.prepareNextChatRequest(

@@ -268,14 +268,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .variables(variables)
                                 .build();
 
-                        // Input guardrails run here only on the synchronous/TokenStream paths (further below). The
-                        // asynchronous (CompletableFuture/CompletionStage) and reactive (Flow.Publisher) paths defer
-                        // them off the caller thread, so the whole execution can be non-blocking.
-
                         Type declaredReturnType =
                                 context.returnType != null ? context.returnType : method.getGenericReturnType();
-                        // The async return type, if any: CompletableFuture / CompletionStage (handled natively),
-                        // or a type plugged in via a CompletableFutureAdapter (e.g. Reactor Mono, Mutiny Uni).
                         CompletableFutureAdapter completableFutureAdapter = findCompletableFutureAdapter(declaredReturnType);
                         boolean asyncReturnType = typeHasRawClass(declaredReturnType, CompletableFuture.class)
                                 || typeHasRawClass(declaredReturnType, CompletionStage.class)
@@ -302,8 +296,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     method.getName());
                         }
 
-                        // Moderation is not supported on the new asynchronous (CompletableFuture/CompletionStage)
-                        // and reactive (Flow.Publisher) return types: fail fast rather than silently skip it.
                         if ((asyncReturnType || reactiveStreaming) && method.isAnnotationPresent(Moderate.class)) {
                             throw illegalConfiguration(
                                     "The method '%s' cannot be annotated with @Moderate when it returns an asynchronous "
@@ -320,8 +312,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                         if (supportsJsonSchema && !streaming && !reactiveStreaming && !returnsImage) {
                             jsonSchema = serviceOutputParser.jsonSchema(returnType);
                         }
-                        // Whether the output-format instructions must be appended to the user message. Applied (to
-                        // the guardrailed user message) per path below, since input guardrails may rewrite it.
                         boolean appendOutputFormat = (!supportsJsonSchema || jsonSchema.isEmpty())
                                 && !streaming
                                 && !reactiveStreaming
@@ -337,9 +327,6 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         boolean isReturnTypeResult = typeHasRawClass(returnType, Result.class);
 
-                        // The asynchronous (CompletableFuture/CompletionStage) path defers the (potentially
-                        // blocking) chat-memory assembly off the caller thread: the future is returned immediately
-                        // and the memory read/writes, request building, model call and tool loop all run composed.
                         if (asyncReturnType) {
                             final InvocationContext baseInvocationContext = invocationContext;
                             final Optional<SystemMessage> asyncSystemMessage = systemMessage;
@@ -349,7 +336,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                             final Type asyncReturnType2 = returnType;
                             final boolean asyncAppendOutputFormat = appendOutputFormat;
                             CompletableFuture<Object> result = new CompletableFuture<>();
-                            // Input guardrails run off the caller thread; the user-message-dependent prelude, memory
+                            // Input guardrails run off the caller thread TODO; the user-message-dependent prelude, memory
                             // assembly, model call and tool loop then all run composed. Cancelling the returned future
                             // cancels the in-flight input guardrails (best-effort); the model call and the output
                             // guardrails are cancelled via propagateCancellation on the inner loop future.
@@ -403,8 +390,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     : result;
                         }
 
-                        // The reactive (Flow.Publisher) path is a cold stream: the (potentially blocking) chat-memory
-                        // assembly is deferred to subscribe time, so building the publisher never blocks the caller.
                         if (reactiveStreaming) {
                             Type elementType = resolveFirstGenericParameterType(returnType);
                             if (elementType != AiServiceStreamingEvent.class && elementType != String.class) {
@@ -422,8 +407,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                             final Type reactiveReturnType = returnType;
                             final boolean reactiveAppendOutputFormat = appendOutputFormat;
 
-                            // Cold stream: at subscribe time the input guardrails run off the caller thread, then the
-                            // user-message-dependent prelude and chat-memory assembly, so nothing blocks the caller.
                             Flow.Publisher<AiServiceStreamingEvent> events = subscriber -> invokeInputGuardrailsAsync(
                                             context.guardrailService(),
                                             method,
@@ -501,9 +484,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     : mapped;
                         }
 
-                        // Synchronous and TokenStream modes run the input guardrails inline on the caller thread,
-                        // then apply the user-message-dependent prelude and assemble messages synchronously (the
-                        // synchronous ChatMemory methods).
                         userMessage = invokeInputGuardrails(
                                 context.guardrailService(), method, userMessage, commonGuardrailParam);
                         if (appendOutputFormat) {
@@ -618,9 +598,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .request(chatRequest)
                                 .build());
 
-                        // The future handed to the caller. Returned separately (rather than the composed
-                        // pipeline) so that cancelling it can be observed and propagated: it is used as the
-                        // cancellation signal for the tool loop and cancels the in-flight model call.
                         CompletableFuture<Object> result = new CompletableFuture<>();
 
                         CompletableFuture<ChatResponse> firstModelCall = context.chatModel.chatAsync(chatRequest);
@@ -650,10 +627,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                     toolServiceContext,
                                                     result));
                                 })
-                                // Post-processing: the output guardrails — including any reprompt round-trips to the
-                                // model — run without blocking the model-delivery thread (see
-                                // GuardrailService.executeGuardrailsAsync); the CPU-bound output parsing then runs in
-                                // the resulting completion stage.
                                 .thenCompose(toolServiceResult -> processToolServiceResultAsync(
                                         method,
                                         invocationContext,
@@ -670,7 +643,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .whenComplete((value, error) -> {
                                     if (error != null) {
                                         Throwable cause = unwrapCompletionException(error);
-                                        // cancellation is neither a successful completion nor an error to report
                                         if (!result.isCancelled() && !(cause instanceof CancellationException)) {
                                             context.eventListenerRegistrar.fireEvent(AiServiceErrorEvent.builder()
                                                     .invocationContext(invocationContext)
@@ -729,7 +701,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .eventListenerRegistrar(context.eventListenerRegistrar)
                                 .build();
 
-                        // Moderation is forbidden on asynchronous return types, so no moderation future is needed.
                         CompletableFuture<Object> inner = invokeAsync(
                                 method,
                                 invocationContext,
@@ -820,8 +791,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
                     }
 
-                    // Returned by immediateToolReturnResult when the immediate-tool-return case does not actually
-                    // resolve a value and processing must continue down the normal (guardrail + parse) path.
                     private final Object fallThroughToOutputProcessing = new Object();
 
                     private Object processToolServiceResult(
@@ -916,9 +885,6 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
 
-                        // Output-guardrail reprompts go through a tool-aware executor: when a reprompt's response
-                        // requests tools, they are resolved (via the async tool loop) so the guardrail only ever
-                        // sees a final textual response.
                         ChatExecutor toolAwareRepromptExecutor = ToolAwareRepromptExecutor.wrapAsync(
                                 chatExecutor,
                                 context,
@@ -994,7 +960,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                     .toolExecutions()
                                                     .size()
                                     && resolvesToType(lastNonNull.resultObject(), returnType)) {
-                                // if only one non-null result, return it if it resolves to the return type
                                 return fireEventAndReturn(invocationContext, lastNonNull.resultObject());
                             }
                             throw illegalConfiguration(
@@ -1002,8 +967,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     method.getName(), IMMEDIATE, IMMEDIATE_IF_LAST, Result.class.getName());
                         }
 
-                        // Not an immediate return after all; signal the caller to continue down the normal
-                        // (output guardrail + parse) path.
                         return fallThroughToOutputProcessing;
                     }
 
