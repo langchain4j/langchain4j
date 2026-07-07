@@ -494,6 +494,27 @@ UserMessage userMessage = UserMessage.from("Hello cached world");
 userMessage.attributes().put("cache_control", "ephemeral");
 ```
 
+### Caching AI and Tool Result Messages
+
+The same `cache_control` attribute is honored on `AiMessage` and `ToolExecutionResultMessage`.
+This is especially useful in an agentic tool-execution loop, where the conversation history grows
+on every turn: marking the last message of a turn as `ephemeral` lets subsequent, larger requests
+reuse the cached prefix instead of re-billing the whole growing history at full price. Since these
+messages carry an immutable attributes map, set it via `toBuilder()`:
+
+```java
+AiMessage aiMessage = someAiMessage.toBuilder()
+        .attributes(Map.of("cache_control", "ephemeral"))
+        .build();
+
+ToolExecutionResultMessage toolExecutionResultMessage = someToolExecutionResultMessage.toBuilder()
+        .attributes(Map.of("cache_control", "ephemeral"))
+        .build();
+```
+
+As with `UserMessage`, the cache control marker is automatically applied to the last content block
+of the message (for `ToolExecutionResultMessage`, this is the `tool_result` block itself).
+
 ### Cache Diagnostics
 
 Anthropic's (beta) [cache diagnostics](https://docs.anthropic.com/en/docs/build-with-claude/cache-diagnostics)
