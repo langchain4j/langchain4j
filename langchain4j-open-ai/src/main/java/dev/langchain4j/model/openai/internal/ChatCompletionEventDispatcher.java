@@ -7,6 +7,7 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.Delta;
+import dev.langchain4j.model.openai.internal.chat.FunctionCall;
 import dev.langchain4j.model.openai.internal.chat.ToolCall;
 
 import java.util.List;
@@ -88,9 +89,10 @@ public final class ChatCompletionEventDispatcher {
                 }
 
                 String id = toolCallBuilder.updateId(toolCall.id());
-                String name = toolCallBuilder.updateName(toolCall.function().name());
+                FunctionCall functionCall = toolCall.function();
+                String name = toolCallBuilder.updateName(functionCall == null ? null : functionCall.name());
 
-                String partialArguments = toolCall.function().arguments();
+                String partialArguments = functionCall == null ? null : functionCall.arguments();
                 if (isNotNullOrEmpty(partialArguments)) {
                     toolCallBuilder.appendArguments(partialArguments);
 

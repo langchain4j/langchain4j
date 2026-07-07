@@ -55,7 +55,6 @@ class BaseGeminiChatModel {
     protected final Boolean enableEnhancedCivicAnswers;
     protected final GeminiMediaResolutionLevel mediaResolution;
     protected final boolean mediaResolutionPerPartEnabled;
-    protected final String cachedContentName;
 
     protected final GoogleAiGeminiChatRequestParameters defaultRequestParameters;
 
@@ -80,7 +79,6 @@ class BaseGeminiChatModel {
         this.logprobs = builder.logprobs;
         this.mediaResolution = builder.mediaResolution;
         this.mediaResolutionPerPartEnabled = getOrDefault(builder.mediaResolutionPerPartEnabled, false);
-        this.cachedContentName = builder.cachedContentName;
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -110,6 +108,7 @@ class BaseGeminiChatModel {
                 // Gemini-specific parameters
                 .aspectRatio(getOrDefault(builder.aspectRatio, geminiParameters.aspectRatio()))
                 .imageSize(getOrDefault(builder.imageSize, geminiParameters.imageSize()))
+                .cachedContentName(getOrDefault(builder.cachedContentName, geminiParameters.cachedContentName()))
                 .build();
     }
 
@@ -127,8 +126,7 @@ class BaseGeminiChatModel {
     }
 
     protected GeminiGenerateContentRequest createGenerateContentRequest(ChatRequest chatRequest) {
-        GoogleAiGeminiChatRequestParameters parameters =
-                (GoogleAiGeminiChatRequestParameters) chatRequest.parameters();
+        GoogleAiGeminiChatRequestParameters parameters = (GoogleAiGeminiChatRequestParameters) chatRequest.parameters();
         GeminiGenerationConfig.GeminiImageConfig effectiveImageConfig =
                 buildImageConfig(parameters.aspectRatio(), parameters.imageSize());
 
@@ -182,7 +180,7 @@ class BaseGeminiChatModel {
                         this.allowGoogleMaps,
                         this.retrieveGoogleMapsWidgetToken))
                 .toolConfig(toToolConfig(parameters.toolChoice(), this.functionCallingConfig))
-                .cachedContent(this.cachedContentName)
+                .cachedContent(parameters.cachedContentName())
                 .build();
     }
 
@@ -779,6 +777,8 @@ class BaseGeminiChatModel {
          * to create the cache out of band via the
          * <a href="https://ai.google.dev/gemini-api/docs/caching">Gemini context caching API</a> and pass the
          * returned resource name here.</p>
+         *
+         * <p>Can be overridden per-request via {@link GoogleAiGeminiChatRequestParameters#cachedContentName()}.</p>
          */
         public B cachedContentName(String cachedContentName) {
             this.cachedContentName = cachedContentName;

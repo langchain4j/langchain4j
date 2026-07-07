@@ -33,11 +33,14 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.pdf.PdfFile;
+import dev.langchain4j.model.anthropic.AnthropicCacheDiagnostics;
 import dev.langchain4j.model.anthropic.AnthropicServerTool;
 import dev.langchain4j.model.anthropic.AnthropicServerToolResult;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheMissReason;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicDiagnostics;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicImageContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMessageContent;
@@ -369,6 +372,17 @@ public class AnthropicMapper {
                 .outputTokenCount(anthropicUsage.outputTokens)
                 .cacheCreationInputTokens(anthropicUsage.cacheCreationInputTokens)
                 .cacheReadInputTokens(anthropicUsage.cacheReadInputTokens)
+                .build();
+    }
+
+    public static AnthropicCacheDiagnostics toCacheDiagnostics(AnthropicDiagnostics anthropicDiagnostics) {
+        if (anthropicDiagnostics == null) {
+            return null;
+        }
+        AnthropicCacheMissReason cacheMissReason = anthropicDiagnostics.cacheMissReason;
+        return AnthropicCacheDiagnostics.builder()
+                .cacheMissReasonType(cacheMissReason == null ? null : cacheMissReason.type)
+                .cacheMissedInputTokens(cacheMissReason == null ? null : cacheMissReason.cacheMissedInputTokens)
                 .build();
     }
 

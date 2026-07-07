@@ -51,7 +51,7 @@ jobs:
         run: |
           python3 << 'PYEOF'
           import xml.etree.ElementTree as ET
-          import glob, os
+          import glob, os, re
 
           files = glob.glob('**/target/*-reports/TEST-*.xml', recursive=True)
           total = failures = errors = skipped = 0
@@ -69,12 +69,15 @@ jobs:
                       if fail is None:
                           fail = tc.find('error')
                       if fail is not None:
-                          cls = tc.get('classname', '').split('.')[-1]
+                          cls = tc.get('classname', '')
                           name = tc.get('name', '')
+                          trace = fail.text or ''
+                          m = re.search(r'\bat ' + re.escape(cls) + r'[.$][^\n(]*\(([^)]+\.java:\d+)\)', trace)
+                          loc = f'`{m.group(1)}`' if m else ''
                           msg = (fail.get('message', '') or '').replace('\n', '<br>').replace('|', '\\|')
                           if len(msg) > 500:
                               msg = f"{msg[:500]}<details><summary>show more</summary>{msg[500:]}</details>"
-                          failed_tests.append(f"| `{cls}` | `{name}` | {msg} |")
+                          failed_tests.append(f"| `{cls}` | `{name}` | {loc} | {msg} |")
               except Exception:
                   pass
 
@@ -88,8 +91,8 @@ jobs:
                   f.write(f':x: **{failures} failed, {errors} errors**, {passed} passed, {skipped} skipped out of {total} tests\n')
               if failed_tests:
                   f.write('\n### Failures\n\n')
-                  f.write('| Class | Test | Error Message |\n')
-                  f.write('|-------|------|---------------|\n')
+                  f.write('| Class | Test | Location | Error Message |\n')
+                  f.write('|-------|------|----------|---------------|\n')
                   for line in failed_tests[:50]:
                       f.write(line + '\n')
                   if len(failed_tests) > 50:

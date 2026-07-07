@@ -393,6 +393,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         html.append("  <div class=\"section-icon\">").append(ICON_EXEC).append("</div>\n");
         html.append("  <h2 class=\"section-title\">Execution History</h2>\n");
         html.append("  <span class=\"section-count\">").append(memoryIds.size()).append(" session(s)</span>\n");
+        html.append("  <button class=\"tool-toggle\" onclick=\"toggleTools()\">Toggle Tools</button>\n");
         html.append("</div>\n");
 
         if (memoryIds.isEmpty()) {
@@ -487,7 +488,8 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             html.append("<table class=\"wf-table\">\n");
             html.append("<thead><tr><th>Agent</th><th>Duration</th><th>Tokens</th><th class=\"wf-timeline-col\">Timeline</th><th>Input</th><th>Output</th></tr></thead>\n");
             html.append("<tbody>\n");
-            appendWfRow(html, top, 0, base, totalMs);
+            int[] rowCounter = {0};
+            appendWfRow(html, top, 0, base, totalMs, rowCounter, -1);
             html.append("</tbody></table>\n");
         }
 
@@ -495,9 +497,11 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
     }
 
     private void appendWfRow(StringBuilder html, AgentInvocation inv, int depth,
-                             LocalDateTime base, long totalMs) {
+                             LocalDateTime base, long totalMs, int[] rowCounter, int parentRowId) {
         AgentInstance ag = inv.agent();
         String css = cssCls(ag.topology());
+        int myRowId = rowCounter[0]++;
+        boolean hasChildren = !inv.nestedInvocations().isEmpty() || !inv.toolExecutions().isEmpty();
 
         long offMs = Duration.between(base, inv.startTime()).toMillis();
         long durMs = inv.done()
@@ -506,12 +510,19 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         double leftPct = Math.max(0, (double) offMs / totalMs * 100.0);
         double widthPct = Math.max(0.4, (double) durMs / totalMs * 100.0);
 
-        html.append("<tr>");
+        html.append("<tr data-row-id=\"").append(myRowId).append("\"");
+        if (parentRowId >= 0) {
+            html.append(" data-parent-row=\"").append(parentRowId).append("\"");
+        }
+        html.append(">");
 
         // Agent column
         html.append("<td><div class=\"wf-agent\">");
         for (int i = 0; i < depth; i++) html.append("<span class=\"wf-indent\"></span>");
         if (depth > 0) html.append("<span class=\"wf-connector\">&#x2514;</span>");
+        if (hasChildren) {
+            html.append("<span class=\"row-toggle\" onclick=\"toggleRow(").append(myRowId).append(")\">&#9660;</span>");
+        }
         html.append("<span class=\"topology-badge sm ").append(css).append("\">").append(label(ag.topology())).append("</span>");
         html.append(" ").append(esc(ag.name()));
         if (inv.iterationIndex() >= 0) {
@@ -556,16 +567,17 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         html.append("</tr>\n");
 
         for (ToolExecution toolExec : inv.toolExecutions()) {
-            appendToolWfRow(html, toolExec, depth + 1, base, totalMs);
+            appendToolWfRow(html, toolExec, depth + 1, base, totalMs, rowCounter, myRowId);
         }
 
         for (AgentInvocation nested : inv.nestedInvocations()) {
-            appendWfRow(html, nested, depth + 1, base, totalMs);
+            appendWfRow(html, nested, depth + 1, base, totalMs, rowCounter, myRowId);
         }
     }
 
     private void appendToolWfRow(StringBuilder html, ToolExecution toolExec, int depth,
-                                 LocalDateTime base, long totalMs) {
+                                 LocalDateTime base, long totalMs, int[] rowCounter, int parentRowId) {
+        int myRowId = rowCounter[0]++;
         Duration dur = toolExec.duration();
         boolean hasTiming = toolExec.startTime() != null && dur != null;
 
@@ -578,7 +590,11 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             widthPct = Math.max(0.4, (double) durMs / totalMs * 100.0);
         }
 
-        html.append("<tr>");
+        html.append("<tr class=\"tool-row\" data-row-id=\"").append(myRowId).append("\"");
+        if (parentRowId >= 0) {
+            html.append(" data-parent-row=\"").append(parentRowId).append("\"");
+        }
+        html.append(">");
 
         // Tool name column
         html.append("<td><div class=\"wf-agent\">");
@@ -661,6 +677,35 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
                     var body = document.getElementById(id);
                     body.classList.toggle('collapsed');
                     body.previousElementSibling.classList.toggle('collapsed');
+                }
+
+                function toggleTools() {
+                    document.querySelectorAll('.tool-row').forEach(function(row) {
+                        row.classList.toggle('tool-hidden');
+                    });
+                }
+
+                function toggleRow(rowId) {
+                    var trigger = document.querySelector('[data-row-id="' + rowId + '"]');
+                    var arrow = trigger ? trigger.querySelector('.row-toggle') : null;
+                    var collapsing = arrow && !arrow.classList.contains('collapsed');
+                    if (arrow) arrow.classList.toggle('collapsed');
+                    var children = document.querySelectorAll('[data-parent-row="' + rowId + '"]');
+                    children.forEach(function(row) {
+                        if (collapsing) {
+                            row.classList.add('row-hidden');
+                            hideDescendants(row.getAttribute('data-row-id'));
+                        } else {
+                            row.classList.remove('row-hidden');
+                        }
+                    });
+                }
+
+                function hideDescendants(rowId) {
+                    document.querySelectorAll('[data-parent-row="' + rowId + '"]').forEach(function(row) {
+                        row.classList.add('row-hidden');
+                        hideDescendants(row.getAttribute('data-row-id'));
+                    });
                 }
 
                 function toggleDataFlow() {
@@ -1059,6 +1104,17 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
                         border:1px solid var(--kc);
                         background:#fff; color:var(--kc); white-space:nowrap;
                         opacity:.85; }
+
+            /* ---- Tool toggle ---- */
+            .tool-toggle { font-size:11px; padding:3px 12px; border-radius:4px;
+                           border:1px solid var(--brd); background:var(--bg2); color:var(--fg2);
+                           cursor:pointer; transition:background .15s; margin-left:auto; }
+            .tool-toggle:hover { background:var(--brd); }
+            .tool-row.tool-hidden { display:none; }
+            .row-toggle { cursor:pointer; font-size:10px; margin-right:4px; display:inline-block;
+                          transition:transform .2s; color:var(--fg3); user-select:none; }
+            .row-toggle.collapsed { transform:rotate(-90deg); }
+            .row-hidden { display:none; }
 
             /* ---- Data-flow SVG overlay ---- */
             .df-svg { position:absolute; top:0; left:0; pointer-events:none; z-index:2; overflow:visible; }
