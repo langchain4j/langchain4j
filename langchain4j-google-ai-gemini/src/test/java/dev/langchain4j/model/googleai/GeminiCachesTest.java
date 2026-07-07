@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -112,6 +113,34 @@ class GeminiCachesTest {
             GeminiCreateCachedContentRequest sentBody =
                     Json.fromJson(mockHttpClient.request().body(), GeminiCreateCachedContentRequest.class);
             assertThat(sentBody.ttl()).isEqualTo("90.5s");
+        }
+
+        @Test
+        void shouldThrowWhenTtlIsNegative() {
+            GeminiCaches subject = createCaches(MockHttpClient.thatAlwaysResponds(jsonResponse(sampleCachedContent())));
+
+            assertThatThrownBy(() -> subject.createCache(
+                            "gemini-2.5-flash",
+                            List.of(UserMessage.from("Reusable document context.")),
+                            Duration.ofMinutes(-5)))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("ttl cannot be negative");
+        }
+
+        @Test
+        void shouldSendCustomHeaders() {
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(jsonResponse(sampleCachedContent()));
+            GeminiCaches subject = GeminiCaches.builder()
+                    .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                    .apiKey(TEST_API_KEY)
+                    .baseUrl(TEST_BASE_URL)
+                    .customHeaders(Map.of("x-custom-header", "custom-value"))
+                    .build();
+
+            subject.createCache("gemini-2.5-flash", List.of(UserMessage.from("Reusable document context.")), null);
+
+            HttpRequest sentRequest = mockHttpClient.request();
+            assertThat(sentRequest.headers().get("x-custom-header")).containsExactly("custom-value");
         }
 
         @Test
