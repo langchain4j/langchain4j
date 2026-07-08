@@ -1,6 +1,7 @@
 package dev.langchain4j.model.embedding;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.ModelProvider.OTHER;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
@@ -8,6 +9,7 @@ import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.ValidationUtils;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
@@ -96,10 +98,12 @@ public interface EmbeddingModel {
                 .toList();
         Map<Object, Object> attributes = new java.util.concurrent.ConcurrentHashMap<>();
 
+        ModelProvider provider = provider();
         EmbeddingModelListenerUtils.onRequest(
                 EmbeddingModelRequestContext.builder()
                         .textSegments(textSegments)
                         .embeddingModel(this)
+                        .modelProvider(provider)
                         .attributes(attributes)
                         .build(),
                 listeners);
@@ -112,6 +116,7 @@ public interface EmbeddingModel {
                             .response(legacyResponse)
                             .textSegments(textSegments)
                             .embeddingModel(this)
+                            .modelProvider(provider)
                             .attributes(attributes)
                             .build(),
                     listeners);
@@ -122,6 +127,7 @@ public interface EmbeddingModel {
                             .error(error)
                             .textSegments(textSegments)
                             .embeddingModel(this)
+                            .modelProvider(provider)
                             .attributes(attributes)
                             .build(),
                     listeners);
@@ -140,6 +146,18 @@ public interface EmbeddingModel {
     @Experimental
     default List<EmbeddingModelListener> listeners() {
         return List.of();
+    }
+
+    /**
+     * The {@link ModelProvider} of this embedding model, exposed to {@link #listeners() listeners} via the
+     * request/response/error contexts (mirroring {@link dev.langchain4j.model.chat.ChatModel#provider()}).
+     * Defaults to {@link ModelProvider#OTHER}; providers override it.
+     *
+     * @since 1.18.0
+     */
+    @Experimental
+    default ModelProvider provider() {
+        return OTHER;
     }
 
     /**

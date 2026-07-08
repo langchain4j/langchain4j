@@ -127,6 +127,7 @@ class EmbeddingModelRequestResponseTest implements WithAssertions {
             public void onRequest(dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext ctx) {
                 onRequest.incrementAndGet();
                 assertThat(ctx.textSegments()).extracting(TextSegment::text).containsExactly("hello");
+                assertThat(ctx.modelProvider()).isEqualTo(dev.langchain4j.model.ModelProvider.OTHER);
             }
 
             @Override

@@ -90,6 +90,11 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
         return listeners;
     }
 
+    @Override
+    public dev.langchain4j.model.ModelProvider provider() {
+        return dev.langchain4j.model.ModelProvider.JINA;
+    }
+
     public static JinaEmbeddingModelBuilder builder() {
         return new JinaEmbeddingModelBuilder();
     }

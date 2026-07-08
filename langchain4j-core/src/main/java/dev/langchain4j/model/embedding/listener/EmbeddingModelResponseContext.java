@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import java.util.List;
@@ -25,12 +26,14 @@ public class EmbeddingModelResponseContext {
     private final Response<List<Embedding>> response;
     private final List<TextSegment> textSegments;
     private final EmbeddingModel embeddingModel;
+    private final ModelProvider modelProvider;
     private final Map<Object, Object> attributes;
 
     public EmbeddingModelResponseContext(Builder builder) {
         this.response = ensureNotNull(builder.response, "response");
         this.textSegments = copy(ensureNotNull(builder.textSegments, "textSegments"));
         this.embeddingModel = ensureNotNull(builder.embeddingModel, "embeddingModel");
+        this.modelProvider = builder.modelProvider;
         this.attributes = ensureNotNull(builder.attributes, "attributes");
     }
 
@@ -49,6 +52,7 @@ public class EmbeddingModelResponseContext {
         private Response<List<Embedding>> response;
         private List<TextSegment> textSegments;
         private EmbeddingModel embeddingModel;
+        private ModelProvider modelProvider;
         private Map<Object, Object> attributes;
 
         Builder() {}
@@ -65,6 +69,11 @@ public class EmbeddingModelResponseContext {
 
         public Builder embeddingModel(EmbeddingModel embeddingModel) {
             this.embeddingModel = embeddingModel;
+            return this;
+        }
+
+        public Builder modelProvider(ModelProvider modelProvider) {
+            this.modelProvider = modelProvider;
             return this;
         }
 
@@ -88,6 +97,13 @@ public class EmbeddingModelResponseContext {
 
     public EmbeddingModel embeddingModel() {
         return embeddingModel;
+    }
+
+    /**
+     * @return the {@link ModelProvider} of the embedding model, or {@code null} if not set.
+     */
+    public ModelProvider modelProvider() {
+        return modelProvider;
     }
 
     /**

@@ -25,9 +25,14 @@
           "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API (embed(EmbeddingRequest), supportedParameters(), supportedContentTypes(), provider(), listeners())"
         },
         {
-          "code": "java.class.nonPublicPartOfAPI",
-          "old": "class dev.langchain4j.model.bedrock.BedrockTitanEmbeddingResponse",
-          "justification": "Internal package-private wire response type, used only as a generic type parameter of the Bedrock embedding models"
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.ModelProvider",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API (embed(EmbeddingRequest), supportedParameters(), supportedContentTypes(), provider(), listeners())"
+        },
+        {
+          "code": "java.method.addedToInterface",
+          "new": "method retrofit2.Call<dev.langchain4j.model.jina.internal.api.JinaEmbeddingResponse> dev.langchain4j.model.jina.internal.api.JinaApi::embedMultimodal(dev.langchain4j.model.jina.internal.api.JinaMultimodalEmbeddingRequest, java.lang.String)",
+          "justification": "JinaApi is an internal Retrofit API interface (internal.api package), not part of the public API"
         }
       ]
     }

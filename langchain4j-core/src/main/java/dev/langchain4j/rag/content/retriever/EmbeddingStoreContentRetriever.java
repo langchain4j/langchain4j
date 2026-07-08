@@ -9,6 +9,8 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.request.EmbeddingInputType;
+import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.rag.query.Query;
@@ -69,6 +71,8 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
     private final Function<Query, Double> minScoreProvider;
     private final Function<Query, Filter> filterProvider;
 
+    private final EmbeddingInputType embeddingInputType;
+
     private final String displayName;
 
     public EmbeddingStoreContentRetriever(EmbeddingStore<TextSegment> embeddingStore, EmbeddingModel embeddingModel) {
@@ -78,7 +82,8 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                 embeddingModel,
                 DEFAULT_MAX_RESULTS,
                 DEFAULT_MIN_SCORE,
-                DEFAULT_FILTER);
+                DEFAULT_FILTER,
+                null);
     }
 
     public EmbeddingStoreContentRetriever(
@@ -89,7 +94,8 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                 embeddingModel,
                 (query) -> maxResults,
                 DEFAULT_MIN_SCORE,
-                DEFAULT_FILTER);
+                DEFAULT_FILTER,
+                null);
     }
 
     public EmbeddingStoreContentRetriever(
@@ -103,7 +109,8 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                 embeddingModel,
                 (query) -> maxResults,
                 (query) -> minScore,
-                DEFAULT_FILTER);
+                DEFAULT_FILTER,
+                null);
     }
 
     private EmbeddingStoreContentRetriever(
@@ -112,7 +119,8 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
             EmbeddingModel embeddingModel,
             Function<Query, Integer> dynamicMaxResults,
             Function<Query, Double> dynamicMinScore,
-            Function<Query, Filter> dynamicFilter) {
+            Function<Query, Filter> dynamicFilter,
+            EmbeddingInputType embeddingInputType) {
         this.displayName = getOrDefault(displayName, DEFAULT_DISPLAY_NAME);
         this.embeddingStore = ensureNotNull(embeddingStore, "embeddingStore");
         this.embeddingModel = ensureNotNull(
@@ -120,6 +128,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
         this.maxResultsProvider = getOrDefault(dynamicMaxResults, DEFAULT_MAX_RESULTS);
         this.minScoreProvider = getOrDefault(dynamicMinScore, DEFAULT_MIN_SCORE);
         this.filterProvider = getOrDefault(dynamicFilter, DEFAULT_FILTER);
+        this.embeddingInputType = embeddingInputType;
     }
 
     private static EmbeddingModel loadEmbeddingModel() {
@@ -148,8 +157,22 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
         private Function<Query, Integer> dynamicMaxResults;
         private Function<Query, Double> dynamicMinScore;
         private Function<Query, Filter> dynamicFilter;
+        private EmbeddingInputType embeddingInputType;
 
         EmbeddingStoreContentRetrieverBuilder() {}
+
+        /**
+         * Opt-in: embed the query with the given {@link EmbeddingInputType} (typically
+         * {@link EmbeddingInputType#QUERY}) via {@link EmbeddingModel#embed(dev.langchain4j.model.embedding.request.EmbeddingRequest)}.
+         * When {@code null} (the default), the legacy {@link EmbeddingModel#embed(String)} is used and no input
+         * type is sent (unchanged behavior). The chosen {@link EmbeddingModel} must
+         * {@link EmbeddingModel#supportedParameters() support} the {@code input_type} parameter, otherwise the
+         * query embedding fails fast.
+         */
+        public EmbeddingStoreContentRetrieverBuilder embeddingInputType(EmbeddingInputType embeddingInputType) {
+            this.embeddingInputType = embeddingInputType;
+            return this;
+        }
 
         public EmbeddingStoreContentRetrieverBuilder maxResults(Integer maxResults) {
             if (maxResults != null) {
@@ -209,7 +232,8 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                     this.embeddingModel,
                     this.dynamicMaxResults,
                     this.dynamicMinScore,
-                    this.dynamicFilter);
+                    this.dynamicFilter,
+                    this.embeddingInputType);
         }
     }
 
@@ -224,7 +248,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
     @Override
     public List<Content> retrieve(Query query) {
 
-        Embedding embeddedQuery = embeddingModel.embed(query.text()).content();
+        Embedding embeddedQuery = embedQuery(query.text());
 
         EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                 .query(query.text())
@@ -243,6 +267,19 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                                 ContentMetadata.SCORE, embeddingMatch.score(),
                                 ContentMetadata.EMBEDDING_ID, embeddingMatch.embeddingId())))
                 .collect(Collectors.toList());
+    }
+
+    private Embedding embedQuery(String text) {
+        if (embeddingInputType == null) {
+            return embeddingModel.embed(text).content();
+        }
+        return embeddingModel
+                .embed(EmbeddingRequest.builder()
+                        .input(text)
+                        .inputType(embeddingInputType)
+                        .build())
+                .embeddings()
+                .get(0);
     }
 
     @Override

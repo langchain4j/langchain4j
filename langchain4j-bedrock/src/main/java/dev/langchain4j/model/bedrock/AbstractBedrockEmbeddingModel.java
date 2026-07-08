@@ -96,6 +96,11 @@ abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingResponse>
         return listeners;
     }
 
+    @Override
+    public dev.langchain4j.model.ModelProvider provider() {
+        return dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
+    }
+
     public BedrockRuntimeClient getClient() {
         if (client == null) {
             synchronized (this) {

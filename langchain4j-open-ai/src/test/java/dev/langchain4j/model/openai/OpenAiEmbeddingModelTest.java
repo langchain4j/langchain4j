@@ -47,6 +47,8 @@ class OpenAiEmbeddingModelTest {
         assertThat(requestContext.get()).isNotNull();
         assertThat(requestContext.get().textSegments()).hasSize(1);
         assertThat(requestContext.get().embeddingModel()).isSameAs(model);
+        assertThat(requestContext.get().modelProvider())
+                .isEqualTo(dev.langchain4j.model.ModelProvider.OPEN_AI);
         assertThat(responseContext.get()).isNotNull();
         assertThat(responseContext.get().response().content()).hasSize(1);
         // request and response share the same attributes map

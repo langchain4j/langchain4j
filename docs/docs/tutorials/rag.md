@@ -668,6 +668,25 @@ EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
     .build();
 ```
 
+#### Query vs Document Embeddings (opt-in)
+
+Some embedding models (e.g. Cohere Embed v4, Voyage, Google) produce better retrieval quality when documents
+and queries are embedded differently. You can opt in by declaring the input type: `DOCUMENT` on the
+`EmbeddingStoreIngestor` (for the indexed segments) and `QUERY` on the `EmbeddingStoreContentRetriever` (for the
+query, see [Embedding Store Content Retriever](#embedding-store-content-retriever)).
+
+```java
+EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+    .embeddingModel(embeddingModel)
+    .embeddingStore(embeddingStore)
+    .embeddingInputType(EmbeddingInputType.DOCUMENT)
+    .build();
+```
+
+The default is unchanged: when `embeddingInputType` is not set, no input type is sent and the legacy embedding
+call is used. The selected `EmbeddingModel` must support the `input_type` parameter (see its
+`supportedParameters()`), otherwise embedding fails fast with `UnsupportedFeatureException`.
+
 
 ## Naive RAG
 
@@ -869,6 +888,19 @@ interface Assistant {
 InvocationParameters parameters = InvocationParameters.from(Map.of("userId", "12345"));
 String response = assistant.chat("Hello", parameters);
 ```
+
+To embed the query with `input_type=query` (pairing with the ingestor's `DOCUMENT`, see
+[Query vs Document Embeddings](#query-vs-document-embeddings-opt-in)), set the input type on the retriever:
+
+```java
+ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+    .embeddingStore(embeddingStore)
+    .embeddingModel(embeddingModel)
+    .embeddingInputType(EmbeddingInputType.QUERY)
+    .build();
+```
+
+The default is unchanged (no input type is sent). The `EmbeddingModel` must support the `input_type` parameter.
 
 #### Web Search Content Retriever
 `WebSearchContentRetriever` retrieves relevant `Content` from the web using a `WebSearchEngine`.

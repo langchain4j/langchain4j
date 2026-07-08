@@ -86,6 +86,11 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     @Override
+    public dev.langchain4j.model.ModelProvider provider() {
+        return dev.langchain4j.model.ModelProvider.OPEN_AI;
+    }
+
+    @Override
     protected Integer knownDimension() {
         if (dimensions != null) {
             return dimensions;

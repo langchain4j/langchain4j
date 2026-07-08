@@ -11,6 +11,11 @@
         },
         {
           "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.request.EmbeddingParameter",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API (embed(EmbeddingRequest), supportedParameters(), supportedContentTypes(), provider(), listeners())"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
           "new": "missing-class dev.langchain4j.model.embedding.request.EmbeddingRequest",
           "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API (embed(EmbeddingRequest), supportedParameters(), supportedContentTypes(), provider(), listeners())"
         },
@@ -25,9 +30,9 @@
           "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API (embed(EmbeddingRequest), supportedParameters(), supportedContentTypes(), provider(), listeners())"
         },
         {
-          "code": "java.class.nonPublicPartOfAPI",
-          "old": "class dev.langchain4j.model.bedrock.BedrockTitanEmbeddingResponse",
-          "justification": "Internal package-private wire response type, used only as a generic type parameter of the Bedrock embedding models"
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.ModelProvider",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API (embed(EmbeddingRequest), supportedParameters(), supportedContentTypes(), provider(), listeners())"
         }
       ]
     }

@@ -226,6 +226,11 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         return listeners;
     }
 
+    @Override
+    public dev.langchain4j.model.ModelProvider provider() {
+        return dev.langchain4j.model.ModelProvider.VOYAGE_AI;
+    }
+
     private Response<List<Embedding>> embedTexts(List<String> texts) {
         List<Embedding> embeddings = new ArrayList<>();
         int inputTokenCount = 0;

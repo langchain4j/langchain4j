@@ -171,6 +171,7 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
         EmbeddingModelRequestContext requestContext = EmbeddingModelRequestContext.builder()
                 .textSegments(textSegmentsForContext)
                 .embeddingModel(this)
+                .modelProvider(delegate.provider())
                 .attributes(attributes)
                 .build();
         onRequest(requestContext, listeners);
@@ -185,6 +186,7 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
                             .response(responseForListeners)
                             .textSegments(textSegmentsForContext)
                             .embeddingModel(this)
+                            .modelProvider(delegate.provider())
                             .attributes(attributes)
                             .build(),
                     listeners);
@@ -195,11 +197,17 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
                             .error(error)
                             .textSegments(textSegmentsForContext)
                             .embeddingModel(this)
+                            .modelProvider(delegate.provider())
                             .attributes(attributes)
                             .build(),
                     listeners);
             throw error;
         }
+    }
+
+    @Override
+    public dev.langchain4j.model.ModelProvider provider() {
+        return delegate.provider();
     }
 
     @Override

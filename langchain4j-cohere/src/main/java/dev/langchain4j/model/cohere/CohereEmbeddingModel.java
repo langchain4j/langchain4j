@@ -108,6 +108,11 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
         return listeners;
     }
 
+    @Override
+    public dev.langchain4j.model.ModelProvider provider() {
+        return dev.langchain4j.model.ModelProvider.COHERE;
+    }
+
     /**
      * @deprecated Please use {@code builder()} instead, and explicitly set the model name and,
      * if necessary, other parameters.

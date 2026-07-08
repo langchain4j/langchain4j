@@ -71,6 +71,11 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         return listeners;
     }
 
+    @Override
+    public dev.langchain4j.model.ModelProvider provider() {
+        return dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
+    }
+
     public static GoogleAiEmbeddingModelBuilder builder() {
         return new GoogleAiEmbeddingModelBuilder();
     }

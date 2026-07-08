@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import java.util.List;
 import java.util.Map;
@@ -23,12 +24,14 @@ public class EmbeddingModelErrorContext {
     private final Throwable error;
     private final List<TextSegment> textSegments;
     private final EmbeddingModel embeddingModel;
+    private final ModelProvider modelProvider;
     private final Map<Object, Object> attributes;
 
     public EmbeddingModelErrorContext(Builder builder) {
         this.error = ensureNotNull(builder.error, "error");
         this.textSegments = copy(ensureNotNull(builder.textSegments, "textSegments"));
         this.embeddingModel = ensureNotNull(builder.embeddingModel, "embeddingModel");
+        this.modelProvider = builder.modelProvider;
         this.attributes = ensureNotNull(builder.attributes, "attributes");
     }
 
@@ -47,6 +50,7 @@ public class EmbeddingModelErrorContext {
         private Throwable error;
         private List<TextSegment> textSegments;
         private EmbeddingModel embeddingModel;
+        private ModelProvider modelProvider;
         private Map<Object, Object> attributes;
 
         Builder() {}
@@ -63,6 +67,11 @@ public class EmbeddingModelErrorContext {
 
         public Builder embeddingModel(EmbeddingModel embeddingModel) {
             this.embeddingModel = embeddingModel;
+            return this;
+        }
+
+        public Builder modelProvider(ModelProvider modelProvider) {
+            this.modelProvider = modelProvider;
             return this;
         }
 
@@ -89,6 +98,13 @@ public class EmbeddingModelErrorContext {
 
     public EmbeddingModel embeddingModel() {
         return embeddingModel;
+    }
+
+    /**
+     * @return the {@link ModelProvider} of the embedding model, or {@code null} if not set.
+     */
+    public ModelProvider modelProvider() {
+        return modelProvider;
     }
 
     /**
