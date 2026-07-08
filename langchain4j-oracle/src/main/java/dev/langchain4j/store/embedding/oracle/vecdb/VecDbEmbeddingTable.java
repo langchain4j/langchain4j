@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.store.embedding.oracle.CreateOption;
+import javax.sql.DataSource;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
