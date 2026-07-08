@@ -90,9 +90,6 @@ public interface EmbeddingModel {
             return doEmbed(finalRequest);
         }
 
-        // Fire listeners inline, mirroring ChatModel. The listener contexts are keyed on the (legacy)
-        // List<TextSegment> / Response<List<Embedding>> shape, so we adapt the request/response to it
-        // for backward compatibility with existing EmbeddingModelListener implementations.
         List<TextSegment> textSegments = finalRequest.inputs().stream()
                 .map(input -> TextSegment.from(input.text()))
                 .toList();
@@ -100,7 +97,7 @@ public interface EmbeddingModel {
 
         ModelProvider provider = provider();
         EmbeddingModelListenerUtils.onRequest(
-                EmbeddingModelRequestContext.builder()
+                EmbeddingModelRequestContext.builder() // TODO add EmbeddingRequest
                         .textSegments(textSegments)
                         .embeddingModel(this)
                         .modelProvider(provider)
@@ -112,7 +109,7 @@ public interface EmbeddingModel {
             Response<List<Embedding>> legacyResponse =
                     Response.from(response.embeddings(), response.metadata().tokenUsage());
             EmbeddingModelListenerUtils.onResponse(
-                    EmbeddingModelResponseContext.builder()
+                    EmbeddingModelResponseContext.builder() // TODO add EmbeddingRequest + EmbeddingResponse
                             .response(legacyResponse)
                             .textSegments(textSegments)
                             .embeddingModel(this)
@@ -123,7 +120,7 @@ public interface EmbeddingModel {
             return response;
         } catch (Exception error) {
             EmbeddingModelListenerUtils.onError(
-                    EmbeddingModelErrorContext.builder()
+                    EmbeddingModelErrorContext.builder() // TODO add EmbeddingRequest
                             .error(error)
                             .textSegments(textSegments)
                             .embeddingModel(this)

@@ -86,7 +86,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     @Override
-    public dev.langchain4j.model.ModelProvider provider() {
+    public dev.langchain4j.model.ModelProvider provider() { // TODO do not use fqn, everywhere
         return dev.langchain4j.model.ModelProvider.OPEN_AI;
     }
 
