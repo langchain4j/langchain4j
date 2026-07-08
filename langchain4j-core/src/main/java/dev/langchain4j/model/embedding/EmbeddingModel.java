@@ -5,16 +5,147 @@ import static java.util.Collections.singletonList;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.ValidationUtils;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
+import dev.langchain4j.model.embedding.request.EmbeddingInput;
+import dev.langchain4j.model.embedding.request.EmbeddingParameter;
+import dev.langchain4j.model.embedding.request.EmbeddingRequest;
+import dev.langchain4j.model.embedding.request.EmbeddingRequestParameters;
+import dev.langchain4j.model.embedding.response.EmbeddingResponse;
+import dev.langchain4j.model.embedding.response.EmbeddingResponseMetadata;
 import dev.langchain4j.model.output.Response;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Represents a model that can convert a given text into an embedding (vector representation of the text).
  */
 public interface EmbeddingModel {
+
+    /**
+     * The primary request/response API, mirroring {@link dev.langchain4j.model.chat.ChatModel#chat}.
+     * <p>
+     * This method merges the model's {@link #defaultRequestParameters() default parameters} with the
+     * request's parameters, validates that every populated parameter is
+     * {@link #supportedParameters() supported} by this implementation, and then delegates to
+     * {@link #doEmbed(EmbeddingRequest)}.
+     * <p>
+     * Per-call parameters are strictly opt-in: if the (merged) request populates a parameter that this
+     * implementation does not declare as supported, an {@link UnsupportedFeatureException} is thrown instead
+     * of the parameter being silently ignored. Implementations that have not overridden
+     * {@link #doEmbed(EmbeddingRequest)} support no parameters at all, so a plain request (no parameters)
+     * works everywhere, while a request that asks for a parameter such an implementation cannot honor fails
+     * fast.
+     *
+     * @param request the request, containing the texts to embed and the per-call parameters.
+     * @return the response, containing the embeddings and the response metadata.
+     * @since 1.18.0
+     */
+    @Experimental
+    default EmbeddingResponse embed(EmbeddingRequest request) {
+
+        EmbeddingRequestParameters finalParameters =
+                defaultRequestParameters().overrideWith(request.parameters());
+
+        Set<EmbeddingParameter<?>> unsupported = new LinkedHashSet<>(finalParameters.presentParameters());
+        unsupported.removeAll(supportedParameters());
+        if (!unsupported.isEmpty()) {
+            String names = unsupported.stream().map(EmbeddingParameter::name).collect(Collectors.joining(", "));
+            throw new UnsupportedFeatureException("EmbeddingModel '" + getClass().getName()
+                    + "' does not support the following per-call parameter(s): " + names
+                    + ". Only the following are supported: "
+                    + supportedParameters().stream()
+                            .map(EmbeddingParameter::name)
+                            .collect(Collectors.joining(", ")));
+        }
+
+        Set<ContentType> unsupportedContentTypes = new LinkedHashSet<>();
+        for (EmbeddingInput input : request.inputs()) {
+            unsupportedContentTypes.addAll(input.contentTypes());
+        }
+        unsupportedContentTypes.removeAll(supportedContentTypes());
+        if (!unsupportedContentTypes.isEmpty()) {
+            throw new UnsupportedFeatureException("EmbeddingModel '" + getClass().getName()
+                    + "' does not support the following content type(s): " + unsupportedContentTypes
+                    + ". Only the following are supported: " + supportedContentTypes());
+        }
+
+        EmbeddingRequest finalRequest = EmbeddingRequest.builder()
+                .inputs(request.inputs())
+                .parameters(finalParameters)
+                .build();
+
+        return doEmbed(finalRequest);
+    }
+
+    /**
+     * The method a provider overrides to natively honor per-call parameters. The default implementation
+     * bridges <i>down</i> to the legacy {@link #embedAll(List)}, so every existing implementation supports
+     * the new request/response API unchanged. Because this default only calls the (still abstract)
+     * {@code embedAll}, there is no default-to-default cycle.
+     * <p>
+     * The default does not apply any request parameters — it does not need to, because
+     * {@link #embed(EmbeddingRequest)} has already rejected any parameter that {@link #supportedParameters()}
+     * (empty by default) does not cover.
+     *
+     * @param request the request, with parameters already merged and validated.
+     * @return the response.
+     * @since 1.18.0
+     */
+    @Experimental
+    default EmbeddingResponse doEmbed(EmbeddingRequest request) {
+        Response<List<Embedding>> legacy = embedAll(
+                request.inputs().stream().map(input -> TextSegment.from(input.text())).toList());
+        return EmbeddingResponse.builder()
+                .embeddings(legacy.content())
+                .metadata(EmbeddingResponseMetadata.builder()
+                        .modelName(modelName())
+                        .tokenUsage(legacy.tokenUsage())
+                        .build())
+                .build();
+    }
+
+    /**
+     * The parameters applied to every request unless overridden by the request itself, typically derived from
+     * the model's builder-time configuration. The default is {@link EmbeddingRequestParameters#EMPTY}.
+     *
+     * @since 1.18.0
+     */
+    @Experimental
+    default EmbeddingRequestParameters defaultRequestParameters() {
+        return EmbeddingRequestParameters.EMPTY;
+    }
+
+    /**
+     * The set of per-call parameters this implementation honors. Defaults to the empty set (default-deny):
+     * an implementation must explicitly opt into each parameter it supports, otherwise
+     * {@link #embed(EmbeddingRequest)} rejects requests that populate it. This guarantees that a newly
+     * introduced parameter is never silently ignored by an implementation that has not been updated.
+     *
+     * @since 1.18.0
+     */
+    @Experimental
+    default Set<EmbeddingParameter<?>> supportedParameters() {
+        return Set.of();
+    }
+
+    /**
+     * The set of input {@link ContentType}s this implementation can embed. Defaults to {@code {TEXT}}: an
+     * implementation must explicitly opt into non-text modalities (image/audio/video/pdf), otherwise
+     * {@link #embed(EmbeddingRequest)} rejects any input that uses them. Like {@link #supportedParameters()},
+     * this is default-deny, so a text-only model never silently ignores (or mis-embeds) an image.
+     *
+     * @since 1.18.0
+     */
+    @Experimental
+    default Set<ContentType> supportedContentTypes() {
+        return Set.of(ContentType.TEXT);
+    }
 
     /**
      * Embed a text.

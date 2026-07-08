@@ -13,11 +13,16 @@ import dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext;
+import dev.langchain4j.model.embedding.request.EmbeddingParameter;
+import dev.langchain4j.model.embedding.request.EmbeddingRequest;
+import dev.langchain4j.model.embedding.request.EmbeddingRequestParameters;
+import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Internal
@@ -155,6 +160,56 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
                     listeners);
             throw error;
         }
+    }
+
+    @Override
+    public EmbeddingResponse embed(EmbeddingRequest request) {
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        List<TextSegment> textSegmentsForContext =
+                request.inputs().stream().map(input -> TextSegment.from(input.text())).toList();
+
+        EmbeddingModelRequestContext requestContext = EmbeddingModelRequestContext.builder()
+                .textSegments(textSegmentsForContext)
+                .embeddingModel(this)
+                .attributes(attributes)
+                .build();
+        onRequest(requestContext, listeners);
+        try {
+            EmbeddingResponse response = delegate.embed(request);
+
+            Response<List<Embedding>> responseForListeners = Response.from(
+                    response.embeddings(), response.metadata().tokenUsage());
+
+            onResponse(
+                    EmbeddingModelResponseContext.builder()
+                            .response(responseForListeners)
+                            .textSegments(textSegmentsForContext)
+                            .embeddingModel(this)
+                            .attributes(attributes)
+                            .build(),
+                    listeners);
+            return response;
+        } catch (Exception error) {
+            onError(
+                    EmbeddingModelErrorContext.builder()
+                            .error(error)
+                            .textSegments(textSegmentsForContext)
+                            .embeddingModel(this)
+                            .attributes(attributes)
+                            .build(),
+                    listeners);
+            throw error;
+        }
+    }
+
+    @Override
+    public Set<EmbeddingParameter<?>> supportedParameters() {
+        return delegate.supportedParameters();
+    }
+
+    @Override
+    public EmbeddingRequestParameters defaultRequestParameters() {
+        return delegate.defaultRequestParameters();
     }
 
     @Override

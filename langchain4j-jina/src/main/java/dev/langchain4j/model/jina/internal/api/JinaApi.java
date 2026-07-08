@@ -13,6 +13,11 @@ public interface JinaApi {
     Call<JinaEmbeddingResponse> embed(@Body JinaEmbeddingRequest request,
                                       @Header("Authorization") String authorizationHeader);
 
+    @POST("v1/embeddings")
+    @Headers({"Content-Type: application/json"})
+    Call<JinaEmbeddingResponse> embedMultimodal(@Body JinaMultimodalEmbeddingRequest request,
+                                                @Header("Authorization") String authorizationHeader);
+
     @POST("rerank")
     @Headers({"Content-Type: application/json"})
     Call<JinaRerankingResponse> rerank(@Body JinaRerankingRequest request,
