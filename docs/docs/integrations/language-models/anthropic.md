@@ -475,23 +475,45 @@ to see an example of specifying tool `metadata` in the low-level `ToolSpecificat
 
 ## Caching
 
-`AnthropicChatModel` and `AnthropicStreamingChatModel` support caching of system messages and tools.
-Caching is disabled by default.
-It can be enabled by setting the `cacheSystemMessages` and `cacheTools` parameters, respectively.
-
-When enabled,`cache_control` blocks will be added to the last system message and tool, respectively.
-
-`AnthropicChatModel` and `AnthropicStreamingChatModel` return `AnthropicTokenUsage` in response which
-contains `cacheCreationInputTokens` and `cacheReadInputTokens`.
+`AnthropicChatModel` and `AnthropicStreamingChatModel` return `AnthropicTokenUsage` in the response,
+which contains `cacheCreationInputTokens` and `cacheReadInputTokens`.
 
 More info on caching can be found [here](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching).
-### Caching User Messages
 
-To enable prompt caching for a `UserMessage`, you need to set the `cache_control` attribute to `ephemeral`. The cache control marker will be automatically applied to the last content block of the message.
+### Caching System Messages and Tools
+
+Caching of system messages and tools is disabled by default.
+It can be enabled by setting the `cacheSystemMessages` and `cacheTools` parameters, respectively.
+
+When enabled, `cache_control` blocks will be added to the last system message and tool, respectively.
+
+### Caching Individual Messages
+
+`UserMessage`, `AiMessage`, and `ToolExecutionResultMessage` can each be marked for caching by setting
+the `cache_control` attribute to `ephemeral`. The cache control marker is automatically applied to the
+last content block of the message (for `ToolExecutionResultMessage`, this is the `tool_result` block
+itself).
+
+`UserMessage` exposes a mutable attributes map:
 
 ```java
 UserMessage userMessage = UserMessage.from("Hello cached world");
 userMessage.attributes().put("cache_control", "ephemeral");
+```
+
+`AiMessage` and `ToolExecutionResultMessage` carry an immutable attributes map, so set it via
+`toBuilder()`. This is especially useful in an agentic tool-execution loop, where the conversation
+history grows on every turn: marking the last message of a turn as `ephemeral` lets subsequent, larger
+requests reuse the cached prefix instead of re-billing the whole growing history at full price.
+
+```java
+AiMessage aiMessage = someAiMessage.toBuilder()
+        .attributes(Map.of("cache_control", "ephemeral"))
+        .build();
+
+ToolExecutionResultMessage toolExecutionResultMessage = someToolExecutionResultMessage.toBuilder()
+        .attributes(Map.of("cache_control", "ephemeral"))
+        .build();
 ```
 
 ### Cache Diagnostics
