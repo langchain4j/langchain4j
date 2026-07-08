@@ -120,6 +120,19 @@ class ToolSpecificationsTest implements WithAssertions {
         public void toolMethod(@P("first person") Person p0, @P("second person") Person p1) {}
     }
 
+    public static class BaseRequest {
+        String id;
+    }
+
+    public static class CreatePersonRequest extends BaseRequest {
+        String name;
+    }
+
+    public static class ToolWithInheritedRequest {
+        @Tool
+        public void createPerson(CreatePersonRequest request) {}
+    }
+
     private static Method getF() throws NoSuchMethodException {
         return Wrapper.class.getMethod(
                 "f",
@@ -344,6 +357,25 @@ class ToolSpecificationsTest implements WithAssertions {
                                                         .required("street", "city")
                                                         .build())
                                         .required("name", "billingAddress", "shippingAddress")
+                                        .build())
+                        .required("arg0")
+                        .build());
+    }
+
+    @Test
+    void tool_specification_includes_inherited_request_fields() throws NoSuchMethodException {
+        Method method = ToolWithInheritedRequest.class.getMethod("createPerson", CreatePersonRequest.class);
+
+        ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
+
+        assertThat(ts.parameters())
+                .isEqualTo(JsonObjectSchema.builder()
+                        .addProperty(
+                                "arg0",
+                                JsonObjectSchema.builder()
+                                        .addStringProperty("id")
+                                        .addStringProperty("name")
+                                        .required("id", "name")
                                         .build())
                         .required("arg0")
                         .build());
