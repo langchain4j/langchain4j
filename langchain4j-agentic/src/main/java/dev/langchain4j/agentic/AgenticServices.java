@@ -692,9 +692,6 @@ public class AgenticServices {
         if (!agentServiceClass.isInterface()) {
             Method agenticMethod = nonAiAgentMethod(agentServiceClass);
             if (agenticMethod != null) {
-                if (agenticMethod.getParameterCount() == 0) {
-                    return agentToExecutor(new AgentAction(() -> invokeStatic(agenticMethod)));
-                }
                 return nonAiAgentToExecutor(
                         new AgenticScopeFunction<>(scope -> invokeStatic(
                                 agenticMethod,
