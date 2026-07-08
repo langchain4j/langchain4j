@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
@@ -14,6 +15,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.request.EmbeddingParameter;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.request.EmbeddingRequestParameters;
@@ -46,6 +48,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final Integer maxSegmentsPerBatch;
     private final String encodingFormat;
     private final Map<String, Object> customParameters;
+    private final List<EmbeddingModelListener> listeners;
 
     public OpenAiEmbeddingModel(OpenAiEmbeddingModelBuilder builder) {
 
@@ -73,7 +76,13 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.customParameters = builder.customParameters == null
                 ? null
                 : unmodifiableMap(new LinkedHashMap<>(builder.customParameters));
+        this.listeners = copy(builder.listeners);
         ensureGreaterThanZero(this.maxSegmentsPerBatch, "maxSegmentsPerBatch");
+    }
+
+    @Override
+    public List<EmbeddingModelListener> listeners() {
+        return listeners;
     }
 
     @Override
@@ -212,9 +221,15 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Map<String, String> customQueryParams;
         private String encodingFormat;
         private Map<String, Object> customParameters;
+        private List<EmbeddingModelListener> listeners;
 
         public OpenAiEmbeddingModelBuilder() {
             // This is public so it can be extended
+        }
+
+        public OpenAiEmbeddingModelBuilder listeners(List<EmbeddingModelListener> listeners) {
+            this.listeners = listeners;
+            return this;
         }
 
         public OpenAiEmbeddingModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {

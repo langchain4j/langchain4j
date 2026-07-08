@@ -1,6 +1,7 @@
 package dev.langchain4j.model.voyageai;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.voyageai.VoyageAiClient.DEFAULT_BASE_URL;
@@ -17,6 +18,7 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.request.EmbeddingInput;
 import dev.langchain4j.model.embedding.request.EmbeddingInputType;
 import dev.langchain4j.model.embedding.request.EmbeddingParameter;
@@ -47,6 +49,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final String encodingFormat;
     private final Integer maxSegmentsPerBatch;
     private final boolean multimodal;
+    private final List<EmbeddingModelListener> listeners;
 
     @Deprecated(forRemoval = true, since = "1.4.0")
     public VoyageAiEmbeddingModel(
@@ -70,6 +73,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.inputType = inputType;
         this.encodingFormat = encodingFormat;
         this.multimodal = isMultimodalModel(this.modelName);
+        this.listeners = copy((List<EmbeddingModelListener>) null);
 
         this.client = VoyageAiClient.builder()
                 .httpClientBuilder(httpClientBuilder)
@@ -90,6 +94,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.inputType = builder.inputType;
         this.encodingFormat = builder.encodingFormat;
         this.multimodal = getOrDefault(builder.multimodal, isMultimodalModel(this.modelName));
+        this.listeners = copy(builder.listeners);
 
         this.client = VoyageAiClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
@@ -216,6 +221,11 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         return this.modelName;
     }
 
+    @Override
+    public List<EmbeddingModelListener> listeners() {
+        return listeners;
+    }
+
     private Response<List<Embedding>> embedTexts(List<String> texts) {
         List<Embedding> embeddings = new ArrayList<>();
         int inputTokenCount = 0;
@@ -281,6 +291,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Logger logger;
         private Integer maxSegmentsPerBatch;
         private Boolean multimodal;
+        private List<EmbeddingModelListener> listeners;
 
         /**
          * Sets a custom HTTP client builder, allowing fine-grained control over the HTTP client
@@ -476,6 +487,11 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
          */
         public Builder multimodal(Boolean multimodal) {
             this.multimodal = multimodal;
+            return this;
+        }
+
+        public Builder listeners(List<EmbeddingModelListener> listeners) {
+            this.listeners = listeners;
             return this;
         }
 

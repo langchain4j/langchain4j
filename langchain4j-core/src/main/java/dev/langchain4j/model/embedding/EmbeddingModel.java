@@ -1,7 +1,6 @@
 package dev.langchain4j.model.embedding;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static java.util.Collections.singletonList;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
@@ -9,7 +8,10 @@ import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.ValidationUtils;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext;
 import dev.langchain4j.model.embedding.request.EmbeddingInput;
 import dev.langchain4j.model.embedding.request.EmbeddingParameter;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
@@ -19,6 +21,7 @@ import dev.langchain4j.model.embedding.response.EmbeddingResponseMetadata;
 import dev.langchain4j.model.output.Response;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -80,7 +83,63 @@ public interface EmbeddingModel {
                 .parameters(finalParameters)
                 .build();
 
-        return doEmbed(finalRequest);
+        List<EmbeddingModelListener> listeners = listeners();
+        if (isNullOrEmpty(listeners)) {
+            return doEmbed(finalRequest);
+        }
+
+        // Fire listeners inline, mirroring ChatModel. The listener contexts are keyed on the (legacy)
+        // List<TextSegment> / Response<List<Embedding>> shape, so we adapt the request/response to it
+        // for backward compatibility with existing EmbeddingModelListener implementations.
+        List<TextSegment> textSegments = finalRequest.inputs().stream()
+                .map(input -> TextSegment.from(input.text()))
+                .toList();
+        Map<Object, Object> attributes = new java.util.concurrent.ConcurrentHashMap<>();
+
+        EmbeddingModelListenerUtils.onRequest(
+                EmbeddingModelRequestContext.builder()
+                        .textSegments(textSegments)
+                        .embeddingModel(this)
+                        .attributes(attributes)
+                        .build(),
+                listeners);
+        try {
+            EmbeddingResponse response = doEmbed(finalRequest);
+            Response<List<Embedding>> legacyResponse =
+                    Response.from(response.embeddings(), response.metadata().tokenUsage());
+            EmbeddingModelListenerUtils.onResponse(
+                    EmbeddingModelResponseContext.builder()
+                            .response(legacyResponse)
+                            .textSegments(textSegments)
+                            .embeddingModel(this)
+                            .attributes(attributes)
+                            .build(),
+                    listeners);
+            return response;
+        } catch (Exception error) {
+            EmbeddingModelListenerUtils.onError(
+                    EmbeddingModelErrorContext.builder()
+                            .error(error)
+                            .textSegments(textSegments)
+                            .embeddingModel(this)
+                            .attributes(attributes)
+                            .build(),
+                    listeners);
+            throw error;
+        }
+    }
+
+    /**
+     * The {@link EmbeddingModelListener}s to notify around {@link #embed(EmbeddingRequest)}, mirroring
+     * {@link dev.langchain4j.model.chat.ChatModel#listeners()}. Defaults to an empty list; a provider overrides
+     * it to fire its configured listeners inline (instead of, or in addition to, the wrapper-based
+     * {@link #addListener(EmbeddingModelListener)} approach).
+     *
+     * @since 1.18.0
+     */
+    @Experimental
+    default List<EmbeddingModelListener> listeners() {
+        return List.of();
     }
 
     /**
@@ -106,6 +165,7 @@ public interface EmbeddingModel {
                 .metadata(EmbeddingResponseMetadata.builder()
                         .modelName(modelName())
                         .tokenUsage(legacy.tokenUsage())
+                        .finishReason(legacy.finishReason())
                         .build())
                 .build();
     }
@@ -159,18 +219,28 @@ public interface EmbeddingModel {
 
     /**
      * Embed the text content of a TextSegment.
+     * <p>
+     * This convenience method routes through {@link #embed(EmbeddingRequest)}, so per-call parameter/content
+     * validation and {@link #listeners() listeners} apply here too. The result is bridged back to the legacy
+     * {@link Response} type (including {@link EmbeddingResponseMetadata#finishReason() finishReason}) so the
+     * behavior is unchanged for existing callers and implementations.
      *
      * @param textSegment the text segment to embed.
      * @return the embedding.
      */
     default Response<Embedding> embed(TextSegment textSegment) {
-        Response<List<Embedding>> response = embedAll(singletonList(textSegment));
+        EmbeddingResponse response = embed(EmbeddingRequest.builder()
+                .textSegment(textSegment)
+                .build());
         ValidationUtils.ensureEq(
-                response.content().size(),
+                response.embeddings().size(),
                 1,
                 "Expected a single embedding, but got %d",
-                response.content().size());
-        return Response.from(response.content().get(0), response.tokenUsage(), response.finishReason());
+                response.embeddings().size());
+        return Response.from(
+                response.embeddings().get(0),
+                response.metadata().tokenUsage(),
+                response.metadata().finishReason());
     }
 
     /**
@@ -205,10 +275,17 @@ public interface EmbeddingModel {
 
     /**
      * Wraps this {@link EmbeddingModel} with a listening model that dispatches events to the provided listener.
+     * <p>
+     * <b>Preferred approach:</b> where the model's builder exposes a {@code listeners(...)} method, configure
+     * listeners there instead. That fires them inline via {@link #listeners()} (mirroring
+     * {@link dev.langchain4j.model.chat.ChatModel}) without wrapping. This wrapper-based method remains useful
+     * for adding a listener to an already-built model, or for models whose builder does not yet expose
+     * {@code listeners(...)}.
      *
      * @param listener The listener to add.
      * @return An observing {@link EmbeddingModel} that will dispatch events to the provided listener.
      * @since 1.11.0
+     * @see #listeners()
      */
     @Experimental
     default EmbeddingModel addListener(EmbeddingModelListener listener) {
@@ -219,10 +296,15 @@ public interface EmbeddingModel {
      * Wraps this {@link EmbeddingModel} with a listening model that dispatches events to the provided listeners.
      * <p>
      * Listeners are called in the order of iteration.
+     * <p>
+     * <b>Preferred approach:</b> where the model's builder exposes a {@code listeners(...)} method, configure
+     * listeners there instead (see {@link #listeners()}); this wrapper remains useful for adding listeners to an
+     * already-built model or to models whose builder does not yet expose {@code listeners(...)}.
      *
      * @param listeners The listeners to add.
      * @return An observing {@link EmbeddingModel} that will dispatch events to the provided listeners.
      * @since 1.11.0
+     * @see #listeners()
      */
     @Experimental
     default EmbeddingModel addListeners(List<EmbeddingModelListener> listeners) {

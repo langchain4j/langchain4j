@@ -2,10 +2,13 @@ package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 
+import static dev.langchain4j.internal.Utils.copy;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import java.nio.charset.Charset;
@@ -35,9 +38,11 @@ abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingResponse>
     private final Region region;
     private final AwsCredentialsProvider credentialsProvider;
     private final Integer maxRetries;
+    private final List<EmbeddingModelListener> listeners;
 
     protected AbstractBedrockEmbeddingModel(AbstractBedrockEmbeddingModelBuilder<T, ?, ?> builder) {
         this.client = builder.client;
+        this.listeners = copy(builder.listeners);
 
         if (builder.isRegionSet) {
             this.region = builder.region;
@@ -85,6 +90,11 @@ abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingResponse>
      * @return request body
      */
     protected abstract List<Map<String, Object>> getRequestParameters(final List<TextSegment> textSegments);
+
+    @Override
+    public List<EmbeddingModelListener> listeners() {
+        return listeners;
+    }
 
     public BedrockRuntimeClient getClient() {
         if (client == null) {
@@ -175,9 +185,15 @@ abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingResponse>
         private boolean isCredentialsProviderSet;
         private Integer maxRetries;
         private boolean isMaxRetriesSet;
+        private List<EmbeddingModelListener> listeners;
 
         public B client(BedrockRuntimeClient client) {
             this.client = client;
+            return self();
+        }
+
+        public B listeners(List<EmbeddingModelListener> listeners) {
+            this.listeners = listeners;
             return self();
         }
 

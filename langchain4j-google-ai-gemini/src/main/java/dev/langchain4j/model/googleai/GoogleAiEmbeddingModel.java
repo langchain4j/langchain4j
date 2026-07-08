@@ -1,6 +1,7 @@
 package dev.langchain4j.model.googleai;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
@@ -13,6 +14,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.request.EmbeddingInput;
 import dev.langchain4j.model.embedding.request.EmbeddingInputType;
 import dev.langchain4j.model.embedding.request.EmbeddingParameter;
@@ -43,6 +45,7 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final TaskType taskType;
     private final String titleMetadataKey;
     private final Integer outputDimensionality;
+    private final List<EmbeddingModelListener> listeners;
 
     public GoogleAiEmbeddingModel(GoogleAiEmbeddingModelBuilder builder) {
         this.geminiService = new GeminiService(
@@ -60,6 +63,12 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.taskType = builder.taskType;
         this.titleMetadataKey = getOrDefault(builder.titleMetadataKey, "title");
         this.outputDimensionality = builder.outputDimensionality;
+        this.listeners = copy(builder.listeners);
+    }
+
+    @Override
+    public List<EmbeddingModelListener> listeners() {
+        return listeners;
     }
 
     public static GoogleAiEmbeddingModelBuilder builder() {
@@ -248,6 +257,7 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         TaskType taskType;
         String titleMetadataKey;
         Integer outputDimensionality;
+        List<EmbeddingModelListener> listeners;
         Duration timeout;
         Boolean logRequestsAndResponses;
         Boolean logRequests;
@@ -296,6 +306,11 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         public B outputDimensionality(Integer outputDimensionality) {
             this.outputDimensionality = outputDimensionality;
+            return builder();
+        }
+
+        public B listeners(List<EmbeddingModelListener> listeners) {
+            this.listeners = listeners;
             return builder();
         }
 

@@ -8,6 +8,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.request.EmbeddingInput;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
@@ -26,6 +27,7 @@ import java.util.List;
 import java.util.Set;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
@@ -43,6 +45,7 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final String modelName;
     private final Integer maxRetries;
     private final Boolean lateChunking;
+    private final List<EmbeddingModelListener> listeners;
 
     @Deprecated(forRemoval = true, since = "1.4.0")
     public JinaEmbeddingModel(
@@ -64,6 +67,7 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.maxRetries = getOrDefault(maxRetries, 2);
         this.lateChunking = getOrDefault(lateChunking, false);
+        this.listeners = copy((List<EmbeddingModelListener>) null);
     }
 
     public JinaEmbeddingModel(JinaEmbeddingModelBuilder builder) {
@@ -78,6 +82,12 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.lateChunking = getOrDefault(builder.lateChunking, false);
+        this.listeners = copy(builder.listeners);
+    }
+
+    @Override
+    public List<EmbeddingModelListener> listeners() {
+        return listeners;
     }
 
     public static JinaEmbeddingModelBuilder builder() {
@@ -205,8 +215,14 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private Logger logger;
+        private List<EmbeddingModelListener> listeners;
 
         JinaEmbeddingModelBuilder() {
+        }
+
+        public JinaEmbeddingModelBuilder listeners(List<EmbeddingModelListener> listeners) {
+            this.listeners = listeners;
+            return this;
         }
 
         public JinaEmbeddingModelBuilder baseUrl(String baseUrl) {

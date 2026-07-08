@@ -6,11 +6,52 @@ import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext;
+import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 class OpenAiEmbeddingModelTest {
+
+    @Test
+    void should_notify_configured_listener() {
+        MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(embeddingResponse());
+
+        AtomicReference<EmbeddingModelRequestContext> requestContext = new AtomicReference<>();
+        AtomicReference<EmbeddingModelResponseContext> responseContext = new AtomicReference<>();
+        EmbeddingModelListener listener = new EmbeddingModelListener() {
+            @Override
+            public void onRequest(EmbeddingModelRequestContext ctx) {
+                requestContext.set(ctx);
+            }
+
+            @Override
+            public void onResponse(EmbeddingModelResponseContext ctx) {
+                responseContext.set(ctx);
+            }
+        };
+
+        EmbeddingModel model = OpenAiEmbeddingModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .modelName("text-embedding-3-small")
+                .listeners(List.of(listener))
+                .build();
+
+        model.embed(EmbeddingRequest.builder().input("hello").build());
+
+        assertThat(requestContext.get()).isNotNull();
+        assertThat(requestContext.get().textSegments()).hasSize(1);
+        assertThat(requestContext.get().embeddingModel()).isSameAs(model);
+        assertThat(responseContext.get()).isNotNull();
+        assertThat(responseContext.get().response().content()).hasSize(1);
+        // request and response share the same attributes map
+        assertThat(responseContext.get().attributes()).isSameAs(requestContext.get().attributes());
+    }
 
     @Test
     void should_send_custom_parameters() {

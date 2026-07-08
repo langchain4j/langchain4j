@@ -7,6 +7,7 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.request.DefaultEmbeddingRequestParameters;
 import dev.langchain4j.model.embedding.request.EmbeddingInput;
 import dev.langchain4j.model.embedding.request.EmbeddingParameter;
@@ -89,6 +90,110 @@ class EmbeddingModelRequestResponseTest implements WithAssertions {
                     .collect(Collectors.toList());
             return EmbeddingResponse.builder().embeddings(embeddings).build();
         }
+    }
+
+    /** A model that fires inline listeners (ChatModel style) via listeners(). */
+    static class ListenableModel extends LegacyModel {
+
+        private final List<EmbeddingModelListener> listeners;
+        private final boolean fail;
+
+        ListenableModel(List<EmbeddingModelListener> listeners, boolean fail) {
+            this.listeners = listeners;
+            this.fail = fail;
+        }
+
+        @Override
+        public List<EmbeddingModelListener> listeners() {
+            return listeners;
+        }
+
+        @Override
+        public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
+            if (fail) {
+                throw new RuntimeException("boom");
+            }
+            return super.embedAll(textSegments);
+        }
+    }
+
+    @Test
+    void inline_listeners_fire_on_request_and_response() {
+        java.util.concurrent.atomic.AtomicInteger onRequest = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.concurrent.atomic.AtomicReference<dev.langchain4j.model.output.Response<List<Embedding>>> seen =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        EmbeddingModelListener listener = new EmbeddingModelListener() {
+            @Override
+            public void onRequest(dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext ctx) {
+                onRequest.incrementAndGet();
+                assertThat(ctx.textSegments()).extracting(TextSegment::text).containsExactly("hello");
+            }
+
+            @Override
+            public void onResponse(dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext ctx) {
+                seen.set(ctx.response());
+            }
+        };
+
+        EmbeddingModel model = new ListenableModel(List.of(listener), false);
+        EmbeddingResponse response = model.embed(EmbeddingRequest.builder().input("hello").build());
+
+        assertThat(onRequest).hasValue(1);
+        assertThat(seen.get().content()).isEqualTo(response.embeddings());
+        assertThat(seen.get().tokenUsage()).isEqualTo(new TokenUsage(7));
+    }
+
+    @Test
+    void inline_listeners_fire_on_convenience_embed_string() {
+        // the legacy convenience method now routes through embed(EmbeddingRequest), so listeners fire here too
+        java.util.concurrent.atomic.AtomicInteger onRequest = new java.util.concurrent.atomic.AtomicInteger();
+        EmbeddingModelListener listener = new EmbeddingModelListener() {
+            @Override
+            public void onRequest(dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext ctx) {
+                onRequest.incrementAndGet();
+                assertThat(ctx.textSegments()).extracting(TextSegment::text).containsExactly("hello");
+            }
+        };
+
+        EmbeddingModel model = new ListenableModel(List.of(listener), false);
+        model.embed("hello");
+
+        assertThat(onRequest).hasValue(1); // fires exactly once, no double-firing
+    }
+
+    @Test
+    void inline_listeners_fire_on_error() {
+        java.util.concurrent.atomic.AtomicReference<Throwable> error = new java.util.concurrent.atomic.AtomicReference<>();
+        EmbeddingModelListener listener = new EmbeddingModelListener() {
+            @Override
+            public void onError(dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext ctx) {
+                error.set(ctx.error());
+            }
+        };
+
+        EmbeddingModel model = new ListenableModel(List.of(listener), true);
+
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> model.embed(EmbeddingRequest.builder().input("hello").build()))
+                .withMessage("boom");
+        assertThat(error.get()).hasMessage("boom");
+    }
+
+    @Test
+    void wrapper_listener_still_fires_once_without_double_firing() {
+        java.util.concurrent.atomic.AtomicInteger count = new java.util.concurrent.atomic.AtomicInteger();
+        EmbeddingModelListener listener = new EmbeddingModelListener() {
+            @Override
+            public void onRequest(dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext ctx) {
+                count.incrementAndGet();
+            }
+        };
+
+        // wrapper around a plain provider (no inline listeners()) -> fires exactly once
+        EmbeddingModel model = new LegacyModel().addListener(listener);
+        model.embed(EmbeddingRequest.builder().input("hello").build());
+
+        assertThat(count).hasValue(1);
     }
 
     @Test

@@ -1,5 +1,6 @@
 package dev.langchain4j.model.cohere;
 
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
@@ -15,6 +16,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.request.EmbeddingInput;
 import dev.langchain4j.model.embedding.request.EmbeddingInputType;
 import dev.langchain4j.model.embedding.request.EmbeddingParameter;
@@ -44,6 +46,7 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final String modelName;
     private final String inputType;
     private final int maxSegmentsPerBatch;
+    private final List<EmbeddingModelListener> listeners;
 
     @Deprecated(forRemoval = true, since = "1.4.0")
     public CohereEmbeddingModel(
@@ -73,6 +76,7 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.modelName = modelName;
         this.inputType = inputType;
         this.maxSegmentsPerBatch = getOrDefault(maxSegmentsPerBatch, DEFAULT_MAX_SEGMENTS_PER_BATCH);
+        this.listeners = copy((List<EmbeddingModelListener>) null);
     }
 
     public CohereEmbeddingModel(CohereEmbeddingModelBuilder builder) {
@@ -96,6 +100,12 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.modelName = builder.modelName;
         this.inputType = builder.inputType;
         this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, DEFAULT_MAX_SEGMENTS_PER_BATCH);
+        this.listeners = copy(builder.listeners);
+    }
+
+    @Override
+    public List<EmbeddingModelListener> listeners() {
+        return listeners;
     }
 
     /**
@@ -272,8 +282,14 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Boolean logResponses;
         private Logger logger;
         private Integer maxSegmentsPerBatch;
+        private List<EmbeddingModelListener> listeners;
 
         CohereEmbeddingModelBuilder() {}
+
+        public CohereEmbeddingModelBuilder listeners(List<EmbeddingModelListener> listeners) {
+            this.listeners = listeners;
+            return this;
+        }
 
         public CohereEmbeddingModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
