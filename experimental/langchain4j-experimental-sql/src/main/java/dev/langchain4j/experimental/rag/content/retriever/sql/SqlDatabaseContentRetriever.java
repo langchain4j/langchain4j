@@ -299,11 +299,18 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
 
     protected String clean(String sqlQuery) {
         if (sqlQuery.contains("```sql")) {
-            return sqlQuery.substring(sqlQuery.indexOf("```sql") + 6, sqlQuery.lastIndexOf("```"));
+            return stripCodeFence(sqlQuery, sqlQuery.indexOf("```sql") + 6);
         } else if (sqlQuery.contains("```")) {
-            return sqlQuery.substring(sqlQuery.indexOf("```") + 3, sqlQuery.lastIndexOf("```"));
+            return stripCodeFence(sqlQuery, sqlQuery.indexOf("```") + 3);
         }
         return sqlQuery;
+    }
+
+    private static String stripCodeFence(String sqlQuery, int contentStart) {
+        int closingFence = sqlQuery.lastIndexOf("```");
+        return closingFence > contentStart
+                ? sqlQuery.substring(contentStart, closingFence)
+                : sqlQuery.substring(contentStart);
     }
 
     protected void validate(String sqlQuery) {
