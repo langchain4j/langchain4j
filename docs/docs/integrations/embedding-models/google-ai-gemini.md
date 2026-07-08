@@ -438,6 +438,21 @@ if (result.state() == BatchState.SUCCEEDED) {
 }
 ```
 
+## Request/response API and capabilities
+
+Besides the builder-level `taskType(...)` shown above, `GoogleAiEmbeddingModel` supports the request/response
+API with per-call parameters:
+
+- **Per-call parameters**: `input_type` (`EmbeddingInputType.QUERY` / `DOCUMENT`) is mapped to Gemini's
+  `RETRIEVAL_QUERY` / `RETRIEVAL_DOCUMENT` task types, so you can embed queries and documents differently
+  without configuring two model instances.
+- **Multimodal** (`gemini-embedding-2-preview`, Gemini Embedding 2): natively embeds interleaved text + image
+  into a single embedding. Earlier models (e.g. `gemini-embedding-001`) are text-only. Images must be provided
+  as base64 (`ImageContent`).
+- **Listeners**: configure via `GoogleAiEmbeddingModel.builder().listeners(...)`.
+
+See [Embedding Model](/tutorials/rag#embedding-model) for the request/response API and multimodal usage.
+
 ## Learn more
 
 If you're interested in learning more about the Google AI Gemini embedding models, please have a look at the

@@ -42,13 +42,15 @@ class OpenAiEmbeddingModelTest {
                 .listeners(List.of(listener))
                 .build();
 
-        model.embed(EmbeddingRequest.builder().input("hello").build());
+        model.embed(EmbeddingRequest.builder().input("hello").dimensions(256).build());
 
         assertThat(requestContext.get()).isNotNull();
         assertThat(requestContext.get().textSegments()).hasSize(1);
         assertThat(requestContext.get().embeddingModel()).isSameAs(model);
         assertThat(requestContext.get().modelProvider())
                 .isEqualTo(dev.langchain4j.model.ModelProvider.OPEN_AI);
+        // the listener sees the full request, including per-call parameters
+        assertThat(requestContext.get().embeddingRequest().dimensions()).isEqualTo(256);
         assertThat(responseContext.get()).isNotNull();
         assertThat(responseContext.get().response().content()).hasSize(1);
         // request and response share the same attributes map

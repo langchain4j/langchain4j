@@ -539,6 +539,42 @@ Currently supported embedding models can be found [here](/category/embedding-mod
 - `EmbeddingModel.dimension()` returns the dimension of the `Embedding` produced by this model
 </details>
 
+#### Request/response API and per-call parameters
+
+Besides the convenience methods above, `EmbeddingModel` also exposes a request/response API that mirrors
+`ChatModel`, allowing **per-call parameters**:
+
+```java
+EmbeddingResponse response = embeddingModel.embed(EmbeddingRequest.builder()
+    .input("What is the capital of France?")
+    .inputType(EmbeddingInputType.QUERY) // query vs document, see the note above
+    .dimensions(256)                     // reduce output dimensionality (on models that support it)
+    .build());
+
+List<Embedding> embeddings = response.embeddings();
+```
+
+Per-call parameters are strictly opt-in: each provider declares what it supports via `supportedParameters()`.
+If a request uses a parameter the model does not support, it fails fast with `UnsupportedFeatureException`
+rather than silently ignoring it. See also
+[Query vs Document Embeddings](#query-vs-document-embeddings-opt-in).
+
+#### Multimodal embeddings
+
+Some models embed images (and interleaved text + image) into the same vector space. Build inputs from `Content`
+parts; on models that support it (Cohere Embed v4, Voyage multimodal, Google Gemini Embedding 2, Amazon Titan
+Multimodal, Jina CLIP, ...) the parts are fused into a single embedding:
+
+```java
+EmbeddingResponse response = embeddingModel.embed(EmbeddingRequest.builder()
+    .input(TextContent.from("a photo of a cat"), ImageContent.from("https://example.com/cat.png"))
+    .build());
+```
+
+A model declares its supported modalities via `supportedContentTypes()`; passing an image to a text-only model
+fails fast with `UnsupportedFeatureException`. `EmbeddingModel` observability (listeners) is described in the
+[Observability](/tutorials/observability) tutorial.
+
 
 ### Embedding Store
 The `EmbeddingStore` interface represents a store for `Embedding`s, also known as vector database.

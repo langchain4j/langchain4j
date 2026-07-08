@@ -404,13 +404,15 @@ public class MyEmbeddingModelListener implements EmbeddingModelListener {
     @Override
     public void onRequest(EmbeddingModelRequestContext requestContext) {
         requestContext.attributes().put("startNanos", System.nanoTime());
+        // requestContext.embeddingRequest() exposes the inputs, per-call parameters (input_type, dimensions, ...)
+        // and multimodal content. requestContext.modelProvider() identifies the provider.
     }
 
     @Override
     public void onResponse(EmbeddingModelResponseContext responseContext) {
         long startNanos = (long) responseContext.attributes().get("startNanos");
         long durationNanos = System.nanoTime() - startNanos;
-        // Do something with duration and/or responseContext.response()
+        // Do something with duration and/or responseContext.embeddingResponse() (embeddings + metadata)
     }
 
     @Override

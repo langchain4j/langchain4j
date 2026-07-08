@@ -83,6 +83,16 @@ EmbeddingModel model = OpenAiEmbeddingModel.builder()
         .build();
 ```
 
+## Capabilities
+
+- **Per-call parameters** (via `EmbeddingRequest`): `dimensions` — reduce output dimensionality on
+  `text-embedding-3` models. OpenAI-specific `user`, `encoding_format` and arbitrary passthrough parameters are
+  available via `OpenAiEmbeddingRequestParameters` (used, for example, for NVIDIA's `input_type`).
+- Text-only (no image inputs).
+- **Listeners**: configure via `OpenAiEmbeddingModel.builder().listeners(...)`.
+
+See [Embedding Model](/tutorials/rag#embedding-model) for the request/response API.
+
 ## Examples
 
 - [OpenAiEmbeddingModelExamples](https://github.com/langchain4j/langchain4j-examples/blob/main/open-ai-examples/src/main/java/OpenAiEmbeddingModelExamples.java)

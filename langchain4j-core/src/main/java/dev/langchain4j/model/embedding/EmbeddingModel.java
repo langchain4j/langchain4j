@@ -97,8 +97,9 @@ public interface EmbeddingModel {
 
         ModelProvider provider = provider();
         EmbeddingModelListenerUtils.onRequest(
-                EmbeddingModelRequestContext.builder() // TODO add EmbeddingRequest
+                EmbeddingModelRequestContext.builder()
                         .textSegments(textSegments)
+                        .embeddingRequest(finalRequest)
                         .embeddingModel(this)
                         .modelProvider(provider)
                         .attributes(attributes)
@@ -109,20 +110,23 @@ public interface EmbeddingModel {
             Response<List<Embedding>> legacyResponse =
                     Response.from(response.embeddings(), response.metadata().tokenUsage());
             EmbeddingModelListenerUtils.onResponse(
-                    EmbeddingModelResponseContext.builder() // TODO add EmbeddingRequest + EmbeddingResponse
-                            .response(legacyResponse)
-                            .textSegments(textSegments)
+                    EmbeddingModelResponseContext.builder()
+                            .embeddingRequest(finalRequest)
+                            .embeddingResponse(response)
                             .embeddingModel(this)
                             .modelProvider(provider)
                             .attributes(attributes)
+                            .response(legacyResponse)
+                            .textSegments(textSegments)
                             .build(),
                     listeners);
             return response;
         } catch (Exception error) {
             EmbeddingModelListenerUtils.onError(
-                    EmbeddingModelErrorContext.builder() // TODO add EmbeddingRequest
+                    EmbeddingModelErrorContext.builder()
                             .error(error)
                             .textSegments(textSegments)
+                            .embeddingRequest(finalRequest)
                             .embeddingModel(this)
                             .modelProvider(provider)
                             .attributes(attributes)

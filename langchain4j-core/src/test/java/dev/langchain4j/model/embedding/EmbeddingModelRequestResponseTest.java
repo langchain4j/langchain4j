@@ -128,11 +128,19 @@ class EmbeddingModelRequestResponseTest implements WithAssertions {
                 onRequest.incrementAndGet();
                 assertThat(ctx.textSegments()).extracting(TextSegment::text).containsExactly("hello");
                 assertThat(ctx.modelProvider()).isEqualTo(dev.langchain4j.model.ModelProvider.OTHER);
+                // listeners can see the full request (per-call parameters + multimodal inputs)
+                assertThat(ctx.embeddingRequest()).isNotNull();
+                assertThat(ctx.embeddingRequest().inputs())
+                        .extracting(EmbeddingInput::text)
+                        .containsExactly("hello");
             }
 
             @Override
             public void onResponse(dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext ctx) {
                 seen.set(ctx.response());
+                // the new request/response types are available on the context
+                assertThat(ctx.embeddingRequest().inputs()).extracting(EmbeddingInput::text).containsExactly("hello");
+                assertThat(ctx.embeddingResponse().embeddings()).isEqualTo(ctx.response().content());
             }
         };
 

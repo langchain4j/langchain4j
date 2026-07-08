@@ -328,7 +328,11 @@ public abstract class AbstractEmbeddingModelIT {
                 .extracting(TextSegment::text)
                 .containsExactly("hello");
         assertThat(requestContext.get().modelProvider()).isEqualTo(model.provider());
+        // listeners can inspect the full request (per-call parameters + multimodal inputs)
+        assertThat(requestContext.get().embeddingRequest()).isNotNull();
+        assertThat(requestContext.get().embeddingRequest().inputs()).hasSize(1);
         assertThat(responseContext.get().response().content()).hasSize(1);
+        assertThat(responseContext.get().embeddingResponse().embeddings()).hasSize(1);
         // request and response share the same attributes instance
         assertThat(responseContext.get().attributes()).isSameAs(requestContext.get().attributes());
     }

@@ -170,6 +170,7 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
 
         EmbeddingModelRequestContext requestContext = EmbeddingModelRequestContext.builder()
                 .textSegments(textSegmentsForContext)
+                .embeddingRequest(request)
                 .embeddingModel(this)
                 .modelProvider(delegate.provider())
                 .attributes(attributes)
@@ -183,11 +184,13 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
 
             onResponse(
                     EmbeddingModelResponseContext.builder()
-                            .response(responseForListeners)
-                            .textSegments(textSegmentsForContext)
+                            .embeddingRequest(request)
+                            .embeddingResponse(response)
                             .embeddingModel(this)
                             .modelProvider(delegate.provider())
                             .attributes(attributes)
+                            .response(responseForListeners)
+                            .textSegments(textSegmentsForContext)
                             .build(),
                     listeners);
             return response;
@@ -196,6 +199,7 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
                     EmbeddingModelErrorContext.builder()
                             .error(error)
                             .textSegments(textSegmentsForContext)
+                            .embeddingRequest(request)
                             .embeddingModel(this)
                             .modelProvider(delegate.provider())
                             .attributes(attributes)

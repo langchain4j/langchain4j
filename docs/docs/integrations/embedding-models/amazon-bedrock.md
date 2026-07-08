@@ -51,6 +51,25 @@ BedrockCohereEmbeddingModel embeddingModel = BedrockCohereEmbeddingModel
 - `BedrockTitanEmbeddingModel`
 - `BedrockCohereEmbeddingModel`
 
+## Titan Multimodal Embeddings
+
+`BedrockTitanEmbeddingModel` supports Amazon Titan Multimodal Embeddings (`amazon.titan-embed-image-v1`): it
+embeds text and/or a single image into one (averaged) embedding.
+
+```java
+EmbeddingModel model = BedrockTitanEmbeddingModel.builder()
+    .model("amazon.titan-embed-image-v1")
+    .region(Region.US_EAST_1)
+    .build();
+
+EmbeddingResponse response = model.embed(EmbeddingRequest.builder()
+    .input(TextContent.from("a photo of a cat"), ImageContent.from(base64Data, "image/png"))
+    .build());
+```
+
+Titan requires **base64** image data (a URL is not supported). Listeners can be configured via
+`.listeners(...)`. See [Embedding Model](/tutorials/rag#embedding-model) for the request/response API.
+
 ## Examples
 
 - [BedrockEmbeddingIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-bedrock/src/test/java/dev/langchain4j/model/bedrock/BedrockEmbeddingIT.java)
