@@ -101,6 +101,11 @@ abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingResponse>
         return ModelProvider.AMAZON_BEDROCK;
     }
 
+    @Override
+    public String modelName() {
+        return getModelId();
+    }
+
     public BedrockRuntimeClient getClient() {
         if (client == null) {
             synchronized (this) {

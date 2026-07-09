@@ -8,8 +8,11 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.core.SdkBytes;
@@ -90,6 +93,33 @@ class BedrockTitanMultimodalTest {
                         .input(VideoContent.from("https://example.com/clip.mp4"))
                         .build()))
                 .withMessageContaining("VIDEO");
+    }
+
+    @Test
+    void model_name_is_exposed_to_listeners_and_response_metadata() {
+        AtomicReference<String> requestModelName = new AtomicReference<>();
+        EmbeddingModelListener listener = new EmbeddingModelListener() {
+            @Override
+            public void onRequest(EmbeddingModelRequestContext ctx) {
+                requestModelName.set(ctx.embeddingModel().modelName());
+            }
+        };
+
+        BedrockTitanEmbeddingModel model = BedrockTitanEmbeddingModel.builder()
+                .model("amazon.titan-embed-text-v2:0")
+                .client(capturingClient(new AtomicReference<>()))
+                .listeners(List.of(listener))
+                .build();
+
+        assertThat(model.modelName()).isEqualTo("amazon.titan-embed-text-v2:0");
+
+        EmbeddingResponse response =
+                model.embed(EmbeddingRequest.builder().input("hello").build());
+
+        // the request side now exposes the real model name to listeners (previously "unknown")
+        assertThat(requestModelName.get()).isEqualTo("amazon.titan-embed-text-v2:0");
+        // the response metadata carries it too
+        assertThat(response.metadata().modelName()).isEqualTo("amazon.titan-embed-text-v2:0");
     }
 
     private static BedrockRuntimeClient capturingClient(AtomicReference<InvokeModelRequest> captured) {
