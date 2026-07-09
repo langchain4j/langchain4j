@@ -59,8 +59,9 @@ import org.junit.jupiter.params.provider.MethodSource;
 @TestInstance(PER_CLASS)
 public abstract class AbstractEmbeddingModelIT {
 
+    // Same image the chat-model ITs use; it is a PNG (matching the mime type below) and reliably fetchable.
     protected static final String CAT_IMAGE_URL =
-            "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Cat03.jpg/240px-Cat03.jpg";
+            "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
 
     // ===================== model provisioning =====================
 
@@ -82,17 +83,20 @@ public abstract class AbstractEmbeddingModelIT {
     }
 
     // ===================== feature gates =====================
+    // Defaults are opt-out: every capability is assumed supported, so a new implementation must actively
+    // override a gate to false for what it does not support. This nudges new integrations to support as many
+    // parameters and modalities as possible, and makes a forgotten capability fail loudly rather than silently.
 
     protected boolean supportsInputTypeParameter() {
-        return false;
+        return true;
     }
 
     protected boolean supportsDimensionsParameter() {
-        return false;
+        return true;
     }
 
     protected boolean supportsImageInput() {
-        return false;
+        return true;
     }
 
     /** Whether text and image parts can be fused into a single embedding (interleaved input). */

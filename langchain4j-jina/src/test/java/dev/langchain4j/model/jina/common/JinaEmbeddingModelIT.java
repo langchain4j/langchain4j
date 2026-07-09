@@ -41,12 +41,7 @@ class JinaEmbeddingModelIT extends AbstractEmbeddingModelIT {
     }
 
     // jina-clip-v2 embeds text and images, but one modality per input item (it does not fuse interleaved input),
-    // and it does not expose the common input_type parameter.
-    @Override
-    protected boolean supportsImageInput() {
-        return true;
-    }
-
+    // and it exposes neither the common input_type parameter nor a per-call dimensions parameter.
     @Override
     protected boolean supportsInterleavedInput() {
         return false;

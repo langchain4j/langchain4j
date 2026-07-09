@@ -40,12 +40,8 @@ class GoogleAiEmbeddingModelIT extends AbstractEmbeddingModelIT {
                 .build();
     }
 
-    // gemini-embedding-001 maps input_type -> task type (query/document), but is text-only.
-    @Override
-    protected boolean supportsInputTypeParameter() {
-        return true;
-    }
-
+    // gemini-embedding-001 maps input_type -> task type (query/document), but is text-only and does not
+    // support reducing output dimensionality.
     @Override
     protected boolean supportsImageInput() {
         return false;

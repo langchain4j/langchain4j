@@ -43,11 +43,6 @@ class BedrockTitanEmbeddingModelIT extends AbstractEmbeddingModelIT {
     // Titan Multimodal fuses text and (base64) image into a single embedding; it has no input_type and no
     // per-call dimensions parameter (output length is configured on the builder).
     @Override
-    protected boolean supportsImageInput() {
-        return true;
-    }
-
-    @Override
     protected boolean supportsInputTypeParameter() {
         return false;
     }

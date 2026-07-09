@@ -44,18 +44,8 @@ class GoogleAiGemini2EmbeddingModelIT extends AbstractEmbeddingModelIT {
                 .build();
     }
 
-    // Gemini Embedding 2 is natively multimodal: text + image, interleaved into a single embedding,
-    // and maps the common input_type to a task type.
-    @Override
-    protected boolean supportsInputTypeParameter() {
-        return true;
-    }
-
-    @Override
-    protected boolean supportsImageInput() {
-        return true;
-    }
-
+    // Gemini Embedding 2 is natively multimodal (text + image, interleaved into a single embedding) and maps
+    // the common input_type to a task type, but does not support reducing output dimensionality.
     @Override
     protected boolean supportsDimensionsParameter() {
         return false;

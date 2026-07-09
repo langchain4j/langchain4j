@@ -41,17 +41,8 @@ class VoyageAiEmbeddingModelIT extends AbstractEmbeddingModelIT {
                 .build();
     }
 
-    // voyage-multimodal-3.5 is multimodal (text + image, fused) and maps input_type to query/document.
-    @Override
-    protected boolean supportsInputTypeParameter() {
-        return true;
-    }
-
-    @Override
-    protected boolean supportsImageInput() {
-        return true;
-    }
-
+    // voyage-multimodal-3.5 is multimodal (text + image, fused) and maps input_type to query/document, but does
+    // not support a per-call dimensions parameter.
     @Override
     protected boolean supportsDimensionsParameter() {
         return false;
