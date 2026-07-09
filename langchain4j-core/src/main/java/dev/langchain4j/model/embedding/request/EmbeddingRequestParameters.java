@@ -4,15 +4,15 @@ import dev.langchain4j.Experimental;
 import java.util.Set;
 
 /**
- * Common per-call parameters supported by embedding models.
- * Specific provider integrations can extend this interface (via {@link DefaultEmbeddingRequestParameters})
- * to add provider-specific parameters, mirroring
- * {@link dev.langchain4j.model.chat.request.ChatRequestParameters}.
+ * The per-call parameters of an {@link EmbeddingRequest}, such as {@link #dimensions()} or {@link #inputType()}.
+ * Provider integrations can extend this interface (via {@link DefaultEmbeddingRequestParameters}) to add
+ * provider-specific parameters.
  * <p>
  * Every value carried by these parameters is identified by an {@link EmbeddingParameter} token. The set of
  * tokens actually populated is exposed via {@link #presentParameters()}; an
  * {@link dev.langchain4j.model.embedding.EmbeddingModel} rejects a request carrying a parameter it does not
- * list in {@link dev.langchain4j.model.embedding.EmbeddingModel#supportedParameters()}.
+ * list in {@link dev.langchain4j.model.embedding.EmbeddingModel#supportedParameters()}, so a parameter a model
+ * cannot apply is never silently ignored.
  *
  * @see DefaultEmbeddingRequestParameters
  * @since 1.18.0

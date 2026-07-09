@@ -7,6 +7,7 @@ import static dev.langchain4j.internal.Utils.copy;
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.output.Response;
@@ -97,8 +98,8 @@ abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingResponse>
     }
 
     @Override
-    public dev.langchain4j.model.ModelProvider provider() {
-        return dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
+    public ModelProvider provider() {
+        return ModelProvider.AMAZON_BEDROCK;
     }
 
     public BedrockRuntimeClient getClient() {

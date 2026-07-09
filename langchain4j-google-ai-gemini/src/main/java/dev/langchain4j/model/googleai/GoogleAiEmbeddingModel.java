@@ -13,6 +13,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.request.EmbeddingInput;
@@ -72,8 +73,8 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     @Override
-    public dev.langchain4j.model.ModelProvider provider() {
-        return dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
+    public ModelProvider provider() {
+        return ModelProvider.GOOGLE_AI_GEMINI;
     }
 
     public static GoogleAiEmbeddingModelBuilder builder() {

@@ -39,20 +39,10 @@ class OpenAiEmbeddingModelIT extends AbstractEmbeddingModelIT {
                 .build();
     }
 
-    // OpenAI text-embedding-3 supports reducing output dimensionality...
+    // OpenAI text-embedding-3 supports reducing output dimensionality
+    // (input types and image inputs are not supported, which is the default).
     @Override
     protected boolean supportsDimensionsParameter() {
         return true; // TODO opt-out vs opt-in
-    }
-
-    // ...but not query/document input types or image inputs.
-    @Override
-    protected boolean supportsInputTypeParameter() {
-        return false;
-    }
-
-    @Override
-    protected boolean supportsImageInput() {
-        return false; // TODO do not override defaults
     }
 }

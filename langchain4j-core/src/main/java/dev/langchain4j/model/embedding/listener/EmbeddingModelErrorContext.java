@@ -12,14 +12,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The embedding model error context.
- * It contains the error, the {@link EmbeddingRequest}, the {@link EmbeddingModel}, the {@link ModelProvider} and
- * attributes. The attributes can be used to pass data between methods of an {@link EmbeddingModelListener}
- * or between multiple {@link EmbeddingModelListener}s.
- * <p>
- * Prefer {@link #embeddingRequest()} (which exposes per-call parameters and multimodal inputs). The legacy
- * {@link #textSegments()} accessor is retained for backward compatibility and will be deprecated and removed
- * in 2.0.
+ * The context passed to {@link EmbeddingModelListener#onError(EmbeddingModelErrorContext)} when an embedding
+ * call fails. It gives access to the {@link Throwable} that was thrown, the {@link EmbeddingRequest} that was
+ * being embedded, the {@link EmbeddingModel}, the {@link ModelProvider}, and the {@code attributes} map shared
+ * with the request callback of the same listener.
  *
  * @since 1.11.0
  */
@@ -32,7 +28,6 @@ public class EmbeddingModelErrorContext {
     private final ModelProvider modelProvider;
     private final Map<Object, Object> attributes;
 
-    // Legacy field, retained for backward compatibility; to be removed in 2.0.
     private final List<TextSegment> textSegments;
 
     public EmbeddingModelErrorContext(Builder builder) {
@@ -52,8 +47,9 @@ public class EmbeddingModelErrorContext {
     }
 
     /**
-     * @return the full {@link EmbeddingRequest} (including per-call parameters and multimodal inputs), or
-     * {@code null} when the embedding was triggered via a legacy convenience method.
+     * @return the {@link EmbeddingRequest} that was being embedded, including its per-call parameters and
+     * multimodal inputs. It is {@code null} when the embedding was triggered via one of the
+     * {@link EmbeddingModel#embed(String)} / {@link EmbeddingModel#embedAll(List)} convenience methods.
      */
     public EmbeddingRequest embeddingRequest() {
         return embeddingRequest;
@@ -79,8 +75,8 @@ public class EmbeddingModelErrorContext {
     }
 
     /**
-     * Legacy accessor; prefer {@link #embeddingRequest()} (via {@code embeddingRequest().inputs()}).
-     * Will be deprecated and removed in 2.0.
+     * @return the text of each input that was being embedded. For the full request, including per-call
+     * parameters and multimodal inputs, use {@link #embeddingRequest()}.
      */
     public List<TextSegment> textSegments() {
         return textSegments;
@@ -132,9 +128,6 @@ public class EmbeddingModelErrorContext {
             return this;
         }
 
-        /**
-         * Legacy; prefer {@link #embeddingRequest(EmbeddingRequest)}. Will be removed in 2.0.
-         */
         public Builder textSegments(List<TextSegment> textSegments) {
             this.textSegments = textSegments;
             return this;

@@ -162,12 +162,12 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
         EmbeddingStoreContentRetrieverBuilder() {}
 
         /**
-         * Opt-in: embed the query with the given {@link EmbeddingInputType} (typically
-         * {@link EmbeddingInputType#QUERY}) via {@link EmbeddingModel#embed(dev.langchain4j.model.embedding.request.EmbeddingRequest)}.
-         * When {@code null} (the default), the legacy {@link EmbeddingModel#embed(String)} is used and no input
-         * type is sent (unchanged behavior). The chosen {@link EmbeddingModel} must
-         * {@link EmbeddingModel#supportedParameters() support} the {@code input_type} parameter, otherwise the
-         * query embedding fails fast.
+         * Embeds the query with the given {@link EmbeddingInputType} (typically {@link EmbeddingInputType#QUERY}),
+         * so providers that encode queries and documents differently can produce a query-optimized embedding.
+         * <p>
+         * When left {@code null} (the default), no input type is sent. If set, the chosen {@link EmbeddingModel}
+         * must {@link EmbeddingModel#supportedParameters() support} the input type parameter, otherwise the query
+         * embedding fails fast.
          */
         public EmbeddingStoreContentRetrieverBuilder embeddingInputType(EmbeddingInputType embeddingInputType) {
             this.embeddingInputType = embeddingInputType;

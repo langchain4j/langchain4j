@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.model.ModelProvider.OPEN_AI;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.tokenUsageFrom;
@@ -14,8 +15,10 @@ import static java.util.Collections.unmodifiableMap;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
+import dev.langchain4j.model.embedding.request.EmbeddingInput;
 import dev.langchain4j.model.embedding.request.EmbeddingParameter;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.request.EmbeddingRequestParameters;
@@ -86,8 +89,8 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     @Override
-    public dev.langchain4j.model.ModelProvider provider() { // TODO do not use fqn, everywhere
-        return dev.langchain4j.model.ModelProvider.OPEN_AI;
+    public ModelProvider provider() {
+        return OPEN_AI;
     }
 
     @Override
@@ -131,7 +134,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         EmbeddingRequestParameters parameters = request.parameters();
 
         List<String> texts = request.inputs().stream()
-                .map(dev.langchain4j.model.embedding.request.EmbeddingInput::text)
+                .map(EmbeddingInput::text)
                 .toList();
         List<List<String>> textBatches = partition(texts, maxSegmentsPerBatch);
 

@@ -33,22 +33,17 @@ import java.util.stream.Collectors;
 public interface EmbeddingModel {
 
     /**
-     * The primary request/response API, mirroring {@link dev.langchain4j.model.chat.ChatModel#chat}.
+     * Embeds the inputs of the given {@link EmbeddingRequest} and returns the resulting embeddings.
      * <p>
-     * This method merges the model's {@link #defaultRequestParameters() default parameters} with the
-     * request's parameters, validates that every populated parameter is
-     * {@link #supportedParameters() supported} by this implementation, and then delegates to
-     * {@link #doEmbed(EmbeddingRequest)}.
-     * <p>
-     * Per-call parameters are strictly opt-in: if the (merged) request populates a parameter that this
-     * implementation does not declare as supported, an {@link UnsupportedFeatureException} is thrown instead
-     * of the parameter being silently ignored. Implementations that have not overridden
-     * {@link #doEmbed(EmbeddingRequest)} support no parameters at all, so a plain request (no parameters)
-     * works everywhere, while a request that asks for a parameter such an implementation cannot honor fails
-     * fast.
+     * An {@link EmbeddingRequest} carries one or more inputs to embed, together with optional per-call
+     * {@link EmbeddingRequestParameters parameters} such as {@code dimensions} or an
+     * {@link dev.langchain4j.model.embedding.request.EmbeddingInputType input type}. A model only honors the
+     * parameters listed in {@link #supportedParameters()} and the content types listed in
+     * {@link #supportedContentTypes()}; a request that uses anything else is rejected with an
+     * {@link UnsupportedFeatureException} rather than being silently ignored.
      *
-     * @param request the request, containing the texts to embed and the per-call parameters.
-     * @return the response, containing the embeddings and the response metadata.
+     * @param request the inputs to embed and the per-call parameters.
+     * @return the embeddings and the response metadata.
      * @since 1.18.0
      */
     @Experimental
@@ -137,10 +132,8 @@ public interface EmbeddingModel {
     }
 
     /**
-     * The {@link EmbeddingModelListener}s to notify around {@link #embed(EmbeddingRequest)}, mirroring
-     * {@link dev.langchain4j.model.chat.ChatModel#listeners()}. Defaults to an empty list; a provider overrides
-     * it to fire its configured listeners inline (instead of, or in addition to, the wrapper-based
-     * {@link #addListener(EmbeddingModelListener)} approach).
+     * The {@link EmbeddingModelListener}s that are notified around {@link #embed(EmbeddingRequest)}.
+     * Configure them on the model's builder (via {@code listeners(...)}). Defaults to an empty list.
      *
      * @since 1.18.0
      */
@@ -150,9 +143,9 @@ public interface EmbeddingModel {
     }
 
     /**
-     * The {@link ModelProvider} of this embedding model, exposed to {@link #listeners() listeners} via the
-     * request/response/error contexts (mirroring {@link dev.langchain4j.model.chat.ChatModel#provider()}).
-     * Defaults to {@link ModelProvider#OTHER}; providers override it.
+     * The {@link ModelProvider} of this embedding model (for example {@link ModelProvider#OPEN_AI}). It is made
+     * available to {@link #listeners() listeners} through the request, response and error contexts.
+     * Defaults to {@link ModelProvider#OTHER}.
      *
      * @since 1.18.0
      */
@@ -162,14 +155,13 @@ public interface EmbeddingModel {
     }
 
     /**
-     * The method a provider overrides to natively honor per-call parameters. The default implementation
-     * bridges <i>down</i> to the legacy {@link #embedAll(List)}, so every existing implementation supports
-     * the new request/response API unchanged. Because this default only calls the (still abstract)
-     * {@code embedAll}, there is no default-to-default cycle.
+     * Performs the embedding for {@link #embed(EmbeddingRequest)}. A provider that supports per-call parameters
+     * or non-text inputs overrides this method to build the actual API call. The default implementation embeds
+     * the text of each input via {@link #embedAll(List)}.
      * <p>
-     * The default does not apply any request parameters — it does not need to, because
-     * {@link #embed(EmbeddingRequest)} has already rejected any parameter that {@link #supportedParameters()}
-     * (empty by default) does not cover.
+     * When this method is called, the request's parameters have already been merged with
+     * {@link #defaultRequestParameters()} and validated against {@link #supportedParameters()} and
+     * {@link #supportedContentTypes()}.
      *
      * @param request the request, with parameters already merged and validated.
      * @return the response.
@@ -201,10 +193,10 @@ public interface EmbeddingModel {
     }
 
     /**
-     * The set of per-call parameters this implementation honors. Defaults to the empty set (default-deny):
-     * an implementation must explicitly opt into each parameter it supports, otherwise
-     * {@link #embed(EmbeddingRequest)} rejects requests that populate it. This guarantees that a newly
-     * introduced parameter is never silently ignored by an implementation that has not been updated.
+     * The per-call {@link EmbeddingParameter parameters} this model honors. A request that populates a parameter
+     * outside this set is rejected by {@link #embed(EmbeddingRequest)} with an {@link UnsupportedFeatureException},
+     * so a parameter a model cannot apply is never silently ignored. Defaults to an empty set (the model accepts
+     * no per-call parameters).
      *
      * @since 1.18.0
      */
@@ -214,10 +206,10 @@ public interface EmbeddingModel {
     }
 
     /**
-     * The set of input {@link ContentType}s this implementation can embed. Defaults to {@code {TEXT}}: an
-     * implementation must explicitly opt into non-text modalities (image/audio/video/pdf), otherwise
-     * {@link #embed(EmbeddingRequest)} rejects any input that uses them. Like {@link #supportedParameters()},
-     * this is default-deny, so a text-only model never silently ignores (or mis-embeds) an image.
+     * The input {@link ContentType content types} this model can embed. A request whose inputs use a content
+     * type outside this set is rejected by {@link #embed(EmbeddingRequest)} with an
+     * {@link UnsupportedFeatureException}. Defaults to {@code {TEXT}}; a multimodal model overrides this to also
+     * accept, for example, {@link ContentType#IMAGE images}.
      *
      * @since 1.18.0
      */
@@ -237,12 +229,10 @@ public interface EmbeddingModel {
     }
 
     /**
-     * Embed the text content of a TextSegment.
+     * Embed the text content of a {@link TextSegment}.
      * <p>
-     * This convenience method routes through {@link #embed(EmbeddingRequest)}, so per-call parameter/content
-     * validation and {@link #listeners() listeners} apply here too. The result is bridged back to the legacy
-     * {@link Response} type (including {@link EmbeddingResponseMetadata#finishReason() finishReason}) so the
-     * behavior is unchanged for existing callers and implementations.
+     * This is a convenience method over {@link #embed(EmbeddingRequest)}, so {@link #listeners() listeners} are
+     * notified and the model's default per-call parameters are applied here too.
      *
      * @param textSegment the text segment to embed.
      * @return the embedding.
@@ -293,16 +283,12 @@ public interface EmbeddingModel {
     }
 
     /**
-     * Wraps this {@link EmbeddingModel} with a listening model that dispatches events to the provided listener.
-     * <p>
-     * <b>Preferred approach:</b> where the model's builder exposes a {@code listeners(...)} method, configure
-     * listeners there instead. That fires them inline via {@link #listeners()} (mirroring
-     * {@link dev.langchain4j.model.chat.ChatModel}) without wrapping. This wrapper-based method remains useful
-     * for adding a listener to an already-built model, or for models whose builder does not yet expose
-     * {@code listeners(...)}.
+     * Returns an {@link EmbeddingModel} that wraps this one and notifies the given listener around each embedding
+     * call. Listeners can also be configured directly on a model's builder via {@code listeners(...)} (see
+     * {@link #listeners()}), which does not require wrapping.
      *
      * @param listener The listener to add.
-     * @return An observing {@link EmbeddingModel} that will dispatch events to the provided listener.
+     * @return An {@link EmbeddingModel} that notifies the given listener.
      * @since 1.11.0
      * @see #listeners()
      */
@@ -312,16 +298,12 @@ public interface EmbeddingModel {
     }
 
     /**
-     * Wraps this {@link EmbeddingModel} with a listening model that dispatches events to the provided listeners.
-     * <p>
-     * Listeners are called in the order of iteration.
-     * <p>
-     * <b>Preferred approach:</b> where the model's builder exposes a {@code listeners(...)} method, configure
-     * listeners there instead (see {@link #listeners()}); this wrapper remains useful for adding listeners to an
-     * already-built model or to models whose builder does not yet expose {@code listeners(...)}.
+     * Returns an {@link EmbeddingModel} that wraps this one and notifies the given listeners (in iteration order)
+     * around each embedding call. Listeners can also be configured directly on a model's builder via
+     * {@code listeners(...)} (see {@link #listeners()}).
      *
      * @param listeners The listeners to add.
-     * @return An observing {@link EmbeddingModel} that will dispatch events to the provided listeners.
+     * @return An {@link EmbeddingModel} that notifies the given listeners.
      * @since 1.11.0
      * @see #listeners()
      */

@@ -15,14 +15,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The embedding model response context.
- * It contains the {@link EmbeddingRequest}, the {@link EmbeddingResponse}, the {@link EmbeddingModel}, the
- * {@link ModelProvider} and attributes. The attributes can be used to pass data between methods of an
- * {@link EmbeddingModelListener} or between multiple {@link EmbeddingModelListener}s.
- * <p>
- * Prefer {@link #embeddingRequest()} and {@link #embeddingResponse()} (which expose per-call parameters and
- * multimodal inputs). The legacy {@link #textSegments()} and {@link #response()} accessors are retained for
- * backward compatibility and will be deprecated and removed in 2.0.
+ * The context passed to {@link EmbeddingModelListener#onResponse(EmbeddingModelResponseContext)} after a
+ * successful embedding call. It gives access to the {@link EmbeddingRequest} that was embedded, the resulting
+ * {@link EmbeddingResponse} (the embeddings and response metadata), the {@link EmbeddingModel}, the
+ * {@link ModelProvider}, and the {@code attributes} map shared with the request callback of the same listener.
  *
  * @since 1.11.0
  */
@@ -35,7 +31,6 @@ public class EmbeddingModelResponseContext {
     private final ModelProvider modelProvider;
     private final Map<Object, Object> attributes;
 
-    // Legacy fields, retained for backward compatibility; to be removed in 2.0.
     private final Response<List<Embedding>> response;
     private final List<TextSegment> textSegments;
 
@@ -50,16 +45,18 @@ public class EmbeddingModelResponseContext {
     }
 
     /**
-     * @return the full {@link EmbeddingRequest} (including per-call parameters and multimodal inputs), or
-     * {@code null} when the embedding was triggered via a legacy convenience method.
+     * @return the {@link EmbeddingRequest} that was embedded, including its per-call parameters and multimodal
+     * inputs. It is {@code null} when the embedding was triggered via one of the
+     * {@link EmbeddingModel#embed(String)} / {@link EmbeddingModel#embedAll(List)} convenience methods.
      */
     public EmbeddingRequest embeddingRequest() {
         return embeddingRequest;
     }
 
     /**
-     * @return the {@link EmbeddingResponse} (including the response metadata), or {@code null} when the
-     * embedding was triggered via a legacy convenience method.
+     * @return the {@link EmbeddingResponse}, including the embeddings and the response metadata. It is
+     * {@code null} when the embedding was triggered via one of the {@link EmbeddingModel#embed(String)} /
+     * {@link EmbeddingModel#embedAll(List)} convenience methods.
      */
     public EmbeddingResponse embeddingResponse() {
         return embeddingResponse;
@@ -85,15 +82,16 @@ public class EmbeddingModelResponseContext {
     }
 
     /**
-     * Legacy accessor; prefer {@link #embeddingResponse()}. Will be deprecated and removed in 2.0.
+     * @return the embeddings and token usage. For the full response, including all response metadata, use
+     * {@link #embeddingResponse()}.
      */
     public Response<List<Embedding>> response() {
         return response;
     }
 
     /**
-     * Legacy accessor; prefer {@link #embeddingRequest()} (via {@code embeddingRequest().inputs()}).
-     * Will be deprecated and removed in 2.0.
+     * @return the text of each input that was embedded. For the full request, including per-call parameters and
+     * multimodal inputs, use {@link #embeddingRequest()}.
      */
     public List<TextSegment> textSegments() {
         return textSegments;
@@ -146,17 +144,11 @@ public class EmbeddingModelResponseContext {
             return this;
         }
 
-        /**
-         * Legacy; prefer {@link #embeddingResponse(EmbeddingResponse)}. Will be removed in 2.0.
-         */
         public Builder response(Response<List<Embedding>> response) {
             this.response = response;
             return this;
         }
 
-        /**
-         * Legacy; prefer {@link #embeddingRequest(EmbeddingRequest)}. Will be removed in 2.0.
-         */
         public Builder textSegments(List<TextSegment> textSegments) {
             this.textSegments = textSegments;
             return this;

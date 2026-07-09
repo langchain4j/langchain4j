@@ -7,17 +7,12 @@ import dev.langchain4j.model.output.TokenUsage;
 import java.util.Objects;
 
 /**
- * Common metadata returned alongside an {@link EmbeddingResponse}, mirroring
- * {@link dev.langchain4j.model.chat.response.ChatResponseMetadata}. Provider integrations may extend this class
- * to add provider-specific metadata.
+ * Metadata returned alongside an {@link EmbeddingResponse}, describing the call that produced it: the
+ * {@link #modelName() model name} and the {@link #tokenUsage() token usage}. Provider integrations may extend
+ * this class to add provider-specific metadata.
  * <p>
- * The {@link TokenUsage} type is deliberately reused from the chat side: embedding APIs report input token
- * counts the same way (with {@link TokenUsage#outputTokenCount()} simply left {@code null}), so the existing
- * summing utilities keep working across batched requests.
- * <p>
- * {@link #finishReason()} is not meaningful for most embedding models and is usually {@code null}; it is
- * carried here only so the bridge from the legacy {@code Response<Embedding>} convenience methods stays
- * lossless for implementations that populate it.
+ * Embedding APIs report only input token counts, so {@link TokenUsage#outputTokenCount()} is left {@code null}.
+ * {@link #finishReason()} is not meaningful for most embedding models and is usually {@code null}.
  *
  * @since 1.18.0
  */

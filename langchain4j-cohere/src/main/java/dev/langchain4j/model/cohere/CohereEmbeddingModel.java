@@ -14,6 +14,7 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
@@ -109,8 +110,8 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     @Override
-    public dev.langchain4j.model.ModelProvider provider() {
-        return dev.langchain4j.model.ModelProvider.COHERE;
+    public ModelProvider provider() {
+        return ModelProvider.COHERE;
     }
 
     /**

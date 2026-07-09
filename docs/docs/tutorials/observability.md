@@ -422,7 +422,7 @@ public class MyEmbeddingModelListener implements EmbeddingModelListener {
 }
 ```
 
-Attach listeners via the model builder's `listeners(...)` method (recommended, mirrors `ChatModel`):
+Attach listeners via the model builder's `listeners(...)` method (recommended):
 
 ```java
 EmbeddingModel model = OpenAiEmbeddingModel.builder()
@@ -438,7 +438,7 @@ The listener is notified around `embed(EmbeddingRequest)` as well as the `embed(
 convenience methods.
 
 :::note
-Older code attaches a listener by wrapping an already-built model with `EmbeddingModel#addListener(s)`:
+You can also attach a listener by wrapping an already-built model with `EmbeddingModel#addListener(s)`:
 
 ```java
 EmbeddingModel observedModel = embeddingModel.addListener(new MyEmbeddingModelListener());
@@ -446,9 +446,9 @@ EmbeddingModel observedModel = embeddingModel.addListener(new MyEmbeddingModelLi
 observedModel.embed("hello");
 ```
 
-This still works and is convenient for adding a listener to an already-built model, or for models whose builder
-does not (yet) expose `listeners(...)`. When the builder supports `listeners(...)`, prefer that approach — it is
-the same mechanism `ChatModel` uses and does not require wrapping.
+This is convenient for adding a listener to an already-built model, or to a model whose builder does not expose
+`listeners(...)`. When the builder does expose `listeners(...)`, prefer that approach, as it does not require
+wrapping.
 :::
 
 ### EmbeddingStore listener

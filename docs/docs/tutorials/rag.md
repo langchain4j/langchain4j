@@ -541,8 +541,8 @@ Currently supported embedding models can be found [here](/category/embedding-mod
 
 #### Request/response API and per-call parameters
 
-Besides the convenience methods above, `EmbeddingModel` also exposes a request/response API that mirrors
-`ChatModel`, allowing **per-call parameters**:
+Besides the convenience methods above, `EmbeddingModel` accepts an `EmbeddingRequest` and returns an
+`EmbeddingResponse`, which lets you pass **per-call parameters**:
 
 ```java
 EmbeddingResponse response = embeddingModel.embed(EmbeddingRequest.builder()
@@ -719,9 +719,9 @@ EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
     .build();
 ```
 
-The default is unchanged: when `embeddingInputType` is not set, no input type is sent and the legacy embedding
-call is used. The selected `EmbeddingModel` must support the `input_type` parameter (see its
-`supportedParameters()`), otherwise embedding fails fast with `UnsupportedFeatureException`.
+When `embeddingInputType` is not set, no input type is sent. When it is set, the selected `EmbeddingModel` must
+support the input type parameter (see its `supportedParameters()`), otherwise embedding fails fast with
+`UnsupportedFeatureException`.
 
 
 ## Naive RAG

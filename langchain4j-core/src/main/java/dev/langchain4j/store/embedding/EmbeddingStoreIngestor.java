@@ -258,12 +258,13 @@ public class EmbeddingStoreIngestor {
         public Builder() {}
 
         /**
-         * Opt-in: embed the text segments with the given {@link EmbeddingInputType} (typically
-         * {@link EmbeddingInputType#DOCUMENT}) via {@link EmbeddingModel#embed(EmbeddingRequest)}. When
-         * {@code null} (the default), the legacy {@link EmbeddingModel#embedAll(List)} is used and no input type
-         * is sent (unchanged behavior). The chosen {@link EmbeddingModel} must
-         * {@link EmbeddingModel#supportedParameters() support} the {@code input_type} parameter, otherwise
-         * ingestion fails fast.
+         * Embeds the text segments with the given {@link EmbeddingInputType} (typically
+         * {@link EmbeddingInputType#DOCUMENT}), so providers that encode queries and documents differently can
+         * produce a document-optimized embedding.
+         * <p>
+         * When left {@code null} (the default), no input type is sent. If set, the chosen {@link EmbeddingModel}
+         * must {@link EmbeddingModel#supportedParameters() support} the input type parameter, otherwise ingestion
+         * fails fast.
          *
          * @param embeddingInputType the input type to embed documents with.
          * @return {@code this}

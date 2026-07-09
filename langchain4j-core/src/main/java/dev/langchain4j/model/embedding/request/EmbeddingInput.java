@@ -57,8 +57,8 @@ public class EmbeddingInput {
     }
 
     /**
-     * The concatenated text of all {@link TextContent} parts of this input, used by text-only models (and the
-     * default bridge to the legacy {@code embedAll} API). For a plain single-text input this is just its text.
+     * The concatenated text of all {@link TextContent} parts of this input, used by text-only models. For a
+     * plain single-text input this is just its text.
      */
     public String text() {
         return contents.stream()

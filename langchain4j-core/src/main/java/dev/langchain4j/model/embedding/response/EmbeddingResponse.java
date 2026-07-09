@@ -9,9 +9,9 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * A response from an {@link dev.langchain4j.model.embedding.EmbeddingModel}, containing the produced
- * {@link Embedding}s and the associated {@link EmbeddingResponseMetadata}. Mirrors
- * {@link dev.langchain4j.model.chat.response.ChatResponse}.
+ * The result of embedding an {@link dev.langchain4j.model.embedding.request.EmbeddingRequest}: the
+ * {@link Embedding}s produced for the request's inputs (in the same order) together with the
+ * {@link EmbeddingResponseMetadata} such as the model name and token usage.
  *
  * @since 1.18.0
  */
