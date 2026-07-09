@@ -40,18 +40,21 @@ class BDIPlannerTest {
 
     @Test
     void shouldSelectHighestPriorityAchievableDesire() {
+        // Both desires are achievable and unsatisfied; only priority decides which runs first
         var lowPriority = Desire.of("low", 1,
                 scope -> true, scope -> scope.hasState("outputA"), ProducerA.class);
         var highPriority = Desire.of("high", 3,
-                scope -> true, scope -> scope.hasState("outputB"), ProducerB.class);
+                scope -> true, scope -> scope.hasState("outputC"), ProducerC.class);
 
+        // maxInvocations=1 so only the first desire's first agent runs
         UntypedAgent system = AgenticServices.plannerBuilder()
-                .subAgents(new ProducerA(), new ProducerB())
-                .planner(() -> new BDIPlanner(List.of(lowPriority, highPriority)))
+                .subAgents(new ProducerA(), new ProducerC())
+                .planner(() -> new BDIPlanner(List.of(lowPriority, highPriority), 1))
                 .build();
 
-        ResultWithAgenticScope<String> result = system.invokeWithAgenticScope(Map.of("outputA", "seed"));
-        assertThat(result.agenticScope().hasState("outputB")).isTrue();
+        ResultWithAgenticScope<String> result = system.invokeWithAgenticScope(Map.of("trigger", "t"));
+        assertThat(result.agenticScope().hasState("outputC")).as("high-priority desire should run first").isTrue();
+        assertThat(result.agenticScope().hasState("outputA")).as("low-priority desire should not run").isFalse();
     }
 
     @Test
@@ -71,18 +74,22 @@ class BDIPlannerTest {
 
     @Test
     void shouldPreemptLowerPriorityDesire() {
+        // "high" becomes achievable only after A writes outputA, so "low" is selected first
         var lowPriority = Desire.of("low", 1,
                 scope -> true, scope -> scope.hasState("outputB"), ProducerA.class, ProducerB.class);
         var highPriority = Desire.of("high", 3,
-                scope -> scope.hasState("trigger"), scope -> scope.hasState("outputC"), ProducerC.class);
+                scope -> scope.hasState("outputA"), scope -> scope.hasState("outputC"), ProducerC.class);
 
         UntypedAgent system = AgenticServices.plannerBuilder()
                 .subAgents(new ProducerA(), new ProducerB(), new ProducerC())
                 .planner(() -> new BDIPlanner(List.of(lowPriority, highPriority)))
                 .build();
 
-        // trigger is present from the start -> high-priority desire preempts after first agent
+        // trigger must be present for ProducerC's @V("trigger") parameter
+        // sequence: A (low) -> preemption -> C (high) -> resume B (low)
         ResultWithAgenticScope<String> result = system.invokeWithAgenticScope(Map.of("trigger", "alert"));
+        assertThat(result.agenticScope().hasState("outputA")).isTrue();
+        assertThat(result.agenticScope().hasState("outputB")).isTrue();
         assertThat(result.agenticScope().hasState("outputC")).isTrue();
     }
 
