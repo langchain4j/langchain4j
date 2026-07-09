@@ -57,6 +57,7 @@ public class DefaultEmbeddingRequestParameters implements EmbeddingRequestParame
 
     @Override
     public EmbeddingRequestParameters overrideWith(EmbeddingRequestParameters that) {
+        // TODO what if that is more specific type like OpenAi...
         if (that == null || that.presentParameters().isEmpty()) {
             return this;
         }

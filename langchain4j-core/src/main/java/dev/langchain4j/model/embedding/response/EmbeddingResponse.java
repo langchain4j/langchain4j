@@ -23,7 +23,7 @@ public class EmbeddingResponse {
 
     protected EmbeddingResponse(Builder builder) {
         this.embeddings = copy(builder.embeddings);
-        this.metadata = getOrDefault(builder.metadata, () -> EmbeddingResponseMetadata.builder().build());
+        this.metadata = getOrDefault(builder.metadata, () -> EmbeddingResponseMetadata.builder().build()); // TODO introduce EmbeddingResponseMetadata.EMPTY constant?
     }
 
     public List<Embedding> embeddings() {

@@ -40,7 +40,7 @@ public class EmbeddingModelRequestContext {
     /**
      * @return the {@link EmbeddingRequest} being embedded, including its per-call parameters and multimodal
      * inputs. It is {@code null} when the embedding was triggered via one of the
-     * {@link EmbeddingModel#embed(String)} / {@link EmbeddingModel#embedAll(List)} convenience methods.
+     * {@link EmbeddingModel#embed(String)} / {@link EmbeddingModel#embedAll(List)} convenience methods. TODO same
      */
     public EmbeddingRequest embeddingRequest() {
         return embeddingRequest;
@@ -54,7 +54,7 @@ public class EmbeddingModelRequestContext {
      * @return the {@link ModelProvider} of the embedding model, or {@code null} if not set.
      */
     public ModelProvider modelProvider() {
-        return modelProvider;
+        return modelProvider; // TODO take from embeddingModel.provider()?
     }
 
     /**

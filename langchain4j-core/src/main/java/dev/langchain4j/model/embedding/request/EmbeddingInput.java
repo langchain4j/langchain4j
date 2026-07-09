@@ -22,9 +22,7 @@ import java.util.Set;
  * <p>
  * A plain text input is simply a single {@link TextContent}. Multimodal models can accept an interleaving of
  * text and image/video/audio parts (e.g. Cohere Embed v4, Voyage multimodal) — the whole interleaved list
- * produces a single vector. Reusing the shared {@link Content} hierarchy means the input encoding (a remote
- * URL vs. base64 data) is a property of the {@link Content} itself (e.g. {@link
- * dev.langchain4j.data.message.ImageContent}), not a separate parameter.
+ * produces a single vector.
  * <p>
  * An {@link EmbeddingRequest} carries a <i>list</i> of {@link EmbeddingInput}s (the batch dimension), each of
  * which carries a list of {@link Content} parts (the interleaving dimension).
@@ -64,7 +62,7 @@ public class EmbeddingInput {
         return contents.stream()
                 .filter(content -> content instanceof TextContent)
                 .map(content -> ((TextContent) content).text())
-                .collect(joining());
+                .collect(joining()); // TODO separate with newline?
     }
 
     public static EmbeddingInput from(String text) {

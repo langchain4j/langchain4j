@@ -126,8 +126,6 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     @Override
     public Set<ContentType> supportedContentTypes() {
-        // Gemini Embedding 2 (gemini-embedding-2-*) is natively multimodal and understands interleaved input;
-        // earlier text embedding models (e.g. gemini-embedding-001) are text-only.
         return isMultimodalModel(modelName)
                 ? Set.of(ContentType.TEXT, ContentType.IMAGE)
                 : Set.of(ContentType.TEXT);

@@ -22,7 +22,7 @@ public class EmbeddingResponseMetadata {
 
     private final String modelName;
     private final TokenUsage tokenUsage;
-    private final FinishReason finishReason;
+    private final FinishReason finishReason; // TODO remove?
 
     protected EmbeddingResponseMetadata(Builder<?> builder) {
         this.modelName = builder.modelName;
