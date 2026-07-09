@@ -48,7 +48,7 @@ public interface AgenticScope extends LangChain4jManaged {
 
     /**
      * Writes a value into the shared state under the given key only if the key is not already present.
-     * If the key already has a non-null value, the existing value is left unchanged.
+     * If this key already has a state, the existing value is left unchanged.
      *
      * @param key   the state key
      * @param value the value to store
