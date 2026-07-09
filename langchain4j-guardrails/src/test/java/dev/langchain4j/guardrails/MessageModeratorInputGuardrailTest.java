@@ -1,5 +1,14 @@
 package dev.langchain4j.guardrails;
 
+import static dev.langchain4j.test.guardrail.GuardrailAssertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.GuardrailResult;
 import dev.langchain4j.guardrail.InputGuardrailResult;
@@ -8,13 +17,7 @@ import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.ModerationException;
 import org.junit.jupiter.api.Test;
-
-import static dev.langchain4j.test.guardrail.GuardrailAssertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import org.mockito.ArgumentCaptor;
 
 class MessageModeratorInputGuardrailTest {
 
@@ -56,10 +59,7 @@ class MessageModeratorInputGuardrailTest {
         InputGuardrailResult result = moderatorInputGuardrail.validate(userMessage);
 
         // Then
-        assertThat(result)
-                .isNotNull()
-                .extracting(InputGuardrailResult::result)
-                .isEqualTo(GuardrailResult.Result.FATAL);
+        assertThat(result).isNotNull().extracting(InputGuardrailResult::result).isEqualTo(GuardrailResult.Result.FATAL);
 
         assertThat(result.getFirstFailureException())
                 .isNotNull()
@@ -99,5 +99,33 @@ class MessageModeratorInputGuardrailTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("moderationModel cannot be null");
     }
-}
 
+    @Test
+    void should_moderate_text_of_multimodal_user_message_without_throwing() {
+        // Given
+        ModerationModel moderationModel = mock(ModerationModel.class);
+        Response<Moderation> response = Response.from(Moderation.notFlagged());
+        when(moderationModel.moderate(any(UserMessage.class))).thenReturn(response);
+
+        MessageModeratorInputGuardrail moderatorInputGuardrail = new MessageModeratorInputGuardrail(moderationModel);
+        // a multimodal message (text plus an image): UserMessage.singleText() would throw on it,
+        // so the guardrail must moderate the extracted text instead of the original message
+        UserMessage multimodal = UserMessage.from(
+                TextContent.from("Please describe this picture"), ImageContent.from("https://example.com/image.png"));
+
+        // When
+        InputGuardrailResult result = moderatorInputGuardrail.validate(multimodal);
+
+        // Then
+        assertThat(result)
+                .isNotNull()
+                .extracting(InputGuardrailResult::result)
+                .isEqualTo(GuardrailResult.Result.SUCCESS);
+
+        ArgumentCaptor<UserMessage> captor = ArgumentCaptor.forClass(UserMessage.class);
+        verify(moderationModel).moderate(captor.capture());
+        // the moderation model receives a plain-text message built from the extracted text content,
+        // not the original multimodal message
+        assertThat(captor.getValue().singleText()).isEqualTo("Please describe this picture");
+    }
+}
