@@ -8,6 +8,7 @@ import static dev.langchain4j.model.embedding.EmbeddingModelListenerUtils.onResp
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext;
@@ -235,6 +236,11 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
     }
 
     @Override
+    public Set<ContentType> supportedContentTypes() {
+        return delegate.supportedContentTypes();
+    }
+
+    @Override
     public EmbeddingRequestParameters defaultRequestParameters() {
         return delegate.defaultRequestParameters();
     }
@@ -242,6 +248,11 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
     @Override
     public String modelName() {
         return delegate.modelName();
+    }
+
+    @Override
+    public int dimension() {
+        return delegate.dimension();
     }
 
     private static EmbeddingRequest requestFrom(List<TextSegment> textSegments) {
