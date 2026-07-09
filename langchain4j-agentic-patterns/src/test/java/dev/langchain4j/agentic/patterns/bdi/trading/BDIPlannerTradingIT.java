@@ -85,7 +85,7 @@ public class BDIPlannerTradingIT {
 
         System.out.println(result.result());
 
-        HtmlReportGenerator.generateReport(tradingSystem.agentMonitor(),
-        Path.of("src", "test", "resources", "bdi-trading-report.html"));
+//        HtmlReportGenerator.generateReport(tradingSystem.agentMonitor(),
+//        Path.of("src", "test", "resources", "bdi-trading-report.html"));
     }
 }
