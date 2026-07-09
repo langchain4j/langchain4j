@@ -51,4 +51,10 @@ class GoogleAiEmbeddingModelIT extends AbstractEmbeddingModelIT {
     protected boolean supportsDimensionsParameter() {
         return false;
     }
+
+    // The Gemini embedding API does not report token usage.
+    @Override
+    protected boolean assertTokenUsage() {
+        return false;
+    }
 }

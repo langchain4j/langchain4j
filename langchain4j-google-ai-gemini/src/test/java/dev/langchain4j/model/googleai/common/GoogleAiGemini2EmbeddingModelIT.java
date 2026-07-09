@@ -44,10 +44,16 @@ class GoogleAiGemini2EmbeddingModelIT extends AbstractEmbeddingModelIT {
                 .build();
     }
 
-    // Gemini Embedding 2 is natively multimodal (text + image, interleaved into a single embedding) and maps
-    // the common input_type to a task type, but does not support reducing output dimensionality.
+    // Gemini Embedding 2 is natively multimodal (text + image, interleaved into a single embedding). It does not
+    // accept the task_type parameter; instead the input type is applied as a prompt instruction (see
+    // GoogleAiEmbeddingModel). It supports neither a per-call dimensions parameter nor token usage reporting.
     @Override
     protected boolean supportsDimensionsParameter() {
+        return false;
+    }
+
+    @Override
+    protected boolean assertTokenUsage() {
         return false;
     }
 }

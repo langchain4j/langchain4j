@@ -161,4 +161,51 @@ class GoogleAiEmbeddingModelInputTypeTest {
                         .build()))
                 .withMessageContaining("base64");
     }
+
+    @Test
+    void gemini_embedding_2_applies_query_task_instruction_in_prompt_and_no_task_type() {
+        // Gemini Embedding 2 does not accept task_type; the input type becomes a prompt instruction instead.
+        MockHttpClient mock = respondingMock();
+        GoogleAiEmbeddingModel model = multimodalModel(mock);
+
+        model.embed(EmbeddingRequest.builder()
+                .input("hello")
+                .inputType(EmbeddingInputType.QUERY)
+                .build());
+
+        String body = mock.request().body();
+        assertThat(body).contains("task: search result | query: hello");
+        assertThat(body).doesNotContain("RETRIEVAL_QUERY");
+    }
+
+    @Test
+    void gemini_embedding_2_applies_document_task_instruction_in_prompt() {
+        MockHttpClient mock = respondingMock();
+        GoogleAiEmbeddingModel model = multimodalModel(mock);
+
+        model.embed(EmbeddingRequest.builder()
+                .input("hello")
+                .inputType(EmbeddingInputType.DOCUMENT)
+                .build());
+
+        String body = mock.request().body();
+        assertThat(body).contains("title: none | text: hello");
+        assertThat(body).doesNotContain("RETRIEVAL_DOCUMENT");
+    }
+
+    @Test
+    void gemini_embedding_2_does_not_apply_task_instruction_to_multimodal_input() {
+        // Task instructions are text-only; an input containing an image is left unchanged.
+        MockHttpClient mock = respondingMock();
+        GoogleAiEmbeddingModel model = multimodalModel(mock);
+
+        model.embed(EmbeddingRequest.builder()
+                .input(TextContent.from("a cat"), ImageContent.from("aGVsbG8=", "image/png"))
+                .inputType(EmbeddingInputType.QUERY)
+                .build());
+
+        String body = mock.request().body();
+        assertThat(body).contains("a cat");
+        assertThat(body).doesNotContain("task: search result");
+    }
 }

@@ -110,12 +110,13 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     @Override
     public EmbeddingResponse doEmbed(EmbeddingRequest request) {
-        TaskType effectiveTaskType = toTaskType(request.inputType());
+        EmbeddingInputType inputType = request.inputType();
 
-        // NOTE: unlike embedAll(List<TextSegment>), this path has no TextSegment metadata,
-        // so the RETRIEVAL_DOCUMENT "title" enrichment is not available here.
+        boolean embedding2 = isMultimodalModel(modelName);
+        TaskType taskType = embedding2 ? null : toTaskType(inputType);
+
         List<GeminiEmbeddingRequest> embeddingRequests = request.inputs().stream()
-                .map(input -> buildEmbeddingRequest(input, effectiveTaskType))
+                .map(input -> buildEmbeddingRequest(embedding2 ? withTaskInstruction(input, inputType) : input, taskType))
                 .collect(Collectors.toList());
 
         return EmbeddingResponse.builder()
@@ -151,6 +152,29 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         return switch (inputType) {
             case QUERY -> TaskType.RETRIEVAL_QUERY;
             case DOCUMENT -> TaskType.RETRIEVAL_DOCUMENT;
+        };
+    }
+
+    /**
+     * Rewrites a text-only input with Gemini Embedding 2's recommended task instruction, since that model does
+     * not accept the {@code task_type} parameter. Multimodal inputs are left unchanged, as the instruction
+     * templates are defined for text only.
+     */
+    private static EmbeddingInput withTaskInstruction(EmbeddingInput input, EmbeddingInputType inputType) {
+        if (inputType == null) {
+            return input;
+        }
+        boolean textOnly = input.contents().stream().allMatch(content -> content instanceof TextContent);
+        if (!textOnly) {
+            return input;
+        }
+        return EmbeddingInput.from(applyTaskInstruction(input.text(), inputType));
+    }
+
+    private static String applyTaskInstruction(String text, EmbeddingInputType inputType) {
+        return switch (inputType) {
+            case QUERY -> "task: search result | query: " + text;
+            case DOCUMENT -> "title: none | text: " + text;
         };
     }
 
