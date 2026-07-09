@@ -21,6 +21,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
+import dev.langchain4j.model.embedding.EmbeddingModelListenerUtils;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.request.EmbeddingInput;
 import dev.langchain4j.model.embedding.request.EmbeddingInputType;
@@ -261,6 +262,10 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
+        return EmbeddingModelListenerUtils.withListeners(this, textSegments, () -> embedAllInternal(textSegments));
+    }
+
+    private Response<List<Embedding>> embedAllInternal(List<TextSegment> textSegments) {
         if (textSegments == null || textSegments.isEmpty()) {
             return Response.from(new ArrayList<>());
         }

@@ -64,8 +64,7 @@ abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingResponse>
         }
     }
 
-    @Override
-    public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
+    protected Response<List<Embedding>> doEmbedAll(List<TextSegment> textSegments) {
         final List<Map<String, Object>> requestParameters = getRequestParameters(textSegments);
         final List<T> responses = requestParameters.stream()
                 .map(Json::toJson)

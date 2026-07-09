@@ -15,6 +15,7 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
+import dev.langchain4j.model.embedding.EmbeddingModelListenerUtils;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.request.EmbeddingInput;
 import dev.langchain4j.model.embedding.request.EmbeddingInputType;
@@ -83,12 +84,14 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     @Override
     public Response<Embedding> embed(TextSegment textSegment) {
-        GeminiEmbeddingRequest embeddingRequest = getGoogleAiEmbeddingRequest(textSegment);
+        return EmbeddingModelListenerUtils.withListeners(this, textSegment, () -> {
+            GeminiEmbeddingRequest embeddingRequest = getGoogleAiEmbeddingRequest(textSegment);
 
-        GeminiEmbeddingResponse geminiResponse =
-                withRetryMappingExceptions(() -> geminiService.embed(modelName, embeddingRequest), maxRetries);
+            GeminiEmbeddingResponse geminiResponse =
+                    withRetryMappingExceptions(() -> geminiService.embed(modelName, embeddingRequest), maxRetries);
 
-        return Response.from(Embedding.from(geminiResponse.embedding().values()));
+            return Response.from(Embedding.from(geminiResponse.embedding().values()));
+        });
     }
 
     @Override
@@ -98,9 +101,11 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-        List<GeminiEmbeddingRequest> embeddingRequests =
-                textSegments.stream().map(this::getGoogleAiEmbeddingRequest).collect(Collectors.toList());
-        return Response.from(batchEmbed(embeddingRequests));
+        return EmbeddingModelListenerUtils.withListeners(this, textSegments, () -> {
+            List<GeminiEmbeddingRequest> embeddingRequests =
+                    textSegments.stream().map(this::getGoogleAiEmbeddingRequest).collect(Collectors.toList());
+            return Response.from(batchEmbed(embeddingRequests));
+        });
     }
 
     @Override

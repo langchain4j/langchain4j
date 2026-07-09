@@ -101,8 +101,8 @@ public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<Be
     public EmbeddingResponse doEmbed(EmbeddingRequest request) {
 
         if (!isMultimodal()) {
-            // text-only Titan models: reuse the legacy text path
-            Response<List<Embedding>> legacy = embedAll(request.inputs().stream()
+            // text-only Titan models: reuse the raw batch text path
+            Response<List<Embedding>> legacy = doEmbedAll(request.inputs().stream()
                     .map(input -> TextSegment.from(input.text()))
                     .collect(Collectors.toList()));
             return EmbeddingResponse.builder()

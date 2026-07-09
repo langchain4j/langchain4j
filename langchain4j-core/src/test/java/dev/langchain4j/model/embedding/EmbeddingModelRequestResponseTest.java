@@ -325,6 +325,136 @@ class EmbeddingModelRequestResponseTest implements WithAssertions {
         assertThat(request.inputs().stream().map(EmbeddingInput::text)).containsExactly("a", "bb", "ccc");
     }
 
+    /**
+     * A provider that overrides both embed(TextSegment) and embedAll with dedicated API calls (like the Google
+     * and Cohere models, whose overrides carry behavior the request/response API cannot). It keeps those paths
+     * observable by wrapping the raw call with {@link EmbeddingModelListenerUtils#withListeners}.
+     */
+    static class CustomOverrideModel implements EmbeddingModel {
+
+        private final List<EmbeddingModelListener> listeners;
+        private final boolean fail;
+
+        CustomOverrideModel(List<EmbeddingModelListener> listeners, boolean fail) {
+            this.listeners = listeners;
+            this.fail = fail;
+        }
+
+        @Override
+        public List<EmbeddingModelListener> listeners() {
+            return listeners;
+        }
+
+        @Override
+        public Response<Embedding> embed(TextSegment textSegment) {
+            return EmbeddingModelListenerUtils.withListeners(this, textSegment, () -> {
+                if (fail) {
+                    throw new RuntimeException("boom");
+                }
+                return Response.from(new Embedding(new float[] {textSegment.text().length()}), new TokenUsage(3));
+            });
+        }
+
+        @Override
+        public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
+            return EmbeddingModelListenerUtils.withListeners(this, textSegments, () -> {
+                if (fail) {
+                    throw new RuntimeException("boom");
+                }
+                List<Embedding> embeddings = textSegments.stream()
+                        .map(ts -> new Embedding(new float[] {ts.text().length()}))
+                        .collect(Collectors.toList());
+                return Response.from(embeddings, new TokenUsage(5));
+            });
+        }
+    }
+
+    @Test
+    void custom_embedAll_override_fires_listeners_once_via_util() {
+        java.util.concurrent.atomic.AtomicInteger onRequest = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.concurrent.atomic.AtomicReference<Response<List<Embedding>>> seen =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        EmbeddingModelListener listener = new EmbeddingModelListener() {
+            @Override
+            public void onRequest(dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext ctx) {
+                onRequest.incrementAndGet();
+                assertThat(ctx.textSegments()).extracting(TextSegment::text).containsExactly("a", "bb");
+            }
+
+            @Override
+            public void onResponse(dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext ctx) {
+                seen.set(ctx.response());
+                assertThat(ctx.embeddingResponse().embeddings()).isEqualTo(ctx.response().content());
+            }
+        };
+
+        EmbeddingModel model = new CustomOverrideModel(List.of(listener), false);
+        Response<List<Embedding>> response =
+                model.embedAll(List.of(TextSegment.from("a"), TextSegment.from("bb")));
+
+        assertThat(response.content()).hasSize(2);
+        assertThat(onRequest).hasValue(1); // fires exactly once, no double-firing
+        assertThat(seen.get().tokenUsage()).isEqualTo(new TokenUsage(5));
+    }
+
+    @Test
+    void custom_embed_text_segment_override_fires_listeners_once_via_util() {
+        java.util.concurrent.atomic.AtomicInteger onRequest = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.concurrent.atomic.AtomicInteger onResponse = new java.util.concurrent.atomic.AtomicInteger();
+        EmbeddingModelListener listener = new EmbeddingModelListener() {
+            @Override
+            public void onRequest(dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext ctx) {
+                onRequest.incrementAndGet();
+                assertThat(ctx.textSegments()).extracting(TextSegment::text).containsExactly("hello");
+            }
+
+            @Override
+            public void onResponse(dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext ctx) {
+                onResponse.incrementAndGet();
+            }
+        };
+
+        EmbeddingModel model = new CustomOverrideModel(List.of(listener), false);
+
+        // embed(String) -> embed(TextSegment) override -> util fires exactly once
+        Response<Embedding> response = model.embed("hello");
+
+        assertThat(response.content().vector()).containsExactly(5f);
+        assertThat(onRequest).hasValue(1);
+        assertThat(onResponse).hasValue(1);
+    }
+
+    @Test
+    void custom_override_fires_on_error_via_util() {
+        java.util.concurrent.atomic.AtomicReference<Throwable> error =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        EmbeddingModelListener listener = new EmbeddingModelListener() {
+            @Override
+            public void onError(dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext ctx) {
+                error.set(ctx.error());
+            }
+        };
+
+        EmbeddingModel model = new CustomOverrideModel(List.of(listener), true);
+
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> model.embedAll(List.of(TextSegment.from("a"))))
+                .withMessage("boom");
+        assertThat(error.get()).hasMessage("boom");
+    }
+
+    @Test
+    void custom_override_util_skips_dispatch_when_no_listeners() {
+        // no listeners configured -> util runs the operation directly without building contexts
+        EmbeddingModel model = new CustomOverrideModel(List.of(), false);
+
+        Response<List<Embedding>> response =
+                model.embedAll(List.of(TextSegment.from("a"), TextSegment.from("bb")));
+
+        assertThat(response.content()).hasSize(2);
+        assertThat(response.tokenUsage()).isEqualTo(new TokenUsage(5));
+    }
+
     @Test
     void embedAll_fires_inline_listeners_when_model_implements_doEmbed() {
         java.util.concurrent.atomic.AtomicInteger onRequest = new java.util.concurrent.atomic.AtomicInteger();

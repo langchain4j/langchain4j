@@ -17,6 +17,7 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.EmbeddingModelListenerUtils;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.request.EmbeddingInput;
 import dev.langchain4j.model.embedding.request.EmbeddingInputType;
@@ -129,10 +130,10 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-
-        List<String> texts = textSegments.stream().map(TextSegment::text).collect(toList());
-
-        return embedTexts(texts);
+        return EmbeddingModelListenerUtils.withListeners(this, textSegments, () -> {
+            List<String> texts = textSegments.stream().map(TextSegment::text).collect(toList());
+            return embedTexts(texts);
+        });
     }
 
     @Override
