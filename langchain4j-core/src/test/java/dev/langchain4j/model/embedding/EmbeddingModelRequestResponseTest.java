@@ -1,5 +1,6 @@
 package dev.langchain4j.model.embedding;
 
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ContentType;
@@ -317,12 +318,22 @@ class EmbeddingModelRequestResponseTest implements WithAssertions {
 
     @Test
     void builder_accepts_text_segments_and_drops_metadata() {
+        TextSegment segmentWithMetadata = TextSegment.from("bb", Metadata.from("title", "My Document"));
+
         EmbeddingRequest request = EmbeddingRequest.builder()
                 .textSegment(TextSegment.from("a"))
-                .textSegments(List.of(TextSegment.from("bb"), TextSegment.from("ccc")))
+                .textSegments(List.of(segmentWithMetadata, TextSegment.from("ccc")))
                 .build();
 
+        // only the text of each segment is carried into the request
         assertThat(request.inputs().stream().map(EmbeddingInput::text)).containsExactly("a", "bb", "ccc");
+
+        // the segment's metadata (e.g. a document title) is dropped: the input built from a segment WITH
+        // metadata equals the input built from a plain segment carrying only the same text, and the input
+        // holds nothing but that text content.
+        EmbeddingInput inputFromSegmentWithMetadata = request.inputs().get(1);
+        assertThat(inputFromSegmentWithMetadata).isEqualTo(EmbeddingInput.from(TextSegment.from("bb")));
+        assertThat(inputFromSegmentWithMetadata.contents()).containsExactly(TextContent.from("bb"));
     }
 
     /**
