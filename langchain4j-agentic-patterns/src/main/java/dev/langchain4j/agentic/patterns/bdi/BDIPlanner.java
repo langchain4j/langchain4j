@@ -116,33 +116,21 @@ public class BDIPlanner implements Planner {
 
     @Override
     public Map<String, Object> executionState() {
-        return Map.of(
-                "invocationCounter", invocationCounter,
-                "intentionCursor", intentionCursor,
-                "currentDesireName", currentDesire != null ? currentDesire.name() : "");
+        return Map.of("invocationCounter", invocationCounter);
     }
 
+    /**
+     * BDIPlanner does not persist intention cursor or current desire because {@link #firstAction(PlanningContext)}
+     * re-deliberates from the current scope state. On recovery, completed agents' outputs are already
+     * in scope, so satisfied desires are skipped and the planner re-selects the correct desire with
+     * only the remaining agents to execute. Persisting the cursor would risk a stale value pointing
+     * beyond the bounds of a recomputed intention.
+     */
     @Override
     public void restoreExecutionState(Map<String, Object> state) {
         Object savedCounter = state.get("invocationCounter");
         if (savedCounter instanceof Number n) {
             this.invocationCounter = n.intValue();
-        }
-        Object savedCursor = state.get("intentionCursor");
-        if (savedCursor instanceof Number n) {
-            this.intentionCursor = n.intValue();
-        }
-        Object savedDesireName = state.get("currentDesireName");
-        if (savedDesireName instanceof String name && !name.isEmpty()) {
-            this.currentDesire = desires.stream()
-                    .filter(d -> d.name().equals(name))
-                    .findFirst()
-                    .orElse(null);
-            if (currentDesire != null) {
-                this.currentIntention = currentDesire.agentTypes().stream()
-                        .map(agentsByType::get)
-                        .toList();
-            }
         }
     }
 }
