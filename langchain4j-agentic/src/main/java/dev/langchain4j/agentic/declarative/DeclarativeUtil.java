@@ -235,7 +235,10 @@ public class DeclarativeUtil {
 
     private static Optional<Consumer<AgenticScope>> buildBeforeCall(Class<?> agentServiceClass) {
         return selectMethod(agentServiceClass, method -> method.isAnnotationPresent(BeforeCall.class))
-                .map(m -> agenticScope -> invokeStatic(m, agenticScope));
+                .map(m -> {
+                    checkReturnType(m, void.class);
+                    return agenticScopeFunction(m, Object.class)::apply;
+                });
     }
 
     public static Optional<Executor> parallelExecutor(Class<?> agentServiceClass) {

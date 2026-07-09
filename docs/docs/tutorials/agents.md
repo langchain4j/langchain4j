@@ -1000,7 +1000,7 @@ Similarly to what demonstrated for the `@Output` annotation, annotating other `s
 | `@Output`                | Assemble the output to be returned by this agentic pattern, putting together different states of the `AgenticScope`.              |
 | `@ActivationCondition`   | Only available on the `ConditionalAgent` to define an activation predicate for one or more sub-agents, it must return a `boolean` |
 | `@BeforeCall`            | Action invoked before calling this agentic pattern, it can be useful to initialize the state of the `AgenticScope`.               |
-| `@ErrorHandler`          | Action invoked when an error occurs during the agent's operation, allowing for custom error handling logic..                      |
+| `@ErrorHandler`          | Action invoked when an error occurs during the agent's operation, allowing for custom error handling logic.                       |
 | `@ExitCondition`         | Only available on the `LoopAgent` to define an exit predicate for the loop, it must return a `boolean`                            |
 | `@ParallelExecutor`      | Only available on the `ParallelAgent` and `ParallelMapperAgent` to specify the executor used to run the sub-agents in parallel.   |
 | `@AgentListenerSupplier` | Returns the `AgentListener` registered on this agentic pattern.                                                                   |

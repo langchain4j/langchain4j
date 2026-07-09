@@ -8,7 +8,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 /**
- * Marks a method as a pre-invocation hook for a workflow agent.
+ * Marks a method as a pre-invocation hook for a agentic pattern.
  * The annotated method must be static, accept an {@link AgenticScope} as argument, and return void.
  * It will be invoked before every execution of the agent, allowing initialization or transformation
  * of the shared state.
