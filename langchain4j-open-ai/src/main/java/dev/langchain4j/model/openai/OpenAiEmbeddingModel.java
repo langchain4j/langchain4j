@@ -177,66 +177,146 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             // This is public so it can be extended
         }
 
+        /**
+         * Sets a custom {@link HttpClientBuilder} used to create the HTTP client.
+         * Allows full control over timeouts, proxy settings, and other HTTP client options.
+         *
+         * @param httpClientBuilder the HTTP client builder
+         * @return {@code this}
+         */
         public OpenAiEmbeddingModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
             return this;
         }
 
+        /**
+         * Sets the model name, e.g. {@code "text-embedding-3-small"}.
+         *
+         * @param modelName the model name
+         * @return {@code this}
+         */
         public OpenAiEmbeddingModelBuilder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
+        /**
+         * Sets the model name using a {@link OpenAiEmbeddingModelName} enum constant.
+         *
+         * @param modelName the model name enum value
+         * @return {@code this}
+         */
         public OpenAiEmbeddingModelBuilder modelName(OpenAiEmbeddingModelName modelName) {
             this.modelName = modelName.toString();
             return this;
         }
 
+        /**
+         * Sets the base URL of the OpenAI-compatible API. Defaults to {@code https://api.openai.com/v1}.
+         *
+         * @param baseUrl the base URL
+         * @return {@code this}
+         */
         public OpenAiEmbeddingModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
 
+        /**
+         * Sets the OpenAI API key used to authenticate requests.
+         *
+         * @param apiKey the API key
+         * @return {@code this}
+         */
         public OpenAiEmbeddingModelBuilder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
         }
 
+        /**
+         * Sets the OpenAI organization ID sent with each request.
+         *
+         * @param organizationId the organization ID
+         * @return {@code this}
+         */
         public OpenAiEmbeddingModelBuilder organizationId(String organizationId) {
             this.organizationId = organizationId;
             return this;
         }
 
+        /**
+         * Sets the OpenAI project ID sent with each request.
+         *
+         * @param projectId the project ID
+         * @return {@code this}
+         */
         public OpenAiEmbeddingModelBuilder projectId(String projectId) {
             this.projectId = projectId;
             return this;
         }
 
+        /**
+         * Sets the number of dimensions for the output embedding vectors.
+         * Only supported by {@code text-embedding-3} and later models.
+         *
+         * @param dimensions the number of output dimensions
+         * @return {@code this}
+         */
         public OpenAiEmbeddingModelBuilder dimensions(Integer dimensions) {
             this.dimensions = dimensions;
             return this;
         }
 
+        /**
+         * Sets a unique end-user identifier sent to OpenAI to help monitor and detect abuse.
+         *
+         * @param user the end-user identifier
+         * @return {@code this}
+         */
         public OpenAiEmbeddingModelBuilder user(String user) {
             this.user = user;
             return this;
         }
 
+        /**
+         * Sets the HTTP request timeout. Defaults to 15 seconds for connect and 60 seconds for read.
+         *
+         * @param timeout the request timeout
+         * @return {@code this}
+         */
         public OpenAiEmbeddingModelBuilder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
+        /**
+         * Sets the maximum number of retries on transient errors. Defaults to {@code 2}.
+         *
+         * @param maxRetries the maximum number of retries
+         * @return {@code this}
+         */
         public OpenAiEmbeddingModelBuilder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
+        /**
+         * Enables or disables logging of HTTP request bodies for debugging. Defaults to {@code false}.
+         *
+         * @param logRequests whether to log requests
+         * @return {@code this}
+         */
         public OpenAiEmbeddingModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
+        /**
+         * Enables or disables logging of HTTP response bodies for debugging. Defaults to {@code false}.
+         *
+         * @param logResponses whether to log responses
+         * @return {@code this}
+         */
         public OpenAiEmbeddingModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
@@ -269,16 +349,34 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             return this;
         }
 
+        /**
+         * Sets additional URL query parameters appended to every request.
+         *
+         * @param customQueryParams the query parameters map
+         * @return {@code this}
+         */
         public OpenAiEmbeddingModelBuilder customQueryParams(Map<String, String> customQueryParams) {
             this.customQueryParams = customQueryParams;
             return this;
         }
 
+        /**
+         * Sets the maximum number of text segments sent in a single embedding request. Defaults to {@code 2048}.
+         *
+         * @param maxSegmentsPerBatch the maximum batch size
+         * @return {@code this}
+         */
         public OpenAiEmbeddingModelBuilder maxSegmentsPerBatch(Integer maxSegmentsPerBatch) {
             this.maxSegmentsPerBatch = maxSegmentsPerBatch;
             return this;
         }
 
+        /**
+         * Sets the encoding format for the returned embeddings, e.g. {@code "float"} or {@code "base64"}.
+         *
+         * @param encodingFormat the encoding format
+         * @return {@code this}
+         */
         public OpenAiEmbeddingModelBuilder encodingFormat(String encodingFormat) {
             this.encodingFormat = encodingFormat;
             return this;

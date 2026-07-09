@@ -130,56 +130,123 @@ public class OpenAiModerationModel implements ModerationModel {
             // This is public so it can be extended
         }
 
+        /**
+         * Sets a custom {@link HttpClientBuilder} used to create the HTTP client.
+         * Allows full control over timeouts, proxy settings, and other HTTP client options.
+         *
+         * @param httpClientBuilder the HTTP client builder
+         * @return {@code this}
+         */
         public OpenAiModerationModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
             return this;
         }
 
+        /**
+         * Sets the model name, e.g. {@code "text-moderation-latest"}.
+         *
+         * @param modelName the model name
+         * @return {@code this}
+         */
         public OpenAiModerationModelBuilder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
+        /**
+         * Sets the model name using a {@link OpenAiModerationModelName} enum constant.
+         *
+         * @param modelName the model name enum value
+         * @return {@code this}
+         */
         public OpenAiModerationModelBuilder modelName(OpenAiModerationModelName modelName) {
             this.modelName = modelName.toString();
             return this;
         }
 
+        /**
+         * Sets the base URL of the OpenAI-compatible API. Defaults to {@code https://api.openai.com/v1}.
+         *
+         * @param baseUrl the base URL
+         * @return {@code this}
+         */
         public OpenAiModerationModelBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
 
+        /**
+         * Sets the OpenAI API key used to authenticate requests.
+         *
+         * @param apiKey the API key
+         * @return {@code this}
+         */
         public OpenAiModerationModelBuilder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
         }
 
+        /**
+         * Sets the OpenAI organization ID sent with each request.
+         *
+         * @param organizationId the organization ID
+         * @return {@code this}
+         */
         public OpenAiModerationModelBuilder organizationId(String organizationId) {
             this.organizationId = organizationId;
             return this;
         }
 
+        /**
+         * Sets the OpenAI project ID sent with each request.
+         *
+         * @param projectId the project ID
+         * @return {@code this}
+         */
         public OpenAiModerationModelBuilder projectId(String projectId) {
             this.projectId = projectId;
             return this;
         }
 
+        /**
+         * Sets the HTTP request timeout. Defaults to 15 seconds for connect and 60 seconds for read.
+         *
+         * @param timeout the request timeout
+         * @return {@code this}
+         */
         public OpenAiModerationModelBuilder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
+        /**
+         * Sets the maximum number of retries on transient errors. Defaults to {@code 2}.
+         *
+         * @param maxRetries the maximum number of retries
+         * @return {@code this}
+         */
         public OpenAiModerationModelBuilder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
+        /**
+         * Enables or disables logging of HTTP request bodies for debugging. Defaults to {@code false}.
+         *
+         * @param logRequests whether to log requests
+         * @return {@code this}
+         */
         public OpenAiModerationModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
+        /**
+         * Enables or disables logging of HTTP response bodies for debugging. Defaults to {@code false}.
+         *
+         * @param logResponses whether to log responses
+         * @return {@code this}
+         */
         public OpenAiModerationModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
@@ -212,6 +279,12 @@ public class OpenAiModerationModel implements ModerationModel {
             return this;
         }
 
+        /**
+         * Sets additional URL query parameters appended to every request.
+         *
+         * @param customQueryParams the query parameters map
+         * @return {@code this}
+         */
         public OpenAiModerationModelBuilder customQueryParams(Map<String, String> customQueryParams) {
             this.customQueryParams = customQueryParams;
             return this;
