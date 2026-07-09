@@ -44,7 +44,11 @@ public class BDIPlanner implements Planner {
     @Override
     public void init(InitPlanningContext initPlanningContext) {
         this.agentsByType = initPlanningContext.subagents().stream()
-                .collect(toMap(AgentInstance::type, a -> a));
+                .collect(toMap(AgentInstance::type, a -> a, (a, b) -> {
+                    throw new IllegalArgumentException(
+                            "BDI desires reference agents by type, so each agent type must be unique. " +
+                            "Duplicate agent type: " + a.type().getName());
+                }));
         for (Desire desire : desires) {
             for (Class<?> agentType : desire.agentTypes()) {
                 if (!agentsByType.containsKey(agentType)) {
