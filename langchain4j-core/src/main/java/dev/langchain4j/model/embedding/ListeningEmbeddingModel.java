@@ -9,6 +9,7 @@ import static dev.langchain4j.model.embedding.EmbeddingModelListenerUtils.onResp
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
@@ -17,7 +18,9 @@ import dev.langchain4j.model.embedding.request.EmbeddingParameter;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.request.EmbeddingRequestParameters;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
+import dev.langchain4j.model.embedding.response.EmbeddingResponseMetadata;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -56,8 +59,10 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
             textSegmentsForContext = List.of();
         }
 
+        EmbeddingRequest reconstructedRequest = requestFrom(textSegmentsForContext);
         EmbeddingModelRequestContext requestContext = EmbeddingModelRequestContext.builder()
                 .textSegments(textSegmentsForContext)
+                .embeddingRequest(reconstructedRequest)
                 .embeddingModel(this)
                 .attributes(attributes)
                 .build();
@@ -70,6 +75,8 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
 
             onResponse(
                     EmbeddingModelResponseContext.builder()
+                            .embeddingRequest(reconstructedRequest)
+                            .embeddingResponse(responseFrom(responseForListeners.content(), response.tokenUsage()))
                             .response(responseForListeners)
                             .textSegments(textSegmentsForContext)
                             .embeddingModel(this)
@@ -82,6 +89,7 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
                     EmbeddingModelErrorContext.builder()
                             .error(error)
                             .textSegments(textSegmentsForContext)
+                            .embeddingRequest(reconstructedRequest)
                             .embeddingModel(this)
                             .attributes(attributes)
                             .build(),
@@ -95,8 +103,10 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         List<TextSegment> textSegmentsForContext = (textSegment == null) ? List.of() : List.of(textSegment);
 
+        EmbeddingRequest reconstructedRequest = requestFrom(textSegmentsForContext);
         EmbeddingModelRequestContext requestContext = EmbeddingModelRequestContext.builder()
                 .textSegments(textSegmentsForContext)
+                .embeddingRequest(reconstructedRequest)
                 .embeddingModel(this)
                 .attributes(attributes)
                 .build();
@@ -109,6 +119,8 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
 
             onResponse(
                     EmbeddingModelResponseContext.builder()
+                            .embeddingRequest(reconstructedRequest)
+                            .embeddingResponse(responseFrom(responseForListeners.content(), response.tokenUsage()))
                             .response(responseForListeners)
                             .textSegments(textSegmentsForContext)
                             .embeddingModel(this)
@@ -121,6 +133,7 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
                     EmbeddingModelErrorContext.builder()
                             .error(error)
                             .textSegments(textSegmentsForContext)
+                            .embeddingRequest(reconstructedRequest)
                             .embeddingModel(this)
                             .attributes(attributes)
                             .build(),
@@ -132,8 +145,10 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        EmbeddingRequest reconstructedRequest = requestFrom(textSegments);
         EmbeddingModelRequestContext requestContext = EmbeddingModelRequestContext.builder()
                 .textSegments(textSegments)
+                .embeddingRequest(reconstructedRequest)
                 .embeddingModel(this)
                 .attributes(attributes)
                 .build();
@@ -142,6 +157,8 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
             Response<List<Embedding>> response = delegate.embedAll(textSegments);
             onResponse(
                     EmbeddingModelResponseContext.builder()
+                            .embeddingRequest(reconstructedRequest)
+                            .embeddingResponse(responseFrom(response.content(), response.tokenUsage()))
                             .response(response)
                             .textSegments(textSegments)
                             .embeddingModel(this)
@@ -154,6 +171,7 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
                     EmbeddingModelErrorContext.builder()
                             .error(error)
                             .textSegments(textSegments)
+                            .embeddingRequest(reconstructedRequest)
                             .embeddingModel(this)
                             .attributes(attributes)
                             .build(),
@@ -172,7 +190,6 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
                 .textSegments(textSegmentsForContext)
                 .embeddingRequest(request)
                 .embeddingModel(this)
-                .modelProvider(delegate.provider())
                 .attributes(attributes)
                 .build();
         onRequest(requestContext, listeners);
@@ -187,7 +204,6 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
                             .embeddingRequest(request)
                             .embeddingResponse(response)
                             .embeddingModel(this)
-                            .modelProvider(delegate.provider())
                             .attributes(attributes)
                             .response(responseForListeners)
                             .textSegments(textSegmentsForContext)
@@ -201,7 +217,6 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
                             .textSegments(textSegmentsForContext)
                             .embeddingRequest(request)
                             .embeddingModel(this)
-                            .modelProvider(delegate.provider())
                             .attributes(attributes)
                             .build(),
                     listeners);
@@ -210,7 +225,7 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
     }
 
     @Override
-    public dev.langchain4j.model.ModelProvider provider() {
+    public ModelProvider provider() {
         return delegate.provider();
     }
 
@@ -227,5 +242,18 @@ final class ListeningEmbeddingModel implements EmbeddingModel {
     @Override
     public String modelName() {
         return delegate.modelName();
+    }
+
+    private static EmbeddingRequest requestFrom(List<TextSegment> textSegments) {
+        return (textSegments == null || textSegments.isEmpty())
+                ? null
+                : EmbeddingRequest.builder().textSegments(textSegments).build();
+    }
+
+    private static EmbeddingResponse responseFrom(List<Embedding> embeddings, TokenUsage tokenUsage) {
+        return EmbeddingResponse.builder()
+                .embeddings(embeddings)
+                .metadata(EmbeddingResponseMetadata.builder().tokenUsage(tokenUsage).build())
+                .build();
     }
 }

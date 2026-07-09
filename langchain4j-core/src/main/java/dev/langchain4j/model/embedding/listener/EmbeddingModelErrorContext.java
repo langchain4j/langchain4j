@@ -25,7 +25,6 @@ public class EmbeddingModelErrorContext {
     private final Throwable error;
     private final EmbeddingRequest embeddingRequest;
     private final EmbeddingModel embeddingModel;
-    private final ModelProvider modelProvider;
     private final Map<Object, Object> attributes;
 
     private final List<TextSegment> textSegments;
@@ -34,7 +33,6 @@ public class EmbeddingModelErrorContext {
         this.error = ensureNotNull(builder.error, "error");
         this.embeddingRequest = builder.embeddingRequest;
         this.embeddingModel = ensureNotNull(builder.embeddingModel, "embeddingModel");
-        this.modelProvider = builder.modelProvider;
         this.attributes = ensureNotNull(builder.attributes, "attributes");
         this.textSegments = copy(ensureNotNull(builder.textSegments, "textSegments"));
     }
@@ -48,8 +46,9 @@ public class EmbeddingModelErrorContext {
 
     /**
      * @return the {@link EmbeddingRequest} that was being embedded, including its per-call parameters and
-     * multimodal inputs. It is {@code null} when the embedding was triggered via one of the
-     * {@link EmbeddingModel#embed(String)} / {@link EmbeddingModel#embedAll(List)} convenience methods. TODO can we reconstruct it from available inputs?
+     * multimodal inputs. For a convenience call ({@link EmbeddingModel#embed(String)} /
+     * {@link EmbeddingModel#embedAll(List)}) it is reconstructed from the inputs, and is {@code null} only when
+     * there are no inputs.
      */
     public EmbeddingRequest embeddingRequest() {
         return embeddingRequest;
@@ -60,10 +59,10 @@ public class EmbeddingModelErrorContext {
     }
 
     /**
-     * @return the {@link ModelProvider} of the embedding model, or {@code null} if not set.
+     * @return the {@link ModelProvider} of the embedding model (for example {@link ModelProvider#OPEN_AI}).
      */
     public ModelProvider modelProvider() {
-        return modelProvider; // TODO take from embeddingModel.provider()?
+        return embeddingModel.provider();
     }
 
     /**
@@ -97,7 +96,6 @@ public class EmbeddingModelErrorContext {
         private Throwable error;
         private EmbeddingRequest embeddingRequest;
         private EmbeddingModel embeddingModel;
-        private ModelProvider modelProvider;
         private Map<Object, Object> attributes;
         private List<TextSegment> textSegments;
 
@@ -115,11 +113,6 @@ public class EmbeddingModelErrorContext {
 
         public Builder embeddingModel(EmbeddingModel embeddingModel) {
             this.embeddingModel = embeddingModel;
-            return this;
-        }
-
-        public Builder modelProvider(ModelProvider modelProvider) {
-            this.modelProvider = modelProvider;
             return this;
         }
 

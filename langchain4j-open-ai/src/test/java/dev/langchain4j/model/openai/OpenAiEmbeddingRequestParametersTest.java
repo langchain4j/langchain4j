@@ -70,10 +70,20 @@ class OpenAiEmbeddingRequestParametersTest {
 
         EmbeddingRequestParameters merged = defaults.overrideWith(perCall);
 
+        assertThat(merged).isInstanceOf(OpenAiEmbeddingRequestParameters.class);
         assertThat(merged.modelName()).isEqualTo("m");
         assertThat(merged.parameter(OpenAiEmbeddingRequestParameters.USER)).isEqualTo("u");
         assertThat(merged.parameter(OpenAiEmbeddingRequestParameters.ENCODING_FORMAT))
                 .isEqualTo("base64");
         assertThat(merged.inputType()).isEqualTo(EmbeddingInputType.QUERY);
+    }
+
+    @Test
+    void override_with_empty_or_null_returns_same_instance() {
+        OpenAiEmbeddingRequestParameters params =
+                OpenAiEmbeddingRequestParameters.builder().user("u").build();
+
+        assertThat(params.overrideWith(null)).isSameAs(params);
+        assertThat(params.overrideWith(EmbeddingRequestParameters.EMPTY)).isSameAs(params);
     }
 }

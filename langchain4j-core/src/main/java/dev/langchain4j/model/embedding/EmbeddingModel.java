@@ -90,13 +90,11 @@ public interface EmbeddingModel {
                 .toList();
         Map<Object, Object> attributes = new java.util.concurrent.ConcurrentHashMap<>();
 
-        ModelProvider provider = provider();
         EmbeddingModelListenerUtils.onRequest(
                 EmbeddingModelRequestContext.builder()
                         .textSegments(textSegments)
                         .embeddingRequest(finalRequest)
                         .embeddingModel(this)
-                        .modelProvider(provider)
                         .attributes(attributes)
                         .build(),
                 listeners);
@@ -109,7 +107,6 @@ public interface EmbeddingModel {
                             .embeddingRequest(finalRequest)
                             .embeddingResponse(response)
                             .embeddingModel(this)
-                            .modelProvider(provider)
                             .attributes(attributes)
                             .response(legacyResponse)
                             .textSegments(textSegments)
@@ -123,7 +120,6 @@ public interface EmbeddingModel {
                             .textSegments(textSegments)
                             .embeddingRequest(finalRequest)
                             .embeddingModel(this)
-                            .modelProvider(provider)
                             .attributes(attributes)
                             .build(),
                     listeners);
@@ -176,7 +172,6 @@ public interface EmbeddingModel {
                 .metadata(EmbeddingResponseMetadata.builder()
                         .modelName(modelName())
                         .tokenUsage(legacy.tokenUsage())
-                        .finishReason(legacy.finishReason())
                         .build())
                 .build();
     }
@@ -246,10 +241,7 @@ public interface EmbeddingModel {
                 1,
                 "Expected a single embedding, but got %d",
                 response.embeddings().size());
-        return Response.from(
-                response.embeddings().get(0),
-                response.metadata().tokenUsage(),
-                response.metadata().finishReason());
+        return Response.from(response.embeddings().get(0), response.metadata().tokenUsage());
     }
 
     /**

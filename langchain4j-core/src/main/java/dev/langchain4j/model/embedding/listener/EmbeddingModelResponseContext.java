@@ -28,7 +28,6 @@ public class EmbeddingModelResponseContext {
     private final EmbeddingRequest embeddingRequest;
     private final EmbeddingResponse embeddingResponse;
     private final EmbeddingModel embeddingModel;
-    private final ModelProvider modelProvider;
     private final Map<Object, Object> attributes;
 
     private final Response<List<Embedding>> response;
@@ -38,7 +37,6 @@ public class EmbeddingModelResponseContext {
         this.embeddingRequest = builder.embeddingRequest;
         this.embeddingResponse = builder.embeddingResponse;
         this.embeddingModel = ensureNotNull(builder.embeddingModel, "embeddingModel");
-        this.modelProvider = builder.modelProvider;
         this.attributes = ensureNotNull(builder.attributes, "attributes");
         this.response = ensureNotNull(builder.response, "response");
         this.textSegments = copy(ensureNotNull(builder.textSegments, "textSegments"));
@@ -46,17 +44,15 @@ public class EmbeddingModelResponseContext {
 
     /**
      * @return the {@link EmbeddingRequest} that was embedded, including its per-call parameters and multimodal
-     * inputs. It is {@code null} when the embedding was triggered via one of the
-     * {@link EmbeddingModel#embed(String)} / {@link EmbeddingModel#embedAll(List)} convenience methods. TODO same
+     * inputs. For a convenience call ({@link EmbeddingModel#embed(String)} / {@link EmbeddingModel#embedAll(List)})
+     * it is reconstructed from the inputs, and is {@code null} only when there are no inputs.
      */
     public EmbeddingRequest embeddingRequest() {
         return embeddingRequest;
     }
 
     /**
-     * @return the {@link EmbeddingResponse}, including the embeddings and the response metadata. It is
-     * {@code null} when the embedding was triggered via one of the {@link EmbeddingModel#embed(String)} /
-     * {@link EmbeddingModel#embedAll(List)} convenience methods.
+     * @return the {@link EmbeddingResponse}, including the embeddings and the response metadata.
      */
     public EmbeddingResponse embeddingResponse() {
         return embeddingResponse;
@@ -67,10 +63,10 @@ public class EmbeddingModelResponseContext {
     }
 
     /**
-     * @return the {@link ModelProvider} of the embedding model, or {@code null} if not set.
+     * @return the {@link ModelProvider} of the embedding model (for example {@link ModelProvider#OPEN_AI}).
      */
     public ModelProvider modelProvider() {
-        return modelProvider; // TODO take from embeddingModel.provider()?
+        return embeddingModel.provider();
     }
 
     /**
@@ -112,7 +108,6 @@ public class EmbeddingModelResponseContext {
         private EmbeddingRequest embeddingRequest;
         private EmbeddingResponse embeddingResponse;
         private EmbeddingModel embeddingModel;
-        private ModelProvider modelProvider;
         private Map<Object, Object> attributes;
         private Response<List<Embedding>> response;
         private List<TextSegment> textSegments;
@@ -131,11 +126,6 @@ public class EmbeddingModelResponseContext {
 
         public Builder embeddingModel(EmbeddingModel embeddingModel) {
             this.embeddingModel = embeddingModel;
-            return this;
-        }
-
-        public Builder modelProvider(ModelProvider modelProvider) {
-            this.modelProvider = modelProvider;
             return this;
         }
 

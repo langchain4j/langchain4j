@@ -55,14 +55,14 @@ public class EmbeddingInput {
     }
 
     /**
-     * The concatenated text of all {@link TextContent} parts of this input, used by text-only models. For a
-     * plain single-text input this is just its text.
+     * The text of all {@link TextContent} parts of this input, used by text-only models. For a plain single-text
+     * input this is just its text; when there are multiple text parts, they are joined with a newline.
      */
     public String text() {
         return contents.stream()
                 .filter(content -> content instanceof TextContent)
                 .map(content -> ((TextContent) content).text())
-                .collect(joining()); // TODO separate with newline?
+                .collect(joining("\n"));
     }
 
     public static EmbeddingInput from(String text) {

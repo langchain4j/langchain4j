@@ -24,7 +24,6 @@ public class EmbeddingModelRequestContext {
 
     private final EmbeddingRequest embeddingRequest;
     private final EmbeddingModel embeddingModel;
-    private final ModelProvider modelProvider;
     private final Map<Object, Object> attributes;
 
     private final List<TextSegment> textSegments;
@@ -32,15 +31,14 @@ public class EmbeddingModelRequestContext {
     public EmbeddingModelRequestContext(Builder builder) {
         this.embeddingRequest = builder.embeddingRequest;
         this.embeddingModel = ensureNotNull(builder.embeddingModel, "embeddingModel");
-        this.modelProvider = builder.modelProvider;
         this.attributes = ensureNotNull(builder.attributes, "attributes");
         this.textSegments = copy(ensureNotNull(builder.textSegments, "textSegments"));
     }
 
     /**
      * @return the {@link EmbeddingRequest} being embedded, including its per-call parameters and multimodal
-     * inputs. It is {@code null} when the embedding was triggered via one of the
-     * {@link EmbeddingModel#embed(String)} / {@link EmbeddingModel#embedAll(List)} convenience methods. TODO same
+     * inputs. For a convenience call ({@link EmbeddingModel#embed(String)} / {@link EmbeddingModel#embedAll(List)})
+     * it is reconstructed from the inputs, and is {@code null} only when there are no inputs.
      */
     public EmbeddingRequest embeddingRequest() {
         return embeddingRequest;
@@ -51,10 +49,10 @@ public class EmbeddingModelRequestContext {
     }
 
     /**
-     * @return the {@link ModelProvider} of the embedding model, or {@code null} if not set.
+     * @return the {@link ModelProvider} of the embedding model (for example {@link ModelProvider#OPEN_AI}).
      */
     public ModelProvider modelProvider() {
-        return modelProvider; // TODO take from embeddingModel.provider()?
+        return embeddingModel.provider();
     }
 
     /**
@@ -87,7 +85,6 @@ public class EmbeddingModelRequestContext {
 
         private EmbeddingRequest embeddingRequest;
         private EmbeddingModel embeddingModel;
-        private ModelProvider modelProvider;
         private Map<Object, Object> attributes;
         private List<TextSegment> textSegments;
 
@@ -100,11 +97,6 @@ public class EmbeddingModelRequestContext {
 
         public Builder embeddingModel(EmbeddingModel embeddingModel) {
             this.embeddingModel = embeddingModel;
-            return this;
-        }
-
-        public Builder modelProvider(ModelProvider modelProvider) {
-            this.modelProvider = modelProvider;
             return this;
         }
 

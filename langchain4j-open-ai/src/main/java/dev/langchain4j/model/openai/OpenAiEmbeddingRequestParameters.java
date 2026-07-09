@@ -3,6 +3,7 @@ package dev.langchain4j.model.openai;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.embedding.request.DefaultEmbeddingRequestParameters;
 import dev.langchain4j.model.embedding.request.EmbeddingParameter;
+import dev.langchain4j.model.embedding.request.EmbeddingRequestParameters;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -43,6 +44,17 @@ public class OpenAiEmbeddingRequestParameters extends DefaultEmbeddingRequestPar
     @SuppressWarnings("unchecked")
     public Map<String, Object> customParameters() {
         return parameter(CUSTOM_PARAMETERS);
+    }
+
+    @Override
+    public OpenAiEmbeddingRequestParameters overrideWith(EmbeddingRequestParameters that) {
+        if (that == null || that.presentParameters().isEmpty()) {
+            return this;
+        }
+        return OpenAiEmbeddingRequestParameters.builder()
+                .overrideWith(this)
+                .overrideWith(that)
+                .build();
     }
 
     public static Builder builder() {

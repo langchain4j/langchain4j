@@ -113,8 +113,8 @@ class EmbeddingRequestResponseTypesTest implements WithAssertions {
 
         // one input, multiple parts -> one embedding; both modalities present
         assertThat(input.contentTypes()).containsExactlyInAnyOrder(ContentType.TEXT, ContentType.IMAGE);
-        // text() concatenates only the text parts (used by text-only providers / the legacy bridge)
-        assertThat(input.text()).isEqualTo("a photo of  a cat");
+        // text() joins only the text parts with a newline (used by text-only providers)
+        assertThat(input.text()).isEqualTo("a photo of \n a cat");
         assertThat(input.contents()).hasSize(3);
     }
 

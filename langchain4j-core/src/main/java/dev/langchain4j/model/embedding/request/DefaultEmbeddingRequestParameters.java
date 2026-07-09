@@ -57,16 +57,10 @@ public class DefaultEmbeddingRequestParameters implements EmbeddingRequestParame
 
     @Override
     public EmbeddingRequestParameters overrideWith(EmbeddingRequestParameters that) {
-        // TODO what if that is more specific type like OpenAi...
         if (that == null || that.presentParameters().isEmpty()) {
             return this;
         }
-        Builder<?> builder = new Builder<>();
-        builder.values.putAll(this.values);
-        for (EmbeddingParameter<?> parameter : that.presentParameters()) {
-            builder.values.put(parameter, that.parameter(parameter));
-        }
-        return builder.build();
+        return builder().overrideWith(this).overrideWith(that).build();
     }
 
     @Override

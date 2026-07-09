@@ -2,7 +2,6 @@ package dev.langchain4j.model.embedding.response;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
-import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.Objects;
 
@@ -12,7 +11,6 @@ import java.util.Objects;
  * this class to add provider-specific metadata.
  * <p>
  * Embedding APIs report only input token counts, so {@link TokenUsage#outputTokenCount()} is left {@code null}.
- * {@link #finishReason()} is not meaningful for most embedding models and is usually {@code null}.
  *
  * @since 1.18.0
  */
@@ -22,12 +20,10 @@ public class EmbeddingResponseMetadata {
 
     private final String modelName;
     private final TokenUsage tokenUsage;
-    private final FinishReason finishReason; // TODO remove?
 
     protected EmbeddingResponseMetadata(Builder<?> builder) {
         this.modelName = builder.modelName;
         this.tokenUsage = builder.tokenUsage;
-        this.finishReason = builder.finishReason;
     }
 
     public String modelName() {
@@ -38,29 +34,22 @@ public class EmbeddingResponseMetadata {
         return tokenUsage;
     }
 
-    public FinishReason finishReason() {
-        return finishReason;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         EmbeddingResponseMetadata that = (EmbeddingResponseMetadata) o;
-        return Objects.equals(modelName, that.modelName)
-                && Objects.equals(tokenUsage, that.tokenUsage)
-                && Objects.equals(finishReason, that.finishReason);
+        return Objects.equals(modelName, that.modelName) && Objects.equals(tokenUsage, that.tokenUsage);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(modelName, tokenUsage, finishReason);
+        return Objects.hash(modelName, tokenUsage);
     }
 
     @Override
     public String toString() {
-        return "EmbeddingResponseMetadata{modelName='" + modelName + '\'' + ", tokenUsage=" + tokenUsage
-                + ", finishReason=" + finishReason + '}';
+        return "EmbeddingResponseMetadata{modelName='" + modelName + '\'' + ", tokenUsage=" + tokenUsage + '}';
     }
 
     public static Builder<?> builder() {
@@ -71,7 +60,6 @@ public class EmbeddingResponseMetadata {
 
         private String modelName;
         private TokenUsage tokenUsage;
-        private FinishReason finishReason;
 
         public T modelName(String modelName) {
             this.modelName = modelName;
@@ -80,11 +68,6 @@ public class EmbeddingResponseMetadata {
 
         public T tokenUsage(TokenUsage tokenUsage) {
             this.tokenUsage = tokenUsage;
-            return self();
-        }
-
-        public T finishReason(FinishReason finishReason) {
-            this.finishReason = finishReason;
             return self();
         }
 
