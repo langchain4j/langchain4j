@@ -67,23 +67,30 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     @Override
-    public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-        List<String> input = textSegments.stream().map(TextSegment::text).collect(Collectors.toList());
+    public dev.langchain4j.model.embedding.response.EmbeddingResponse doEmbed(
+            dev.langchain4j.model.embedding.request.EmbeddingRequest request) {
+        List<String> input = request.inputs().stream()
+                .map(dev.langchain4j.model.embedding.request.EmbeddingInput::text)
+                .collect(Collectors.toList());
 
-        EmbeddingRequest request = EmbeddingRequest.builder()
+        EmbeddingRequest ollamaRequest = EmbeddingRequest.builder()
                 .model(modelName)
                 .input(input)
                 .dimensions(dimensions)
                 .build();
-        EmbeddingResponse response = withRetryMappingExceptions(() -> client.embed(request), maxRetries);
+        EmbeddingResponse ollamaResponse = withRetryMappingExceptions(() -> client.embed(ollamaRequest), maxRetries);
         List<Embedding> embeddings =
-                response.getEmbeddings().stream().map(Embedding::from).collect(Collectors.toList());
+                ollamaResponse.getEmbeddings().stream().map(Embedding::from).collect(Collectors.toList());
 
-        TokenUsage tokenUsage = response.getPromptEvalCount() == null
+        TokenUsage tokenUsage = ollamaResponse.getPromptEvalCount() == null
                 ? null
-                : new TokenUsage(response.getPromptEvalCount());
+                : new TokenUsage(ollamaResponse.getPromptEvalCount());
 
-        return Response.from(embeddings, tokenUsage);
+        return dev.langchain4j.model.embedding.response.EmbeddingResponse.builder()
+                .embeddings(embeddings)
+                .modelName(modelName)
+                .tokenUsage(tokenUsage)
+                .build();
     }
 
     @Override

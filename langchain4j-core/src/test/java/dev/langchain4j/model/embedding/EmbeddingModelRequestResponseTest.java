@@ -324,4 +324,44 @@ class EmbeddingModelRequestResponseTest implements WithAssertions {
 
         assertThat(request.inputs().stream().map(EmbeddingInput::text)).containsExactly("a", "bb", "ccc");
     }
+
+    @Test
+    void embedAll_fires_inline_listeners_when_model_implements_doEmbed() {
+        java.util.concurrent.atomic.AtomicInteger onRequest = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.concurrent.atomic.AtomicInteger onResponse = new java.util.concurrent.atomic.AtomicInteger();
+        EmbeddingModelListener listener = new EmbeddingModelListener() {
+            @Override
+            public void onRequest(dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext ctx) {
+                onRequest.incrementAndGet();
+            }
+
+            @Override
+            public void onResponse(dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext ctx) {
+                onResponse.incrementAndGet();
+            }
+        };
+
+        // A model that implements only doEmbed + listeners() (not embedAll), so embedAll uses the default that
+        // routes through embed(EmbeddingRequest) and therefore fires the inline listeners.
+        EmbeddingModel model = new EmbeddingModel() {
+            @Override
+            public List<EmbeddingModelListener> listeners() {
+                return List.of(listener);
+            }
+
+            @Override
+            public EmbeddingResponse doEmbed(EmbeddingRequest request) {
+                List<Embedding> embeddings = request.inputs().stream()
+                        .map(input -> new Embedding(new float[] {1f}))
+                        .collect(Collectors.toList());
+                return EmbeddingResponse.builder().embeddings(embeddings).build();
+            }
+        };
+
+        Response<List<Embedding>> response = model.embedAll(List.of(TextSegment.from("a"), TextSegment.from("b")));
+
+        assertThat(response.content()).hasSize(2);
+        assertThat(onRequest.get()).isEqualTo(1);
+        assertThat(onResponse.get()).isEqualTo(1);
+    }
 }

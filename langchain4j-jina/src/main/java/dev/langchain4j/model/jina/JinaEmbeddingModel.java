@@ -101,28 +101,6 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     @Override
-    public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-
-        JinaEmbeddingRequest request = JinaEmbeddingRequest.builder()
-                .model(modelName)
-                .lateChunking(lateChunking)
-                .input(textSegments.stream().map(TextSegment::text).collect(toList()))
-                .build();
-
-        JinaEmbeddingResponse response = withRetryMappingExceptions(() -> client.embed(request), maxRetries);
-
-        List<Embedding> embeddings = response.data == null
-        	    ? List.of()
-        	    : response.data.stream()
-        	        .map(jinaEmbedding -> Embedding.from(jinaEmbedding.embedding))
-        	        .collect(toList());
-
-
-        TokenUsage tokenUsage = new TokenUsage(response.usage.promptTokens, 0, response.usage.totalTokens);
-        return Response.from(embeddings, tokenUsage);
-    }
-
-    @Override
     public String modelName() {
         return this.modelName;
     }

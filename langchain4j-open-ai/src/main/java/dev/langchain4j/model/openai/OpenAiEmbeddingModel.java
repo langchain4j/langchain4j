@@ -167,13 +167,6 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private record EmbeddedBatch(List<Embedding> embeddings, TokenUsage tokenUsage, String modelName) {}
 
-    @Override
-    public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-        EmbeddingResponse response =
-                embed(EmbeddingRequest.builder().textSegments(textSegments).build());
-        return Response.from(response.embeddings(), response.metadata().tokenUsage());
-    }
-
     private List<List<String>> partition(List<String> inputList, int size) {
         List<List<String>> result = new ArrayList<>();
         for (int i = 0; i < inputList.size(); i += size) {

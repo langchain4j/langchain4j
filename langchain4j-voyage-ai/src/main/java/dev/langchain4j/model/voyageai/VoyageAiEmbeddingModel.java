@@ -110,19 +110,6 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     @Override
-    public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-        if (multimodal) {
-            // multimodal models are served on a different endpoint; route text through it too
-            var response = embed(dev.langchain4j.model.embedding.request.EmbeddingRequest.builder()
-                    .textSegments(textSegments)
-                    .build());
-            return Response.from(response.embeddings(), response.metadata().tokenUsage());
-        }
-        List<String> texts = textSegments.stream().map(TextSegment::text).collect(toList());
-        return embedTexts(texts);
-    }
-
-    @Override
     public Set<ContentType> supportedContentTypes() {
         return multimodal ? Set.of(ContentType.TEXT, ContentType.IMAGE) : Set.of(ContentType.TEXT);
     }
@@ -231,30 +218,6 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     @Override
     public ModelProvider provider() {
         return ModelProvider.VOYAGE_AI;
-    }
-
-    private Response<List<Embedding>> embedTexts(List<String> texts) {
-        List<Embedding> embeddings = new ArrayList<>();
-        int inputTokenCount = 0;
-
-        for (int i = 0; i < texts.size(); i += maxSegmentsPerBatch) {
-            List<String> batch = texts.subList(i, Math.min(i + maxSegmentsPerBatch, texts.size()));
-
-            EmbeddingRequest request = EmbeddingRequest.builder()
-                    .input(batch)
-                    .inputType(inputType)
-                    .model(modelName)
-                    .truncation(truncation)
-                    .encodingFormat(encodingFormat)
-                    .build();
-
-            EmbeddingResponse response = withRetryMappingExceptions(() -> this.client.embed(request), maxRetries);
-
-            embeddings.addAll(getEmbeddings(response));
-            inputTokenCount += getTokenUsage(response);
-        }
-
-        return Response.from(embeddings, new TokenUsage(inputTokenCount));
     }
 
     @Override

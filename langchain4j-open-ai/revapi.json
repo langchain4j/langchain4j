@@ -31,6 +31,11 @@
         },
         {
           "code": "java.method.removed",
+          "old": "method dev.langchain4j.model.output.Response<java.util.List<dev.langchain4j.data.embedding.Embedding>> dev.langchain4j.model.openai.OpenAiEmbeddingModel::embedAll(java.util.List<dev.langchain4j.data.segment.TextSegment>)",
+          "justification": "embedAll now inherits its default implementation from EmbeddingModel (routing through embed(EmbeddingRequest)); the method is still present and callable via inheritance — non-breaking"
+        },
+        {
+          "code": "java.method.removed",
           "old": "method dev.langchain4j.model.openai.OpenAiImageModel.OpenAiImageModelBuilder dev.langchain4j.model.openai.OpenAiImageModel.OpenAiImageModelBuilder::style(java.lang.String)",
           "justification": "The 'style' parameter is not supported by the OpenAI image generation API"
         },

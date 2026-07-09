@@ -151,9 +151,14 @@ public interface EmbeddingModel {
     }
 
     /**
-     * Performs the embedding for {@link #embed(EmbeddingRequest)}. A provider that supports per-call parameters
-     * or non-text inputs overrides this method to build the actual API call. The default implementation embeds
-     * the text of each input via {@link #embedAll(List)}.
+     * Performs the embedding for {@link #embed(EmbeddingRequest)}. This is the low-level method a provider
+     * overrides to build the actual API call; {@link #embed(EmbeddingRequest)} handles per-call parameter
+     * validation and {@link #listeners() listener} dispatch around it.
+     * <p>
+     * An implementation must override either this method (preferred) or {@link #embedAll(List)} — the two have
+     * mutually-recursive defaults, so overriding neither leads to infinite recursion. The default implementation
+     * embeds the text of each input via {@link #embedAll(List)}, which keeps implementations that only provide
+     * {@link #embedAll(List)} working.
      * <p>
      * When this method is called, the request's parameters have already been merged with
      * {@link #defaultRequestParameters()} and validated against {@link #supportedParameters()} and
@@ -245,12 +250,25 @@ public interface EmbeddingModel {
     }
 
     /**
-     * Embeds the text content of a list of TextSegments.
+     * Embeds the text content of a list of {@link TextSegment}s.
+     * <p>
+     * This is a convenience method over {@link #embed(EmbeddingRequest)}, so {@link #listeners() listeners} are
+     * notified and the model's default per-call parameters are applied here too. A provider implements its
+     * embedding logic by overriding {@link #doEmbed(EmbeddingRequest)} (preferred); it may still override this
+     * method for batch-specific behavior that the request/response API does not carry (for example applying a
+     * document title from {@link TextSegment} metadata).
      *
      * @param textSegments the text segments to embed.
      * @return the embeddings.
      */
-    Response<List<Embedding>> embedAll(List<TextSegment> textSegments);
+    default Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
+        if (isNullOrEmpty(textSegments)) {
+            return Response.from(List.of());
+        }
+        EmbeddingResponse response =
+                embed(EmbeddingRequest.builder().textSegments(textSegments).build());
+        return Response.from(response.embeddings(), response.metadata().tokenUsage());
+    }
 
     /**
      * Returns the dimension of the {@link Embedding} produced by this embedding model.
