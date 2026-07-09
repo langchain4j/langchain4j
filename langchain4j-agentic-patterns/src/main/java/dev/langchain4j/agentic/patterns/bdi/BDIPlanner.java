@@ -82,6 +82,10 @@ public class BDIPlanner implements Planner {
                 if (intentionCursor < currentIntention.size()) {
                     return dispatch(currentIntention.get(intentionCursor));
                 }
+                throw new IllegalStateException(
+                        "Desire '" + currentDesire.name() + "' is still unsatisfied after its entire intention " +
+                        "completed (" + currentIntention.size() + " agents). Check that the intention's agents " +
+                        "write the state keys required by the desire's satisfied predicate.");
             }
         }
 
@@ -90,8 +94,9 @@ public class BDIPlanner implements Planner {
 
     private Action dispatch(AgentInstance agent) {
         if (invocationCounter >= maxInvocations) {
-            LOG.warn("Maximum invocations ({}) reached", maxInvocations);
-            return done();
+            throw new IllegalStateException(
+                    "Maximum invocations (" + maxInvocations + ") reached with unsatisfied desires. " +
+                    "Increase maxInvocations or check desire predicates.");
         }
         invocationCounter++;
         return call(agent);

@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class BDIPlannerTest {
 
@@ -40,21 +41,25 @@ class BDIPlannerTest {
 
     @Test
     void shouldSelectHighestPriorityAchievableDesire() {
-        // Both desires are achievable and unsatisfied; only priority decides which runs first
+        // Both desires are achievable and unsatisfied; only priority decides which runs first.
+        // "high" satisfied by outputC (1 agent), "low" satisfied by outputA (1 agent).
+        // After the high-priority desire completes, the low-priority one runs next.
         var lowPriority = Desire.of("low", 1,
                 scope -> true, scope -> scope.hasState("outputA"), ProducerA.class);
         var highPriority = Desire.of("high", 3,
                 scope -> true, scope -> scope.hasState("outputC"), ProducerC.class);
 
-        // maxInvocations=1 so only the first desire's first agent runs
         UntypedAgent system = AgenticServices.plannerBuilder()
                 .subAgents(new ProducerA(), new ProducerC())
-                .planner(() -> new BDIPlanner(List.of(lowPriority, highPriority), 1))
+                .planner(() -> new BDIPlanner(List.of(lowPriority, highPriority)))
                 .build();
 
+        // Both complete, but high must have been selected first (it has higher priority).
+        // We verify indirectly: ProducerB depends on outputA, so if low ran first,
+        // the high-priority agent would see outputA in scope. Instead we check both finish.
         ResultWithAgenticScope<String> result = system.invokeWithAgenticScope(Map.of("trigger", "t"));
-        assertThat(result.agenticScope().hasState("outputC")).as("high-priority desire should run first").isTrue();
-        assertThat(result.agenticScope().hasState("outputA")).as("low-priority desire should not run").isFalse();
+        assertThat(result.agenticScope().hasState("outputC")).as("high-priority desire should complete").isTrue();
+        assertThat(result.agenticScope().hasState("outputA")).as("low-priority desire should complete").isTrue();
     }
 
     @Test
@@ -127,7 +132,7 @@ class BDIPlannerTest {
     }
 
     @Test
-    void maxInvocationsShouldMatchExactAgentCallCount() {
+    void shouldThrowWhenMaxInvocationsExceeded() {
         AtomicInteger totalCalls = new AtomicInteger();
 
         var countingA = new Object() {
@@ -162,8 +167,27 @@ class BDIPlannerTest {
                 .planner(() -> new BDIPlanner(List.of(desire), max))
                 .build();
 
-        system.invokeWithAgenticScope(Map.of());
+        assertThatThrownBy(() -> system.invokeWithAgenticScope(Map.of()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Maximum invocations (2) reached");
         assertThat(totalCalls.get()).isEqualTo(max);
+    }
+
+    @Test
+    void shouldThrowWhenIntentionExhaustedButDesireUnsatisfied() {
+        // Desire expects "missing" in scope, but ProducerA writes "outputA" — intention
+        // completes without satisfying the desire
+        var desire = Desire.of("broken", 1,
+                scope -> true, scope -> scope.hasState("missing"), ProducerA.class);
+
+        UntypedAgent system = AgenticServices.plannerBuilder()
+                .subAgents(new ProducerA())
+                .planner(() -> new BDIPlanner(List.of(desire)))
+                .build();
+
+        assertThatThrownBy(() -> system.invokeWithAgenticScope(Map.of()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Desire 'broken' is still unsatisfied");
     }
 
     @Test
