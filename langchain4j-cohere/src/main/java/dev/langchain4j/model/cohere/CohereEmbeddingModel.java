@@ -77,7 +77,7 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.modelName = modelName;
         this.inputType = inputType;
         this.maxSegmentsPerBatch = getOrDefault(maxSegmentsPerBatch, DEFAULT_MAX_SEGMENTS_PER_BATCH);
-        this.listeners = copy((List<EmbeddingModelListener>) null);
+        this.listeners = List.of();
     }
 
     public CohereEmbeddingModel(CohereEmbeddingModelBuilder builder) {
@@ -306,7 +306,7 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
          * Base URL of Cohere's v2 embed endpoint, used by {@link #embed(EmbeddingRequest)} (the multimodal
          * Embed v4 path). Defaults to {@link #baseUrl(String)} with {@code /v1} replaced by {@code /v2}.
          */
-        public CohereEmbeddingModelBuilder v2BaseUrl(String v2BaseUrl) {
+        public CohereEmbeddingModelBuilder v2BaseUrl(String v2BaseUrl) { // TODO needed?
             this.v2BaseUrl = v2BaseUrl;
             return this;
         }

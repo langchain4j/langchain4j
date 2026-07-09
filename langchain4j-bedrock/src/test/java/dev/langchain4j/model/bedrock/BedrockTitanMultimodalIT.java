@@ -11,7 +11,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import software.amazon.awssdk.regions.Region;
 
 @EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
-class BedrockTitanMultimodalIT {
+class BedrockTitanMultimodalIT { // TODO check all newly added tests and remove those which are redundant (AbstractEmbeddingModelIT should stay)
 
     // A 1x1 transparent PNG, base64-encoded.
     private static final String TINY_PNG_BASE64 =

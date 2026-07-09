@@ -74,7 +74,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.inputType = inputType;
         this.encodingFormat = encodingFormat;
         this.multimodal = isMultimodalModel(this.modelName);
-        this.listeners = copy((List<EmbeddingModelListener>) null);
+        this.listeners = List.of();
 
         this.client = VoyageAiClient.builder()
                 .httpClientBuilder(httpClientBuilder)

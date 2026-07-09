@@ -68,7 +68,7 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.maxRetries = getOrDefault(maxRetries, 2);
         this.lateChunking = getOrDefault(lateChunking, false);
-        this.listeners = copy((List<EmbeddingModelListener>) null);
+        this.listeners = List.of();
     }
 
     public JinaEmbeddingModel(JinaEmbeddingModelBuilder builder) {
