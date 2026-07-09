@@ -547,7 +547,7 @@ Besides the convenience methods above, `EmbeddingModel` accepts an `EmbeddingReq
 ```java
 EmbeddingResponse response = embeddingModel.embed(EmbeddingRequest.builder()
     .input("What is the capital of France?")
-    .inputType(EmbeddingInputType.QUERY) // query vs document, see the note above
+    .inputType(EmbeddingInputType.QUERY) // query vs document, see the section below
     .dimensions(256)                     // reduce output dimensionality (on models that support it)
     .build());
 

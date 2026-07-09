@@ -54,7 +54,7 @@ BedrockCohereEmbeddingModel embeddingModel = BedrockCohereEmbeddingModel
 ## Titan Multimodal Embeddings
 
 `BedrockTitanEmbeddingModel` supports Amazon Titan Multimodal Embeddings (`amazon.titan-embed-image-v1`): it
-embeds text and/or a single image into one (averaged) embedding.
+embeds text and/or a single image into one (fused) embedding.
 
 ```java
 EmbeddingModel model = BedrockTitanEmbeddingModel.builder()
