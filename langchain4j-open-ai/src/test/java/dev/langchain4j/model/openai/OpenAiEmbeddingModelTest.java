@@ -1,12 +1,17 @@
 package dev.langchain4j.model.openai;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.output.Response;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -89,6 +94,33 @@ class OpenAiEmbeddingModelTest {
                     "hello"
                   ],
                   "input_type": "passage"
+                }
+                """);
+    }
+
+    @Test
+    void embedAllAsync_returns_the_embedding_via_the_async_http_path() throws Exception {
+        // given
+        MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(embeddingResponse());
+
+        EmbeddingModel model = OpenAiEmbeddingModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .modelName("text-embedding-3-small")
+                .build();
+
+        // when
+        Response<List<Embedding>> response =
+                model.embedAllAsync(List.of(TextSegment.from("hello"))).get(5, SECONDS);
+
+        // then
+        assertThat(response.content()).hasSize(1);
+        assertThat(response.content().get(0).vector()).hasSize(2);
+        assertThat(mockHttpClient.request().body()).isEqualToIgnoringWhitespace("""
+                {
+                  "model": "text-embedding-3-small",
+                  "input": [
+                    "hello"
+                  ]
                 }
                 """);
     }

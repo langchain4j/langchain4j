@@ -240,33 +240,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .userMessage(originalUserMessage)
                                 .build());
 
-                        UserMessage userMessageForAugmentation = originalUserMessage;
-
-                        AugmentationResult augmentationResult = null;
-                        if (context.retrievalAugmentor != null) {
-                            List<ChatMessage> chatMemoryMessages = chatMemory != null ? chatMemory.messages() : null;
-                            Metadata metadata = Metadata.builder()
-                                    .chatMessage(userMessageForAugmentation)
-                                    .systemMessage(systemMessage.orElse(null))
-                                    .chatMemory(chatMemoryMessages)
-                                    .invocationContext(invocationContext)
-                                    .build();
-                            AugmentationRequest augmentationRequest =
-                                    new AugmentationRequest(userMessageForAugmentation, metadata);
-                            augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
-                            userMessageForAugmentation = (UserMessage) augmentationResult.chatMessage();
-                        }
-
-                        UserMessage userMessage = addContentsToUserMessage(method, args, userMessageForAugmentation);
-
-                        var commonGuardrailParam = GuardrailRequestParams.builder()
-                                .chatMemory(chatMemory)
-                                .augmentationResult(augmentationResult)
-                                .userMessageTemplate(userMessageTemplate)
-                                .invocationContext(invocationContext)
-                                .aiServiceListenerRegistrar(context.eventListenerRegistrar)
-                                .variables(variables)
-                                .build();
+                        // RAG augmentation is performed per return-type mode below: on the calling thread for the
+                        // synchronous path, and off the calling thread (composed into the result) for the asynchronous
+                        // and reactive paths - see augmentAsyncIfNeeded.
 
                         Type declaredReturnType =
                                 context.returnType != null ? context.returnType : method.getGenericReturnType();
@@ -331,60 +307,88 @@ class DefaultAiServices<T> extends AiServices<T> {
                             final InvocationContext baseInvocationContext = invocationContext;
                             final Optional<SystemMessage> asyncSystemMessage = systemMessage;
                             final ResponseFormat asyncResponseFormat = responseFormat;
-                            final UserMessage asyncInputUserMessage = userMessage;
-                            final AugmentationResult asyncAugmentationResult = augmentationResult;
                             final Type asyncReturnType2 = returnType;
                             final boolean asyncAppendOutputFormat = appendOutputFormat;
                             CompletableFuture<Object> result = new CompletableFuture<>();
-                            // Input guardrails run off the caller thread TODO; the user-message-dependent prelude, memory
-                            // assembly, model call and tool loop then all run composed. Cancelling the returned future
-                            // cancels the in-flight input guardrails (best-effort); the model call and the output
-                            // guardrails are cancelled via propagateCancellation on the inner loop future.
-                            CompletableFuture<UserMessage> inputGuardrails = invokeInputGuardrailsAsync(
-                                    context.guardrailService(), method, asyncInputUserMessage, commonGuardrailParam);
-                            propagateCancellation(result, inputGuardrails);
-                            inputGuardrails
-                                    .thenApply(guardedUserMessage -> prepareGuardedInput(
-                                            guardedUserMessage,
-                                            baseInvocationContext,
-                                            asyncReturnType2,
-                                            asyncAppendOutputFormat))
-                                    .whenComplete((guardedInput, guardrailError) -> {
-                                        if (guardrailError != null) {
-                                            result.completeExceptionally(unwrapCompletionException(guardrailError));
-                                            return;
-                                        }
-                                        assembleMessagesAsync(
-                                                        chatMemory,
-                                                        asyncSystemMessage,
-                                                        guardedInput.userMessage(),
-                                                        originalUserMessage)
-                                                .whenComplete((assembledMessages, assemblyError) -> {
-                                                    if (assemblyError != null) {
-                                                        result.completeExceptionally(unwrapCompletionException(assemblyError));
-                                                        return;
-                                                    }
-                                                    try {
-                                                        dispatchAsync(
-                                                                result,
-                                                                method,
-                                                                args,
-                                                                guardedInput.invocationContext(),
-                                                                memoryId,
+                            // RAG augmentation runs off the caller thread (memory read + retrieval); the augmented
+                            // user message, input guardrails, memory assembly, model call and tool loop then all run
+                            // composed. Cancelling the returned future cancels the in-flight augmentation and input
+                            // guardrails (best-effort); the model call and the output guardrails are cancelled via
+                            // propagateCancellation on the inner loop future.
+                            CompletableFuture<AugmentationResult> augmentation = augmentAsyncIfNeeded(
+                                    chatMemory, asyncSystemMessage, originalUserMessage, baseInvocationContext);
+                            propagateCancellation(result, augmentation);
+                            augmentation.whenComplete((augmentationResult, augmentationError) -> {
+                                if (augmentationError != null) {
+                                    result.completeExceptionally(unwrapCompletionException(augmentationError));
+                                    return;
+                                }
+                                try {
+                                    UserMessage augmentedUserMessage = addContentsToUserMessage(
+                                            method,
+                                            args,
+                                            augmentationResult != null
+                                                    ? (UserMessage) augmentationResult.chatMessage()
+                                                    : originalUserMessage);
+                                    GuardrailRequestParams commonGuardrailParam = GuardrailRequestParams.builder()
+                                            .chatMemory(chatMemory)
+                                            .augmentationResult(augmentationResult)
+                                            .userMessageTemplate(userMessageTemplate)
+                                            .invocationContext(baseInvocationContext)
+                                            .aiServiceListenerRegistrar(context.eventListenerRegistrar)
+                                            .variables(variables)
+                                            .build();
+
+                                    CompletableFuture<UserMessage> inputGuardrails = invokeInputGuardrailsAsync(
+                                            context.guardrailService(), method, augmentedUserMessage, commonGuardrailParam);
+                                    propagateCancellation(result, inputGuardrails);
+                                    inputGuardrails
+                                            .thenApply(guardedUserMessage -> prepareGuardedInput(
+                                                    guardedUserMessage,
+                                                    baseInvocationContext,
+                                                    asyncReturnType2,
+                                                    asyncAppendOutputFormat))
+                                            .whenComplete((guardedInput, guardrailError) -> {
+                                                if (guardrailError != null) {
+                                                    result.completeExceptionally(unwrapCompletionException(guardrailError));
+                                                    return;
+                                                }
+                                                assembleMessagesAsync(
                                                                 chatMemory,
-                                                                assembledMessages,
+                                                                asyncSystemMessage,
                                                                 guardedInput.userMessage(),
-                                                                asyncResponseFormat,
-                                                                commonGuardrailParam,
-                                                                asyncAugmentationResult,
-                                                                asyncReturnType2,
-                                                                returnsImage,
-                                                                isReturnTypeResult);
-                                                    } catch (Throwable t) {
-                                                        result.completeExceptionally(t);
-                                                    }
-                                                });
-                                    });
+                                                                originalUserMessage)
+                                                        .whenComplete((assembledMessages, assemblyError) -> {
+                                                            if (assemblyError != null) {
+                                                                result.completeExceptionally(
+                                                                        unwrapCompletionException(assemblyError));
+                                                                return;
+                                                            }
+                                                            try {
+                                                                dispatchAsync(
+                                                                        result,
+                                                                        method,
+                                                                        args,
+                                                                        guardedInput.invocationContext(),
+                                                                        memoryId,
+                                                                        chatMemory,
+                                                                        assembledMessages,
+                                                                        guardedInput.userMessage(),
+                                                                        asyncResponseFormat,
+                                                                        commonGuardrailParam,
+                                                                        augmentationResult,
+                                                                        asyncReturnType2,
+                                                                        returnsImage,
+                                                                        isReturnTypeResult);
+                                                            } catch (Throwable t) {
+                                                                result.completeExceptionally(t);
+                                                            }
+                                                        });
+                                            });
+                                } catch (Throwable t) {
+                                    result.completeExceptionally(t);
+                                }
+                            });
                             return completableFutureAdapter != null
                                     ? completableFutureAdapter.fromCompletableFuture(declaredReturnType, result)
                                     : result;
@@ -402,76 +406,118 @@ class DefaultAiServices<T> extends AiServices<T> {
                             final InvocationContext baseInvocationContext = invocationContext;
                             final Optional<SystemMessage> reactiveSystemMessage = systemMessage;
                             final ChatMemory reactiveChatMemory = chatMemory;
-                            final UserMessage reactiveInputUserMessage = userMessage;
-                            final AugmentationResult reactiveAugmentationResult = augmentationResult;
                             final Type reactiveReturnType = returnType;
                             final boolean reactiveAppendOutputFormat = appendOutputFormat;
 
-                            Flow.Publisher<AiServiceStreamingEvent> events = subscriber -> invokeInputGuardrailsAsync(
-                                            context.guardrailService(),
-                                            method,
-                                            reactiveInputUserMessage,
-                                            commonGuardrailParam)
-                                    .thenApply(guardedUserMessage -> prepareGuardedInput(
-                                            guardedUserMessage,
-                                            baseInvocationContext,
-                                            reactiveReturnType,
-                                            reactiveAppendOutputFormat))
-                                    .whenComplete((guardedInput, guardrailError) -> {
-                                        if (guardrailError != null) {
+                            // Cold stream: RAG augmentation (memory read + retrieval) is started on subscribe, off the
+                            // subscriber thread, and the augmented user message, input guardrails, memory assembly and
+                            // the streaming tool loop are composed onto it. The subscriber has no Subscription until the
+                            // inner publisher subscribes, so augmentation itself is not cancellable; once streaming
+                            // starts, cancelling the Subscription stops the interaction (see AiServiceStreamingEventPublisher).
+                            Flow.Publisher<AiServiceStreamingEvent> events = subscriber -> augmentAsyncIfNeeded(
+                                            reactiveChatMemory,
+                                            reactiveSystemMessage,
+                                            originalUserMessage,
+                                            baseInvocationContext)
+                                    .whenComplete((augmentationResult, augmentationError) -> {
+                                        if (augmentationError != null) {
                                             subscriber.onSubscribe(NOOP_SUBSCRIPTION);
-                                            subscriber.onError(unwrapCompletionException(guardrailError));
+                                            subscriber.onError(unwrapCompletionException(augmentationError));
                                             return;
                                         }
-                                        assembleMessagesAsync(
-                                                        reactiveChatMemory,
-                                                        reactiveSystemMessage,
-                                                        guardedInput.userMessage(),
-                                                        originalUserMessage)
-                                                .whenComplete((assembledMessages, assemblyError) -> {
-                                                    if (assemblyError != null) {
+                                        final UserMessage reactiveInputUserMessage;
+                                        final GuardrailRequestParams commonGuardrailParam;
+                                        try {
+                                            reactiveInputUserMessage = addContentsToUserMessage(
+                                                    method,
+                                                    args,
+                                                    augmentationResult != null
+                                                            ? (UserMessage) augmentationResult.chatMessage()
+                                                            : originalUserMessage);
+                                            commonGuardrailParam = GuardrailRequestParams.builder()
+                                                    .chatMemory(reactiveChatMemory)
+                                                    .augmentationResult(augmentationResult)
+                                                    .userMessageTemplate(userMessageTemplate)
+                                                    .invocationContext(baseInvocationContext)
+                                                    .aiServiceListenerRegistrar(context.eventListenerRegistrar)
+                                                    .variables(variables)
+                                                    .build();
+                                        } catch (Throwable t) {
+                                            subscriber.onSubscribe(NOOP_SUBSCRIPTION);
+                                            subscriber.onError(unwrapCompletionException(t));
+                                            return;
+                                        }
+                                        invokeInputGuardrailsAsync(
+                                                        context.guardrailService(),
+                                                        method,
+                                                        reactiveInputUserMessage,
+                                                        commonGuardrailParam)
+                                                .thenApply(guardedUserMessage -> prepareGuardedInput(
+                                                        guardedUserMessage,
+                                                        baseInvocationContext,
+                                                        reactiveReturnType,
+                                                        reactiveAppendOutputFormat))
+                                                .whenComplete((guardedInput, guardrailError) -> {
+                                                    if (guardrailError != null) {
                                                         subscriber.onSubscribe(NOOP_SUBSCRIPTION);
-                                                        subscriber.onError(unwrapCompletionException(assemblyError));
+                                                        subscriber.onError(unwrapCompletionException(guardrailError));
                                                         return;
                                                     }
-                                                    AiServiceStreamingEventPublisher publisher;
-                                                    try {
-                                                        ToolServiceContext reactiveToolServiceContext =
-                                                                context.toolService.createContext(
-                                                                        guardedInput.invocationContext(),
-                                                                        guardedInput.userMessage(),
-                                                                        assembledMessages);
-                                                        var streamingEventStreamParameters =
-                                                                AiServiceTokenStreamParameters.builder()
-                                                                        .messages(assembledMessages)
-                                                                        .toolServiceContext(reactiveToolServiceContext)
-                                                                        .toolArgumentsErrorHandler(
-                                                                                context.toolService
-                                                                                        .argumentsErrorHandler())
-                                                                        .toolExecutionErrorHandler(
-                                                                                context.toolService
-                                                                                        .executionErrorHandler())
-                                                                        .toolExecutor(context.toolService.executor())
-                                                                        .retrievedContents(
-                                                                                reactiveAugmentationResult != null
-                                                                                        ? reactiveAugmentationResult
-                                                                                                .contents()
-                                                                                        : null)
-                                                                        .context(context)
-                                                                        .invocationContext(
-                                                                                guardedInput.invocationContext())
-                                                                        .commonGuardrailParams(commonGuardrailParam)
-                                                                        .methodKey(method)
-                                                                        .build();
-                                                        publisher = new AiServiceStreamingEventPublisher(
-                                                                streamingEventStreamParameters,
-                                                                context.streamingBufferSize);
-                                                    } catch (Throwable t) {
-                                                        subscriber.onSubscribe(NOOP_SUBSCRIPTION);
-                                                        subscriber.onError(unwrapCompletionException(t));
-                                                        return;
-                                                    }
-                                                    publisher.subscribe(subscriber);
+                                                    assembleMessagesAsync(
+                                                                    reactiveChatMemory,
+                                                                    reactiveSystemMessage,
+                                                                    guardedInput.userMessage(),
+                                                                    originalUserMessage)
+                                                            .whenComplete((assembledMessages, assemblyError) -> {
+                                                                if (assemblyError != null) {
+                                                                    subscriber.onSubscribe(NOOP_SUBSCRIPTION);
+                                                                    subscriber.onError(
+                                                                            unwrapCompletionException(assemblyError));
+                                                                    return;
+                                                                }
+                                                                AiServiceStreamingEventPublisher publisher;
+                                                                try {
+                                                                    ToolServiceContext reactiveToolServiceContext =
+                                                                            context.toolService.createContext(
+                                                                                    guardedInput.invocationContext(),
+                                                                                    guardedInput.userMessage(),
+                                                                                    assembledMessages);
+                                                                    var streamingEventStreamParameters =
+                                                                            AiServiceTokenStreamParameters.builder()
+                                                                                    .messages(assembledMessages)
+                                                                                    .toolServiceContext(
+                                                                                            reactiveToolServiceContext)
+                                                                                    .toolArgumentsErrorHandler(
+                                                                                            context.toolService
+                                                                                                    .argumentsErrorHandler())
+                                                                                    .toolExecutionErrorHandler(
+                                                                                            context.toolService
+                                                                                                    .executionErrorHandler())
+                                                                                    .toolExecutor(
+                                                                                            context.toolService.executor())
+                                                                                    .retrievedContents(
+                                                                                            augmentationResult != null
+                                                                                                    ? augmentationResult
+                                                                                                            .contents()
+                                                                                                    : null)
+                                                                                    .context(context)
+                                                                                    .invocationContext(
+                                                                                            guardedInput
+                                                                                                    .invocationContext())
+                                                                                    .commonGuardrailParams(
+                                                                                            commonGuardrailParam)
+                                                                                    .methodKey(method)
+                                                                                    .build();
+                                                                    publisher = new AiServiceStreamingEventPublisher(
+                                                                            streamingEventStreamParameters,
+                                                                            context.streamingBufferSize);
+                                                                } catch (Throwable t) {
+                                                                    subscriber.onSubscribe(NOOP_SUBSCRIPTION);
+                                                                    subscriber.onError(unwrapCompletionException(t));
+                                                                    return;
+                                                                }
+                                                                publisher.subscribe(subscriber);
+                                                            });
                                                 });
                                     });
 
@@ -483,6 +529,35 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     ? publisherAdapter.fromPublisher(returnType, mapped)
                                     : mapped;
                         }
+
+                        // Synchronous path: RAG augmentation on the calling thread (the async and reactive paths above
+                        // augment off-thread and have already returned).
+                        UserMessage userMessageForAugmentation = originalUserMessage;
+                        AugmentationResult augmentationResult = null;
+                        if (context.retrievalAugmentor != null) {
+                            List<ChatMessage> chatMemoryMessages = chatMemory != null ? chatMemory.messages() : null;
+                            Metadata metadata = Metadata.builder()
+                                    .chatMessage(userMessageForAugmentation)
+                                    .systemMessage(systemMessage.orElse(null))
+                                    .chatMemory(chatMemoryMessages)
+                                    .invocationContext(invocationContext)
+                                    .build();
+                            AugmentationRequest augmentationRequest =
+                                    new AugmentationRequest(userMessageForAugmentation, metadata);
+                            augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
+                            userMessageForAugmentation = (UserMessage) augmentationResult.chatMessage();
+                        }
+
+                        UserMessage userMessage = addContentsToUserMessage(method, args, userMessageForAugmentation);
+
+                        var commonGuardrailParam = GuardrailRequestParams.builder()
+                                .chatMemory(chatMemory)
+                                .augmentationResult(augmentationResult)
+                                .userMessageTemplate(userMessageTemplate)
+                                .invocationContext(invocationContext)
+                                .aiServiceListenerRegistrar(context.eventListenerRegistrar)
+                                .variables(variables)
+                                .build();
 
                         userMessage = invokeInputGuardrails(
                                 context.guardrailService(), method, userMessage, commonGuardrailParam);
@@ -752,6 +827,43 @@ class DefaultAiServices<T> extends AiServices<T> {
                             messages.add(userMessage);
                         }
                         return messages;
+                    }
+
+                    /**
+                     * Runs RAG augmentation off the calling thread for the asynchronous and reactive return-type
+                     * modes: reads the chat memory via the asynchronous {@code messagesAsync} and delegates to
+                     * {@code RetrievalAugmentor.augmentAsync}. Completes with {@code null} when no
+                     * {@code RetrievalAugmentor} is configured (the caller then uses the original user message).
+                     */
+                    private CompletableFuture<AugmentationResult> augmentAsyncIfNeeded(
+                            ChatMemory chatMemory,
+                            Optional<SystemMessage> systemMessage,
+                            UserMessage originalUserMessage,
+                            InvocationContext invocationContext) {
+                        if (context.retrievalAugmentor == null) {
+                            return CompletableFuture.completedFuture(null);
+                        }
+                        // Any synchronous throw (e.g. a blocking-only ChatMemoryStore whose messagesAsync() throws
+                        // UnsupportedOperationException) is turned into a failed future so callers always observe it
+                        // through the returned stage - never as a thrown exception (which, on the reactive path,
+                        // would escape subscribe() and violate the Reactive Streams contract).
+                        try {
+                            CompletableFuture<List<ChatMessage>> chatMemoryMessages = chatMemory != null
+                                    ? chatMemory.messagesAsync().toCompletableFuture()
+                                    : CompletableFuture.completedFuture(null);
+                            return chatMemoryMessages.thenCompose(memoryMessages -> {
+                                Metadata metadata = Metadata.builder()
+                                        .chatMessage(originalUserMessage)
+                                        .systemMessage(systemMessage.orElse(null))
+                                        .chatMemory(memoryMessages)
+                                        .invocationContext(invocationContext)
+                                        .build();
+                                return context.retrievalAugmentor.augmentAsync(
+                                        new AugmentationRequest(originalUserMessage, metadata));
+                            });
+                        } catch (Throwable t) {
+                            return CompletableFuture.failedFuture(t);
+                        }
                     }
 
                     /**

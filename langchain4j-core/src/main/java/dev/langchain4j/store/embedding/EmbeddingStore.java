@@ -10,11 +10,13 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.listener.EmbeddingStoreListener;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Represents a store for embeddings, also known as a vector database.
@@ -141,6 +143,28 @@ public interface EmbeddingStore<Embedded> {
      * @return An {@link EmbeddingSearchResult} containing all found {@link Embedding}s.
      */
     EmbeddingSearchResult<Embedded> search(EmbeddingSearchRequest request);
+
+    /**
+     * Non-blocking counterpart of {@link #search(EmbeddingSearchRequest)}, used by the asynchronous and reactive RAG
+     * flow (see {@code EmbeddingStoreContentRetriever.retrieveAsync}).
+     * <p>
+     * The default implementation offloads the blocking {@link #search(EmbeddingSearchRequest)} to a shared
+     * virtual-thread executor, so any existing {@link EmbeddingStore} is usable from the non-blocking path without
+     * changes (blocking a <i>virtual</i> thread is non-pinning). A store backed by remote/DB I/O is encouraged to
+     * override this with a genuinely async query (no thread parked); an in-memory store may leave the default or
+     * override it to complete synchronously.
+     * <p>
+     * An implementation that honors cancellation should abort its in-flight query when the returned future is
+     * cancelled (best-effort).
+     *
+     * @param request A request to search in an {@link EmbeddingStore}. Contains all search criteria.
+     * @return a {@link CompletableFuture} of the {@link EmbeddingSearchResult}.
+     * @since 1.17.0
+     */
+    default CompletableFuture<EmbeddingSearchResult<Embedded>> searchAsync(EmbeddingSearchRequest request) {
+        return CompletableFuture.supplyAsync(
+                () -> search(request), DefaultExecutorProvider.getDefaultExecutorService());
+    }
 
     /**
      * Wraps this {@link EmbeddingStore} with a listening store that dispatches events to the provided listener.

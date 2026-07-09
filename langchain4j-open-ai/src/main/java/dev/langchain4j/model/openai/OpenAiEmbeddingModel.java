@@ -1,5 +1,7 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
@@ -13,8 +15,10 @@ import static java.util.Collections.unmodifiableMap;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingResponse;
 import dev.langchain4j.model.openai.spi.OpenAiEmbeddingModelBuilderFactory;
@@ -26,6 +30,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 
@@ -142,6 +148,72 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .toList();
 
         return Response.from(embeddings, tokenUsageFrom(response.usage()));
+    }
+
+    /**
+     * Genuinely non-blocking counterpart of {@link #embedAll(List)}: each batch is sent over the async HTTP path
+     * ({@code executeRawAsync}) and the per-batch futures are composed, so no thread is parked while the OpenAI
+     * embeddings request is in flight. Cancelling the returned future aborts the in-flight HTTP request (best-effort).
+     * <p>
+     * Note: unlike {@link #embedAll(List)}, this path does not yet apply {@code maxRetries} (retry-around-future is
+     * not wired), consistent with the other OpenAI async methods.
+     */
+    @Override
+    public CompletableFuture<Response<List<Embedding>>> embedAllAsync(List<TextSegment> textSegments) {
+        List<String> texts = textSegments.stream().map(TextSegment::text).toList();
+        List<List<String>> textBatches = partition(texts, maxSegmentsPerBatch);
+        return embedBatchedTextsAsync(textBatches);
+    }
+
+    private CompletableFuture<Response<List<Embedding>>> embedBatchedTextsAsync(List<List<String>> textBatches) {
+        List<CompletableFuture<Response<List<Embedding>>>> futures =
+                textBatches.stream().map(this::embedTextsAsync).toList();
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).thenApply(ignored -> {
+            List<Response<List<Embedding>>> responses =
+                    futures.stream().map(CompletableFuture::join).toList();
+            return Response.from(
+                    responses.stream()
+                            .flatMap(response -> response.content().stream())
+                            .toList(),
+                    responses.stream()
+                            .map(Response::tokenUsage)
+                            .filter(Objects::nonNull)
+                            .reduce(TokenUsage::add)
+                            .orElse(null));
+        });
+    }
+
+    private CompletableFuture<Response<List<Embedding>>> embedTextsAsync(List<String> texts) {
+
+        EmbeddingRequest request = EmbeddingRequest.builder()
+                .input(texts)
+                .model(modelName)
+                .dimensions(dimensions)
+                .user(user)
+                .encodingFormat(encodingFormat)
+                .customParameters(customParameters)
+                .build();
+
+        CompletableFuture<ParsedAndRawResponse<EmbeddingResponse>> rawFuture =
+                client.embedding(request).executeRawAsync();
+
+        CompletableFuture<Response<List<Embedding>>> result = rawFuture.thenApply(parsedAndRaw -> {
+                    EmbeddingResponse response = parsedAndRaw.parsedResponse();
+                    List<Embedding> embeddings = response.data().stream()
+                            .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
+                            .toList();
+                    return Response.from(embeddings, tokenUsageFrom(response.usage()));
+                })
+                .exceptionallyCompose(throwable -> {
+                    Throwable cause = unwrapCompletionException(throwable);
+                    if (cause instanceof CancellationException) {
+                        return CompletableFuture.failedFuture(cause);
+                    }
+                    return CompletableFuture.failedFuture(ExceptionMapper.DEFAULT.mapException(cause));
+                });
+
+        propagateCancellation(result, rawFuture);
+        return result;
     }
 
     public static OpenAiEmbeddingModelBuilder builder() {

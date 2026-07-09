@@ -7,6 +7,7 @@ import dev.langchain4j.rag.query.Query;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Aggregates all {@link Content}s retrieved from all {@link ContentRetriever}s using all {@link Query}s.
@@ -36,4 +37,22 @@ public interface ContentAggregator {
      * @return A list of aggregated {@link Content}s.
      */
     List<Content> aggregate(Map<Query, Collection<List<Content>>> queryToContents);
+
+    /**
+     * Non-blocking counterpart of {@link #aggregate(Map)}, invoked by the asynchronous
+     * ({@link java.util.concurrent.CompletableFuture}/{@link java.util.concurrent.CompletionStage}) and reactive
+     * ({@link java.util.concurrent.Flow.Publisher}) AI Service modes when RAG is configured.
+     * <p>
+     * The default implementation throws {@link UnsupportedOperationException}: an aggregator backed by a blocking
+     * model call (e.g. {@link ReRankingContentAggregator}'s scoring model) must opt in by overriding this method to
+     * stay off the calling thread. An aggregator that cannot be made non-blocking is still usable from these modes
+     * via {@code DefaultRetrievalAugmentor}, which offloads the blocking {@link #aggregate(Map)} to its executor.
+     *
+     * @param queryToContents A map from a {@link Query} to all {@code List<Content>} retrieved with that {@link Query}.
+     * @return A {@link CompletableFuture} of the list of aggregated {@link Content}s.
+     * @since 1.17.0
+     */
+    default CompletableFuture<List<Content>> aggregateAsync(Map<Query, Collection<List<Content>>> queryToContents) {
+        throw new UnsupportedOperationException("aggregateAsync() is not implemented by " + getClass().getName());
+    }
 }

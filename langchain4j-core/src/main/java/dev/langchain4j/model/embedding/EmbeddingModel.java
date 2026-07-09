@@ -6,10 +6,12 @@ import static java.util.Collections.singletonList;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.internal.ValidationUtils;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.output.Response;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Represents a model that can convert a given text into an embedding (vector representation of the text).
@@ -49,6 +51,28 @@ public interface EmbeddingModel {
      * @return the embeddings.
      */
     Response<List<Embedding>> embedAll(List<TextSegment> textSegments);
+
+    /**
+     * Non-blocking counterpart of {@link #embedAll(List)}, used by the asynchronous and reactive RAG flow
+     * (see {@code EmbeddingStoreContentRetriever.retrieveAsync}).
+     * <p>
+     * The default implementation offloads the blocking {@link #embedAll(List)} to a shared virtual-thread executor,
+     * so any existing {@link EmbeddingModel} is usable from the non-blocking path without changes (blocking a
+     * <i>virtual</i> thread is non-pinning). A model backed by remote HTTP I/O is encouraged to override this with a
+     * genuinely async call (no thread parked); a purely in-process (CPU-bound) model can leave the default, since a
+     * single query embedding is short-lived.
+     * <p>
+     * An implementation that honors cancellation should abort in-flight I/O when the returned future is cancelled
+     * (best-effort).
+     *
+     * @param textSegments the text segments to embed.
+     * @return a {@link CompletableFuture} of the embeddings.
+     * @since 1.17.0
+     */
+    default CompletableFuture<Response<List<Embedding>>> embedAllAsync(List<TextSegment> textSegments) {
+        return CompletableFuture.supplyAsync(
+                () -> embedAll(textSegments), DefaultExecutorProvider.getDefaultExecutorService());
+    }
 
     /**
      * Returns the dimension of the {@link Embedding} produced by this embedding model.

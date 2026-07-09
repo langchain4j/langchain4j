@@ -20,6 +20,7 @@ import dev.langchain4j.store.embedding.filter.Filter;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -236,6 +237,36 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
 
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(searchRequest);
 
+        return toContents(searchResult);
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #retrieve(Query)}: embeds the query and searches the store via the
+     * asynchronous {@link EmbeddingModel#embedAllAsync(List)} and {@link EmbeddingStore#searchAsync(EmbeddingSearchRequest)},
+     * so no thread is blocked while the (typically remote) embedding call and vector-store query are in flight.
+     * Works with any {@link EmbeddingModel}/{@link EmbeddingStore}: blocking implementations are offloaded by their
+     * async defaults, while implementations that provide genuine async I/O (e.g. OpenAI embeddings, an in-memory
+     * store) run without parking a thread.
+     */
+    @Override
+    public CompletableFuture<List<Content>> retrieveAsync(Query query) {
+        return embeddingModel
+                .embedAllAsync(List.of(TextSegment.from(query.text())))
+                .thenCompose(response -> {
+                    Embedding embeddedQuery = response.content().get(0);
+                    EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                            .query(query.text())
+                            .queryEmbedding(embeddedQuery)
+                            .maxResults(maxResultsProvider.apply(query))
+                            .minScore(minScoreProvider.apply(query))
+                            .filter(filterProvider.apply(query))
+                            .build();
+                    return embeddingStore.searchAsync(searchRequest);
+                })
+                .thenApply(this::toContents);
+    }
+
+    private List<Content> toContents(EmbeddingSearchResult<TextSegment> searchResult) {
         return searchResult.matches().stream()
                 .map(embeddingMatch -> Content.from(
                         embeddingMatch.embedded(),

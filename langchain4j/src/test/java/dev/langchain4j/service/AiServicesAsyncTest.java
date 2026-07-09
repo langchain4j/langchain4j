@@ -17,6 +17,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailException;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
@@ -108,6 +109,28 @@ class AiServicesAsyncTest {
         assertThat(result.toCompletableFuture().get(10, SECONDS)).isEqualTo("Berlin");
         verify(chatModel).doChatAsync(any());
         verify(chatModel, never()).doChat(any());
+    }
+
+    @Test
+    void should_augment_user_message_via_non_blocking_rag_for_completable_future_return_type() throws Exception {
+
+        ChatModelMock chatModel = spy(ChatModelMock.thatAlwaysResponds("Berlin"));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .contentRetriever(query -> List.of(Content.from("relevant document")))
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("What is the capital of Germany?");
+
+        assertThat(future.get(10, SECONDS)).isEqualTo("Berlin");
+        // RAG ran via the non-blocking augmentAsync path (doChatAsync, never the blocking doChat)
+        verify(chatModel).doChatAsync(any());
+        verify(chatModel, never()).doChat(any());
+        // the retrieved content was injected into the user message sent to the model
+        var sentMessages = chatModel.requests().get(0).messages();
+        UserMessage sentUserMessage = (UserMessage) sentMessages.get(sentMessages.size() - 1);
+        assertThat(sentUserMessage.singleText()).contains("relevant document");
     }
 
     @Test
@@ -1162,19 +1185,18 @@ class AiServicesAsyncTest {
                 AiMessage.from(temperatureRequest, humidityRequest), AiMessage.from("42 degrees, 69 percent"));
         SequentialAsyncTools tools = new SequentialAsyncTools();
 
-        // executeToolsConcurrently(false): opt out of the async path's concurrent-by-default tool execution,
-        // so the loop chains the async tools (thenCompose), one after another
+        // A single-threaded executor opts out of the async path's concurrent-by-default tool execution: tools are
+        // submitted in request order and their bodies run one at a time, so the invocation order is deterministic.
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
                 .tools(tools)
-                .executeToolsConcurrently(false)
+                .executeToolsConcurrently(Executors.newSingleThreadExecutor())
                 .build();
 
         String answer = assistant.chat("What is the weather?").get(10, SECONDS);
 
         assertThat(answer).isEqualTo("42 degrees, 69 percent");
-        // the chained path initiates the second tool only after the first one's future completes, so the
-        // invocation order is deterministic and matches the request order
+        // the single-threaded executor runs the tool bodies (which record execution) in request order
         assertThat(tools.executedTools).containsExactly("currentTemperature", "currentHumidity");
         // both results are delivered, in request order
         assertThat(chatModel.requests().get(1).messages())
