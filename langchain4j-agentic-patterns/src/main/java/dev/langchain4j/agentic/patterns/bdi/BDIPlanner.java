@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.patterns.bdi;
 
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
 import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.planner.Planner;
@@ -16,6 +17,13 @@ import java.util.Map;
 
 import static java.util.stream.Collectors.toMap;
 
+/**
+ * A Belief-Desire-Intention planner that maintains prioritized goals ({@link Desire Desires}) and
+ * reactively switches between them as the {@link AgenticScope} evolves. On each step the planner
+ * checks whether a strictly higher-priority desire has become achievable and, if so, preempts the
+ * current intention and re-deliberates. Among desires with equal priority, the one declared first
+ * in the list is selected (stable ordering).
+ */
 public class BDIPlanner implements Planner {
 
     private static final Logger LOG = LoggerFactory.getLogger(BDIPlanner.class);
@@ -37,8 +45,19 @@ public class BDIPlanner implements Planner {
     }
 
     public BDIPlanner(List<Desire> desires, int maxInvocations) {
+        if (desires == null || desires.isEmpty()) {
+            throw new IllegalArgumentException("BDIPlanner requires at least one desire");
+        }
+        if (maxInvocations <= 0) {
+            throw new IllegalArgumentException("maxInvocations must be positive, got " + maxInvocations);
+        }
         this.desires = desires;
         this.maxInvocations = maxInvocations;
+    }
+
+    @Override
+    public AgenticSystemTopology topology() {
+        return AgenticSystemTopology.SEQUENCE;
     }
 
     @Override
@@ -70,7 +89,6 @@ public class BDIPlanner implements Planner {
 
         if (currentDesire != null) {
             boolean preempted = desires.stream()
-                    .filter(d -> d != currentDesire)
                     .filter(d -> d.priority() > currentDesire.priority())
                     .filter(d -> d.achievable().test(scope))
                     .anyMatch(d -> !d.satisfied().test(scope));
