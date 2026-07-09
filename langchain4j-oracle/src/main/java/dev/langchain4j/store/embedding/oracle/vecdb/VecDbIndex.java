@@ -16,6 +16,7 @@ public final class VecDbIndex {
     private final Integer partitions;
     private final Integer neighbors;
     private final Integer efConstruction;
+    private final Integer parallelCreation;
     private final CreateOption createOption;
 
     VecDbIndex(VecDbIndexBuilder<?> builder) {
@@ -26,6 +27,7 @@ public final class VecDbIndex {
         this.neighbors = builder instanceof VecDbHnswIndexBuilder hnswBuilder ? hnswBuilder.neighbors : null;
         this.efConstruction =
                 builder instanceof VecDbHnswIndexBuilder hnswBuilder ? hnswBuilder.efConstruction : null;
+        this.parallelCreation = builder.parallelCreation;
         this.createOption = builder.createOption;
     }
 
@@ -61,6 +63,10 @@ public final class VecDbIndex {
 
     public Integer efConstruction() {
         return efConstruction;
+    }
+
+    public Integer parallelCreation() {
+        return parallelCreation;
     }
 
     public CreateOption createOption() {

@@ -4,7 +4,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.store.embedding.oracle.CreateOption;
-import javax.sql.DataSource;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -17,13 +16,13 @@ import java.util.Map;
 public final class VecDbEmbeddingTable {
 
     private final String name;
-    private final String description;
+    private final String comment;
     private final Map<String, Object> annotations;
     private final CreateOption createOption;
 
     private VecDbEmbeddingTable(Builder builder) {
         this.name = builder.name;
-        this.description = builder.description;
+        this.comment = builder.comment;
         this.annotations = Map.copyOf(builder.annotations);
         this.createOption = builder.createOption;
     }
@@ -43,10 +42,20 @@ public final class VecDbEmbeddingTable {
     }
 
     /**
-     * Returns the optional vector table description.
+     * Returns the optional vector table comment.
      */
+    public String comment() {
+        return comment;
+    }
+
+    /**
+     * Returns the optional vector table comment.
+     *
+     * @deprecated Use {@link #comment()}.
+     */
+    @Deprecated
     public String description() {
-        return description;
+        return comment;
     }
 
     /**
@@ -69,7 +78,7 @@ public final class VecDbEmbeddingTable {
     public static final class Builder {
 
         private String name;
-        private String description;
+        private String comment;
         private final Map<String, Object> annotations = new LinkedHashMap<>();
         private CreateOption createOption = CreateOption.CREATE_NONE;
 
@@ -84,11 +93,21 @@ public final class VecDbEmbeddingTable {
         }
 
         /**
-         * Configures an optional description stored with the vector table.
+         * Configures an optional comment stored with the vector table.
          */
-        public Builder description(String description) {
-            this.description = ensureNotBlank(description, "description");
+        public Builder comment(String comment) {
+            this.comment = ensureNotBlank(comment, "comment");
             return this;
+        }
+
+        /**
+         * Configures an optional comment stored with the vector table.
+         *
+         * @deprecated Use {@link #comment(String)}.
+         */
+        @Deprecated
+        public Builder description(String description) {
+            return comment(description);
         }
 
         /**

@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import dev.langchain4j.store.embedding.oracle.CreateOption;
 
 /**
  * Maps {@link VecDbIndex} configuration to the {@code index_params} JSON accepted by
@@ -21,13 +22,13 @@ final class VecDbIndexJsonMapper {
     static String toJson(VecDbIndex index) {
         ensureNotNull(index, "index");
 
-        ObjectNode indexParameters = OBJECT_MAPPER.createObjectNode();
-        indexParameters.put("indexing", "auto");
-        indexParameters.put("organization", toDatabaseValue(index.organization()));
-        indexParameters.put("distance_metric", index.distanceMetric().name());
+        ObjectNode vectorIndexParameters = OBJECT_MAPPER.createObjectNode();
+        vectorIndexParameters.put("auto_index", index.createOption() != CreateOption.CREATE_NONE);
+        vectorIndexParameters.put("organization", toDatabaseValue(index.organization()));
+        vectorIndexParameters.put("distance_metric", index.distanceMetric().name());
 
         if (index.accuracy() != null) {
-            indexParameters.put("accuracy", index.accuracy());
+            vectorIndexParameters.put("accuracy", index.accuracy());
         }
 
         ObjectNode advancedParameters = OBJECT_MAPPER.createObjectNode();
@@ -41,7 +42,13 @@ final class VecDbIndexJsonMapper {
             advancedParameters.put("efConstruction", index.efConstruction());
         }
         if (!advancedParameters.isEmpty()) {
-            indexParameters.set("advanced_params", advancedParameters);
+            vectorIndexParameters.set("advanced_params", advancedParameters);
+        }
+
+        ObjectNode indexParameters = OBJECT_MAPPER.createObjectNode();
+        indexParameters.set("vector_index_params", vectorIndexParameters);
+        if (index.parallelCreation() != null) {
+            indexParameters.put("parallel_creation", index.parallelCreation());
         }
 
         return indexParameters.toString();

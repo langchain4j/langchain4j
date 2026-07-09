@@ -19,6 +19,7 @@ interface VecDbQueryExecutor {
             Connection connection,
             VecDbEmbeddingTable table,
             String annotationsJson,
+            String tableParametersJson,
             String indexParametersJson)
             throws SQLException;
 
@@ -35,13 +36,22 @@ interface VecDbQueryExecutor {
     String createIndex(Connection connection, String tableName, String indexParametersJson) throws SQLException;
 
     /** Drops the vector index belonging to a table and returns the VecDB response JSON. */
-    String dropIndex(Connection connection, String tableName) throws SQLException;
+    String dropIndex(Connection connection, String tableName, String indexParametersJson) throws SQLException;
 
     /** Rebuilds the vector index belonging to a table and returns the VecDB response JSON. */
     String rebuildIndex(Connection connection, String tableName, String indexParametersJson) throws SQLException;
 
     /** Upserts one or more vectors and returns the VecDB response JSON. */
     String upsertVectors(Connection connection, String tableName, String vectorsJson) throws SQLException;
+
+    /** Lists vectors by ID or pagination and returns the VecDB response JSON. */
+    String listVectors(
+            Connection connection,
+            String tableName,
+            String idsJson,
+            int limit,
+            int offset)
+            throws SQLException;
 
     /**
      * Searches for similar vectors and returns the VecDB response JSON.

@@ -10,7 +10,9 @@ import java.sql.CallableStatement;
 import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Locale;
 import java.util.Map;
+import dev.langchain4j.store.embedding.filter.MetadataFilterBuilder;
 import oracle.jdbc.OracleType;
 import oracle.jdbc.OracleTypes;
 import oracle.sql.json.OracleJsonFactory;
@@ -18,7 +20,7 @@ import oracle.sql.json.OracleJsonFactory;
 /**
  * JDBC implementation of {@link VecDbQueryExecutor} backed by {@code DBMS_VECTOR_DATABASE}.
  */
-final class JdbcVecDbQueryExecutor implements VecDbQueryExecutor {
+final class VecDbJdbcQueryExecutor implements VecDbQueryExecutor {
 
     private static final OracleJsonFactory JSON_FACTORY = new OracleJsonFactory();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -46,18 +48,20 @@ final class JdbcVecDbQueryExecutor implements VecDbQueryExecutor {
             Connection connection,
             VecDbEmbeddingTable table,
             String annotationsJson,
+            String tableParametersJson,
             String indexParametersJson)
             throws SQLException {
         return call(
                 connection,
                 "BEGIN ? := DBMS_VECTOR_DATABASE.CREATE_VECTOR_TABLE("
-                        + "table_name => ?, description => ?, auto_generate_id => FALSE, annotations => ?, "
-                        + "vector_type => 'dense', index_params => ?); END;",
+                        + "name => ?, comment => ?, annotations => ?, table_params => ?, "
+                        + "embed_params => NULL, index_params => ?); END;",
                 statement -> {
                     statement.setString(2, table.name());
-                    statement.setString(3, table.description());
+                    statement.setString(3, table.comment());
                     setJson(statement, 4, annotationsJson);
-                    setJson(statement, 5, indexParametersJson);
+                    setJson(statement, 5, tableParametersJson);
+                    setJson(statement, 6, indexParametersJson);
                 });
     }
 
@@ -65,7 +69,7 @@ final class JdbcVecDbQueryExecutor implements VecDbQueryExecutor {
     public String describeVectorTable(Connection connection, String tableName) throws SQLException {
         return call(
                 connection,
-                "BEGIN ? := DBMS_VECTOR_DATABASE.DESCRIBE_VECTOR_TABLE(table_name => ?); END;",
+                "BEGIN ? := DBMS_VECTOR_DATABASE.DESCRIBE_VECTOR_TABLE(name => ?); END;",
                 statement -> statement.setString(2, tableName));
     }
 
@@ -73,14 +77,26 @@ final class JdbcVecDbQueryExecutor implements VecDbQueryExecutor {
     public String dropVectorTable(Connection connection, String tableName) throws SQLException {
         return call(
                 connection,
-                "BEGIN ? := DBMS_VECTOR_DATABASE.DROP_VECTOR_TABLE(table_name => ?); END;",
+                "BEGIN ? := DBMS_VECTOR_DATABASE.DROP_VECTOR_TABLE(name => ?); END;",
                 statement -> statement.setString(2, tableName));
     }
 
     @Override
     public boolean indexExists(Connection connection, String tableName) throws SQLException {
-        JsonNode indexParameters = field(readTree(describeVectorTable(connection, tableName)), "index_params");
-        return indexParameters != null && !indexParameters.isNull();
+        JsonNode description = readTree(describeVectorTable(connection, tableName));
+        JsonNode indexes = field(description, "indexes");
+        if (indexes != null && indexes.isArray()) {
+            for (JsonNode index : indexes) {
+                if (isVectorIndex(index)) {
+                    return true;
+                }
+            }
+        }
+
+        JsonNode indexParameters = field(description, "index_params");
+        JsonNode vectorIndexParameters = field(indexParameters, "vector_index_params");
+        JsonNode autoIndex = field(vectorIndexParameters, "auto_index");
+        return autoIndex != null && autoIndex.asBoolean(false);
     }
 
     @Override
@@ -95,11 +111,14 @@ final class JdbcVecDbQueryExecutor implements VecDbQueryExecutor {
     }
 
     @Override
-    public String dropIndex(Connection connection, String tableName) throws SQLException {
+    public String dropIndex(Connection connection, String tableName, String indexParametersJson) throws SQLException {
         return call(
                 connection,
-                "BEGIN ? := DBMS_VECTOR_DATABASE.DROP_INDEX(table_name => ?); END;",
-                statement -> statement.setString(2, tableName));
+                "BEGIN ? := DBMS_VECTOR_DATABASE.DROP_INDEX(table_name => ?, index_params => ?); END;",
+                statement -> {
+                    statement.setString(2, tableName);
+                    setJson(statement, 3, indexParametersJson);
+                });
     }
 
     @Override
@@ -122,6 +141,21 @@ final class JdbcVecDbQueryExecutor implements VecDbQueryExecutor {
                 statement -> {
                     statement.setString(2, tableName);
                     setJson(statement, 3, vectorsJson);
+                });
+    }
+
+    @Override
+    public String listVectors(
+            Connection connection, String tableName, String idsJson, int limit, int offset) throws SQLException {
+        return call(
+                connection,
+                "BEGIN ? := DBMS_VECTOR_DATABASE.LIST_VECTORS("
+                        + "table_name => ?, ids => ?, limit => ?, offset => ?); END;",
+                statement -> {
+                    statement.setString(2, tableName);
+                    setJson(statement, 3, idsJson);
+                    statement.setInt(4, limit);
+                    statement.setInt(5, offset);
                 });
     }
 
@@ -221,6 +255,29 @@ final class JdbcVecDbQueryExecutor implements VecDbQueryExecutor {
             }
         }
         return null;
+    }
+
+    private static boolean isVectorIndex(JsonNode index) {
+        if (index.isTextual()) {
+            return index.asText().toUpperCase(Locale.ROOT).startsWith("VECIDX");
+        }
+        if (!index.isObject()) {
+            return false;
+        }
+
+        JsonNode type = field(index, "index_type");
+        if (type == null) {
+            type = field(index, "type");
+        }
+        if (type != null && type.asText().toUpperCase(Locale.ROOT).contains("VECTOR")) {
+            return true;
+        }
+
+        JsonNode name = field(index, "index_name");
+        if (name == null) {
+            name = field(index, "name");
+        }
+        return name != null && name.asText().toUpperCase(Locale.ROOT).startsWith("VECIDX");
     }
 
     private static String unquote(String identifier) {

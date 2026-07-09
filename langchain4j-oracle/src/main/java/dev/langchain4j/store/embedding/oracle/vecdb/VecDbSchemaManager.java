@@ -19,8 +19,10 @@ import java.sql.SQLException;
  * </ul>
  *
  * <p>When a table is created, its index configuration is passed to
- * {@code DBMS_VECTOR_DATABASE.CREATE_VECTOR_TABLE}. A {@code null} index allows VecDB to create its default index. For
- * an existing table, index lifecycle is handled separately using {@code CREATE_INDEX} or {@code REBUILD_INDEX}.
+ * {@code DBMS_VECTOR_DATABASE.CREATE_VECTOR_TABLE}. A {@code null} index allows VecDB to apply its index defaults,
+ * while an index configured with {@link CreateOption#CREATE_NONE} sets {@code vector_index_params.auto_index} to
+ * {@code false}. For an existing table, index lifecycle is handled separately using {@code CREATE_INDEX} or
+ * {@code REBUILD_INDEX}.
  */
 public class VecDbSchemaManager {
 
@@ -53,8 +55,6 @@ public class VecDbSchemaManager {
      *     existing table's index unchanged
      * @throws SQLException if a {@code DBMS_VECTOR_DATABASE} operation fails
      * @throws IllegalStateException if the table is configured with {@link CreateOption#CREATE_NONE} but does not exist
-     * @throws IllegalArgumentException if a missing table is created while its configured index uses
-     *     {@link CreateOption#CREATE_NONE}
      */
     void prepareSchema(Connection connection, VecDbEmbeddingTable embeddingTable, VecDbIndex index) throws SQLException {
         boolean tableExist = vecDbQueryExecutor.vectorTableExists(connection, embeddingTable.name());
@@ -70,9 +70,6 @@ public class VecDbSchemaManager {
         if (embeddingTable.createOption() == CreateOption.CREATE_IF_NOT_EXISTS) {
             if (tableExist) prepareIndexForExistingTable(connection, embeddingTable, index);
             else {
-                if (index != null && index.createOption() == CreateOption.CREATE_NONE) {
-                    throw new IllegalArgumentException("CREATE_NONE is not supported for VecDB tables");
-                }
                 createTable(connection, embeddingTable, index);
             }
         }
@@ -95,7 +92,9 @@ public class VecDbSchemaManager {
     private void createTable(Connection connection, VecDbEmbeddingTable embeddingTable, VecDbIndex index) throws SQLException {
         String indexJson = index == null ? null : VecDbIndexJsonMapper.toJson(index);
         String tableAnnotations = VecDbEmbeddingTableJsonMapper.annotationsToJson(embeddingTable.annotations());
-        vecDbQueryExecutor.createVectorTable(connection, embeddingTable, tableAnnotations, indexJson);
+        String tableParameters = VecDbEmbeddingTableJsonMapper.tableParametersToJson();
+        vecDbQueryExecutor.createVectorTable(
+                connection, embeddingTable, tableAnnotations, tableParameters, indexJson);
     }
 
     /**

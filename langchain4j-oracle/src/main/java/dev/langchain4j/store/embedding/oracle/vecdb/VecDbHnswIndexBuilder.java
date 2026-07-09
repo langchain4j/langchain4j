@@ -1,5 +1,7 @@
 package dev.langchain4j.store.embedding.oracle.vecdb;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
+
 /**
  * Builds a Hierarchical Navigable Small World index configuration for VecDB.
  */
@@ -16,7 +18,7 @@ public final class VecDbHnswIndexBuilder extends VecDbIndexBuilder<VecDbHnswInde
      * Configures the maximum number of connections per vector in the HNSW graph.
      */
     public VecDbHnswIndexBuilder neighbors(int neighbors) {
-        this.neighbors = ensurePositive(neighbors, "neighbors");
+        this.neighbors = ensureBetween(neighbors, 1, 2048, "neighbors");
         return this;
     }
 
@@ -24,7 +26,7 @@ public final class VecDbHnswIndexBuilder extends VecDbIndexBuilder<VecDbHnswInde
      * Configures the maximum number of candidates considered while constructing the HNSW graph.
      */
     public VecDbHnswIndexBuilder efConstruction(int efConstruction) {
-        this.efConstruction = ensurePositive(efConstruction, "efConstruction");
+        this.efConstruction = ensureBetween(efConstruction, 1, 65_535, "efConstruction");
         return this;
     }
 

@@ -1,5 +1,7 @@
 package dev.langchain4j.store.embedding.oracle.vecdb;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.store.embedding.oracle.CreateOption;
@@ -14,6 +16,7 @@ abstract class VecDbIndexBuilder<T extends VecDbIndexBuilder<T>> {
     final VecDbIndexOrganization organization;
     VecDbDistanceMetric distanceMetric = VecDbDistanceMetric.COSINE;
     Integer accuracy;
+    Integer parallelCreation;
     CreateOption createOption = CreateOption.CREATE_NONE;
 
     VecDbIndexBuilder(VecDbIndexOrganization organization) {
@@ -26,10 +29,12 @@ abstract class VecDbIndexBuilder<T extends VecDbIndexBuilder<T>> {
     }
 
     public T accuracy(int accuracy) {
-        if (accuracy < 1 || accuracy > 100) {
-            throw new IllegalArgumentException("accuracy must be between 1 and 100");
-        }
-        this.accuracy = accuracy;
+        this.accuracy = ensureBetween(accuracy, 0, 100, "accuracy");
+        return self();
+    }
+
+    public T parallelCreation(int parallelCreation) {
+        this.parallelCreation = ensureGreaterThanZero(parallelCreation, "parallelCreation");
         return self();
     }
 
@@ -43,11 +48,4 @@ abstract class VecDbIndexBuilder<T extends VecDbIndexBuilder<T>> {
     }
 
     protected abstract T self();
-
-    static int ensurePositive(int value, String name) {
-        if (value <= 0) {
-            throw new IllegalArgumentException(name + " must be greater than 0");
-        }
-        return value;
-    }
 }
