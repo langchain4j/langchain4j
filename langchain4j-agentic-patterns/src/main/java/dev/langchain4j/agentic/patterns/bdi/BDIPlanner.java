@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +26,7 @@ public class BDIPlanner implements Planner {
     private final int maxInvocations;
 
     private Map<Class<?>, AgentInstance> agentsByType;
+    private final Map<String, Integer> desireProgress = new HashMap<>();
     private Desire currentDesire;
     private List<AgentInstance> currentIntention;
     private int intentionCursor;
@@ -77,6 +79,7 @@ public class BDIPlanner implements Planner {
                     .anyMatch(d -> !d.satisfied().test(scope));
 
             if (preempted) {
+                desireProgress.put(currentDesire.name(), intentionCursor + 1);
                 LOG.info("Preempting desire '{}' for a higher-priority desire", currentDesire.name());
                 return deliberate(scope);
             }
@@ -103,10 +106,11 @@ public class BDIPlanner implements Planner {
                     currentIntention = desire.agentTypes().stream()
                             .map(agentsByType::get)
                             .toList();
-                    intentionCursor = 0;
+                    intentionCursor = desireProgress.getOrDefault(desire.name(), 0);
                     invocationCounter++;
-                    LOG.info("Committing to desire '{}' (priority {})", desire.name(), desire.priority());
-                    return call(currentIntention.get(0));
+                    LOG.info("Committing to desire '{}' (priority {}) at step {}/{}",
+                            desire.name(), desire.priority(), intentionCursor + 1, currentIntention.size());
+                    return call(currentIntention.get(intentionCursor));
                 })
                 .orElseGet(() -> {
                     LOG.info("All desires satisfied or none achievable after {} invocations", invocationCounter);

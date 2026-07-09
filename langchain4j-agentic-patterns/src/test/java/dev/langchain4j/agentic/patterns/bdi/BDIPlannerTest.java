@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -83,6 +84,39 @@ class BDIPlannerTest {
         // trigger is present from the start -> high-priority desire preempts after first agent
         ResultWithAgenticScope<String> result = system.invokeWithAgenticScope(Map.of("trigger", "alert"));
         assertThat(result.agenticScope().hasState("outputC")).isTrue();
+    }
+
+    @Test
+    void shouldResumePreemptedDesireWithoutRerunningCompletedAgents() {
+        AtomicInteger producerACount = new AtomicInteger();
+
+        var counting = new Object() {
+            @Agent(outputKey = "outputA")
+            public String producerA() {
+                producerACount.incrementAndGet();
+                return "resultA";
+            }
+        };
+
+        // low = [countingA, B], high = [C] achievable only after outputA is written
+        var lowPriority = Desire.of("low", 1,
+                scope -> true, scope -> scope.hasState("outputB"), counting.getClass(), ProducerB.class);
+        var highPriority = Desire.of("high", 3,
+                scope -> scope.hasState("outputA"), scope -> scope.hasState("outputC"), ProducerC.class);
+
+        UntypedAgent system = AgenticServices.plannerBuilder()
+                .subAgents(counting, new ProducerB(), new ProducerC())
+                .planner(() -> new BDIPlanner(List.of(lowPriority, highPriority)))
+                .build();
+
+        ResultWithAgenticScope<String> result = system.invokeWithAgenticScope(Map.of("trigger", "alert"));
+
+        assertThat(result.agenticScope().hasState("outputA")).isTrue();
+        assertThat(result.agenticScope().hasState("outputB")).isTrue();
+        assertThat(result.agenticScope().hasState("outputC")).isTrue();
+        // A should run exactly once: dispatched by "low", then "low" preempted by "high",
+        // then "low" resumed at B — not restarted at A
+        assertThat(producerACount.get()).isEqualTo(1);
     }
 
     @Test
