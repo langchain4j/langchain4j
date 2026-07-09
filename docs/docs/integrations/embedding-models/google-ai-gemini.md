@@ -443,9 +443,11 @@ if (result.state() == BatchState.SUCCEEDED) {
 Besides the builder-level `taskType(...)` shown above, `GoogleAiEmbeddingModel` supports the request/response
 API with per-call parameters:
 
-- **Per-call parameters**: `input_type` (`EmbeddingInputType.QUERY` / `DOCUMENT`) is mapped to Gemini's
-  `RETRIEVAL_QUERY` / `RETRIEVAL_DOCUMENT` task types, so you can embed queries and documents differently
-  without configuring two model instances.
+- **Per-call parameters**: `input_type` (`EmbeddingInputType.QUERY` / `DOCUMENT`) lets you embed queries and
+  documents differently without configuring two model instances. For `gemini-embedding-001` it is applied via
+  Gemini's `RETRIEVAL_QUERY` / `RETRIEVAL_DOCUMENT` task type. Gemini Embedding 2 does not accept the task type
+  parameter, so it is applied as a prompt instruction instead (`task: search result | query: ...` for a query,
+  `title: none | text: ...` for a document) — this happens automatically.
 - **Multimodal** (`gemini-embedding-2-preview`, Gemini Embedding 2): natively embeds interleaved text + image
   into a single embedding. Earlier models (e.g. `gemini-embedding-001`) are text-only. Images must be provided
   as base64 (`ImageContent`).

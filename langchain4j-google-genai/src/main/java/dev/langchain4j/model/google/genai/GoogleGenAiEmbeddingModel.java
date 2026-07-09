@@ -7,11 +7,18 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
+import com.google.genai.types.Content;
+import com.google.genai.types.ContentEmbedding;
 import com.google.genai.types.EmbedContentConfig;
 import com.google.genai.types.EmbedContentResponse;
+import com.google.genai.types.Part;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.message.ContentType;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
@@ -22,9 +29,11 @@ import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.request.EmbeddingRequestParameters;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -110,41 +119,106 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     @Override
+    public Set<ContentType> supportedContentTypes() {
+        return isEmbedding2(modelName) ? Set.of(ContentType.TEXT, ContentType.IMAGE) : Set.of(ContentType.TEXT);
+    }
+
+    @Override
     public EmbeddingResponse doEmbed(EmbeddingRequest request) {
-        // The request/response path has no TextSegment metadata, so the RETRIEVAL_DOCUMENT "title" enrichment
-        // (available on embedAll(List<TextSegment>)) is not applied here.
-        String effectiveTaskType = toSdkTaskType(request.inputType());
+        EmbeddingInputType inputType = request.inputType();
+        boolean embedding2 = isEmbedding2(modelName);
+
+        String effectiveTaskType = embedding2 ? null : toSdkTaskType(inputType);
         Integer effectiveDimensions = getOrDefault(request.dimensions(), outputDimensionality);
 
-        List<String> texts =
-                request.inputs().stream().map(EmbeddingInput::text).collect(Collectors.toList());
+        EmbedContentConfig.Builder configBuilder = EmbedContentConfig.builder();
+        if (effectiveTaskType != null) {
+            configBuilder.taskType(effectiveTaskType);
+        }
+        if (effectiveDimensions != null) {
+            configBuilder.outputDimensionality(effectiveDimensions);
+        }
+        EmbedContentConfig config = configBuilder.build();
 
-        List<Embedding> embeddings = new ArrayList<>();
-        for (int i = 0; i < texts.size(); i += maxSegmentsPerBatch) {
-            List<String> batch = texts.subList(i, Math.min(i + maxSegmentsPerBatch, texts.size()));
+        boolean multimodal = request.inputs().stream()
+                .flatMap(input -> input.contentTypes().stream())
+                .anyMatch(type -> type != ContentType.TEXT);
 
-            EmbedContentConfig.Builder configBuilder = EmbedContentConfig.builder();
-            if (effectiveTaskType != null) {
-                configBuilder.taskType(effectiveTaskType);
+        List<EmbedContentResponse> responses = new ArrayList<>();
+        if (multimodal) {
+            // Each input (its possibly interleaved text + image parts) is fused into a single embedding.
+            for (EmbeddingInput input : request.inputs()) {
+                Content content = toContent(input, inputType);
+                responses.add(withRetryMappingExceptions(
+                        () -> client.models.embedContent(modelName, content, config), maxRetries));
             }
-            if (effectiveDimensions != null) {
-                configBuilder.outputDimensionality(effectiveDimensions);
-            }
-
-            EmbedContentResponse response = withRetryMappingExceptions(
-                    () -> client.models.embedContent(modelName, batch, configBuilder.build()), maxRetries);
-
-            if (response.embeddings().isPresent()) {
-                response.embeddings().get().stream()
-                        .filter(embedding -> embedding.values().isPresent())
-                        .forEach(embedding -> embeddings.add(Embedding.from(embedding.values().get())));
+        } else {
+            List<String> texts = request.inputs().stream()
+                    .map(input -> embedding2 ? applyTaskInstruction(input.text(), inputType) : input.text())
+                    .collect(Collectors.toList());
+            for (int i = 0; i < texts.size(); i += maxSegmentsPerBatch) {
+                List<String> batch = texts.subList(i, Math.min(i + maxSegmentsPerBatch, texts.size()));
+                responses.add(withRetryMappingExceptions(
+                        () -> client.models.embedContent(modelName, batch, config), maxRetries));
             }
         }
 
-        return EmbeddingResponse.builder()
-                .embeddings(embeddings)
-                .modelName(modelName)
-                .build();
+        List<Embedding> embeddings = new ArrayList<>();
+        int tokenCount = 0;
+        boolean tokenCountReported = false;
+        for (EmbedContentResponse response : responses) {
+            if (response.embeddings().isEmpty()) {
+                continue;
+            }
+            for (ContentEmbedding embedding : response.embeddings().get()) {
+                if (embedding.values().isPresent()) {
+                    embeddings.add(Embedding.from(embedding.values().get()));
+                }
+                if (embedding.statistics().isPresent()
+                        && embedding.statistics().get().tokenCount().isPresent()) {
+                    tokenCount += Math.round(embedding.statistics().get().tokenCount().get());
+                    tokenCountReported = true;
+                }
+            }
+        }
+
+        EmbeddingResponse.Builder responseBuilder =
+                EmbeddingResponse.builder().embeddings(embeddings).modelName(modelName);
+        if (tokenCountReported) {
+            responseBuilder.tokenUsage(new TokenUsage(tokenCount));
+        }
+        return responseBuilder.build();
+    }
+
+    private static boolean isEmbedding2(String modelName) {
+        return modelName != null && modelName.contains("embedding-2");
+    }
+
+    /**
+     * Builds a Gemini {@link Content} from an {@link EmbeddingInput}, mapping text parts to text and image parts
+     * to inline (base64) data. For a text-only input the Gemini Embedding 2 task instruction is applied.
+     */
+    private Content toContent(EmbeddingInput input, EmbeddingInputType inputType) {
+        boolean textOnly = input.contents().stream().allMatch(content -> content instanceof TextContent);
+        List<Part> parts = new ArrayList<>();
+        for (var content : input.contents()) {
+            if (content instanceof TextContent textContent) {
+                String text = textOnly ? applyTaskInstruction(textContent.text(), inputType) : textContent.text();
+                parts.add(Part.fromText(text));
+            } else if (content instanceof ImageContent imageContent) {
+                var image = imageContent.image();
+                if (image.base64Data() == null) {
+                    throw new UnsupportedFeatureException(
+                            "Gemini requires base64 image data (a plain URL is not supported)");
+                }
+                parts.add(Part.fromBytes(
+                        Base64.getDecoder().decode(image.base64Data()),
+                        getOrDefault(image.mimeType(), "image/png")));
+            } else {
+                throw new UnsupportedFeatureException("Unsupported content type: " + content.type());
+            }
+        }
+        return Content.fromParts(parts.toArray(new Part[0]));
     }
 
     /**
@@ -158,6 +232,20 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         return switch (inputType) {
             case QUERY -> TaskTypeEnum.RETRIEVAL_QUERY.getSdkTaskType();
             case DOCUMENT -> TaskTypeEnum.RETRIEVAL_DOCUMENT.getSdkTaskType();
+        };
+    }
+
+    /**
+     * Rewrites text with Gemini Embedding 2's recommended task instruction, since that model does not accept the
+     * task type parameter. Returns the text unchanged when no input type is requested.
+     */
+    private static String applyTaskInstruction(String text, EmbeddingInputType inputType) {
+        if (inputType == null) {
+            return text;
+        }
+        return switch (inputType) {
+            case QUERY -> "task: search result | query: " + text;
+            case DOCUMENT -> "title: none | text: " + text;
         };
     }
 

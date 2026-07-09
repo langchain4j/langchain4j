@@ -57,7 +57,10 @@ class OllamaEmbeddingModelIT extends AbstractEmbeddingModelIT {
                 .build();
     }
 
-    // Ollama's embedding API is text-only, exposes no per-call parameters, and returns no token usage.
+    // Ollama's embedding API is text-only and has no input types. Its optional per-call "dimensions" is
+    // model-dependent (the default `all-minilm` model does not support reducing output size), so it is left as a
+    // builder-level passthrough rather than an advertised per-call parameter. Token usage (prompt_eval_count) is
+    // reported.
     @Override
     protected boolean supportsInputTypeParameter() {
         return false;
@@ -70,11 +73,6 @@ class OllamaEmbeddingModelIT extends AbstractEmbeddingModelIT {
 
     @Override
     protected boolean supportsDimensionsParameter() {
-        return false;
-    }
-
-    @Override
-    protected boolean assertTokenUsage() {
         return false;
     }
 }

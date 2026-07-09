@@ -7,11 +7,16 @@ import dev.langchain4j.model.google.genai.GoogleGenAiEmbeddingModel;
 import java.util.List;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+/**
+ * IT for Gemini Embedding 2 via the google-genai SDK. Unlike {@code gemini-embedding-001}, this model does not
+ * accept the task type parameter, so the input type is applied as a prompt instruction (see
+ * {@link GoogleGenAiEmbeddingModel}).
+ */
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
-class GoogleGenAiEmbeddingModelIT extends AbstractEmbeddingModelIT {
+class GoogleGenAiGemini2EmbeddingModelIT extends AbstractEmbeddingModelIT {
 
     private static final String API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
-    private static final String MODEL_NAME = "gemini-embedding-001";
+    private static final String MODEL_NAME = "gemini-embedding-2";
 
     @Override
     protected List<EmbeddingModel> models() {
@@ -40,14 +45,9 @@ class GoogleGenAiEmbeddingModelIT extends AbstractEmbeddingModelIT {
                 .build();
     }
 
-    // gemini-embedding-001 (via the google-genai SDK) maps input type to task_type (query/document) and supports
-    // reducing output dimensionality, but is text-only. Token usage is surfaced only when the API returns
-    // per-embedding statistics (the Vertex AI path); the API-key path used here does not.
-    @Override
-    protected boolean supportsImageInput() {
-        return false;
-    }
-
+    // Gemini Embedding 2 is natively multimodal (text + image, fused into a single embedding) and applies the
+    // input type as a prompt instruction. It supports reducing output dimensionality, but returns no token usage
+    // on the API-key path.
     @Override
     protected boolean assertTokenUsage() {
         return false;

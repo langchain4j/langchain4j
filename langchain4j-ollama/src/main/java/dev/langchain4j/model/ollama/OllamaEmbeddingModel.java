@@ -16,6 +16,7 @@ import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.ollama.spi.OllamaEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -78,7 +79,11 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
         List<Embedding> embeddings =
                 response.getEmbeddings().stream().map(Embedding::from).collect(Collectors.toList());
 
-        return Response.from(embeddings);
+        TokenUsage tokenUsage = response.getPromptEvalCount() == null
+                ? null
+                : new TokenUsage(response.getPromptEvalCount());
+
+        return Response.from(embeddings, tokenUsage);
     }
 
     @Override
