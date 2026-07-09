@@ -3,19 +3,61 @@ package dev.langchain4j.model.openai;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext;
+import dev.langchain4j.model.embedding.request.EmbeddingRequest;
+import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 class OpenAiEmbeddingModelTest {
+
+    @Test
+    void should_notify_configured_listener() {
+        MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(embeddingResponse());
+
+        AtomicReference<EmbeddingModelRequestContext> requestContext = new AtomicReference<>();
+        AtomicReference<EmbeddingModelResponseContext> responseContext = new AtomicReference<>();
+        EmbeddingModelListener listener = new EmbeddingModelListener() {
+            @Override
+            public void onRequest(EmbeddingModelRequestContext ctx) {
+                requestContext.set(ctx);
+            }
+
+            @Override
+            public void onResponse(EmbeddingModelResponseContext ctx) {
+                responseContext.set(ctx);
+            }
+        };
+
+        EmbeddingModel model = OpenAiEmbeddingModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .modelName("text-embedding-3-small")
+                .listeners(List.of(listener))
+                .build();
+
+        model.embed(EmbeddingRequest.builder().input("hello").dimensions(256).build());
+
+        assertThat(requestContext.get()).isNotNull();
+        assertThat(requestContext.get().textSegments()).hasSize(1);
+        assertThat(requestContext.get().embeddingModel()).isSameAs(model);
+        assertThat(requestContext.get().modelProvider())
+                .isEqualTo(dev.langchain4j.model.ModelProvider.OPEN_AI);
+        // the listener sees the full request, including per-call parameters
+        assertThat(requestContext.get().embeddingRequest().dimensions()).isEqualTo(256);
+        assertThat(responseContext.get()).isNotNull();
+        assertThat(responseContext.get().response().content()).hasSize(1);
+        // request and response share the same attributes map
+        assertThat(responseContext.get().attributes()).isSameAs(requestContext.get().attributes());
+    }
 
     @Test
     void should_send_custom_parameters() {
@@ -99,7 +141,7 @@ class OpenAiEmbeddingModelTest {
     }
 
     @Test
-    void embedAllAsync_returns_the_embedding_via_the_async_http_path() throws Exception {
+    void embedAsync_returns_the_embedding_via_the_async_http_path() throws Exception {
         // given
         MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(embeddingResponse());
 
@@ -109,12 +151,12 @@ class OpenAiEmbeddingModelTest {
                 .build();
 
         // when
-        Response<List<Embedding>> response =
-                model.embedAllAsync(List.of(TextSegment.from("hello"))).get(5, SECONDS);
+        EmbeddingResponse response =
+                model.embedAsync(EmbeddingRequest.builder().input("hello").build()).get(5, SECONDS);
 
         // then
-        assertThat(response.content()).hasSize(1);
-        assertThat(response.content().get(0).vector()).hasSize(2);
+        assertThat(response.embeddings()).hasSize(1);
+        assertThat(response.embeddings().get(0).vector()).hasSize(2);
         assertThat(mockHttpClient.request().body()).isEqualToIgnoringWhitespace("""
                 {
                   "model": "text-embedding-3-small",

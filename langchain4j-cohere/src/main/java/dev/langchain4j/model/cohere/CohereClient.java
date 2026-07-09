@@ -77,6 +77,21 @@ class CohereClient {
         }
     }
 
+    EmbedV2Response embedV2(EmbedV2Request request) {
+        try {
+            retrofit2.Response<EmbedV2Response> retrofitResponse =
+                    cohereApi.embedV2(request, authorizationHeader).execute();
+
+            if (retrofitResponse.isSuccessful()) {
+                return retrofitResponse.body();
+            } else {
+                throw toException(retrofitResponse);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     RerankResponse rerank(RerankRequest request) {
         try {
             retrofit2.Response<RerankResponse> retrofitResponse

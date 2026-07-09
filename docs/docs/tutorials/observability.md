@@ -404,13 +404,15 @@ public class MyEmbeddingModelListener implements EmbeddingModelListener {
     @Override
     public void onRequest(EmbeddingModelRequestContext requestContext) {
         requestContext.attributes().put("startNanos", System.nanoTime());
+        // requestContext.embeddingRequest() exposes the inputs, per-call parameters (input_type, dimensions, ...)
+        // and multimodal content. requestContext.modelProvider() identifies the provider.
     }
 
     @Override
     public void onResponse(EmbeddingModelResponseContext responseContext) {
         long startNanos = (long) responseContext.attributes().get("startNanos");
         long durationNanos = System.nanoTime() - startNanos;
-        // Do something with duration and/or responseContext.response()
+        // Do something with duration and/or responseContext.embeddingResponse() (embeddings + metadata)
     }
 
     @Override
@@ -420,13 +422,34 @@ public class MyEmbeddingModelListener implements EmbeddingModelListener {
 }
 ```
 
-Attach listeners using `EmbeddingModel#addListener(s)`:
+Attach listeners via the model builder's `listeners(...)` method (recommended):
+
+```java
+EmbeddingModel model = OpenAiEmbeddingModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("text-embedding-3-small")
+        .listeners(List.of(new MyEmbeddingModelListener()))
+        .build();
+
+model.embed("hello");
+```
+
+The listener is notified around `embed(EmbeddingRequest)` as well as the `embed(String)` / `embed(TextSegment)`
+convenience methods.
+
+:::note
+You can also attach a listener by wrapping an already-built model with `EmbeddingModel#addListener(s)`:
 
 ```java
 EmbeddingModel observedModel = embeddingModel.addListener(new MyEmbeddingModelListener());
 
 observedModel.embed("hello");
 ```
+
+This is convenient for adding a listener to an already-built model, or to a model whose builder does not expose
+`listeners(...)`. When the builder does expose `listeners(...)`, prefer that approach, as it does not require
+wrapping.
+:::
 
 ### EmbeddingStore listener
 

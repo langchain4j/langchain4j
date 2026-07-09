@@ -21,7 +21,7 @@ class EmbeddingStoreContentRetrieverAsyncTest {
 
     @Test
     void retrieveAsync_should_produce_the_same_contents_as_retrieve() throws Exception {
-        // Neither fake overrides the async methods, so retrieveAsync composes the embedAllAsync/searchAsync
+        // Neither fake overrides the async methods, so retrieveAsync composes the embedAsync/searchAsync
         // *defaults* (offloaded to a virtual thread) — the result must match the blocking retrieve().
         EmbeddingStoreContentRetriever retriever = EmbeddingStoreContentRetriever.builder()
                 .embeddingModel(new FakeEmbeddingModel())

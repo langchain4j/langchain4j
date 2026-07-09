@@ -1,0 +1,40 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.listener.EmbeddingModelListener",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API (embed(EmbeddingRequest), supportedParameters(), supportedContentTypes(), provider(), listeners())"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.request.EmbeddingParameter",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API (embed(EmbeddingRequest), supportedParameters(), supportedContentTypes(), provider(), listeners())"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.request.EmbeddingRequest",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API (embed(EmbeddingRequest), supportedParameters(), supportedContentTypes(), provider(), listeners())"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.response.EmbeddingResponse",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API (embed(EmbeddingRequest), supportedParameters(), supportedContentTypes(), provider(), listeners())"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.data.message.ContentType",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API (embed(EmbeddingRequest), supportedParameters(), supportedContentTypes(), provider(), listeners())"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.ModelProvider",
+          "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API (embed(EmbeddingRequest), supportedParameters(), supportedContentTypes(), provider(), listeners())"
+        }
+      ]
+    }
+  }
+]
