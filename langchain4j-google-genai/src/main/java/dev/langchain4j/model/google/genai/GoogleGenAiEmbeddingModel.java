@@ -1,6 +1,7 @@
 package dev.langchain4j.model.google.genai;
 
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
@@ -11,7 +12,15 @@ import com.google.genai.types.EmbedContentResponse;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
+import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
+import dev.langchain4j.model.embedding.request.EmbeddingInput;
+import dev.langchain4j.model.embedding.request.EmbeddingInputType;
+import dev.langchain4j.model.embedding.request.EmbeddingParameter;
+import dev.langchain4j.model.embedding.request.EmbeddingRequest;
+import dev.langchain4j.model.embedding.request.EmbeddingRequestParameters;
+import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -19,6 +28,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,6 +69,7 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final Integer maxRetries;
     private final boolean logRequests;
     private final boolean logResponses;
+    private final List<EmbeddingModelListener> listeners;
 
     public GoogleGenAiEmbeddingModel(Builder builder) {
         this.client = builder.client != null
@@ -80,6 +91,74 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, 100);
         this.logRequests = getOrDefault(builder.logRequests, false);
         this.logResponses = getOrDefault(builder.logResponses, false);
+        this.listeners = copy(builder.listeners);
+    }
+
+    @Override
+    public List<EmbeddingModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return ModelProvider.GOOGLE_GENAI;
+    }
+
+    @Override
+    public Set<EmbeddingParameter<?>> supportedParameters() {
+        return Set.of(EmbeddingRequestParameters.INPUT_TYPE, EmbeddingRequestParameters.DIMENSIONS);
+    }
+
+    @Override
+    public EmbeddingResponse doEmbed(EmbeddingRequest request) {
+        // The request/response path has no TextSegment metadata, so the RETRIEVAL_DOCUMENT "title" enrichment
+        // (available on embedAll(List<TextSegment>)) is not applied here.
+        String effectiveTaskType = toSdkTaskType(request.inputType());
+        Integer effectiveDimensions = getOrDefault(request.dimensions(), outputDimensionality);
+
+        List<String> texts =
+                request.inputs().stream().map(EmbeddingInput::text).collect(Collectors.toList());
+
+        List<Embedding> embeddings = new ArrayList<>();
+        for (int i = 0; i < texts.size(); i += maxSegmentsPerBatch) {
+            List<String> batch = texts.subList(i, Math.min(i + maxSegmentsPerBatch, texts.size()));
+
+            EmbedContentConfig.Builder configBuilder = EmbedContentConfig.builder();
+            if (effectiveTaskType != null) {
+                configBuilder.taskType(effectiveTaskType);
+            }
+            if (effectiveDimensions != null) {
+                configBuilder.outputDimensionality(effectiveDimensions);
+            }
+
+            EmbedContentResponse response = withRetryMappingExceptions(
+                    () -> client.models.embedContent(modelName, batch, configBuilder.build()), maxRetries);
+
+            if (response.embeddings().isPresent()) {
+                response.embeddings().get().stream()
+                        .filter(embedding -> embedding.values().isPresent())
+                        .forEach(embedding -> embeddings.add(Embedding.from(embedding.values().get())));
+            }
+        }
+
+        return EmbeddingResponse.builder()
+                .embeddings(embeddings)
+                .modelName(modelName)
+                .build();
+    }
+
+    /**
+     * Maps the common {@link EmbeddingInputType} onto the SDK task type, falling back to the model's configured
+     * {@link #taskType} when no input type is requested.
+     */
+    private String toSdkTaskType(EmbeddingInputType inputType) {
+        if (inputType == null) {
+            return taskType != null ? taskType.getSdkTaskType() : null;
+        }
+        return switch (inputType) {
+            case QUERY -> TaskTypeEnum.RETRIEVAL_QUERY.getSdkTaskType();
+            case DOCUMENT -> TaskTypeEnum.RETRIEVAL_DOCUMENT.getSdkTaskType();
+        };
     }
 
     @Override
@@ -206,6 +285,7 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Map<String, String> customHeaders;
         private Integer maxSegmentsPerBatch = 100;
         private Integer maxRetries = 3;
+        private List<EmbeddingModelListener> listeners;
 
         public Builder client(Client client) {
             this.client = client;
@@ -290,6 +370,14 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
+            return this;
+        }
+
+        /**
+         * Sets the {@link EmbeddingModelListener}s notified around each embedding call.
+         */
+        public Builder listeners(List<EmbeddingModelListener> listeners) {
+            this.listeners = listeners;
             return this;
         }
 

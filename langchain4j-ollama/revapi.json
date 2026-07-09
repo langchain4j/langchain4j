@@ -13,6 +13,16 @@
           "code": "java.class.externalClassExposedInAPI",
           "new": "missing-class dev.langchain4j.data.image.Image",
           "justification": "Image is intentionally exposed by OllamaImageModel because it implements the core ImageModel API and returns generated images through the core Image type"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.listener.EmbeddingModelListener",
+          "justification": "Core langchain4j type intentionally exposed by OllamaEmbeddingModel's observability API (listeners())"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.ModelProvider",
+          "justification": "Core langchain4j type intentionally exposed by OllamaEmbeddingModel's provider() method"
         }
       ]
     }
