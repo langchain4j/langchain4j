@@ -21,32 +21,20 @@ import java.util.Objects;
  *         instead of silently ignoring it.</li>
  * </ul>
  * Two tokens are considered equal when their {@link #name()} is equal; the {@code name} is therefore the
- * globally unique identity of a parameter and must not collide across providers.
+ * globally unique identity of a parameter and must not collide across providers. {@link #equals(Object)} and
+ * {@link #hashCode()} intentionally key on {@code name} only, ignoring {@link #type()}.
  *
- * @param <T> the type of the value this parameter holds.
+ * @param <T>  the type of the value this parameter holds.
+ * @param name a globally unique, human-readable name for this parameter (e.g. {@code "dimensions"}).
+ * @param type the type of the value this parameter holds.
  * @since 1.18.0
  */
 @Experimental
-public final class EmbeddingParameter<T> {
+public record EmbeddingParameter<T>(String name, Class<T> type) {
 
-    private final String name;
-    private final Class<T> type;
-
-    /**
-     * @param name a globally unique, human-readable name for this parameter (e.g. {@code "dimensions"}).
-     * @param type the type of the value this parameter holds.
-     */
-    public EmbeddingParameter(String name, Class<T> type) {
-        this.name = ensureNotBlank(name, "name");
-        this.type = ensureNotNull(type, "type");
-    }
-
-    public String name() {
-        return name;
-    }
-
-    public Class<T> type() {
-        return type;
+    public EmbeddingParameter {
+        name = ensureNotBlank(name, "name");
+        type = ensureNotNull(type, "type");
     }
 
     /**
