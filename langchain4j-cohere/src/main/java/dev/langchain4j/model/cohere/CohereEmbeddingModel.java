@@ -304,9 +304,11 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         /**
          * Base URL of Cohere's v2 embed endpoint, used by {@link #embed(EmbeddingRequest)} (the multimodal
-         * Embed v4 path). Defaults to {@link #baseUrl(String)} with {@code /v1} replaced by {@code /v2}.
+         * Embed v4 path). Defaults to {@link #baseUrl(String)} with {@code /v1} replaced by {@code /v2}. Set this
+         * explicitly when using a custom {@link #baseUrl(String)} from which the {@code /v2} URL cannot be derived
+         * (for example a proxy whose path does not contain {@code /v1}).
          */
-        public CohereEmbeddingModelBuilder v2BaseUrl(String v2BaseUrl) { // TODO needed?
+        public CohereEmbeddingModelBuilder v2BaseUrl(String v2BaseUrl) {
             this.v2BaseUrl = v2BaseUrl;
             return this;
         }

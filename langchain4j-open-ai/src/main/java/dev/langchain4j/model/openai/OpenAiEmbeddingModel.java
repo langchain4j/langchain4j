@@ -138,28 +138,34 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .toList();
         List<List<String>> textBatches = partition(texts, maxSegmentsPerBatch);
 
-        List<Response<List<Embedding>>> responses = new ArrayList<>();
+        List<EmbeddedBatch> responses = new ArrayList<>();
         for (List<String> batch : textBatches) {
             responses.add(embedTexts(batch, parameters));
         }
 
-        List<Embedding> embeddings = responses.stream()
-                .flatMap(response -> response.content().stream())
-                .toList();
+        List<Embedding> embeddings =
+                responses.stream().flatMap(batch -> batch.embeddings().stream()).toList();
         TokenUsage tokenUsage = responses.stream()
-                .map(Response::tokenUsage)
+                .map(EmbeddedBatch::tokenUsage)
                 .filter(Objects::nonNull)
                 .reduce(TokenUsage::add)
+                .orElse(null);
+        String responseModelName = responses.stream()
+                .map(EmbeddedBatch::modelName)
+                .filter(Objects::nonNull)
+                .findFirst()
                 .orElse(null);
 
         return EmbeddingResponse.builder()
                 .embeddings(embeddings)
                 .metadata(EmbeddingResponseMetadata.builder()
-                        .modelName(getOrDefault(parameters.modelName(), modelName))
+                        .modelName(getOrDefault(responseModelName, getOrDefault(parameters.modelName(), modelName)))
                         .tokenUsage(tokenUsage)
                         .build())
                 .build();
     }
+
+    private record EmbeddedBatch(List<Embedding> embeddings, TokenUsage tokenUsage, String modelName) {}
 
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
@@ -179,7 +185,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     @SuppressWarnings("unchecked")
-    private Response<List<Embedding>> embedTexts(List<String> texts, EmbeddingRequestParameters parameters) {
+    private EmbeddedBatch embedTexts(List<String> texts, EmbeddingRequestParameters parameters) {
 
         dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest request =
                 dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest.builder()
@@ -198,7 +204,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
                 .toList();
 
-        return Response.from(embeddings, tokenUsageFrom(response.usage()));
+        return new EmbeddedBatch(embeddings, tokenUsageFrom(response.usage()), response.model());
     }
 
     public static OpenAiEmbeddingModelBuilder builder() {

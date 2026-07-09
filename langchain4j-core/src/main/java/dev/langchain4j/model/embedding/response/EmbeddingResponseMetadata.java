@@ -20,7 +20,7 @@ import java.util.Objects;
 @JacocoIgnoreCoverageGenerated
 public class EmbeddingResponseMetadata {
 
-    private final String modelName; // TODO needed?
+    private final String modelName;
     private final TokenUsage tokenUsage;
     private final FinishReason finishReason;
 

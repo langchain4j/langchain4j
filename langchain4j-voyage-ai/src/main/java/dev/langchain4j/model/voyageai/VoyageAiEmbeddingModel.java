@@ -142,9 +142,11 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         int totalTokens = 0;
 
         List<EmbeddingInput> inputs = request.inputs();
+        String responseModelName = null;
         for (int i = 0; i < inputs.size(); i += maxSegmentsPerBatch) {
             List<EmbeddingInput> batch = inputs.subList(i, Math.min(i + maxSegmentsPerBatch, inputs.size()));
 
+            EmbeddingResponse wireResponse;
             if (multimodal) {
                 MultimodalEmbeddingRequest wireRequest = MultimodalEmbeddingRequest.builder()
                         .inputs(batch.stream().map(this::toMultimodalInput).collect(toList()))
@@ -152,10 +154,7 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                         .inputType(effectiveInputType)
                         .truncation(truncation)
                         .build();
-                EmbeddingResponse wireResponse =
-                        withRetryMappingExceptions(() -> client.multimodalEmbed(wireRequest), maxRetries);
-                embeddings.addAll(getEmbeddings(wireResponse));
-                totalTokens += getTokenUsage(wireResponse);
+                wireResponse = withRetryMappingExceptions(() -> client.multimodalEmbed(wireRequest), maxRetries);
             } else {
                 EmbeddingRequest wireRequest = EmbeddingRequest.builder()
                         .input(batch.stream().map(EmbeddingInput::text).collect(toList()))
@@ -164,17 +163,19 @@ public class VoyageAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                         .truncation(truncation)
                         .encodingFormat(encodingFormat)
                         .build();
-                EmbeddingResponse wireResponse =
-                        withRetryMappingExceptions(() -> client.embed(wireRequest), maxRetries);
-                embeddings.addAll(getEmbeddings(wireResponse));
-                totalTokens += getTokenUsage(wireResponse);
+                wireResponse = withRetryMappingExceptions(() -> client.embed(wireRequest), maxRetries);
+            }
+            embeddings.addAll(getEmbeddings(wireResponse));
+            totalTokens += getTokenUsage(wireResponse);
+            if (responseModelName == null) {
+                responseModelName = wireResponse.getModel();
             }
         }
 
         return dev.langchain4j.model.embedding.response.EmbeddingResponse.builder()
                 .embeddings(embeddings)
                 .metadata(EmbeddingResponseMetadata.builder()
-                        .modelName(modelName)
+                        .modelName(getOrDefault(responseModelName, modelName))
                         .tokenUsage(new TokenUsage(totalTokens))
                         .build())
                 .build();

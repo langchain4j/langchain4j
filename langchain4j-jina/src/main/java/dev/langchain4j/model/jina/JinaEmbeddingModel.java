@@ -165,7 +165,7 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
         return EmbeddingResponse.builder()
                 .embeddings(embeddings)
                 .metadata(EmbeddingResponseMetadata.builder()
-                        .modelName(modelName)
+                        .modelName(getOrDefault(response.model, modelName))
                         .tokenUsage(tokenUsage)
                         .build())
                 .build();
