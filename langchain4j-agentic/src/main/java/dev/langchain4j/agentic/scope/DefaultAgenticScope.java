@@ -145,6 +145,18 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     @Override
+    public void writeStateIfAbsent(String key, Object value) {
+        if (value != null) {
+            withReadLock(() -> state.putIfAbsent(key, value));
+        }
+    }
+
+    @Override
+    public <T> void writeStateIfAbsent(Class<? extends TypedKey<T>> key, T value) {
+        writeStateIfAbsent(keyName(key), value);
+    }
+
+    @Override
     public void writeStates(Map<String, Object> newState) {
         withReadLock(() -> state.putAll(newState));
     }

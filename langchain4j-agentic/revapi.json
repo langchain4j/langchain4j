@@ -115,6 +115,18 @@
           "oldVisibility": "package",
           "newVisibility": "public",
           "justification": "Necessary to support agents generated at deployment time from the Quarkus extension"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.addedToInterface",
+          "new": "method <T> void dev.langchain4j.agentic.scope.AgenticScope::writeStateIfAbsent(java.lang.Class<? extends dev.langchain4j.agentic.declarative.TypedKey<T>>, T)",
+          "justification": "New method on the AgenticScope."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.addedToInterface",
+          "new": "method void dev.langchain4j.agentic.scope.AgenticScope::writeStateIfAbsent(java.lang.String, java.lang.Object)",
+          "justification": "New method on the AgenticScope."
         }
       ]
     }

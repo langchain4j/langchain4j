@@ -993,7 +993,19 @@ EveningPlannerAgent eveningPlannerAgent = AgenticServices
 List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 ```
 
-In this case the `AgenticServices.createAgenticSystem()` method is also provided with a `ChatModel` that by default is used to create all the subagents in this agentic system, However it is also possible to optionally specify a different `ChatModel` for a given subagent, adding to its definition a static method annotated with `@ChatModelSupplier` returning the `ChatModel` to be used with that agent. For instance the `FoodExpert` agent can define its own `ChatModel` as follows:
+Similarly to what demonstrated for the `@Output` annotation, annotating other `static` methods in the interface defining the agentic pattern with one of the following annotations, it is possible to declaratively configure the agentic system, like for instance the executor to be used for parallel agents, the exit condition for loop agents, and so on. The list of annotations available to this purpose follows:
+
+| Annotation Name        | Description                                                                                                                        |
+|------------------------|------------------------------------------------------------------------------------------------------------------------------------|
+| `@Output`              | Assemble the output to be returned by this agentic pattern, putting together different states of the `AgenticScope`.               |
+| `@ActivationCondition` | Only available on the `ConditionalAgent` to define an activation predicate for one or more sub-agents, it must return a `boolean`  |
+| `@BeforeCall`          | Action invoked before calling this agentic pattern, it can be useful to initialize the state of the `AgenticScope`.                |
+| `@ErrorHandler`        | Action invoked when an error occurs during the agent's operation, allowing for custom error handling logic..                       |
+| `@ExitCondition`       | Only available on the `LoopAgent` to define an exit predicate for the loop, it must return a `boolean`                             |
+| `@ParallelExecutor`    | Only available on the `ParallelAgent` and `ParallelMapperAgent` to specify the executor used to run the sub-agents in parallel.    |
+
+
+In the former example the `AgenticServices.createAgenticSystem()` method is also provided with a `ChatModel` that by default is used to create all the subagents in this agentic system, However it is also possible to optionally specify a different `ChatModel` for a given subagent, adding to its definition a static method annotated with `@ChatModelSupplier` returning the `ChatModel` to be used with that agent. For instance the `FoodExpert` agent can define its own `ChatModel` as follows:
 
 ```java
 public interface FoodExpert {
@@ -1015,7 +1027,7 @@ public interface FoodExpert {
 }
 ```
 
-In a very similar way, annotating other `static` methods in the agent interface, it is possible to declaratively configure other aspects of the agent like its chat memory, the tools it can use, and so on. Those methods must have no arguments unless differently specified in the following table. The list of annotations available to this purpose follows:
+In a very similar way, annotating other `static` methods in the agent interface, it is possible to declaratively configure other aspects of the agent like its chat memory, the tools it can use, and so on. Note that while the former list of annotations only applies to agentic pattern, it makes sense to use the annotations listed below only for LLM-based final agents. Those methods must have no arguments unless differently specified in the following table. The list of annotations available to this purpose follows:
 
 | Annotation Name               | Description                                                                                                                                                   |
 |-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
