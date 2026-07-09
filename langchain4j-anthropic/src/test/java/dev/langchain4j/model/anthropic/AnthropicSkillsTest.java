@@ -1,6 +1,5 @@
 package dev.langchain4j.model.anthropic;
 
-import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.addSkillsBeta;
 import static dev.langchain4j.model.anthropic.InternalAnthropicHelper.createAnthropicRequest;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType.NO_CACHE;
 import static java.util.Collections.emptyList;
@@ -33,7 +32,23 @@ class AnthropicSkillsTest {
 
     private static AnthropicCreateMessageRequest requestWithSkills(List<AnthropicSkill> skills) {
         return createAnthropicRequest(
-                chatRequest(), null, true, false, NO_CACHE, NO_CACHE, false, null, null, null, null, null, skills, null, null);
+                chatRequest(),
+                null,
+                true,
+                false,
+                NO_CACHE,
+                NO_CACHE,
+                false,
+                null,
+                null,
+                null,
+                null,
+                null,
+                skills,
+                null,
+                null,
+                false,
+                null);
     }
 
     @Test
@@ -79,6 +94,8 @@ class AnthropicSkillsTest {
                 null,
                 List.of(AnthropicSkill.PDF),
                 null,
+                null,
+                false,
                 null);
 
         assertThat(request.tools).extracting(tool -> tool.name).containsExactly("code_execution");
@@ -113,6 +130,8 @@ class AnthropicSkillsTest {
                 null,
                 List.of(AnthropicSkill.XLSX),
                 null,
+                null,
+                false,
                 null);
 
         // the regular tool name must not suppress the required code_execution server tool
@@ -162,24 +181,5 @@ class AnthropicSkillsTest {
                 .contains("\"version\" : \"latest\"")
                 .contains("\"type\" : \"code_execution_20250825\"")
                 .contains("\"name\" : \"code_execution\"");
-    }
-
-    @Test
-    void addSkillsBeta_shouldReturnBetaUnchangedWhenNoSkills() {
-        assertThat(addSkillsBeta(null, null)).isNull();
-        assertThat(addSkillsBeta("my-beta", emptyList())).isEqualTo("my-beta");
-    }
-
-    @Test
-    void addSkillsBeta_shouldAddRequiredBetaFeaturesWhenSkillsPresent() {
-        assertThat(addSkillsBeta(null, List.of(AnthropicSkill.XLSX)))
-                .isEqualTo("code-execution-2025-08-25,skills-2025-10-02,files-api-2025-04-14");
-    }
-
-    @Test
-    void addSkillsBeta_shouldPreserveUserBetaAndAvoidDuplicates() {
-        String beta = addSkillsBeta("skills-2025-10-02 , my-custom-beta", List.of(AnthropicSkill.PDF));
-
-        assertThat(beta).isEqualTo("skills-2025-10-02,my-custom-beta,code-execution-2025-08-25,files-api-2025-04-14");
     }
 }
