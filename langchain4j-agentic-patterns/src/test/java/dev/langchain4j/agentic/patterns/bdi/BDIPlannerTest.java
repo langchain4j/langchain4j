@@ -127,6 +127,46 @@ class BDIPlannerTest {
     }
 
     @Test
+    void maxInvocationsShouldMatchExactAgentCallCount() {
+        AtomicInteger totalCalls = new AtomicInteger();
+
+        var countingA = new Object() {
+            @Agent(outputKey = "outputA")
+            public String producerA() {
+                totalCalls.incrementAndGet();
+                return "resultA";
+            }
+        };
+        var countingB = new Object() {
+            @Agent(outputKey = "outputB")
+            public String producerB(@V("outputA") String input) {
+                totalCalls.incrementAndGet();
+                return "resultB";
+            }
+        };
+        var countingC = new Object() {
+            @Agent(outputKey = "outputC")
+            public String producerC(@V("outputB") String input) {
+                totalCalls.incrementAndGet();
+                return "resultC";
+            }
+        };
+
+        var desire = Desire.of("goal", 1,
+                scope -> true, scope -> scope.hasState("outputC"),
+                countingA.getClass(), countingB.getClass(), countingC.getClass());
+
+        int max = 2;
+        UntypedAgent system = AgenticServices.plannerBuilder()
+                .subAgents(countingA, countingB, countingC)
+                .planner(() -> new BDIPlanner(List.of(desire), max))
+                .build();
+
+        system.invokeWithAgenticScope(Map.of());
+        assertThat(totalCalls.get()).isEqualTo(max);
+    }
+
+    @Test
     void shouldTerminateWhenAllDesiresSatisfied() {
         var desire = Desire.of("goal", 1,
                 scope -> true, scope -> scope.hasState("outputA"), ProducerA.class);

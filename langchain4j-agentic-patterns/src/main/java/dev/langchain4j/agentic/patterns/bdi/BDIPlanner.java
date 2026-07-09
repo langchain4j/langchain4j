@@ -63,15 +63,8 @@ public class BDIPlanner implements Planner {
     @Override
     public Action nextAction(PlanningContext planningContext) {
         AgenticScope scope = planningContext.agenticScope();
-        invocationCounter++;
-
-        if (invocationCounter >= maxInvocations) {
-            LOG.warn("Maximum invocations ({}) reached", maxInvocations);
-            return done();
-        }
 
         if (currentDesire != null) {
-            // Preemption: check if a higher-priority desire should take over
             boolean preempted = desires.stream()
                     .filter(d -> d != currentDesire)
                     .filter(d -> d.priority() > currentDesire.priority())
@@ -84,16 +77,24 @@ public class BDIPlanner implements Planner {
                 return deliberate(scope);
             }
 
-            // Continue current intention if desire is still viable
             if (currentDesire.achievable().test(scope) && !currentDesire.satisfied().test(scope)) {
                 intentionCursor++;
                 if (intentionCursor < currentIntention.size()) {
-                    return call(currentIntention.get(intentionCursor));
+                    return dispatch(currentIntention.get(intentionCursor));
                 }
             }
         }
 
         return deliberate(scope);
+    }
+
+    private Action dispatch(AgentInstance agent) {
+        if (invocationCounter >= maxInvocations) {
+            LOG.warn("Maximum invocations ({}) reached", maxInvocations);
+            return done();
+        }
+        invocationCounter++;
+        return call(agent);
     }
 
     private Action deliberate(AgenticScope scope) {
@@ -107,10 +108,9 @@ public class BDIPlanner implements Planner {
                             .map(agentsByType::get)
                             .toList();
                     intentionCursor = desireProgress.getOrDefault(desire.name(), 0);
-                    invocationCounter++;
                     LOG.info("Committing to desire '{}' (priority {}) at step {}/{}",
                             desire.name(), desire.priority(), intentionCursor + 1, currentIntention.size());
-                    return call(currentIntention.get(intentionCursor));
+                    return dispatch(currentIntention.get(intentionCursor));
                 })
                 .orElseGet(() -> {
                     LOG.info("All desires satisfied or none achievable after {} invocations", invocationCounter);
