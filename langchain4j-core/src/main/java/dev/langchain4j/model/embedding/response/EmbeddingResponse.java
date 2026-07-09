@@ -1,10 +1,10 @@
 package dev.langchain4j.model.embedding.response;
 
 import static dev.langchain4j.internal.Utils.copy;
-import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
 import java.util.Objects;
 
@@ -23,7 +23,21 @@ public class EmbeddingResponse {
 
     protected EmbeddingResponse(Builder builder) {
         this.embeddings = copy(builder.embeddings);
-        this.metadata = getOrDefault(builder.metadata, () -> EmbeddingResponseMetadata.builder().build());
+
+        EmbeddingResponseMetadata.Builder<?> metadataBuilder = EmbeddingResponseMetadata.builder();
+        if (builder.modelName != null) {
+            validate(builder, "modelName");
+            metadataBuilder.modelName(builder.modelName);
+        }
+        if (builder.tokenUsage != null) {
+            validate(builder, "tokenUsage");
+            metadataBuilder.tokenUsage(builder.tokenUsage);
+        }
+        if (builder.metadata != null) {
+            this.metadata = builder.metadata;
+        } else {
+            this.metadata = metadataBuilder.build();
+        }
     }
 
     public List<Embedding> embeddings() {
@@ -32,6 +46,14 @@ public class EmbeddingResponse {
 
     public EmbeddingResponseMetadata metadata() {
         return metadata;
+    }
+
+    public String modelName() {
+        return metadata.modelName();
+    }
+
+    public TokenUsage tokenUsage() {
+        return metadata.tokenUsage();
     }
 
     @Override
@@ -61,6 +83,9 @@ public class EmbeddingResponse {
         private List<Embedding> embeddings;
         private EmbeddingResponseMetadata metadata;
 
+        private String modelName;
+        private TokenUsage tokenUsage;
+
         public Builder embeddings(List<Embedding> embeddings) {
             this.embeddings = embeddings;
             return this;
@@ -71,8 +96,25 @@ public class EmbeddingResponse {
             return this;
         }
 
+        public Builder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public Builder tokenUsage(TokenUsage tokenUsage) {
+            this.tokenUsage = tokenUsage;
+            return this;
+        }
+
         public EmbeddingResponse build() {
             return new EmbeddingResponse(this);
+        }
+    }
+
+    private static void validate(Builder builder, String name) {
+        if (builder.metadata != null) {
+            throw new IllegalArgumentException(
+                    "Cannot set both 'metadata' and '%s' on EmbeddingResponse".formatted(name));
         }
     }
 }

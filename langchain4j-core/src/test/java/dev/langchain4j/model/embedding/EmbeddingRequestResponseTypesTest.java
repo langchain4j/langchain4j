@@ -240,6 +240,38 @@ class EmbeddingRequestResponseTypesTest implements WithAssertions {
     }
 
     @Test
+    void response_flattened_builder_and_convenience_accessors() {
+        Embedding embedding = new Embedding(new float[] {1f, 2f});
+
+        EmbeddingResponse response = EmbeddingResponse.builder()
+                .embeddings(List.of(embedding))
+                .modelName("m")
+                .tokenUsage(new TokenUsage(7))
+                .build();
+
+        // flattened setters populate the metadata, and the convenience accessors delegate to it
+        assertThat(response.modelName()).isEqualTo("m");
+        assertThat(response.tokenUsage()).isEqualTo(new TokenUsage(7));
+        assertThat(response.metadata().modelName()).isEqualTo("m");
+        assertThat(response.metadata().tokenUsage()).isEqualTo(new TokenUsage(7));
+
+        // accessors are null-safe when nothing was set
+        EmbeddingResponse empty =
+                EmbeddingResponse.builder().embeddings(List.of(embedding)).build();
+        assertThat(empty.modelName()).isNull();
+        assertThat(empty.tokenUsage()).isNull();
+
+        // setting both an explicit metadata and a flattened field is rejected
+        assertThatThrownBy(() -> EmbeddingResponse.builder()
+                        .embeddings(List.of(embedding))
+                        .metadata(EmbeddingResponseMetadata.builder().build())
+                        .modelName("m")
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Cannot set both");
+    }
+
+    @Test
     void response_metadata_equals_hashcode_tostring() {
         EmbeddingResponseMetadata a = EmbeddingResponseMetadata.builder()
                 .modelName("m")
