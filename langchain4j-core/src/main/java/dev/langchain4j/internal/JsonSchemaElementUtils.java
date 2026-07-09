@@ -301,7 +301,7 @@ public class JsonSchemaElementUtils {
 
     private static void addInstanceFields(Class<?> type, Map<String, Field> fieldsByName) {
         Class<?> superclass = type.getSuperclass();
-        if (superclass != null && superclass != Object.class) {
+        if (superclass != null && superclass != Object.class && isCustomClass(superclass)) {
             addInstanceFields(superclass, fieldsByName);
         }
 

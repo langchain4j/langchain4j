@@ -133,6 +133,15 @@ class ToolSpecificationsTest implements WithAssertions {
         public void createPerson(CreatePersonRequest request) {}
     }
 
+    public static class ErrorRequest extends RuntimeException {
+        String code;
+    }
+
+    public static class ToolWithJdkSuperclassRequest {
+        @Tool
+        public void report(ErrorRequest request) {}
+    }
+
     private static Method getF() throws NoSuchMethodException {
         return Wrapper.class.getMethod(
                 "f",
@@ -376,6 +385,24 @@ class ToolSpecificationsTest implements WithAssertions {
                                         .addStringProperty("id")
                                         .addStringProperty("name")
                                         .required("id", "name")
+                                        .build())
+                        .required("arg0")
+                        .build());
+    }
+
+    @Test
+    void tool_specification_ignores_non_custom_superclass_fields() throws NoSuchMethodException {
+        Method method = ToolWithJdkSuperclassRequest.class.getMethod("report", ErrorRequest.class);
+
+        ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
+
+        assertThat(ts.parameters())
+                .isEqualTo(JsonObjectSchema.builder()
+                        .addProperty(
+                                "arg0",
+                                JsonObjectSchema.builder()
+                                        .addStringProperty("code")
+                                        .required("code")
                                         .build())
                         .required("arg0")
                         .build());
