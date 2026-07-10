@@ -86,9 +86,7 @@ public abstract class AbstractServiceBuilder<T, S> {
     }
 
     public S beforeCall(Consumer<AgenticScope> beforeCall) {
-        this.beforeCall = this.beforeCall == DEFAULT_INIT_FUNCTION
-                ? beforeCall
-                : this.beforeCall.andThen(beforeCall);
+        this.beforeCall = beforeCall;
         return (S) this;
     }
 
