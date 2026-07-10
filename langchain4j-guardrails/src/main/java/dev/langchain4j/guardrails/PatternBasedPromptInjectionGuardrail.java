@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
  * </ul>
  * <p>
  * Subclasses may supply additional domain-specific patterns via the
- * {@link #PromptInjectionGuardrail(List)} constructor, or override
+ * {@link #PatternBasedPromptInjectionGuardrail(List)} constructor, or override
  * {@link #buildFailureMessage(String, Pattern)} to customise the failure message.
  * </p>
  * <p>
@@ -44,9 +44,9 @@ import org.slf4j.LoggerFactory;
  * afterwards.
  * </p>
  */
-public class PromptInjectionGuardrail implements InputGuardrail {
+public class PatternBasedPromptInjectionGuardrail implements InputGuardrail {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(PromptInjectionGuardrail.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(PatternBasedPromptInjectionGuardrail.class);
 
     private static final List<Pattern> DEFAULT_PATTERNS = List.of(
             // Instruction override
@@ -98,7 +98,7 @@ public class PromptInjectionGuardrail implements InputGuardrail {
     /**
      * Creates a guardrail using the default OWASP LLM01 pattern set.
      */
-    public PromptInjectionGuardrail() {
+    public PatternBasedPromptInjectionGuardrail() {
         this.patterns = DEFAULT_PATTERNS;
     }
 
@@ -109,7 +109,7 @@ public class PromptInjectionGuardrail implements InputGuardrail {
      *
      * @param additionalPatterns extra patterns to check, in addition to the defaults. Must not be {@code null}.
      */
-    public PromptInjectionGuardrail(List<Pattern> additionalPatterns) {
+    public PatternBasedPromptInjectionGuardrail(List<Pattern> additionalPatterns) {
         ensureNotNull(additionalPatterns, "additionalPatterns");
         List<Pattern> combined = new ArrayList<>(DEFAULT_PATTERNS.size() + additionalPatterns.size());
         combined.addAll(DEFAULT_PATTERNS);
