@@ -331,7 +331,7 @@ public class DeclarativeAgentIT {
 
         @SequenceAgent(outputKey = "story",
                 subAgents = { CreativeWriter.class, StyleEditor.class })
-        ResultWithAgenticScope<String> write(@V("topic") String topic);
+        ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
 
         @BeforeCall
         static void beforeCall(AgenticScope agenticScope) {
@@ -340,13 +340,23 @@ public class DeclarativeAgentIT {
     }
 
     @Test
-    void declarative_sequence_with_before_call() {
+    void declarative_sequence_with_before_call_uses_default() {
         StoryCreatorWithBeforeCall creator =
                 AgenticServices.createAgenticSystem(StoryCreatorWithBeforeCall.class, baseModel());
 
-        ResultWithAgenticScope<String> result = creator.write("dragons");
+        ResultWithAgenticScope<String> result = creator.write("dragons", null);
         assertThat(result.result()).isNotBlank();
         assertThat(result.agenticScope().readState("style")).isEqualTo("comedy");
+    }
+
+    @Test
+    void declarative_sequence_with_before_call_explicit_value_wins() {
+        StoryCreatorWithBeforeCall creator =
+                AgenticServices.createAgenticSystem(StoryCreatorWithBeforeCall.class, baseModel());
+
+        ResultWithAgenticScope<String> result = creator.write("dragons", "horror");
+        assertThat(result.result()).isNotBlank();
+        assertThat(result.agenticScope().readState("style")).isEqualTo("horror");
     }
 
     public interface StyleReviewLoopAgent {
