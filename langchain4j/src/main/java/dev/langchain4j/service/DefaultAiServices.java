@@ -146,6 +146,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         InvocationParameters.class, args, method.getParameters())
                                 .orElseGet(InvocationParameters::new);
 
+                        // Always use a mutable HashMap so that guardrails (and other framework
+                        // components) can store per-invocation state in managedParameters.
+                        // If a caller has pre-populated the ThreadLocal (e.g. the agentic module),
+                        // we still wrap it in a new HashMap to guarantee mutability.
+                        Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> managed = new java.util.HashMap<>(
+                                LangChain4jManaged.current() != null ? LangChain4jManaged.current() : Map.of());
+
                         InvocationContext invocationContext = InvocationContext.builder()
                                 .invocationId(UUID.randomUUID())
                                 .interfaceName(context.aiServiceClass.getName())
@@ -155,7 +162,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .defaultRequestParameters(determineChatRequestParameters(context))
                                 .modelProvider(determineModelProvider(context))
                                 .invocationParameters(invocationParameters)
-                                .managedParameters(LangChain4jManaged.current())
+                                .managedParameters(managed)
                                 .timestampNow()
                                 .build();
                         try {
