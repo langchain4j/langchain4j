@@ -302,16 +302,14 @@ public class DefaultMistralAiClient extends MistralAiClient {
                 .build();
 
         SuccessfulHttpResponse rawResponse = httpClient.execute(httpRequest);
-        List<MistralAiBatchResultEntry> results = new ArrayList<>();
         String body = rawResponse.body();
-        if (body != null) {
-            for (String line : body.split("\n")) {
-                String trimmed = line.trim();
-                if (!trimmed.isEmpty()) {
-                    results.add(fromJson(trimmed, MistralAiBatchResultEntry.class));
-                }
-            }
+        if (body == null) {
+            return List.of();
         }
-        return results;
+        return body.lines()
+                .map(String::trim)
+                .filter(line -> !line.isEmpty())
+                .map(line -> fromJson(line, MistralAiBatchResultEntry.class))
+                .toList();
     }
 }
