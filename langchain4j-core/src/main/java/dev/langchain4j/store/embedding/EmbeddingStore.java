@@ -10,7 +10,6 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.listener.EmbeddingStoreListener;
 import java.util.ArrayList;
@@ -148,11 +147,12 @@ public interface EmbeddingStore<Embedded> {
      * Non-blocking counterpart of {@link #search(EmbeddingSearchRequest)}, used by the asynchronous and reactive RAG
      * flow (see {@code EmbeddingStoreContentRetriever.retrieveAsync}).
      * <p>
-     * The default implementation offloads the blocking {@link #search(EmbeddingSearchRequest)} to a shared
-     * virtual-thread executor, so any existing {@link EmbeddingStore} is usable from the non-blocking path without
-     * changes (blocking a <i>virtual</i> thread is non-pinning). A store backed by remote/DB I/O is encouraged to
-     * override this with a genuinely async query (no thread parked); an in-memory store may leave the default or
-     * override it to complete synchronously.
+     * The default throws {@link UnsupportedOperationException}: a store that is not genuinely asynchronous does not
+     * pretend to be. A store backed by remote/DB I/O opts in by overriding this with a genuinely async query (no
+     * thread parked); an in-memory store may override it to complete synchronously on the calling thread. A store
+     * that has not opted in is still usable from the non-blocking RAG path:
+     * {@code EmbeddingStoreContentRetriever.retrieveAsync} offloads its blocking {@link #search(EmbeddingSearchRequest)}
+     * for it, rather than the store being silently offloaded to a thread on every call.
      * <p>
      * An implementation that honors cancellation should abort its in-flight query when the returned future is
      * cancelled (best-effort).
@@ -162,8 +162,7 @@ public interface EmbeddingStore<Embedded> {
      * @since 1.17.0
      */
     default CompletableFuture<EmbeddingSearchResult<Embedded>> searchAsync(EmbeddingSearchRequest request) {
-        return CompletableFuture.supplyAsync(
-                () -> search(request), DefaultExecutorProvider.getDefaultExecutorService());
+        throw new UnsupportedOperationException("searchAsync() is not implemented by " + getClass().getName());
     }
 
     /**

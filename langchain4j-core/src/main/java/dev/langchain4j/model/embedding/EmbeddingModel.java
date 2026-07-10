@@ -10,7 +10,6 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.internal.ValidationUtils;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext;
@@ -277,10 +276,14 @@ public interface EmbeddingModel {
     /**
      * Non-blocking counterpart of {@link #doEmbed(EmbeddingRequest)}, called by {@link #embedAsync(EmbeddingRequest)}
      * after the request's parameters have been merged and validated. A provider backed by remote HTTP I/O overrides
-     * this to return a genuinely non-blocking future (no thread is parked). The default offloads the blocking
-     * {@link #doEmbed(EmbeddingRequest)} to a shared virtual-thread executor, so any implementation - including one
-     * that only provides {@link #embedAll(List)} - is usable from {@link #embedAsync(EmbeddingRequest)} without
-     * changes (a virtual thread that blocks is non-pinning).
+     * this to return a genuinely non-blocking future (no thread is parked).
+     * <p>
+     * The default throws {@link UnsupportedOperationException}: a model that is not genuinely asynchronous does not
+     * pretend to be. It must opt in by overriding this method, so it can choose an execution strategy appropriate to
+     * how it works - real async I/O for a network model, a bounded compute pool (or nothing) for a CPU-bound
+     * in-process model - rather than being silently offloaded to a (possibly wrong) thread. A model that has not
+     * opted in is still usable from the non-blocking RAG path: {@code EmbeddingStoreContentRetriever.retrieveAsync}
+     * offloads its blocking {@link #embed(EmbeddingRequest)} for it.
      *
      * @param request the request, with parameters already merged and validated.
      * @return a {@link CompletableFuture} of the response.
@@ -288,8 +291,7 @@ public interface EmbeddingModel {
      */
     @Experimental
     default CompletableFuture<EmbeddingResponse> doEmbedAsync(EmbeddingRequest request) {
-        return CompletableFuture.supplyAsync(
-                () -> doEmbed(request), DefaultExecutorProvider.getDefaultExecutorService());
+        throw new UnsupportedOperationException("doEmbedAsync() is not implemented by " + getClass().getName());
     }
 
     /**

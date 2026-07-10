@@ -75,23 +75,17 @@ class DefaultRetrievalAugmentorAsyncTest {
     }
 
     @Test
-    void augmentAsync_default_should_offload_blocking_augment_for_a_custom_augmentor() throws Exception {
-        // A custom RetrievalAugmentor that implements only the blocking augment(): the async path must still work
-        // via the offloading default, and off the calling thread.
-        Thread callerThread = Thread.currentThread();
-        CompletableFuture<Thread> augmentThread = new CompletableFuture<>();
-        RetrievalAugmentor customAugmentor = augmentationRequest -> {
-            augmentThread.complete(Thread.currentThread());
-            return AugmentationResult.builder()
-                    .chatMessage(augmentationRequest.chatMessage())
-                    .contents(List.of())
-                    .build();
-        };
+    void augmentAsync_default_should_throw_for_an_augmentor_that_has_not_opted_in() {
+        // A custom RetrievalAugmentor that implements only the blocking augment(): the async default is fail-loud
+        // (it is the AI Service, not the augmentor, that decides to offload a blocking augmentor - see
+        // DefaultAiServices), so it never pretends to be asynchronous.
+        RetrievalAugmentor customAugmentor = augmentationRequest -> AugmentationResult.builder()
+                .chatMessage(augmentationRequest.chatMessage())
+                .contents(List.of())
+                .build();
 
-        AugmentationResult result = customAugmentor.augmentAsync(request()).get(5, SECONDS);
-
-        assertThat(((UserMessage) result.chatMessage()).singleText()).isEqualTo("query");
-        assertThat(augmentThread.get(5, SECONDS)).isNotSameAs(callerThread);
+        assertThatThrownBy(() -> customAugmentor.augmentAsync(request()))
+                .isInstanceOf(UnsupportedOperationException.class);
     }
 
     @Test

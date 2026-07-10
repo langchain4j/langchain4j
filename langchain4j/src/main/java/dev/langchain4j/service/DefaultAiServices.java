@@ -31,6 +31,7 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
@@ -56,6 +57,7 @@ import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
+import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.service.guardrail.GuardrailService;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
@@ -840,30 +842,64 @@ class DefaultAiServices<T> extends AiServices<T> {
                             Optional<SystemMessage> systemMessage,
                             UserMessage originalUserMessage,
                             InvocationContext invocationContext) {
-                        if (context.retrievalAugmentor == null) {
+                        RetrievalAugmentor augmentor = context.retrievalAugmentor;
+                        if (augmentor == null) {
                             return CompletableFuture.completedFuture(null);
                         }
-                        // Any synchronous throw (e.g. a blocking-only ChatMemoryStore whose messagesAsync() throws
-                        // UnsupportedOperationException) is turned into a failed future so callers always observe it
-                        // through the returned stage - never as a thrown exception (which, on the reactive path,
-                        // would escape subscribe() and violate the Reactive Streams contract).
+                        // Try the native async path off the caller thread. A blocking augmentor (its augmentAsync
+                        // reports UnsupportedOperationException) or a blocking chat memory (messagesAsync) surfaces at
+                        // runtime; we then either offload or fail loudly - no reflection to detect it in advance. Any
+                        // synchronous throw becomes a failed future, never a thrown exception (which on the reactive
+                        // path would escape subscribe() and violate the Reactive Streams contract).
+                        CompletableFuture<AugmentationResult> async;
                         try {
                             CompletableFuture<List<ChatMessage>> chatMemoryMessages = chatMemory != null
                                     ? chatMemory.messagesAsync().toCompletableFuture()
                                     : CompletableFuture.completedFuture(null);
-                            return chatMemoryMessages.thenCompose(memoryMessages -> {
-                                Metadata metadata = Metadata.builder()
-                                        .chatMessage(originalUserMessage)
-                                        .systemMessage(systemMessage.orElse(null))
-                                        .chatMemory(memoryMessages)
-                                        .invocationContext(invocationContext)
-                                        .build();
-                                return context.retrievalAugmentor.augmentAsync(
-                                        new AugmentationRequest(originalUserMessage, metadata));
-                            });
+                            async = chatMemoryMessages.thenCompose(memoryMessages -> augmentor.augmentAsync(
+                                    augmentationRequest(
+                                            originalUserMessage, systemMessage, memoryMessages, invocationContext)));
                         } catch (Throwable t) {
-                            return CompletableFuture.failedFuture(t);
+                            async = CompletableFuture.failedFuture(t);
                         }
+                        return async.exceptionallyCompose(error -> {
+                            Throwable cause = unwrapCompletionException(error);
+                            if (cause instanceof UnsupportedOperationException) {
+                                if (context.offloadBlocking) {
+                                    // Offload the blocking augment() (and the memory read it needs) to a virtual thread.
+                                    return CompletableFuture.supplyAsync(
+                                            () -> {
+                                                List<ChatMessage> memoryMessages =
+                                                        chatMemory != null ? chatMemory.messages() : null;
+                                                return augmentor.augment(augmentationRequest(
+                                                        originalUserMessage,
+                                                        systemMessage,
+                                                        memoryMessages,
+                                                        invocationContext));
+                                            },
+                                            DefaultExecutorProvider.getDefaultExecutorService());
+                                }
+                                return CompletableFuture.failedFuture(new UnsupportedFeatureException(cause.getMessage()
+                                        + " The RAG pipeline is not fully asynchronous. Either use async-capable"
+                                        + " components, or set AiServices.builder().offloadBlocking(true) to offload the"
+                                        + " blocking part to a virtual-thread executor."));
+                            }
+                            return CompletableFuture.failedFuture(error);
+                        });
+                    }
+
+                    private AugmentationRequest augmentationRequest(
+                            UserMessage originalUserMessage,
+                            Optional<SystemMessage> systemMessage,
+                            List<ChatMessage> memoryMessages,
+                            InvocationContext invocationContext) {
+                        Metadata metadata = Metadata.builder()
+                                .chatMessage(originalUserMessage)
+                                .systemMessage(systemMessage.orElse(null))
+                                .chatMemory(memoryMessages)
+                                .invocationContext(invocationContext)
+                                .build();
+                        return new AugmentationRequest(originalUserMessage, metadata);
                     }
 
                     /**

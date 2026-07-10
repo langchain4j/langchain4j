@@ -152,11 +152,20 @@ arbitrary code; documented as deliberate best-effort).
 >   cancelled and the type advertises that.
 
 > **(b) The new async SPIs throw by default.**
-> `ChatMemory`/`ChatMemoryStore`, `ToolExecutor`, and `Guardrail` all default their async methods to
-> `UnsupportedOperationException`. Rationale: callers must **opt in** to the non-blocking paths rather than have a
-> (potentially blocking) synchronous implementation silently run on the model-delivery thread. A forgotten override fails
-> **loudly** on the async/reactive paths instead of quietly blocking. Existing synchronous AI Services are unaffected (they
+> `ChatMemory`/`ChatMemoryStore`, `ToolExecutor`, `Guardrail`, and the RAG SPIs (`EmbeddingModel.doEmbedAsync`,
+> `EmbeddingStore.searchAsync`, `ContentRetriever.retrieveAsync`, `RetrievalAugmentor.augmentAsync`) all default their
+> async methods to `UnsupportedOperationException`. Rationale: an implementation that is not genuinely asynchronous does
+> not pretend to be — a forgotten (or impossible) async implementation fails **loudly** on the async/reactive paths
+> instead of quietly running a blocking call on a parked thread. Existing synchronous AI Services are unaffected (they
 > never call the async methods).
+
+> **(c) Async methods report errors through the future, not by throwing.**
+> A method returning a `CompletableFuture` or `Flow.Publisher` reports *operation* errors by completing the future
+> exceptionally (or via `onError`), never by throwing synchronously — a synchronous throw would bypass the caller's
+> `whenComplete`/`exceptionally` and, on the reactive path, break the Reactive Streams contract by escaping
+> `subscribe()`. The throwing SPI *defaults* from (b) are an internal "not implemented" seam; the public async entry
+> points (`embedAsync`, `retrieveAsync`, the AI Service's future/publisher) convert such a throw into a failed future /
+> `onError`, so a caller always has a single error channel.
 
 ### 3.8 Implementation note: `mutiny-zero`
 The reactive publishers (the AI Service `AiServiceStreamingEventPublisher`, and the model/HTTP streaming
@@ -177,6 +186,47 @@ library — chosen so the core does not depend on a full reactive framework.
   thing client back-pressure would protect is **our heap**, and stalling a half-read response risks an
   idle-timeout connection reset. So we read eagerly and bound memory at the `Tube` buffer instead — a local,
   fail-fast guard that doesn't hold the network call hostage to a slow consumer.
+
+### 3.9 Non-blocking RAG and the blocking-component policy
+
+RAG has an async surface mirroring the synchronous one: `RetrievalAugmentor.augmentAsync`,
+`ContentRetriever.retrieveAsync`, and — beneath the embedding retriever — `EmbeddingModel.embedAsync` (over the
+overridable `doEmbedAsync`) and `EmbeddingStore.searchAsync`. `DefaultRetrievalAugmentor` and
+`EmbeddingStoreContentRetriever` implement them; `EmbeddingStoreContentRetriever.retrieveAsync` runs the query
+embedding and the vector-store search natively non-blocking when both the model and the store provide async I/O
+(for example the OpenAI embedding model and the in-memory store).
+
+**A not-truly-async component fails loudly by default; offloading is opt-in.** The non-blocking API is entirely new
+and opt-in, so there is no existing async code that must keep working — which means the framework never needs to
+*silently* turn a blocking component into an "async" one by parking a thread. When a component on the async path is
+blocking (it does not implement its `*Async` method), the call fails with a clear, actionable error that names the
+component, instead of quietly offloading it:
+
+- `EmbeddingStoreContentRetriever.retrieveAsync` fails when its `EmbeddingModel` or `EmbeddingStore` is blocking —
+  unless the retriever is built with `offloadBlocking(true)`.
+- An asynchronous AI Service fails when its configured `RetrievalAugmentor` does not implement `augmentAsync` —
+  unless built with `AiServices.builder().offloadBlocking(true)`.
+
+With `offloadBlocking(true)`, only the blocking component is offloaded to a shared virtual-thread executor (parking
+a virtual thread on I/O is non-pinning) — a deliberate, per-component opt-in to "blocking on a (virtual) thread."
+This is per-component, not all-or-nothing: `EmbeddingStoreContentRetriever` embeds and searches independently, so an
+async embedding model paired with a blocking vector store (the common production case) keeps the model on its native
+async path and offloads only the store's search. The opt-in lives on the component that owns the blocking
+dependency: the retriever owns its model and store, the AI Service owns the augmentor.
+
+**Why fail rather than offload by default?** Two reasons. First, *clarity*: the caller can tell a genuinely
+non-blocking pipeline from an offloaded-blocking one, and an error that says exactly which component to fix is more
+useful than hidden behavior. Second, *correctness*: offloading a CPU-bound in-process model (such as an ONNX
+embedding model) to a virtual thread pins its carrier thread, so a blanket offload would be actively wrong for part
+of the ecosystem. Requiring the component to be async, or the user to opt in, makes offloading an informed choice.
+
+**Scope and exceptions.** Blocking `@Tool` methods are *not* subject to this policy: they are arbitrary user code
+that cannot be required to be asynchronous, so they are always offloaded to the virtual-thread executor (a tool that
+wants genuine async returns a future). The fail-loud policy is currently enforced at the embedding retriever and at
+the augmentor boundary. A `ContentRetriever` that does not override `retrieveAsync` (for example a web-search
+retriever) and `DefaultRetrievalAugmentor`'s query-transformation, routing, and aggregation stages are still
+offloaded, pending async SPIs for those stages; the default implementations of those stages perform no I/O, so this
+affects only user-supplied, model-backed stages.
 
 ## 4. Supported types
 

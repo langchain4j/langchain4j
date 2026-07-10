@@ -1,7 +1,6 @@
 package dev.langchain4j.rag;
 
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.rag.content.Content;
 
 import java.util.concurrent.CompletableFuture;
@@ -30,22 +29,20 @@ public interface RetrievalAugmentor {
      * ({@link java.util.concurrent.CompletableFuture}/{@link java.util.concurrent.CompletionStage}) and reactive
      * ({@link java.util.concurrent.Flow.Publisher}) AI Service modes so the RAG flow never blocks the calling thread.
      * <p>
-     * Unlike the leaf RAG SPIs (whose async defaults throw), the default implementation here offloads the blocking
-     * {@link #augment(AugmentationRequest)} to a shared virtual-thread executor: the whole RAG flow is a coarse,
-     * self-contained operation, so blocking a <i>virtual</i> thread (which unmounts from its carrier while it waits)
-     * is non-pinning and lets every existing {@link RetrievalAugmentor} be used from the non-blocking modes without
-     * changes. An augmentor that can compose its steps into a genuine future (like {@link DefaultRetrievalAugmentor})
-     * should override this to avoid parking a thread at all.
+     * The default throws {@link UnsupportedOperationException}: an augmentor that is not genuinely asynchronous does
+     * not pretend to be. {@link DefaultRetrievalAugmentor} overrides this to compose its steps into a real future. A
+     * custom augmentor that has not opted in is still usable from the non-blocking modes: the AI Service offloads its
+     * blocking {@link #augment(AugmentationRequest)} to a shared virtual-thread executor, rather than the augmentor
+     * being silently offloaded on every call.
      * <p>
      * An implementation that honors cancellation should abort in-flight work when the returned future is cancelled
-     * (best-effort); the offloading default cannot interrupt the running {@link #augment(AugmentationRequest)} call.
+     * (best-effort).
      *
      * @param augmentationRequest The {@code AugmentationRequest} containing the {@code ChatMessage} to augment.
      * @return A {@link CompletableFuture} of the {@link AugmentationResult} containing the augmented {@code ChatMessage}.
      * @since 1.17.0
      */
     default CompletableFuture<AugmentationResult> augmentAsync(AugmentationRequest augmentationRequest) {
-        return CompletableFuture.supplyAsync(
-                () -> augment(augmentationRequest), DefaultExecutorProvider.getDefaultExecutorService());
+        throw new UnsupportedOperationException("augmentAsync() is not implemented by " + getClass().getName());
     }
 }

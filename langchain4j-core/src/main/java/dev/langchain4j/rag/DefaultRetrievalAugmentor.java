@@ -110,10 +110,6 @@ import static java.util.stream.Collectors.toMap;
  */
 public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
 
-    // Caches, per ContentRetriever class, whether it overrides the throwing ContentRetriever.retrieveAsync default
-    // (so the reflective lookup runs once per class, not per retrieval).
-    private static final Map<Class<?>, Boolean> ASYNC_RETRIEVAL_SUPPORT = new ConcurrentHashMap<>();
-
     private final QueryTransformer queryTransformer;
     private final QueryRouter queryRouter;
     private final ContentAggregator contentAggregator;
@@ -237,30 +233,22 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     }
 
     /**
-     * Prefers a retriever's genuinely non-blocking {@link ContentRetriever#retrieveAsync(Query)} when it overrides
-     * the throwing default (e.g. {@link dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever});
-     * otherwise offloads the blocking {@link ContentRetriever#retrieve(Query)} to this augmentor's executor. Either
-     * way the calling thread is never blocked.
+     * Runs a retriever's non-blocking {@link ContentRetriever#retrieveAsync(Query)}. A retriever that has not
+     * implemented it (its default reports {@link UnsupportedOperationException}) is offloaded: its blocking
+     * {@link ContentRetriever#retrieve(Query)} runs on this augmentor's executor. Either way the calling thread is
+     * never blocked, and no reflection is used - async availability is discovered by calling it.
      */
     private CompletableFuture<List<Content>> retrieveOneAsync(ContentRetriever retriever, Query query) {
+        CompletableFuture<List<Content>> async;
         try {
-            if (supportsAsyncRetrieval(retriever)) {
-                return retriever.retrieveAsync(query);
-            }
-            return supplyAsync(() -> retriever.retrieve(query), executor);
+            async = retriever.retrieveAsync(query);
         } catch (Throwable t) {
-            return CompletableFuture.failedFuture(t);
+            async = CompletableFuture.failedFuture(t);
         }
-    }
-
-    private static boolean supportsAsyncRetrieval(ContentRetriever retriever) {
-        return ASYNC_RETRIEVAL_SUPPORT.computeIfAbsent(retriever.getClass(), clazz -> {
-            try {
-                return clazz.getMethod("retrieveAsync", Query.class).getDeclaringClass() != ContentRetriever.class;
-            } catch (NoSuchMethodException e) {
-                return false;
-            }
-        });
+        return async.exceptionallyCompose(
+                error -> unwrapCompletionException(error) instanceof UnsupportedOperationException
+                        ? supplyAsync(() -> retriever.retrieve(query), executor)
+                        : CompletableFuture.failedFuture(error));
     }
 
     private Map<Query, Collection<List<Content>>> process(Collection<Query> queries) {

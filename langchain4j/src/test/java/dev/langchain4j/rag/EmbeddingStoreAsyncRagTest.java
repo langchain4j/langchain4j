@@ -8,6 +8,8 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.request.EmbeddingRequest;
+import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.rag.query.Metadata;
@@ -25,12 +27,19 @@ import org.junit.jupiter.api.Test;
  */
 class EmbeddingStoreAsyncRagTest {
 
-    // Maps every text to the same vector, so the query matches any stored segment (score 1.0).
+    // Maps every text to the same vector, so the query matches any stored segment (score 1.0). Genuinely async
+    // (overrides doEmbedAsync) so, together with InMemoryEmbeddingStore's native searchAsync, retrieveAsync uses
+    // the native async path rather than offloading.
     private static final EmbeddingModel EMBEDDING_MODEL = new EmbeddingModel() {
         @Override
         public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
             return Response.from(
                     textSegments.stream().map(s -> Embedding.from(new float[] {1f, 0f, 0f})).toList());
+        }
+
+        @Override
+        public CompletableFuture<EmbeddingResponse> doEmbedAsync(EmbeddingRequest request) {
+            return CompletableFuture.completedFuture(doEmbed(request));
         }
     };
 
