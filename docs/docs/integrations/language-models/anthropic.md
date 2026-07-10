@@ -133,6 +133,46 @@ model.chat("Say 'Hello World'", new StreamingChatResponseHandler() {
 
 Identical to the `AnthropicChatModel`, see above.
 
+## Batch API
+
+The [Message Batches API](https://docs.anthropic.com/en/api/creating-message-batches) processes many chat requests
+asynchronously at 50% of the standard per-token price. `AnthropicBatchChatModel` implements the core `BatchChatModel`
+interface (`submit`, `retrieve`, `cancel`, `list`). Each request is submitted with the same parameters an
+`AnthropicChatModel` call would use.
+
+```java
+AnthropicBatchChatModel model = AnthropicBatchChatModel.builder()
+    .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+    .modelName(CLAUDE_3_5_SONNET_20240620)
+    .maxTokens(1024)
+    .build();
+
+// Submit a batch of requests
+BatchResponse<ChatResponse> submitted = model.submit(new BatchRequest<>(List.of(
+    ChatRequest.builder().messages(UserMessage.from("What is the capital of France?")).build(),
+    ChatRequest.builder().messages(UserMessage.from("What is the capital of Germany?")).build())));
+
+String batchId = submitted.batchId();
+
+// Poll until the batch reaches a terminal state (typically well under an hour)
+BatchResponse<ChatResponse> batch = model.retrieve(batchId);
+while (!batch.state().isTerminal()) {
+    Thread.sleep(Duration.ofSeconds(30).toMillis());
+    batch = model.retrieve(batchId);
+}
+
+// Read the per-request results, in submission order
+for (BatchItemResult<ChatResponse> result : batch.results()) {
+    if (result.isSuccess()) {
+        System.out.println(result.response().aiMessage().text());
+    } else {
+        System.out.println("Failed: " + result.error().message());
+    }
+}
+```
+
+Use `model.list(...)` to page through recent batches and `model.cancel(batchId)` to cancel one that is still processing.
+
 ## Tools
 
 Anthropic supports [tools](/tutorials/tools) in both streaming and non-streaming mode.
