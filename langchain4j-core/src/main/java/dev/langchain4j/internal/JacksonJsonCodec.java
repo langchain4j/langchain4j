@@ -8,12 +8,14 @@ import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
+import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
+import static java.time.format.DateTimeFormatter.ISO_OFFSET_TIME;
+import static java.time.format.DateTimeFormatter.ISO_ZONED_DATE_TIME;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.AnnotationIntrospector;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -23,20 +25,32 @@ import com.fasterxml.jackson.databind.cfg.MapperConfig;
 import com.fasterxml.jackson.databind.introspect.AnnotatedClass;
 import com.fasterxml.jackson.databind.introspect.AnnotationIntrospectorPair;
 import com.fasterxml.jackson.databind.introspect.NopAnnotationIntrospector;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.jsontype.NamedType;
 import com.fasterxml.jackson.databind.jsontype.TypeResolverBuilder;
 import com.fasterxml.jackson.databind.jsontype.impl.StdTypeResolverBuilder;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import dev.langchain4j.Internal;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.MonthDay;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.Period;
+import java.time.Year;
+import java.time.YearMonth;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 
 /**
  * A JSON codec implementation using Jackson for serialization and deserialization.
@@ -135,6 +149,22 @@ class JacksonJsonCodec implements Json.JsonCodec {
             }
         });
 
+        // String-only handlers for the remaining java.time types declared as ISO-8601 strings in
+        // dev.langchain4j.internal.JsonSchemaElementUtils#DEFAULT_TIME_DESCRIPTIONS. Without
+        // these, deserializing a tool argument or structured output containing one of these types
+        // fails because jackson-datatype-jsr310 is not a declared dependency.
+        addIsoStringHandlers(module, Instant.class, Instant::parse);
+        addIsoStringHandlers(module, OffsetDateTime.class, s -> OffsetDateTime.parse(s, ISO_OFFSET_DATE_TIME));
+        addIsoStringHandlers(module, OffsetTime.class, s -> OffsetTime.parse(s, ISO_OFFSET_TIME));
+        addIsoStringHandlers(module, ZonedDateTime.class, s -> ZonedDateTime.parse(s, ISO_ZONED_DATE_TIME));
+        addIsoStringHandlers(module, Duration.class, Duration::parse);
+        addIsoStringHandlers(module, Period.class, Period::parse);
+        addIsoStringHandlers(module, Year.class, Year::parse);
+        addIsoStringHandlers(module, YearMonth.class, YearMonth::parse);
+        addIsoStringHandlers(module, MonthDay.class, MonthDay::parse);
+        addIsoStringHandlers(module, ZoneId.class, ZoneId::of);
+        addIsoStringHandlers(module, ZoneOffset.class, ZoneOffset::of);
+
         ObjectMapper mapper = JsonMapper.builder()
                 .visibility(FIELD, ANY)
                 .disable(INDENT_OUTPUT) // disabled on purpose to save tokens when sending tool results to LLM
@@ -148,8 +178,24 @@ class JacksonJsonCodec implements Json.JsonCodec {
         // having to add @JsonTypeInfo+@JsonSubTypes. We synthesize equivalent metadata via a
         // custom AnnotationIntrospector consulted ahead of Jackson's default one.
         mapper.setAnnotationIntrospector(AnnotationIntrospectorPair.pair(
-                new SealedTypePolymorphicIntrospector(), mapper.getDeserializationConfig().getAnnotationIntrospector()));
+                new SealedTypePolymorphicIntrospector(),
+                mapper.getDeserializationConfig().getAnnotationIntrospector()));
         return mapper;
+    }
+
+    private static <T> void addIsoStringHandlers(SimpleModule module, Class<T> type, Function<String, T> parser) {
+        module.addSerializer(type, new StdSerializer<T>(type) {
+            @Override
+            public void serialize(T value, JsonGenerator gen, SerializerProvider provider) throws IOException {
+                gen.writeString(value.toString());
+            }
+        });
+        module.addDeserializer(type, new JsonDeserializer<T>() {
+            @Override
+            public T deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+                return parser.apply(p.getValueAsString());
+            }
+        });
     }
 
     /**
@@ -246,7 +292,24 @@ class JacksonJsonCodec implements Json.JsonCodec {
             // Step in for any polymorphic base that doesn't already declare its own type-info
             // strategy via @JsonTypeInfo. This covers both sealed types (no annotations) and
             // types that only use @JsonSubTypes for subtype enumeration.
-            return raw.getAnnotation(JsonTypeInfo.class) == null && PolymorphicTypes.isPolymorphic(raw);
+            // Skip JDK types: some are sealed in JDK 17+ (e.g. java.time.ZoneId permits
+            // ZoneOffset/ZoneRegion) but we register custom (de)serializers for them and
+            // don't want polymorphic dispatch.
+            return raw.getAnnotation(JsonTypeInfo.class) == null
+                    && !isJdkType(raw)
+                    && PolymorphicTypes.isPolymorphic(raw);
+        }
+
+        private static boolean isJdkType(Class<?> raw) {
+            if (raw.getPackage() == null) {
+                return false;
+            }
+            String name = raw.getPackage().getName();
+            return name.startsWith("java.")
+                    || name.startsWith("javax.")
+                    || name.startsWith("jdk.")
+                    || name.startsWith("sun.")
+                    || name.startsWith("com.sun.");
         }
     }
 }
