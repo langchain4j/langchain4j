@@ -135,6 +135,12 @@ public class BDIPlanner implements Planner {
                             .map(agentsByType::get)
                             .toList();
                     intentionCursor = desireProgress.getOrDefault(desire.name(), 0);
+                    if (intentionCursor >= currentIntention.size()) {
+                        throw new IllegalStateException(
+                                "Desire '" + desire.name() + "' is still unsatisfied after its entire intention " +
+                                "completed (" + currentIntention.size() + " agents). Check that the intention's agents " +
+                                "write the state keys required by the desire's satisfied predicate.");
+                    }
                     LOG.info("Committing to desire '{}' (priority {}) at step {}/{}",
                             desire.name(), desire.priority(), intentionCursor + 1, currentIntention.size());
                     return dispatch(currentIntention.get(intentionCursor));

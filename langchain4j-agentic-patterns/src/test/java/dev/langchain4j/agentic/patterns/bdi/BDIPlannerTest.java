@@ -191,6 +191,26 @@ class BDIPlannerTest {
     }
 
     @Test
+    void shouldThrowWhenPreemptedDesireResumesPastEnd() {
+        // low = [A, B] never satisfies; high = [C] becomes achievable after B writes outputB.
+        // After B completes, preemption saves cursor = 2 (past end of [A,B]).
+        // When low is re-selected, the saved cursor hits the exhaustion check.
+        var low = Desire.of("low", 1,
+                scope -> true, scope -> scope.hasState("never"), ProducerA.class, ProducerB.class);
+        var high = Desire.of("high", 3,
+                "outputB", "outputC", ProducerC.class);
+
+        UntypedAgent system = AgenticServices.plannerBuilder()
+                .subAgents(new ProducerA(), new ProducerB(), new ProducerC())
+                .planner(() -> new BDIPlanner(List.of(low, high)))
+                .build();
+
+        assertThatThrownBy(() -> system.invokeWithAgenticScope(Map.of("trigger", "t")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Desire 'low' is still unsatisfied");
+    }
+
+    @Test
     void shouldTerminateWhenAllDesiresSatisfied() {
         var desire = Desire.of("goal", 1,
                 scope -> true, scope -> scope.hasState("outputA"), ProducerA.class);
