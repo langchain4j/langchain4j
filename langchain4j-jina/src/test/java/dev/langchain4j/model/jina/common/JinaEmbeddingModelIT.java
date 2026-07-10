@@ -5,7 +5,10 @@ import dev.langchain4j.model.embedding.common.AbstractEmbeddingModelIT;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.jina.JinaEmbeddingModel;
 import java.util.List;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 @EnabledIfEnvironmentVariable(named = "JINA_API_KEY", matches = ".+")
 class JinaEmbeddingModelIT extends AbstractEmbeddingModelIT {
@@ -56,4 +59,10 @@ class JinaEmbeddingModelIT extends AbstractEmbeddingModelIT {
     protected boolean supportsDimensionsParameter() {
         return false;
     }
+
+    @Disabled("Skipped locally to avoid Jina image-embedding token cost")
+    @ParameterizedTest
+    @MethodSource("models")
+    @Override
+    protected void should_embed_image(EmbeddingModel model) {}
 }
