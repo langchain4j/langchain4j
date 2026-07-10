@@ -2,6 +2,7 @@ package dev.langchain4j.rag;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.CancellationChain;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.aggregator.ContentAggregator;
@@ -26,6 +27,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
@@ -115,17 +117,30 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     private final ContentAggregator contentAggregator;
     private final ContentInjector contentInjector;
     private final Executor executor;
+    // On augmentAsync, whether a stage that is not genuinely async (its *Async default throws) is offloaded to the
+    // executor, rather than failing loudly. See the builder's offloadBlocking(boolean).
+    private final boolean offloadBlocking;
 
     public DefaultRetrievalAugmentor(QueryTransformer queryTransformer,
                                      QueryRouter queryRouter,
                                      ContentAggregator contentAggregator,
                                      ContentInjector contentInjector,
                                      Executor executor) {
+        this(queryTransformer, queryRouter, contentAggregator, contentInjector, executor, false);
+    }
+
+    public DefaultRetrievalAugmentor(QueryTransformer queryTransformer,
+                                     QueryRouter queryRouter,
+                                     ContentAggregator contentAggregator,
+                                     ContentInjector contentInjector,
+                                     Executor executor,
+                                     boolean offloadBlocking) {
         this.queryTransformer = getOrDefault(queryTransformer, DefaultQueryTransformer::new);
         this.queryRouter = ensureNotNull(queryRouter, "queryRouter");
         this.contentAggregator = getOrDefault(contentAggregator, DefaultContentAggregator::new);
         this.contentInjector = getOrDefault(contentInjector, DefaultContentInjector::new);
         this.executor = getOrDefault(executor, DefaultRetrievalAugmentor::createDefaultExecutor);
+        this.offloadBlocking = offloadBlocking;
     }
 
     private static ExecutorService createDefaultExecutor() {
@@ -173,14 +188,18 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
             }
             Query originalQuery = Query.from(userMessage.singleText(), augmentationRequest.metadata());
 
-            // Each stage that may block (query transformation, routing and retrieval can call an LLM, an embedding
-            // model, a vector store, ...) is offloaded to the executor rather than run on the calling thread, and the
-            // stages are composed instead of joined - so the caller thread is never blocked. Cancelling the returned
-            // future cancels every in-flight stage via the CancellationChain (best-effort - see augmentAsync's javadoc).
-            chain.track(supplyAsync(() -> queryTransformer.transform(originalQuery), executor))
+            // Each stage runs on its component's native async path when available (query transformation, routing,
+            // retrieval and aggregation can call an LLM, an embedding model, a vector store, ...); a stage that is not
+            // async either offloads to the executor (offloadBlocking) or fails loudly - see nativeOrOffload. The stages
+            // are composed, not joined, so the caller thread is never blocked; cancelling the returned future cancels
+            // every in-flight stage via the CancellationChain (best-effort - see augmentAsync's javadoc).
+            chain.track(nativeOrOffload(
+                            () -> queryTransformer.transformAsync(originalQuery),
+                            () -> queryTransformer.transform(originalQuery)))
                 .thenCompose(queries -> processAsync(chain, queries))
-                .thenCompose(queryToContents ->
-                    chain.track(supplyAsync(() -> contentAggregator.aggregate(queryToContents), executor)))
+                .thenCompose(queryToContents -> chain.track(nativeOrOffload(
+                        () -> contentAggregator.aggregateAsync(queryToContents),
+                        () -> contentAggregator.aggregate(queryToContents))))
                 .thenApply(contents -> AugmentationResult.builder()
                     .chatMessage(contentInjector.inject(contents, chatMessage))
                     .contents(contents)
@@ -206,8 +225,8 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         // Preserve request order (LinkedHashMap) so aggregation sees queries in the same order as the sync path.
         Map<Query, CompletableFuture<Collection<List<Content>>>> queryToFutureContents = new LinkedHashMap<>();
         for (Query query : queries) {
-            CompletableFuture<Collection<List<Content>>> futureContents =
-                chain.track(supplyAsync(() -> queryRouter.route(query), executor))
+            CompletableFuture<Collection<List<Content>>> futureContents = chain.track(
+                            nativeOrOffload(() -> queryRouter.routeAsync(query), () -> queryRouter.route(query)))
                     .thenCompose(retrievers -> retrieveFromAllAsync(chain, retrievers, query));
             queryToFutureContents.put(query, futureContents);
         }
@@ -232,23 +251,37 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                 .collect(Collectors.toList()));
     }
 
-    /**
-     * Runs a retriever's non-blocking {@link ContentRetriever#retrieveAsync(Query)}. A retriever that has not
-     * implemented it (its default reports {@link UnsupportedOperationException}) is offloaded: its blocking
-     * {@link ContentRetriever#retrieve(Query)} runs on this augmentor's executor. Either way the calling thread is
-     * never blocked, and no reflection is used - async availability is discovered by calling it.
-     */
     private CompletableFuture<List<Content>> retrieveOneAsync(ContentRetriever retriever, Query query) {
-        CompletableFuture<List<Content>> async;
+        return nativeOrOffload(() -> retriever.retrieveAsync(query), () -> retriever.retrieve(query));
+    }
+
+    /**
+     * Runs a stage on its component's native async method. A stage that is not genuinely async (its {@code *Async}
+     * method reports being unimplemented via an {@link UnsupportedOperationException}) is either offloaded - its
+     * blocking counterpart runs on this augmentor's {@code executor} - when {@code offloadBlocking}, or fails with an
+     * actionable message. Any other error propagates unchanged. No reflection: async availability is discovered by
+     * calling it.
+     */
+    private <T> CompletableFuture<T> nativeOrOffload(Supplier<CompletableFuture<T>> asyncCall, Supplier<T> blockingCall) {
+        CompletableFuture<T> async;
         try {
-            async = retriever.retrieveAsync(query);
+            async = asyncCall.get();
         } catch (Throwable t) {
             async = CompletableFuture.failedFuture(t);
         }
-        return async.exceptionallyCompose(
-                error -> unwrapCompletionException(error) instanceof UnsupportedOperationException
-                        ? supplyAsync(() -> retriever.retrieve(query), executor)
-                        : CompletableFuture.failedFuture(error));
+        return async.exceptionallyCompose(error -> {
+            Throwable cause = unwrapCompletionException(error);
+            if (cause instanceof UnsupportedOperationException) {
+                if (offloadBlocking) {
+                    return supplyAsync(blockingCall, executor);
+                }
+                return CompletableFuture.failedFuture(new UnsupportedFeatureException(cause.getMessage()
+                        + " The RAG pipeline is not fully asynchronous. Either use async-capable components, or set"
+                        + " DefaultRetrievalAugmentor.builder().offloadBlocking(true) to offload the blocking stage to"
+                        + " the configured executor."));
+            }
+            return CompletableFuture.failedFuture(error);
+        });
     }
 
     private Map<Query, Collection<List<Content>>> process(Collection<Query> queries) {
@@ -315,6 +348,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         private ContentAggregator contentAggregator;
         private ContentInjector contentInjector;
         private Executor executor;
+        private boolean offloadBlocking;
 
         DefaultRetrievalAugmentorBuilder() {
         }
@@ -349,8 +383,29 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
             return this;
         }
 
+        /**
+         * Controls what {@link #augmentAsync(AugmentationRequest)} does when a pipeline stage (query transformation,
+         * routing, retrieval or aggregation) is not genuinely asynchronous (its {@code *Async} method is not
+         * implemented).
+         * <p>
+         * By default ({@code false}), {@code augmentAsync} fails with an actionable error naming the blocking stage,
+         * so a not-truly-async pipeline is never silently made "async" by parking a thread. Set to {@code true} to
+         * instead offload the blocking stage to the configured {@link #executor(Executor) executor}. Has no effect on
+         * the synchronous {@link #augment(AugmentationRequest)}.
+         */
+        public DefaultRetrievalAugmentorBuilder offloadBlocking(boolean offloadBlocking) {
+            this.offloadBlocking = offloadBlocking;
+            return this;
+        }
+
         public DefaultRetrievalAugmentor build() {
-            return new DefaultRetrievalAugmentor(this.queryTransformer, this.queryRouter, this.contentAggregator, this.contentInjector, this.executor);
+            return new DefaultRetrievalAugmentor(
+                    this.queryTransformer,
+                    this.queryRouter,
+                    this.contentAggregator,
+                    this.contentInjector,
+                    this.executor,
+                    this.offloadBlocking);
         }
     }
 }

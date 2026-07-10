@@ -18,7 +18,10 @@ import java.util.HashMap;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import static java.util.concurrent.CompletableFuture.completedFuture;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
@@ -76,5 +79,50 @@ class WebSearchContentRetrieverTest {
 
         verify(webSearchEngine).search(WebSearchRequest.builder().searchTerms(query.text()).maxResults(5).build());
         verifyNoMoreInteractions(webSearchEngine);
+    }
+
+    @Test
+    void retrieveAsync_should_retrieve_web_pages_over_searchAsync() throws Exception {
+
+        // given
+        WebSearchResults results = new WebSearchResults(
+                WebSearchInformationResult.from(1L, 1, new HashMap<>()),
+                asList(WebSearchOrganicResult.from("title 1", URI.create("https://one.com"), "snippet 1", null)));
+
+        WebSearchEngine asyncEngine = mock(WebSearchEngine.class);
+        when(asyncEngine.searchAsync(any(WebSearchRequest.class))).thenReturn(completedFuture(results));
+
+        ContentRetriever contentRetriever = WebSearchContentRetriever.builder()
+                .webSearchEngine(asyncEngine)
+                .build();
+
+        Query query = Query.from("query");
+
+        // when
+        List<Content> contents = contentRetriever.retrieveAsync(query).get(5, SECONDS);
+
+        // then
+        assertThat(contents).containsExactly(
+                Content.from(TextSegment.from("title 1\nsnippet 1", Metadata.from("url", "https://one.com"))));
+
+        verify(asyncEngine).searchAsync(WebSearchRequest.builder().searchTerms(query.text()).maxResults(5).build());
+        verifyNoMoreInteractions(asyncEngine);
+    }
+
+    @Test
+    void retrieveAsync_should_fail_loudly_when_engine_is_not_async() {
+
+        // A web search engine that implements only the blocking search, leaving searchAsync as the throwing default
+        WebSearchEngine blockingOnly = request -> new WebSearchResults(
+                WebSearchInformationResult.from(0L, 1, new HashMap<>()), asList());
+
+        ContentRetriever contentRetriever = WebSearchContentRetriever.builder()
+                .webSearchEngine(blockingOnly)
+                .build();
+
+        // when-then: the non-async engine surfaces loudly instead of silently blocking a carrier thread
+        assertThatThrownBy(() -> contentRetriever.retrieveAsync(Query.from("query")))
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("searchAsync");
     }
 }

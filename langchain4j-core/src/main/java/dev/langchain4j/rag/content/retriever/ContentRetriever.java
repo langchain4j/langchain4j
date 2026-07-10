@@ -59,7 +59,7 @@ public interface ContentRetriever {
      *
      * @param query The {@link Query} to use for retrieval.
      * @return A {@link CompletableFuture} of the retrieved {@link Content}s, sorted by relevance.
-     * @since 1.17.0
+     * @since 1.18.0
      */
     default CompletableFuture<List<Content>> retrieveAsync(Query query) {
         throw new UnsupportedOperationException("retrieveAsync() is not implemented by " + getClass().getName());

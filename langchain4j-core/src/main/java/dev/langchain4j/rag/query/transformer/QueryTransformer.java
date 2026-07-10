@@ -46,7 +46,7 @@ public interface QueryTransformer {
      *
      * @param query The {@link Query} to be transformed.
      * @return A {@link CompletableFuture} of one or more {@link Query}s derived from the original {@link Query}.
-     * @since 1.17.0
+     * @since 1.18.0
      */
     default CompletableFuture<Collection<Query>> transformAsync(Query query) {
         throw new UnsupportedOperationException("transformAsync() is not implemented by " + getClass().getName());

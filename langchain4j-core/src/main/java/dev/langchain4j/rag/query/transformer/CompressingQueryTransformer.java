@@ -5,6 +5,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.query.Query;
@@ -14,6 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -79,10 +81,26 @@ public class CompressingQueryTransformer implements QueryTransformer {
 
         Prompt prompt = createPrompt(query, format(chatMemory));
         String compressedQueryText = chatModel.chat(prompt.text());
-        Query compressedQuery = query.metadata() == null
+        return singletonList(toQuery(query, compressedQueryText));
+    }
+
+    @Override
+    public CompletableFuture<Collection<Query>> transformAsync(Query query) {
+        List<ChatMessage> chatMemory = query.metadata().chatMemory();
+        if (chatMemory == null || chatMemory.isEmpty()) {
+            // no need to compress if there are no previous messages
+            return CompletableFuture.completedFuture(singletonList(query));
+        }
+        Prompt prompt = createPrompt(query, format(chatMemory));
+        return chatModel
+                .chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build())
+                .thenApply(response -> singletonList(toQuery(query, response.aiMessage().text())));
+    }
+
+    private static Query toQuery(Query originalQuery, String compressedQueryText) {
+        return originalQuery.metadata() == null
                 ? Query.from(compressedQueryText)
-                : Query.from(compressedQueryText, query.metadata());
-        return singletonList(compressedQuery);
+                : Query.from(compressedQueryText, originalQuery.metadata());
     }
 
     protected String format(List<ChatMessage> chatMemory) {

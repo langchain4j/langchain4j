@@ -17,6 +17,7 @@ import java.util.Map;
 
 import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.FAIL;
 import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.ROUTE_TO_ALL;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -59,6 +60,34 @@ class LanguageModelQueryRouterTest {
                 It is very important that your answer consists of either a single number \
                 or multiple numbers separated by commas and nothing else!
                 User query: Do Labradors shed?""");
+    }
+
+    @Test
+    void routeAsync_should_route_over_chatAsync() throws Exception {
+        Query query = Query.from("Do Labradors shed?");
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("2");
+
+        QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
+
+        assertThat(router.routeAsync(query).get(5, SECONDS)).containsExactly(dogArticlesRetriever);
+    }
+
+    @Test
+    void routeAsync_should_apply_fallback_strategy_on_unparseable_response() throws Exception {
+        Query query = Query.from("Do Labradors shed?");
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("not a number"); // parse fails
+
+        QueryRouter router = new LanguageModelQueryRouter(
+                model, retrieverToDescription, LanguageModelQueryRouter.DEFAULT_PROMPT_TEMPLATE, ROUTE_TO_ALL);
+
+        assertThat(router.routeAsync(query).get(5, SECONDS))
+                .containsExactlyInAnyOrder(catArticlesRetriever, dogArticlesRetriever);
     }
 
     @Test

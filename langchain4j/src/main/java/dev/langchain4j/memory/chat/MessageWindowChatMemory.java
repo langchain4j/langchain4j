@@ -17,7 +17,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
 /**
@@ -75,7 +74,7 @@ public class MessageWindowChatMemory implements ChatMemory {
     }
 
     @Override
-    public CompletionStage<Void> addAsync(List<ChatMessage> messagesToAdd) {
+    public CompletableFuture<Void> addAsync(List<ChatMessage> messagesToAdd) {
         return store.getMessagesAsync(id).thenCompose(stored -> {
             List<ChatMessage> messages = windowed(stored);
             boolean changed = false;
@@ -140,12 +139,18 @@ public class MessageWindowChatMemory implements ChatMemory {
     }
 
     @Override
-    public CompletionStage<Void> setAsync(List<ChatMessage> messages) {
-        Integer maxMessages = this.maxMessagesProvider.apply(this.id);
-        ensureGreaterThanZero(maxMessages, "maxMessages");
-        List<ChatMessage> windowed = new ArrayList<>(messages);
-        ensureCapacity(windowed, maxMessages);
-        return store.updateMessagesAsync(id, windowed);
+    public CompletableFuture<Void> setAsync(List<ChatMessage> messages) {
+        // Deliver validation/windowing failures through the returned stage rather than throwing synchronously,
+        // consistent with addAsync and the async error contract.
+        try {
+            Integer maxMessages = this.maxMessagesProvider.apply(this.id);
+            ensureGreaterThanZero(maxMessages, "maxMessages");
+            List<ChatMessage> windowed = new ArrayList<>(messages);
+            ensureCapacity(windowed, maxMessages);
+            return store.updateMessagesAsync(id, windowed);
+        } catch (Throwable t) {
+            return CompletableFuture.failedFuture(t);
+        }
     }
 
     @Override
@@ -154,7 +159,7 @@ public class MessageWindowChatMemory implements ChatMemory {
     }
 
     @Override
-    public CompletionStage<List<ChatMessage>> messagesAsync() {
+    public CompletableFuture<List<ChatMessage>> messagesAsync() {
         return store.getMessagesAsync(id).thenApply(this::windowed);
     }
 

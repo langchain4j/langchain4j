@@ -2,8 +2,11 @@ package dev.langchain4j.guardrail;
 
 import static dev.langchain4j.observability.api.event.InputGuardrailExecutedEvent.InputGuardrailExecutedEventBuilder;
 
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
+
 import dev.langchain4j.guardrail.InputGuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
+import dev.langchain4j.internal.CancellationChain;
 import dev.langchain4j.observability.api.event.InputGuardrailExecutedEvent;
 import dev.langchain4j.spi.guardrail.InputGuardrailExecutorBuilderFactory;
 import java.util.List;
@@ -74,12 +77,26 @@ public non-sealed class InputGuardrailExecutor
 
     @Override
     public CompletableFuture<InputGuardrailResult> executeAsync(InputGuardrailRequest request) {
-        return executeGuardrailsAsync(request).thenApply(result -> {
-            if (!result.isSuccess()) {
-                throw new InputGuardrailException(result.toString(), result.getFirstFailureException());
-            }
-            return result;
-        });
+        // Root a cancellation chain at the caller-facing future so cancelling it aborts the in-flight guardrail
+        // validations (best-effort), mirroring the model/RAG/tool async paths.
+        CompletableFuture<InputGuardrailResult> result = new CompletableFuture<>();
+        CancellationChain chain = new CancellationChain(result);
+        executeGuardrailsAsync(request, chain)
+                .thenApply(guardrailResult -> {
+                    if (!guardrailResult.isSuccess()) {
+                        throw new InputGuardrailException(
+                                guardrailResult.toString(), guardrailResult.getFirstFailureException());
+                    }
+                    return guardrailResult;
+                })
+                .whenComplete((guardrailResult, error) -> {
+                    if (error != null) {
+                        result.completeExceptionally(unwrapCompletionException(error));
+                    } else {
+                        result.complete(guardrailResult);
+                    }
+                });
+        return result;
     }
 
     /**

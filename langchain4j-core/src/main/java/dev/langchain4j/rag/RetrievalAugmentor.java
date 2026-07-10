@@ -40,7 +40,7 @@ public interface RetrievalAugmentor {
      *
      * @param augmentationRequest The {@code AugmentationRequest} containing the {@code ChatMessage} to augment.
      * @return A {@link CompletableFuture} of the {@link AugmentationResult} containing the augmented {@code ChatMessage}.
-     * @since 1.17.0
+     * @since 1.18.0
      */
     default CompletableFuture<AugmentationResult> augmentAsync(AugmentationRequest augmentationRequest) {
         throw new UnsupportedOperationException("augmentAsync() is not implemented by " + getClass().getName());

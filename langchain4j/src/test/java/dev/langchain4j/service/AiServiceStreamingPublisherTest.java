@@ -14,6 +14,8 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.RawStreamingEvent;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
@@ -650,9 +652,22 @@ class AiServiceStreamingPublisherTest {
     void emits_retrieved_contents_event() throws Exception {
         StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
 
+        // A genuinely async content retriever (overrides retrieveAsync): the reactive RAG path stays non-blocking
+        ContentRetriever asyncRetriever = new ContentRetriever() {
+            @Override
+            public List<Content> retrieve(Query query) {
+                return List.of(Content.from("relevant document"));
+            }
+
+            @Override
+            public CompletableFuture<List<Content>> retrieveAsync(Query query) {
+                return CompletableFuture.completedFuture(retrieve(query));
+            }
+        };
+
         EventStreamer assistant = AiServices.builder(EventStreamer.class)
                 .streamingChatModel(model)
-                .contentRetriever(query -> List.of(Content.from("relevant document")))
+                .contentRetriever(asyncRetriever)
                 .build();
 
         Collected<AiServiceStreamingEvent> collected = collect(assistant.chat("Hi"));

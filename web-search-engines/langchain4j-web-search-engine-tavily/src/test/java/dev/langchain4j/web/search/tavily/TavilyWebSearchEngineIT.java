@@ -5,9 +5,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.WebSearchEngineIT;
 import dev.langchain4j.web.search.WebSearchOrganicResult;
+import dev.langchain4j.web.search.WebSearchRequest;
 import dev.langchain4j.web.search.WebSearchResults;
 import java.net.URI;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -88,6 +90,29 @@ class TavilyWebSearchEngineIT extends WebSearchEngineIT {
         // then
         List<WebSearchOrganicResult> results = webSearchResults.results();
         assertThat(results).hasSize(5 + 1); // +1 for answer
+    }
+
+    @Test
+    void searchAsync_should_return_the_same_results_as_the_blocking_search() throws Exception {
+
+        // given
+        TavilyWebSearchEngine tavilyWebSearchEngine = TavilyWebSearchEngine.builder()
+                .apiKey(System.getenv("TAVILY_API_KEY"))
+                .includeAnswer(true)
+                .build();
+
+        // when
+        WebSearchResults webSearchResults =
+                tavilyWebSearchEngine.searchAsync(WebSearchRequest.from("What is LangChain4j?")).get(30, TimeUnit.SECONDS);
+
+        // then
+        List<WebSearchOrganicResult> results = webSearchResults.results();
+        assertThat(results).hasSize(5 + 1); // +1 for answer
+
+        WebSearchOrganicResult answerResult = results.get(0);
+        assertThat(answerResult.title()).isEqualTo("Tavily Search API");
+        assertThat(answerResult.url()).isEqualTo(URI.create("https://tavily.com/"));
+        assertThat(answerResult.snippet()).isNotBlank();
     }
 
     @Override

@@ -159,7 +159,7 @@ public interface EmbeddingStore<Embedded> {
      *
      * @param request A request to search in an {@link EmbeddingStore}. Contains all search criteria.
      * @return a {@link CompletableFuture} of the {@link EmbeddingSearchResult}.
-     * @since 1.17.0
+     * @since 1.18.0
      */
     default CompletableFuture<EmbeddingSearchResult<Embedded>> searchAsync(EmbeddingSearchRequest request) {
         throw new UnsupportedOperationException("searchAsync() is not implemented by " + getClass().getName());

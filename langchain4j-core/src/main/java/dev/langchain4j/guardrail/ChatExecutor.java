@@ -37,30 +37,32 @@ public interface ChatExecutor {
     /**
      * Non-blocking counterpart of {@link #execute()}.
      * <p>
-     * The default implementation runs the blocking {@link #execute()} on the calling thread; the
-     * built-in executors override it to call the model without blocking (via the async/reactive model APIs). Used
-     * by output-guardrail reprompts on the non-blocking AI Service paths.
+     * The default implementation throws {@link UnsupportedOperationException}; the built-in executors override it to
+     * call the model without blocking (via the async/reactive model APIs). Used by output-guardrail reprompts on the
+     * non-blocking AI Service paths. Consistent with {@code ChatModel#doChatAsync} and the other async defaults, a
+     * blocking executor is not silently run on the calling thread.
      *
      * @return a {@link CompletableFuture} that completes with the response
      * @since 1.17.0
      */
     default CompletableFuture<ChatResponse> executeAsync() {
-        return CompletableFuture.completedFuture(execute()); // TODO
+        throw new UnsupportedOperationException("executeAsync() is not implemented by " + getClass().getName());
     }
 
     /**
      * Non-blocking counterpart of {@link #execute(List)}.
      * <p>
-     * The default implementation runs the blocking {@link #execute(List)} on the calling thread; the
-     * built-in executors override it to call the model without blocking (via the async/reactive model APIs). Used
-     * by output-guardrail reprompts on the non-blocking AI Service paths.
+     * The default implementation throws {@link UnsupportedOperationException}; the built-in executors override it to
+     * call the model without blocking (via the async/reactive model APIs). Used by output-guardrail reprompts on the
+     * non-blocking AI Service paths. Consistent with {@code ChatModel#doChatAsync} and the other async defaults, a
+     * blocking executor is not silently run on the calling thread.
      *
      * @param chatMessages The chat messages containing the context of the conversation.
      * @return a {@link CompletableFuture} that completes with the response
      * @since 1.17.0
      */
     default CompletableFuture<ChatResponse> executeAsync(List<ChatMessage> chatMessages) {
-        return CompletableFuture.completedFuture(execute(chatMessages)); // TODO
+        throw new UnsupportedOperationException("executeAsync() is not implemented by " + getClass().getName());
     }
 
     /**

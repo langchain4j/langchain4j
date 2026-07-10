@@ -8,7 +8,6 @@ import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
 /**
  * Implementation of {@link ChatMemoryStore} that stores state of {@link ChatMemory} (chat messages) in-memory.
@@ -45,20 +44,34 @@ class SingleSlotChatMemoryStore implements ChatMemoryStore {
     }
 
     @Override
-    public CompletionStage<List<ChatMessage>> getMessagesAsync(Object memoryId) {
-        return CompletableFuture.completedFuture(getMessages(memoryId));
+    public CompletableFuture<List<ChatMessage>> getMessagesAsync(Object memoryId) {
+        // Deliver the precondition failure through the returned stage rather than throwing synchronously,
+        // honoring the async error contract.
+        try {
+            return CompletableFuture.completedFuture(getMessages(memoryId));
+        } catch (Throwable t) {
+            return CompletableFuture.failedFuture(t);
+        }
     }
 
     @Override
-    public CompletionStage<Void> updateMessagesAsync(Object memoryId, List<ChatMessage> messages) {
-        updateMessages(memoryId, messages);
-        return CompletableFuture.completedFuture(null);
+    public CompletableFuture<Void> updateMessagesAsync(Object memoryId, List<ChatMessage> messages) {
+        try {
+            updateMessages(memoryId, messages);
+            return CompletableFuture.completedFuture(null);
+        } catch (Throwable t) {
+            return CompletableFuture.failedFuture(t);
+        }
     }
 
     @Override
-    public CompletionStage<Void> deleteMessagesAsync(Object memoryId) {
-        deleteMessages(memoryId);
-        return CompletableFuture.completedFuture(null);
+    public CompletableFuture<Void> deleteMessagesAsync(Object memoryId) {
+        try {
+            deleteMessages(memoryId);
+            return CompletableFuture.completedFuture(null);
+        } catch (Throwable t) {
+            return CompletableFuture.failedFuture(t);
+        }
     }
 
     private void checkMemoryId(Object memoryId) {

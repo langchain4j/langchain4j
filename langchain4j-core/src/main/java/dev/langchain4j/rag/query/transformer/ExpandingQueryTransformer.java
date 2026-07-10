@@ -2,6 +2,7 @@ package dev.langchain4j.rag.query.transformer;
 
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.query.Query;
@@ -10,6 +11,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
@@ -76,8 +78,19 @@ public class ExpandingQueryTransformer implements QueryTransformer {
     public Collection<Query> transform(Query query) {
         Prompt prompt = createPrompt(query);
         String response = chatModel.chat(prompt.text());
-        List<String> queries = parse(response);
-        return queries.stream()
+        return toQueries(query, response);
+    }
+
+    @Override
+    public CompletableFuture<Collection<Query>> transformAsync(Query query) {
+        Prompt prompt = createPrompt(query);
+        return chatModel
+                .chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build())
+                .thenApply(response -> toQueries(query, response.aiMessage().text()));
+    }
+
+    private Collection<Query> toQueries(Query query, String response) {
+        return parse(response).stream()
                 .map(queryText -> query.metadata() == null
                         ? Query.from(queryText)
                         : Query.from(queryText, query.metadata()))

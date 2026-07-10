@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -113,6 +114,36 @@ public class ReRankingContentAggregator implements ContentAggregator {
         return reRankAndFilter(fusedContents, query);
     }
 
+    @Override
+    public CompletableFuture<List<Content>> aggregateAsync(Map<Query, Collection<List<Content>>> queryToContents) {
+
+        if (queryToContents.isEmpty()) {
+            return CompletableFuture.completedFuture(emptyList());
+        }
+
+        // Select a query against which all contents will be re-ranked
+        Query query = querySelector.apply(queryToContents);
+
+        // For each query, fuse all contents retrieved from different sources using that query
+        Map<Query, List<Content>> queryToFusedContents = fuse(queryToContents);
+
+        // Fuse all contents retrieved using all queries
+        List<Content> fusedContents = ReciprocalRankFuser.fuse(queryToFusedContents.values());
+
+        if (fusedContents.isEmpty()) {
+            return CompletableFuture.completedFuture(fusedContents);
+        }
+
+        // Re-rank all the fused contents against the query selected by the query selector.
+        // Only the scoring call is genuine I/O; the fusion above is CPU-bound and stays synchronous.
+        List<TextSegment> segments = fusedContents.stream()
+                .map(Content::textSegment)
+                .collect(Collectors.toList());
+
+        return scoringModel.scoreAllAsync(segments, query.text())
+                .thenApply(response -> toReRankedContents(segments, response.content()));
+    }
+
     protected Map<Query, List<Content>> fuse(Map<Query, Collection<List<Content>>> queryToContents) {
         Map<Query, List<Content>> fused = new LinkedHashMap<>();
         for (Query query : queryToContents.keySet()) {
@@ -129,6 +160,11 @@ public class ReRankingContentAggregator implements ContentAggregator {
                 .collect(Collectors.toList());
 
         List<Double> scores = scoringModel.scoreAll(segments, query.text()).content();
+
+        return toReRankedContents(segments, scores);
+    }
+
+    private List<Content> toReRankedContents(List<TextSegment> segments, List<Double> scores) {
 
         Map<TextSegment, Double> segmentToScore = new HashMap<>();
         for (int i = 0; i < segments.size(); i++) {

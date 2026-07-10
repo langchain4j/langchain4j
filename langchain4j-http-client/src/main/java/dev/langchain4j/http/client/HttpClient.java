@@ -38,7 +38,7 @@ public interface HttpClient {
      * @since 1.17.0
      */
     default CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
-        throw new UnsupportedOperationException("Not implemented");
+        throw new UnsupportedOperationException("executeAsync() is not implemented by " + getClass().getName());
     }
 
     /**
@@ -107,6 +107,6 @@ public interface HttpClient {
      * @since 1.17.0
      */
     default Publisher<HttpStreamingEvent> stream(HttpRequest request, ServerSentEventParser parser) {
-        throw new UnsupportedOperationException("Not implemented yet for " + getClass().getName());
+        throw new UnsupportedOperationException("stream() is not implemented by " + getClass().getName());
     }
 }

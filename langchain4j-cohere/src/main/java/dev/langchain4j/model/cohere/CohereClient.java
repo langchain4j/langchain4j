@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.langchain4j.internal.Utils;
 import okhttp3.OkHttpClient;
 import org.slf4j.Logger;
+import retrofit2.Call;
+import retrofit2.Callback;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 
@@ -15,6 +17,7 @@ import java.io.IOException;
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
@@ -104,6 +107,43 @@ class CohereClient {
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    CompletableFuture<RerankResponse> rerankAsync(RerankRequest request) {
+        Call<RerankResponse> call = cohereApi.rerank(request, authorizationHeader);
+        CompletableFuture<RerankResponse> future = new CompletableFuture<>();
+        call.enqueue(new Callback<>() {
+            @Override
+            public void onResponse(Call<RerankResponse> call, retrofit2.Response<RerankResponse> response) {
+                if (response.isSuccessful()) {
+                    future.complete(response.body());
+                } else {
+                    future.completeExceptionally(toRuntimeException(response));
+                }
+            }
+
+            @Override
+            public void onFailure(Call<RerankResponse> call, Throwable throwable) {
+                // Mirror the blocking path, which surfaces a transport failure as a RuntimeException.
+                future.completeExceptionally(
+                        throwable instanceof RuntimeException re ? re : new RuntimeException(throwable));
+            }
+        });
+        // Best-effort cancellation: cancelling the returned future aborts the in-flight HTTP call
+        future.whenComplete((result, error) -> {
+            if (future.isCancelled()) {
+                call.cancel();
+            }
+        });
+        return future;
+    }
+
+    private static RuntimeException toRuntimeException(retrofit2.Response<?> response) {
+        try {
+            return toException(response);
+        } catch (IOException e) {
+            return new RuntimeException(e);
         }
     }
 

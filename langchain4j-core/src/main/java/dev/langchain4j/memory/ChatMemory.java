@@ -3,6 +3,7 @@ package dev.langchain4j.memory;
 import dev.langchain4j.data.message.ChatMessage;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
@@ -119,10 +120,10 @@ public interface ChatMemory {
      * and write the store, so concurrent calls would race. The AI Service chains its calls sequentially.
      *
      * @param messages The {@link ChatMessage}s to add.
-     * @return A stage that completes when the messages have been added.
+     * @return A future that completes when the messages have been added.
      * @since 1.17.0
      */
-    default CompletionStage<Void> addAsync(List<ChatMessage> messages) {
+    default CompletableFuture<Void> addAsync(List<ChatMessage> messages) {
         throw new UnsupportedOperationException(
                 "addAsync() is not implemented by " + getClass().getName());
     }
@@ -138,10 +139,10 @@ public interface ChatMemory {
      * {@link UnsupportedOperationException}; see {@link #addAsync(List)} for the rationale.
      *
      * @param messages The {@link ChatMessage}s to set.
-     * @return A stage that completes when the messages have been set.
+     * @return A future that completes when the messages have been set.
      * @since 1.17.0
      */
-    default CompletionStage<Void> setAsync(List<ChatMessage> messages) {
+    default CompletableFuture<Void> setAsync(List<ChatMessage> messages) {
         throw new UnsupportedOperationException(
                 "setAsync() is not implemented by " + getClass().getName());
     }
@@ -154,10 +155,10 @@ public interface ChatMemory {
      * The default implementation throws {@link UnsupportedOperationException}; see {@link #addAsync(List)}
      * for the rationale.
      *
-     * @return A stage that completes with the current state of the chat memory.
+     * @return A future that completes with the current state of the chat memory.
      * @since 1.17.0
      */
-    default CompletionStage<List<ChatMessage>> messagesAsync() { // TODO name
+    default CompletableFuture<List<ChatMessage>> messagesAsync() {
         throw new UnsupportedOperationException(
                 "messagesAsync() is not implemented by " + getClass().getName());
     }

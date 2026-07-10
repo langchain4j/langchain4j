@@ -89,7 +89,7 @@ public interface ChatModel {
      *
      * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
      * @return a {@link CompletableFuture} of the {@link ChatResponse}
-     * @since 1.13.0
+     * @since 1.18.0
      */
     default CompletableFuture<ChatResponse> chatAsync(ChatRequest chatRequest) {
         return chatAsync(chatRequest, ChatRequestOptions.EMPTY);
@@ -102,7 +102,7 @@ public interface ChatModel {
      * @param options     a {@link ChatRequestOptions} carrying listener attributes and other per-call metadata
      * @return a {@link CompletableFuture} of the {@link ChatResponse}
      * @see #chatAsync(ChatRequest)
-     * @since 1.13.0
+     * @since 1.18.0
      */
     default CompletableFuture<ChatResponse> chatAsync(ChatRequest chatRequest, ChatRequestOptions options) {
 
@@ -141,8 +141,20 @@ public interface ChatModel {
         return result;
     }
 
+    /**
+     * SPI hook for a genuinely non-blocking chat implementation, invoked by {@link #chatAsync(ChatRequest)}.
+     * <p>
+     * The default throws {@link UnsupportedOperationException} to signal that this model has no native asynchronous
+     * implementation. Callers on the asynchronous and reactive path (for example the non-blocking RAG stages) detect
+     * this and either offload the blocking {@link #doChat(ChatRequest)} or fail loudly with an actionable message.
+     * A model backed by remote HTTP I/O overrides this with a genuinely asynchronous call (no thread parked).
+     *
+     * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
+     * @return a {@link CompletableFuture} of the {@link ChatResponse}
+     * @since 1.18.0
+     */
     default CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
-        throw new RuntimeException("Not implemented");
+        throw new UnsupportedOperationException("doChatAsync() is not implemented by " + getClass().getName());
     }
 
     default ChatRequestParameters defaultRequestParameters() {

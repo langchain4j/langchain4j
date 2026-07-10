@@ -2,7 +2,6 @@ package dev.langchain4j.model.chat;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -269,11 +268,14 @@ public interface StreamingChatModel {
      * typically consume the response eagerly and relay {@link StreamingEvent}s through a bounded buffer rather
      * than propagating subscriber demand to the model.
      * <p>
-     * The default implementation throws {@link UnsupportedFeatureException}; a provider that does not support
-     * reactive streaming leaves it unimplemented.
+     * The default implementation throws {@link UnsupportedOperationException} to signal that this model has no
+     * native reactive-streaming implementation; a provider that does not support reactive streaming leaves it
+     * unimplemented (consistent with {@code ChatModel#doChatAsync} and the other async defaults).
+     *
+     * @since 1.18.0
      */
     default Publisher<StreamingEvent> doChat(ChatRequest chatRequest) {
-        throw new UnsupportedFeatureException("Not implemented yet for " + getClass().getName()); // TODO
+        throw new UnsupportedOperationException("doChat() is not implemented by " + getClass().getName());
     }
 
     // TODO more convenience methods accepting String, messages, etc

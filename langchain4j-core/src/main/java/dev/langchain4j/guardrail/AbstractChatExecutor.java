@@ -102,6 +102,6 @@ abstract class AbstractChatExecutor implements ChatExecutor {
      * @return a {@link CompletableFuture} that completes with the chat response
      */
     protected CompletableFuture<ChatResponse> executeAsync(ChatRequest chatRequest) {
-        throw new UnsupportedOperationException("Not implemented");
+        throw new UnsupportedOperationException("executeAsync() is not implemented by " + getClass().getName());
     }
 }

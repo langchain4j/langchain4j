@@ -7,12 +7,15 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.langchain4j.internal.Utils;
 import okhttp3.OkHttpClient;
+import retrofit2.Call;
+import retrofit2.Callback;
 import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 
 class TavilyClient {
 
@@ -57,6 +60,43 @@ class TavilyClient {
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public CompletableFuture<TavilyResponse> searchAsync(TavilySearchRequest searchRequest) {
+        Call<TavilyResponse> call = tavilyApi.search(searchRequest);
+        CompletableFuture<TavilyResponse> future = new CompletableFuture<>();
+        call.enqueue(new Callback<>() {
+            @Override
+            public void onResponse(Call<TavilyResponse> call, Response<TavilyResponse> response) {
+                if (response.isSuccessful()) {
+                    future.complete(response.body());
+                } else {
+                    future.completeExceptionally(toRuntimeException(response));
+                }
+            }
+
+            @Override
+            public void onFailure(Call<TavilyResponse> call, Throwable throwable) {
+                // Mirror the blocking path, which surfaces a transport failure as a RuntimeException.
+                future.completeExceptionally(
+                        throwable instanceof RuntimeException re ? re : new RuntimeException(throwable));
+            }
+        });
+        // Best-effort cancellation: cancelling the returned future aborts the in-flight HTTP call
+        future.whenComplete((result, error) -> {
+            if (future.isCancelled()) {
+                call.cancel();
+            }
+        });
+        return future;
+    }
+
+    private static RuntimeException toRuntimeException(Response<?> response) {
+        try {
+            return toException(response);
+        } catch (IOException e) {
+            return new RuntimeException(e);
         }
     }
 

@@ -34,6 +34,9 @@ Delivered building blocks (each non-blocking end to end):
 - **Non-blocking chat memory** — async `ChatMemory` / `ChatMemoryStore` SPI.
 - **Non-blocking guardrails** — async `Guardrail` SPI; input + output guardrails, buffer-then-validate, with
   tool-aware reprompts on all modes.
+- **Non-blocking RAG** — async SPI across the whole retrieval graph (`RetrievalAugmentor`, `QueryTransformer`,
+  `QueryRouter`, `ContentRetriever`, `ContentAggregator`) and its leaves (`EmbeddingModel`, `EmbeddingStore`,
+  `ScoringModel`, `WebSearchEngine`), with a fail-loud-by-default / opt-in-offload policy (see §3.9).
 
 ## 3. Design
 
@@ -48,7 +51,7 @@ compile and only providers/implementors that opt in become non-blocking.
 | HTTP | `HttpClient` (`langchain4j-http-client`) | `execute(HttpRequest)` | `executeAsync(HttpRequest) : CompletableFuture<SuccessfulHttpResponse>`, `stream(HttpRequest[, ServerSentEventParser]) : Flow.Publisher<StreamingHttpEvent>` (JDK / OkHttp / Apache clients) |
 | Model — single response | `ChatModel` | `chat`/`doChat(ChatRequest)` | `chatAsync`/`doChatAsync(ChatRequest) : CompletableFuture<ChatResponse>` |
 | Model — streaming | `StreamingChatModel` | `chat`/`doChat(ChatRequest, handler)` | `chat`/`doChat(ChatRequest) : Flow.Publisher<StreamingEvent>` (cold) |
-| Memory | `ChatMemory`, `ChatMemoryStore` | `add`/`messages`/`set`, `getMessages`/`updateMessages`/`deleteMessages` | `addAsync(List)`/`messagesAsync`/`setAsync(List)`, `getMessagesAsync`/`updateMessagesAsync`/`deleteMessagesAsync` (`CompletionStage`) |
+| Memory | `ChatMemory`, `ChatMemoryStore` | `add`/`messages`/`set`, `getMessages`/`updateMessages`/`deleteMessages` | `addAsync(List)`/`messagesAsync`/`setAsync(List)`, `getMessagesAsync`/`updateMessagesAsync`/`deleteMessagesAsync` (`CompletableFuture`) |
 | Guardrails | `Guardrail`, `ChatExecutor`, `GuardrailExecutor`, `GuardrailService` | `validate`, `execute`, `executeGuardrails` | `validateAsync`, `executeAsync`, `executeGuardrailsAsync` (`CompletableFuture`) |
 | Tools | `ToolExecutor`, `ToolService` | `execute…`, `executeInferenceAndToolsLoop` | `executeAsync(...) : CompletableFuture<…>`, `executeInferenceAndToolsLoopAsync(...)` |
 | AI Service | `DefaultAiServices` | sync / `TokenStream` dispatch | dispatch by return type into the `CompletableFuture` pipeline or the reactive publisher |
@@ -62,8 +65,9 @@ compile and only providers/implementors that opt in become non-blocking.
   its AI-Service counterpart and adds service-level events (tool execution, intermediate/final response,
   retrieved RAG content).
 
-Today only the **OpenAI** provider implements the async + reactive model methods; other providers fall back to
-the throwing defaults until implemented (see §8).
+On the model/provider side, **OpenAI** implements the async + reactive chat methods and async embeddings,
+**Cohere** implements async scoring/re-rank (`scoreAllAsync`) and **Tavily** implements async web search
+(`searchAsync`); other providers fall back to the throwing defaults until implemented (see §8).
 
 ### 3.1 Threading model — "non-blocking" and "non-pinning"
 
@@ -98,15 +102,21 @@ the throwing defaults until implemented (see §8).
 
 ### 3.3 Cancellation contract
 Cancelling the `CompletableFuture` (`cancel(true)`) or the `Flow.Subscription` releases the caller, stops further
-rounds, and best-effort aborts the in-flight model HTTP call. A tool (or guardrail validation) that has **already
-started is not interrupted** — it runs to completion and its result is discarded (Java can't safely interrupt
-arbitrary code; documented as deliberate best-effort).
+rounds, and best-effort aborts the in-flight I/O — the model HTTP call, the RAG graph (the augmentor forwards
+cancellation to each stage via a `CancellationChain`), and guardrail validation (incl. the output-guardrail
+reprompt model call). "Best-effort" means the cancellation is propagated to the in-flight future, so a
+cancellation-aware async client aborts its call; a component that ignores future cancellation (or a multi-step
+stage that does not re-forward it to its own sub-calls) simply completes and its result is discarded. A **`@Tool` method that
+has already started is not interrupted** — it runs to completion and its result is discarded (Java can't safely
+interrupt arbitrary user code). **Chat-memory writes are also never cancelled** — deliberately, so a half-written
+history can't corrupt conversation state (see §3.7).
 
 ### 3.4 Non-blocking chat memory
-- `CompletionStage`-returning methods: `ChatMemoryStore.{getMessagesAsync, updateMessagesAsync,
+- `CompletableFuture`-returning methods: `ChatMemoryStore.{getMessagesAsync, updateMessagesAsync,
   deleteMessagesAsync}` and `ChatMemory.{addAsync(List<ChatMessage>), messagesAsync, setAsync(List<ChatMessage>)}`
   (`setAsync` is the async bulk-replace used e.g. by async tool compensation, delegating to the store's
-  `updateMessagesAsync`).
+  `updateMessagesAsync`). The type is `CompletableFuture` — uniform with the rest of the async SPI surface — but the
+  framework never *cancels* a memory operation (§3.7).
 - **Defaults throw** `UnsupportedOperationException` (no silent offload): a blocking store used with an async
   service fails loudly instead of secretly tying up a worker. Bundled stores implement them natively.
 - `addAsync` takes a **list** (single method to implement; batches a round's writes into one atomic store
@@ -121,7 +131,8 @@ arbitrary code; documented as deliberate best-effort).
   async moderation client, or `supplyAsync(..., executor)`).
 - `GuardrailService.executeGuardrailsAsync` / `GuardrailExecutor.executeAsync` compose the guardrails **without a
   vthread offload** — true async all the way down. `OutputGuardrailExecutor` reimplements the **reprompt/retry
-  loop** asynchronously, re-calling the model via `ChatExecutor.executeAsync`.
+  loop** asynchronously, re-calling the model via `ChatExecutor.executeAsync`. Cancellation is propagated to the
+  in-flight `validateAsync` and reprompt model call (best-effort, §3.3).
 - **Output guardrails use buffer-then-validate** on the reactive path: partial responses are buffered (not
   streamed) until the assembled final response passes; then the original partials are flushed and the
   (possibly rewritten) final response emitted.
@@ -143,21 +154,33 @@ arbitrary code; documented as deliberate best-effort).
 
 ### 3.7 Design contracts
 
-> **(a) `CompletableFuture` vs `CompletionStage` is the cancellability contract.**
-> - SPIs whose operation sits in the **cancellable execution path** return **`CompletableFuture`**: `ChatModel.chatAsync`,
->   `ToolExecutor.executeAsync`, `Guardrail.validateAsync`, `ChatExecutor.executeAsync`, the guardrail/tool-loop async methods.
->   The framework may cancel them when the invocation is cancelled (best-effort, §3.3).
-> - SPIs whose operation **must run to completion for consistency** return **`CompletionStage`**: `ChatMemory` /
->   `ChatMemoryStore` async methods — cancelling a memory write mid-flight could corrupt conversation state, so it is never
->   cancelled and the type advertises that.
+> **(a) Every async SPI returns `CompletableFuture` (uniform surface); cancellability is a usage decision, not a type.**
+> All async SPI methods return `CompletableFuture<T>` (or `Flow.Publisher<T>` for streaming) — `ChatModel.chatAsync`,
+> `EmbeddingModel.embedAsync`, `EmbeddingStore.searchAsync`, `ScoringModel.scoreAllAsync`, `WebSearchEngine.searchAsync`,
+> the RAG stage methods, `ToolExecutor.executeAsync`, `Guardrail.validateAsync`, `ChatExecutor.executeAsync`, **and** the
+> `ChatMemory` / `ChatMemoryStore` async methods. A uniform return type keeps the SPI predictable (a provider implementing
+> both an `EmbeddingStore` and a `ChatMemoryStore` sees the same shape) and lets the framework wire cancellation the same
+> way everywhere.
+> - Whether a given operation is actually **cancelled** is a framework decision, not encoded in the type: the invocation's
+>   cancellation is propagated to the in-flight model / RAG / tool / guardrail futures (best-effort, §3.3).
+> - **Memory writes are deliberately *not* cancelled** even though the type would allow it — cancelling a memory write
+>   mid-flight could corrupt conversation state — so the framework simply lets them run to completion.
 
-> **(b) The new async SPIs throw by default.**
-> `ChatMemory`/`ChatMemoryStore`, `ToolExecutor`, `Guardrail`, and the RAG SPIs (`EmbeddingModel.doEmbedAsync`,
-> `EmbeddingStore.searchAsync`, `ContentRetriever.retrieveAsync`, `RetrievalAugmentor.augmentAsync`) all default their
-> async methods to `UnsupportedOperationException`. Rationale: an implementation that is not genuinely asynchronous does
-> not pretend to be — a forgotten (or impossible) async implementation fails **loudly** on the async/reactive paths
-> instead of quietly running a blocking call on a parked thread. Existing synchronous AI Services are unaffected (they
-> never call the async methods).
+> **(b) The new async SPIs throw `UnsupportedOperationException` by default — uniformly.**
+> Every async SPI default throws `UnsupportedOperationException`: the model layer (`ChatModel.doChatAsync`,
+> `StreamingChatModel.doChat(ChatRequest)`, `EmbeddingModel.doEmbedAsync`, `ScoringModel.scoreAllAsync`),
+> `EmbeddingStore.searchAsync`, `WebSearchEngine.searchAsync`, the RAG stage SPIs (`RetrievalAugmentor.augmentAsync`,
+> `QueryTransformer.transformAsync`, `QueryRouter.routeAsync`, `ContentRetriever.retrieveAsync`,
+> `ContentAggregator.aggregateAsync`), `ChatMemory`/`ChatMemoryStore`, `ToolExecutor.executeAsync`,
+> `Guardrail.validateAsync`, `ChatExecutor.executeAsync`, and `HttpClient.executeAsync`/`stream`. Rationale: an
+> implementation that is not genuinely asynchronous does not pretend to be — a forgotten (or impossible) async
+> implementation fails **loudly** on the async/reactive paths instead of quietly running a blocking call on a parked
+> thread. `UnsupportedOperationException` is the internal "not implemented async" signal the orchestrators catch to
+> decide offload-vs-fail-loud; the distinct `UnsupportedFeatureException` is reserved for the terminal, user-facing
+> error they *emit* when failing loudly (it carries the actionable `offloadBlocking(true)` hint). Most default messages
+> follow `"<method>() is not implemented by " + getClass().getName()`; a couple of user-implementable SPIs
+> (`ToolExecutor`, `Guardrail`) use a deliberately more actionable "…override X to…" message. Existing synchronous AI
+> Services are unaffected (they never call the async methods).
 
 > **(c) Async methods report errors through the future, not by throwing.**
 > A method returning a `CompletableFuture` or `Flow.Publisher` reports *operation* errors by completing the future
@@ -189,12 +212,18 @@ library — chosen so the core does not depend on a full reactive framework.
 
 ### 3.9 Non-blocking RAG and the blocking-component policy
 
-RAG has an async surface mirroring the synchronous one: `RetrievalAugmentor.augmentAsync`,
-`ContentRetriever.retrieveAsync`, and — beneath the embedding retriever — `EmbeddingModel.embedAsync` (over the
-overridable `doEmbedAsync`) and `EmbeddingStore.searchAsync`. `DefaultRetrievalAugmentor` and
-`EmbeddingStoreContentRetriever` implement them; `EmbeddingStoreContentRetriever.retrieveAsync` runs the query
-embedding and the vector-store search natively non-blocking when both the model and the store provide async I/O
-(for example the OpenAI embedding model and the in-memory store).
+RAG has an async surface mirroring the synchronous one, at every stage: `RetrievalAugmentor.augmentAsync`,
+`QueryTransformer.transformAsync`, `QueryRouter.routeAsync`, `ContentRetriever.retrieveAsync`,
+`ContentAggregator.aggregateAsync`, and — beneath the leaf stages — `EmbeddingModel.embedAsync` (over the
+overridable `doEmbedAsync`) and `EmbeddingStore.searchAsync` (beneath the embedding retriever),
+`ScoringModel.scoreAllAsync` (beneath the re-ranking aggregator), and `WebSearchEngine.searchAsync` (beneath the
+web-search retriever). `DefaultRetrievalAugmentor.augmentAsync` composes the
+transform → route → retrieve → aggregate stages, each on its component's native async method. The default,
+no-I/O stages (`DefaultQueryTransformer`, `DefaultQueryRouter`, `DefaultContentAggregator`, and the CPU-only
+`DefaultContentInjector`) complete synchronously, so a pipeline of defaults over an async retriever is fully
+non-blocking. `EmbeddingStoreContentRetriever.retrieveAsync` runs the query embedding and the vector-store search
+natively non-blocking when the model and store provide async I/O (for example the OpenAI embedding model and the
+in-memory store).
 
 **A not-truly-async component fails loudly by default; offloading is opt-in.** The non-blocking API is entirely new
 and opt-in, so there is no existing async code that must keep working — which means the framework never needs to
@@ -204,6 +233,8 @@ component, instead of quietly offloading it:
 
 - `EmbeddingStoreContentRetriever.retrieveAsync` fails when its `EmbeddingModel` or `EmbeddingStore` is blocking —
   unless the retriever is built with `offloadBlocking(true)`.
+- `DefaultRetrievalAugmentor.augmentAsync` fails when a pipeline stage (transform, route, retrieve or aggregate) is
+  blocking — unless built with `DefaultRetrievalAugmentor.builder().offloadBlocking(true)`.
 - An asynchronous AI Service fails when its configured `RetrievalAugmentor` does not implement `augmentAsync` —
   unless built with `AiServices.builder().offloadBlocking(true)`.
 
@@ -222,11 +253,30 @@ of the ecosystem. Requiring the component to be async, or the user to opt in, ma
 
 **Scope and exceptions.** Blocking `@Tool` methods are *not* subject to this policy: they are arbitrary user code
 that cannot be required to be asynchronous, so they are always offloaded to the virtual-thread executor (a tool that
-wants genuine async returns a future). The fail-loud policy is currently enforced at the embedding retriever and at
-the augmentor boundary. A `ContentRetriever` that does not override `retrieveAsync` (for example a web-search
-retriever) and `DefaultRetrievalAugmentor`'s query-transformation, routing, and aggregation stages are still
-offloaded, pending async SPIs for those stages; the default implementations of those stages perform no I/O, so this
-affects only user-supplied, model-backed stages.
+wants genuine async returns a future). The bare-retriever convenience `AiServices.contentRetriever(...)` builds a
+`DefaultRetrievalAugmentor` with the default `offloadBlocking(false)`, so it is fail-loud by default too — a blocking
+plain retriever (e.g. a web-search retriever without `searchAsync`) surfaces a clear, actionable error on the async
+modes rather than being silently offloaded. To offload it, build a `DefaultRetrievalAugmentor` explicitly with
+`offloadBlocking(true)` and pass it via `retrievalAugmentor(...)`, or use a retriever that provides genuine async I/O.
+
+Which stage implementations are async today:
+
+- The default no-I/O stages (`DefaultQueryTransformer`, `DefaultQueryRouter`, `DefaultContentAggregator`) are native.
+- The LLM-backed query stages — `CompressingQueryTransformer`, `ExpandingQueryTransformer` and
+  `LanguageModelQueryRouter` — run natively over `ChatModel.chatAsync` (so they are genuinely non-blocking when the
+  chat model is, e.g. OpenAI).
+- `EmbeddingStoreContentRetriever` is native over `EmbeddingModel.embedAsync` + `EmbeddingStore.searchAsync`
+  (genuinely non-blocking with, e.g., OpenAI embeddings + a store that overrides `searchAsync`).
+- `ReRankingContentAggregator` is native over `ScoringModel.scoreAllAsync`, and `WebSearchContentRetriever` is
+  native over `WebSearchEngine.searchAsync`. They are genuinely non-blocking when their model/engine overrides the
+  async method — `CohereScoringModel` and `TavilyWebSearchEngine` do (via the OkHttp async dispatcher, no thread
+  parked, cancellation propagated to the in-flight call). A `ScoringModel`/`WebSearchEngine` that has not overridden
+  its `*Async` method (e.g. `GoogleCustomWebSearchEngine`, `SearchApiWebSearchEngine`) is still usable from the
+  non-blocking path: the consumer surfaces `UnsupportedOperationException`, which is offloaded when opted in, or
+  fails loudly otherwise.
+
+The `*Async` methods on `ScoringModel` and `WebSearchEngine` are `default` methods that throw
+`UnsupportedOperationException`, so adding them is not a breaking change and providers opt in incrementally.
 
 ## 4. Supported types
 
@@ -243,7 +293,7 @@ affects only user-supplied, model-backed stages.
 `PartialToolCallEvent`, `CompleteToolCallEvent`, `RawEvent`, `RetrievedContentsEvent`, `IntermediateResponseEvent`,
 `BeforeToolExecutionEvent`, `AfterToolExecutionEvent`, `FinalResponseEvent`.
 
-**Chat memory** — async SPI on `ChatMemory` + `ChatMemoryStore` (`CompletionStage`).
+**Chat memory** — async SPI on `ChatMemory` + `ChatMemoryStore` (`CompletableFuture`).
 **Guardrails** — async SPI on `Guardrail` (`validateAsync`, `CompletableFuture`).
 
 ## 5. Headline new APIs
@@ -343,14 +393,14 @@ CompletableFuture<String> f = assistant.chat("…");
 f.cancel(true);   // releases caller, stops rounds, aborts the in-flight model call
 ```
 
-**Custom async chat-memory store (e.g. reactive Redis) — note `CompletionStage`**
+**Custom async chat-memory store (e.g. reactive Redis) — note `CompletableFuture`**
 ```java
 public class RedisChatMemoryStore implements ChatMemoryStore {
-    @Override public CompletionStage<List<ChatMessage>> getMessagesAsync(Object id) {
+    @Override public CompletableFuture<List<ChatMessage>> getMessagesAsync(Object id) {
         return redis.get(key(id)).toCompletableFuture().thenApply(this::fromJson);  // no thread blocked
     }
-    @Override public CompletionStage<Void> updateMessagesAsync(Object id, List<ChatMessage> m) { … }
-    @Override public CompletionStage<Void> deleteMessagesAsync(Object id) { … }
+    @Override public CompletableFuture<Void> updateMessagesAsync(Object id, List<ChatMessage> m) { … }
+    @Override public CompletableFuture<Void> deleteMessagesAsync(Object id) { … }
     // synchronous methods still required (used by the sync / TokenStream modes)
 }
 ```
@@ -383,10 +433,11 @@ class BookingTools {
 
 | Item | Status |
 |---|---|
-| **RAG / content retrieval** non-blocking | Deferred — retrieval still runs on the caller thread (opt-in feature). Highest-value next step; needs an async `RetrievalAugmentor` SPI. |
-| **Reactive support for non-OpenAI model providers** | Only OpenAI implements the reactive `doChat` publisher / async `doChatAsync`; others fall back to the throwing defaults and need a per-provider implementation (or a handler→publisher bridge). |
+| **RAG / content retrieval** non-blocking | **Delivered** (§3.9) — async SPI across the whole retrieval graph, fail-loud-by-default with opt-in offload. Native async today: RAG defaults, the LLM-backed query stages (over `chatAsync`), `EmbeddingStoreContentRetriever` (over async embeddings + store), `ReRankingContentAggregator` (Cohere) and `WebSearchContentRetriever` (Tavily). Other providers throw the default and are offloaded-or-fail-loud. |
+| **Reactive support for non-OpenAI model providers** | Only OpenAI implements the reactive `doChat` publisher / async `doChatAsync` / async embeddings; other chat/embedding providers fall back to the throwing defaults and need a per-provider implementation (or a handler→publisher bridge). |
 | Per-provider `setAsync` / async stores | `ChatMemory.setAsync` and the async store methods are implemented by the bundled in-memory stores; persistent-store integrations (Redis, JDBC, …) need their async methods implemented to be non-blocking on the async/reactive paths (they throw by default). |
 | **Tool cancellation** (interrupting already-started tools) | Parked by design — contract is run-to-completion, result discarded. |
 | Moderation (`@Moderate`) on the new APIs | Intentionally **forbidden** (fails fast) — not meaningful for the async/reactive flow. |
-| Minor naming `TODO`s (e.g. `messagesAsync`) | Open. |
+| Minor naming / cleanup `TODO`s | A few leftover `// TODO`s remain in javadoc/code (e.g. `ToolExecutor`, `DefaultToolExecutor`, `StreamingChatModel`); harmless, to be swept before release. |
+| `@since` tags | Not yet reconciled to the final release version — the async members carry a mix (`1.13.0`/`1.17.0`/`1.18.0`) to be normalized in one pass at release. |
 

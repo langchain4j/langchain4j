@@ -194,10 +194,15 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     /**
      * The in-memory search is a non-blocking, CPU-only operation, so this completes synchronously on the calling
      * thread rather than offloading to an executor (overriding the default, which would needlessly hop threads).
+     * A failure is delivered through the returned future rather than thrown, honoring the async error contract.
      */
     @Override
     public CompletableFuture<EmbeddingSearchResult<Embedded>> searchAsync(EmbeddingSearchRequest request) {
-        return CompletableFuture.completedFuture(search(request));
+        try {
+            return CompletableFuture.completedFuture(search(request));
+        } catch (Throwable t) {
+            return CompletableFuture.failedFuture(t);
+        }
     }
 
     public String serializeToJson() {

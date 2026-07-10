@@ -2,6 +2,7 @@ package dev.langchain4j.rag.query.router;
 
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -11,7 +12,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
@@ -103,6 +106,20 @@ public class LanguageModelQueryRouter implements QueryRouter {
         } catch (Exception e) {
             return fallback(query, e);
         }
+    }
+
+    @Override
+    public CompletableFuture<Collection<ContentRetriever>> routeAsync(Query query) {
+        Prompt prompt = createPrompt(query);
+        return chatModel
+                .chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build())
+                .thenApply(response -> parse(response.aiMessage().text()))
+                // mirror route()'s try/catch: a failed LLM call or an unparseable response applies the fallback
+                // strategy (which may re-throw for FAIL, failing the returned future).
+                .exceptionally(error -> {
+                    Throwable cause = unwrapCompletionException(error);
+                    return fallback(query, cause instanceof Exception e ? e : new RuntimeException(cause));
+                });
     }
 
     protected Collection<ContentRetriever> fallback(Query query, Exception e) {

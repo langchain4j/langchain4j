@@ -1,6 +1,7 @@
 package dev.langchain4j.guardrail;
 
 import static dev.langchain4j.guardrail.OutputGuardrailResult.successWith;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.observability.api.event.OutputGuardrailExecutedEvent.OutputGuardrailExecutedEventBuilder;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -8,6 +9,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.OutputGuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
+import dev.langchain4j.internal.CancellationChain;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.observability.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.spi.guardrail.OutputGuardrailExecutorBuilderFactory;
@@ -126,13 +128,28 @@ public non-sealed class OutputGuardrailExecutor
             maxAttempts = OutputGuardrailsConfig.MAX_RETRIES_DEFAULT;
         }
 
-        return attemptAsync(request, request, 0, maxAttempts);
+        // Root a cancellation chain at the caller-facing future so cancelling it aborts the in-flight guardrail
+        // validations and the reprompt model call (best-effort), mirroring the model/RAG/tool async paths.
+        CompletableFuture<OutputGuardrailResult> result = new CompletableFuture<>();
+        CancellationChain chain = new CancellationChain(result);
+        attemptAsync(request, request, 0, maxAttempts, chain).whenComplete((attemptResult, error) -> {
+            if (error != null) {
+                result.completeExceptionally(unwrapCompletionException(error));
+            } else {
+                result.complete(attemptResult);
+            }
+        });
+        return result;
     }
 
     private CompletableFuture<OutputGuardrailResult> attemptAsync(
-            OutputGuardrailRequest request, OutputGuardrailRequest accumulatedRequest, int attempt, int maxAttempts) {
+            OutputGuardrailRequest request,
+            OutputGuardrailRequest accumulatedRequest,
+            int attempt,
+            int maxAttempts,
+            CancellationChain chain) {
 
-        return executeGuardrailsAsync(accumulatedRequest).thenCompose(rawResult -> {
+        return executeGuardrailsAsync(accumulatedRequest, chain).thenCompose(rawResult -> {
             var result = rewriteResult(request, accumulatedRequest, rawResult);
 
             if (result.isSuccess()) {
@@ -158,16 +175,14 @@ public non-sealed class OutputGuardrailExecutor
 
                 // Re-execute the request with the appended message without blocking, but don't add it or the
                 // resulting message to the memory.
-                return accumulatedRequest
-                        .chatExecutor()
-                        .executeAsync(chatMessages)
+                return chain.track(accumulatedRequest.chatExecutor().executeAsync(chatMessages))
                         .thenCompose(response -> {
                             var nextRequest = OutputGuardrailRequest.builder()
                                     .responseFromLLM(response)
                                     .chatExecutor(accumulatedRequest.chatExecutor())
                                     .requestParams(accumulatedRequest.requestParams())
                                     .build();
-                            return attemptAsync(request, nextRequest, nextAttempt, maxAttempts);
+                            return attemptAsync(request, nextRequest, nextAttempt, maxAttempts, chain);
                         });
             }
 

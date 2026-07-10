@@ -37,6 +37,7 @@ import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.internal.DefaultExecutorProvider;
+import dev.langchain4j.internal.InternalFlowUtils;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
@@ -106,13 +107,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     // Used to satisfy the Reactive Streams contract (onError must be preceded by onSubscribe) when the reactive
     // publisher fails before any real subscription exists - e.g. if the deferred chat-memory assembly fails.
-    private static final Flow.Subscription NOOP_SUBSCRIPTION = new Flow.Subscription() {
-        @Override
-        public void request(long n) {}
-
-        @Override
-        public void cancel() {}
-    };
+    private static final Flow.Subscription NOOP_SUBSCRIPTION = InternalFlowUtils.EMPTY_SUBSCRIPTION;
 
     DefaultAiServices(AiServiceContext context) {
         super(context);
@@ -854,7 +849,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         CompletableFuture<AugmentationResult> async;
                         try {
                             CompletableFuture<List<ChatMessage>> chatMemoryMessages = chatMemory != null
-                                    ? chatMemory.messagesAsync().toCompletableFuture()
+                                    ? chatMemory.messagesAsync()
                                     : CompletableFuture.completedFuture(null);
                             async = chatMemoryMessages.thenCompose(memoryMessages -> augmentor.augmentAsync(
                                     augmentationRequest(

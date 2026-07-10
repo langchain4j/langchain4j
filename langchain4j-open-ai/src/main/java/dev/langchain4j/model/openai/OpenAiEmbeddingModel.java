@@ -226,7 +226,8 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         List<CompletableFuture<EmbeddedBatch>> batchFutures =
                 textBatches.stream().map(batch -> embedTextsAsync(batch, parameters)).toList();
 
-        return CompletableFuture.allOf(batchFutures.toArray(new CompletableFuture[0]))
+        CompletableFuture<EmbeddingResponse> result = CompletableFuture.allOf(
+                        batchFutures.toArray(new CompletableFuture[0]))
                 .thenApply(ignored -> {
                     List<EmbeddedBatch> responses =
                             batchFutures.stream().map(CompletableFuture::join).toList();
@@ -252,6 +253,10 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                                     .build())
                             .build();
                 });
+        // Cancelling the aggregate future does not propagate to the stages it was derived from, so wire each in-flight
+        // batch (and, in turn, its HTTP call) back to the returned future - otherwise cancellation would not abort them.
+        batchFutures.forEach(batchFuture -> propagateCancellation(result, batchFuture));
+        return result;
     }
 
     private CompletableFuture<EmbeddedBatch> embedTextsAsync(List<String> texts, EmbeddingRequestParameters parameters) {

@@ -6,6 +6,7 @@ import dev.langchain4j.data.message.ChatMessageSerializer;
 import dev.langchain4j.memory.ChatMemory;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 /**
@@ -57,10 +58,10 @@ public interface ChatMemoryStore {
      * reactive client), or, if the underlying client is blocking, offload it to an executor explicitly.
      *
      * @param memoryId The ID of the chat memory.
-     * @return A stage that completes with the list of messages for the specified chat memory. Must not be null.
+     * @return A future that completes with the list of messages for the specified chat memory. Must not be null.
      * @since 1.17.0
      */
-    default CompletionStage<List<ChatMessage>> getMessagesAsync(Object memoryId) {
+    default CompletableFuture<List<ChatMessage>> getMessagesAsync(Object memoryId) {
         throw new UnsupportedOperationException(
                 "getMessagesAsync() is not implemented by " + getClass().getName());
     }
@@ -76,10 +77,10 @@ public interface ChatMemoryStore {
      * @param memoryId The ID of the chat memory.
      * @param messages List of messages for the specified chat memory, that represent the current state of the
      *                 {@link ChatMemory}.
-     * @return A stage that completes when the messages have been stored.
+     * @return A future that completes when the messages have been stored.
      * @since 1.17.0
      */
-    default CompletionStage<Void> updateMessagesAsync(Object memoryId, List<ChatMessage> messages) {
+    default CompletableFuture<Void> updateMessagesAsync(Object memoryId, List<ChatMessage> messages) {
         throw new UnsupportedOperationException(
                 "updateMessagesAsync() is not implemented by " + getClass().getName());
     }
@@ -93,10 +94,10 @@ public interface ChatMemoryStore {
      * for the rationale.
      *
      * @param memoryId The ID of the chat memory.
-     * @return A stage that completes when the messages have been deleted.
+     * @return A future that completes when the messages have been deleted.
      * @since 1.17.0
      */
-    default CompletionStage<Void> deleteMessagesAsync(Object memoryId) {
+    default CompletableFuture<Void> deleteMessagesAsync(Object memoryId) {
         throw new UnsupportedOperationException(
                 "deleteMessagesAsync() is not implemented by " + getClass().getName());
     }

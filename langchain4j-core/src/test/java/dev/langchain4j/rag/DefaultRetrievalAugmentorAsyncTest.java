@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -41,6 +42,7 @@ class DefaultRetrievalAugmentorAsyncTest {
         RetrievalAugmentor augmentor = DefaultRetrievalAugmentor.builder()
                 .queryRouter(new DefaultQueryRouter(new FixedRetriever(Content.from("c1"), Content.from("c2"))))
                 .executor(Runnable::run)
+                .offloadBlocking(true)
                 .build();
 
         AugmentationResult sync = augmentor.augment(request());
@@ -64,6 +66,7 @@ class DefaultRetrievalAugmentorAsyncTest {
                 .contentAggregator(new DefaultContentAggregator())
                 .contentInjector(new DefaultContentInjector())
                 .executor(Executors.newFixedThreadPool(3))
+                .offloadBlocking(true)
                 .build();
 
         AugmentationResult sync = augmentor.augment(request());
@@ -101,6 +104,7 @@ class DefaultRetrievalAugmentorAsyncTest {
                 .queryRouter(new DefaultQueryRouter(retriever))
                 .contentAggregator(aggregator)
                 .executor(executor)
+                .offloadBlocking(true)
                 .build();
 
         CompletableFuture<AugmentationResult> future = augmentor.augmentAsync(request());
@@ -130,6 +134,7 @@ class DefaultRetrievalAugmentorAsyncTest {
         RetrievalAugmentor augmentor = DefaultRetrievalAugmentor.builder()
                 .queryRouter(query -> List.of())
                 .executor(Runnable::run)
+                .offloadBlocking(true)
                 .build();
 
         AugmentationResult sync = augmentor.augment(request());
@@ -148,6 +153,7 @@ class DefaultRetrievalAugmentorAsyncTest {
                     throw new RuntimeException("boom");
                 }))
                 .executor(Runnable::run)
+                .offloadBlocking(true)
                 .build();
 
         CompletableFuture<AugmentationResult> future = augmentor.augmentAsync(request());
@@ -163,6 +169,7 @@ class DefaultRetrievalAugmentorAsyncTest {
         RetrievalAugmentor augmentor = DefaultRetrievalAugmentor.builder()
                 .queryRouter(new DefaultQueryRouter(new FixedRetriever(Content.from("c1"))))
                 .executor(Runnable::run)
+                .offloadBlocking(true)
                 .build();
 
         AiMessage aiMessage = AiMessage.from("not a user message");
@@ -196,6 +203,7 @@ class DefaultRetrievalAugmentorAsyncTest {
         RetrievalAugmentor augmentor = DefaultRetrievalAugmentor.builder()
                 .queryRouter(new DefaultQueryRouter(nativeAsyncRetriever))
                 .executor(Runnable::run)
+                .offloadBlocking(true)
                 .build();
 
         AugmentationResult result = augmentor.augmentAsync(request()).get(5, SECONDS);
@@ -203,6 +211,23 @@ class DefaultRetrievalAugmentorAsyncTest {
         assertThat(asyncCalled).isTrue();
         assertThat(syncCalled).isFalse();
         assertThat(result.contents()).extracting(c -> c.textSegment().text()).containsExactly("non-blocking");
+    }
+
+    @Test
+    void augmentAsync_should_fail_loudly_when_a_stage_is_blocking_and_offload_not_opted_in() {
+        // A blocking retriever (no retrieveAsync) with offloadBlocking off: augmentAsync fails at runtime naming the
+        // blocking stage and how to fix it, rather than silently offloading.
+        RetrievalAugmentor augmentor = DefaultRetrievalAugmentor.builder()
+                .queryRouter(new DefaultQueryRouter(new FixedRetriever(Content.from("c1"))))
+                .executor(Runnable::run)
+                .build();
+
+        assertThatThrownBy(() -> augmentor.augmentAsync(request()).get(5, SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .cause()
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessageContaining("retrieveAsync")
+                .hasMessageContaining("offloadBlocking(true)");
     }
 
     // --- test doubles -------------------------------------------------------------------------------------------

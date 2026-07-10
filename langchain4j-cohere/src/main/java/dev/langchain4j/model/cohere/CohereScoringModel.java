@@ -14,6 +14,7 @@ import dev.langchain4j.model.scoring.ScoringModel;
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 
 /**
@@ -95,6 +96,33 @@ public class CohereScoringModel implements ScoringModel {
 
         return Response.from(
                 scores, new TokenUsage(response.getMeta().getBilledUnits().getSearchUnits()));
+    }
+
+    /**
+     * Genuinely non-blocking counterpart of {@link #scoreAll(List, String)}, used by the asynchronous and reactive
+     * RAG flow. The underlying HTTP call is dispatched asynchronously (no thread is parked while it is in flight),
+     * and cancelling the returned future aborts the in-flight call (best-effort).
+     * <p>
+     * Note: unlike {@link #scoreAll(List, String)}, this path does not apply {@code maxRetries}
+     * (retry-around-future would re-park a thread and defeat the purpose).
+     */
+    @Override
+    public CompletableFuture<Response<List<Double>>> scoreAllAsync(List<TextSegment> segments, String query) {
+
+        RerankRequest request = RerankRequest.builder()
+                .model(modelName)
+                .query(query)
+                .documents(segments.stream().map(TextSegment::text).collect(toList()))
+                .build();
+
+        return client.rerankAsync(request).thenApply(response -> {
+            List<Double> scores = response.getResults().stream()
+                    .sorted(comparingInt(Result::getIndex))
+                    .map(Result::getRelevanceScore)
+                    .collect(toList());
+            return Response.from(
+                    scores, new TokenUsage(response.getMeta().getBilledUnits().getSearchUnits()));
+        });
     }
 
     public static class CohereScoringModelBuilder {

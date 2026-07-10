@@ -1,6 +1,7 @@
 package dev.langchain4j.rag.query.transformer;
 
 import static java.util.Arrays.asList;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -54,6 +55,25 @@ class ExpandingQueryTransformerTest {
                 It is very important to provide each query version on a separate line, \
                 without enumerations, hyphens, or any additional formatting!
                 User query: query""");
+    }
+
+    @Test
+    void transformAsync_should_expand_query_over_chatAsync() throws Exception {
+
+        SystemMessage systemMessage = SystemMessage.from("Be polite");
+        List<ChatMessage> chatMemory = asList(systemMessage, UserMessage.from("Hi"), AiMessage.from("Hello"));
+        UserMessage userMessage = UserMessage.from("query");
+        Metadata metadata = Metadata.from(userMessage, systemMessage, "default", chatMemory);
+        Query query = Query.from(userMessage.singleText(), metadata);
+
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("query 1\nquery 2\nquery 3");
+        QueryTransformer transformer = new ExpandingQueryTransformer(model);
+
+        assertThat(transformer.transformAsync(query).get(5, SECONDS))
+                .containsExactly(
+                        Query.from("query 1", metadata),
+                        Query.from("query 2", metadata),
+                        Query.from("query 3", metadata));
     }
 
     @Test

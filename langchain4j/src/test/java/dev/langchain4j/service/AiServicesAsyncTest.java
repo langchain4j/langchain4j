@@ -21,6 +21,8 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailException;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
@@ -119,9 +121,22 @@ class AiServicesAsyncTest {
 
         ChatModelMock chatModel = spy(ChatModelMock.thatAlwaysResponds("Berlin"));
 
+        // A genuinely async content retriever (overrides retrieveAsync): the async RAG path stays non-blocking
+        ContentRetriever asyncRetriever = new ContentRetriever() {
+            @Override
+            public List<Content> retrieve(Query query) {
+                return List.of(Content.from("relevant document"));
+            }
+
+            @Override
+            public CompletableFuture<List<Content>> retrieveAsync(Query query) {
+                return CompletableFuture.completedFuture(retrieve(query));
+            }
+        };
+
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
-                .contentRetriever(query -> List.of(Content.from("relevant document")))
+                .contentRetriever(asyncRetriever)
                 .build();
 
         CompletableFuture<String> future = assistant.chat("What is the capital of Germany?");
@@ -134,6 +149,26 @@ class AiServicesAsyncTest {
         var sentMessages = chatModel.requests().get(0).messages();
         UserMessage sentUserMessage = (UserMessage) sentMessages.get(sentMessages.size() - 1);
         assertThat(sentUserMessage.singleText()).contains("relevant document");
+    }
+
+    @Test
+    void should_fail_loudly_for_a_blocking_content_retriever_on_the_async_path() {
+
+        ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
+
+        // A blocking content retriever (no retrieveAsync) wired via the contentRetriever(...) convenience: the async
+        // call must fail with a clear, actionable error rather than silently offloading - consistent with a custom
+        // augmentor and with AiServices.offloadBlocking defaulting to false.
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .contentRetriever(query -> List.of(Content.from("relevant document")))
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("What is the capital of Germany?").get(10, SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .cause()
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessageContaining("offloadBlocking(true)");
     }
 
     @Test

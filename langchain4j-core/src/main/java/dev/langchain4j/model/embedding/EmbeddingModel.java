@@ -27,6 +27,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -146,15 +147,20 @@ public interface EmbeddingModel {
         CompletableFuture<EmbeddingResponse> inFlight = invokeDoEmbedAsync(finalRequest);
         CompletableFuture<EmbeddingResponse> result = inFlight.whenComplete((response, error) -> {
             if (error != null) {
-                EmbeddingModelListenerUtils.onError(
-                        EmbeddingModelErrorContext.builder()
-                                .error(unwrapCompletionException(error))
-                                .textSegments(textSegments)
-                                .embeddingRequest(finalRequest)
-                                .embeddingModel(this)
-                                .attributes(attributes)
-                                .build(),
-                        listeners);
+                Throwable cause = unwrapCompletionException(error);
+                // Cancellation is a caller action, not a model failure: do not report it to listeners as an error
+                // (mirrors ChatModel.chatAsync).
+                if (!(cause instanceof CancellationException)) {
+                    EmbeddingModelListenerUtils.onError(
+                            EmbeddingModelErrorContext.builder()
+                                    .error(cause)
+                                    .textSegments(textSegments)
+                                    .embeddingRequest(finalRequest)
+                                    .embeddingModel(this)
+                                    .attributes(attributes)
+                                    .build(),
+                            listeners);
+                }
             } else {
                 Response<List<Embedding>> legacyResponse =
                         Response.from(response.embeddings(), response.metadata().tokenUsage());

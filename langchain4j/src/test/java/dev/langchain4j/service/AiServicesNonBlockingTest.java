@@ -31,7 +31,6 @@ import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -187,17 +186,17 @@ class AiServicesNonBlockingTest {
         }
 
         @Override
-        public CompletionStage<List<ChatMessage>> getMessagesAsync(Object memoryId) {
+        public CompletableFuture<List<ChatMessage>> getMessagesAsync(Object memoryId) {
             return CompletableFuture.supplyAsync(() -> getMessages(memoryId), worker);
         }
 
         @Override
-        public CompletionStage<Void> updateMessagesAsync(Object memoryId, List<ChatMessage> messages) {
+        public CompletableFuture<Void> updateMessagesAsync(Object memoryId, List<ChatMessage> messages) {
             return CompletableFuture.runAsync(() -> updateMessages(memoryId, messages), worker);
         }
 
         @Override
-        public CompletionStage<Void> deleteMessagesAsync(Object memoryId) {
+        public CompletableFuture<Void> deleteMessagesAsync(Object memoryId) {
             return CompletableFuture.runAsync(() -> deleteMessages(memoryId), worker);
         }
     }

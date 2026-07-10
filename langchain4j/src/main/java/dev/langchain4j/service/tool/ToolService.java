@@ -1280,10 +1280,10 @@ public class ToolService {
             replaceCompensatedMessages(messages, compensableExecutions, failedToolName);
             return CompletableFuture.completedFuture(null);
         }
-        return chatMemory.messagesAsync().toCompletableFuture().thenCompose(memoryMessages -> {
+        return chatMemory.messagesAsync().thenCompose(memoryMessages -> {
             List<ChatMessage> rewritten = new ArrayList<>(memoryMessages);
             replaceCompensatedMessages(rewritten, compensableExecutions, failedToolName);
-            return chatMemory.setAsync(rewritten).toCompletableFuture();
+            return chatMemory.setAsync(rewritten);
         });
     }
 

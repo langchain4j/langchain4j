@@ -16,8 +16,11 @@ import dev.langchain4j.model.embedding.listener.EmbeddingModelErrorContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelRequestContext;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext;
+import dev.langchain4j.model.embedding.request.EmbeddingRequest;
+import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
@@ -197,6 +200,38 @@ class EmbeddingModelListenerTest {
         // then
         verify(listener).onRequest(any());
         verify(listener).onError(any());
+        verifyNoMoreInteractions(listener);
+    }
+
+    @Test
+    void embedAsync_should_not_report_cancellation_to_listeners() {
+        // given: a model whose async call never completes, so we can cancel it while in flight
+        CompletableFuture<EmbeddingResponse> pending = new CompletableFuture<>();
+        EmbeddingModelListener listener = spy(new SuccessfulListener());
+        EmbeddingModel model = new EmbeddingModel() {
+            @Override
+            public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
+                throw new UnsupportedOperationException("blocking path not used in this test");
+            }
+
+            @Override
+            public List<EmbeddingModelListener> listeners() {
+                return List.of(listener);
+            }
+
+            @Override
+            public CompletableFuture<EmbeddingResponse> doEmbedAsync(EmbeddingRequest request) {
+                return pending;
+            }
+        };
+
+        // when
+        CompletableFuture<EmbeddingResponse> future =
+                model.embedAsync(EmbeddingRequest.builder().input("hi").build());
+        future.cancel(true);
+
+        // then: onRequest fired, but cancellation is a caller action - not reported to listeners as an error
+        verify(listener).onRequest(any());
         verifyNoMoreInteractions(listener);
     }
 
