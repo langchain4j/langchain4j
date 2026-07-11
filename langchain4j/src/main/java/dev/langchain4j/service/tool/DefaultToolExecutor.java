@@ -364,7 +364,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
 
         if (parameterClass == BigDecimal.class) {
-            return BigDecimal.valueOf(getDoubleValue(argument, parameterName, parameterClass));
+            return getBigDecimalValue(argument, parameterName, parameterClass);
         }
 
         if (parameterClass == Integer.class || parameterClass == int.class) {
@@ -386,8 +386,14 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
 
         if (parameterClass == BigInteger.class) {
-            return BigDecimal.valueOf(getNonFractionalDoubleValue(argument, parameterName, parameterClass))
-                    .toBigInteger();
+            BigDecimal bigDecimalValue = getBigDecimalValue(argument, parameterName, parameterClass);
+            try {
+                return bigDecimalValue.toBigIntegerExact();
+            } catch (ArithmeticException e) {
+                throw new IllegalArgumentException(String.format(
+                        "Argument \"%s\" has non-integer value for %s: <%s>",
+                        parameterName, parameterClass.getName(), argument));
+            }
         }
 
         if (Collection.class.isAssignableFrom(parameterClass) || Map.class.isAssignableFrom(parameterClass)) {
@@ -423,16 +429,6 @@ public class DefaultToolExecutor implements ToolExecutor {
         return ((Number) argument).doubleValue();
     }
 
-    private static double getNonFractionalDoubleValue(Object argument, String parameterName, Class<?> parameterType) {
-        double doubleValue = getDoubleValue(argument, parameterName, parameterType);
-        if (!hasNoFractionalPart(doubleValue)) {
-            throw new IllegalArgumentException(String.format(
-                    "Argument \"%s\" has non-integer value for %s: <%s>",
-                    parameterName, parameterType.getName(), argument));
-        }
-        return doubleValue;
-    }
-
     private static void checkBounds(
             double doubleValue, String parameterName, Class<?> parameterType, double minValue, double maxValue) {
         if (doubleValue < minValue || doubleValue > maxValue) {
@@ -444,9 +440,58 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     public static long getBoundedLongValue(
             Object argument, String parameterName, Class<?> parameterType, long minValue, long maxValue) {
-        double doubleValue = getNonFractionalDoubleValue(argument, parameterName, parameterType);
-        checkBounds(doubleValue, parameterName, parameterType, minValue, maxValue);
-        return (long) doubleValue;
+        // Convert via BigDecimal to preserve the exact integer value. Going through double would
+        // silently lose precision for magnitudes above 2^53 (e.g. a long 9007199254740993 would
+        // become 9007199254740992).
+        BigDecimal bigDecimalValue = getBigDecimalValue(argument, parameterName, parameterType);
+        BigInteger bigIntegerValue;
+        try {
+            bigIntegerValue = bigDecimalValue.toBigIntegerExact();
+        } catch (ArithmeticException e) {
+            throw new IllegalArgumentException(String.format(
+                    "Argument \"%s\" has non-integer value for %s: <%s>",
+                    parameterName, parameterType.getName(), argument));
+        }
+        if (bigIntegerValue.compareTo(BigInteger.valueOf(minValue)) < 0
+                || bigIntegerValue.compareTo(BigInteger.valueOf(maxValue)) > 0) {
+            throw new IllegalArgumentException(String.format(
+                    "Argument \"%s\" is out of range for %s: <%s>", parameterName, parameterType.getName(), argument));
+        }
+        return bigIntegerValue.longValue();
+    }
+
+    /**
+     * Converts the argument to a {@link BigDecimal} preserving its exact value.
+     * Unlike converting through {@code double}, this does not lose precision for large integers
+     * or introduce floating-point representation error.
+     */
+    private static BigDecimal getBigDecimalValue(Object argument, String parameterName, Class<?> parameterType) {
+        if (argument instanceof BigDecimal bigDecimal) {
+            return bigDecimal;
+        }
+        if (argument instanceof BigInteger bigInteger) {
+            return new BigDecimal(bigInteger);
+        }
+        // Long/Integer/Short/Byte have exact string representations; Double/Float are rendered via
+        // Number.toString() (matching the behavior of IsEqualTo's numeric comparison).
+        if (argument instanceof Number number) {
+            return new BigDecimal(number.toString());
+        }
+        if (argument instanceof String) {
+            try {
+                // Trim to tolerate surrounding whitespace, matching the leniency of Double.parseDouble
+                // that the previous double-based conversion relied on.
+                return new BigDecimal(argument.toString().trim());
+            } catch (NumberFormatException e) {
+                // fall through to the error below
+            }
+        }
+        throw new IllegalArgumentException(String.format(
+                "Argument \"%s\" is not convertable to %s, got %s: <%s>",
+                parameterName,
+                parameterType.getName(),
+                argument == null ? "null" : argument.getClass().getName(),
+                argument));
     }
 
     static boolean hasNoFractionalPart(Double doubleValue) {
