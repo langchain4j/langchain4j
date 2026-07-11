@@ -3,7 +3,6 @@ package dev.langchain4j.agentic.internal;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -69,7 +68,7 @@ public class PendingResponse<T> implements DelayedResponse<T> {
     @Override
     @JsonIgnore
     public T blockingGet() {
-        return futureResponse.join();
+        return DelayedResponse.join(futureResponse);
     }
 
     /**

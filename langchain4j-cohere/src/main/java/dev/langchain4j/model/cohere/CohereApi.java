@@ -12,6 +12,10 @@ interface CohereApi {
     @Headers({"accept: application/json", "content-type: application/json"})
     Call<EmbedResponse> embed(@Body EmbedRequest request, @Header("Authorization") String authorizationHeader);
 
+    @POST("embed")
+    @Headers({"accept: application/json", "content-type: application/json"})
+    Call<EmbedV2Response> embedV2(@Body EmbedV2Request request, @Header("Authorization") String authorizationHeader);
+
     @POST("rerank")
     @Headers({"accept: application/json", "content-type: application/json"})
     Call<RerankResponse> rerank(@Body RerankRequest request, @Header("Authorization") String authorizationHeader);

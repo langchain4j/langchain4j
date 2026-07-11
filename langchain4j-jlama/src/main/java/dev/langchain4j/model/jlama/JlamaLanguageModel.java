@@ -152,7 +152,7 @@ public class JlamaLanguageModel implements LanguageModel {
 
         public String toString() {
             return "JlamaLanguageModel.JlamaLanguageModelBuilder(modelCachePath=" + this.modelCachePath + ", modelName="
-                    + this.modelName + ", authToken=" + this.authToken + ", threadCount=" + this.threadCount
+                    + this.modelName + ", authToken=" + (this.authToken == null ? null : "********") + ", threadCount=" + this.threadCount
                     + ", quantizeModelAtRuntime=" + this.quantizeModelAtRuntime + ", workingDirectory="
                     + this.workingDirectory + ", workingQuantizedType=" + this.workingQuantizedType + ", temperature="
                     + this.temperature + ", maxTokens=" + this.maxTokens + ")";

@@ -68,6 +68,21 @@ public class JinaClient {
         }
     }
 
+    public JinaEmbeddingResponse embedMultimodal(
+            dev.langchain4j.model.jina.internal.api.JinaMultimodalEmbeddingRequest request) {
+        try {
+            retrofit2.Response<JinaEmbeddingResponse> retrofitResponse =
+                    jinaApi.embedMultimodal(request, authorizationHeader).execute();
+            if (retrofitResponse.isSuccessful()) {
+                return retrofitResponse.body();
+            } else {
+                throw toException(retrofitResponse);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public JinaRerankingResponse rerank(JinaRerankingRequest request) {
         try {
             retrofit2.Response<JinaRerankingResponse> retrofitResponse =

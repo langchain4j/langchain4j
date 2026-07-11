@@ -69,7 +69,11 @@ class ToolSpecificationHelper {
      * to a JsonSchemaElement object that describes the tool's arguments.
      */
     static JsonSchemaElement jsonNodeToJsonSchemaElement(JsonNode node) {
-        if (node.has("anyOf")) {
+        // MCP SEP-2106 allows composition keywords such as anyOf alongside type "object", and the tool
+        // inputSchema root is always type "object". JsonObjectSchema cannot represent a schema-level anyOf,
+        // so an object-typed node is parsed as an object (its anyOf constraint is not carried over) rather
+        // than as a JsonAnyOfSchema that the root would then fail to cast.
+        if (node.has("anyOf") && !isObjectType(node)) {
             JsonAnyOfSchema.Builder anyOf = JsonAnyOfSchema.builder();
             JsonSchemaElement[] types = StreamSupport.stream(node.get("anyOf").spliterator(), false)
                     .map(ToolSpecificationHelper::jsonNodeToJsonSchemaElement)
@@ -205,6 +209,13 @@ class ToolSpecificationHelper {
             anyOf.anyOf(types);
             return anyOf.build();
         }
+    }
+
+    private static boolean isObjectType(JsonNode node) {
+        JsonNode typeNode = node.get("type");
+        return typeNode != null
+                && typeNode.getNodeType() == JsonNodeType.STRING
+                && typeNode.asText().equals("object");
     }
 
     private static JsonSchemaElement toTypeElement(JsonNode node) {

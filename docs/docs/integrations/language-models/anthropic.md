@@ -13,7 +13,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic</artifactId>
-    <version>1.17.1</version>
+    <version>1.17.2</version>
 </dependency>
 ```
 
@@ -51,6 +51,7 @@ AnthropicChatModel model = AnthropicChatModel.builder()
     .toolMetadataKeysToSend(...)
     .cacheSystemMessages(...)
     .cacheTools(...)
+    .returnCacheDiagnostics(...)
     .thinkingType(...)
     .thinkingBudgetTokens(...)
     .thinkingDisplay(...)
@@ -72,9 +73,10 @@ See the description of some of the parameters above [here](https://docs.anthropi
 
 ### Per-Request Parameters
 
-The Anthropic-specific options shown above (`cacheSystemMessages`, `cacheTools`, `thinkingType`,
-`thinkingBudgetTokens`, `sendThinking`, `returnThinking`, `midConversationSystemMessages`, `toolChoiceName`,
-`disableParallelToolUse` and `userId`)
+The Anthropic-specific options shown above (`cacheSystemMessages`, `cacheTools`, `returnCacheDiagnostics`,
+`thinkingType`, `thinkingBudgetTokens`, `sendThinking`, `returnThinking`, `midConversationSystemMessages`,
+`toolChoiceName`, `disableParallelToolUse` and `userId`), as well as `previousMessageId` (request-only, see
+[Cache Diagnostics](#cache-diagnostics)),
 can also be set per request via `AnthropicChatRequestParameters`, overriding the values configured on the model
 builder. This lets a single shared model instance vary these options from one call to the next — for example,
 enabling prompt caching for a long-running agent loop while skipping it for a cheap one-shot completion, without
@@ -212,6 +214,7 @@ AnthropicChatModel model = AnthropicChatModel.builder()
         .apiKey(System.getenv("ANTHROPIC_API_KEY"))
         .modelName("claude-opus-4-8")
         .maxTokens(4096)
+        .beta("code-execution-2025-08-25,skills-2025-10-02,files-api-2025-04-14")
         .skills(AnthropicSkill.XLSX, AnthropicSkill.PPTX)
         .returnServerToolResults(true)
         .build();
@@ -222,8 +225,12 @@ ChatResponse response = model.chat("Create an Excel spreadsheet with the numbers
 Enabling skills automatically:
 
 - adds the `container.skills` block to the request,
-- adds the required `code_execution` server tool (unless one is already configured via `serverTools(...)`),
-- merges the required `anthropic-beta` headers with any value you supplied via `beta(...)`.
+- adds the required `code_execution` server tool (unless one is already configured via `serverTools(...)`).
+
+You must opt into the required beta features yourself via `beta(...)`, as shown above. These are beta
+headers and their values change over time, so they are not injected for you — check the
+[Agent Skills documentation](https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview)
+for the current set.
 
 Combine with `returnServerToolResults(true)` to surface the generated file ids under the
 `"server_tool_results"` key of `AiMessage.attributes()` (see [Retrieving Server Tool
@@ -468,24 +475,87 @@ to see an example of specifying tool `metadata` in the low-level `ToolSpecificat
 
 ## Caching
 
-`AnthropicChatModel` and `AnthropicStreamingChatModel` support caching of system messages and tools.
-Caching is disabled by default.
-It can be enabled by setting the `cacheSystemMessages` and `cacheTools` parameters, respectively.
-
-When enabled,`cache_control` blocks will be added to the last system message and tool, respectively.
-
-`AnthropicChatModel` and `AnthropicStreamingChatModel` return `AnthropicTokenUsage` in response which
-contains `cacheCreationInputTokens` and `cacheReadInputTokens`.
+`AnthropicChatModel` and `AnthropicStreamingChatModel` return `AnthropicTokenUsage` in the response,
+which contains `cacheCreationInputTokens` and `cacheReadInputTokens`.
 
 More info on caching can be found [here](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching).
-### Caching User Messages
 
-To enable prompt caching for a `UserMessage`, you need to set the `cache_control` attribute to `ephemeral`. The cache control marker will be automatically applied to the last content block of the message.
+### Caching System Messages and Tools
+
+Caching of system messages and tools is disabled by default.
+It can be enabled by setting the `cacheSystemMessages` and `cacheTools` parameters, respectively.
+
+When enabled, `cache_control` blocks will be added to the last system message and tool, respectively.
+
+### Caching Individual Messages
+
+`UserMessage`, `AiMessage`, and `ToolExecutionResultMessage` can each be marked for caching by setting
+the `cache_control` attribute to `ephemeral`. The cache control marker is automatically applied to the
+last content block of the message (for `ToolExecutionResultMessage`, this is the `tool_result` block
+itself).
+
+`UserMessage` exposes a mutable attributes map:
 
 ```java
 UserMessage userMessage = UserMessage.from("Hello cached world");
 userMessage.attributes().put("cache_control", "ephemeral");
 ```
+
+`AiMessage` and `ToolExecutionResultMessage` carry an immutable attributes map, so set it via
+`toBuilder()`. This is especially useful in an agentic tool-execution loop, where the conversation
+history grows on every turn: marking the last message of a turn as `ephemeral` lets subsequent, larger
+requests reuse the cached prefix instead of re-billing the whole growing history at full price.
+
+```java
+AiMessage aiMessage = someAiMessage.toBuilder()
+        .attributes(Map.of("cache_control", "ephemeral"))
+        .build();
+
+ToolExecutionResultMessage toolExecutionResultMessage = someToolExecutionResultMessage.toBuilder()
+        .attributes(Map.of("cache_control", "ephemeral"))
+        .build();
+```
+
+### Cache Diagnostics
+
+Anthropic's (beta) [cache diagnostics](https://docs.anthropic.com/en/docs/build-with-claude/cache-diagnostics)
+feature reports *why* a prompt-cache hit was missed (model, system prompt, tools or message history changed),
+instead of only showing `cacheReadInputTokens` drop to zero.
+
+It requires the `cache-diagnosis-2026-04-07` beta header and is enabled via `returnCacheDiagnostics`. Pass
+`previousMessageId` as `null` on the first turn of a conversation to opt in, and the `id` of the previous
+response on every subsequent turn:
+
+```java
+AnthropicChatModel model = AnthropicChatModel.builder()
+        .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+        .beta("cache-diagnosis-2026-04-07")
+        .returnCacheDiagnostics(true)
+        .build();
+
+ChatResponse response1 = model.chat(ChatRequest.builder()
+        .messages(UserMessage.from("Summarize section 1."))
+        .build());
+String previousMessageId = ((AnthropicChatResponseMetadata) response1.metadata()).id();
+
+ChatResponse response2 = model.chat(ChatRequest.builder()
+        .messages(UserMessage.from("Summarize section 1."), UserMessage.from("Now summarize section 2."))
+        .parameters(AnthropicChatRequestParameters.builder()
+                // returnCacheDiagnostics is already enabled on the model above, so on subsequent turns
+                // you only need to supply the previousMessageId (it changes every turn).
+                .previousMessageId(previousMessageId)
+                .build())
+        .build());
+
+AnthropicCacheDiagnostics diagnostics = ((AnthropicChatResponseMetadata) response2.metadata()).cacheDiagnostics();
+if (diagnostics != null && diagnostics.cacheMissReasonType() != null) {
+    // e.g. "model_changed", "system_changed", "tools_changed", "messages_changed",
+    // "previous_message_not_found" or "unavailable"
+    System.out.println(diagnostics.cacheMissReasonType());
+}
+```
+
+`cacheDiagnostics()` is `null` when diagnostics weren't requested or no divergence was found.
 
 ## Thinking
 
@@ -693,7 +763,7 @@ Import Spring Boot starter for Anthropic:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic-spring-boot-starter</artifactId>
-    <version>1.17.1-beta27</version>
+    <version>1.17.2-beta27</version>
 </dependency>
 ```
 

@@ -118,7 +118,7 @@ class TavilySearchRequest {
         }
 
         public String toString() {
-            return "TavilySearchRequest.TavilySearchRequestBuilder(apiKey=" + this.apiKey + ", query=" + this.query + ", searchDepth=" + this.searchDepth + ", includeAnswer=" + this.includeAnswer + ", includeRawContent=" + this.includeRawContent + ", maxResults=" + this.maxResults + ", includeDomains=" + this.includeDomains + ", excludeDomains=" + this.excludeDomains + ")";
+            return "TavilySearchRequest.TavilySearchRequestBuilder(apiKey=" + (this.apiKey == null ? null : "********") + ", query=" + this.query + ", searchDepth=" + this.searchDepth + ", includeAnswer=" + this.includeAnswer + ", includeRawContent=" + this.includeRawContent + ", maxResults=" + this.maxResults + ", includeDomains=" + this.includeDomains + ", excludeDomains=" + this.excludeDomains + ")";
         }
     }
 }

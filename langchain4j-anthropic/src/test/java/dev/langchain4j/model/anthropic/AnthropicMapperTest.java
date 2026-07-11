@@ -10,6 +10,7 @@ import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.to
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSchema;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicTool;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toCacheDiagnostics;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
@@ -31,8 +32,10 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheMissReason;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCacheType;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicDiagnostics;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicImageContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMessage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicMessageContent;
@@ -630,6 +633,129 @@ class AnthropicMapperTest {
     }
 
     @Test
+    void should_map_ai_message_text_with_cache_control_metadata() {
+        // given
+        AiMessage aiMessage = AiMessage.builder()
+                .text("Hi")
+                .attributes(singletonMap("cache_control", "ephemeral"))
+                .build();
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(aiMessage));
+
+        // then
+        assertThat(anthropicMessages).hasSize(1);
+        AnthropicMessage message = anthropicMessages.get(0);
+        assertThat(message.content).hasSize(1);
+
+        AnthropicTextContent textContent = (AnthropicTextContent) message.content.get(0);
+        assertThat(textContent.text).isEqualTo("Hi");
+        assertThat(textContent.cacheControl).isNotNull();
+        assertThat(textContent.cacheControl).extracting("type").isEqualTo("ephemeral");
+    }
+
+    @Test
+    void should_apply_cache_control_to_last_content_block_of_ai_message_with_tool_execution_requests() {
+        // given
+        AiMessage aiMessage = AiMessage.builder()
+                .text("Let me check that")
+                .toolExecutionRequests(singletonList(ToolExecutionRequest.builder()
+                        .id("12345")
+                        .name("calculator")
+                        .arguments("{\"first\": 2, \"second\": 2}")
+                        .build()))
+                .attributes(singletonMap("cache_control", "ephemeral"))
+                .build();
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(aiMessage));
+
+        // then
+        AnthropicMessage message = anthropicMessages.get(0);
+        assertThat(message.content).hasSize(2);
+
+        AnthropicTextContent textContent = (AnthropicTextContent) message.content.get(0);
+        assertThat(textContent.cacheControl).isNull();
+
+        AnthropicToolUseContent toolUseContent = (AnthropicToolUseContent) message.content.get(1);
+        assertThat(toolUseContent.cacheControl).isNotNull();
+        assertThat(toolUseContent.cacheControl).extracting("type").isEqualTo("ephemeral");
+    }
+
+    @Test
+    void should_not_apply_cache_control_to_ai_message_without_cache_control_attribute() {
+        // given
+        AiMessage aiMessage = AiMessage.from("Hi");
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(aiMessage));
+
+        // then
+        AnthropicTextContent textContent =
+                (AnthropicTextContent) anthropicMessages.get(0).content.get(0);
+        assertThat(textContent.cacheControl).isNull();
+    }
+
+    @Test
+    void should_map_tool_execution_result_message_with_single_text_and_cache_control_metadata() {
+        // given
+        ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.builder()
+                .id("12345")
+                .toolName("calculator")
+                .text("4")
+                .attributes(singletonMap("cache_control", "ephemeral"))
+                .build();
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(toolExecutionResultMessage));
+
+        // then
+        assertThat(anthropicMessages).hasSize(1);
+        AnthropicToolResultContent content =
+                (AnthropicToolResultContent) anthropicMessages.get(0).content.get(0);
+        assertThat(content.content).isEqualTo("4");
+        assertThat(content.cacheControl).isNotNull();
+        assertThat(content.cacheControl).extracting("type").isEqualTo("ephemeral");
+    }
+
+    @Test
+    void should_map_tool_execution_result_message_with_multiple_content_blocks_and_cache_control_metadata() {
+        // given
+        ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.builder()
+                .id("12345")
+                .toolName("calculator")
+                .contents(TextContent.from("here is the chart"), ImageContent.from(DICE_IMAGE_URL))
+                .attributes(singletonMap("cache_control", "ephemeral"))
+                .build();
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(toolExecutionResultMessage));
+
+        // then
+        AnthropicToolResultContent content =
+                (AnthropicToolResultContent) anthropicMessages.get(0).content.get(0);
+        // cache control is applied to the outer tool_result block, not an inner content block
+        assertThat(content.cacheControl).isNotNull();
+        assertThat(content.cacheControl).extracting("type").isEqualTo("ephemeral");
+        assertThat(content.content).isInstanceOf(List.class);
+    }
+
+    @Test
+    void should_not_apply_cache_control_to_tool_execution_result_message_without_cache_control_attribute() {
+        // given
+        ToolExecutionResultMessage toolExecutionResultMessage =
+                ToolExecutionResultMessage.from("12345", "calculator", "4");
+
+        // when
+        List<AnthropicMessage> anthropicMessages = toAnthropicMessages(singletonList(toolExecutionResultMessage));
+
+        // then
+        AnthropicToolResultContent content =
+                (AnthropicToolResultContent) anthropicMessages.get(0).content.get(0);
+        assertThat(content.cacheControl).isNull();
+    }
+
+    @Test
     void mid_conversation_system_messages_disabled_sends_all_system_messages_via_top_level_system_prompt() {
         // given
         List<ChatMessage> messages = asList(
@@ -712,6 +838,43 @@ class AnthropicMapperTest {
                         new AnthropicMessage(USER, singletonList(new AnthropicToolResultContent("1", "4", null))),
                         new AnthropicMessage(SYSTEM, singletonList(new AnthropicTextContent("be concise"))),
                         new AnthropicMessage(USER, singletonList(new AnthropicTextContent("thanks"))));
+    }
+
+    @Test
+    void should_map_null_diagnostics_to_null() {
+        assertThat(toCacheDiagnostics(null)).isNull();
+    }
+
+    @Test
+    void should_map_diagnostics_with_no_cache_miss_reason_to_null_reason_type() {
+        // Given
+        AnthropicDiagnostics anthropicDiagnostics = new AnthropicDiagnostics();
+        anthropicDiagnostics.cacheMissReason = null;
+
+        // When
+        AnthropicCacheDiagnostics cacheDiagnostics = toCacheDiagnostics(anthropicDiagnostics);
+
+        // Then
+        assertThat(cacheDiagnostics).isNotNull();
+        assertThat(cacheDiagnostics.cacheMissReasonType()).isNull();
+        assertThat(cacheDiagnostics.cacheMissedInputTokens()).isNull();
+    }
+
+    @Test
+    void should_map_diagnostics_with_cache_miss_reason() {
+        // Given
+        AnthropicCacheMissReason reason = new AnthropicCacheMissReason();
+        reason.type = "system_changed";
+        reason.cacheMissedInputTokens = 41850;
+        AnthropicDiagnostics anthropicDiagnostics = new AnthropicDiagnostics();
+        anthropicDiagnostics.cacheMissReason = reason;
+
+        // When
+        AnthropicCacheDiagnostics cacheDiagnostics = toCacheDiagnostics(anthropicDiagnostics);
+
+        // Then
+        assertThat(cacheDiagnostics.cacheMissReasonType()).isEqualTo("system_changed");
+        assertThat(cacheDiagnostics.cacheMissedInputTokens()).isEqualTo(41850);
     }
 
     @SafeVarargs
