@@ -7,6 +7,9 @@ import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
@@ -20,30 +23,39 @@ class StdioMcpTransportTest {
     @Test
     @DisabledOnOs(OS.WINDOWS)
     void restarting_should_destroy_the_previous_process() throws IOException, InterruptedException {
-        // 'cat' with no arguments reads stdin indefinitely, so the process stays alive until destroyed
-        StdioMcpTransport transport = new StdioMcpTransport.Builder()
-                .command(List.of("cat"))
-                .environment(Map.of())
-                .build();
+        // Use a private executor so the background I/O handler threads spawned for the subprocess do
+        // not leak into the shared default executor and interfere with other tests.
+        ExecutorService executorService = Executors.newCachedThreadPool();
+        try {
+            // 'cat' with no arguments reads stdin indefinitely, so the process stays alive until destroyed
+            StdioMcpTransport transport = new StdioMcpTransport.Builder()
+                    .command(List.of("cat"))
+                    .environment(Map.of())
+                    .executorService(executorService)
+                    .build();
 
-        McpOperationHandler messageHandler = mock(McpOperationHandler.class);
+            McpOperationHandler messageHandler = mock(McpOperationHandler.class);
 
-        transport.start(messageHandler);
-        Process firstProcess = transport.getProcess();
-        assertThat(firstProcess.isAlive()).isTrue();
+            transport.start(messageHandler);
+            Process firstProcess = transport.getProcess();
+            assertThat(firstProcess.isAlive()).isTrue();
 
-        // Restart (simulating a reconnection)
-        transport.start(messageHandler);
-        Process secondProcess = transport.getProcess();
+            // Restart (simulating a reconnection)
+            transport.start(messageHandler);
+            Process secondProcess = transport.getProcess();
 
-        // The previous process must have been torn down, not leaked
-        assertThat(secondProcess).isNotSameAs(firstProcess);
-        assertThat(firstProcess.waitFor(5, java.util.concurrent.TimeUnit.SECONDS))
-                .as("the previous process should have been destroyed on restart")
-                .isTrue();
-        assertThat(firstProcess.isAlive()).isFalse();
-        assertThat(secondProcess.isAlive()).isTrue();
+            // The previous process must have been torn down, not leaked
+            assertThat(secondProcess).isNotSameAs(firstProcess);
+            assertThat(firstProcess.waitFor(5, TimeUnit.SECONDS))
+                    .as("the previous process should have been destroyed on restart")
+                    .isTrue();
+            assertThat(firstProcess.isAlive()).isFalse();
+            assertThat(secondProcess.isAlive()).isTrue();
 
-        transport.close();
+            transport.close();
+            secondProcess.waitFor(5, TimeUnit.SECONDS);
+        } finally {
+            executorService.shutdownNow();
+        }
     }
 }
