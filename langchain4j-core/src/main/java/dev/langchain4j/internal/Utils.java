@@ -614,9 +614,12 @@ public class Utils {
         }
     }
 
-    private static void collectInterfaceMethods(Class<?> clazz, Set<MethodSignature> seen,
-                                                List<Method> result, Set<Class<?>> visited,
-                                                boolean concreteOnly) {
+    private static void collectInterfaceMethods(
+            Class<?> clazz,
+            Set<MethodSignature> seen,
+            List<Method> result,
+            Set<Class<?>> visited,
+            boolean concreteOnly) {
         if (clazz == null) {
             return;
         }
@@ -625,8 +628,9 @@ public class Utils {
                 continue;
             }
             for (Method method : iface.getDeclaredMethods()) {
-                if (method.isBridge() || method.isSynthetic() ||
-                        (concreteOnly && Modifier.isAbstract(method.getModifiers()))) {
+                if (method.isBridge()
+                        || method.isSynthetic()
+                        || (concreteOnly && Modifier.isAbstract(method.getModifiers()))) {
                     continue;
                 }
                 MethodSignature sig = new MethodSignature(method.getName(), List.of(method.getParameterTypes()));

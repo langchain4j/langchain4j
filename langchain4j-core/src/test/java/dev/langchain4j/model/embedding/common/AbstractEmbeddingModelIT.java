@@ -157,8 +157,9 @@ public abstract class AbstractEmbeddingModelIT {
     @MethodSource("models")
     protected void should_embed_batch_of_inputs_in_order(EmbeddingModel model) {
 
-        EmbeddingResponse response = model.embed(
-                EmbeddingRequest.builder().inputs("the sky is blue", "grass is green").build());
+        EmbeddingResponse response = model.embed(EmbeddingRequest.builder()
+                .inputs("the sky is blue", "grass is green")
+                .build());
 
         assertThat(response.embeddings()).hasSize(2);
         // distinct texts produce distinct vectors, and the order matches the inputs
@@ -190,8 +191,10 @@ public abstract class AbstractEmbeddingModelIT {
 
         int dimensions = dimensionsParameter();
 
-        Embedding embedding = single(model.embed(
-                EmbeddingRequest.builder().input("hello world").dimensions(dimensions).build()));
+        Embedding embedding = single(model.embed(EmbeddingRequest.builder()
+                .input("hello world")
+                .dimensions(dimensions)
+                .build()));
 
         assertThat(embedding.vector()).hasSize(dimensions);
     }
@@ -201,8 +204,8 @@ public abstract class AbstractEmbeddingModelIT {
     @EnabledIf("supportsImageInput")
     protected void should_embed_image(EmbeddingModel model) {
 
-        Embedding embedding = single(model.embed(
-                EmbeddingRequest.builder().input(catImage()).build()));
+        Embedding embedding =
+                single(model.embed(EmbeddingRequest.builder().input(catImage()).build()));
 
         assertThat(embedding.vector()).isNotEmpty();
         assertThat(embedding.dimension()).isEqualTo(model.dimension());
@@ -266,8 +269,10 @@ public abstract class AbstractEmbeddingModelIT {
     @MethodSource("models")
     @DisabledIf("supportsInputTypeParameter")
     protected void should_fail_when_input_type_is_not_supported(EmbeddingModel model) {
-        assertThatThrownBy(() -> model.embed(
-                        EmbeddingRequest.builder().input("hello").inputType(QUERY).build()))
+        assertThatThrownBy(() -> model.embed(EmbeddingRequest.builder()
+                        .input("hello")
+                        .inputType(QUERY)
+                        .build()))
                 .isExactlyInstanceOf(UnsupportedFeatureException.class);
     }
 
@@ -275,8 +280,10 @@ public abstract class AbstractEmbeddingModelIT {
     @MethodSource("models")
     @DisabledIf("supportsDimensionsParameter")
     protected void should_fail_when_dimensions_is_not_supported(EmbeddingModel model) {
-        assertThatThrownBy(() -> model.embed(
-                        EmbeddingRequest.builder().input("hello").dimensions(256).build()))
+        assertThatThrownBy(() -> model.embed(EmbeddingRequest.builder()
+                        .input("hello")
+                        .dimensions(256)
+                        .build()))
                 .isExactlyInstanceOf(UnsupportedFeatureException.class);
     }
 
@@ -284,8 +291,9 @@ public abstract class AbstractEmbeddingModelIT {
     @MethodSource("models")
     @DisabledIf("supportsImageInput")
     protected void should_fail_when_image_input_is_not_supported(EmbeddingModel model) {
-        assertThatThrownBy(() -> model.embed(
-                        EmbeddingRequest.builder().input(ImageContent.from(CAT_IMAGE_URL)).build()))
+        assertThatThrownBy(() -> model.embed(EmbeddingRequest.builder()
+                        .input(ImageContent.from(CAT_IMAGE_URL))
+                        .build()))
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("IMAGE");
     }
@@ -317,8 +325,7 @@ public abstract class AbstractEmbeddingModelIT {
 
             @Override
             public void onError(EmbeddingModelErrorContext ctx) {
-                fail("onError() must not be called. Exception: "
-                        + ctx.error().getMessage());
+                fail("onError() must not be called. Exception: " + ctx.error().getMessage());
             }
         };
 
@@ -338,7 +345,8 @@ public abstract class AbstractEmbeddingModelIT {
         assertThat(responseContext.get().response().content()).hasSize(1);
         assertThat(responseContext.get().embeddingResponse().embeddings()).hasSize(1);
         // request and response share the same attributes instance
-        assertThat(responseContext.get().attributes()).isSameAs(requestContext.get().attributes());
+        assertThat(responseContext.get().attributes())
+                .isSameAs(requestContext.get().attributes());
     }
 
     @Test
@@ -369,7 +377,8 @@ public abstract class AbstractEmbeddingModelIT {
         EmbeddingModel model = failingModelWith(listener);
         assumeTrue(model != null, "failingModelWith(...) not provided; skipping onError listener test");
 
-        assertThatThrownBy(() -> model.embed(EmbeddingRequest.builder().input("hello").build()))
+        assertThatThrownBy(() ->
+                        model.embed(EmbeddingRequest.builder().input("hello").build()))
                 .isInstanceOf(Exception.class);
 
         assertThat(onError).hasValue(1);

@@ -280,14 +280,12 @@ class EmbeddingModelListenerTest {
             @Override
             public java.util.Set<dev.langchain4j.data.message.ContentType> supportedContentTypes() {
                 return java.util.Set.of(
-                        dev.langchain4j.data.message.ContentType.TEXT,
-                        dev.langchain4j.data.message.ContentType.IMAGE);
+                        dev.langchain4j.data.message.ContentType.TEXT, dev.langchain4j.data.message.ContentType.IMAGE);
             }
 
             @Override
             public java.util.Set<dev.langchain4j.model.embedding.request.EmbeddingParameter<?>> supportedParameters() {
-                return java.util.Set.of(
-                        dev.langchain4j.model.embedding.request.EmbeddingRequestParameters.DIMENSIONS);
+                return java.util.Set.of(dev.langchain4j.model.embedding.request.EmbeddingRequestParameters.DIMENSIONS);
             }
 
             @Override
@@ -311,8 +309,7 @@ class EmbeddingModelListenerTest {
         // the wrapper must report the delegate's capabilities, not the interface defaults
         assertThat(wrapper.supportedContentTypes())
                 .containsExactlyInAnyOrder(
-                        dev.langchain4j.data.message.ContentType.TEXT,
-                        dev.langchain4j.data.message.ContentType.IMAGE);
+                        dev.langchain4j.data.message.ContentType.TEXT, dev.langchain4j.data.message.ContentType.IMAGE);
         assertThat(wrapper.supportedParameters())
                 .containsExactly(dev.langchain4j.model.embedding.request.EmbeddingRequestParameters.DIMENSIONS);
         assertThat(wrapper.provider()).isEqualTo(dev.langchain4j.model.ModelProvider.COHERE);

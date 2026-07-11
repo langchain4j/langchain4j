@@ -1,8 +1,8 @@
 package dev.langchain4j.model.audio;
 
-import dev.langchain4j.Experimental;
-
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
+import dev.langchain4j.Experimental;
 
 @Experimental
 public class TextToSpeechRequest {
