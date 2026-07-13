@@ -118,7 +118,7 @@ public class ShellSkills {
                 .description(rsc.description)
                 .parameters(JsonObjectSchema.builder()
                         .addStringProperty(rsc.commandParameterName, rsc.commandParameterDescription)
-                        .addStringProperty(rsc.timeoutSecondsParameterName, rsc.timeoutSecondsParameterDescription)
+                        .addIntegerProperty(rsc.timeoutSecondsParameterName, rsc.timeoutSecondsParameterDescription)
                         .required(rsc.commandParameterName)
                         .build())
                 .addMetadata(METADATA_SEARCH_BEHAVIOR, ALWAYS_VISIBLE)
