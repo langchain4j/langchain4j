@@ -106,8 +106,9 @@ public class BlackboardPlanner implements Planner {
         }
 
         if (invocationCounter >= maxInvocations) {
-            LOG.warn("Maximum invocations ({}) reached without satisfying goal", maxInvocations);
-            return done();
+            throw new IllegalStateException(
+                    "Maximum invocations (" + maxInvocations + ") reached without satisfying goal. " +
+                    "Increase maxInvocations or check goal predicate.");
         }
 
         return selectAndCall(scope);
