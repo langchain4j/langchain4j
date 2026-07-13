@@ -41,25 +41,38 @@ class BDIPlannerTest {
 
     @Test
     void shouldSelectHighestPriorityAchievableDesire() {
-        // Both desires are achievable and unsatisfied; only priority decides which runs first.
-        // "high" satisfied by outputC (1 agent), "low" satisfied by outputA (1 agent).
-        // After the high-priority desire completes, the low-priority one runs next.
+        AtomicInteger orderCounter = new AtomicInteger();
+        AtomicInteger lowOrder = new AtomicInteger();
+        AtomicInteger highOrder = new AtomicInteger();
+
+        var trackingA = new Object() {
+            @Agent(outputKey = "outputA")
+            public String producer() {
+                lowOrder.set(orderCounter.incrementAndGet());
+                return "resultA";
+            }
+        };
+        var trackingC = new Object() {
+            @Agent(outputKey = "outputC")
+            public String producer(@V("trigger") String t) {
+                highOrder.set(orderCounter.incrementAndGet());
+                return "resultC";
+            }
+        };
+
+        // Both desires achievable and unsatisfied from the start; only priority differs
         var lowPriority = Desire.of("low", 1,
-                scope -> true, scope -> scope.hasState("outputA"), ProducerA.class);
+                scope -> true, scope -> scope.hasState("outputA"), trackingA.getClass());
         var highPriority = Desire.of("high", 3,
-                scope -> true, scope -> scope.hasState("outputC"), ProducerC.class);
+                scope -> true, scope -> scope.hasState("outputC"), trackingC.getClass());
 
         UntypedAgent system = AgenticServices.plannerBuilder()
-                .subAgents(new ProducerA(), new ProducerC())
+                .subAgents(trackingA, trackingC)
                 .planner(() -> new BDIPlanner(List.of(lowPriority, highPriority)))
                 .build();
 
-        // Both complete, but high must have been selected first (it has higher priority).
-        // We verify indirectly: ProducerB depends on outputA, so if low ran first,
-        // the high-priority agent would see outputA in scope. Instead we check both finish.
-        ResultWithAgenticScope<String> result = system.invokeWithAgenticScope(Map.of("trigger", "t"));
-        assertThat(result.agenticScope().hasState("outputC")).as("high-priority desire should complete").isTrue();
-        assertThat(result.agenticScope().hasState("outputA")).as("low-priority desire should complete").isTrue();
+        system.invokeWithAgenticScope(Map.of("trigger", "t"));
+        assertThat(highOrder.get()).as("high-priority desire should run before low-priority").isLessThan(lowOrder.get());
     }
 
     @Test
