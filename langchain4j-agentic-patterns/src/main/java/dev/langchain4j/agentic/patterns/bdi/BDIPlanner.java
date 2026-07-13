@@ -157,11 +157,10 @@ public class BDIPlanner implements Planner {
     }
 
     /**
-     * BDIPlanner does not persist intention cursor or current desire because {@link #firstAction(PlanningContext)}
-     * re-deliberates from the current scope state. On recovery, completed agents' outputs are already
-     * in scope, so satisfied desires are skipped and the planner re-selects the correct desire with
-     * only the remaining agents to execute. Persisting the cursor would risk a stale value pointing
-     * beyond the bounds of a recomputed intention.
+     * Only {@code invocationCounter} is persisted. On crash recovery the framework calls
+     * {@link #firstAction(PlanningContext)}, which re-deliberates from scratch: satisfied desires
+     * are skipped, but the selected desire's intention restarts from its first agent — agents that
+     * already completed will run again. Intention agents must therefore be idempotent.
      */
     @Override
     public void restoreExecutionState(Map<String, Object> state) {
