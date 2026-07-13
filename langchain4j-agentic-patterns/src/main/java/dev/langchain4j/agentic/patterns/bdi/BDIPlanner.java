@@ -87,7 +87,7 @@ public class BDIPlanner implements Planner {
     public Action nextAction(PlanningContext planningContext) {
         AgenticScope scope = planningContext.agenticScope();
 
-        if (currentDesire != null) {
+        if (currentDesire != null && !currentDesire.satisfied().test(scope)) {
             boolean preempted = desires.stream()
                     .filter(d -> d.priority() > currentDesire.priority())
                     .filter(d -> d.achievable().test(scope))
@@ -99,7 +99,7 @@ public class BDIPlanner implements Planner {
                 return deliberate(scope);
             }
 
-            if (currentDesire.achievable().test(scope) && !currentDesire.satisfied().test(scope)) {
+            if (currentDesire.achievable().test(scope)) {
                 intentionCursor++;
                 if (intentionCursor < currentIntention.size()) {
                     return dispatch(currentIntention.get(intentionCursor));
