@@ -1,22 +1,21 @@
 package dev.langchain4j.model.cohere;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.langchain4j.internal.Utils;
-import okhttp3.OkHttpClient;
-import org.slf4j.Logger;
-import retrofit2.Retrofit;
-import retrofit2.converter.jackson.JacksonConverterFactory;
-
 import java.io.IOException;
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.Objects;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import okhttp3.OkHttpClient;
+import org.slf4j.Logger;
+import retrofit2.Retrofit;
+import retrofit2.converter.jackson.JacksonConverterFactory;
 
 class CohereClient {
 
@@ -29,7 +28,14 @@ class CohereClient {
     private final CohereApi cohereApi;
     private final String authorizationHeader;
 
-    CohereClient(String baseUrl, String apiKey, Duration timeout, Proxy proxy, Boolean logRequests, Boolean logResponses, Logger logger) {
+    CohereClient(
+            String baseUrl,
+            String apiKey,
+            Duration timeout,
+            Proxy proxy,
+            Boolean logRequests,
+            Boolean logResponses,
+            Logger logger) {
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
@@ -64,8 +70,8 @@ class CohereClient {
 
     EmbedResponse embed(EmbedRequest request) {
         try {
-            retrofit2.Response<EmbedResponse> retrofitResponse
-                    = cohereApi.embed(request, authorizationHeader).execute();
+            retrofit2.Response<EmbedResponse> retrofitResponse =
+                    cohereApi.embed(request, authorizationHeader).execute();
 
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
@@ -94,8 +100,8 @@ class CohereClient {
 
     RerankResponse rerank(RerankRequest request) {
         try {
-            retrofit2.Response<RerankResponse> retrofitResponse
-                    = cohereApi.rerank(request, authorizationHeader).execute();
+            retrofit2.Response<RerankResponse> retrofitResponse =
+                    cohereApi.rerank(request, authorizationHeader).execute();
 
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
@@ -123,8 +129,7 @@ class CohereClient {
         private Boolean logResponses;
         private Logger logger;
 
-        CohereClientBuilder() {
-        }
+        CohereClientBuilder() {}
 
         public CohereClientBuilder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -162,11 +167,20 @@ class CohereClient {
         }
 
         public CohereClient build() {
-            return new CohereClient(this.baseUrl, this.apiKey, this.timeout, this.proxy, this.logRequests, this.logResponses, this.logger);
+            return new CohereClient(
+                    this.baseUrl,
+                    this.apiKey,
+                    this.timeout,
+                    this.proxy,
+                    this.logRequests,
+                    this.logResponses,
+                    this.logger);
         }
 
         public String toString() {
-            return "CohereClient.CohereClientBuilder(baseUrl=" + this.baseUrl + ", apiKey=" + this.apiKey + ", timeout=" + this.timeout + ", proxy=" + this.proxy + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
+            return "CohereClient.CohereClientBuilder(baseUrl=" + this.baseUrl + ", apiKey="
+                    + (this.apiKey == null ? null : "********") + ", timeout=" + this.timeout + ", proxy="
+                    + this.proxy + ", logRequests=" + this.logRequests + ", logResponses=" + this.logResponses + ")";
         }
     }
 }
