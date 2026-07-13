@@ -8,6 +8,26 @@
           "code": "java.field.removed",
           "old": "field dev.langchain4j.model.mistralai.MistralAiChatModelName.VOXTRAL_MINI_LATEST",
           "justification": "Mistral retired voxtral-mini on 2026-02-27; the API now rejects the model with 'Invalid model: voxtral-mini-latest', so the constant was non-functional. Removed intentionally; use VOXTRAL_SMALL_LATEST for audio chat."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.batch.BatchPage",
+          "justification": "Core langchain4j batch type intentionally exposed by the BatchChatModel API implemented by MistralAiBatchChatModel"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.batch.BatchPagination",
+          "justification": "Core langchain4j batch type intentionally exposed by the BatchChatModel API implemented by MistralAiBatchChatModel"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.batch.BatchRequest",
+          "justification": "Core langchain4j batch type intentionally exposed by the BatchChatModel API implemented by MistralAiBatchChatModel"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.batch.BatchResponse",
+          "justification": "Core langchain4j batch type intentionally exposed by the BatchChatModel API implemented by MistralAiBatchChatModel"
         }
       ]
     }
