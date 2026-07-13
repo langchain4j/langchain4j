@@ -12,7 +12,6 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Locale;
 import java.util.Map;
-import dev.langchain4j.store.embedding.filter.MetadataFilterBuilder;
 import oracle.jdbc.OracleType;
 import oracle.jdbc.OracleTypes;
 import oracle.sql.json.OracleJsonFactory;
@@ -82,21 +81,35 @@ final class VecDbJdbcQueryExecutor implements VecDbQueryExecutor {
     }
 
     @Override
-    public boolean indexExists(Connection connection, String tableName) throws SQLException {
+    public IndexStatus indexStatus(Connection connection, String tableName) throws SQLException {
         JsonNode description = readTree(describeVectorTable(connection, tableName));
+        boolean vectorIndexExists = false;
+        boolean metadataIndexExists = false;
         JsonNode indexes = field(description, "indexes");
         if (indexes != null && indexes.isArray()) {
             for (JsonNode index : indexes) {
                 if (isVectorIndex(index)) {
-                    return true;
+                    vectorIndexExists = true;
+                }
+                if (isMetadataIndex(index)) {
+                    metadataIndexExists = true;
                 }
             }
         }
 
         JsonNode indexParameters = field(description, "index_params");
         JsonNode vectorIndexParameters = field(indexParameters, "vector_index_params");
-        JsonNode autoIndex = field(vectorIndexParameters, "auto_index");
-        return autoIndex != null && autoIndex.asBoolean(false);
+        if (!vectorIndexExists) {
+            vectorIndexExists = isAutoIndexEnabled(vectorIndexParameters);
+        }
+
+        JsonNode metadataIndexParameters = field(indexParameters, "metadata_index_params");
+        if (!metadataIndexExists) {
+            metadataIndexExists = isAutoIndexEnabled(metadataIndexParameters)
+                    || hasConfiguredPaths(metadataIndexParameters, "include_paths");
+        }
+
+        return new IndexStatus(vectorIndexExists, metadataIndexExists);
     }
 
     @Override
@@ -145,8 +158,8 @@ final class VecDbJdbcQueryExecutor implements VecDbQueryExecutor {
     }
 
     @Override
-    public String listVectors(
-            Connection connection, String tableName, String idsJson, int limit, int offset) throws SQLException {
+    public String listVectors(Connection connection, String tableName, String idsJson, int limit, int offset)
+            throws SQLException {
         return call(
                 connection,
                 "BEGIN ? := DBMS_VECTOR_DATABASE.LIST_VECTORS("
@@ -278,6 +291,44 @@ final class VecDbJdbcQueryExecutor implements VecDbQueryExecutor {
             name = field(index, "name");
         }
         return name != null && name.asText().toUpperCase(Locale.ROOT).startsWith("VECIDX");
+    }
+
+    private static boolean isMetadataIndex(JsonNode index) {
+        if (index.isTextual()) {
+            String value = index.asText().toUpperCase(Locale.ROOT);
+            return value.startsWith("MVI") || value.contains("METADATA");
+        }
+        if (!index.isObject()) {
+            return false;
+        }
+
+        JsonNode type = field(index, "index_type");
+        if (type == null) {
+            type = field(index, "type");
+        }
+        if (type != null && type.asText().toUpperCase(Locale.ROOT).contains("METADATA")) {
+            return true;
+        }
+
+        JsonNode name = field(index, "index_name");
+        if (name == null) {
+            name = field(index, "name");
+        }
+        if (name == null) {
+            return false;
+        }
+        String value = name.asText().toUpperCase(Locale.ROOT);
+        return value.startsWith("MVI") || value.contains("METADATA");
+    }
+
+    private static boolean isAutoIndexEnabled(JsonNode indexParameters) {
+        JsonNode autoIndex = field(indexParameters, "auto_index");
+        return autoIndex != null && autoIndex.asBoolean(false);
+    }
+
+    private static boolean hasConfiguredPaths(JsonNode indexParameters, String fieldName) {
+        JsonNode paths = field(indexParameters, fieldName);
+        return paths != null && paths.isArray() && !paths.isEmpty();
     }
 
     private static String unquote(String identifier) {

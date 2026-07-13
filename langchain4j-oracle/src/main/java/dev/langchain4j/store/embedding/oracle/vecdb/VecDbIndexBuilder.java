@@ -1,7 +1,6 @@
 package dev.langchain4j.store.embedding.oracle.vecdb;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.store.embedding.oracle.CreateOption;
@@ -16,7 +15,9 @@ abstract class VecDbIndexBuilder<T extends VecDbIndexBuilder<T>> {
     final VecDbIndexOrganization organization;
     VecDbDistanceMetric distanceMetric = VecDbDistanceMetric.COSINE;
     Integer accuracy;
-    Integer parallelCreation;
+    VecDbQuantizationType quantizationType;
+    Integer compressionRatio;
+    Boolean onlineBuild;
     CreateOption createOption = CreateOption.CREATE_NONE;
 
     VecDbIndexBuilder(VecDbIndexOrganization organization) {
@@ -33,8 +34,21 @@ abstract class VecDbIndexBuilder<T extends VecDbIndexBuilder<T>> {
         return self();
     }
 
-    public T parallelCreation(int parallelCreation) {
-        this.parallelCreation = ensureGreaterThanZero(parallelCreation, "parallelCreation");
+    public T quantizationType(VecDbQuantizationType quantizationType) {
+        this.quantizationType = ensureNotNull(quantizationType, "quantizationType");
+        return self();
+    }
+
+    public T compressionRatio(int compressionRatio) {
+        if (compressionRatio != 2 && compressionRatio != 4 && compressionRatio != 8) {
+            throw new IllegalArgumentException("compressionRatio must be one of: 2, 4, 8");
+        }
+        this.compressionRatio = compressionRatio;
+        return self();
+    }
+
+    public T onlineBuild(boolean onlineBuild) {
+        this.onlineBuild = onlineBuild;
         return self();
     }
 
@@ -43,8 +57,19 @@ abstract class VecDbIndexBuilder<T extends VecDbIndexBuilder<T>> {
         return self();
     }
 
-    public VecDbIndex build() {
-        return new VecDbIndex(this);
+    public VecDbVectorIndex build() {
+        if (quantizationType == VecDbQuantizationType.SCALAR && compressionRatio == null) {
+            throw new IllegalArgumentException("compressionRatio is required for SCALAR quantization");
+        }
+        if (compressionRatio != null && quantizationType != VecDbQuantizationType.SCALAR) {
+            throw new IllegalArgumentException("compressionRatio requires SCALAR quantization");
+        }
+        if (this instanceof VecDbHnswIndexBuilder hnswBuilder
+                && hnswBuilder.quantizationAlgorithm != null
+                && quantizationType != VecDbQuantizationType.SCALAR) {
+            throw new IllegalArgumentException("quantizationAlgorithm requires SCALAR quantization");
+        }
+        return new VecDbVectorIndex(this);
     }
 
     protected abstract T self();

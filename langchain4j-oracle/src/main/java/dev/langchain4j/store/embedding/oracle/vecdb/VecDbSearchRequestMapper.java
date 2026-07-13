@@ -20,7 +20,7 @@ final class VecDbSearchRequestMapper {
 
         return new VecDbSearchParameters(
                 toSearchQueryJson(request.queryEmbedding()),
-                VecDbFilterMapper.toJson(request.filter()),
+                VecDbFilters.toJson(request.filter()),
                 request.maxResults(),
                 true,
                 advancedOptionsToJson(metric));
@@ -44,9 +44,5 @@ final class VecDbSearchRequestMapper {
     }
 
     record VecDbSearchParameters(
-            String queryJson,
-            String filtersJson,
-            int maxResults,
-            boolean includeVectors,
-            String advancedOptionsJson) {}
+            String queryJson, String filtersJson, int maxResults, boolean includeVectors, String advancedOptionsJson) {}
 }

@@ -29,28 +29,23 @@ interface VecDbQueryExecutor {
     /** Drops a vector table and returns the VecDB response JSON. */
     String dropVectorTable(Connection connection, String tableName) throws SQLException;
 
-    /** Returns whether the vector table currently has a vector index. */
-    boolean indexExists(Connection connection, String tableName) throws SQLException;
+    /** Returns the current vector- and metadata-index state of a vector table. */
+    IndexStatus indexStatus(Connection connection, String tableName) throws SQLException;
 
-    /** Creates a vector index and returns the VecDB response JSON. */
+    /** Creates vector indexes, metadata indexes, or both and returns the VecDB response JSON. */
     String createIndex(Connection connection, String tableName, String indexParametersJson) throws SQLException;
 
-    /** Drops the vector index belonging to a table and returns the VecDB response JSON. */
+    /** Drops the indexes selected by {@code indexParametersJson} and returns the VecDB response JSON. */
     String dropIndex(Connection connection, String tableName, String indexParametersJson) throws SQLException;
 
-    /** Rebuilds the vector index belonging to a table and returns the VecDB response JSON. */
+    /** Rebuilds the indexes selected by {@code indexParametersJson} and returns the VecDB response JSON. */
     String rebuildIndex(Connection connection, String tableName, String indexParametersJson) throws SQLException;
 
     /** Upserts one or more vectors and returns the VecDB response JSON. */
     String upsertVectors(Connection connection, String tableName, String vectorsJson) throws SQLException;
 
     /** Lists vectors by ID or pagination and returns the VecDB response JSON. */
-    String listVectors(
-            Connection connection,
-            String tableName,
-            String idsJson,
-            int limit,
-            int offset)
+    String listVectors(Connection connection, String tableName, String idsJson, int limit, int offset)
             throws SQLException;
 
     /**
@@ -78,4 +73,7 @@ interface VecDbQueryExecutor {
      * <p>{@code DBMS_VECTOR_DATABASE.DELETE_VECTORS} commits its changes automatically.
      */
     String deleteVectors(Connection connection, String tableName, String idsJson) throws SQLException;
+
+    /** Index state returned by {@link #indexStatus(Connection, String)}. */
+    record IndexStatus(boolean vectorIndexExists, boolean metadataIndexExists) {}
 }
