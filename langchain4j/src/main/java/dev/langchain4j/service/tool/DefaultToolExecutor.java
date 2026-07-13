@@ -386,14 +386,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
 
         if (parameterClass == BigInteger.class) {
-            BigDecimal bigDecimalValue = getBigDecimalValue(argument, parameterName, parameterClass);
-            try {
-                return bigDecimalValue.toBigIntegerExact();
-            } catch (ArithmeticException e) {
-                throw new IllegalArgumentException(String.format(
-                        "Argument \"%s\" has non-integer value for %s: <%s>",
-                        parameterName, parameterClass.getName(), argument));
-            }
+            return getBigIntegerValue(argument, parameterName, parameterClass);
         }
 
         if (Collection.class.isAssignableFrom(parameterClass) || Map.class.isAssignableFrom(parameterClass)) {
@@ -440,24 +433,29 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     public static long getBoundedLongValue(
             Object argument, String parameterName, Class<?> parameterType, long minValue, long maxValue) {
-        // Convert via BigDecimal to preserve the exact integer value. Going through double would
-        // silently lose precision for magnitudes above 2^53 (e.g. a long 9007199254740993 would
-        // become 9007199254740992).
-        BigDecimal bigDecimalValue = getBigDecimalValue(argument, parameterName, parameterType);
-        BigInteger bigIntegerValue;
-        try {
-            bigIntegerValue = bigDecimalValue.toBigIntegerExact();
-        } catch (ArithmeticException e) {
-            throw new IllegalArgumentException(String.format(
-                    "Argument \"%s\" has non-integer value for %s: <%s>",
-                    parameterName, parameterType.getName(), argument));
-        }
+        BigInteger bigIntegerValue = getBigIntegerValue(argument, parameterName, parameterType);
         if (bigIntegerValue.compareTo(BigInteger.valueOf(minValue)) < 0
                 || bigIntegerValue.compareTo(BigInteger.valueOf(maxValue)) > 0) {
             throw new IllegalArgumentException(String.format(
                     "Argument \"%s\" is out of range for %s: <%s>", parameterName, parameterType.getName(), argument));
         }
         return bigIntegerValue.longValue();
+    }
+
+    /**
+     * Converts the argument to a {@link BigInteger} preserving its exact value.
+     * Going through {@code double} would silently lose precision for magnitudes above 2^53
+     * (e.g. a long 9007199254740993 would become 9007199254740992).
+     */
+    private static BigInteger getBigIntegerValue(Object argument, String parameterName, Class<?> parameterType) {
+        BigDecimal bigDecimalValue = getBigDecimalValue(argument, parameterName, parameterType);
+        try {
+            return bigDecimalValue.toBigIntegerExact();
+        } catch (ArithmeticException e) {
+            throw new IllegalArgumentException(String.format(
+                    "Argument \"%s\" has non-integer value for %s: <%s>",
+                    parameterName, parameterType.getName(), argument));
+        }
     }
 
     /**
@@ -492,10 +490,6 @@ public class DefaultToolExecutor implements ToolExecutor {
                 parameterType.getName(),
                 argument == null ? "null" : argument.getClass().getName(),
                 argument));
-    }
-
-    static boolean hasNoFractionalPart(Double doubleValue) {
-        return doubleValue.equals(Math.floor(doubleValue));
     }
 
     public static Builder builder() {

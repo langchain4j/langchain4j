@@ -28,14 +28,6 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 class DefaultToolExecutorTest implements WithAssertions {
 
-    @Test
-    void tesT_hasNoFractionalPart() {
-        assertThat(DefaultToolExecutor.hasNoFractionalPart(3.0)).isTrue();
-        assertThat(DefaultToolExecutor.hasNoFractionalPart(-3.0)).isTrue();
-        assertThat(DefaultToolExecutor.hasNoFractionalPart(3.5)).isFalse();
-        assertThat(DefaultToolExecutor.hasNoFractionalPart(-3.5)).isFalse();
-    }
-
     public enum ExampleEnum {
         A,
         B,
