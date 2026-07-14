@@ -50,7 +50,7 @@ public interface GuardrailService {
      * @param request The parameters to validate against the input guardrails. Must not be null.
      * @return A {@link CompletableFuture} that completes with the {@link InputGuardrailResult}.
      * @param <MethodKey> The type of the method key, representing a unique identifier for methods.
-     * @since 1.17.0
+     * @since 1.18.0
      */
     default <MethodKey> CompletableFuture<InputGuardrailResult> executeInputGuardrailsAsync(
             MethodKey method, InputGuardrailRequest request) {
@@ -78,7 +78,7 @@ public interface GuardrailService {
      * Non-blocking counterpart of {@link #executeGuardrails(Object, InputGuardrailRequest)}: runs the input
      * guardrails without blocking the calling thread and yields the (possibly rewritten) {@link UserMessage}.
      *
-     * @since 1.17.0
+     * @since 1.18.0
      */
     default <MethodKey> CompletableFuture<UserMessage> executeGuardrailsAsync(
             MethodKey method, InputGuardrailRequest request) {
@@ -107,7 +107,7 @@ public interface GuardrailService {
      * @param request The parameters to validate against the output guardrails. Must not be null.
      * @return A {@link CompletableFuture} that completes with the {@link OutputGuardrailResult}.
      * @param <MethodKey> The type of the method key, representing a unique identifier for methods.
-     * @since 1.17.0
+     * @since 1.18.0
      */
     default <MethodKey> CompletableFuture<OutputGuardrailResult> executeOutputGuardrailsAsync(
             MethodKey method, OutputGuardrailRequest request) {
@@ -151,7 +151,7 @@ public interface GuardrailService {
      * performs blocking I/O keeps the calling thread free only if it overrides
      * {@link dev.langchain4j.guardrail.Guardrail#validateAsync(dev.langchain4j.guardrail.GuardrailRequest)}.
      *
-     * @since 1.17.0
+     * @since 1.18.0
      */
     default <MethodKey, T> CompletableFuture<T> executeGuardrailsAsync(MethodKey method, OutputGuardrailRequest request) {
         return executeOutputGuardrailsAsync(method, request).thenApply(result -> result.response(request));

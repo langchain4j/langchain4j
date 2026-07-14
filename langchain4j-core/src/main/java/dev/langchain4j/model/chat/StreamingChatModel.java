@@ -197,7 +197,7 @@ public interface StreamingChatModel {
      * (e.g. {@code Long.MAX_VALUE}) and must <b>not</b> block or perform heavy work in {@code onNext} — offload
      * it to another thread.
      *
-     * @since 1.17.0
+     * @since 1.18.0
      */
     default Publisher<StreamingEvent> chat(ChatRequest request) {
 

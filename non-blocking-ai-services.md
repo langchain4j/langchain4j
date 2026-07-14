@@ -99,6 +99,12 @@ On the model/provider side, **OpenAI** implements the async + reactive chat meth
   tool **argument-parse** error is **sent back to the LLM**. (Old APIs keep their existing behavior.)
 - On the publisher path, tools start **as soon as** their call completes streaming (`onCompleteToolCall`),
   overlapping with the rest of the stream.
+- **`maxRetries` on the async path — non-blocking.** `chatAsync` retries with the same exponential backoff + jitter
+  and the same retriable/non-retriable classification as the synchronous path (`429`/`5xx`/`408`/transient → retried;
+  `401`/`403`/`404`/`4xx`/DNS → not), via the new `RetryUtils.withRetryMappingExceptionsAsync`. The backoff is
+  **scheduled** (`CompletableFuture.delayedExecutor`), not slept, so no thread is parked while waiting to retry; a
+  cancellation is never retried and cancels the in-flight attempt. Wired into `OpenAiChatModel.doChatAsync` (the only
+  provider with a native async chat path today); other providers adopt it with the same one-line call.
 
 ### 3.3 Cancellation contract
 Cancelling the `CompletableFuture` (`cancel(true)`) or the `Flow.Subscription` releases the caller, stops further
@@ -473,6 +479,8 @@ class BookingTools {
 | Per-provider `setAsync` / async stores | `ChatMemory.setAsync` and the async store methods are implemented by the bundled in-memory stores; persistent-store integrations (Redis, JDBC, …) need their async methods implemented to be non-blocking on the async/reactive paths (they throw by default). |
 | **Tool cancellation** (interrupting already-started tools) | Parked by design — contract is run-to-completion, result discarded. |
 | Moderation (`@Moderate`) on the new APIs | Intentionally **forbidden** (fails fast) — not meaningful for the async/reactive flow. |
-| Minor naming / cleanup `TODO`s | A few leftover `// TODO`s remain in javadoc/code (e.g. `ToolExecutor`, `DefaultToolExecutor`, `StreamingChatModel`); harmless, to be swept before release. |
-| `@since` tags | Not yet reconciled to the final release version — the async members carry a mix (`1.13.0`/`1.17.0`/`1.18.0`) to be normalized in one pass at release. |
+| **Kotlin `chatAsync` source compatibility** | The existing Kotlin `chatAsync` extension changes return type from `ChatResponse` to `CompletableFuture<ChatResponse>` — a source break for existing Kotlin callers. **Open decision** (needs the Kotlin-extension owner's call) before release. |
+| Public-API naming `TODO`s | A few new public types still carry naming `// TODO`s (e.g. `StreamingEvent`, `CompleteResponse`, `AiServiceStreamingEvent` "consistent naming"); to be settled before the API is frozen. |
+| `@since` tags | **Reconciled** — branch-added async members are `@since 1.18.0`; members genuinely released in `1.17.0`/`1.13.0` are left as-is. |
+| Root design docs | This document still lives in the repo root; relocate (e.g. under `docs/` or a `design/` folder) before merge. |
 

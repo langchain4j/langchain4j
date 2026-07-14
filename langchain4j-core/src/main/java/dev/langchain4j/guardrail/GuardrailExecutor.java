@@ -54,7 +54,7 @@ public sealed interface GuardrailExecutor<
      *
      * @param request The {@link GuardrailRequest} to validate
      * @return A {@link CompletableFuture} that completes with the {@link GuardrailResult} of the validation
-     * @since 1.17.0
+     * @since 1.18.0
      */
     CompletableFuture<R> executeAsync(P request);
 }

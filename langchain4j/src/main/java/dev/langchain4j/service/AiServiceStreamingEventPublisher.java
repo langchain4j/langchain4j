@@ -108,7 +108,7 @@ import mutiny.zero.ZeroPublisher;
  * result is discarded (Java cannot safely interrupt arbitrary tool code; this is a deliberate best-effort
  * contract, consistent with the {@code CompletableFuture} path).
  *
- * @since 1.17.0
+ * @since 1.18.0
  */
 @Internal
 public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServiceStreamingEvent> {

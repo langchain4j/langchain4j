@@ -58,7 +58,7 @@ public interface Guardrail<P extends GuardrailRequest, R extends GuardrailResult
      * @param request
      *            The parameters of the request or the response to be validated
      * @return A {@link CompletableFuture} that completes with the result of the validation
-     * @since 1.17.0
+     * @since 1.18.0
      */
     default CompletableFuture<R> validateAsync(P request) {
         throw new AsyncNotSupportedException(getClass().getName()

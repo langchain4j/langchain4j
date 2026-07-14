@@ -67,7 +67,7 @@ public interface ToolExecutor {
      * @param context The AI Service invocation context, contains {@link ChatMemory} ID
      *                (see {@link MemoryId} for more details), and {@link InvocationParameters}.
      * @return a {@link CompletableFuture} of the result of the tool execution that will be sent to the LLM
-     * @since 1.17.0
+     * @since 1.18.0
      */
     default CompletableFuture<ToolExecutionResult> executeAsync(
             ToolExecutionRequest request, InvocationContext context) {

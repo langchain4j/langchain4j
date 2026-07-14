@@ -33,7 +33,7 @@ import java.util.List;
  * therefore handle unrecognized subtypes gracefully (e.g. a {@code default} branch in a type switch) rather
  * than assume the listing below is exhaustive.
  *
- * @since 1.17.0
+ * @since 1.18.0
  */
 @Experimental
 public interface AiServiceStreamingEvent { // TODO nested events?
@@ -204,10 +204,10 @@ public interface AiServiceStreamingEvent { // TODO nested events?
     }
 
     /**
-     * Signals that a tool has finished executing, carrying its request and result. Corresponds to
-     * {@link TokenStream#onToolExecuted}.
+     * Signals that a tool has finished executing, carrying its request and result. A tool that failed is reported
+     * here too, with {@code toolExecution().hasFailed() == true}. Corresponds to {@link TokenStream#onToolExecuted}.
      */
-    final class AfterToolExecutionEvent extends AbstractEvent { // TODO what about failed tools?
+    final class AfterToolExecutionEvent extends AbstractEvent {
 
         private final ToolExecution toolExecution;
 

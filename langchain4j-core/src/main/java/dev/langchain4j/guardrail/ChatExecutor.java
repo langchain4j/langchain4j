@@ -44,7 +44,7 @@ public interface ChatExecutor {
      * blocking executor is not silently run on the calling thread.
      *
      * @return a {@link CompletableFuture} that completes with the response
-     * @since 1.17.0
+     * @since 1.18.0
      */
     default CompletableFuture<ChatResponse> executeAsync() {
         throw new AsyncNotSupportedException("executeAsync() is not implemented by " + getClass().getName());
@@ -60,7 +60,7 @@ public interface ChatExecutor {
      *
      * @param chatMessages The chat messages containing the context of the conversation.
      * @return a {@link CompletableFuture} that completes with the response
-     * @since 1.17.0
+     * @since 1.18.0
      */
     default CompletableFuture<ChatResponse> executeAsync(List<ChatMessage> chatMessages) {
         throw new AsyncNotSupportedException("executeAsync() is not implemented by " + getClass().getName());
