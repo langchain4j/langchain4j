@@ -87,10 +87,6 @@ public interface ChatModel {
      * <p>
      * Registered {@link ChatModelListener}s are invoked: {@code onRequest} when the request is initiated,
      * then {@code onResponse} once the response is available, or {@code onError} on failure.
-     * <p>
-     * Note: unlike the synchronous {@link #chat(ChatRequest)}, provider implementations of this path typically do
-     * <b>not</b> apply {@code maxRetries} — a retry-around-future would re-park a thread and defeat the purpose of
-     * the non-blocking call. Configure retries at the transport/gateway level if you need them on the async path.
      *
      * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
      * @return a {@link CompletableFuture} of the {@link ChatResponse}

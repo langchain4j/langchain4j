@@ -5,6 +5,11 @@ import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.exception.NonRetriableException;
 import java.util.Random;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -227,6 +232,77 @@ public final class RetryUtils {
                 retry++;
             }
         }
+
+        /**
+         * Non-blocking counterpart of {@link #withRetry(Callable, int)} for actions that return a
+         * {@link CompletableFuture}. On a failed attempt, the failure is mapped with {@code exceptionMapper} and, if
+         * the mapped exception is <b>not</b> a {@link NonRetriableException} and retries remain, the action is
+         * re-invoked after the same exponential backoff + jitter delay as the synchronous path — but the wait is
+         * scheduled (via {@link CompletableFuture#delayedExecutor}), so <b>no thread is blocked</b> during the
+         * backoff. A {@link CancellationException} is never retried, and cancelling the returned future cancels the
+         * in-flight attempt and stops any further retries.
+         *
+         * @param action          supplies a fresh {@link CompletableFuture} for each attempt.
+         * @param maxRetries      the maximum number of retries (the action can run up to {@code maxRetries + 1} times).
+         * @param exceptionMapper maps an attempt's failure; the mapped exception drives the retriable decision and is
+         *                        what the returned future fails with.
+         * @param <T>             the result type.
+         * @return a future completing with the first successful attempt, or failing with the mapped exception of the
+         *         last attempt.
+         * @since 1.18.0
+         */
+        public <T> CompletableFuture<T> withRetryAsync(
+                Supplier<CompletableFuture<T>> action, int maxRetries, ExceptionMapper exceptionMapper) {
+            CompletableFuture<T> result = new CompletableFuture<>();
+            attemptAsync(action, maxRetries, exceptionMapper, 0, result);
+            return result;
+        }
+
+        private <T> void attemptAsync(
+                Supplier<CompletableFuture<T>> action,
+                int maxRetries,
+                ExceptionMapper exceptionMapper,
+                int retry,
+                CompletableFuture<T> result) {
+
+            if (result.isDone()) {
+                return; // the caller cancelled while we were waiting to (re)try
+            }
+
+            CompletableFuture<T> attempt;
+            try {
+                attempt = action.get();
+            } catch (Throwable t) {
+                attempt = CompletableFuture.failedFuture(t);
+            }
+
+            // cancelling the returned future cancels the in-flight attempt
+            CompletableFutureUtils.propagateCancellation(result, attempt);
+
+            attempt.whenComplete((value, error) -> {
+                if (error == null) {
+                    result.complete(value);
+                    return;
+                }
+                Throwable cause = Exceptions.unwrapCompletionException(error);
+                if (cause instanceof CancellationException) {
+                    result.completeExceptionally(cause); // a cancellation is not a provider error - never retry it
+                    return;
+                }
+                RuntimeException mapped = exceptionMapper.mapException(cause);
+                if (mapped instanceof NonRetriableException || retry >= maxRetries || result.isDone()) {
+                    result.completeExceptionally(mapped);
+                    return;
+                }
+                log.warn(
+                        "A retriable exception occurred. Remaining retries: %s of %s"
+                                .formatted(maxRetries - retry, maxRetries),
+                        mapped);
+                // schedule the next attempt after the backoff delay without blocking a thread
+                Executor delayed = CompletableFuture.delayedExecutor(jitterDelayMillis(retry), TimeUnit.MILLISECONDS);
+                delayed.execute(() -> attemptAsync(action, maxRetries, exceptionMapper, retry + 1, result));
+            });
+        }
     }
 
     /**
@@ -328,5 +404,28 @@ public final class RetryUtils {
     public static <T> T withRetryMappingExceptions(
             Callable<T> action, int maxRetries, ExceptionMapper exceptionMapper) {
         return withRetry(() -> exceptionMapper.withExceptionMapper(action), maxRetries);
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #withRetryMappingExceptions(Callable, int)}: retries a
+     * {@link CompletableFuture}-returning action with exponential backoff + jitter, mapping failures with the
+     * default {@link ExceptionMapper}, without ever blocking a thread during the backoff. See
+     * {@link RetryPolicy#withRetryAsync(Supplier, int, ExceptionMapper)}.
+     *
+     * @since 1.18.0
+     */
+    public static <T> CompletableFuture<T> withRetryMappingExceptionsAsync(
+            Supplier<CompletableFuture<T>> action, int maxRetries) {
+        return withRetryMappingExceptionsAsync(action, maxRetries, ExceptionMapper.DEFAULT);
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #withRetryMappingExceptions(Callable, int, ExceptionMapper)}.
+     *
+     * @since 1.18.0
+     */
+    public static <T> CompletableFuture<T> withRetryMappingExceptionsAsync(
+            Supplier<CompletableFuture<T>> action, int maxRetries, ExceptionMapper exceptionMapper) {
+        return DEFAULT_RETRY_POLICY.withRetryAsync(action, maxRetries, exceptionMapper);
     }
 }

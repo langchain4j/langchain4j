@@ -1,8 +1,8 @@
 package dev.langchain4j.model.openai;
 
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
-import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -24,7 +24,6 @@ import static java.util.Arrays.asList;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
@@ -44,7 +43,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
@@ -184,20 +182,10 @@ public class OpenAiChatModel implements ChatModel {
                         chatRequest, parameters, sendThinking, thinkingFieldName, strictTools, strictJsonSchema)
                 .build();
 
-        // Retries are applied on the synchronous path via withRetryMappingExceptions; the async path
-        // maps provider exceptions to langchain4j exceptions but does not retry yet. TODO retries for async
-        CompletableFuture<ParsedAndRawResponse<ChatCompletionResponse>> rawFuture =
-                client.chatCompletion(openAiRequest).executeRawAsync();
+        CompletableFuture<ParsedAndRawResponse<ChatCompletionResponse>> rawFuture = withRetryMappingExceptionsAsync(
+                () -> client.chatCompletion(openAiRequest).executeRawAsync(), maxRetries);
 
-        CompletableFuture<ChatResponse> result = rawFuture.thenApply(this::toChatResponse)
-                .exceptionallyCompose(throwable -> {
-                    Throwable cause = unwrapCompletionException(throwable);
-                    if (cause instanceof CancellationException) {
-                        // a cancellation is not a provider error - propagate it as-is, do not map it TODO ignore cancellations?
-                        return CompletableFuture.failedFuture(cause);
-                    }
-                    return CompletableFuture.failedFuture(ExceptionMapper.DEFAULT.mapException(cause));
-                });
+        CompletableFuture<ChatResponse> result = rawFuture.thenApply(this::toChatResponse);
 
         propagateCancellation(result, rawFuture);
         return result;
