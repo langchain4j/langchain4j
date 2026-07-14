@@ -2969,6 +2969,27 @@ public interface DeclarativeA2AWithCustomizer {
 }
 ```
 
+### Configuring the A2A server URL dynamically
+
+By default, the `@A2AClientAgent` annotation requires the A2A server URL as a compile-time string literal via the `a2aServerUrl` attribute. For environments where the URL varies (e.g., dev, staging, production), a static method annotated with `@A2AServerUrlSupplier` can provide the URL dynamically at build time instead:
+
+```java
+public interface DeclarativeA2AWithUrlSupplier {
+
+    @A2AClientAgent(outputKey = "story")
+    String generateStory(@V("topic") String topic);
+
+    @A2AServerUrlSupplier
+    static String serverUrl() {
+        return System.getenv("A2A_SERVER_URL");
+    }
+}
+```
+
+The supplier method must be `static`, take no parameters, and return a `String`. It is invoked once when the agent is constructed — the URL does not change between invocations. Exactly one of `a2aServerUrl` in the annotation or an `@A2AServerUrlSupplier` method must be provided; specifying both (or neither) is an error.
+
+This pattern is consistent with how `@McpClientSupplier` provides the MCP client for `@McpClientAgent` declarative agents.
+
 ## MCP-based Tool Agents
 
 The additional `langchain4j-agentic-mcp` module allows wrapping a single [MCP](https://modelcontextprotocol.io/) tool as a non-AI agent in the agentic system. Unlike regular agents that use an LLM, an MCP tool agent simply executes the MCP tool directly and returns its result. This makes it possible to compose MCP tools with other agents in larger agentic systems, without involving an LLM for the tool execution itself.
