@@ -1947,7 +1947,7 @@ The P2P pattern activates all ready agents in parallel, treating them as equal p
 
 Like P2P, agents activate implicitly when all their arguments are present in the scope. The key difference is that only one agent fires per step, and when multiple agents are ready, a `ConflictResolutionStrategy` determines which one takes priority. If no strategy is provided, the declaration order in the `subAgents` method is used as the default tie-breaker.
 
-The `BlackboardPlanner` terminates when the goal predicate is satisfied, no agent can fire (quiescence), or the maximum number of invocations is reached. By default, the goal predicate checks whether the planner's `outputKey` is present in the scope — which is the most common termination condition:
+The `BlackboardPlanner` terminates successfully when the goal predicate is satisfied or no agent can fire (quiescence); if the maximum number of invocations is reached before the goal is satisfied, it throws an `IllegalStateException`. By default, the goal predicate checks whether the planner's `outputKey` is present in the scope — which is the most common termination condition:
 
 ```java
 public class BlackboardPlanner implements Planner {
