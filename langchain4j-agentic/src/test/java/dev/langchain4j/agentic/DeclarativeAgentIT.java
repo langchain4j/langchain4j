@@ -35,6 +35,7 @@ import dev.langchain4j.agentic.declarative.ChatMemoryProviderSupplier;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.declarative.SystemMessageProviderSupplier;
 import dev.langchain4j.agentic.declarative.UserMessageProviderSupplier;
+import dev.langchain4j.agentic.declarative.BeforeCall;
 import dev.langchain4j.agentic.declarative.ConditionalAgent;
 import dev.langchain4j.agentic.declarative.ErrorHandler;
 import dev.langchain4j.agentic.declarative.ExitCondition;
@@ -324,6 +325,38 @@ public class DeclarativeAgentIT {
 
         String story = storyCreator.write(null, "fantasy", "young adults");
         assertThat(story).isNotBlank();
+    }
+
+    public interface StoryCreatorWithBeforeCall {
+
+        @SequenceAgent(outputKey = "story",
+                subAgents = { CreativeWriter.class, StyleEditor.class })
+        ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
+
+        @BeforeCall
+        static void beforeCall(AgenticScope agenticScope) {
+            agenticScope.writeStateIfAbsent("style", "comedy");
+        }
+    }
+
+    @Test
+    void declarative_sequence_with_before_call_uses_default() {
+        StoryCreatorWithBeforeCall creator =
+                AgenticServices.createAgenticSystem(StoryCreatorWithBeforeCall.class, baseModel());
+
+        ResultWithAgenticScope<String> result = creator.write("dragons", null);
+        assertThat(result.result()).isNotBlank();
+        assertThat(result.agenticScope().readState("style")).isEqualTo("comedy");
+    }
+
+    @Test
+    void declarative_sequence_with_before_call_explicit_value_wins() {
+        StoryCreatorWithBeforeCall creator =
+                AgenticServices.createAgenticSystem(StoryCreatorWithBeforeCall.class, baseModel());
+
+        ResultWithAgenticScope<String> result = creator.write("dragons", "horror");
+        assertThat(result.result()).isNotBlank();
+        assertThat(result.agenticScope().readState("style")).isEqualTo("horror");
     }
 
     public interface StyleReviewLoopAgent {

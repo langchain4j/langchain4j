@@ -47,6 +47,31 @@ public interface AgenticScope extends LangChain4jManaged {
     <T> void writeState(Class<? extends TypedKey<T>> key, T value);
 
     /**
+     * Writes a value into the shared state under the given key only if the key is not already
+     * considered present by {@link #hasState(String)}. A key is considered absent when it has
+     * no mapping, or its value is a blank string — so this method <em>will</em> overwrite a
+     * previously stored blank string.
+     * <p>
+     * If {@code value} is {@code null} the call is a no-op (unlike {@link #writeState(String, Object)},
+     * which removes the key on {@code null}).
+     *
+     * @param key   the state key
+     * @param value the value to store, or {@code null} for no-op
+     */
+    void writeStateIfAbsent(String key, Object value);
+
+    /**
+     * Writes a value into the shared state using a strongly typed key only if the key is not
+     * already considered present by {@link #hasState(Class)}. See
+     * {@link #writeStateIfAbsent(String, Object)} for the full absence/blank-string semantics.
+     *
+     * @param key   the typed key class
+     * @param value the value to store, or {@code null} for no-op
+     * @param <T>   the type of the value
+     */
+    <T> void writeStateIfAbsent(Class<? extends TypedKey<T>> key, T value);
+
+    /**
      * Writes multiple key-value pairs into the shared state at once.
      *
      * @param newState a map of key-value pairs to store
