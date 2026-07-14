@@ -543,17 +543,22 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                             tube.send(new ToolCompensatedEvent(toolExecution, reason, invocationContext)));
 
             compensated.whenComplete((ignoredCompensation, compensationError) -> {
-                if (compensationError != null) {
-                    fail(compensationError);
-                    return;
-                }
                 if (tube.cancelled()) {
                     return;
                 }
                 // The default asynchronous ToolExecutionErrorHandler rethrows a tool execution error. The tools that
-                // succeeded have now been compensated; fail the stream with the tool error.
+                // succeeded have now been compensated; fail the stream with the tool error, attaching any
+                // compensation-infra failure (e.g. a failing memory rewrite) as suppressed so the root cause is not
+                // masked. When there was no tool error, surface the compensation failure directly.
                 if (firstError != null) {
+                    if (compensationError != null) {
+                        firstError.addSuppressed(unwrapCompletionException(compensationError));
+                    }
                     fail(firstError);
+                    return;
+                }
+                if (compensationError != null) {
+                    fail(compensationError);
                     return;
                 }
                 if (shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors())) {

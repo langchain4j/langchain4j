@@ -156,7 +156,7 @@ public interface StreamingChatModel {
     }
 
     /**
-     * Reactive entry point: sends a chat request and returns a {@link Publisher} of {@link StreamingEvent}s. TODO
+     * Reactive entry point: sends a chat request and returns a {@link Publisher} of {@link StreamingEvent}s.
      * <p>
      * The publisher is cold: each {@code subscribe()} call initiates a new LLM request.
      * It emits events in this order:
@@ -165,7 +165,8 @@ public interface StreamingChatModel {
      *     <li>0..N {@link dev.langchain4j.model.chat.response.PartialResponse} (text chunks),</li>
      *     <li>0..N {@link dev.langchain4j.model.chat.response.PartialToolCall} (tool-call argument chunks),</li>
      *     <li>0..N {@link dev.langchain4j.model.chat.response.CompleteToolCall} (assembled tool calls),</li>
-     *     // TODO raw events
+     *     <li>0..N {@link dev.langchain4j.model.chat.response.RawStreamingEvent} (provider-specific raw events,
+     *         interleaved with the above),</li>
      *     <li>exactly one terminal {@link CompleteResponse} (wrapping the aggregated final {@link ChatResponse}),</li>
      * </ul>
      * followed by {@code onComplete}. On failure, {@code onError} is signaled after {@code onSubscribe}.

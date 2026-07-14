@@ -48,7 +48,7 @@ public class WebSearchContentRetriever implements ContentRetriever {
     public CompletableFuture<List<Content>> retrieveAsync(Query query) {
         // Deliver a synchronously-throwing searchAsync (e.g. the throwing default of a blocking engine) through the
         // returned future rather than throwing, honoring the async error contract (consistent with the augmentor's
-        // nativeOrOffload, which catches an UnsupportedOperationException from this future).
+        // nativeOrOffload, which detects an AsyncNotSupportedException from this future).
         CompletableFuture<WebSearchResults> searchFuture;
         try {
             searchFuture = webSearchEngine.searchAsync(toWebSearchRequest(query));

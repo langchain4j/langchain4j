@@ -42,7 +42,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Flow;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
@@ -925,6 +927,92 @@ class AiServiceStreamingPublisherTest {
             assertThat(event.request().name()).isEqualTo("credit");
             assertThat(event.reason()).isEqualTo(CompensationReason.INVOCATION_CANCELLED);
         });
+    }
+
+    @Test
+    void concurrent_cancellation_and_round_completion_never_double_compensate() throws Exception {
+        // Regression guard for the accumulator data race: a subscriber cancel and a round's completion touch the
+        // shared compensable-tools accumulator on different threads. Aligning the tool's return with the cancel via
+        // a barrier maximises the overlap; the compensating action must never run twice for one tool (no double
+        // refund) and the accumulator access must not throw.
+        for (int i = 0; i < 60; i++) {
+            AtomicInteger creditCount = new AtomicInteger();
+            AtomicInteger uncreditCount = new AtomicInteger();
+            CyclicBarrier barrier = new CyclicBarrier(2);
+
+            class RacyTools {
+
+                @Tool
+                String credit(String city) {
+                    creditCount.incrementAndGet();
+                    return "credited";
+                }
+
+                @CompensateFor("credit")
+                void uncredit(String city) {
+                    uncreditCount.incrementAndGet();
+                }
+
+                // fails, so the round-completion path also compensates 'credit' - racing the cancel path on the
+                // same tool. Blocks on the barrier so its failure lands together with the cancel.
+                @Tool
+                String withdraw(String city) {
+                    try {
+                        barrier.await(1, TimeUnit.SECONDS);
+                    } catch (Exception e) {
+                        // barrier broken/timeout - fine for the race window
+                    }
+                    throw new RuntimeException("insufficient funds");
+                }
+            }
+
+            StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+                    AiMessage.builder()
+                            .toolExecutionRequests(List.of(toolRequest("1", "credit"), toolRequest("2", "withdraw")))
+                            .build(),
+                    AiMessage.from("done"));
+            EventStreamer assistant = AiServices.builder(EventStreamer.class)
+                    .streamingChatModel(model)
+                    .tools(new RacyTools())
+                    .compensateOnToolErrors(true)
+                    .build();
+
+            AtomicReference<Flow.Subscription> subscription = new AtomicReference<>();
+            assistant.chat("go").subscribe(new Flow.Subscriber<>() {
+                @Override
+                public void onSubscribe(Flow.Subscription s) {
+                    subscription.set(s);
+                    s.request(Long.MAX_VALUE);
+                }
+
+                @Override
+                public void onNext(AiServiceStreamingEvent event) {}
+
+                @Override
+                public void onError(Throwable throwable) {}
+
+                @Override
+                public void onComplete() {}
+            });
+
+            // cancel exactly as the tool returns, so whenCancelled races the round-completion callback
+            Thread canceller = new Thread(() -> {
+                try {
+                    barrier.await(1, TimeUnit.SECONDS);
+                } catch (Exception e) {
+                    return;
+                }
+                subscription.get().cancel();
+            });
+            canceller.start();
+            canceller.join(2000);
+
+            // let any rollback settle
+            Thread.sleep(25);
+            assertThat(uncreditCount.get())
+                    .as("iteration %d: a compensable tool must be rolled back at most once (no double refund)", i)
+                    .isLessThanOrEqualTo(1);
+        }
     }
 
     @Test

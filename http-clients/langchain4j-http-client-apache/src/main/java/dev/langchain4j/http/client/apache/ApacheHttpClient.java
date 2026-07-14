@@ -153,7 +153,10 @@ public class ApacheHttpClient implements HttpClient {
      * <p>
      * Note: the Apache async client buffers the whole response before delivering it, so — unlike the JDK
      * client — this publisher does not stream incrementally; it emits all parsed events once the body has
-     * arrived. Cancelling the subscription cancels the SSE parsing. TODO
+     * arrived. On any terminal signal (a downstream cancel, an error, or a buffer overflow) it requests
+     * cancellation of the in-flight request and stops the SSE parsing, so no further events are delivered.
+     * Note that the Apache async client buffers the whole response and may not close the underlying connection
+     * promptly on cancellation (see {@code cancelAbortsConnection} in the client's cancellation contract test).
      */
     @Override
     public Flow.Publisher<HttpStreamingEvent> stream(HttpRequest request, ServerSentEventParser parser) {
@@ -162,47 +165,55 @@ public class ApacheHttpClient implements HttpClient {
                 .withBufferSize(streamingBufferSize);
         return ZeroPublisher.create(config, tube -> {
             AtomicReference<ServerSentEventParsingHandle> parsingHandle = new AtomicReference<>();
-            tube.whenCancelled(() -> {
+            java.util.concurrent.Future<SimpleHttpResponse> future =
+                    executeServerSentEvents(request, parser, new ServerSentEventListener() {
+                        @Override
+                        public void onOpen(SuccessfulHttpResponse response) {
+                            if (!tube.cancelled()) {
+                                tube.send(new HttpResponseReceived(response));
+                            }
+                        }
+
+                        @Override
+                        public void onEvent(ServerSentEvent event) {
+                            if (!tube.cancelled()) {
+                                tube.send(event);
+                            }
+                        }
+
+                        @Override
+                        public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                            parsingHandle.set(context.parsingHandle());
+                            if (!tube.cancelled()) {
+                                tube.send(event);
+                            }
+                        }
+
+                        @Override
+                        public void onError(Throwable throwable) {
+                            if (!tube.cancelled()) {
+                                tube.fail(throwable);
+                            }
+                        }
+
+                        @Override
+                        public void onClose() {
+                            if (!tube.cancelled()) {
+                                tube.complete();
+                            }
+                        }
+                    });
+            // Request cancellation of the in-flight HTTP request and stop the SSE parsing on any terminal signal -
+            // downstream cancel, error, or a buffer overflow (which fails the tube internally). Using the request
+            // Future - not just the parsing handle, which is null until the first event - means a cancel before the
+            // first event also reaches the request; whenTerminates (not whenCancelled) additionally covers buffer
+            // overflow. Best-effort: Apache's async client may not close the connection promptly (it buffers the
+            // whole response), but no further events are delivered.
+            tube.whenTerminates(() -> {
+                future.cancel(true);
                 ServerSentEventParsingHandle handle = parsingHandle.get();
                 if (handle != null) {
                     handle.cancel();
-                }
-            });
-            execute(request, parser, new ServerSentEventListener() {
-                @Override
-                public void onOpen(SuccessfulHttpResponse response) {
-                    if (!tube.cancelled()) {
-                        tube.send(new HttpResponseReceived(response));
-                    }
-                }
-
-                @Override
-                public void onEvent(ServerSentEvent event) {
-                    if (!tube.cancelled()) {
-                        tube.send(event);
-                    }
-                }
-
-                @Override
-                public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
-                    parsingHandle.set(context.parsingHandle());
-                    if (!tube.cancelled()) {
-                        tube.send(event);
-                    }
-                }
-
-                @Override
-                public void onError(Throwable throwable) {
-                    if (!tube.cancelled()) {
-                        tube.fail(throwable);
-                    }
-                }
-
-                @Override
-                public void onClose() {
-                    if (!tube.cancelled()) {
-                        tube.complete();
-                    }
                 }
             });
         });
@@ -210,8 +221,18 @@ public class ApacheHttpClient implements HttpClient {
 
     @Override
     public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
+        executeServerSentEvents(request, parser, listener);
+    }
+
+    /**
+     * Starts a server-sent-events request and returns the in-flight Apache {@link java.util.concurrent.Future}, so
+     * a caller (the reactive {@link #stream}) can abort the underlying HTTP request. The listener callbacks are
+     * unchanged.
+     */
+    private java.util.concurrent.Future<SimpleHttpResponse> executeServerSentEvents(
+            HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
         SimpleHttpRequest apacheRequest = toSimpleApacheRequest(request);
-        asyncClient.execute(apacheRequest, new FutureCallback<>() {
+        return asyncClient.execute(apacheRequest, new FutureCallback<>() {
             @Override
             public void completed(SimpleHttpResponse apacheResponse) {
                 if (!isSuccessful(apacheResponse)) {

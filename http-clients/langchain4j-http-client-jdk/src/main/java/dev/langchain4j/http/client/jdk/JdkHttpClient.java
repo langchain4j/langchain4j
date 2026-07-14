@@ -258,11 +258,13 @@ public class JdkHttpClient implements HttpClient {
                 CompletableFuture<HttpResponse<Publisher<List<ByteBuffer>>>> future =
                         client.sendAsync(request, BodyHandlers.ofPublisher());
 
-                // Cancellation needs to interrupt both stages: the future (if still pending headers)
-                // and the body subscription (if we're already streaming). One whenCancelled callback
-                // dispatches to whichever one is active.
+                // Any terminal signal must release the HTTP call: the future (if still pending headers) and the
+                // body subscription (if we're already streaming). Using whenTerminates rather than whenCancelled
+                // covers not only a downstream cancel but also a buffer overflow (which fails the tube internally) -
+                // so a slow consumer that overflows the buffer aborts the socket read instead of draining it to EOF.
+                // On a normal completion the future/subscription are already done, so the cancels are no-ops.
                 AtomicReference<Subscription> bodySubRef = new AtomicReference<>();
-                tube.whenCancelled(() -> {
+                tube.whenTerminates(() -> {
                     future.cancel(true);
                     Subscription bodySub = bodySubRef.get();
                     if (bodySub != null) {
@@ -300,7 +302,8 @@ public class JdkHttpClient implements HttpClient {
                             // control, so we *could* throttle the socket — but it is pointless here: it cannot
                             // slow token generation (already produced and billed server-side), and stalling the
                             // read risks an idle-timeout reset mid-stream. Heap is bounded by the Tube buffer
-                            // downstream, which fails fast on overflow rather than reading unbounded.
+                            // downstream: on overflow the tube fails, and the whenTerminates hook above then
+                            // cancels this body subscription and aborts the socket read.
                             subscription.request(Long.MAX_VALUE);
                         }
 
