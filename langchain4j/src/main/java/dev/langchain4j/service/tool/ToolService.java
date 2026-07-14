@@ -950,31 +950,19 @@ public class ToolService {
                         && cause instanceof CancellationException
                         && compensableExecutions != null
                         && !compensableExecutions.isEmpty()) {
-                    return compensateAccumulatedOnCancellationAsync()
+                    return compensateOnCancellationAsync(
+                                    null,
+                                    null,
+                                    compensableExecutions,
+                                    chatMemory,
+                                    null,
+                                    invocationContext,
+                                    context.eventListenerRegistrar,
+                                    null)
                             .thenCompose(ignored -> CompletableFuture.<ToolServiceResult>failedFuture(cause));
                 }
                 return CompletableFuture.failedFuture(error);
             });
-        }
-
-        private CompletableFuture<Void> compensateAccumulatedOnCancellationAsync() {
-            List<CompensableToolExecution> compensated = List.copyOf(compensableExecutions);
-            return compensateToolsActions(compensableExecutions, invocationContext)
-                    .thenCompose(ignored -> chatMemory != null
-                            // no-memory mode discards its message list when the invocation fails, so only a real
-                            // ChatMemory (which the caller may reuse) is worth rewriting
-                            ? rewriteChatMemoryForCompensatedToolsAsync(
-                                    null, chatMemory, compensableExecutions, CompensationReason.INVOCATION_CANCELLED, null)
-                            : CompletableFuture.completedFuture(null))
-                    .thenRun(() -> {
-                        compensableExecutions.clear();
-                        fireCompensatedEvents(
-                                compensated,
-                                CompensationReason.INVOCATION_CANCELLED,
-                                invocationContext,
-                                context.eventListenerRegistrar,
-                                null);
-                    });
         }
 
         /**
@@ -1310,6 +1298,57 @@ public class ToolService {
                 streamEmitter.accept(toolExecution, reason);
             }
         }
+    }
+
+    /**
+     * Rolls back, on cancellation, every compensable tool that had already executed successfully - across all
+     * rounds - implementing the "drain the round, then roll back" contract for the asynchronous and reactive modes.
+     * If the current (drained) round's requests/results are supplied, its successful compensable tools are recorded
+     * first so they roll back together with those accumulated from earlier rounds. Runs the compensating actions,
+     * rewrites the chat memory, clears the accumulator, and fires a {@link ToolCompensatedEvent} per rolled-back tool
+     * (reason {@link CompensationReason#INVOCATION_CANCELLED}). A no-op when compensation is disabled or nothing is
+     * pending.
+     *
+     * @since 1.18.0
+     */
+    public CompletableFuture<Void> compensateOnCancellationAsync(
+            List<ToolExecutionRequest> currentRoundRequests,
+            Map<ToolExecutionRequest, ToolExecutionResult> currentRoundResults,
+            List<CompensableToolExecution> compensableExecutions,
+            ChatMemory chatMemory,
+            List<ChatMessage> messages,
+            InvocationContext invocationContext,
+            AiServiceListenerRegistrar listenerRegistrar,
+            BiConsumer<ToolExecution, CompensationReason> streamEmitter) {
+
+        if (!compensateOnToolErrors || compensableExecutions == null) {
+            return CompletableFuture.completedFuture(null);
+        }
+        if (currentRoundRequests != null && currentRoundResults != null) {
+            List<ToolExecutionResultMessage> resultMessages = currentRoundRequests.stream()
+                    .map(request -> toResultMessage(request, currentRoundResults.get(request)))
+                    .toList();
+            collectCompensable(
+                    currentRoundRequests, currentRoundResults, resultMessages, compensableExecutions, invocationContext);
+        }
+        if (compensableExecutions.isEmpty()) {
+            return CompletableFuture.completedFuture(null);
+        }
+        List<CompensableToolExecution> compensated = List.copyOf(compensableExecutions);
+        return compensateToolsActions(compensableExecutions, invocationContext)
+                .thenCompose(ignored -> (chatMemory != null || messages != null)
+                        ? rewriteChatMemoryForCompensatedToolsAsync(
+                                messages, chatMemory, compensableExecutions, CompensationReason.INVOCATION_CANCELLED, null)
+                        : CompletableFuture.completedFuture(null))
+                .thenRun(() -> {
+                    compensableExecutions.clear();
+                    fireCompensatedEvents(
+                            compensated,
+                            CompensationReason.INVOCATION_CANCELLED,
+                            invocationContext,
+                            listenerRegistrar,
+                            streamEmitter);
+                });
     }
 
     /**

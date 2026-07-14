@@ -60,6 +60,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import mutiny.zero.BackpressureStrategy;
 import mutiny.zero.Tube;
@@ -230,7 +231,8 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         private final Tube<AiServiceStreamingEvent> tube;
         private final ChatMemory temporaryMemory;
         private final AtomicReference<Flow.Subscription> modelSubscription = new AtomicReference<>();
-        private final AtomicReference<CompletableFuture<?>> toolsFuture = new AtomicReference<>();
+        private final AtomicReference<InflightRound> inflightRound = new AtomicReference<>();
+        private final AtomicBoolean cancellationCompensationStarted = new AtomicBoolean(false);
         private final AtomicReference<CompletableFuture<?>> guardrailsFuture = new AtomicReference<>();
         private final List<ToolService.CompensableToolExecution> compensableExecutions =
                 context.toolService.newCompensableExecutionsAccumulator();
@@ -252,13 +254,16 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 if (subscription != null) {
                     subscription.cancel();
                 }
-                CompletableFuture<?> tools = toolsFuture.get();
-                if (tools != null) {
-                    tools.cancel(true);
-                }
                 CompletableFuture<?> guardrails = guardrailsFuture.get();
                 if (guardrails != null) {
                     guardrails.cancel(true);
+                }
+                InflightRound round = inflightRound.getAndSet(null);
+                if (round != null) {
+                    round.toolsFuture().whenComplete((combined, error) -> doCancellationCompensation(
+                            round.toolRequests(), combined != null ? combined.results() : null));
+                } else {
+                    doCancellationCompensation(null, null);
                 }
             });
 
@@ -416,14 +421,19 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
 
             CompletableFuture<ToolService.CombinedToolResults> toolResultsFuture =
                     combineEagerlyStartedTools(toolRequests, startedTools, currentToolContext);
-            toolsFuture.set(toolResultsFuture);
+            InflightRound round = new InflightRound(toolRequests, toolResultsFuture);
+            inflightRound.set(round);
 
             toolResultsFuture.whenComplete((combined, error) -> {
                 if (error != null) {
                     fail(error);
                     return;
                 }
+                if (!inflightRound.compareAndSet(round, null)) {
+                    return;
+                }
                 if (tube.cancelled()) {
+                    doCancellationCompensation(toolRequests, combined.results());
                     return;
                 }
                 try {
@@ -440,6 +450,32 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 }
             });
         }
+
+        /**
+         * Rolls back the compensable tools on cancellation, at most once (whichever of the cancel signal or the
+         * round's completion reaches it first wins). Stream events are not delivered after a cancel, so only the
+         * observability {@code ToolCompensatedEvent} fires here.
+         */
+        private void doCancellationCompensation(
+                List<ToolExecutionRequest> currentRoundRequests,
+                Map<ToolExecutionRequest, ToolExecutionResult> currentRoundResults) {
+            if (!cancellationCompensationStarted.compareAndSet(false, true)) {
+                return;
+            }
+            context.toolService.compensateOnCancellationAsync(
+                    currentRoundRequests,
+                    currentRoundResults,
+                    compensableExecutions,
+                    getMemory(),
+                    null,
+                    invocationContext,
+                    context.eventListenerRegistrar,
+                    null);
+        }
+
+        private record InflightRound(
+                List<ToolExecutionRequest> toolRequests,
+                CompletableFuture<ToolService.CombinedToolResults> toolsFuture) {}
 
         /**
          * Combines the tools that were already started eagerly (on their CompleteToolCall) into a single

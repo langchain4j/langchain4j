@@ -165,9 +165,11 @@ history can't corrupt conversation state (see §3.7).
 - **Cancellation rolls back too (drain-then-rollback).** Because `@CompensateFor` is a saga mechanism, cancelling an
   invocation that had already run compensable tools rolls them all back (across rounds), consistent with how a tool
   error rolls back its successful siblings. The tools are polled (never interrupted), so the in-flight round still
-  drains; a single top-level handler (`withCancellationCompensation`) then runs the compensating actions before the
-  `CancellationException` is surfaced. A user who did not enable compensation is unaffected. *(Implemented on the
-  `CompletableFuture` path; the reactive-streaming path's cancellation still needs the same treatment — TODO.)*
+  drains, and then its compensating actions run before the cancellation is surfaced. A user who did not enable
+  compensation is unaffected. On the `CompletableFuture` path a single top-level handler
+  (`withCancellationCompensation`) does this; on the reactive path the cancel signal and the round's completion
+  coordinate through `ToolService.compensateOnCancellationAsync` (guarded so the rollback runs exactly once, whichever
+  fires first).
 - **Rollback is observable via a `ToolCompensatedEvent`.** Each rolled-back tool emits a new `ToolCompensatedEvent`
   (observability listener) and, on the reactive path, an `AiServiceStreamingEvent.ToolCompensatedEvent`, carrying the
   compensated tool, its original result, and a `CompensationReason` (`TOOL_EXECUTION_FAILED` / `INVOCATION_CANCELLED`).

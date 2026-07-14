@@ -7,6 +7,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.observability.api.event.CompensationReason;
+import dev.langchain4j.observability.api.event.ToolCompensatedEvent;
+import dev.langchain4j.observability.api.listener.ToolCompensatedEventListener;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -851,6 +853,78 @@ class AiServiceStreamingPublisherTest {
         assertThat(items).noneMatch(e -> e instanceof FinalResponseEvent);
         assertThat(completed.get()).isFalse();
         assertThat(error.get()).isNull();
+    }
+
+    @Test
+    void cancelling_the_subscription_rolls_back_compensable_tools_and_fires_a_compensated_event() throws Exception {
+
+        CountDownLatch toolStarted = new CountDownLatch(1);
+        CountDownLatch releaseTool = new CountDownLatch(1);
+        List<String> calls = new CopyOnWriteArrayList<>();
+
+        class SlowCompensatingTool {
+
+            @Tool
+            String credit(String city) {
+                calls.add("credit");
+                toolStarted.countDown();
+                try {
+                    releaseTool.await(5, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return "credited";
+            }
+
+            @CompensateFor("credit")
+            void uncredit(String city) {
+                calls.add("uncredit");
+            }
+        }
+
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+                AiMessage.from(toolRequest("1", "credit")), AiMessage.from("unreachable"));
+
+        List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
+        EventStreamer assistant = AiServices.builder(EventStreamer.class)
+                .streamingChatModel(model)
+                .tools(new SlowCompensatingTool())
+                .compensateOnToolErrors(true)
+                .registerListener((ToolCompensatedEventListener) compensatedEvents::add)
+                .build();
+
+        AtomicReference<Flow.Subscription> subscription = new AtomicReference<>();
+        assistant.chat("transfer").subscribe(new Flow.Subscriber<>() {
+            @Override
+            public void onSubscribe(Flow.Subscription s) {
+                subscription.set(s);
+                s.request(Long.MAX_VALUE);
+            }
+
+            @Override
+            public void onNext(AiServiceStreamingEvent event) {}
+
+            @Override
+            public void onError(Throwable throwable) {}
+
+            @Override
+            public void onComplete() {}
+        });
+
+        assertThat(toolStarted.await(5, TimeUnit.SECONDS)).as("the compensable tool is running").isTrue();
+        subscription.get().cancel();
+        releaseTool.countDown(); // let the already-running tool finish (drain), then it is rolled back
+
+        long deadline = System.currentTimeMillis() + 5_000;
+        while (compensatedEvents.isEmpty() && System.currentTimeMillis() < deadline) {
+            Thread.sleep(20);
+        }
+        // drain-then-rollback: the successful credit is compensated even though the subscription was cancelled
+        assertThat(calls).contains("credit", "uncredit");
+        assertThat(compensatedEvents).singleElement().satisfies(event -> {
+            assertThat(event.request().name()).isEqualTo("credit");
+            assertThat(event.reason()).isEqualTo(CompensationReason.INVOCATION_CANCELLED);
+        });
     }
 
     @Test
