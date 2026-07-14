@@ -2732,7 +2732,7 @@ or using the standard Java Service Provider interface creating a file named `MET
 
 ### AgenticScope and agentic systems recoverability
 
-When an `AgenticScopeStore` is configured, the `langchain4j-agentic` module provides built-in recoverability support that allows agentic systems to resume execution from where they left off after a crash or process restart. This is especially valuable for long-running workflows that include human-in-the-loop steps, where the process may be intentionally stopped and restarted later.
+When an `AgenticScopeStore` is configured, the `langchain4j-agentic` module provides built-in recoverability support that allows agentic systems to resume execution from where they left off after a crash or process restart. This is especially valuable for long-running agentic systems that include human-in-the-loop steps, where the process may be intentionally stopped and restarted later.
 
 Recoverability is based on two mechanisms working together: **per-step checkpointing** and **planner execution state persistence**.
 
@@ -2748,7 +2748,7 @@ default Map<String, Object> executionState() { return Map.of(); }
 default void restoreExecutionState(Map<String, Object> state) { }
 ```
 
-For instance, stateful planners like the sequential and the loop ones implement these methods to save and restore their cursor position and iteration counters. Stateless planners (like `ParallelPlanner` or `ConditionalPlanner`) use the default no-op implementations. Custom `Planner` implementations can override these methods to participate in recoverability as well.
+For instance, stateful planners like the sequential and the loop ones implement these methods to save and restore their cursor position and iteration counters. Stateless planners (like `ParallelPlanner` or `ConditionalPlanner`) use the default no-op implementations. Custom `Planner` implementations can override these methods to participate in recoverability as well. The execution loop also tracks its own internal state (such as which agents have completed in a parallel block) alongside the planner state, so that on resume only the agents that haven't finished are re-dispatched.
 
 To give a practical example of how this works, consider an order processing workflow where a large order must be reviewed by a human before it is fulfilled. The workflow has three steps: validate the order, wait for human approval, and ship the order.
 
@@ -2768,11 +2768,11 @@ AgenticScopeAction validateOrder = AgenticServices.agentAction(scope -> {
     scope.writeState("validated_order", "VALIDATED: " + order);
 });
 
-// Step 2: Pause for human approval using PendingResponse
+// Step 2: Pause for human approval using SuspendedResponse
 HumanInTheLoop approvalGate = AgenticServices.humanInTheLoopBuilder()
         .description("Wait for manager approval on large orders")
         .outputKey("approval")
-        .responseProvider(scope -> new PendingResponse<>("manager-approval"))
+        .responseProvider(scope -> new SuspendedResponse<>("manager-approval"))
         .build();
 
 // Step 3: Finalize based on the approval decision
@@ -2788,35 +2788,81 @@ OrderWorkflow workflow = AgenticServices.sequenceBuilder(OrderWorkflow.class)
         .build();
 ```
 
-When this workflow runs, it validates the order, then blocks at the `HumanInTheLoop` step waiting for external input. At this point the full scope — including the validated order data, the planner's cursor position (step 2 completed), and the `PendingResponse` — is checkpointed to the store.
-
-The `PendingResponse` class is an implementation of the `DelayedResponse` that can be completed externally without spawning a background thread. Unlike `AsyncResponse`, which immediately starts executing on a thread pool, `PendingResponse` creates an initially incomplete future that must be explicitly completed via its `complete()` method. After serialization and deserialization, a new incomplete future is created, allowing an external system to reconnect and complete the response.
-
-If the process crashes or restarts, the scope can be recovered and the workflow resumed:
+When this workflow runs, it validates the order, then reaches the `HumanInTheLoop` step. Because the response provider returns a `SuspendedResponse`, the agentic system suspends its execution by throwing an `AgenticSystemSuspendedException`, instead of blocking the calling thread. The full scope — including the validated order data, the planner's cursor position (step 2 completed), and the `SuspendedResponse` — is checkpointed to the store (if one is configured), and an `AgenticSystemSuspendedException` is thrown to release the thread:
 
 ```java
-// After restart: load the persisted scope and provide the human response
-AgenticScope recovered = workflow.getAgenticScope("order-12345");
+try {
+    String result = workflow.processOrder("order-12345", "1000 widgets");
+    // Workflow completed normally
+} catch (AgenticSystemSuspendedException e) {
+    // Workflow suspended — waiting for human input
+    AgenticScope scope = e.scope();
+    Set<String> pendingIds = scope.pendingResponseIds(); // → ["manager-approval"]
+    // Store the scope/pendingIds for your UI / REST API to present to the human
+}
+```
 
-// Replace the PendingResponse with the actual human decision
-recovered.writeState("approval", "APPROVED by manager");
+In alternative to `SuspendedResponse`, the human-in-the-loop can return an instance of the `PendingResponse` class to block the calling thread until the human response is provided. In essence:
 
-// Re-invoke with the same order ID — the planner resumes from step 3
+| Response type | Behavior |
+|---|---|
+| `SuspendedResponse` | **Suspends** the agentic system: checkpoints the scope, throws `AgenticSystemSuspendedException`, and releases the calling thread. The system is resumed by completing the response and re-invoking the agent method. |
+| `PendingResponse` | **Blocks** the calling thread on the underlying `CompletableFuture` until `complete()` is called from another thread. No exception is thrown — the agentic system waits in place. |
+
+The user can make this choice at the point where the response is created — in the `responseProvider` lambda or the `@HumanInTheLoop` static method:
+
+```java
+// Suspension: the agentic system checkpoints and throws AgenticSystemSuspendedException
+.responseProvider(scope -> new SuspendedResponse<>("approval-id"))
+
+// Blocking: the calling thread waits until complete() is called from another thread
+.responseProvider(scope -> new PendingResponse<>("approval-id"))
+```
+
+It is advised to use `SuspendedResponse` for long-running interactions (hours/days) where crash resilience matters, and `PendingResponse` for short-lived in-process waits where a background thread will provide the answer shortly.
+
+If the method's return type is `ResultWithAgenticScope`, no exception is thrown on suspension; instead, the returned record has `suspended() == true` and `result() == null`:
+
+```java
+ResultWithAgenticScope<String> result = workflow.processOrder("order-12345", "1000 widgets");
+if (result.suspended()) {
+    // Handle suspension — provide response and re-invoke later
+}
+```
+
+To resume the agentic system, provide the human response and re-invoke the agent method with the same memory ID:
+
+```java
+AgenticScope scope = workflow.getAgenticScope("order-12345");
+
+// Option 1: Complete the single deferred response (when there is exactly one)
+scope.completePendingResponse("APPROVED by manager");
+
+// Option 2: Complete by explicit ID (useful when multiple responses are pending)
+scope.completePendingResponse("manager-approval", "APPROVED by manager");
+
+// Option 3: Replace the response value directly in state
+scope.writeState("approval", "APPROVED by manager");
+
+// Then re-invoke — the planner resumes from step 3
 String result = workflow.processOrder("order-12345", "1000 widgets");
 // → "Order VALIDATED: 1000 widgets — APPROVED by manager"
 ```
 
 The `SequentialPlanner` restores its cursor from the checkpointed state and skips the already-completed steps (validate and approval gate), executing only the final shipping step.
 
-Alternatively, if the process is still running and the workflow is simply waiting for human input, the `PendingResponse` can be completed directly without restarting:
+Note that `completePendingResponse` both completes the in-memory future (unblocking any waiting threads) and replaces the state map entry with the resolved value (so it survives serialization). The single-argument overload throws `IllegalStateException` if there is not exactly one deferred response. Similarly, `writeState` completes any `DeferredResponse` it replaces.
+
+The suspension mechanism naturally handles crash recovery. If the process crashes or restarts while waiting for human input, the scope can be recovered from the store:
 
 ```java
-// Complete the pending response in-flight (e.g., from a REST endpoint)
-AgenticScope scope = workflow.getAgenticScope("order-12345");
-scope.completePendingResponse("manager-approval", "APPROVED by manager");
-```
+// After restart: load the persisted scope and provide the human response
+AgenticScope recovered = workflow.getAgenticScope("order-12345");
+recovered.completePendingResponse("APPROVED by manager");
 
-This unblocks the waiting thread and the workflow continues to the shipping step without any restart.
+// Re-invoke — the planner resumes from the checkpoint
+String result = workflow.processOrder("order-12345", "1000 widgets");
+```
 
 ## Agents Registry
 

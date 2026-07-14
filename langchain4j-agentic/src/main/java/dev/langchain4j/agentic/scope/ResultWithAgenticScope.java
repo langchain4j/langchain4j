@@ -7,4 +7,9 @@ package dev.langchain4j.agentic.scope;
  *
  * @param <T> The type of the result.
  */
-public record ResultWithAgenticScope<T>(AgenticScope agenticScope, T result) { }
+public record ResultWithAgenticScope<T>(AgenticScope agenticScope, T result, boolean suspended) {
+
+    public ResultWithAgenticScope(AgenticScope agenticScope, T result) {
+        this(agenticScope, result, false);
+    }
+}
