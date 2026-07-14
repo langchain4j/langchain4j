@@ -3,6 +3,7 @@ package dev.langchain4j.service;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.Tool;
@@ -22,7 +23,10 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
+import dev.langchain4j.observability.api.event.CompensationReason;
+import dev.langchain4j.observability.api.event.ToolCompensatedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
+import dev.langchain4j.observability.api.listener.ToolCompensatedEventListener;
 import dev.langchain4j.service.guardrail.InputGuardrails;
 import dev.langchain4j.service.guardrail.OutputGuardrails;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
@@ -938,6 +942,7 @@ class AiServicesNonBlockingTest {
     void cf_tool_compensation_rolls_back_and_does_not_block_the_delivery_thread() throws Exception {
 
         CompensatingBankTools tools = new CompensatingBankTools();
+        List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
         NonBlockingChatModelStub chatModel = new NonBlockingChatModelStub(
                 AiMessage.from(bankToolRequest("1", "credit")),
                 AiMessage.from(bankToolRequest("2", "withdraw")),
@@ -948,6 +953,7 @@ class AiServicesNonBlockingTest {
                 .tools(tools)
                 .compensateOnToolErrors(true)
                 .toolExecutionErrorHandler((error, ctx) -> ToolErrorHandlerResult.text(error.getMessage()))
+                .registerListener((ToolCompensatedEventListener) compensatedEvents::add)
                 .build();
 
         String answer = assistant.chat("transfer").get(10, SECONDS);
@@ -955,6 +961,11 @@ class AiServicesNonBlockingTest {
         assertThat(answer).isEqualTo("done");
         // the failed withdraw triggered a rollback of the earlier successful credit
         assertThat(tools.calls).containsExactly("credit:Mario", "withdraw:Mario", "uncredit:Mario");
+        // the rollback is observable: a ToolCompensatedEvent fires for the rolled-back credit
+        assertThat(compensatedEvents).singleElement().satisfies(event -> {
+            assertThat(event.request().name()).isEqualTo("credit");
+            assertThat(event.reason()).isEqualTo(CompensationReason.TOOL_EXECUTION_FAILED);
+        });
         assertNoBlockingCalls();
     }
 
@@ -978,6 +989,126 @@ class AiServicesNonBlockingTest {
         assertThat(subscribeAndAwait(assistant.chat("transfer"))).isEqualTo("done");
         assertThat(tools.calls).containsExactly("credit:Mario", "withdraw:Mario", "uncredit:Mario");
         assertNoBlockingCalls();
+    }
+
+    @Test
+    void cf_tool_compensation_rolls_back_then_fails_under_the_default_rethrow_handler() throws Exception {
+
+        CompensatingBankTools tools = new CompensatingBankTools();
+        NonBlockingChatModelStub chatModel = new NonBlockingChatModelStub(
+                AiMessage.from(bankToolRequest("1", "credit")),
+                AiMessage.from(bankToolRequest("2", "withdraw")),
+                AiMessage.from("done"));
+
+        CompensatingAssistant assistant = AiServices.builder(CompensatingAssistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .compensateOnToolErrors(true)
+                // no toolExecutionErrorHandler override: the async default rethrows a tool execution error
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("transfer");
+
+        // The failing withdraw fails the invocation (the default async handler rethrows), but the earlier
+        // successful credit is compensated first — a tool failure must not short-circuit the rollback.
+        assertThatThrownBy(() -> future.get(10, SECONDS)).rootCause().hasMessageContaining("insufficient funds");
+        assertThat(tools.calls).containsExactly("credit:Mario", "withdraw:Mario", "uncredit:Mario");
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void streaming_tool_compensation_rolls_back_then_fails_under_the_default_rethrow_handler() throws Exception {
+
+        CompensatingBankTools tools = new CompensatingBankTools();
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreamsOn(
+                deliveryExecutor,
+                AiMessage.from(bankToolRequest("1", "credit")),
+                AiMessage.from(bankToolRequest("2", "withdraw")),
+                AiMessage.from("done"));
+
+        CompensatingStreamingAssistant assistant = AiServices.builder(CompensatingStreamingAssistant.class)
+                .streamingChatModel(model)
+                .tools(tools)
+                .compensateOnToolErrors(true)
+                // no toolExecutionErrorHandler override: the async default rethrows a tool execution error
+                .build();
+
+        Throwable error = subscribeAndAwaitError(assistant.chat("transfer"));
+
+        assertThat(error).hasMessageContaining("insufficient funds");
+        assertThat(tools.calls).containsExactly("credit:Mario", "withdraw:Mario", "uncredit:Mario");
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void cancelling_the_future_rolls_back_compensable_tools_and_fires_a_compensated_event() throws Exception {
+
+        CompensatingBankTools tools = new CompensatingBankTools();
+        List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
+
+        CountDownLatch round2Entered = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+
+        ChatModel chatModel = new ChatModel() {
+            final AtomicInteger calls = new AtomicInteger();
+
+            @Override
+            public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+                if (calls.incrementAndGet() == 1) {
+                    return CompletableFuture.completedFuture(response(AiMessage.from(bankToolRequest("1", "credit"))));
+                }
+                // the second (post-credit) model call blocks so the test can cancel while it is in flight
+                return CompletableFuture.supplyAsync(
+                        () -> {
+                            round2Entered.countDown();
+                            try {
+                                release.await();
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                            }
+                            return response(AiMessage.from("done"));
+                        },
+                        guardrailWorker); // non-policed worker: this test deliberately blocks it to simulate a slow call
+            }
+
+            @Override
+            public ChatResponse doChat(ChatRequest chatRequest) {
+                throw new AssertionError("blocking chat() must not be called");
+            }
+        };
+
+        CompensatingAssistant assistant = AiServices.builder(CompensatingAssistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .compensateOnToolErrors(true)
+                .registerListener((ToolCompensatedEventListener) compensatedEvents::add)
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("transfer");
+
+        assertThat(round2Entered.await(5, SECONDS)).as("the second round should start").isTrue();
+        future.cancel(true);
+        release.countDown();
+
+        // the earlier successful credit is rolled back even though the operation was cancelled (drain-then-rollback).
+        // The ToolCompensatedEvent fires last in the compensation chain, so waiting for it also covers the rollback.
+        long deadline = System.currentTimeMillis() + 5_000;
+        while (compensatedEvents.isEmpty() && System.currentTimeMillis() < deadline) {
+            Thread.sleep(20);
+        }
+        assertThat(tools.calls).contains("credit:Mario", "uncredit:Mario");
+        assertThat(compensatedEvents).singleElement().satisfies(event -> {
+            assertThat(event.request().name()).isEqualTo("credit");
+            assertThat(event.reason()).isEqualTo(CompensationReason.INVOCATION_CANCELLED);
+        });
+        assertNoBlockingCalls();
+    }
+
+    private static ChatResponse response(AiMessage aiMessage) {
+        return ChatResponse.builder()
+                .aiMessage(aiMessage)
+                .metadata(ChatResponseMetadata.builder().build())
+                .build();
     }
 
     static class CountingCompletedListener implements AiServiceCompletedListener {
@@ -1096,6 +1227,36 @@ class AiServicesNonBlockingTest {
         assertThat(latch.await(10, SECONDS)).isTrue();
         assertThat(error.get()).isNull();
         return String.join("", items);
+    }
+
+    private static Throwable subscribeAndAwaitError(Flow.Publisher<String> publisher) throws InterruptedException {
+        AtomicReference<Throwable> error = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+
+        publisher.subscribe(new Flow.Subscriber<>() {
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                subscription.request(Long.MAX_VALUE);
+            }
+
+            @Override
+            public void onNext(String item) {}
+
+            @Override
+            public void onError(Throwable throwable) {
+                error.set(throwable);
+                latch.countDown();
+            }
+
+            @Override
+            public void onComplete() {
+                latch.countDown();
+            }
+        });
+
+        assertThat(latch.await(10, SECONDS)).isTrue();
+        assertThat(error.get()).as("stream must fail").isNotNull();
+        return error.get();
     }
 
     /**

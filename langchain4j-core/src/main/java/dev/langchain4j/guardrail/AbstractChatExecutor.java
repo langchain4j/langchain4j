@@ -1,5 +1,6 @@
 package dev.langchain4j.guardrail;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Internal;
@@ -102,6 +103,6 @@ abstract class AbstractChatExecutor implements ChatExecutor {
      * @return a {@link CompletableFuture} that completes with the chat response
      */
     protected CompletableFuture<ChatResponse> executeAsync(ChatRequest chatRequest) {
-        throw new UnsupportedOperationException("executeAsync() is not implemented by " + getClass().getName());
+        throw new AsyncNotSupportedException("executeAsync() is not implemented by " + getClass().getName());
     }
 }

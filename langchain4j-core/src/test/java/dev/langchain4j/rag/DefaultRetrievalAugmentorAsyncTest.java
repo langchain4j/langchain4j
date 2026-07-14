@@ -1,9 +1,13 @@
 package dev.langchain4j.rag;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
+
+import dev.langchain4j.internal.VirtualThreadUtils;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
@@ -88,7 +92,7 @@ class DefaultRetrievalAugmentorAsyncTest {
                 .build();
 
         assertThatThrownBy(() -> customAugmentor.augmentAsync(request()))
-                .isInstanceOf(UnsupportedOperationException.class);
+                .isExactlyInstanceOf(AsyncNotSupportedException.class);
     }
 
     @Test
@@ -119,11 +123,121 @@ class DefaultRetrievalAugmentorAsyncTest {
         assertThat(future.isCancelled()).isTrue();
 
         // Let the (now-abandoned) retriever finish; aggregation must never run because the pipeline was cancelled.
+        // (This is the OFFLOAD case: a blocking retrieve() offloaded to the executor cannot be interrupted, so it
+        // runs to completion and its result is discarded - see the native-async case below for leaf cancellation.)
         release.countDown();
         Thread.sleep(200);
         assertThat(((CountingAggregator) aggregator).invocations).isZero();
 
         executor.shutdownNow();
+    }
+
+    @Test
+    void augmentAsync_cancellation_aborts_the_in_flight_native_retriever_call() {
+        // a genuinely-async retriever whose call never completes, exposed so we can assert it gets cancelled
+        CompletableFuture<List<Content>> inFlight = new CompletableFuture<>();
+        ContentRetriever nativeAsyncRetriever = new ContentRetriever() {
+            @Override
+            public List<Content> retrieve(Query query) {
+                throw new UnsupportedOperationException("blocking path not used in this test");
+            }
+
+            @Override
+            public CompletableFuture<List<Content>> retrieveAsync(Query query) {
+                return inFlight;
+            }
+        };
+
+        // offloadBlocking stays false: the retriever is genuinely async, so cancellation must reach its raw call
+        RetrievalAugmentor augmentor = DefaultRetrievalAugmentor.builder()
+                .queryRouter(new DefaultQueryRouter(nativeAsyncRetriever))
+                .build();
+
+        CompletableFuture<AugmentationResult> future = augmentor.augmentAsync(request());
+
+        assertThat(future.isDone()).isFalse();
+        assertThat(inFlight.isDone()).isFalse();
+
+        future.cancel(true);
+
+        // cancelling the pipeline aborts the in-flight leaf call (R2)
+        assertThat(inFlight).isCancelled();
+    }
+
+    @Test
+    void augmentAsync_does_not_mistake_an_incidental_UnsupportedOperationException_for_not_async() {
+        // R4: a genuinely-async retriever whose retrieveAsync fails with a *plain* UnsupportedOperationException (e.g. a
+        // bug like List.of(...).add(x)) must NOT be treated as the "not async" signal - it must propagate, not be
+        // silently offloaded (which would mask the bug and double the cost), even with offloadBlocking(true).
+        ContentRetriever asyncRetrieverWithBug = new ContentRetriever() {
+            @Override
+            public List<Content> retrieve(Query query) {
+                return List.of(Content.from("blocking result that must NOT be used"));
+            }
+
+            @Override
+            public CompletableFuture<List<Content>> retrieveAsync(Query query) {
+                return CompletableFuture.failedFuture(new UnsupportedOperationException("incidental bug"));
+            }
+        };
+
+        RetrievalAugmentor augmentor = DefaultRetrievalAugmentor.builder()
+                .queryRouter(new DefaultQueryRouter(asyncRetrieverWithBug))
+                .offloadBlocking(true) // even with offload ON, an incidental UOE must surface, not be swallowed
+                .build();
+
+        assertThatThrownBy(() -> augmentor.augmentAsync(request()).get(5, SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .cause()
+                .isExactlyInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("incidental bug");
+    }
+
+    @Test
+    void async_offload_runs_on_the_shared_virtual_thread_executor_by_default() throws Exception {
+        // R5: a blocking stage offloaded on augmentAsync must run on the shared virtual-thread executor (non-pinning),
+        // not the augmentor's platform-thread pool used for synchronous parallel retrieval.
+        CompletableFuture<Boolean> offloadWasVirtual = new CompletableFuture<>();
+        ContentRetriever blockingRetriever = query -> {
+            offloadWasVirtual.complete(VirtualThreadUtils.isVirtualThread());
+            return List.of(Content.from("c1"));
+        };
+
+        RetrievalAugmentor augmentor = DefaultRetrievalAugmentor.builder()
+                .queryRouter(new DefaultQueryRouter(blockingRetriever))
+                .offloadBlocking(true) // no custom executor -> async offload uses the shared virtual-thread executor
+                .build();
+
+        augmentor.augmentAsync(request()).get(5, SECONDS);
+
+        // Only meaningful on a JVM that actually has virtual threads (21+); the shared executor falls back to
+        // platform threads on older JVMs.
+        assumeTrue(VirtualThreadUtils.isVirtualThreadsSupported());
+        assertThat(offloadWasVirtual.get(5, SECONDS)).isTrue();
+    }
+
+    @Test
+    void async_offload_honors_a_configured_executor() throws Exception {
+        ExecutorService custom = Executors.newSingleThreadExecutor(r -> new Thread(r, "custom-offload-thread"));
+        try {
+            CompletableFuture<String> offloadThreadName = new CompletableFuture<>();
+            ContentRetriever blockingRetriever = query -> {
+                offloadThreadName.complete(Thread.currentThread().getName());
+                return List.of(Content.from("c1"));
+            };
+
+            RetrievalAugmentor augmentor = DefaultRetrievalAugmentor.builder()
+                    .queryRouter(new DefaultQueryRouter(blockingRetriever))
+                    .executor(custom) // a configured executor is used for the async offload too
+                    .offloadBlocking(true)
+                    .build();
+
+            augmentor.augmentAsync(request()).get(5, SECONDS);
+
+            assertThat(offloadThreadName.get(5, SECONDS)).isEqualTo("custom-offload-thread");
+        } finally {
+            custom.shutdownNow();
+        }
     }
 
     @Test
@@ -225,7 +339,7 @@ class DefaultRetrievalAugmentorAsyncTest {
         assertThatThrownBy(() -> augmentor.augmentAsync(request()).get(5, SECONDS))
                 .isInstanceOf(ExecutionException.class)
                 .cause()
-                .isInstanceOf(UnsupportedFeatureException.class)
+                .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("retrieveAsync")
                 .hasMessageContaining("offloadBlocking(true)");
     }

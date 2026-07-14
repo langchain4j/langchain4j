@@ -228,7 +228,9 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 subscription.cancel();
                 return;
             }
-            tube.whenCancelled(subscription::cancel);
+            // whenTerminates (not whenCancelled): abort the upstream HTTP stream on ANY terminal signal - downstream
+            // cancel, an error, or a buffer overflow - so overflow actually aborts the connection.
+            tube.whenTerminates(subscription::cancel);
             subscription.request(Long.MAX_VALUE);
         }
 

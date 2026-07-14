@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
@@ -520,7 +521,10 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                             Flow.Publisher<?> mapped = elementType == AiServiceStreamingEvent.class
                                     ? events
-                                    : AiServiceStreamingEventPublisher.toTextPublisher(events, context.streamingBufferSize);
+                                    : AiServiceStreamingEventPublisher.toTextPublisher(
+                                            events,
+                                            context.guardrailService().hasOutputGuardrails(method),
+                                            context.streamingBufferSize);
 
                             return publisherAdapter != null
                                     ? publisherAdapter.fromPublisher(returnType, mapped)
@@ -859,25 +863,16 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
                         return async.exceptionallyCompose(error -> {
                             Throwable cause = unwrapCompletionException(error);
-                            if (cause instanceof UnsupportedOperationException) {
-                                if (context.offloadBlocking) {
-                                    // Offload the blocking augment() (and the memory read it needs) to a virtual thread.
-                                    return CompletableFuture.supplyAsync(
-                                            () -> {
-                                                List<ChatMessage> memoryMessages =
-                                                        chatMemory != null ? chatMemory.messages() : null;
-                                                return augmentor.augment(augmentationRequest(
-                                                        originalUserMessage,
-                                                        systemMessage,
-                                                        memoryMessages,
-                                                        invocationContext));
-                                            },
-                                            DefaultExecutorProvider.getDefaultExecutorService());
-                                }
+                            if (cause instanceof AsyncNotSupportedException) {
+                                // A blocking RetrievalAugmentor or ChatMemory on the async/reactive path fails loudly -
+                                // the component that does the blocking work decides whether to offload, not the AI
+                                // Service. Implement the async method (augmentAsync / messagesAsync), or configure an
+                                // async-capable component (e.g. DefaultRetrievalAugmentor.builder().offloadBlocking(true)).
                                 return CompletableFuture.failedFuture(new UnsupportedFeatureException(cause.getMessage()
-                                        + " The RAG pipeline is not fully asynchronous. Either use async-capable"
-                                        + " components, or set AiServices.builder().offloadBlocking(true) to offload the"
-                                        + " blocking part to a virtual-thread executor."));
+                                        + " The asynchronous/reactive AI Service requires this component to implement its"
+                                        + " async method, or to be an async-capable component (for a blocking content"
+                                        + " retriever, configure DefaultRetrievalAugmentor.builder().offloadBlocking(true)"
+                                        + " and pass it via retrievalAugmentor(...))."));
                             }
                             return CompletableFuture.failedFuture(error);
                         });

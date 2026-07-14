@@ -1,5 +1,6 @@
 package dev.langchain4j.store.memory.chat;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.data.message.ChatMessage;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
@@ -40,15 +41,15 @@ class ChatMemoryStoreTest implements WithAssertions {
         ChatMemoryStore store = new BlockingOnlyStore();
 
         assertThatThrownBy(() -> store.getMessagesAsync("foo"))
-                .isInstanceOf(UnsupportedOperationException.class)
+                .isExactlyInstanceOf(AsyncNotSupportedException.class)
                 .hasMessageContaining("getMessagesAsync");
 
         assertThatThrownBy(() -> store.updateMessagesAsync("foo", List.of()))
-                .isInstanceOf(UnsupportedOperationException.class)
+                .isExactlyInstanceOf(AsyncNotSupportedException.class)
                 .hasMessageContaining("updateMessagesAsync");
 
         assertThatThrownBy(() -> store.deleteMessagesAsync("foo"))
-                .isInstanceOf(UnsupportedOperationException.class)
+                .isExactlyInstanceOf(AsyncNotSupportedException.class)
                 .hasMessageContaining("deleteMessagesAsync");
     }
 }

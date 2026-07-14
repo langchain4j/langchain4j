@@ -1,5 +1,6 @@
 package dev.langchain4j.model.scoring;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
 
@@ -70,6 +71,6 @@ public interface ScoringModel {
      * @since 1.18.0
      */
     default CompletableFuture<Response<List<Double>>> scoreAllAsync(List<TextSegment> segments, String query) {
-        throw new UnsupportedOperationException("scoreAllAsync() is not implemented by " + getClass().getName());
+        throw new AsyncNotSupportedException("scoreAllAsync() is not implemented by " + getClass().getName());
     }
 }

@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.content.aggregator;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
@@ -53,6 +54,6 @@ public interface ContentAggregator {
      * @since 1.18.0
      */
     default CompletableFuture<List<Content>> aggregateAsync(Map<Query, Collection<List<Content>>> queryToContents) {
-        throw new UnsupportedOperationException("aggregateAsync() is not implemented by " + getClass().getName());
+        throw new AsyncNotSupportedException("aggregateAsync() is not implemented by " + getClass().getName());
     }
 }

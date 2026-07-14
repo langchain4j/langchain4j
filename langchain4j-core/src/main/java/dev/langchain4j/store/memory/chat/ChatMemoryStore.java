@@ -1,5 +1,6 @@
 package dev.langchain4j.store.memory.chat;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageDeserializer;
 import dev.langchain4j.data.message.ChatMessageSerializer;
@@ -62,7 +63,7 @@ public interface ChatMemoryStore {
      * @since 1.17.0
      */
     default CompletableFuture<List<ChatMessage>> getMessagesAsync(Object memoryId) {
-        throw new UnsupportedOperationException(
+        throw new AsyncNotSupportedException(
                 "getMessagesAsync() is not implemented by " + getClass().getName());
     }
 
@@ -81,7 +82,7 @@ public interface ChatMemoryStore {
      * @since 1.17.0
      */
     default CompletableFuture<Void> updateMessagesAsync(Object memoryId, List<ChatMessage> messages) {
-        throw new UnsupportedOperationException(
+        throw new AsyncNotSupportedException(
                 "updateMessagesAsync() is not implemented by " + getClass().getName());
     }
 
@@ -98,7 +99,7 @@ public interface ChatMemoryStore {
      * @since 1.17.0
      */
     default CompletableFuture<Void> deleteMessagesAsync(Object memoryId) {
-        throw new UnsupportedOperationException(
+        throw new AsyncNotSupportedException(
                 "deleteMessagesAsync() is not implemented by " + getClass().getName());
     }
 }

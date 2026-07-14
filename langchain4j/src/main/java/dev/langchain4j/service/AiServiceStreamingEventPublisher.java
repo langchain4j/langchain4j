@@ -33,6 +33,7 @@ import dev.langchain4j.model.chat.response.StreamingEvent;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
+import dev.langchain4j.observability.api.event.CompensationReason;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.rag.content.Content;
@@ -46,6 +47,7 @@ import dev.langchain4j.service.AiServiceStreamingEvent.PartialThinkingEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.PartialToolCallEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.RawEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.RetrievedContentsEvent;
+import dev.langchain4j.service.AiServiceStreamingEvent.ToolCompensatedEvent;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionResult;
@@ -149,13 +151,26 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
     }
 
     /**
-     * Maps a rich {@link AiServiceStreamingEvent} stream to a text-only {@link String} stream: it emits the
-     * text of each {@link PartialResponseEvent} and drops every other event. Used to satisfy AI Service methods
-     * that return a {@code Publisher<String>} (or a {@code Flux<String>}/{@code Multi<String>} via a
-     * {@link dev.langchain4j.spi.services.PublisherAdapter}).
+     * Maps a rich {@link AiServiceStreamingEvent} stream to a text-only {@link String} stream. Used to satisfy AI
+     * Service methods that return a {@code Publisher<String>} (or a {@code Flux<String>}/{@code Multi<String>} via a
+     * {@link dev.langchain4j.spi.services.PublisherAdapter}). The concatenation of all emitted strings equals the
+     * final answer.
+     * <p>
+     * When there are <b>no output guardrails</b>, the text of each {@link PartialResponseEvent} is emitted as it
+     * streams (true token-by-token streaming) and every other event is dropped.
+     * <p>
+     * When there <b>are output guardrails</b>, an output guardrail may rewrite the final answer, so the individual
+     * partial chunks are no longer authoritative. In that case the partials are dropped and the (possibly rewritten)
+     * text of the single {@link FinalResponseEvent} is emitted instead. This loses no streaming granularity in
+     * practice: with output guardrails the partials are buffered upstream and only released once the assembled
+     * response has passed validation, so they would arrive as a single burst at the very end anyway.
+     *
+     * @param events             the rich event stream to adapt
+     * @param hasOutputGuardrails whether the AI Service method has output guardrails configured
+     * @param bufferSize         the back-pressure buffer size
      */
     public static Flow.Publisher<String> toTextPublisher(
-            Flow.Publisher<AiServiceStreamingEvent> events, int bufferSize) {
+            Flow.Publisher<AiServiceStreamingEvent> events, boolean hasOutputGuardrails, int bufferSize) {
         TubeConfiguration config = new TubeConfiguration()
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
                 .withBufferSize(bufferSize);
@@ -176,7 +191,16 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 if (tube.cancelled()) {
                     return;
                 }
-                if (event instanceof PartialResponseEvent partialResponseEvent) {
+                if (hasOutputGuardrails) {
+                    // A guardrail may rewrite the answer, so the buffered partials are stale — emit the
+                    // authoritative final text instead.
+                    if (event instanceof FinalResponseEvent finalResponseEvent) {
+                        String text = finalResponseEvent.chatResponse().aiMessage().text();
+                        if (text != null) {
+                            tube.send(text);
+                        }
+                    }
+                } else if (event instanceof PartialResponseEvent partialResponseEvent) {
                     tube.send(partialResponseEvent.partialResponse().text());
                 }
             }
@@ -390,11 +414,11 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
 
             List<ToolExecutionRequest> toolRequests = aiMessage.toolExecutionRequests();
 
-            CompletableFuture<Map<ToolExecutionRequest, ToolExecutionResult>> toolResultsFuture =
+            CompletableFuture<ToolService.CombinedToolResults> toolResultsFuture =
                     combineEagerlyStartedTools(toolRequests, startedTools, currentToolContext);
             toolsFuture.set(toolResultsFuture);
 
-            toolResultsFuture.whenComplete((toolResults, error) -> {
+            toolResultsFuture.whenComplete((combined, error) -> {
                 if (error != null) {
                     fail(error);
                     return;
@@ -403,7 +427,14 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     return;
                 }
                 try {
-                    afterToolsExecuted(chatResponse, aiMessage, currentToolContext, parameters, toolRequests, toolResults);
+                    afterToolsExecuted(
+                            chatResponse,
+                            aiMessage,
+                            currentToolContext,
+                            parameters,
+                            toolRequests,
+                            combined.results(),
+                            combined.firstError());
                 } catch (Throwable t) {
                     fail(t);
                 }
@@ -415,7 +446,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
          * future of results, in request order. Any requested tool that was not started eagerly (e.g. a
          * provider emitted no matching CompleteToolCall) is started now, so the result set is always complete.
          */
-        private CompletableFuture<Map<ToolExecutionRequest, ToolExecutionResult>> combineEagerlyStartedTools(
+        private CompletableFuture<ToolService.CombinedToolResults> combineEagerlyStartedTools(
                 List<ToolExecutionRequest> toolRequests,
                 Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> startedTools,
                 ToolServiceContext currentToolContext) {
@@ -434,7 +465,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 }
                 orderedFutures.put(toolRequest, future);
             }
-            return ToolService.combineToolResults(orderedFutures);
+            return ToolService.combineToolResultsCollectingErrors(orderedFutures);
         }
 
         private void afterToolsExecuted(
@@ -443,7 +474,15 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 ToolServiceContext currentToolContext,
                 ChatRequestParameters parameters,
                 List<ToolExecutionRequest> toolRequests,
-                Map<ToolExecutionRequest, ToolExecutionResult> toolResults) {
+                Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+                Throwable firstError) {
+
+            // A tool cancelled by the subscription's cancellation is not a tool failure: abort without compensating
+            // (started tools run to completion with their results discarded — the best-effort cancellation contract).
+            if (firstError instanceof java.util.concurrent.CancellationException) {
+                fail(firstError);
+                return;
+            }
 
             ToolService.ToolResultsOutcome outcome = context.toolService.processToolResults(
                     context,
@@ -461,7 +500,11 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     outcome.anyToolErrored(),
                     getMemory(),
                     messages,
-                    invocationContext);
+                    invocationContext,
+                    CompensationReason.TOOL_EXECUTION_FAILED,
+                    context.eventListenerRegistrar,
+                    (toolExecution, reason) ->
+                            tube.send(new ToolCompensatedEvent(toolExecution, reason, invocationContext)));
 
             compensated.whenComplete((ignoredCompensation, compensationError) -> {
                 if (compensationError != null) {
@@ -469,6 +512,12 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     return;
                 }
                 if (tube.cancelled()) {
+                    return;
+                }
+                // The default asynchronous ToolExecutionErrorHandler rethrows a tool execution error. The tools that
+                // succeeded have now been compensated; fail the stream with the tool error.
+                if (firstError != null) {
+                    fail(firstError);
                     return;
                 }
                 if (shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors())) {

@@ -256,6 +256,13 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         // Cancelling the aggregate future does not propagate to the stages it was derived from, so wire each in-flight
         // batch (and, in turn, its HTTP call) back to the returned future - otherwise cancellation would not abort them.
         batchFutures.forEach(batchFuture -> propagateCancellation(result, batchFuture));
+        // allOf waits for all batches even after one fails, so eagerly abort the still-in-flight siblings on the first
+        // failure rather than letting their HTTP calls run to completion only to be discarded.
+        batchFutures.forEach(batchFuture -> batchFuture.whenComplete((response, error) -> {
+            if (error != null) {
+                batchFutures.forEach(sibling -> sibling.cancel(true));
+            }
+        }));
         return result;
     }
 

@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.query.router;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -49,6 +50,6 @@ public interface QueryRouter {
      * @since 1.18.0
      */
     default CompletableFuture<Collection<ContentRetriever>> routeAsync(Query query) {
-        throw new UnsupportedOperationException("routeAsync() is not implemented by " + getClass().getName());
+        throw new AsyncNotSupportedException("routeAsync() is not implemented by " + getClass().getName());
     }
 }

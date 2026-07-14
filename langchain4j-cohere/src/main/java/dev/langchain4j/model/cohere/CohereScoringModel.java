@@ -1,5 +1,7 @@
 package dev.langchain4j.model.cohere;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -8,12 +10,14 @@ import static java.util.Comparator.comparingInt;
 import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 
@@ -115,14 +119,29 @@ public class CohereScoringModel implements ScoringModel {
                 .documents(segments.stream().map(TextSegment::text).collect(toList()))
                 .build();
 
-        return client.rerankAsync(request).thenApply(response -> {
-            List<Double> scores = response.getResults().stream()
-                    .sorted(comparingInt(Result::getIndex))
-                    .map(Result::getRelevanceScore)
-                    .collect(toList());
-            return Response.from(
-                    scores, new TokenUsage(response.getMeta().getBilledUnits().getSearchUnits()));
-        });
+        CompletableFuture<RerankResponse> rerankFuture = client.rerankAsync(request);
+        CompletableFuture<Response<List<Double>>> result = rerankFuture
+                .thenApply(response -> {
+                    List<Double> scores = response.getResults().stream()
+                            .sorted(comparingInt(Result::getIndex))
+                            .map(Result::getRelevanceScore)
+                            .collect(toList());
+                    return Response.from(
+                            scores, new TokenUsage(response.getMeta().getBilledUnits().getSearchUnits()));
+                })
+                // Map provider/transport failures the same way the blocking path does (via ExceptionMapper), while
+                // leaving a cancellation untouched. This path still does not retry (see javadoc).
+                .exceptionallyCompose(throwable -> {
+                    Throwable cause = unwrapCompletionException(throwable);
+                    if (cause instanceof CancellationException) {
+                        return CompletableFuture.failedFuture(cause);
+                    }
+                    return CompletableFuture.failedFuture(ExceptionMapper.DEFAULT.mapException(cause));
+                });
+        // Link the caller-facing derived stage back to the raw HTTP call so cancelling the returned future aborts it
+        // (CohereClient.rerankAsync cancels the OkHttp Call when this raw future is cancelled).
+        propagateCancellation(result, rerankFuture);
+        return result;
     }
 
     public static class CohereScoringModelBuilder {

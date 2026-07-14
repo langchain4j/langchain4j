@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -162,7 +163,7 @@ public interface EmbeddingStore<Embedded> {
      * @since 1.18.0
      */
     default CompletableFuture<EmbeddingSearchResult<Embedded>> searchAsync(EmbeddingSearchRequest request) {
-        throw new UnsupportedOperationException("searchAsync() is not implemented by " + getClass().getName());
+        throw new AsyncNotSupportedException("searchAsync() is not implemented by " + getClass().getName());
     }
 
     /**

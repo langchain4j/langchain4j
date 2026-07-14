@@ -1,5 +1,6 @@
 package dev.langchain4j.guardrail;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.message.ChatMessage;
@@ -46,7 +47,7 @@ public interface ChatExecutor {
      * @since 1.17.0
      */
     default CompletableFuture<ChatResponse> executeAsync() {
-        throw new UnsupportedOperationException("executeAsync() is not implemented by " + getClass().getName());
+        throw new AsyncNotSupportedException("executeAsync() is not implemented by " + getClass().getName());
     }
 
     /**
@@ -62,7 +63,7 @@ public interface ChatExecutor {
      * @since 1.17.0
      */
     default CompletableFuture<ChatResponse> executeAsync(List<ChatMessage> chatMessages) {
-        throw new UnsupportedOperationException("executeAsync() is not implemented by " + getClass().getName());
+        throw new AsyncNotSupportedException("executeAsync() is not implemented by " + getClass().getName());
     }
 
     /**

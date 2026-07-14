@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.observability.api.event.CompensationReason;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialResponse;
@@ -206,7 +207,7 @@ public interface AiServiceStreamingEvent { // TODO nested events?
      * Signals that a tool has finished executing, carrying its request and result. Corresponds to
      * {@link TokenStream#onToolExecuted}.
      */
-    final class AfterToolExecutionEvent extends AbstractEvent {
+    final class AfterToolExecutionEvent extends AbstractEvent { // TODO what about failed tools?
 
         private final ToolExecution toolExecution;
 
@@ -217,6 +218,36 @@ public interface AiServiceStreamingEvent { // TODO nested events?
 
         public ToolExecution toolExecution() {
             return toolExecution;
+        }
+    }
+
+    /**
+     * Signals that a successfully-executed tool was compensated (rolled back) — for example because another tool
+     * in the same round failed. It carries the {@link ToolExecution} that was rolled back (its request and original
+     * successful result) and the {@link CompensationReason}.
+     * <p>
+     * Note: this event is <b>not</b> emitted on cancellation. Cancelling the subscription also cancels the stream,
+     * and the Reactive Streams contract forbids delivering further events after a cancel; a rollback triggered by
+     * cancellation is instead observable through the {@code ToolCompensatedEvent} observability listener.
+     */
+    final class ToolCompensatedEvent extends AbstractEvent {
+
+        private final ToolExecution toolExecution;
+        private final CompensationReason reason;
+
+        public ToolCompensatedEvent(
+                ToolExecution toolExecution, CompensationReason reason, InvocationContext invocationContext) {
+            super(invocationContext);
+            this.toolExecution = toolExecution;
+            this.reason = reason;
+        }
+
+        public ToolExecution toolExecution() {
+            return toolExecution;
+        }
+
+        public CompensationReason reason() {
+            return reason;
         }
     }
 

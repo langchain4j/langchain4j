@@ -55,14 +55,6 @@ public class AiServiceContext {
      */
     public Integer streamingBufferSize;
 
-    /**
-     * When {@code true}, a blocking {@link RetrievalAugmentor} (one that does not implement {@code augmentAsync}) TODO name/scope: only RAG or other components as well?
-     * is offloaded to a virtual-thread executor on the asynchronous/reactive paths. When {@code false} (the
-     * default), such a pipeline fails loudly instead of being silently offloaded. See
-     * {@code AiServices.offloadBlocking(boolean)}.
-     */
-    public boolean offloadBlocking = false;
-
     public Function<Object, Optional<String>> userMessageProvider = DEFAULT_USER_MESSAGE_PROVIDER;
     public Function<Object, Optional<String>> systemMessageProvider = DEFAULT_SYSTEM_MESSAGE_PROVIDER;
     public Function<InvocationContext, String> systemMessageProviderWithContext = null;

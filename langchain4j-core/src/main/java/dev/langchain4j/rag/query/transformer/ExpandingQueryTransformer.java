@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -84,9 +85,12 @@ public class ExpandingQueryTransformer implements QueryTransformer {
     @Override
     public CompletableFuture<Collection<Query>> transformAsync(Query query) {
         Prompt prompt = createPrompt(query);
-        return chatModel
-                .chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build())
-                .thenApply(response -> toQueries(query, response.aiMessage().text()));
+        var chatFuture = chatModel.chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build());
+        CompletableFuture<Collection<Query>> result =
+                chatFuture.thenApply(response -> toQueries(query, response.aiMessage().text()));
+        // Link the caller-facing derived stage back to the raw chat call so cancellation reaches the in-flight I/O.
+        propagateCancellation(result, chatFuture);
+        return result;
     }
 
     private Collection<Query> toQueries(Query query, String response) {

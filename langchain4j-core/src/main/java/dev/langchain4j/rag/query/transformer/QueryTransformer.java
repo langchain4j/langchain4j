@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.query.transformer;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.rag.query.Query;
 
 import java.util.Collection;
@@ -49,7 +50,7 @@ public interface QueryTransformer {
      * @since 1.18.0
      */
     default CompletableFuture<Collection<Query>> transformAsync(Query query) {
-        throw new UnsupportedOperationException("transformAsync() is not implemented by " + getClass().getName());
+        throw new AsyncNotSupportedException("transformAsync() is not implemented by " + getClass().getName());
     }
 }
 

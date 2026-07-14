@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.content.aggregator;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
@@ -316,7 +317,7 @@ class ReRankingContentAggregatorTest {
 
         // when-then: the non-async model surfaces loudly instead of silently blocking a carrier thread
         assertThatThrownBy(() -> aggregator.aggregateAsync(queryToContents))
-                .isInstanceOf(UnsupportedOperationException.class)
+                .isExactlyInstanceOf(AsyncNotSupportedException.class)
                 .hasMessageContaining("scoreAllAsync");
     }
 

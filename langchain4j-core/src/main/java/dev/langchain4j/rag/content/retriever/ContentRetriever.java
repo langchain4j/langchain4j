@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.content.retriever;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import dev.langchain4j.Experimental;
@@ -62,7 +63,7 @@ public interface ContentRetriever {
      * @since 1.18.0
      */
     default CompletableFuture<List<Content>> retrieveAsync(Query query) {
-        throw new UnsupportedOperationException("retrieveAsync() is not implemented by " + getClass().getName());
+        throw new AsyncNotSupportedException("retrieveAsync() is not implemented by " + getClass().getName());
     }
 
     /**

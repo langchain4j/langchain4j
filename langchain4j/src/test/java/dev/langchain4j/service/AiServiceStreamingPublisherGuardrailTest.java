@@ -47,6 +47,16 @@ class AiServiceStreamingPublisherGuardrailTest {
         Flow.Publisher<AiServiceStreamingEvent> chat(String message);
     }
 
+    interface PassingStringStreamer {
+        @OutputGuardrails(PassingOutputGuardrail.class)
+        Flow.Publisher<String> chat(String message);
+    }
+
+    interface RewritingStringStreamer {
+        @OutputGuardrails(RewritingOutputGuardrail.class)
+        Flow.Publisher<String> chat(String message);
+    }
+
     public static class PassingOutputGuardrail implements OutputGuardrail {
         @Override
         public OutputGuardrailResult validate(AiMessage responseFromLLM) {
@@ -131,6 +141,34 @@ class AiServiceStreamingPublisherGuardrailTest {
         // A failed validation must not leak a final response, and the buffered partials must not be flushed.
         assertThat(collected.items).noneMatch(e -> e instanceof FinalResponseEvent);
         assertThat(collected.items).noneMatch(e -> e instanceof PartialResponseEvent);
+    }
+
+    @Test
+    void string_publisher_emits_the_rewritten_final_text_from_an_output_guardrail() throws Exception {
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
+
+        RewritingStringStreamer assistant = AiServices.builder(RewritingStringStreamer.class)
+                .streamingChatModel(model)
+                .build();
+
+        List<String> chunks = collectStrings(assistant.chat("Hi"));
+
+        // With an output guardrail, the individual partials are no longer authoritative (the guardrail may rewrite
+        // the answer), so the String stream must reflect the rewritten final text, not the original "Hello" tokens.
+        assertThat(String.join("", chunks)).isEqualTo("rewritten by guardrail");
+    }
+
+    @Test
+    void string_publisher_emits_the_final_text_when_a_passing_output_guardrail_does_not_rewrite() throws Exception {
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
+
+        PassingStringStreamer assistant = AiServices.builder(PassingStringStreamer.class)
+                .streamingChatModel(model)
+                .build();
+
+        List<String> chunks = collectStrings(assistant.chat("Hi"));
+
+        assertThat(String.join("", chunks)).isEqualTo("Hello");
     }
 
     public static class RepromptOnBadOutputGuardrail implements OutputGuardrail {
@@ -251,6 +289,41 @@ class AiServiceStreamingPublisherGuardrailTest {
                 .map(e -> ((FinalResponseEvent) e).chatResponse().aiMessage().text())
                 .findFirst()
                 .orElse(null);
+    }
+
+    private static List<String> collectStrings(Flow.Publisher<String> publisher) throws InterruptedException {
+        List<String> items = new ArrayList<>();
+        AtomicReference<Throwable> error = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+
+        publisher.subscribe(new Flow.Subscriber<>() {
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                subscription.request(Long.MAX_VALUE);
+            }
+
+            @Override
+            public void onNext(String item) {
+                items.add(item);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                error.set(throwable);
+                latch.countDown();
+            }
+
+            @Override
+            public void onComplete() {
+                latch.countDown();
+            }
+        });
+
+        assertThat(latch.await(10, TimeUnit.SECONDS))
+                .as("stream terminated within 10s")
+                .isTrue();
+        assertThat(error.get()).isNull();
+        return items;
     }
 
     private static Collected collect(Flow.Publisher<AiServiceStreamingEvent> publisher) throws InterruptedException {

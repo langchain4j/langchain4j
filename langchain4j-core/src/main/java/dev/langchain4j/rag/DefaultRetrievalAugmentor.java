@@ -1,9 +1,11 @@
 package dev.langchain4j.rag;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.CancellationChain;
+import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.aggregator.ContentAggregator;
 import dev.langchain4j.rag.content.aggregator.DefaultContentAggregator;
@@ -30,6 +32,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -104,6 +107,10 @@ import static java.util.stream.Collectors.toMap;
  * Otherwise, an {@link Executor} is used to parallelize the processing.
  * By default, a modified (keepAliveTime is 1 second instead of 60 seconds) {@link Executors#newCachedThreadPool()}
  * is used, but you can provide a custom {@link Executor} instance.
+ * <br>
+ * On the asynchronous {@code augmentAsync} path, a blocking stage that is offloaded (see {@code offloadBlocking})
+ * runs on the shared virtual-thread executor by default (non-pinning for I/O); a custom {@link Executor}, if
+ * provided, is used there too.
  *
  * @see DefaultQueryTransformer
  * @see DefaultQueryRouter
@@ -116,9 +123,15 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     private final QueryRouter queryRouter;
     private final ContentAggregator contentAggregator;
     private final ContentInjector contentInjector;
+    // Executor for the (synchronous) parallel routing/retrieval fan-out. Released default: a cached platform-thread
+    // pool (a modified Executors.newCachedThreadPool()). Left unchanged for backward compatibility.
     private final Executor executor;
+    // Executor for the async offload of a blocking stage (augmentAsync + offloadBlocking). Defaults to the shared
+    // virtual-thread executor (non-pinning for I/O, consistent with EmbeddingStoreContentRetriever) but honors a
+    // configured executor(...) - e.g. a platform pool for a CPU-bound blocking component.
+    private final Executor asyncOffloadExecutor;
     // On augmentAsync, whether a stage that is not genuinely async (its *Async default throws) is offloaded to the
-    // executor, rather than failing loudly. See the builder's offloadBlocking(boolean).
+    // async offload executor, rather than failing loudly. See the builder's offloadBlocking(boolean).
     private final boolean offloadBlocking;
 
     public DefaultRetrievalAugmentor(QueryTransformer queryTransformer,
@@ -140,6 +153,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         this.contentAggregator = getOrDefault(contentAggregator, DefaultContentAggregator::new);
         this.contentInjector = getOrDefault(contentInjector, DefaultContentInjector::new);
         this.executor = getOrDefault(executor, DefaultRetrievalAugmentor::createDefaultExecutor);
+        this.asyncOffloadExecutor = getOrDefault(executor, DefaultExecutorProvider::getDefaultExecutorService);
         this.offloadBlocking = offloadBlocking;
     }
 
@@ -258,9 +272,9 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     /**
      * Runs a stage on its component's native async method. A stage that is not genuinely async (its {@code *Async}
      * method reports being unimplemented via an {@link UnsupportedOperationException}) is either offloaded - its
-     * blocking counterpart runs on this augmentor's {@code executor} - when {@code offloadBlocking}, or fails with an
-     * actionable message. Any other error propagates unchanged. No reflection: async availability is discovered by
-     * calling it.
+     * blocking counterpart runs on the async offload executor (the shared virtual-thread executor by default) - when
+     * {@code offloadBlocking}, or fails with an actionable message. Any other error propagates unchanged. No
+     * reflection: async availability is discovered by calling it.
      */
     private <T> CompletableFuture<T> nativeOrOffload(Supplier<CompletableFuture<T>> asyncCall, Supplier<T> blockingCall) {
         CompletableFuture<T> async;
@@ -269,19 +283,23 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         } catch (Throwable t) {
             async = CompletableFuture.failedFuture(t);
         }
-        return async.exceptionallyCompose(error -> {
+        CompletableFuture<T> result = async.exceptionallyCompose(error -> {
             Throwable cause = unwrapCompletionException(error);
-            if (cause instanceof UnsupportedOperationException) {
+            if (cause instanceof AsyncNotSupportedException) {
                 if (offloadBlocking) {
-                    return supplyAsync(blockingCall, executor);
+                    return supplyAsync(blockingCall, asyncOffloadExecutor);
                 }
                 return CompletableFuture.failedFuture(new UnsupportedFeatureException(cause.getMessage()
-                        + " The RAG pipeline is not fully asynchronous. Either use async-capable components, or set"
-                        + " DefaultRetrievalAugmentor.builder().offloadBlocking(true) to offload the blocking stage to"
+                        + " The RAG pipeline is not fully asynchronous. Either use async-capable components, or build"
+                        + " this DefaultRetrievalAugmentor with offloadBlocking(true) to offload the blocking stage to"
                         + " the configured executor."));
             }
             return CompletableFuture.failedFuture(error);
         });
+        // Cancellation does not flow to the stages a future is derived from, so link the caller-facing derived stage
+        // back to the raw in-flight call - otherwise cancelling the pipeline never aborts the leaf I/O.
+        propagateCancellation(result, async);
+        return result;
     }
 
     private Map<Query, Collection<List<Content>>> process(Collection<Query> queries) {

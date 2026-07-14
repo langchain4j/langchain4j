@@ -1,5 +1,6 @@
 package dev.langchain4j.rag;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.rag.content.Content;
 
@@ -43,6 +44,6 @@ public interface RetrievalAugmentor {
      * @since 1.18.0
      */
     default CompletableFuture<AugmentationResult> augmentAsync(AugmentationRequest augmentationRequest) {
-        throw new UnsupportedOperationException("augmentAsync() is not implemented by " + getClass().getName());
+        throw new AsyncNotSupportedException("augmentAsync() is not implemented by " + getClass().getName());
     }
 }

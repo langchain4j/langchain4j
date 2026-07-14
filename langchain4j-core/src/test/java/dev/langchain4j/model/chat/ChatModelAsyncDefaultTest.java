@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -31,28 +32,28 @@ class ChatModelAsyncDefaultTest {
     }
 
     @Test
-    void chatAsync_of_a_blocking_only_model_fails_with_UnsupportedOperationException() {
+    void chatAsync_of_a_blocking_only_model_fails_with_AsyncNotSupportedException() {
         ChatModel model = new BlockingOnlyChatModel();
 
         CompletableFuture<ChatResponse> future =
                 model.chatAsync(ChatRequest.builder().messages(UserMessage.from("hi")).build());
 
-        // The "not async" signal is an UnsupportedOperationException (not an opaque RuntimeException), so the
+        // The "not async" signal is an AsyncNotSupportedException (not an opaque RuntimeException), so the
         // asynchronous RAG orchestrators can recognize it and offload or fail loudly. It is delivered through the
         // future, not thrown synchronously.
         assertThatThrownBy(() -> future.get(5, SECONDS))
                 .isInstanceOf(ExecutionException.class)
                 .cause()
-                .isInstanceOf(UnsupportedOperationException.class)
+                .isExactlyInstanceOf(AsyncNotSupportedException.class)
                 .hasMessageContaining("doChatAsync");
     }
 
     @Test
-    void doChatAsync_default_throws_UnsupportedOperationException() {
+    void doChatAsync_default_throws_AsyncNotSupportedException() {
         ChatModel model = new BlockingOnlyChatModel();
 
         assertThatThrownBy(() -> model.doChatAsync(ChatRequest.builder().messages(UserMessage.from("hi")).build()))
-                .isInstanceOf(UnsupportedOperationException.class)
+                .isExactlyInstanceOf(AsyncNotSupportedException.class)
                 .hasMessageContaining("doChatAsync");
     }
 

@@ -1,6 +1,9 @@
 package dev.langchain4j.rag.query.router;
 
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
@@ -14,6 +17,9 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.FAIL;
 import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.ROUTE_TO_ALL;
@@ -88,6 +94,61 @@ class LanguageModelQueryRouterTest {
 
         assertThat(router.routeAsync(query).get(5, SECONDS))
                 .containsExactlyInAnyOrder(catArticlesRetriever, dogArticlesRetriever);
+    }
+
+    @Test
+    void routeAsync_should_propagate_cancellation_instead_of_applying_fallback() {
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+
+        // A chat model whose async call completes with a CancellationException (e.g. the caller cancelled the request)
+        ChatModel model = new ChatModel() {
+            @Override
+            public ChatResponse doChat(ChatRequest request) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CompletableFuture<ChatResponse> chatAsync(ChatRequest request) {
+                return CompletableFuture.failedFuture(new CancellationException("cancelled"));
+            }
+        };
+        // ROUTE_TO_ALL would route to every retriever on fallback - a cancellation must NOT be turned into that
+        QueryRouter router = new LanguageModelQueryRouter(
+                model, retrieverToDescription, LanguageModelQueryRouter.DEFAULT_PROMPT_TEMPLATE, ROUTE_TO_ALL);
+
+        assertThatThrownBy(() -> router.routeAsync(Query.from("q")).get(5, SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .cause()
+                .isInstanceOf(CancellationException.class);
+    }
+
+    @Test
+    void routeAsync_should_propagate_an_error_instead_of_applying_fallback() {
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+
+        // Like sync route()'s `catch (Exception)`, an Error is not a routing failure and must not become a fallback
+        ChatModel model = new ChatModel() {
+            @Override
+            public ChatResponse doChat(ChatRequest request) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CompletableFuture<ChatResponse> chatAsync(ChatRequest request) {
+                return CompletableFuture.failedFuture(new Error("boom"));
+            }
+        };
+        QueryRouter router = new LanguageModelQueryRouter(
+                model, retrieverToDescription, LanguageModelQueryRouter.DEFAULT_PROMPT_TEMPLATE, ROUTE_TO_ALL);
+
+        assertThatThrownBy(() -> router.routeAsync(Query.from("q")).get(5, SECONDS))
+                .isInstanceOf(ExecutionException.class)
+                .cause()
+                .isInstanceOf(Error.class);
     }
 
     @Test

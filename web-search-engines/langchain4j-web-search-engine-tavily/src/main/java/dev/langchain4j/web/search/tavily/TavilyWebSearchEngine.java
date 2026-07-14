@@ -1,5 +1,6 @@
 package dev.langchain4j.web.search.tavily;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -80,8 +81,12 @@ public class TavilyWebSearchEngine implements WebSearchEngine {
      */
     @Override
     public CompletableFuture<WebSearchResults> searchAsync(WebSearchRequest webSearchRequest) {
-        return tavilyClient.searchAsync(toTavilyRequest(webSearchRequest))
-                .thenApply(TavilyWebSearchEngine::toWebSearchResults);
+        CompletableFuture<TavilyResponse> searchFuture = tavilyClient.searchAsync(toTavilyRequest(webSearchRequest));
+        CompletableFuture<WebSearchResults> result = searchFuture.thenApply(TavilyWebSearchEngine::toWebSearchResults);
+        // Link the caller-facing derived stage back to the raw HTTP call so cancelling the returned future aborts it
+        // (TavilyClient.searchAsync cancels the OkHttp Call when this raw future is cancelled).
+        propagateCancellation(result, searchFuture);
+        return result;
     }
 
     private TavilySearchRequest toTavilyRequest(WebSearchRequest webSearchRequest) {

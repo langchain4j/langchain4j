@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Collections.singletonList;
@@ -92,9 +93,12 @@ public class CompressingQueryTransformer implements QueryTransformer {
             return CompletableFuture.completedFuture(singletonList(query));
         }
         Prompt prompt = createPrompt(query, format(chatMemory));
-        return chatModel
-                .chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build())
-                .thenApply(response -> singletonList(toQuery(query, response.aiMessage().text())));
+        var chatFuture = chatModel.chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build());
+        CompletableFuture<Collection<Query>> result =
+                chatFuture.thenApply(response -> singletonList(toQuery(query, response.aiMessage().text())));
+        // Link the caller-facing derived stage back to the raw chat call so cancellation reaches the in-flight I/O.
+        propagateCancellation(result, chatFuture);
+        return result;
     }
 
     private static Query toQuery(Query originalQuery, String compressedQueryText) {

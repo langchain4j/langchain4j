@@ -3,6 +3,7 @@ package dev.langchain4j.rag.query.router;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -12,8 +13,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -111,15 +115,23 @@ public class LanguageModelQueryRouter implements QueryRouter {
     @Override
     public CompletableFuture<Collection<ContentRetriever>> routeAsync(Query query) {
         Prompt prompt = createPrompt(query);
-        return chatModel
-                .chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build())
+        CompletableFuture<ChatResponse> chatFuture =
+                chatModel.chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build());
+        CompletableFuture<Collection<ContentRetriever>> result = chatFuture
                 .thenApply(response -> parse(response.aiMessage().text()))
-                // mirror route()'s try/catch: a failed LLM call or an unparseable response applies the fallback
-                // strategy (which may re-throw for FAIL, failing the returned future).
+                // Mirror route()'s `catch (Exception)`: a failed LLM call or an unparseable response applies the
+                // fallback strategy (which may re-throw for FAIL). But a cancellation is not a routing failure -
+                // propagate it - and an Error (like sync's `catch (Exception)`) is not caught either.
                 .exceptionally(error -> {
                     Throwable cause = unwrapCompletionException(error);
-                    return fallback(query, cause instanceof Exception e ? e : new RuntimeException(cause));
+                    if (cause instanceof Exception e && !(cause instanceof CancellationException)) {
+                        return fallback(query, e);
+                    }
+                    throw cause instanceof RuntimeException re ? re : new CompletionException(cause);
                 });
+        // Link the caller-facing derived stage back to the raw chat call so cancellation reaches the in-flight I/O.
+        propagateCancellation(result, chatFuture);
+        return result;
     }
 
     protected Collection<ContentRetriever> fallback(Query query, Exception e) {

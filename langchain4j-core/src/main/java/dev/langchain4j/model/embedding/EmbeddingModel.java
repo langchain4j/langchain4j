@@ -1,5 +1,6 @@
 package dev.langchain4j.model.embedding;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -297,7 +298,7 @@ public interface EmbeddingModel {
      */
     @Experimental
     default CompletableFuture<EmbeddingResponse> doEmbedAsync(EmbeddingRequest request) {
-        throw new UnsupportedOperationException("doEmbedAsync() is not implemented by " + getClass().getName());
+        throw new AsyncNotSupportedException("doEmbedAsync() is not implemented by " + getClass().getName());
     }
 
     /**

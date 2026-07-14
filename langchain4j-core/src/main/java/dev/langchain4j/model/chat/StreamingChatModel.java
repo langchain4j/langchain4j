@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
@@ -275,7 +276,7 @@ public interface StreamingChatModel {
      * @since 1.18.0
      */
     default Publisher<StreamingEvent> doChat(ChatRequest chatRequest) {
-        throw new UnsupportedOperationException("doChat() is not implemented by " + getClass().getName());
+        throw new AsyncNotSupportedException("doChat() is not implemented by " + getClass().getName());
     }
 
     // TODO more convenience methods accepting String, messages, etc

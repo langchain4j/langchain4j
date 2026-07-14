@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -88,7 +89,7 @@ class AsyncChatMemoryTest {
                 .build();
 
         assertThatThrownBy(() -> chatMemory.addAsync(List.of(UserMessage.from("Hello"), AiMessage.from("Hi"))))
-                .isInstanceOf(UnsupportedOperationException.class)
+                .isExactlyInstanceOf(AsyncNotSupportedException.class)
                 .hasMessageContaining("getMessagesAsync");
     }
 
@@ -132,7 +133,7 @@ class AsyncChatMemoryTest {
             throw new RuntimeException(e);
         } catch (ExecutionException e) {
             assertThat(e.getCause())
-                    .isInstanceOf(UnsupportedOperationException.class)
+                    .isExactlyInstanceOf(AsyncNotSupportedException.class)
                     .hasMessageContaining("getMessagesAsync");
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -149,7 +150,7 @@ class AsyncChatMemoryTest {
     void completable_future_ai_service_fails_when_store_unsupported_and_a_system_message_is_present() {
 
         // With a system message the assembly calls addAsync synchronously before any composition, so the
-        // UnsupportedOperationException is thrown synchronously - it must still surface as a failed future
+        // AsyncNotSupportedException is thrown synchronously - it must still surface as a failed future
         // (not thrown out of the AI Service method).
         SystemMessagedAssistant assistant = AiServices.builder(SystemMessagedAssistant.class)
                 .chatModel(new StubChatModel())
@@ -162,6 +163,6 @@ class AsyncChatMemoryTest {
         CompletableFuture<String> future = assistant.chat("Hi"); // must not throw here
         assertThatThrownBy(() -> future.get(5, SECONDS))
                 .isInstanceOf(ExecutionException.class)
-                .hasCauseInstanceOf(UnsupportedOperationException.class);
+                .hasCauseExactlyInstanceOf(AsyncNotSupportedException.class);
     }
 }

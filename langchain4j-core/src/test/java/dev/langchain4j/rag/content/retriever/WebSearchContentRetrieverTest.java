@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.content.retriever;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.rag.content.Content;
@@ -120,9 +121,13 @@ class WebSearchContentRetrieverTest {
                 .webSearchEngine(blockingOnly)
                 .build();
 
-        // when-then: the non-async engine surfaces loudly instead of silently blocking a carrier thread
-        assertThatThrownBy(() -> contentRetriever.retrieveAsync(Query.from("query")))
-                .isInstanceOf(UnsupportedOperationException.class)
+        // when-then: the non-async engine surfaces loudly, but through the returned future (R6b) - not a synchronous
+        // throw - so a caller composing on retrieveAsync(...) always has a single error channel
+        java.util.concurrent.CompletableFuture<List<Content>> future = contentRetriever.retrieveAsync(Query.from("query"));
+        assertThatThrownBy(() -> future.get(5, java.util.concurrent.TimeUnit.SECONDS))
+                .isInstanceOf(java.util.concurrent.ExecutionException.class)
+                .cause()
+                .isExactlyInstanceOf(AsyncNotSupportedException.class)
                 .hasMessageContaining("searchAsync");
     }
 }

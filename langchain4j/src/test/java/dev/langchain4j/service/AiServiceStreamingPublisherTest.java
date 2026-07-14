@@ -1,9 +1,12 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.observability.api.event.CompensationReason;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -111,6 +114,28 @@ class AiServiceStreamingPublisherTest {
         @Tool
         String currentTemperature(String city) {
             throw new RuntimeException("boom");
+        }
+    }
+
+    static class CompensatingTools {
+
+        final List<String> calls = new CopyOnWriteArrayList<>();
+
+        @Tool
+        String credit(String city) {
+            calls.add("credit");
+            return "credited";
+        }
+
+        @CompensateFor("credit")
+        void uncredit(String city) {
+            calls.add("uncredit");
+        }
+
+        @Tool
+        String withdraw(String city) {
+            calls.add("withdraw");
+            throw new RuntimeException("insufficient funds");
         }
     }
 
@@ -460,6 +485,15 @@ class AiServiceStreamingPublisherTest {
         // by default (new async modes), a tool execution failure fails the stream; it is NOT sent to the LLM
         assertThat(collected.error).isNotNull().hasMessageContaining("boom");
         assertThat(model.requests()).hasSize(1); // failed before a second model round
+
+        // even though the tool threw, its execution is still reported: every BeforeToolExecutionEvent is balanced
+        // by an AfterToolExecutionEvent, flagged as failed, so an observer never sees a dangling "before".
+        assertThat(collected.items).filteredOn(e -> e instanceof BeforeToolExecutionEvent).hasSize(1);
+        assertThat(afterToolExecutions(collected)).singleElement().satisfies(e -> {
+            assertThat(e.toolExecution().request().name()).isEqualTo("currentTemperature");
+            assertThat(e.toolExecution().hasFailed()).isTrue();
+        });
+        assertThat(collected.items).noneMatch(e -> e instanceof FinalResponseEvent);
     }
 
     @Test
@@ -552,7 +586,7 @@ class AiServiceStreamingPublisherTest {
 
         // the gap is surfaced as a failure of the invocation, not routed to the tool error handler / the LLM
         assertThat(collected.error)
-                .isInstanceOf(UnsupportedOperationException.class)
+                .isExactlyInstanceOf(AsyncNotSupportedException.class)
                 .hasMessageContaining("does not support asynchronous execution");
     }
 
@@ -630,6 +664,37 @@ class AiServiceStreamingPublisherTest {
 
         assertThat(collected.error).isInstanceOf(RuntimeException.class).hasMessageContaining("fatal: boom");
         assertThat(model.requests()).hasSize(1);
+    }
+
+    @Test
+    void compensated_tool_emits_a_tool_compensated_event_in_the_stream() throws Exception {
+        CompensatingTools tools = new CompensatingTools();
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+                AiMessage.builder()
+                        .toolExecutionRequests(List.of(toolRequest("1", "credit"), toolRequest("2", "withdraw")))
+                        .build(),
+                AiMessage.from("unreachable"));
+
+        EventStreamer assistant = AiServices.builder(EventStreamer.class)
+                .streamingChatModel(model)
+                .tools(tools)
+                .compensateOnToolErrors(true)
+                .build();
+
+        Collected<AiServiceStreamingEvent> collected = collect(assistant.chat("transfer"));
+
+        // the failing withdraw fails the stream (default rethrow handler), but the successful credit is rolled back
+        assertThat(collected.error).isNotNull().hasMessageContaining("insufficient funds");
+        assertThat(tools.calls).contains("credit", "withdraw", "uncredit");
+        // and the rollback is observable inline as a ToolCompensatedEvent
+        List<AiServiceStreamingEvent.ToolCompensatedEvent> compensated = collected.items.stream()
+                .filter(e -> e instanceof AiServiceStreamingEvent.ToolCompensatedEvent)
+                .map(e -> (AiServiceStreamingEvent.ToolCompensatedEvent) e)
+                .toList();
+        assertThat(compensated).singleElement().satisfies(e -> {
+            assertThat(e.toolExecution().request().name()).isEqualTo("credit");
+            assertThat(e.reason()).isEqualTo(CompensationReason.TOOL_EXECUTION_FAILED);
+        });
     }
 
     @Test
@@ -1005,7 +1070,7 @@ class AiServiceStreamingPublisherTest {
         });
 
         assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
-        assertThat(error.get()).isInstanceOf(UnsupportedOperationException.class);
+        assertThat(error.get()).isExactlyInstanceOf(AsyncNotSupportedException.class);
     }
 
     private static <T> Collected<T> collect(Flow.Publisher<T> publisher) throws InterruptedException {

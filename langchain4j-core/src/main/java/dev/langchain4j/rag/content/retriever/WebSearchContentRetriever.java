@@ -9,6 +9,7 @@ import dev.langchain4j.web.search.WebSearchResults;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.toList;
@@ -45,8 +46,19 @@ public class WebSearchContentRetriever implements ContentRetriever {
 
     @Override
     public CompletableFuture<List<Content>> retrieveAsync(Query query) {
-        return webSearchEngine.searchAsync(toWebSearchRequest(query))
-                .thenApply(WebSearchContentRetriever::toContents);
+        // Deliver a synchronously-throwing searchAsync (e.g. the throwing default of a blocking engine) through the
+        // returned future rather than throwing, honoring the async error contract (consistent with the augmentor's
+        // nativeOrOffload, which catches an UnsupportedOperationException from this future).
+        CompletableFuture<WebSearchResults> searchFuture;
+        try {
+            searchFuture = webSearchEngine.searchAsync(toWebSearchRequest(query));
+        } catch (Throwable t) {
+            return CompletableFuture.failedFuture(t);
+        }
+        CompletableFuture<List<Content>> result = searchFuture.thenApply(WebSearchContentRetriever::toContents);
+        // Link the caller-facing derived stage back to the raw search call so cancellation reaches the in-flight I/O.
+        propagateCancellation(result, searchFuture);
+        return result;
     }
 
     private WebSearchRequest toWebSearchRequest(Query query) {

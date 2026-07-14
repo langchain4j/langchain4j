@@ -1,6 +1,7 @@
 package dev.langchain4j.rag.content.aggregator;
 
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.ScoringModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
@@ -15,6 +16,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -140,8 +142,12 @@ public class ReRankingContentAggregator implements ContentAggregator {
                 .map(Content::textSegment)
                 .collect(Collectors.toList());
 
-        return scoringModel.scoreAllAsync(segments, query.text())
-                .thenApply(response -> toReRankedContents(segments, response.content()));
+        CompletableFuture<Response<List<Double>>> scoreFuture = scoringModel.scoreAllAsync(segments, query.text());
+        CompletableFuture<List<Content>> result =
+                scoreFuture.thenApply(response -> toReRankedContents(segments, response.content()));
+        // Link the caller-facing derived stage back to the raw scoring call so cancellation reaches the in-flight I/O.
+        propagateCancellation(result, scoreFuture);
+        return result;
     }
 
     protected Map<Query, List<Content>> fuse(Map<Query, Collection<List<Content>>> queryToContents) {

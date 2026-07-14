@@ -88,7 +88,7 @@ class EmbeddingStoreContentRetrieverAsyncTest {
         assertThatThrownBy(() -> retriever.retrieveAsync(Query.from("hello")).get(5, SECONDS))
                 .isInstanceOf(ExecutionException.class)
                 .cause()
-                .isInstanceOf(UnsupportedFeatureException.class)
+                .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("searchAsync")
                 .hasMessageNotContaining("doEmbedAsync");
     }
@@ -105,7 +105,7 @@ class EmbeddingStoreContentRetrieverAsyncTest {
         assertThatThrownBy(() -> retriever.retrieveAsync(Query.from("hello")).get(5, SECONDS))
                 .isInstanceOf(ExecutionException.class)
                 .cause()
-                .isInstanceOf(UnsupportedFeatureException.class)
+                .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("doEmbedAsync")
                 .hasMessageContaining("offloadBlocking(true)");
     }
@@ -133,6 +133,35 @@ class EmbeddingStoreContentRetrieverAsyncTest {
 
         assertThat(async).extracting(c -> c.textSegment().text()).containsExactly("relevant");
         assertThat(nativeSearchAsyncCalls).hasValue(1);
+    }
+
+    @Test
+    void retrieveAsync_cancellation_aborts_the_in_flight_search() {
+        // async model (embed completes instantly) + a store whose search never completes, exposed to assert cancel
+        java.util.concurrent.CompletableFuture<EmbeddingSearchResult<TextSegment>> pendingSearch =
+                new java.util.concurrent.CompletableFuture<>();
+        FakeEmbeddingStore store = new FakeEmbeddingStore() {
+            @Override
+            public java.util.concurrent.CompletableFuture<EmbeddingSearchResult<TextSegment>> searchAsync(
+                    EmbeddingSearchRequest request) {
+                return pendingSearch;
+            }
+        };
+
+        EmbeddingStoreContentRetriever retriever = EmbeddingStoreContentRetriever.builder()
+                .embeddingModel(new NativeAsyncEmbeddingModel())
+                .embeddingStore(store)
+                .build();
+
+        java.util.concurrent.CompletableFuture<List<Content>> future = retriever.retrieveAsync(Query.from("hello"));
+
+        assertThat(future).isNotDone();
+        assertThat(pendingSearch).isNotDone();
+
+        future.cancel(true);
+
+        // cancelling the retriever aborts the in-flight vector-store search (R2)
+        assertThat(pendingSearch).isCancelled();
     }
 
     static class FakeEmbeddingModel implements EmbeddingModel {

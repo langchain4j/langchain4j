@@ -1,5 +1,6 @@
 package dev.langchain4j.guardrail;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -60,7 +61,7 @@ public interface Guardrail<P extends GuardrailRequest, R extends GuardrailResult
      * @since 1.17.0
      */
     default CompletableFuture<R> validateAsync(P request) {
-        throw new UnsupportedOperationException(getClass().getName()
+        throw new AsyncNotSupportedException(getClass().getName()
                 + " does not implement validateAsync(). To use this guardrail with an asynchronous"
                 + " (CompletableFuture/CompletionStage) or reactive (Flow.Publisher) AI Service, override"
                 + " validateAsync(). If the guardrail does not perform blocking I/O, return"

@@ -259,7 +259,9 @@ class OpenAiResponsesClient {
                         subscription.cancel();
                         return;
                     }
-                    tube.whenCancelled(subscription::cancel);
+                    // whenTerminates (not whenCancelled): abort the upstream HTTP stream on ANY terminal signal -
+                    // downstream cancel, an error, or a buffer overflow - so overflow actually aborts the connection.
+                    tube.whenTerminates(subscription::cancel);
                     subscription.request(Long.MAX_VALUE);
                 }
 
@@ -289,7 +291,13 @@ class OpenAiResponsesClient {
                 }
 
                 @Override
-                public void onComplete() {}
+                public void onComplete() {
+                    // Guard against a hang: if the HTTP stream ends without an SSE terminal event having completed the
+                    // tube, complete it here. If a terminal event already did (the normal path), this is a no-op.
+                    if (!tube.cancelled()) {
+                        tube.complete();
+                    }
+                }
             });
         });
     }

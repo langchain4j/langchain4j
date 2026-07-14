@@ -12,7 +12,6 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-import dev.langchain4j.http.client.sse.ServerSentEventParsingHandle;
 import mutiny.zero.BackpressureStrategy;
 import mutiny.zero.TubeConfiguration;
 import mutiny.zero.ZeroPublisher;
@@ -33,7 +32,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -127,14 +125,7 @@ public class OkHttpClient implements HttpClient {
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
                 .withBufferSize(streamingBufferSize);
         return ZeroPublisher.create(config, tube -> {
-            AtomicReference<ServerSentEventParsingHandle> parsingHandle = new AtomicReference<>();
-            tube.whenCancelled(() -> {
-                ServerSentEventParsingHandle handle = parsingHandle.get();
-                if (handle != null) {
-                    handle.cancel();
-                }
-            });
-            execute(request, parser, new ServerSentEventListener() {
+            Call call = enqueueServerSentEvents(request, parser, new ServerSentEventListener() {
                 @Override
                 public void onOpen(SuccessfulHttpResponse response) {
                     if (!tube.cancelled()) {
@@ -151,7 +142,6 @@ public class OkHttpClient implements HttpClient {
 
                 @Override
                 public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
-                    parsingHandle.set(context.parsingHandle());
                     if (!tube.cancelled()) {
                         tube.send(event);
                     }
@@ -171,13 +161,23 @@ public class OkHttpClient implements HttpClient {
                     }
                 }
             });
+            // Cancel the underlying HTTP call on any terminal signal (downstream cancel, failure incl. buffer
+            // overflow, or completion). Using the Call - not the SSE parsing handle, which only exists after the
+            // first event - also aborts a cancel that arrives before the first event.
+            tube.whenTerminates(call::cancel);
         });
     }
 
     @Override
     public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
+        enqueueServerSentEvents(request, parser, listener);
+    }
+
+    private Call enqueueServerSentEvents(
+            HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
         Request okRequest = toOkHttpRequest(request);
-        client.newCall(okRequest).enqueue(new Callback() {
+        Call call = client.newCall(okRequest);
+        call.enqueue(new Callback() {
             @Override
             public void onResponse(Call call, Response response) {
                 try (response) {
@@ -210,6 +210,7 @@ public class OkHttpClient implements HttpClient {
                 }
             }
         });
+        return call;
     }
 
     private InputStream getInputStream(Response response) {

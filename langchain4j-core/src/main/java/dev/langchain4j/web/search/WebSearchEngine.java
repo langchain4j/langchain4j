@@ -1,5 +1,6 @@
 package dev.langchain4j.web.search;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -42,6 +43,6 @@ public interface WebSearchEngine {
      * @since 1.18.0
      */
     default CompletableFuture<WebSearchResults> searchAsync(WebSearchRequest webSearchRequest) {
-        throw new UnsupportedOperationException("searchAsync() is not implemented by " + getClass().getName());
+        throw new AsyncNotSupportedException("searchAsync() is not implemented by " + getClass().getName());
     }
 }

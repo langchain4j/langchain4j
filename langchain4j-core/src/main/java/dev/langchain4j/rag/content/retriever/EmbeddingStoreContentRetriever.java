@@ -1,5 +1,7 @@
 package dev.langchain4j.rag.content.retriever;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
@@ -10,6 +12,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.CancellationChain;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.request.EmbeddingInputType;
@@ -327,7 +330,11 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
      */
     @Override
     public CompletableFuture<List<Content>> retrieveAsync(Query query) {
-        return nativeOrOffload(() -> embedQueryAsync(query.text()), () -> embedQuery(query.text()))
+        // Root a cancellation chain at the caller-facing future so cancelling it aborts whichever hop is in flight -
+        // the query embedding or the vector-store search - not just the outer composed stage.
+        CompletableFuture<List<Content>> result = new CompletableFuture<>();
+        CancellationChain chain = new CancellationChain(result);
+        chain.track(nativeOrOffload(() -> embedQueryAsync(query.text()), () -> embedQuery(query.text())))
                 .thenCompose(embedding -> {
                     EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                             .query(query.text())
@@ -336,11 +343,19 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                             .minScore(minScoreProvider.apply(query))
                             .filter(filterProvider.apply(query))
                             .build();
-                    return nativeOrOffload(
+                    return chain.track(nativeOrOffload(
                             () -> embeddingStore.searchAsync(searchRequest),
-                            () -> embeddingStore.search(searchRequest));
+                            () -> embeddingStore.search(searchRequest)));
                 })
-                .thenApply(this::toContents);
+                .thenApply(this::toContents)
+                .whenComplete((contents, error) -> {
+                    if (error != null) {
+                        result.completeExceptionally(unwrapCompletionException(error));
+                    } else {
+                        result.complete(contents);
+                    }
+                });
+        return result;
     }
 
     /**
@@ -356,9 +371,9 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
         } catch (Throwable t) {
             async = CompletableFuture.failedFuture(t);
         }
-        return async.exceptionallyCompose(error -> {
+        CompletableFuture<T> result = async.exceptionallyCompose(error -> {
             Throwable cause = unwrapCompletionException(error);
-            if (cause instanceof UnsupportedOperationException) {
+            if (cause instanceof AsyncNotSupportedException) {
                 if (offloadBlocking) {
                     return CompletableFuture.supplyAsync(
                             blockingCall, DefaultExecutorProvider.getDefaultExecutorService());
@@ -369,6 +384,9 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
             }
             return CompletableFuture.failedFuture(error);
         });
+        // Link the caller-facing derived stage back to the raw call so cancellation reaches the in-flight I/O.
+        propagateCancellation(result, async);
+        return result;
     }
 
     private CompletableFuture<Embedding> embedQueryAsync(String text) {

@@ -1,5 +1,6 @@
 package dev.langchain4j.memory;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.data.message.ChatMessage;
 import java.util.Arrays;
 import java.util.List;
@@ -124,7 +125,7 @@ public interface ChatMemory {
      * @since 1.17.0
      */
     default CompletableFuture<Void> addAsync(List<ChatMessage> messages) {
-        throw new UnsupportedOperationException(
+        throw new AsyncNotSupportedException(
                 "addAsync() is not implemented by " + getClass().getName());
     }
 
@@ -143,7 +144,7 @@ public interface ChatMemory {
      * @since 1.17.0
      */
     default CompletableFuture<Void> setAsync(List<ChatMessage> messages) {
-        throw new UnsupportedOperationException(
+        throw new AsyncNotSupportedException(
                 "setAsync() is not implemented by " + getClass().getName());
     }
 
@@ -159,7 +160,7 @@ public interface ChatMemory {
      * @since 1.17.0
      */
     default CompletableFuture<List<ChatMessage>> messagesAsync() {
-        throw new UnsupportedOperationException(
+        throw new AsyncNotSupportedException(
                 "messagesAsync() is not implemented by " + getClass().getName());
     }
 

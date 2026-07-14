@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import static java.util.Collections.synchronizedList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -18,7 +19,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
+import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -157,8 +160,8 @@ class AiServicesAsyncTest {
         ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
 
         // A blocking content retriever (no retrieveAsync) wired via the contentRetriever(...) convenience: the async
-        // call must fail with a clear, actionable error rather than silently offloading - consistent with a custom
-        // augmentor and with AiServices.offloadBlocking defaulting to false.
+        // call fails loudly. To offload it, build the augmentor explicitly with offloadBlocking(true) (see the next
+        // test) - the AI Service has no offloadBlocking knob of its own.
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
                 .contentRetriever(query -> List.of(Content.from("relevant document")))
@@ -167,54 +170,76 @@ class AiServicesAsyncTest {
         assertThatThrownBy(() -> assistant.chat("What is the capital of Germany?").get(10, SECONDS))
                 .isInstanceOf(ExecutionException.class)
                 .cause()
-                .isInstanceOf(UnsupportedFeatureException.class)
+                .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("offloadBlocking(true)");
     }
 
     @Test
-    void should_offload_a_blocking_custom_retrieval_augmentor_for_completable_future_return_type() throws Exception {
+    void explicit_augmentor_with_offloadBlocking_offloads_a_blocking_content_retriever() throws Exception {
+        // The way to offload a blocking retriever: build the DefaultRetrievalAugmentor explicitly with
+        // offloadBlocking(true) and pass it via retrievalAugmentor(...). The blocking work lives with the augmentor.
+        ChatModelMock chatModel = spy(ChatModelMock.thatAlwaysResponds("Berlin"));
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
+                        .contentRetriever(query -> List.of(Content.from("relevant document")))
+                        .offloadBlocking(true)
+                        .build())
+                .build();
+
+        assertThat(assistant.chat("What is the capital of Germany?").get(10, SECONDS)).isEqualTo("Berlin");
+        // the blocking retriever ran (offloaded) and its content reached the model
+        var sentMessages = chatModel.requests().get(0).messages();
+        assertThat(((UserMessage) sentMessages.get(sentMessages.size() - 1)).singleText())
+                .contains("relevant document");
+    }
+
+    @Test
+    void custom_augmentor_implementing_augmentAsync_runs_on_the_async_path() throws Exception {
 
         ChatModelMock chatModel = spy(ChatModelMock.thatAlwaysResponds("Berlin"));
 
-        Thread callerThread = Thread.currentThread();
-        CompletableFuture<Thread> augmentThread = new CompletableFuture<>();
+        // A custom RetrievalAugmentor becomes async by implementing augmentAsync (here it offloads its own blocking
+        // augment() to a virtual thread) - the component owns the decision, not the AI Service.
+        RetrievalAugmentor augmentor = new RetrievalAugmentor() {
+            @Override
+            public AugmentationResult augment(AugmentationRequest request) {
+                UserMessage augmented =
+                        UserMessage.from(((UserMessage) request.chatMessage()).singleText() + "\ncontext");
+                return AugmentationResult.builder()
+                        .chatMessage(augmented)
+                        .contents(List.of())
+                        .build();
+            }
 
-        // A custom RetrievalAugmentor that implements only the blocking augment() (its augmentAsync default throws):
-        // the AI Service must offload it off the caller thread rather than the augmentor silently doing so.
-        RetrievalAugmentor blockingAugmentor = request -> {
-            augmentThread.complete(Thread.currentThread());
-            UserMessage augmented = UserMessage.from(((UserMessage) request.chatMessage()).singleText() + "\ncontext");
-            return AugmentationResult.builder()
-                    .chatMessage(augmented)
-                    .contents(List.of())
-                    .build();
+            @Override
+            public CompletableFuture<AugmentationResult> augmentAsync(AugmentationRequest request) {
+                return CompletableFuture.supplyAsync(() -> augment(request));
+            }
         };
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
-                .retrievalAugmentor(blockingAugmentor)
-                .offloadBlocking(true) // opt in to offloading the blocking augmentor
+                .retrievalAugmentor(augmentor)
                 .build();
 
-        CompletableFuture<String> future = assistant.chat("What is the capital of Germany?");
-
-        assertThat(future.get(10, SECONDS)).isEqualTo("Berlin");
+        assertThat(assistant.chat("What is the capital of Germany?").get(10, SECONDS))
+                .isEqualTo("Berlin");
         verify(chatModel).doChatAsync(any());
         verify(chatModel, never()).doChat(any());
-        // the blocking augmentor ran off the caller thread, and its augmentation reached the model
-        assertThat(augmentThread.get(5, SECONDS)).isNotSameAs(callerThread);
         var sentMessages = chatModel.requests().get(0).messages();
         assertThat(((UserMessage) sentMessages.get(sentMessages.size() - 1)).singleText())
                 .contains("context");
     }
 
     @Test
-    void should_fail_loudly_for_a_blocking_custom_augmentor_without_offload_opt_in() {
+    void should_fail_loudly_for_a_blocking_custom_augmentor_on_the_async_path() {
 
         ChatModelMock chatModel = ChatModelMock.thatAlwaysResponds("Berlin");
 
-        // A blocking custom augmentor (no augmentAsync) and offloadBlocking not enabled: the async call must fail
-        // with a clear, actionable error rather than silently offloading.
+        // A blocking custom augmentor (only implements augment(), so augmentAsync throws): the async call must fail
+        // with a clear, actionable error rather than silently offloading. To be async, implement augmentAsync.
         RetrievalAugmentor blockingAugmentor = request -> AugmentationResult.builder()
                 .chatMessage(request.chatMessage())
                 .contents(List.of())
@@ -228,9 +253,9 @@ class AiServicesAsyncTest {
         assertThatThrownBy(() -> assistant.chat("What is the capital of Germany?").get(10, SECONDS))
                 .isInstanceOf(ExecutionException.class)
                 .cause()
-                .isInstanceOf(UnsupportedFeatureException.class)
+                .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("augmentAsync")
-                .hasMessageContaining("offloadBlocking(true)");
+                .hasMessageContaining("async method");
     }
 
     @Test
@@ -1578,7 +1603,7 @@ class AiServicesAsyncTest {
         assertThatThrownBy(() -> future.get(10, SECONDS))
                 .isInstanceOf(ExecutionException.class)
                 .rootCause()
-                .isInstanceOf(UnsupportedOperationException.class)
+                .isExactlyInstanceOf(AsyncNotSupportedException.class)
                 .hasMessageContaining("does not support asynchronous execution")
                 .hasMessageContaining("executeAsync");
 

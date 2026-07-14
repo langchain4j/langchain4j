@@ -1,5 +1,6 @@
 package dev.langchain4j.service.guardrail;
 
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
@@ -53,7 +54,7 @@ public interface GuardrailService {
      */
     default <MethodKey> CompletableFuture<InputGuardrailResult> executeInputGuardrailsAsync(
             MethodKey method, InputGuardrailRequest request) {
-        throw new UnsupportedOperationException(
+        throw new AsyncNotSupportedException(
                 "executeInputGuardrailsAsync() is not implemented by " + getClass().getName());
     }
 
@@ -110,7 +111,7 @@ public interface GuardrailService {
      */
     default <MethodKey> CompletableFuture<OutputGuardrailResult> executeOutputGuardrailsAsync(
             MethodKey method, OutputGuardrailRequest request) {
-        throw new UnsupportedOperationException(
+        throw new AsyncNotSupportedException(
                 "executeOutputGuardrailsAsync() is not implemented by " + getClass().getName());
     }
 

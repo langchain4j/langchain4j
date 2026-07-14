@@ -117,7 +117,7 @@ history can't corrupt conversation state (see §3.7).
   (`setAsync` is the async bulk-replace used e.g. by async tool compensation, delegating to the store's
   `updateMessagesAsync`). The type is `CompletableFuture` — uniform with the rest of the async SPI surface — but the
   framework never *cancels* a memory operation (§3.7).
-- **Defaults throw** `UnsupportedOperationException` (no silent offload): a blocking store used with an async
+- **Defaults throw** `AsyncNotSupportedException` (no silent offload): a blocking store used with an async
   service fails loudly instead of secretly tying up a worker. Bundled stores implement them natively.
 - `addAsync` takes a **list** (single method to implement; batches a round's writes into one atomic store
   read-modify-write).
@@ -151,6 +151,28 @@ history can't corrupt conversation state (see §3.7).
 - The async compensation (`ToolService.compensateIfNeededAsync`) composes the actions (in reverse order) and the
   memory rewrite without blocking; the synchronous mode (`compensateIfNeeded`) shares the same action runner and
   simply awaits it. A failing action is logged and does not abort the rest, as before.
+- **Rollback happens even when the invocation fails loud.** The default async `ToolExecutionErrorHandler` *rethrows*
+  a tool execution error (§3.6b in `main` is "to-LLM"; the async default is "fail"). So the tool futures are
+  combined **without short-circuiting** (`combineToolResultsCollectingErrors`): the tools that succeeded are
+  compensated first, and only then is the invocation failed with the tool error. A tool failure therefore never
+  skips the rollback of its successful siblings.
+- **Every tool execution is reported, success or failure.** A tool that throws (e.g. under the rethrowing default)
+  still emits its "after" notification — `AfterToolExecutionEvent` on the reactive stream, `onToolExecuted` for the
+  handler API, `ToolExecutedEvent` for observability — with `ToolExecution.hasFailed() == true`, so every "before"
+  is balanced by an "after" and an observer never sees a dangling in-flight tool. This matches the "to-LLM" mode,
+  which already surfaces tool errors as failed results. (The raw `Throwable` is not carried on `ToolExecution`; the
+  failed execution reports `hasFailed()` plus the error text, exactly as "to-LLM" does.)
+- **Cancellation rolls back too (drain-then-rollback).** Because `@CompensateFor` is a saga mechanism, cancelling an
+  invocation that had already run compensable tools rolls them all back (across rounds), consistent with how a tool
+  error rolls back its successful siblings. The tools are polled (never interrupted), so the in-flight round still
+  drains; a single top-level handler (`withCancellationCompensation`) then runs the compensating actions before the
+  `CancellationException` is surfaced. A user who did not enable compensation is unaffected. *(Implemented on the
+  `CompletableFuture` path; the reactive-streaming path's cancellation still needs the same treatment — TODO.)*
+- **Rollback is observable via a `ToolCompensatedEvent`.** Each rolled-back tool emits a new `ToolCompensatedEvent`
+  (observability listener) and, on the reactive path, an `AiServiceStreamingEvent.ToolCompensatedEvent`, carrying the
+  compensated tool, its original result, and a `CompensationReason` (`TOOL_EXECUTION_FAILED` / `INVOCATION_CANCELLED`).
+  On cancellation only the observability event fires — the Reactive Streams contract forbids delivering stream events
+  after a `cancel`.
 
 ### 3.7 Design contracts
 
@@ -166,21 +188,29 @@ history can't corrupt conversation state (see §3.7).
 > - **Memory writes are deliberately *not* cancelled** even though the type would allow it — cancelling a memory write
 >   mid-flight could corrupt conversation state — so the framework simply lets them run to completion.
 
-> **(b) The new async SPIs throw `UnsupportedOperationException` by default — uniformly.**
-> Every async SPI default throws `UnsupportedOperationException`: the model layer (`ChatModel.doChatAsync`,
-> `StreamingChatModel.doChat(ChatRequest)`, `EmbeddingModel.doEmbedAsync`, `ScoringModel.scoreAllAsync`),
-> `EmbeddingStore.searchAsync`, `WebSearchEngine.searchAsync`, the RAG stage SPIs (`RetrievalAugmentor.augmentAsync`,
-> `QueryTransformer.transformAsync`, `QueryRouter.routeAsync`, `ContentRetriever.retrieveAsync`,
-> `ContentAggregator.aggregateAsync`), `ChatMemory`/`ChatMemoryStore`, `ToolExecutor.executeAsync`,
-> `Guardrail.validateAsync`, `ChatExecutor.executeAsync`, and `HttpClient.executeAsync`/`stream`. Rationale: an
-> implementation that is not genuinely asynchronous does not pretend to be — a forgotten (or impossible) async
-> implementation fails **loudly** on the async/reactive paths instead of quietly running a blocking call on a parked
-> thread. `UnsupportedOperationException` is the internal "not implemented async" signal the orchestrators catch to
-> decide offload-vs-fail-loud; the distinct `UnsupportedFeatureException` is reserved for the terminal, user-facing
-> error they *emit* when failing loudly (it carries the actionable `offloadBlocking(true)` hint). Most default messages
-> follow `"<method>() is not implemented by " + getClass().getName()`; a couple of user-implementable SPIs
-> (`ToolExecutor`, `Guardrail`) use a deliberately more actionable "…override X to…" message. Existing synchronous AI
-> Services are unaffected (they never call the async methods).
+> **(b) The new async SPIs throw `AsyncNotSupportedException` by default — uniformly.**
+> Every async SPI default throws `AsyncNotSupportedException` (a subtype of `UnsupportedOperationException`): the model
+> layer (`ChatModel.doChatAsync`, `StreamingChatModel.doChat(ChatRequest)`, `EmbeddingModel.doEmbedAsync`,
+> `ScoringModel.scoreAllAsync`), `EmbeddingStore.searchAsync`, `WebSearchEngine.searchAsync`, the RAG stage SPIs
+> (`RetrievalAugmentor.augmentAsync`, `QueryTransformer.transformAsync`, `QueryRouter.routeAsync`,
+> `ContentRetriever.retrieveAsync`, `ContentAggregator.aggregateAsync`), `ChatMemory`/`ChatMemoryStore`,
+> `ToolExecutor.executeAsync`, `Guardrail.validateAsync`, `ChatExecutor.executeAsync`, and
+> `HttpClient.executeAsync`/`stream`. Rationale: an implementation that is not genuinely asynchronous does not pretend
+> to be — a forgotten (or impossible) async implementation fails **loudly** on the async/reactive paths instead of
+> quietly running a blocking call on a parked thread. Existing synchronous AI Services are unaffected (they never call
+> the async methods).
+> <p>
+> **Why a dedicated marker (`AsyncNotSupportedException`) rather than a bare `UnsupportedOperationException`?** The
+> orchestrators (the RAG `nativeOrOffload`, `DefaultAiServices.augmentAsyncIfNeeded`, the tool loop) match this
+> *specific* type to decide offload-vs-fail-loud. Matching the bare `UnsupportedOperationException` would misread an
+> *incidental* `UnsupportedOperationException` thrown from deep inside a **genuinely async** component (e.g.
+> `List.of(...).add(x)`, or an unsupported store filter) as a "not async" signal — silently offloading (masking the
+> bug, doubling the cost) or reporting a misleading "not fully asynchronous" error. The marker extends
+> `UnsupportedOperationException` so existing `catch`/`instanceof UnsupportedOperationException` code keeps working.
+> The distinct `UnsupportedFeatureException` is reserved for the terminal, user-facing error the orchestrators *emit*
+> when failing loudly (it carries the actionable `offloadBlocking(true)` hint). Most default messages follow
+> `"<method>() is not implemented by " + getClass().getName()`; a couple of user-implementable SPIs (`ToolExecutor`,
+> `Guardrail`) use a deliberately more actionable "…override X to…" message.
 
 > **(c) Async methods report errors through the future, not by throwing.**
 > A method returning a `CompletableFuture` or `Flow.Publisher` reports *operation* errors by completing the future
@@ -235,15 +265,18 @@ component, instead of quietly offloading it:
   unless the retriever is built with `offloadBlocking(true)`.
 - `DefaultRetrievalAugmentor.augmentAsync` fails when a pipeline stage (transform, route, retrieve or aggregate) is
   blocking — unless built with `DefaultRetrievalAugmentor.builder().offloadBlocking(true)`.
-- An asynchronous AI Service fails when its configured `RetrievalAugmentor` does not implement `augmentAsync` —
-  unless built with `AiServices.builder().offloadBlocking(true)`.
+- An asynchronous AI Service fails when its configured `RetrievalAugmentor` does not implement `augmentAsync`. There
+  is **no** offload knob at the AI Service level: to be async, a custom augmentor implements `augmentAsync` (it may
+  offload its own blocking `augment()` there), and a blocking content retriever is offloaded by building the
+  `DefaultRetrievalAugmentor` explicitly with `offloadBlocking(true)` and passing it via `retrievalAugmentor(...)`.
 
-With `offloadBlocking(true)`, only the blocking component is offloaded to a shared virtual-thread executor (parking
-a virtual thread on I/O is non-pinning) — a deliberate, per-component opt-in to "blocking on a (virtual) thread."
-This is per-component, not all-or-nothing: `EmbeddingStoreContentRetriever` embeds and searches independently, so an
-async embedding model paired with a blocking vector store (the common production case) keeps the model on its native
-async path and offloads only the store's search. The opt-in lives on the component that owns the blocking
-dependency: the retriever owns its model and store, the AI Service owns the augmentor.
+**`offloadBlocking` lives with the component that owns the blocking work** — the retriever (`EmbeddingStoreContentRetriever`,
+which owns its model/store) or the augmentor (`DefaultRetrievalAugmentor`, which owns the pipeline stages). There is
+deliberately no top-level "offload everything" flag on `AiServices`. With `offloadBlocking(true)`, only the blocking
+component is offloaded to a shared virtual-thread executor (parking a virtual thread on I/O is non-pinning). This is
+per-component, not all-or-nothing: `EmbeddingStoreContentRetriever` embeds and searches independently, so an async
+embedding model paired with a blocking vector store (the common production case) keeps the model on its native async
+path and offloads only the store's search.
 
 **Why fail rather than offload by default?** Two reasons. First, *clarity*: the caller can tell a genuinely
 non-blocking pipeline from an offloaded-blocking one, and an error that says exactly which component to fix is more
@@ -254,7 +287,7 @@ of the ecosystem. Requiring the component to be async, or the user to opt in, ma
 **Scope and exceptions.** Blocking `@Tool` methods are *not* subject to this policy: they are arbitrary user code
 that cannot be required to be asynchronous, so they are always offloaded to the virtual-thread executor (a tool that
 wants genuine async returns a future). The bare-retriever convenience `AiServices.contentRetriever(...)` builds a
-`DefaultRetrievalAugmentor` with the default `offloadBlocking(false)`, so it is fail-loud by default too — a blocking
+`DefaultRetrievalAugmentor` with the default `offloadBlocking(false)`, so it is fail-loud by default — a blocking
 plain retriever (e.g. a web-search retriever without `searchAsync`) surfaces a clear, actionable error on the async
 modes rather than being silently offloaded. To offload it, build a `DefaultRetrievalAugmentor` explicitly with
 `offloadBlocking(true)` and pass it via `retrievalAugmentor(...)`, or use a retriever that provides genuine async I/O.
@@ -272,11 +305,11 @@ Which stage implementations are async today:
   async method — `CohereScoringModel` and `TavilyWebSearchEngine` do (via the OkHttp async dispatcher, no thread
   parked, cancellation propagated to the in-flight call). A `ScoringModel`/`WebSearchEngine` that has not overridden
   its `*Async` method (e.g. `GoogleCustomWebSearchEngine`, `SearchApiWebSearchEngine`) is still usable from the
-  non-blocking path: the consumer surfaces `UnsupportedOperationException`, which is offloaded when opted in, or
+  non-blocking path: the consumer surfaces `AsyncNotSupportedException`, which is offloaded when opted in, or
   fails loudly otherwise.
 
 The `*Async` methods on `ScoringModel` and `WebSearchEngine` are `default` methods that throw
-`UnsupportedOperationException`, so adding them is not a breaking change and providers opt in incrementally.
+`AsyncNotSupportedException`, so adding them is not a breaking change and providers opt in incrementally.
 
 ## 4. Supported types
 

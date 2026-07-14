@@ -710,30 +710,6 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Controls what the asynchronous ({@link java.util.concurrent.CompletableFuture}/{@code CompletionStage}) and
-     * reactive ({@link java.util.concurrent.Flow.Publisher}) return types do when the configured
-     * {@link dev.langchain4j.rag.RetrievalAugmentor} is not genuinely asynchronous (does not implement
-     * {@code augmentAsync}).
-     * <p>
-     * By default ({@code false}), such a pipeline fails loudly, so a blocking component is never silently made
-     * "async" by parking a thread; the error names the component and points here. Set to {@code true} to instead
-     * offload the blocking {@code augment(...)} to a shared virtual-thread executor — a deliberate opt-in to
-     * blocking-on-a-(virtual)-thread.
-     * <p>
-     * Note: a blocking {@link dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever} is opted in
-     * separately, via its own {@code offloadBlocking(true)}, since it owns its (blocking) model/store. Has no
-     * effect on the synchronous or {@code TokenStream} return types.
-     *
-     * @param offloadBlocking whether to offload a blocking augmentor instead of failing
-     * @return the builder instance
-     * @since 1.18.0
-     */
-    public AiServices<T> offloadBlocking(boolean offloadBlocking) {
-        context.offloadBlocking = offloadBlocking;
-        return this;
-    }
-
-    /**
      * @deprecated Use {@link #maxToolCallingRoundTrips(int)} instead.
      */
     @Deprecated(since = "1.15.0")
@@ -893,6 +869,11 @@ public abstract class AiServices<T> {
      * This method provides a straightforward approach for those who do not require
      * a customized {@link RetrievalAugmentor}.
      * It configures a {@link DefaultRetrievalAugmentor} with the provided {@link ContentRetriever}.
+     * <br>
+     * On the asynchronous/reactive return types, if the retriever is not genuinely non-blocking the pipeline fails
+     * loudly. To offload a blocking retriever instead, build the augmentor explicitly and pass it via
+     * {@link #retrievalAugmentor(RetrievalAugmentor)}:
+     * {@code DefaultRetrievalAugmentor.builder().contentRetriever(r).offloadBlocking(true).build()}.
      *
      * @param contentRetriever The content retriever to be used by the AI Service.
      * @return builder
