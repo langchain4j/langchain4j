@@ -56,6 +56,7 @@ public class MonitoredExecution {
 
     void onAgentInvocationError(AgentInvocationError agentInvocationError) {
         this.agentInvocationError = agentInvocationError;
+        ongoingInvocations.remove(agentInvocationError.agentId());
     }
 
     void afterToolExecution(AfterAgentToolExecution afterToolExecution) {
