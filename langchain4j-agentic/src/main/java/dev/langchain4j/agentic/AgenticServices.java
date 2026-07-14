@@ -742,7 +742,8 @@ public class AgenticServices {
 
     private static String resolveA2AServerUrl(Class<?> agentServiceClass, A2AClientAgent a2aClient) {
         String annotationUrl = a2aClient.a2aServerUrl();
-        Optional<Method> supplierMethod = getAnnotatedMethodOnClass(agentServiceClass, A2AServerUrlSupplier.class);
+        Optional<Method> supplierMethod = selectMethod(agentServiceClass,
+                method -> method.isAnnotationPresent(A2AServerUrlSupplier.class) && method.getParameterCount() == 0);
 
         if (!isNullOrBlank(annotationUrl) && supplierMethod.isPresent()) {
             throw new IllegalArgumentException(

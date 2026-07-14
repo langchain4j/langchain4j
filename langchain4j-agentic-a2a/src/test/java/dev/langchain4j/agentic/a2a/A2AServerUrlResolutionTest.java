@@ -43,4 +43,42 @@ class A2AServerUrlResolutionTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("not both");
     }
+
+    public interface A2AWithSupplierTakingParameters {
+
+        @A2AClientAgent(outputKey = "story")
+        String generateStory(@V("topic") String topic);
+
+        @A2AServerUrlSupplier
+        static String serverUrl(String env) {
+            return "http://localhost:8080";
+        }
+    }
+
+    @Test
+    void should_fail_when_supplier_takes_parameters() {
+        assertThatThrownBy(() ->
+                AgenticServices.createAgenticSystem(A2AWithSupplierTakingParameters.class, (ChatModel) null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("@A2AServerUrlSupplier");
+    }
+
+    public interface A2AWithNonStaticSupplier {
+
+        @A2AClientAgent(outputKey = "story")
+        String generateStory(@V("topic") String topic);
+
+        @A2AServerUrlSupplier
+        default String serverUrl() {
+            return "http://localhost:8080";
+        }
+    }
+
+    @Test
+    void should_fail_when_supplier_is_not_static() {
+        assertThatThrownBy(() ->
+                AgenticServices.createAgenticSystem(A2AWithNonStaticSupplier.class, (ChatModel) null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("@A2AServerUrlSupplier");
+    }
 }
