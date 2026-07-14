@@ -50,7 +50,6 @@ public class GoogleGenAiChatModel implements ChatModel {
     private final List<String> allowedFunctionNames;
     private final String vertexSearchDatastore;
     private final Map<String, String> labels;
-    private final String cachedContent;
 
     private GoogleGenAiChatModel(Builder builder) {
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
@@ -67,7 +66,6 @@ public class GoogleGenAiChatModel implements ChatModel {
         this.safetySettings = copy(builder.safetySettings);
         this.vertexSearchDatastore = builder.vertexSearchDatastore;
         this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
-        this.cachedContent = builder.cachedContent;
 
         this.client = builder.client != null
                 ? builder.client
@@ -83,7 +81,12 @@ public class GoogleGenAiChatModel implements ChatModel {
         ChatRequestParameters commonParameters =
                 getOrDefault(builder.defaultRequestParameters, DefaultChatRequestParameters.EMPTY);
 
-        this.defaultRequestParameters = DefaultChatRequestParameters.builder()
+        GoogleGenAiChatRequestParameters genAiParameters =
+                builder.defaultRequestParameters instanceof GoogleGenAiChatRequestParameters googleGenAiParameters
+                        ? googleGenAiParameters
+                        : GoogleGenAiChatRequestParameters.EMPTY;
+
+        this.defaultRequestParameters = GoogleGenAiChatRequestParameters.builder()
                 .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
@@ -95,6 +98,7 @@ public class GoogleGenAiChatModel implements ChatModel {
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                .cachedContent(getOrDefault(builder.cachedContent, genAiParameters.cachedContent()))
                 .build();
     }
 
@@ -103,8 +107,10 @@ public class GoogleGenAiChatModel implements ChatModel {
         Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(chatRequest.messages());
         List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages());
 
+        GoogleGenAiChatRequestParameters parameters = (GoogleGenAiChatRequestParameters) chatRequest.parameters();
+
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                chatRequest.parameters(),
+                parameters,
                 systemInstruction,
                 safetySettings,
                 thinkingBudget,
@@ -116,7 +122,7 @@ public class GoogleGenAiChatModel implements ChatModel {
                 allowedFunctionNames,
                 vertexSearchDatastore,
                 labels,
-                cachedContent);
+                parameters.cachedContent());
 
         if (logRequests) {
             log.info(

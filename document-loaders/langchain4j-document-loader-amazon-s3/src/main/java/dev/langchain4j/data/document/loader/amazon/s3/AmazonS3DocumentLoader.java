@@ -24,6 +24,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.model.*;
+import software.amazon.awssdk.services.s3.paginators.ListObjectsV2Iterable;
 
 public class AmazonS3DocumentLoader {
 
@@ -89,9 +90,9 @@ public class AmazonS3DocumentLoader {
                 .prefix(prefix)
                 .build();
 
-        ListObjectsV2Response listObjectsV2Response = s3Client.listObjectsV2(listObjectsV2Request);
+        ListObjectsV2Iterable listObjectsV2Responses = s3Client.listObjectsV2Paginator(listObjectsV2Request);
 
-        List<S3Object> filteredS3Objects = listObjectsV2Response.contents().stream()
+        List<S3Object> filteredS3Objects = listObjectsV2Responses.contents().stream()
                 .filter(s3Object -> !s3Object.key().endsWith("/") && s3Object.size() > 0)
                 .collect(toList());
 

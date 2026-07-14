@@ -17,6 +17,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import dev.langchain4j.agentic.agent.AgentBuilder;
 import dev.langchain4j.agentic.agent.UntypedAgentBuilder;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
+import dev.langchain4j.agentic.declarative.A2AClientCustomizer;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
 import dev.langchain4j.agentic.declarative.AgentListenerSupplier;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
@@ -27,6 +28,7 @@ import dev.langchain4j.agentic.declarative.McpClientSupplier;
 import dev.langchain4j.agentic.declarative.ParallelAgent;
 import dev.langchain4j.agentic.declarative.ParallelMapperAgent;
 import dev.langchain4j.agentic.declarative.PlannerAgent;
+import dev.langchain4j.agentic.declarative.RegistryAgent;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
 import dev.langchain4j.agentic.internal.A2AClientBuilder;
@@ -35,6 +37,8 @@ import dev.langchain4j.agentic.internal.AgentExecutor;
 import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.planner.AgentArgument;
+import dev.langchain4j.agentic.planner.AgentInstance;
+import dev.langchain4j.agentic.planner.AgentsRegistry;
 import dev.langchain4j.agentic.internal.InternalAgent;
 import dev.langchain4j.agentic.internal.McpService;
 import dev.langchain4j.agentic.observability.AgentListener;
@@ -675,6 +679,11 @@ public class AgenticServices {
             return createA2AClientAgent(agentServiceClass, a2aClientMethod.get());
         }
 
+        Optional<Method> registryAgentMethod = getAnnotatedMethodOnClass(agentServiceClass, RegistryAgent.class);
+        if (registryAgentMethod.isPresent()) {
+            return createRegistryAgent(registryAgentMethod.get());
+        }
+
         Optional<Method> mcpClientMethod = getAnnotatedMethodOnClass(agentServiceClass, McpClientAgent.class);
         if (mcpClientMethod.isPresent()) {
             return createMcpClientAgent(agentServiceClass, mcpClientMethod.get());
@@ -683,9 +692,6 @@ public class AgenticServices {
         if (!agentServiceClass.isInterface()) {
             Method agenticMethod = nonAiAgentMethod(agentServiceClass);
             if (agenticMethod != null) {
-                if (agenticMethod.getParameterCount() == 0) {
-                    return agentToExecutor(new AgentAction(() -> invokeStatic(agenticMethod)));
-                }
                 return nonAiAgentToExecutor(
                         new AgenticScopeFunction<>(scope -> invokeStatic(
                                 agenticMethod,
@@ -701,6 +707,12 @@ public class AgenticServices {
         return agentToExecutor(createA2AClient(agentServiceClass, a2aMethod));
     }
 
+    private static AgentExecutor createRegistryAgent(Method registryMethod) {
+        String registryName = registryMethod.getAnnotation(RegistryAgent.class).value();
+        AgentInstance agent = AgentsRegistry.get().getAgent(registryName);
+        return agentToExecutor(agent);
+    }
+
     private static <T> T createA2AClient(Class<T> agentServiceClass, Method a2aMethod) {
         var a2aClient = a2aMethod.getAnnotation(A2AClientAgent.class);
         var a2aClientBuilder = a2aBuilder(a2aClient.a2aServerUrl(), agentServiceClass)
@@ -709,6 +721,13 @@ public class AgenticServices {
                         .toArray(String[]::new))
                 .outputKey(AgentUtil.outputKey(a2aClient.outputKey(), a2aClient.typedOutputKey()))
                 .async(a2aClient.async());
+
+        selectMethod(agentServiceClass,
+                     method ->
+                                method.isAnnotationPresent(A2AClientCustomizer.class)
+                                        && method.getParameterCount() == 1)
+                .ifPresent(method ->
+                        a2aClientBuilder.clientCustomizer( cb -> invokeStatic(method, cb)));
 
         getAnnotatedMethodOnClass(agentServiceClass, AgentListenerSupplier.class)
                 .ifPresent(method -> {

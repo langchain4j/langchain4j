@@ -273,4 +273,50 @@ class EmbeddingModelListenerTest {
         // then
         verify(listener2).onError(any());
     }
+
+    @Test
+    void wrapper_delegates_capability_and_description_methods() {
+        EmbeddingModel delegate = new TestEmbeddingModel() {
+            @Override
+            public java.util.Set<dev.langchain4j.data.message.ContentType> supportedContentTypes() {
+                return java.util.Set.of(
+                        dev.langchain4j.data.message.ContentType.TEXT,
+                        dev.langchain4j.data.message.ContentType.IMAGE);
+            }
+
+            @Override
+            public java.util.Set<dev.langchain4j.model.embedding.request.EmbeddingParameter<?>> supportedParameters() {
+                return java.util.Set.of(
+                        dev.langchain4j.model.embedding.request.EmbeddingRequestParameters.DIMENSIONS);
+            }
+
+            @Override
+            public dev.langchain4j.model.ModelProvider provider() {
+                return dev.langchain4j.model.ModelProvider.COHERE;
+            }
+
+            @Override
+            public String modelName() {
+                return "multimodal-model";
+            }
+
+            @Override
+            public int dimension() {
+                return 42;
+            }
+        };
+
+        EmbeddingModel wrapper = delegate.addListener(new SuccessfulListener());
+
+        // the wrapper must report the delegate's capabilities, not the interface defaults
+        assertThat(wrapper.supportedContentTypes())
+                .containsExactlyInAnyOrder(
+                        dev.langchain4j.data.message.ContentType.TEXT,
+                        dev.langchain4j.data.message.ContentType.IMAGE);
+        assertThat(wrapper.supportedParameters())
+                .containsExactly(dev.langchain4j.model.embedding.request.EmbeddingRequestParameters.DIMENSIONS);
+        assertThat(wrapper.provider()).isEqualTo(dev.langchain4j.model.ModelProvider.COHERE);
+        assertThat(wrapper.modelName()).isEqualTo("multimodal-model");
+        assertThat(wrapper.dimension()).isEqualTo(42);
+    }
 }

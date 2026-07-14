@@ -1208,9 +1208,14 @@ public abstract class AbstractAiServiceWithToolsIT {
     static final String CAT_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
 
+    private static volatile Image catImage;
+
     protected Image catImage() {
-        String base64Data = java.util.Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
-        return Image.builder().base64Data(base64Data).mimeType("image/png").build();
+        if (catImage == null) {
+            String base64Data = java.util.Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
+            catImage = Image.builder().base64Data(base64Data).mimeType("image/png").build();
+        }
+        return catImage;
     }
 
     static class ToolReturningImage {

@@ -1,5 +1,6 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
@@ -15,6 +16,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.DefaultExecutorProvider;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -59,7 +61,6 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
     private final List<String> allowedFunctionNames;
     private final String vertexSearchDatastore;
     private final Map<String, String> labels;
-    private final String cachedContent;
 
     private final ExecutorService executor;
 
@@ -77,7 +78,6 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         this.safetySettings = copy(builder.safetySettings);
         this.vertexSearchDatastore = builder.vertexSearchDatastore;
         this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
-        this.cachedContent = builder.cachedContent;
 
         this.client = builder.client != null
                 ? builder.client
@@ -93,7 +93,12 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         ChatRequestParameters commonParameters =
                 getOrDefault(builder.defaultRequestParameters, DefaultChatRequestParameters.EMPTY);
 
-        this.defaultRequestParameters = DefaultChatRequestParameters.builder()
+        GoogleGenAiChatRequestParameters genAiParameters =
+                builder.defaultRequestParameters instanceof GoogleGenAiChatRequestParameters googleGenAiParameters
+                        ? googleGenAiParameters
+                        : GoogleGenAiChatRequestParameters.EMPTY;
+
+        this.defaultRequestParameters = GoogleGenAiChatRequestParameters.builder()
                 .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
@@ -105,6 +110,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                .cachedContent(getOrDefault(builder.cachedContent, genAiParameters.cachedContent()))
                 .build();
 
         this.executor = getOrDefault(builder.executor, DefaultExecutorProvider::getDefaultExecutorService);
@@ -117,8 +123,10 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(chatRequest.messages());
         List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages());
 
+        GoogleGenAiChatRequestParameters parameters = (GoogleGenAiChatRequestParameters) chatRequest.parameters();
+
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                chatRequest.parameters(),
+                parameters,
                 systemInstruction,
                 safetySettings,
                 thinkingBudget,
@@ -130,7 +138,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 allowedFunctionNames,
                 vertexSearchDatastore,
                 labels,
-                cachedContent);
+                parameters.cachedContent());
 
         if (logRequests) {
             log.info(
@@ -139,6 +147,9 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     chatRequest.messages(),
                     config);
         }
+
+        MappingTrackingStreamingChatResponseHandler trackingHandler =
+                new MappingTrackingStreamingChatResponseHandler(handler);
 
         executor.execute(() -> {
             try {
@@ -155,6 +166,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 int toolIndex = 0;
 
                 for (GenerateContentResponse chunk : stream) {
+                    trackingHandler.resetMappingTracking();
                     lastChunk = chunk;
                     ChatResponse partialResponse = GoogleGenAiContentMapper.toChatResponse(chunk, modelName);
                     AiMessage aiMessage = partialResponse.aiMessage();
@@ -167,9 +179,9 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     if (aiMessage.text() != null && !aiMessage.text().isEmpty()) {
                         textBuilder.append(aiMessage.text());
                         try {
-                            handler.onPartialResponse(aiMessage.text());
+                            trackingHandler.onPartialResponse(aiMessage.text());
                         } catch (Exception userException) {
-                            handler.onError(userException);
+                            trackingHandler.onError(userException);
                         }
                     }
 
@@ -177,9 +189,9 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                         for (ToolExecutionRequest req : aiMessage.toolExecutionRequests()) {
                             toolRequests.add(req);
                             try {
-                                handler.onCompleteToolCall(new CompleteToolCall(toolIndex++, req));
+                                trackingHandler.onCompleteToolCall(new CompleteToolCall(toolIndex++, req));
                             } catch (Exception userException) {
-                                handler.onError(userException);
+                                trackingHandler.onError(userException);
                             }
                         }
                     }
@@ -192,6 +204,10 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                         if (finishReason != FinishReason.LENGTH && finishReason != FinishReason.CONTENT_FILTER) {
                             finishReason = partialReason;
                         }
+                    }
+
+                    if (!trackingHandler.wasMapped()) {
+                        onUnmappedRawEvent(trackingHandler, chunk);
                     }
                 }
 
@@ -228,9 +244,9 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     log.info("Response:\n- model: {}\n- response: {}", modelName, finalChatResponse);
                 }
 
-                handler.onCompleteResponse(finalChatResponse);
+                trackingHandler.onCompleteResponse(finalChatResponse);
             } catch (Exception e) {
-                handler.onError(e);
+                trackingHandler.onError(e);
             }
         });
     }

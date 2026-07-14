@@ -187,6 +187,42 @@ class OpenAiStreamingResponseBuilderTest {
     }
 
     @Test
+    void should_not_throw_npe_when_tool_call_has_no_function() {
+        // Given: an OpenAI-compatible gateway (e.g. LiteLLM, vLLM) emits a header chunk that carries
+        // an id but no "function" object at all: {"index":0,"id":"call_x","type":"function"}
+        OpenAiStreamingResponseBuilder builder = new OpenAiStreamingResponseBuilder();
+
+        ToolCall headerChunk = ToolCall.builder()
+                .id("call_x")
+                .index(0)
+                .type(ToolType.FUNCTION)
+                .function(null)
+                .build();
+
+        // When: appending the response (should not throw NPE)
+        builder.append(chatCompletionResponse(headerChunk));
+
+        // Then: a subsequent chunk carrying the function (and no id, as real gateways stream it once)
+        // completes the tool call normally
+        ToolCall functionChunk = ToolCall.builder()
+                .index(0)
+                .type(ToolType.FUNCTION)
+                .function(FunctionCall.builder()
+                        .name("getWeather")
+                        .arguments("{\"city\": \"Berlin\"}")
+                        .build())
+                .build();
+        builder.append(chatCompletionResponse(functionChunk));
+
+        ChatResponse chatResponse = builder.build();
+        List<ToolExecutionRequest> requests = chatResponse.aiMessage().toolExecutionRequests();
+        assertThat(requests).hasSize(1);
+        assertThat(requests.get(0).id()).isEqualTo("call_x");
+        assertThat(requests.get(0).name()).isEqualTo("getWeather");
+        assertThat(requests.get(0).arguments()).isEqualTo("{\"city\": \"Berlin\"}");
+    }
+
+    @Test
     void should_keep_all_tool_calls_from_same_delta() {
 
         // given

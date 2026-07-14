@@ -878,7 +878,7 @@ so it will reveal the nested sequence of agents invocations necessary to generat
 
 ```
 AgentInvocation{agent=Sequential, startTime=2026-03-18T17:27:28.099439515, finishTime=2026-03-18T17:27:38.683498783, duration=10584 ms, tokens=0, inputs={topic=dragons and wiz..., style=comedy}, output=In a realm wher...}
-|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.11.8287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
+|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.17.2287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
 |=> AgentInvocation{agent=reviewLoop, startTime=2026-03-18T17:27:31.035952285, finishTime=2026-03-18T17:27:38.683438433, duration=7647 ms, tokens=0, inputs={score=0.8, topic=dragons and wiz..., style=comedy, story=In a realm wher...}, output=null}
     |=> AgentInvocation{agent=scoreStyle, iteration=0, startTime=2026-03-18T17:27:31.036155107, finishTime=2026-03-18T17:27:31.671478699, duration=635 ms, tokens=152, inputs={style=comedy, story=In a realm wher...}, output=0.2}
     |=> AgentInvocation{agent=editStory, iteration=0, startTime=2026-03-18T17:27:31.671711250, finishTime=2026-03-18T17:27:38.182881941, duration=6511 ms, tokens=491, inputs={style=comedy, story=In a realm wher...}, output=In a realm wher...}
@@ -908,6 +908,22 @@ HtmlReportGenerator.generateExecution(monitor, Path.of("execution.html"));
 ```
 
 This last method also supports filtering by memory id, for instance `HtmlReportGenerator.generateExecution(monitor, memoryId, path)`, while all methods have overloads that return the HTML as a `String` instead of writing to a file.
+
+By default, `AgentMonitor` retains up to 100 sessions (distinct memory IDs) per outcome (successful and failed, independently). When the limit is exceeded, the oldest sessions are evicted automatically. This makes it safe to attach a monitor to a long-lived singleton agent without risking unbounded memory growth.
+
+The retention limit can be changed at any time via `setMaxRetainedSessions`. If the new limit is lower than the current number of retained sessions, excess entries are evicted immediately:
+
+```java
+monitor.setMaxRetainedSessions(20);
+```
+
+Setting it to `0` disables retention entirely — listener callbacks still fire, but nothing is kept in memory. To explicitly remove all retained sessions, use the `clear()` method:
+
+```java
+monitor.clear();
+```
+
+Both operations leave ongoing (in-flight) executions unaffected.
 
 Another alternative to manually creating an `AgentMonitor` and registering it as a listener, is making your agent service interface to extend the `MonitoredAgent` one. When doing so, the builder automatically creates and registers an `AgentMonitor` as a listener, and this monitor becomes accessible directly from the agent instance via the `agentMonitor()` method.
 
@@ -977,7 +993,22 @@ EveningPlannerAgent eveningPlannerAgent = AgenticServices
 List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 ```
 
-In this case the `AgenticServices.createAgenticSystem()` method is also provided with a `ChatModel` that by default is used to create all the subagents in this agentic system, However it is also possible to optionally specify a different `ChatModel` for a given subagent, adding to its definition a static method annotated with `@ChatModelSupplier` returning the `ChatModel` to be used with that agent. For instance the `FoodExpert` agent can define its own `ChatModel` as follows:
+Similarly to what demonstrated for the `@Output` annotation, annotating other `static` methods in the interface defining the agentic pattern with one of the following annotations, it is possible to declaratively configure the agentic system, like for instance the executor to be used for parallel agents, the exit condition for loop agents, and so on. The list of annotations available to this purpose follows:
+
+| Annotation Name          | Description                                                                                                                       |
+|--------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
+| `@Output`                | Assemble the output to be returned by this agentic pattern, putting together different states of the `AgenticScope`.              |
+| `@ActivationCondition`   | Only available on the `ConditionalAgent` to define an activation predicate for one or more sub-agents, it must return a `boolean` |
+| `@BeforeCall`            | Action invoked before calling this agentic pattern, it can be useful to initialize the state of the `AgenticScope`.               |
+| `@ErrorHandler`          | Action invoked when an error occurs during the agent's operation, allowing for custom error handling logic.                       |
+| `@ExitCondition`         | Only available on the `LoopAgent` to define an exit predicate for the loop, it must return a `boolean`                            |
+| `@ParallelExecutor`      | Only available on the `ParallelAgent` and `ParallelMapperAgent` to specify the executor used to run the sub-agents in parallel.   |
+| `@AgentListenerSupplier` | Returns the `AgentListener` registered on this agentic pattern.                                                                   |
+| `@PlannerSupplier`       | Returns the `Planner` implementation used by this agentic pattern.                                                                |
+| `@SupervisorRequest`     | Only available on the `SupervisorAgent` to define the request that will be sent to the supervisor.                                |
+
+
+In the former example the `AgenticServices.createAgenticSystem()` method is also provided with a `ChatModel` that by default is used to create all the subagents in this agentic system, However it is also possible to optionally specify a different `ChatModel` for a given subagent, adding to its definition a static method annotated with `@ChatModelSupplier` returning the `ChatModel` to be used with that agent. For instance the `FoodExpert` agent can define its own `ChatModel` as follows:
 
 ```java
 public interface FoodExpert {
@@ -999,7 +1030,7 @@ public interface FoodExpert {
 }
 ```
 
-In a very similar way, annotating other `static` methods in the agent interface, it is possible to declaratively configure other aspects of the agent like its chat memory, the tools it can use, and so on. Those methods must have no arguments unless differently specified in the following table. The list of annotations available to this purpose follows:
+In a very similar way, annotating other `static` methods in the agent interface, it is possible to declaratively configure other aspects of the agent like its chat memory, the tools it can use, and so on. Note that while the former list of annotations only applies to agentic pattern, it makes sense to use the annotations listed below only for LLM-based final agents, with the exception of `@AgentListenerSupplier` that allows to register listeners on both agentic patterns and final agents. Also, since the supervisor pattern is the only one to use an LLM internally, it is possible to use on it the annotations that allow to configure the `ChatModel` used by the supervisor itself, like `@ChatModelSupplier` and `@ChatMemoryProviderSupplier,`. Those methods must have no arguments unless differently specified in the following table. The list of annotations available to this purpose follows:
 
 | Annotation Name               | Description                                                                                                                                                   |
 |-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -1348,7 +1379,7 @@ AgentInvocation{agentName='withdraw', arguments={user=Mario, amount=115.0}}
 
 AgentInvocation{agentName='credit', arguments={user=Georgios, amount=115.0}}
 
-AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.11.8 USD. The conversion rate was 1.15 EUR to USD.}}
+AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.17.2 USD. The conversion rate was 1.15 EUR to USD.}}
 ```
 
 The last invocation is a special one that signals the supervisor believes the task has been completed, and returns as a response a summary of all the operations performed.
@@ -1931,7 +1962,7 @@ The P2P pattern activates all ready agents in parallel, treating them as equal p
 
 Like P2P, agents activate implicitly when all their arguments are present in the scope. The key difference is that only one agent fires per step, and when multiple agents are ready, a `ConflictResolutionStrategy` determines which one takes priority. If no strategy is provided, the declaration order in the `subAgents` method is used as the default tie-breaker.
 
-The `BlackboardPlanner` terminates when the goal predicate is satisfied, no agent can fire (quiescence), or the maximum number of invocations is reached. By default, the goal predicate checks whether the planner's `outputKey` is present in the scope — which is the most common termination condition:
+The `BlackboardPlanner` terminates successfully when the goal predicate is satisfied or no agent can fire (quiescence); if the maximum number of invocations is reached before the goal is satisfied, it throws an `IllegalStateException`. By default, the goal predicate checks whether the planner's `outputKey` is present in the scope — which is the most common termination condition:
 
 ```java
 public class BlackboardPlanner implements Planner {
@@ -2335,6 +2366,118 @@ To customize the convergence check or the number of rounds:
         positions.stream().allMatch(p -> p.toString().contains("AGREE"))))  // custom convergence
 ```
 
+### Belief-Desire-Intention (BDI) agentic pattern
+
+The Belief-Desire-Intention (BDI) pattern models the classic AI concept of an agent that maintains explicit goals, evaluates which goals are currently achievable, and reactively switches between them when the environment changes. The planner implementing this pattern maintains three structures — Beliefs (the current world state from the `AgenticScope`), Desires (a set of prioritized goals), and Intentions (the committed plan currently being executed). At each step, the planner checks whether a higher-priority desire has become achievable and, if so, drops the current intention and re-deliberates. This makes BDI naturally suited for dynamic environments where multiple competing goals must be balanced and priorities can shift at any time.
+
+A `Desire` is defined as a record combining a name, a priority level, an achievability predicate, a satisfaction predicate, and the ordered list of agent types that form the intention for pursuing that desire:
+
+```java
+public record Desire(String name, int priority,
+                     Predicate<AgenticScope> achievable,
+                     Predicate<AgenticScope> satisfied,
+                     List<Class<?>> agentTypes) {
+
+    public static Desire of(String name, int priority,
+                            Predicate<AgenticScope> achievable,
+                            Predicate<AgenticScope> satisfied,
+                            Class<?>... agentTypes) {
+        return new Desire(name, priority, achievable, satisfied, List.of(agentTypes));
+    }
+
+    public static Desire of(String name, int priority,
+                            String achievableStateKey,
+                            String satisfiedStateKey,
+                            Class<?>... agentTypes) {
+        return new Desire(name, priority,
+                scope -> scope.hasState(achievableStateKey),
+                scope -> scope.hasState(satisfiedStateKey),
+                List.of(agentTypes));
+    }
+}
+```
+
+The `BDIPlanner`, implementing this pattern, takes a list of `Desire` instances and implements the deliberation cycle. During initialization, it maps each registered sub-agent by its type so that desires can reference agents by class. When execution begins, the planner filters all desires to find those that are currently achievable and not yet satisfied, selects the one with the highest priority (among equal priorities, the one declared first in the list wins), and commits to its intention, defined as the ordered sequence of agents defined by that desire. On each subsequent step, the planner runs three checks: first, **satisfaction**, testing if the current desire is now satisfied, the planner re-deliberates to select the next desire; second, **preemption**, verifying if a strictly higher-priority desire has become achievable due to belief changes (new values written to the `AgenticScope`), the current intention is suspended and the higher-priority one takes over; third, **viability** checking if the current desire is still achievable and unsatisfied, the planner advances to the next agent in the intention sequence. When a preempted desire is later re-selected, it resumes from where it left off rather than restarting, so that agents that already completed are not re-invoked.
+
+Execution terminates successfully when all desires are satisfied or none are achievable. The planner throws `IllegalStateException` in two misbehaving scenarios: if a desire's entire intention completes but the desire remains unsatisfied (the agents don't write the keys the satisfied predicate expects), or if the configurable maximum invocation count is reached with unsatisfied desires still pending.
+
+On crash recovery, the planner re-deliberates from scratch: satisfied desires are skipped, but the selected desire's intention restarts from its first agent. Agents that already completed before the crash will run again, so intention agents should be idempotent.
+
+To illustrate this pattern, consider an autonomous trading system with five AI agents and one non-AI agent. The `MarketRecommendationAgent` returns a `MarketRecommendation` enum, and hedging is only triggered when the recommendation is `SELL` or `STRONG_SELL`. The `HedgingStrategyDefaulter` is a non-AI agent that ensures `hedgingStrategy` is always present in scope (defaulting to `"None"` when hedging was skipped), so the `RebalancingAgent` can always receive it as input:
+
+```java
+public enum MarketRecommendation {
+    STRONG_BUY, BUY, HOLD, SELL, STRONG_SELL
+}
+
+public interface MarketAnalysisAgent {
+    @UserMessage("Analyze the market data and portfolio. Market: {{marketData}} Portfolio: {{portfolio}}")
+    @Agent(value = "Analyze market conditions", outputKey = "marketAnalysis")
+    String analyzeMarket(@V("marketData") String marketData, @V("portfolio") String portfolio);
+}
+
+public interface MarketRecommendationAgent {
+    @UserMessage("Based on the market analysis, provide a trading recommendation. Market analysis: {{marketAnalysis}}")
+    @Agent(value = "Provide a trading recommendation", outputKey = "recommendation")
+    MarketRecommendation recommend(@V("marketAnalysis") String marketAnalysis);
+}
+
+public static class HedgingStrategyDefaulter {
+    @Agent(outputKey = "hedgingStrategy")
+    public String defaultHedging(AgenticScope scope) {
+        return scope.hasState("hedgingStrategy") ? (String) scope.readState("hedgingStrategy") : "None";
+    }
+}
+
+public interface RebalancingAgent {
+    @UserMessage("Suggest rebalancing based on: {{marketAnalysis}} Hedging strategy: {{hedgingStrategy}} Portfolio: {{portfolio}}")
+    @Agent(value = "Rebalance portfolio", outputKey = "rebalancingPlan")
+    String rebalance(@V("marketAnalysis") String marketAnalysis,
+                     @V("hedgingStrategy") String hedgingStrategy,
+                     @V("portfolio") String portfolio);
+}
+
+public interface HedgingAgent {
+    @UserMessage("Recommend hedging strategies based on: {{marketAnalysis}}")
+    @Agent(value = "Hedge against risks", outputKey = "hedgingStrategy")
+    String hedge(@V("marketAnalysis") String marketAnalysis);
+}
+
+public interface LiquidityAgent {
+    @UserMessage("Assess liquidity for portfolio: {{portfolio}}")
+    @Agent(value = "Maintain liquidity", outputKey = "liquidityAssessment")
+    String assessLiquidity(@V("portfolio") String portfolio);
+}
+```
+
+These agents are wired into a BDI-based trading system with four desires of different priorities. Note how the "hedge risks" desire uses a predicate-based achievability check that inspects the recommendation value, and the "rebalance portfolio" desire includes the `HedgingStrategyDefaulter` before the `RebalancingAgent` to guarantee the `hedgingStrategy` scope value is present:
+
+```java
+TradingSystem tradingSystem = AgenticServices.plannerBuilder(TradingSystem.class)
+        .subAgents(marketAnalysis, recommendation, new HedgingStrategyDefaulter(),
+                   rebalancing, hedging, liquidity)
+        .planner(() -> new BDIPlanner(List.of(
+                Desire.of("analyze market", 1,
+                        "marketData", "recommendation",
+                        MarketAnalysisAgent.class, MarketRecommendationAgent.class),
+                Desire.of("hedge risks", 2,
+                        scope -> scope.hasState("recommendation")
+                                && Set.of(MarketRecommendation.SELL, MarketRecommendation.STRONG_SELL)
+                                    .contains(scope.readState("recommendation")),
+                        scope -> scope.hasState("hedgingStrategy"),
+                        HedgingAgent.class),
+                Desire.of("rebalance portfolio", 1,
+                        "recommendation", "rebalancingPlan",
+                        HedgingStrategyDefaulter.class, RebalancingAgent.class),
+                Desire.of("maintain liquidity", 1,
+                        "portfolio", "liquidityAssessment",
+                        LiquidityAgent.class)
+        )))
+        .build();
+```
+
+When invoked with market data and portfolio state, the planner's deliberation cycle works as follows: the "analyze market" and "maintain liquidity" desires are initially achievable. Once the `MarketAnalysisAgent` and `MarketRecommendationAgent` complete, the recommendation determines the next step. If the recommendation is `SELL` or `STRONG_SELL`, the "hedge risks" desire (priority 2) becomes achievable and preempts any lower-priority work, causing the planner to invoke the `HedgingAgent`. After hedging completes, the planner re-deliberates: the "rebalance portfolio" desire runs `HedgingStrategyDefaulter` (which preserves the existing hedging strategy) followed by `RebalancingAgent`, which receives the hedging strategy as input. If the recommendation is not `SELL` or `STRONG_SELL`, hedging is skipped entirely, and the `HedgingStrategyDefaulter` writes `"None"` so that `RebalancingAgent` can still proceed. This reactive, condition-driven switching is the essence of BDI — the system adapts its behavior based on changing beliefs rather than following a rigid plan.
+
 ## Non-AI agents
 
 All the agents discussed so far are AI agents, meaning that they are based on LLMs and can be invoked to perform tasks that require natural language understanding and generation. However, the `langchain4j-agentic` module also supports non-AI agents, which can be used to perform tasks that do not require natural language processing, like invoking a REST API or executing a command. These non-AI agents are indeed more similar to tools, but in this context it is convenient to model them as agents, so that they can be used in the same way as AI agents, and mixed with them to compose more powerful and complete agentic systems.
@@ -2675,6 +2818,138 @@ scope.completePendingResponse("manager-approval", "APPROVED by manager");
 
 This unblocks the waiting thread and the workflow continues to the shipping step without any restart.
 
+## Agents Registry
+
+The `langchain4j-agentic` module provides an SPI (Service Provider Interface) for an `AgentsRegistry`, allowing external providers to register agents that can be discovered by name and wired into any agentic pattern. This is especially useful for integrating agents provided by external systems, such as remote A2A protocol agents, into locally defined agentic workflows.
+
+The `AgentsRegistry` interface defines two methods for discovering agents:
+
+```java
+public interface AgentsRegistry {
+
+    Map<String, AgentInstance> allAgents();
+
+    AgentInstance getAgent(String name);
+
+    static AgentsRegistry get() { ... }
+}
+```
+
+- `allAgents()` returns a map of all registered agents keyed by their name.
+- `getAgent(String name)` returns the agent with the given name, throwing a `RuntimeException` if not found.
+
+The static `get()` method uses Java's `ServiceLoader` to discover registry implementations. Multiple providers are supported and automatically merged into a single composite registry; duplicate agent names across providers cause an exception at discovery time. If no provider is found, an empty registry is returned that throws on any lookup.
+
+To provide a registry implementation, create a class that implements the `AgentsRegistry` interface and register it via the standard Java SPI mechanism by creating a file `META-INF/services/dev.langchain4j.agentic.planner.AgentsRegistry` containing the fully qualified name of your implementation class.
+
+```java
+public class MyAgentsRegistry implements AgentsRegistry {
+
+    private final Map<String, AgentInstance> agents;
+
+    public MyAgentsRegistry() {
+        AgentInstance audienceEditor = (AgentInstance) AgenticServices
+                .agentBuilder(AudienceEditor.class)
+                .chatModel(myModel())
+                .outputKey("story")
+                .build();
+
+        AgentInstance styleEditor = (AgentInstance) AgenticServices
+                .agentBuilder(StyleEditor.class)
+                .chatModel(myModel())
+                .outputKey("story")
+                .build();
+
+        this.agents = Map.of(
+                "audienceEditor", audienceEditor,
+                "styleEditor", styleEditor);
+    }
+
+    @Override
+    public Map<String, AgentInstance> allAgents() {
+        return agents;
+    }
+
+    @Override
+    public AgentInstance getAgent(String name) {
+        AgentInstance agent = agents.get(name);
+        if (agent == null) {
+            throw new RuntimeException("No agent found with name: " + name);
+        }
+        return agent;
+    }
+}
+```
+
+The agents returned by the registry are standard `AgentInstance` objects, typically built using `AgenticServices.agentBuilder()`, so they are ready to be used as subagents in any agentic pattern.
+
+Once a registry is available via SPI, agents can be loaded and mixed with locally defined agents in any agentic pattern:
+
+```java
+AgentsRegistry registry = AgentsRegistry.get();
+
+CreativeWriter creativeWriter = AgenticServices
+        .agentBuilder(CreativeWriter.class)
+        .chatModel(BASE_MODEL)
+        .outputKey("story")
+        .build();
+
+AgentInstance audienceEditor = registry.getAgent("audienceEditor");
+AgentInstance styleEditor = registry.getAgent("styleEditor");
+
+UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+        .subAgents(creativeWriter, audienceEditor, styleEditor)
+        .outputKey("story")
+        .build();
+
+String story = (String) novelCreator.invoke(Map.of(
+        "topic", "dragons and wizards",
+        "style", "fantasy",
+        "audience", "young adults"));
+```
+
+Here the `CreativeWriter` is built locally while the `AudienceEditor` and `StyleEditor` are loaded from the registry by name and used as subagents alongside locally defined ones.
+
+The `@RegistryAgent` annotation allows loading agents from the registry in the declarative API. To use it, define a simple interface with a method annotated with `@RegistryAgent`, specifying the name of the agent in the registry:
+
+```java
+public interface AudienceEditorFromRegistry {
+    @RegistryAgent("audienceEditor")
+    String editStory(@V("story") String story, @V("audience") String audience);
+}
+
+public interface StyleEditorFromRegistry {
+    @RegistryAgent("styleEditor")
+    String editStory(@V("story") String story, @V("style") String style);
+}
+```
+
+These interfaces can then be used as subagents in a fully declarative agentic system definition:
+
+```java
+public interface DeclarativeStoryCreator {
+
+    @SequenceAgent(outputKey = "story",
+            subAgents = {CreativeWriter.class, AudienceEditorFromRegistry.class, StyleEditorFromRegistry.class})
+    String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
+
+    @ChatModelSupplier
+    static ChatModel chatModel() {
+        return BASE_MODEL;
+    }
+}
+```
+
+and instantiated as usual with `AgenticServices.createAgenticSystem()`:
+
+```java
+DeclarativeStoryCreator storyCreator = AgenticServices.createAgenticSystem(DeclarativeStoryCreator.class);
+
+String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
+```
+
+When the declarative system encounters a `@RegistryAgent` annotation, it automatically loads the corresponding agent from the registry by name and wires it into the agentic system. This allows mixing locally defined agents (like `CreativeWriter` with its `@ChatModelSupplier`) and registry-provided agents in the same declarative workflow.
+
 ## A2A Integration
 
 The additional `langchain4j-agentic-a2a` module provides a seamless integration with the [A2A](https://a2aprotocol.ai/) protocol, allowing to build agentic systems that can use remote A2A server agents and eventually mixing them with other locally defined agents.
@@ -2787,6 +3062,39 @@ ResultWithAgenticScope<String> result = workflow.converse("hello");
 ```
 
 In this sequence, the first agent sends a message with no `contextId`/`taskId` (they are `null` in the scope). The server creates a new task and context. The response IDs are written to the scope. When the second agent runs, it reads the now-populated `contextId` and `taskId` from the scope and sends them on the message envelope, continuing the same conversation.
+
+### Customizing the A2A client
+
+By default, A2A agents use a JSONRPC transport with a default configuration. The `clientCustomizer` method exposes the underlying a2a-java SDK `ClientBuilder`, allowing you to configure a different transport, set a custom HTTP client, add interceptors, or change any other client setting.
+
+When building an A2A agent programmatically, pass a `Consumer<ClientBuilder>` to `clientCustomizer`:
+
+```java
+UntypedAgent creativeWriter = AgenticServices
+        .a2aBuilder(A2A_SERVER_URL)
+        .clientCustomizer((ClientBuilder cb) ->
+                cb.withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder()))
+        .inputKeys("topic")
+        .outputKey("story")
+        .build();
+```
+
+When a customizer is provided, it replaces the default transport setup entirely, giving full control over how the `Client` is constructed.
+
+For declarative agents, annotate a static method with `@A2AClientCustomizer`. The method must take a single `ClientBuilder` parameter and return `void`:
+
+```java
+public interface DeclarativeA2AWithCustomizer {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", outputKey = "story")
+    String generateStory(@V("topic") String topic);
+
+    @A2AClientCustomizer
+    static void customizer(ClientBuilder cb) {
+        cb.withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder());
+    }
+}
+```
 
 ## MCP-based Tool Agents
 

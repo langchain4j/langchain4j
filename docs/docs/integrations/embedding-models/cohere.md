@@ -10,7 +10,7 @@ sidebar_position: 4
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-cohere</artifactId>
-    <version>1.11.8-beta19</version>
+    <version>1.17.2-beta27</version>
 </dependency>
 ```
 
@@ -18,6 +18,15 @@ sidebar_position: 4
 
 - `CohereEmbeddingModel`
 
+## Capabilities
+
+- **Multimodal** (`embed-v4.0`): embeds text and images into a shared vector space; interleaved text + image is
+  fused into a single embedding. Provide image inputs as `ImageContent` (URL or base64) in an `EmbeddingRequest`.
+- **Per-call parameters**: `input_type` — embed queries and documents differently
+  (`EmbeddingInputType.QUERY` / `DOCUMENT`, mapped to Cohere's `search_query` / `search_document`).
+- **Listeners**: configure via `CohereEmbeddingModel.builder().listeners(...)`.
+
+See [Embedding Model](/tutorials/rag#embedding-model) for the request/response API and multimodal usage.
 
 ## Examples
 
