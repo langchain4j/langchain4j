@@ -6,6 +6,7 @@ import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -73,6 +74,7 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     public JinaEmbeddingModel(JinaEmbeddingModelBuilder builder) {
         this.client = JinaClient.builder()
+                .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_BASE_URL))
                 .apiKey(builder.apiKey)
                 .timeout(getOrDefault(builder.timeout, ofSeconds(60)))
@@ -199,6 +201,7 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private Logger logger;
+        private HttpClientBuilder httpClientBuilder;
         private List<EmbeddingModelListener> listeners;
 
         JinaEmbeddingModelBuilder() {
@@ -255,6 +258,18 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
          */
         public JinaEmbeddingModelBuilder logger(Logger logger) {
             this.logger = logger;
+            return this;
+        }
+
+        /**
+         * Sets a custom HTTP client builder, allowing fine-grained control over the HTTP client
+         * configuration such as timeouts and proxy settings.
+         *
+         * @param httpClientBuilder the HTTP client builder
+         * @return {@code this}
+         */
+        public JinaEmbeddingModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
             return this;
         }
 
