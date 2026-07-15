@@ -9,7 +9,7 @@ import retrofit2.http.POST;
 public interface JinaApi {
 
     @POST("v1/embeddings")
-    @Headers({"Content-Type: application/json"})
+    @Headers({"Content-Type: application/json", "User-Agent: langchain4j-jina"})
     Call<JinaEmbeddingResponse> embed(@Body JinaEmbeddingRequest request,
                                       @Header("Authorization") String authorizationHeader);
 
@@ -19,7 +19,7 @@ public interface JinaApi {
                                                 @Header("Authorization") String authorizationHeader);
 
     @POST("rerank")
-    @Headers({"Content-Type: application/json"})
+    @Headers({"Content-Type: application/json", "User-Agent: langchain4j-jina"})
     Call<JinaRerankingResponse> rerank(@Body JinaRerankingRequest request,
                                        @Header("Authorization") String authorizationHeader);
 }

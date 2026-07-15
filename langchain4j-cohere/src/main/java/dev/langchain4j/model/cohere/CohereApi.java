@@ -9,7 +9,7 @@ import retrofit2.http.POST;
 interface CohereApi {
 
     @POST("embed")
-    @Headers({"accept: application/json", "content-type: application/json"})
+    @Headers({"accept: application/json", "content-type: application/json", "User-Agent: langchain4j-cohere"})
     Call<EmbedResponse> embed(@Body EmbedRequest request, @Header("Authorization") String authorizationHeader);
 
     @POST("embed")
@@ -17,6 +17,6 @@ interface CohereApi {
     Call<EmbedV2Response> embedV2(@Body EmbedV2Request request, @Header("Authorization") String authorizationHeader);
 
     @POST("rerank")
-    @Headers({"accept: application/json", "content-type: application/json"})
+    @Headers({"accept: application/json", "content-type: application/json", "User-Agent: langchain4j-cohere"})
     Call<RerankResponse> rerank(@Body RerankRequest request, @Header("Authorization") String authorizationHeader);
 }
