@@ -115,6 +115,24 @@
           "oldVisibility": "package",
           "newVisibility": "public",
           "justification": "Necessary to support agents generated at deployment time from the Quarkus extension"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.addedToInterface",
+          "new": "method <T> void dev.langchain4j.agentic.scope.AgenticScope::writeStateIfAbsent(java.lang.Class<? extends dev.langchain4j.agentic.declarative.TypedKey<T>>, T)",
+          "justification": "New method on the AgenticScope."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.addedToInterface",
+          "new": "method void dev.langchain4j.agentic.scope.AgenticScope::writeStateIfAbsent(java.lang.String, java.lang.Object)",
+          "justification": "New method on the AgenticScope."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.addedToInterface",
+          "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::beforeCall(java.util.function.Consumer<dev.langchain4j.agentic.scope.AgenticScope>)",
+          "justification": "SupervisorAgentService is a builder interface obtained via AgenticServices.supervisorBuilder() and is not meant to be implemented by users, so the added method breaks no real implementation. The method mirrors the pre-existing AgenticService#beforeCall and is required so beforeCall() can be called fluently on a SupervisorAgentService reference."
         }
       ]
     }
