@@ -90,8 +90,8 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
 
             logRequestIfEnabled(requestModelName, chatRequest.parameters().modelName(), anthropicRequest);
 
-            client.generateContentStreaming(anthropicRequest, requestModelName,
-                    createStreamingResponseHandler(handler));
+            client.generateContentStreaming(
+                    anthropicRequest, requestModelName, createStreamingResponseHandler(handler));
 
         } catch (IOException e) {
             try {
@@ -126,13 +126,15 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
                 temperature,
                 topP,
                 topK,
-                parameters.stopSequences() != null && !parameters.stopSequences().isEmpty()
+                parameters.stopSequences() != null
+                                && !parameters.stopSequences().isEmpty()
                         ? parameters.stopSequences()
                         : stopSequences,
                 enablePromptCaching);
     }
 
-    private void logRequestIfEnabled(String requestModelName, String parameterModelName, AnthropicRequest anthropicRequest) {
+    private void logRequestIfEnabled(
+            String requestModelName, String parameterModelName, AnthropicRequest anthropicRequest) {
         if (logRequests) {
             logger.debug(
                     "Using model name: {} (from parameters: {}, default: {})",
@@ -199,7 +201,8 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
             private void extractToolCallsFromResponse(AnthropicResponse response) {
                 if (response.content != null) {
                     logger.debug("Processing {} content blocks from response", response.content.size());
-                    for (dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicContent content : response.content) {
+                    for (dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicContent content :
+                            response.content) {
                         logger.debug("Content block: type={}, name={}, id={}", content.type, content.name, content.id);
                         if (isToolUseContent(content)) {
                             processToolContent(content);
@@ -209,11 +212,13 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
                 }
             }
 
-            private boolean isToolUseContent(dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicContent content) {
+            private boolean isToolUseContent(
+                    dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicContent content) {
                 return Constants.TOOL_USE_CONTENT_TYPE.equals(content.type) && content.name != null;
             }
 
-            private void processToolContent(dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicContent content) {
+            private void processToolContent(
+                    dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicContent content) {
                 try {
                     String arguments = serializeToolArguments(content.input);
                     dev.langchain4j.agent.tool.ToolExecutionRequest toolRequest =
@@ -229,7 +234,8 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
                 }
             }
 
-            private String serializeToolArguments(Object input) throws com.fasterxml.jackson.core.JsonProcessingException {
+            private String serializeToolArguments(Object input)
+                    throws com.fasterxml.jackson.core.JsonProcessingException {
                 if (input == null) {
                     return "{}";
                 }
@@ -262,10 +268,10 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
 
             private String extractTextDelta(String jsonChunk) {
                 try {
-                    com.fasterxml.jackson.databind.ObjectMapper mapper = 
+                    com.fasterxml.jackson.databind.ObjectMapper mapper =
                             new com.fasterxml.jackson.databind.ObjectMapper();
                     com.fasterxml.jackson.databind.JsonNode rootNode = mapper.readTree(jsonChunk);
-                    
+
                     com.fasterxml.jackson.databind.JsonNode deltaNode = rootNode.get("delta");
                     if (deltaNode != null && !deltaNode.isNull()) {
                         com.fasterxml.jackson.databind.JsonNode textNode = deltaNode.get("text");
@@ -375,56 +381,122 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
         private List<ChatModelListener> listeners;
         private GoogleCredentials credentials;
 
+        /**
+         * Sets the Google Cloud project ID.
+         *
+         * @param project the Google Cloud project ID
+         * @return {@code this}
+         */
         public VertexAiAnthropicStreamingChatModelBuilder project(String project) {
             this.project = project;
             return this;
         }
 
+        /**
+         * Sets the Google Cloud region, e.g. {@code "us-east5"} or {@code "europe-west1"}.
+         *
+         * @param location the Google Cloud region
+         * @return {@code this}
+         */
         public VertexAiAnthropicStreamingChatModelBuilder location(String location) {
             this.location = location;
             return this;
         }
 
+        /**
+         * Sets the Claude model name with version suffix, e.g. {@code "claude-3-5-sonnet-v2@20241022"}.
+         *
+         * @param modelName the model name
+         * @return {@code this}
+         */
         public VertexAiAnthropicStreamingChatModelBuilder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
+        /**
+         * Sets the maximum number of tokens to generate in the response.
+         *
+         * @param maxTokens the maximum number of output tokens
+         * @return {@code this}
+         */
         public VertexAiAnthropicStreamingChatModelBuilder maxTokens(Integer maxTokens) {
             this.maxTokens = maxTokens;
             return this;
         }
 
+        /**
+         * Sets the sampling temperature (0.0–1.0). Higher values produce more random output.
+         *
+         * @param temperature the sampling temperature
+         * @return {@code this}
+         */
         public VertexAiAnthropicStreamingChatModelBuilder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
+        /**
+         * Sets the nucleus sampling probability (0.0–1.0).
+         *
+         * @param topP the top-P value
+         * @return {@code this}
+         */
         public VertexAiAnthropicStreamingChatModelBuilder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
+        /**
+         * Sets the top-K sampling value, limiting vocabulary at each generation step.
+         *
+         * @param topK the top-K value
+         * @return {@code this}
+         */
         public VertexAiAnthropicStreamingChatModelBuilder topK(Integer topK) {
             this.topK = topK;
             return this;
         }
 
+        /**
+         * Sets the stop sequences that cause generation to stop when encountered.
+         *
+         * @param stopSequences the list of stop sequences
+         * @return {@code this}
+         */
         public VertexAiAnthropicStreamingChatModelBuilder stopSequences(List<String> stopSequences) {
             this.stopSequences = stopSequences;
             return this;
         }
 
+        /**
+         * Enables debug logging of HTTP request bodies. Defaults to {@code false}.
+         *
+         * @param logRequests {@code true} to log requests
+         * @return {@code this}
+         */
         public VertexAiAnthropicStreamingChatModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
+        /**
+         * Enables debug logging of HTTP response bodies. Defaults to {@code false}.
+         *
+         * @param logResponses {@code true} to log responses
+         * @return {@code this}
+         */
         public VertexAiAnthropicStreamingChatModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
         }
 
+        /**
+         * Sets the list of {@link ChatModelListener} instances for observability hooks.
+         *
+         * @param listeners the chat model listeners
+         * @return {@code this}
+         */
         public VertexAiAnthropicStreamingChatModelBuilder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return this;

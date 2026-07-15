@@ -181,56 +181,122 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
         private List<ChatModelListener> listeners;
         private GoogleCredentials credentials;
 
+        /**
+         * Sets the Google Cloud project ID.
+         *
+         * @param project the Google Cloud project ID
+         * @return {@code this}
+         */
         public VertexAiAnthropicChatModelBuilder project(String project) {
             this.project = project;
             return this;
         }
 
+        /**
+         * Sets the Google Cloud region, e.g. {@code "us-east5"} or {@code "europe-west1"}.
+         *
+         * @param location the Google Cloud region
+         * @return {@code this}
+         */
         public VertexAiAnthropicChatModelBuilder location(String location) {
             this.location = location;
             return this;
         }
 
+        /**
+         * Sets the Claude model name with version suffix, e.g. {@code "claude-3-5-sonnet-v2@20241022"}.
+         *
+         * @param modelName the model name
+         * @return {@code this}
+         */
         public VertexAiAnthropicChatModelBuilder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
+        /**
+         * Sets the maximum number of tokens to generate in the response.
+         *
+         * @param maxTokens the maximum number of output tokens
+         * @return {@code this}
+         */
         public VertexAiAnthropicChatModelBuilder maxTokens(Integer maxTokens) {
             this.maxTokens = maxTokens;
             return this;
         }
 
+        /**
+         * Sets the sampling temperature (0.0–1.0). Higher values produce more random output.
+         *
+         * @param temperature the sampling temperature
+         * @return {@code this}
+         */
         public VertexAiAnthropicChatModelBuilder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
+        /**
+         * Sets the nucleus sampling probability (0.0–1.0).
+         *
+         * @param topP the top-P value
+         * @return {@code this}
+         */
         public VertexAiAnthropicChatModelBuilder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
+        /**
+         * Sets the top-K sampling value, limiting vocabulary at each generation step.
+         *
+         * @param topK the top-K value
+         * @return {@code this}
+         */
         public VertexAiAnthropicChatModelBuilder topK(Integer topK) {
             this.topK = topK;
             return this;
         }
 
+        /**
+         * Sets the stop sequences that cause generation to stop when encountered.
+         *
+         * @param stopSequences the list of stop sequences
+         * @return {@code this}
+         */
         public VertexAiAnthropicChatModelBuilder stopSequences(List<String> stopSequences) {
             this.stopSequences = stopSequences;
             return this;
         }
 
+        /**
+         * Enables debug logging of HTTP request bodies. Defaults to {@code false}.
+         *
+         * @param logRequests {@code true} to log requests
+         * @return {@code this}
+         */
         public VertexAiAnthropicChatModelBuilder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
+        /**
+         * Enables debug logging of HTTP response bodies. Defaults to {@code false}.
+         *
+         * @param logResponses {@code true} to log responses
+         * @return {@code this}
+         */
         public VertexAiAnthropicChatModelBuilder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
         }
 
+        /**
+         * Sets the list of {@link ChatModelListener} instances for observability hooks.
+         *
+         * @param listeners the chat model listeners
+         * @return {@code this}
+         */
         public VertexAiAnthropicChatModelBuilder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return this;
