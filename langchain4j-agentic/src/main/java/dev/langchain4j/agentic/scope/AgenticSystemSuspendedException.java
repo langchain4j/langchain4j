@@ -18,7 +18,8 @@ public class AgenticSystemSuspendedException extends RuntimeException {
     private final AgenticScope scope;
 
     public AgenticSystemSuspendedException(AgenticScope scope) {
-        super("Agentic system suspended: awaiting responses for " + scope.pendingResponseIds());
+        super("Agentic system suspended: awaiting responses for " + scope.pendingResponseIds(),
+                null, false, false);
         this.scope = scope;
     }
 
