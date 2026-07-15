@@ -50,13 +50,19 @@ public class VecDbSchemaManager {
      *
      * @param connection active connection to the target Oracle Database; ownership remains with the caller
      * @param embeddingTable VecDB table configuration
-     * @param indexParameters root index configuration, or {@code null} to use VecDB defaults for a new table and
-     *     leave an existing table's index unchanged
+     * @param vectorIndex vector-index configuration, or {@code null} when none is configured
+     * @param metadataIndex metadata-index configuration, or {@code null} when none is configured
+     * @param parallelCreation index-creation parallelism, or {@code null} to use the database default
      * @throws SQLException if a {@code DBMS_VECTOR_DATABASE} operation fails
      * @throws dev.langchain4j.exception.UnsupportedFeatureException if the connected database is older than 23.26.3
      * @throws IllegalStateException if the table is configured with {@link CreateOption#CREATE_NONE} but does not exist
      */
-    void prepareSchema(Connection connection, VecDbEmbeddingTable embeddingTable, VecDbIndexParameters indexParameters)
+    void prepareSchema(
+            Connection connection,
+            VecDbEmbeddingTable embeddingTable,
+            VecDbVectorIndex vectorIndex,
+            VecDbMetadataIndex metadataIndex,
+            Integer parallelCreation)
             throws SQLException {
         VecDbSupport.requireSupported(connection);
         boolean tableExist = vecDbQueryExecutor.vectorTableExists(connection, embeddingTable.name());
@@ -66,20 +72,22 @@ public class VecDbSchemaManager {
                 throw new IllegalStateException("VecDB table does not exist: " + embeddingTable.name());
             }
             if (tableExist) {
-                prepareIndexesForExistingTable(connection, embeddingTable, indexParameters);
+                prepareIndexesForExistingTable(
+                        connection, embeddingTable, vectorIndex, metadataIndex, parallelCreation);
             }
         }
 
         if (embeddingTable.createOption() == CreateOption.CREATE_IF_NOT_EXISTS) {
             if (tableExist) {
-                prepareIndexesForExistingTable(connection, embeddingTable, indexParameters);
+                prepareIndexesForExistingTable(
+                        connection, embeddingTable, vectorIndex, metadataIndex, parallelCreation);
             } else {
-                createTable(connection, embeddingTable, indexParameters);
+                createTable(connection, embeddingTable, vectorIndex, metadataIndex, parallelCreation);
             }
         }
         if (embeddingTable.createOption() == CreateOption.CREATE_OR_REPLACE) {
             if (tableExist) vecDbQueryExecutor.dropVectorTable(connection, embeddingTable.name());
-            createTable(connection, embeddingTable, indexParameters);
+            createTable(connection, embeddingTable, vectorIndex, metadataIndex, parallelCreation);
         }
     }
 
@@ -88,13 +96,19 @@ public class VecDbSchemaManager {
      *
      * @param connection active connection to the target Oracle Database
      * @param embeddingTable table to create
-     * @param indexParameters root index configuration, or {@code null} to use the VecDB defaults
+     * @param vectorIndex vector-index configuration
+     * @param metadataIndex metadata-index configuration
+     * @param parallelCreation index-creation parallelism
      * @throws SQLException if {@code DBMS_VECTOR_DATABASE.CREATE_VECTOR_TABLE} fails
      */
     private void createTable(
-            Connection connection, VecDbEmbeddingTable embeddingTable, VecDbIndexParameters indexParameters)
+            Connection connection,
+            VecDbEmbeddingTable embeddingTable,
+            VecDbVectorIndex vectorIndex,
+            VecDbMetadataIndex metadataIndex,
+            Integer parallelCreation)
             throws SQLException {
-        String indexJson = indexParameters == null ? null : VecDbIndexJsonMapper.toJson(indexParameters);
+        String indexJson = VecDbIndexJsonMapper.toJson(vectorIndex, metadataIndex, parallelCreation);
         String tableAnnotations = VecDbEmbeddingTableJsonMapper.annotationsToJson(embeddingTable.annotations());
         String tableParameters = VecDbEmbeddingTableJsonMapper.tableParametersToJson();
         vecDbQueryExecutor.createVectorTable(connection, embeddingTable, tableAnnotations, tableParameters, indexJson);
@@ -105,16 +119,18 @@ public class VecDbSchemaManager {
      *
      * @param connection active connection to the target Oracle Database
      * @param embeddingTable existing VecDB table
-     * @param indexParameters root index configuration
+     * @param vectorIndex vector-index configuration
+     * @param metadataIndex metadata-index configuration
+     * @param parallelCreation index-creation parallelism
      * @throws SQLException if an index description, creation, or rebuild operation fails
      */
     private void prepareIndexesForExistingTable(
-            Connection connection, VecDbEmbeddingTable embeddingTable, VecDbIndexParameters indexParameters)
+            Connection connection,
+            VecDbEmbeddingTable embeddingTable,
+            VecDbVectorIndex vectorIndex,
+            VecDbMetadataIndex metadataIndex,
+            Integer parallelCreation)
             throws SQLException {
-        if (indexParameters == null) return;
-
-        VecDbVectorIndex vectorIndex = indexParameters.vectorIndex();
-        VecDbMetadataIndex metadataIndex = indexParameters.metadataIndex();
         boolean manageVectorIndex = isManaged(vectorIndex == null ? null : vectorIndex.createOption());
         boolean manageMetadataIndex = isManaged(metadataIndex == null ? null : metadataIndex.createOption());
         if (!manageVectorIndex && !manageMetadataIndex) return;
@@ -123,22 +139,22 @@ public class VecDbSchemaManager {
         VecDbQueryExecutor.IndexStatus indexStatus = vecDbQueryExecutor.indexStatus(connection, tableName);
         if (manageVectorIndex) {
             prepareVectorIndexForExistingTable(
-                    connection, tableName, indexParameters, vectorIndex, indexStatus.vectorIndexExists());
+                    connection, tableName, vectorIndex, parallelCreation, indexStatus.vectorIndexExists());
         }
         if (manageMetadataIndex) {
             prepareMetadataIndexForExistingTable(
-                    connection, tableName, indexParameters, metadataIndex, indexStatus.metadataIndexExists());
+                    connection, tableName, metadataIndex, parallelCreation, indexStatus.metadataIndexExists());
         }
     }
 
     private void prepareVectorIndexForExistingTable(
             Connection connection,
             String tableName,
-            VecDbIndexParameters indexParameters,
             VecDbVectorIndex vectorIndex,
+            Integer parallelCreation,
             boolean indexExists)
             throws SQLException {
-        String indexJson = vectorIndexJson(indexParameters, vectorIndex);
+        String indexJson = VecDbIndexJsonMapper.toJson(vectorIndex, null, parallelCreation);
         switch (vectorIndex.createOption()) {
             case CREATE_NONE:
                 break;
@@ -158,11 +174,11 @@ public class VecDbSchemaManager {
     private void prepareMetadataIndexForExistingTable(
             Connection connection,
             String tableName,
-            VecDbIndexParameters indexParameters,
             VecDbMetadataIndex metadataIndex,
+            Integer parallelCreation,
             boolean indexExists)
             throws SQLException {
-        String indexJson = metadataIndexJson(indexParameters, metadataIndex);
+        String indexJson = VecDbIndexJsonMapper.toJson(null, metadataIndex, parallelCreation);
         switch (metadataIndex.createOption()) {
             case CREATE_NONE:
                 break;
@@ -178,22 +194,6 @@ public class VecDbSchemaManager {
                 vecDbQueryExecutor.createIndex(connection, tableName, indexJson);
                 break;
         }
-    }
-
-    private static String vectorIndexJson(VecDbIndexParameters indexParameters, VecDbVectorIndex vectorIndex) {
-        VecDbIndexParameters.Builder builder = VecDbIndexParameters.builder().vectorIndex(vectorIndex);
-        if (indexParameters.parallelCreation() != null) {
-            builder.parallelCreation(indexParameters.parallelCreation());
-        }
-        return VecDbIndexJsonMapper.toJson(builder.build());
-    }
-
-    private static String metadataIndexJson(VecDbIndexParameters indexParameters, VecDbMetadataIndex metadataIndex) {
-        VecDbIndexParameters.Builder builder = VecDbIndexParameters.builder().metadataIndex(metadataIndex);
-        if (indexParameters.parallelCreation() != null) {
-            builder.parallelCreation(indexParameters.parallelCreation());
-        }
-        return VecDbIndexJsonMapper.toJson(builder.build());
     }
 
     private static boolean isManaged(CreateOption createOption) {

@@ -16,6 +16,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
+import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbDistanceMetric;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;

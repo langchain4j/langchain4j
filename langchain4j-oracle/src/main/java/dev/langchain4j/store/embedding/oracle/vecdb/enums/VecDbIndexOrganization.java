@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.oracle.vecdb;
+package dev.langchain4j.store.embedding.oracle.vecdb.enums;
 
 /**
  * Vector index organizations supported by {@code DBMS_VECTOR_DATABASE.CREATE_INDEX}.

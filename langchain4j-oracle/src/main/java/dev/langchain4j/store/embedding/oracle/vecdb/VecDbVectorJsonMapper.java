@@ -1,13 +1,18 @@
 package dev.langchain4j.store.embedding.oracle.vecdb;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -64,7 +69,7 @@ final class VecDbVectorJsonMapper {
 
     private static ObjectNode toJsonObject(String id, Embedding embedding) {
         ObjectNode vector = OBJECT_MAPPER.createObjectNode();
-        vector.put("id", id);
+        vector.put("id", ensureNotBlank(id, "id"));
 
         ArrayNode denseVector = vector.putArray("dense_vector");
         for (float value : embedding.vector()) {
@@ -87,6 +92,55 @@ final class VecDbVectorJsonMapper {
         }
         metadataJson.put(TEXT_METADATA_KEY, segment.text());
         return metadataJson;
+    }
+
+    static String idsToJson(Collection<String> ids) {
+        ensureNotEmpty(ids, "ids");
+
+        ArrayNode idsJson = OBJECT_MAPPER.createArrayNode();
+        for (String id : ids) {
+            idsJson.add(ensureNotBlank(id, "id"));
+        }
+        return idsJson.toString();
+    }
+
+    /** Extracts vector IDs from a {@code DBMS_VECTOR_DATABASE.LIST_VECTORS} response. */
+    static List<String> idsFromListResponse(String responseJson) {
+        ensureNotBlank(responseJson, "responseJson");
+
+        JsonNode response;
+        try {
+            response = OBJECT_MAPPER.readTree(responseJson);
+        } catch (JsonProcessingException exception) {
+            throw invalidListResponse("response is not valid JSON", exception);
+        }
+
+        JsonNode items = response == null ? null : response.get("items");
+        if (items == null || !items.isArray()) {
+            throw invalidListResponse("\"items\" must be an array");
+        }
+
+        List<String> ids = new ArrayList<>(items.size());
+        for (JsonNode item : items) {
+            JsonNode id = item == null || !item.isObject() ? null : item.get("id");
+            if (id == null || !id.isTextual()) {
+                throw invalidListResponse("each \"items\" entry must contain a string \"id\"");
+            }
+            try {
+                ids.add(ensureNotBlank(id.asText(), "id"));
+            } catch (IllegalArgumentException exception) {
+                throw invalidListResponse("each \"items\" entry must contain a non-blank \"id\"", exception);
+            }
+        }
+        return List.copyOf(ids);
+    }
+
+    private static IllegalStateException invalidListResponse(String message) {
+        return new IllegalStateException("Invalid DBMS_VECTOR_DATABASE.LIST_VECTORS response: " + message);
+    }
+
+    private static IllegalStateException invalidListResponse(String message, Exception cause) {
+        return new IllegalStateException("Invalid DBMS_VECTOR_DATABASE.LIST_VECTORS response: " + message, cause);
     }
 
     private static void ensureSameSize(List<?> first, String firstName, List<?> second, String secondName) {

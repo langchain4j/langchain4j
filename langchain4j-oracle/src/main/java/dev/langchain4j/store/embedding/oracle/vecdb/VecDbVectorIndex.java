@@ -1,12 +1,16 @@
 package dev.langchain4j.store.embedding.oracle.vecdb;
 
 import dev.langchain4j.store.embedding.oracle.CreateOption;
+import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbDistanceMetric;
+import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbIndexOrganization;
+import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbQuantizationAlgorithm;
+import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbQuantizationType;
 
 /**
  * Configuration of an IVF or HNSW index managed by {@code DBMS_VECTOR_DATABASE}.
  *
  * <p>Use {@link #ivfIndexBuilder()} or {@link #hnswIndexBuilder()} to create an index configuration. The resulting
- * index can be passed to the {@code VecDbEmbeddingStore} builder.
+ * index can be passed to the {@link OracleVecDbEmbeddingStore} builder.
  */
 public final class VecDbVectorIndex {
 

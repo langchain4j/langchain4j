@@ -1,5 +1,8 @@
 package dev.langchain4j.store.embedding.oracle.vecdb;
 
+import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbIndexOrganization;
+import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbQuantizationAlgorithm;
+
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 

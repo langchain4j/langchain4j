@@ -4,6 +4,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.store.embedding.oracle.CreateOption;
+import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbDistanceMetric;
+import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbIndexOrganization;
+import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbQuantizationType;
 
 /**
  * Common configuration for VecDB index builders.

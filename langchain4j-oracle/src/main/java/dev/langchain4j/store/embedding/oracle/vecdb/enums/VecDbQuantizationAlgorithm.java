@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.oracle.vecdb;
+package dev.langchain4j.store.embedding.oracle.vecdb.enums;
 
 /** Advanced quantization algorithms supported by VecDB vector indexes. */
 public enum VecDbQuantizationAlgorithm {
@@ -10,7 +10,7 @@ public enum VecDbQuantizationAlgorithm {
         this.databaseValue = databaseValue;
     }
 
-    String databaseValue() {
+    public String databaseValue() {
         return databaseValue;
     }
 }

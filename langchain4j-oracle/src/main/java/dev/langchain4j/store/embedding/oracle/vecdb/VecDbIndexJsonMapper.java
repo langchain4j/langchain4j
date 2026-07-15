@@ -1,13 +1,14 @@
 package dev.langchain4j.store.embedding.oracle.vecdb;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.store.embedding.oracle.CreateOption;
+import dev.langchain4j.store.embedding.oracle.vecdb.enums.VecDbIndexOrganization;
 
 /**
- * Maps {@link VecDbIndexParameters} configuration to the {@code index_params} JSON accepted by
+ * Maps vector-index, metadata-index, and parallel-creation configuration to the {@code index_params} JSON accepted by
  * {@code DBMS_VECTOR_DATABASE}.
  */
 final class VecDbIndexJsonMapper {
@@ -19,18 +20,22 @@ final class VecDbIndexJsonMapper {
     /**
      * Returns the VecDB {@code index_params} JSON for an index configuration.
      */
-    static String toJson(VecDbIndexParameters parameters) {
-        ensureNotNull(parameters, "indexParameters");
+    static String toJson(
+            VecDbVectorIndex vectorIndex, VecDbMetadataIndex metadataIndex, Integer parallelCreation) {
+        if (vectorIndex == null && metadataIndex == null && parallelCreation == null) {
+            return null;
+        }
 
         ObjectNode indexParameters = OBJECT_MAPPER.createObjectNode();
-        if (parameters.vectorIndex() != null) {
-            indexParameters.set("vector_index_params", vectorIndexParameters(parameters.vectorIndex()));
+        if (vectorIndex != null) {
+            indexParameters.set("vector_index_params", vectorIndexParameters(vectorIndex));
         }
-        if (parameters.metadataIndex() != null) {
-            indexParameters.set("metadata_index_params", metadataIndexParameters(parameters.metadataIndex()));
+        if (metadataIndex != null) {
+            indexParameters.set("metadata_index_params", metadataIndexParameters(metadataIndex));
         }
-        if (parameters.parallelCreation() != null) {
-            indexParameters.put("parallel_creation", parameters.parallelCreation());
+        if (parallelCreation != null) {
+            indexParameters.put(
+                    "parallel_creation", ensureGreaterThanZero(parallelCreation, "parallelCreation"));
         }
 
         return indexParameters.toString();
