@@ -236,6 +236,22 @@ public class DefaultAnthropicClient extends AnthropicClient {
     }
 
     /**
+     * Non-blocking counterpart of {@link #createMessageWithRawResponse(AnthropicCreateMessageRequest)}: issues the
+     * request via {@link dev.langchain4j.http.client.HttpClient#executeAsync} and parses the body once it arrives,
+     * without ever parking a thread.
+     */
+    @Override
+    public java.util.concurrent.CompletableFuture<ParsedAndRawResponse> createMessageWithRawResponseAsync(
+            AnthropicCreateMessageRequest request) {
+        HttpRequest httpRequest = toHttpRequest(toJson(request), "messages");
+        return httpClient.executeAsync(httpRequest).thenApply(rawResponse -> {
+            AnthropicCreateMessageResponse parsedResponse =
+                    fromJson(rawResponse.body(), AnthropicCreateMessageResponse.class);
+            return new ParsedAndRawResponse(parsedResponse, rawResponse);
+        });
+    }
+
+    /**
      * Creates a message with streaming response handling.
      *
      * <p>Sends a request to the {@code /messages} endpoint and processes the response as a stream
