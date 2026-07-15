@@ -51,45 +51,31 @@ public class TavilyWebSearchEngine implements WebSearchEngine {
             Boolean includeRawContent,
             List<String> includeDomains,
             List<String> excludeDomains) {
-        this(
-                baseUrl,
-                apiKey,
-                timeout,
-                searchDepth,
-                includeAnswer,
-                includeRawContent,
-                includeDomains,
-                excludeDomains,
-                null,
-                null,
-                null);
+        this(builder()
+                .baseUrl(baseUrl)
+                .apiKey(apiKey)
+                .timeout(timeout)
+                .searchDepth(searchDepth)
+                .includeAnswer(includeAnswer)
+                .includeRawContent(includeRawContent)
+                .includeDomains(includeDomains)
+                .excludeDomains(excludeDomains));
     }
 
-    public TavilyWebSearchEngine(
-            String baseUrl,
-            String apiKey,
-            Duration timeout,
-            String searchDepth,
-            Boolean includeAnswer,
-            Boolean includeRawContent,
-            List<String> includeDomains,
-            List<String> excludeDomains,
-            HttpClientBuilder httpClientBuilder,
-            Boolean logRequests,
-            Boolean logResponses) {
+    public TavilyWebSearchEngine(TavilyWebSearchEngineBuilder builder) {
         this.tavilyClient = TavilyClient.builder()
-                .httpClientBuilder(httpClientBuilder)
-                .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
-                .timeout(getOrDefault(timeout, ofSeconds(10)))
-                .logRequests(logRequests)
-                .logResponses(logResponses)
+                .httpClientBuilder(builder.httpClientBuilder)
+                .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_BASE_URL))
+                .timeout(getOrDefault(builder.timeout, ofSeconds(10)))
+                .logRequests(builder.logRequests)
+                .logResponses(builder.logResponses)
                 .build();
-        this.apiKey = ensureNotBlank(apiKey, "apiKey");
-        this.searchDepth = searchDepth;
-        this.includeAnswer = includeAnswer;
-        this.includeRawContent = includeRawContent;
-        this.includeDomains = copyIfNotNull(includeDomains);
-        this.excludeDomains = copyIfNotNull(excludeDomains);
+        this.apiKey = ensureNotBlank(builder.apiKey, "apiKey");
+        this.searchDepth = builder.searchDepth;
+        this.includeAnswer = builder.includeAnswer;
+        this.includeRawContent = builder.includeRawContent;
+        this.includeDomains = copyIfNotNull(builder.includeDomains);
+        this.excludeDomains = copyIfNotNull(builder.excludeDomains);
     }
 
     public static TavilyWebSearchEngineBuilder builder() {
@@ -209,18 +195,7 @@ public class TavilyWebSearchEngine implements WebSearchEngine {
         }
 
         public TavilyWebSearchEngine build() {
-            return new TavilyWebSearchEngine(
-                    this.baseUrl,
-                    this.apiKey,
-                    this.timeout,
-                    this.searchDepth,
-                    this.includeAnswer,
-                    this.includeRawContent,
-                    this.includeDomains,
-                    this.excludeDomains,
-                    this.httpClientBuilder,
-                    this.logRequests,
-                    this.logResponses);
+            return new TavilyWebSearchEngine(this);
         }
 
         public String toString() {

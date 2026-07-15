@@ -48,27 +48,24 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
      */
     public SearchApiWebSearchEngine(
             String apiKey, String baseUrl, Duration timeout, String engine, Map<String, Object> optionalParameters) {
-        this(apiKey, baseUrl, timeout, engine, optionalParameters, null, null, null);
+        this(builder()
+                .apiKey(apiKey)
+                .baseUrl(baseUrl)
+                .timeout(timeout)
+                .engine(engine)
+                .optionalParameters(optionalParameters));
     }
 
-    public SearchApiWebSearchEngine(
-            String apiKey,
-            String baseUrl,
-            Duration timeout,
-            String engine,
-            Map<String, Object> optionalParameters,
-            HttpClientBuilder httpClientBuilder,
-            Boolean logRequests,
-            Boolean logResponses) {
-        this.apiKey = ensureNotBlank(apiKey, "apiKey");
-        this.engine = getOrDefault(engine, DEFAULT_ENGINE);
-        this.optionalParameters = getOrDefault(copyIfNotNull(optionalParameters), new HashMap<>());
+    public SearchApiWebSearchEngine(SearchApiWebSearchEngineBuilder builder) {
+        this.apiKey = ensureNotBlank(builder.apiKey, "apiKey");
+        this.engine = getOrDefault(builder.engine, DEFAULT_ENGINE);
+        this.optionalParameters = getOrDefault(copyIfNotNull(builder.optionalParameters), new HashMap<>());
         this.client = SearchApiClient.builder()
-                .httpClientBuilder(httpClientBuilder)
-                .timeout(getOrDefault(timeout, ofSeconds(30)))
-                .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
-                .logRequests(logRequests)
-                .logResponses(logResponses)
+                .httpClientBuilder(builder.httpClientBuilder)
+                .timeout(getOrDefault(builder.timeout, ofSeconds(30)))
+                .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_BASE_URL))
+                .logRequests(builder.logRequests)
+                .logResponses(builder.logResponses)
                 .build();
     }
 
@@ -198,15 +195,7 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
         }
 
         public SearchApiWebSearchEngine build() {
-            return new SearchApiWebSearchEngine(
-                    this.apiKey,
-                    this.baseUrl,
-                    this.timeout,
-                    this.engine,
-                    this.optionalParameters,
-                    this.httpClientBuilder,
-                    this.logRequests,
-                    this.logResponses);
+            return new SearchApiWebSearchEngine(this);
         }
 
         public String toString() {
