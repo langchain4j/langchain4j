@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.UriUtils;
 import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.WebSearchInformationResult;
@@ -50,9 +51,38 @@ public class TavilyWebSearchEngine implements WebSearchEngine {
             Boolean includeRawContent,
             List<String> includeDomains,
             List<String> excludeDomains) {
+        this(
+                baseUrl,
+                apiKey,
+                timeout,
+                searchDepth,
+                includeAnswer,
+                includeRawContent,
+                includeDomains,
+                excludeDomains,
+                null,
+                null,
+                null);
+    }
+
+    public TavilyWebSearchEngine(
+            String baseUrl,
+            String apiKey,
+            Duration timeout,
+            String searchDepth,
+            Boolean includeAnswer,
+            Boolean includeRawContent,
+            List<String> includeDomains,
+            List<String> excludeDomains,
+            HttpClientBuilder httpClientBuilder,
+            Boolean logRequests,
+            Boolean logResponses) {
         this.tavilyClient = TavilyClient.builder()
+                .httpClientBuilder(httpClientBuilder)
                 .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
                 .timeout(getOrDefault(timeout, ofSeconds(10)))
+                .logRequests(logRequests)
+                .logResponses(logResponses)
                 .build();
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
         this.searchDepth = searchDepth;
@@ -117,6 +147,9 @@ public class TavilyWebSearchEngine implements WebSearchEngine {
         private Boolean includeRawContent;
         private List<String> includeDomains;
         private List<String> excludeDomains;
+        private HttpClientBuilder httpClientBuilder;
+        private Boolean logRequests;
+        private Boolean logResponses;
 
         TavilyWebSearchEngineBuilder() {}
 
@@ -160,6 +193,21 @@ public class TavilyWebSearchEngine implements WebSearchEngine {
             return this;
         }
 
+        public TavilyWebSearchEngineBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        public TavilyWebSearchEngineBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public TavilyWebSearchEngineBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
         public TavilyWebSearchEngine build() {
             return new TavilyWebSearchEngine(
                     this.baseUrl,
@@ -169,7 +217,10 @@ public class TavilyWebSearchEngine implements WebSearchEngine {
                     this.includeAnswer,
                     this.includeRawContent,
                     this.includeDomains,
-                    this.excludeDomains);
+                    this.excludeDomains,
+                    this.httpClientBuilder,
+                    this.logRequests,
+                    this.logResponses);
         }
 
         public String toString() {
