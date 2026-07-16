@@ -14,6 +14,7 @@ import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
+import dev.langchain4j.model.chat.common.StreamingMode;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
@@ -50,8 +51,13 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .build();
 
     @Override
-    protected List<StreamingChatModel> models() {
+    protected List<StreamingChatModel> baseModels() {
         return List.of(ANTHROPIC_STREAMING_CHAT_MODEL);
+    }
+
+    @Override
+    protected List<StreamingMode> streamingModes() {
+        return List.of(StreamingMode.HANDLER, StreamingMode.PUBLISHER);
     }
 
     @Override
@@ -144,7 +150,7 @@ class AnthropicStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
-    protected List<StreamingChatModel> modelsSupportingStructuredOutputs() {
+    protected List<StreamingChatModel> baseModelsSupportingStructuredOutputs() {
         return List.of(ANTHROPIC_STREAMING_SCHEMA_MODEL);
     }
 

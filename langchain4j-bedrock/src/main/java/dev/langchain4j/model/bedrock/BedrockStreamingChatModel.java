@@ -20,11 +20,16 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.atomic.AtomicReference;
+import mutiny.zero.BackpressureStrategy;
+import mutiny.zero.TubeConfiguration;
+import mutiny.zero.ZeroPublisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
@@ -55,6 +60,12 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
 
     private static final Logger log = LoggerFactory.getLogger(BedrockStreamingChatModel.class);
 
+    /**
+     * Size of the bounded back-pressure buffer used by the reactive streaming publisher returned from
+     * {@link #doChat(ChatRequest)}. Mirrors the OpenAI module's default; a follow-up may make this configurable.
+     */
+    private static final int STREAMING_BUFFER_SIZE = 16384;
+
     private final BedrockRuntimeAsyncClient client;
     private final boolean logResponses;
 
@@ -76,15 +87,31 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         validate(chatRequest.parameters());
+        ConverseStreamRequest converseStreamRequest = buildConverseStreamRequest(chatRequest);
+        streamTo(converseStreamRequest, handler);
+    }
 
+    @Override
+    public Publisher<StreamingEvent> doChat(ChatRequest chatRequest) {
+        validate(chatRequest.parameters());
         ConverseStreamRequest converseStreamRequest = buildConverseStreamRequest(chatRequest);
 
+        TubeConfiguration config = new TubeConfiguration()
+                .withBackpressureStrategy(BackpressureStrategy.BUFFER)
+                .withBufferSize(STREAMING_BUFFER_SIZE); // TODO
+
+        return ZeroPublisher.create(config, tube -> {
+            TubeBackedStreamingChatResponseHandler bridge = new TubeBackedStreamingChatResponseHandler(tube);
+            tube.whenTerminates(bridge::cancelUpstream);
+            streamTo(converseStreamRequest, bridge);
+        });
+    }
+
+    private void streamTo(ConverseStreamRequest converseStreamRequest, StreamingChatResponseHandler targetHandler) {
         ConverseResponseFromStreamBuilder responseBuilder = new ConverseResponseFromStreamBuilder(returnThinking);
         ToolCallBuilder toolCallBuilder = new ToolCallBuilder(-1);
         AtomicReference<ContentBlockDelta.Type> currentContentType = new AtomicReference<>();
         AtomicReference<StreamingHandle> streamingHandle = new AtomicReference<>();
-
-        StreamingChatResponseHandler targetHandler = handler;
 
         ConverseStreamResponseHandler converseStreamResponseHandler = ConverseStreamResponseHandler.builder()
                 .onEventStream(publisher -> publisher.subscribe(new Subscriber<ConverseStreamOutput>() {
@@ -186,7 +213,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                 .converseStream(converseStreamRequest, converseStreamResponseHandler)
                 .exceptionally(ex -> {
                     RuntimeException mappedError = BedrockExceptionMapper.INSTANCE.mapException(ex);
-                    withLoggingExceptions(() -> handler.onError(mappedError));
+                    withLoggingExceptions(() -> targetHandler.onError(mappedError));
                     return null;
                 });
     }
