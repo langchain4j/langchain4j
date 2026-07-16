@@ -14,6 +14,7 @@ import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -84,6 +85,7 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
     public CohereEmbeddingModel(CohereEmbeddingModelBuilder builder) {
         String baseUrl = getOrDefault(builder.baseUrl, DEFAULT_BASE_URL);
         this.client = CohereClient.builder()
+                .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(baseUrl)
                 .apiKey(ensureNotBlank(builder.apiKey, "apiKey"))
                 .timeout(getOrDefault(builder.timeout, ofSeconds(60)))
@@ -92,6 +94,7 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .logger(builder.logger)
                 .build();
         this.v2Client = CohereClient.builder()
+                .httpClientBuilder(builder.httpClientBuilder)
                 .baseUrl(getOrDefault(builder.v2BaseUrl, toV2BaseUrl(baseUrl)))
                 .apiKey(ensureNotBlank(builder.apiKey, "apiKey"))
                 .timeout(getOrDefault(builder.timeout, ofSeconds(60)))
@@ -279,6 +282,7 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
     }
 
     public static class CohereEmbeddingModelBuilder {
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String v2BaseUrl;
         private String apiKey;
@@ -292,6 +296,18 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
         private List<EmbeddingModelListener> listeners;
 
         CohereEmbeddingModelBuilder() {}
+
+        /**
+         * Sets a custom HTTP client builder, allowing fine-grained control over the HTTP client
+         * configuration such as timeouts and proxy settings.
+         *
+         * @param httpClientBuilder the HTTP client builder
+         * @return {@code this}
+         */
+        public CohereEmbeddingModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
 
         public CohereEmbeddingModelBuilder listeners(List<EmbeddingModelListener> listeners) {
             this.listeners = listeners;

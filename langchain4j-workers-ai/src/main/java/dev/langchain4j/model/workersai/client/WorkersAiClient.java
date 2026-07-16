@@ -1,14 +1,16 @@
 package dev.langchain4j.model.workersai.client;
 
-import okhttp3.Interceptor;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
-import org.jetbrains.annotations.NotNull;
-import retrofit2.Retrofit;
-import retrofit2.converter.jackson.JacksonConverterFactory;
+import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.workersai.client.WorkersAiJsonUtils.fromJson;
+import static dev.langchain4j.model.workersai.client.WorkersAiJsonUtils.toJson;
+import static java.time.Duration.ofSeconds;
 
-import java.io.IOException;
+import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.http.client.HttpClientBuilderLoader;
+import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import java.time.Duration;
 
 /**
@@ -18,69 +20,164 @@ public class WorkersAiClient {
 
     private static final String BASE_URL = "https://api.cloudflare.com/";
 
-    /**
-     * Constructor.
-     */
-    public WorkersAiClient() {}
+    private final HttpClient httpClient;
+    private final String authorizationHeader;
+
+    WorkersAiClient(Builder builder) {
+        HttpClientBuilder httpClientBuilder =
+                getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
+
+        // The 30s timeouts preserve the original behavior: slow, but can be needed for images.
+        this.httpClient = httpClientBuilder
+                .connectTimeout(getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.connectTimeout()), ofSeconds(30)))
+                .readTimeout(getOrDefault(getOrDefault(builder.timeout, httpClientBuilder.readTimeout()), ofSeconds(30)))
+                .build();
+
+        this.authorizationHeader = "Bearer " + builder.apiToken;
+    }
 
     /**
-     * Initialization of okHTTP.
+     * Generate chat.
      *
-     * @param apiToken
-     *      authorization token
-     * @return
-     *      api
+     * @param apiRequest request.
+     * @param accountIdentifier account identifier.
+     * @param modelName model name.
+     * @return response.
      */
-    public static WorkersAiApi createService(String apiToken) {
-        OkHttpClient okHttpClient = new OkHttpClient.Builder()
-                .addInterceptor(new AuthInterceptor(apiToken))
-                // Slow but can be needed for images
-                .callTimeout(Duration.ofSeconds(30))
-                .readTimeout(Duration.ofSeconds(30))
-                .build();
-
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(BASE_URL)
-                .client(okHttpClient)
-                .addConverterFactory(JacksonConverterFactory.create())
-                .build();
-
-        return retrofit.create(WorkersAiApi.class);
+    public WorkersAiChatCompletionResponse generateChat(
+            WorkersAiChatCompletionRequest apiRequest, String accountIdentifier, String modelName) {
+        return checkSuccess(
+                fromJson(execute(apiRequest, accountIdentifier, modelName).body(), WorkersAiChatCompletionResponse.class));
     }
 
     /**
-     * An interceptor for HTTP requests to add an authorization token to the header.
-     * Implements the {@link Interceptor} interface.
+     * Generate text.
+     *
+     * @param apiRequest request.
+     * @param accountIdentifier account identifier.
+     * @param modelName model name.
+     * @return response.
      */
-    public static class AuthInterceptor implements Interceptor {
-        private final String apiToken;
-
-        /**
-         * Constructs an AuthInterceptor with a specified authorization token.
-         *
-         * @param apiToken The authorization token to be used in HTTP headers.
-         */
-        public AuthInterceptor(String apiToken) {
-            this.apiToken = apiToken;
-        }
-
-        /**
-         * Intercepts an outgoing HTTP request, adding an authorization header.
-         *
-         * @param chain The chain of request/response interceptors.
-         * @return The modified response after adding the authorization header.
-         * @throws IOException If an IO exception occurs during request processing.
-         */
-        @NotNull
-        @Override
-        public Response intercept(Chain chain) throws IOException {
-            Request.Builder builder = chain
-                    .request().newBuilder()
-                    .header("Authorization", "Bearer " + apiToken);
-            Request request = builder.build();
-            return chain.proceed(request);
-        }
+    public WorkersAiTextCompletionResponse generateText(
+            WorkersAiTextCompletionRequest apiRequest, String accountIdentifier, String modelName) {
+        return checkSuccess(
+                fromJson(execute(apiRequest, accountIdentifier, modelName).body(), WorkersAiTextCompletionResponse.class));
     }
 
+    /**
+     * Generate image. The endpoint returns the raw binary image, so the response bytes are returned as-is.
+     *
+     * @param apiRequest request.
+     * @param accountIdentifier account identifier.
+     * @param modelName model name.
+     * @return the raw image bytes.
+     */
+    public byte[] generateImage(
+            WorkersAiImageGenerationRequest apiRequest, String accountIdentifier, String modelName) {
+        return execute(apiRequest, accountIdentifier, modelName).bodyBytes();
+    }
 
+    /**
+     * Generate embeddings.
+     *
+     * @param apiRequest request.
+     * @param accountIdentifier account identifier.
+     * @param modelName model name.
+     * @return response.
+     */
+    public WorkersAiEmbeddingResponse embed(
+            WorkersAiEmbeddingRequest apiRequest, String accountIdentifier, String modelName) {
+        return checkSuccess(
+                fromJson(execute(apiRequest, accountIdentifier, modelName).body(), WorkersAiEmbeddingResponse.class));
+    }
+
+    /**
+     * Surfaces Cloudflare API errors returned in a 2xx envelope with {@code success=false}.
+     * Non-2xx responses are already turned into an {@link dev.langchain4j.exception.HttpException} by the HTTP client.
+     */
+    private static <T extends ApiResponse<?>> T checkSuccess(T response) {
+        if (response == null || !response.isSuccess()) {
+            StringBuilder errorMessage = new StringBuilder("Failed to generate chat message:");
+            if (response != null && response.getErrors() != null) {
+                errorMessage.append(response.getErrors().stream()
+                        .map(ApiResponse.Error::getMessage)
+                        .reduce((a, b) -> a + "\n" + b)
+                        .orElse(""));
+            }
+            throw new RuntimeException(errorMessage.toString());
+        }
+        return response;
+    }
+
+    private SuccessfulHttpResponse execute(Object apiRequest, String accountIdentifier, String modelName) {
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(BASE_URL + "client/v4/accounts/" + accountIdentifier + "/ai/run/" + modelName)
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Authorization", authorizationHeader)
+                .body(toJson(apiRequest))
+                .build();
+        return httpClient.execute(httpRequest);
+    }
+
+    /**
+     * Builder access.
+     *
+     * @return builder instance
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    /**
+     * Builder for {@link WorkersAiClient}.
+     */
+    public static class Builder {
+
+        private HttpClientBuilder httpClientBuilder;
+        private Duration timeout;
+        private String apiToken;
+
+        /**
+         * Sets the {@link HttpClientBuilder} used to create the underlying HTTP client.
+         *
+         * @param httpClientBuilder the HTTP client builder.
+         * @return {@code this}.
+         */
+        public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        /**
+         * Sets the timeout used for both connecting and reading.
+         *
+         * @param timeout the timeout.
+         * @return {@code this}.
+         */
+        public Builder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        /**
+         * Sets the API token used for authorization.
+         *
+         * @param apiToken the API token.
+         * @return {@code this}.
+         */
+        public Builder apiToken(String apiToken) {
+            this.apiToken = apiToken;
+            return this;
+        }
+
+        /**
+         * Builds a new {@link WorkersAiClient}.
+         *
+         * @return a new client instance.
+         */
+        public WorkersAiClient build() {
+            return new WorkersAiClient(this);
+        }
+    }
 }
