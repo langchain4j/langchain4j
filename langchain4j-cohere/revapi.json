@@ -33,6 +33,11 @@
           "code": "java.class.externalClassExposedInAPI",
           "new": "missing-class dev.langchain4j.model.ModelProvider",
           "justification": "Core langchain4j type intentionally exposed by the EmbeddingModel request/response API (embed(EmbeddingRequest), supportedParameters(), supportedContentTypes(), provider(), listeners())"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.http.client.HttpClientBuilder",
+          "justification": "HttpClientBuilder is intentionally exposed by the Cohere integration for custom HTTP client configuration"
         }
       ]
     }
