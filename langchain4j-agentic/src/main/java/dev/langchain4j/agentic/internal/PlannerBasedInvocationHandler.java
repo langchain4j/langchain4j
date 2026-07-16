@@ -6,6 +6,7 @@ import static dev.langchain4j.agentic.internal.AgentUtil.rawType;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgentInvocation;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentError;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentInvocation;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgenticScopeCreated;
 
@@ -205,7 +206,18 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
 
         Planner planner = plannerSupplier.get();
         planner.init(new InitPlanningContext(currentScope, this, subagents));
-        Object result = new PlannerLoop(planner, currentScope, registry).loop();
+
+        Object result;
+        try {
+            result = new PlannerLoop(planner, currentScope, registry).loop();
+        } catch (Exception e) {
+            if (isRootCall()) {
+                agentError(agentListener, currentScope, this, namedArgs, e);
+                currentScope.rootCallEnded(registry, agentListener);
+            }
+            throw e;
+        }
+
         Object output = outputKey != null ? currentScope.readState(outputKey) : result;
 
         if (isRootCall()) {
