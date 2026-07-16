@@ -133,7 +133,9 @@ public class GoogleGenAiChatModel implements ChatModel {
         }
 
         var result = withRetryMappingExceptions(
-                () -> client.models.generateContent(chatRequest.modelName(), contents, config), maxRetries);
+                () -> client.models.generateContent(chatRequest.modelName(), contents, config),
+                maxRetries,
+                GoogleGenAiExceptionMapper.INSTANCE);
 
         ChatResponse response = GoogleGenAiContentMapper.toChatResponse(result, chatRequest.modelName());
 

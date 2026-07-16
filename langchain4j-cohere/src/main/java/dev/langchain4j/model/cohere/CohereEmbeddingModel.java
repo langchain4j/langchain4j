@@ -1,5 +1,6 @@
 package dev.langchain4j.model.cohere;
 
+import static dev.langchain4j.internal.ExceptionMapper.mappingException;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -170,7 +171,7 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
         for (int i = 0; i < inputs.size(); i += maxSegmentsPerBatch) {
             List<EmbeddingInput> batch = inputs.subList(i, Math.min(i + maxSegmentsPerBatch, inputs.size()));
 
-            EmbedV2Response response = v2Client.embedV2(buildV2Request(batch, effectiveInputType));
+            EmbedV2Response response = mappingException(() -> v2Client.embedV2(buildV2Request(batch, effectiveInputType)));
 
             if (response.getEmbeddings() != null && response.getEmbeddings().getFloatEmbeddings() != null) {
                 embeddings.addAll(response.getEmbeddings().getFloatEmbeddings().stream()
@@ -259,7 +260,7 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
                     .model(modelName)
                     .build();
 
-            EmbedResponse response = this.client.embed(request);
+            EmbedResponse response = mappingException(() -> this.client.embed(request));
 
             embeddings.addAll(getEmbeddings(response));
             totalTokenUsage += getTokenUsage(response);
