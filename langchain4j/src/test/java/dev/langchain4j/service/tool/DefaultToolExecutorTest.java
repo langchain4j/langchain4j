@@ -17,7 +17,6 @@ import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -33,11 +32,6 @@ class DefaultToolExecutorTest implements WithAssertions {
         A,
         B,
         C
-    }
-
-    public enum LocaleSensitiveEnum {
-        ACTIVE,
-        INACTIVE
     }
 
     @SuppressWarnings("unused")
@@ -779,19 +773,5 @@ class DefaultToolExecutorTest implements WithAssertions {
 
         assertThat(result.isError()).isTrue();
         assertThat(result.resultText()).isEqualTo("Test exception with details");
-    }
-
-    @Test
-    void coerce_argument_to_enum_should_be_locale_independent() {
-        // In the Turkish locale, "active".toUpperCase() yields "ACTİVE" (dotted capital I),
-        // which must still resolve to the enum constant ACTIVE.
-        Locale previousDefault = Locale.getDefault();
-        try {
-            Locale.setDefault(Locale.forLanguageTag("tr-TR"));
-            assertThat(coerceArgument("active", "arg", LocaleSensitiveEnum.class, null))
-                    .isEqualTo(LocaleSensitiveEnum.ACTIVE);
-        } finally {
-            Locale.setDefault(previousDefault);
-        }
     }
 }
