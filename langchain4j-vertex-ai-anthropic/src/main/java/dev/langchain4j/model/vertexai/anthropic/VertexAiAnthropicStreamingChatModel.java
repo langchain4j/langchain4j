@@ -106,15 +106,9 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
             client.generateContentStreaming(anthropicRequest, requestModelName,
                     createStreamingResponseHandler(handler));
 
-        } catch (IOException e) {
-            try {
-                handler.onError(new RuntimeException("Failed to generate response", e));
-            } catch (Exception userException) {
-                logger.warn("User's onError handler threw an exception, ignoring", userException);
-            }
         } catch (Exception e) {
             try {
-                handler.onError(e);
+                handler.onError(VertexAiAnthropicExceptionMapper.INSTANCE.mapException(e));
             } catch (Exception userException) {
                 logger.warn("User's onError handler threw an exception, ignoring", userException);
             }
@@ -197,7 +191,7 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
             @Override
             public void onError(Throwable error) {
                 try {
-                    handler.onError(error);
+                    handler.onError(VertexAiAnthropicExceptionMapper.INSTANCE.mapException(error));
                 } catch (Exception userException) {
                     logger.warn("User's onError handler threw an exception, ignoring", userException);
                 }

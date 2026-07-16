@@ -1,6 +1,7 @@
 package dev.langchain4j.model.workersai.client;
 
 import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.ExceptionMapper.mappingException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.workersai.client.WorkersAiJsonUtils.fromJson;
 import static dev.langchain4j.model.workersai.client.WorkersAiJsonUtils.toJson;
@@ -93,7 +94,8 @@ public class WorkersAiClient {
 
     /**
      * Surfaces Cloudflare API errors returned in a 2xx envelope with {@code success=false}.
-     * Non-2xx responses are already turned into an {@link dev.langchain4j.exception.HttpException} by the HTTP client.
+     * Non-2xx responses are already mapped to specific {@link dev.langchain4j.exception.LangChain4jException}
+     * subtypes (e.g. {@link dev.langchain4j.exception.RateLimitException}) in {@link #execute}.
      */
     private static <T extends ApiResponse<?>> T checkSuccess(T response) {
         if (response == null || !response.isSuccess()) {
@@ -117,7 +119,7 @@ public class WorkersAiClient {
                 .addHeader("Authorization", authorizationHeader)
                 .body(toJson(apiRequest))
                 .build();
-        return httpClient.execute(httpRequest);
+        return mappingException(() -> httpClient.execute(httpRequest));
     }
 
     /**
