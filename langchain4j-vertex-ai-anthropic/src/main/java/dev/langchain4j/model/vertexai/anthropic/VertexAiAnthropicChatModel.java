@@ -13,6 +13,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.vertexai.anthropic.internal.ValidationUtils;
 import dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicRequest;
@@ -59,12 +60,7 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
     private static final Logger logger = LoggerFactory.getLogger(VertexAiAnthropicChatModel.class);
 
     private final VertexAiAnthropicClient client;
-    private final String modelName;
-    private final Integer maxTokens;
-    private final Double temperature;
-    private final Double topP;
-    private final Integer topK;
-    private final List<String> stopSequences;
+    private final ChatRequestParameters defaultRequestParameters;
     private final Boolean logRequests;
     private final Boolean logResponses;
     private final Boolean enablePromptCaching;
@@ -72,22 +68,40 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
     private final String location;
 
     public VertexAiAnthropicChatModel(VertexAiAnthropicChatModelBuilder builder) {
+        ChatRequestParameters commonParameters = builder.defaultRequestParameters != null
+                ? builder.defaultRequestParameters
+                : DefaultChatRequestParameters.EMPTY;
+
+        String modelName = ensureNotBlank(getOrDefault(builder.modelName, commonParameters.modelName()), "modelName");
+
         this.client = new VertexAiAnthropicClient(
                 ensureNotBlank(builder.project, "project"),
                 ensureNotBlank(builder.location, "location"),
-                ensureNotBlank(builder.modelName, "modelName"),
+                modelName,
                 builder.credentials);
-        this.modelName = builder.modelName;
-        this.maxTokens = ValidationUtils.validateMaxTokens(builder.maxTokens);
-        this.temperature = ValidationUtils.validateTemperature(builder.temperature);
-        this.topP = ValidationUtils.validateTopP(builder.topP);
-        this.topK = ValidationUtils.validateTopK(builder.topK);
-        this.stopSequences = builder.stopSequences;
+        this.defaultRequestParameters = DefaultChatRequestParameters.builder()
+                .modelName(modelName)
+                .maxOutputTokens(
+                        ValidationUtils.validateMaxTokens(getOrDefault(builder.maxTokens, commonParameters.maxOutputTokens())))
+                .temperature(
+                        ValidationUtils.validateTemperature(getOrDefault(builder.temperature, commonParameters.temperature())))
+                .topP(ValidationUtils.validateTopP(getOrDefault(builder.topP, commonParameters.topP())))
+                .topK(ValidationUtils.validateTopK(getOrDefault(builder.topK, commonParameters.topK())))
+                .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
+                .toolSpecifications(commonParameters.toolSpecifications())
+                .toolChoice(commonParameters.toolChoice())
+                .responseFormat(commonParameters.responseFormat())
+                .build();
         this.logRequests = getOrDefault(builder.logRequests, false);
         this.logResponses = getOrDefault(builder.logResponses, false);
         this.enablePromptCaching = getOrDefault(builder.enablePromptCaching, false);
         this.listeners = builder.listeners != null ? List.copyOf(builder.listeners) : List.of();
         this.location = ensureNotBlank(builder.location, "location");
+    }
+
+    @Override
+    public ChatRequestParameters defaultRequestParameters() {
+        return defaultRequestParameters;
     }
 
     @Override
@@ -103,15 +117,11 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
         }
 
         try {
-            String requestModelName = getOrDefault(parameters.modelName(), modelName);
+            String requestModelName = parameters.modelName();
 
             if (logRequests) {
                 logger.debug("Base URL: {}-aiplatform.googleapis.com:443", location);
-                logger.debug(
-                        "Using model name: {} (from parameters: {}, default: {})",
-                        requestModelName,
-                        parameters.modelName(),
-                        modelName);
+                logger.debug("Using model name: {}", requestModelName);
             }
 
             AnthropicRequest anthropicRequest = AnthropicRequestMapper.toRequest(
@@ -119,14 +129,11 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
                     messages,
                     toolSpecifications,
                     parameters.toolChoice(),
-                    parameters.maxOutputTokens() != null ? parameters.maxOutputTokens() : maxTokens,
-                    temperature,
-                    topP,
-                    topK,
-                    parameters.stopSequences() != null
-                                    && !parameters.stopSequences().isEmpty()
-                            ? parameters.stopSequences()
-                            : stopSequences,
+                    parameters.maxOutputTokens(),
+                    parameters.temperature(),
+                    parameters.topP(),
+                    parameters.topK(),
+                    parameters.stopSequences(),
                     enablePromptCaching);
 
             if (logRequests) {
@@ -169,6 +176,7 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
     public static class VertexAiAnthropicChatModelBuilder {
         private String project;
         private String location;
+        private ChatRequestParameters defaultRequestParameters;
         private String modelName;
         private Integer maxTokens;
         private Double temperature;
@@ -188,6 +196,20 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
 
         public VertexAiAnthropicChatModelBuilder location(String location) {
             this.location = location;
+            return this;
+        }
+
+        /**
+         * Sets default common {@link ChatRequestParameters}.
+         * <br>
+         * When a parameter is set via both an individual builder method (e.g., {@link #modelName(String)})
+         * and {@link ChatRequestParameters}, the individual builder method takes precedence.
+         *
+         * @param parameters default common {@link ChatRequestParameters}
+         * @return this builder
+         */
+        public VertexAiAnthropicChatModelBuilder defaultRequestParameters(ChatRequestParameters parameters) {
+            this.defaultRequestParameters = parameters;
             return this;
         }
 
