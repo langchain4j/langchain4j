@@ -210,11 +210,34 @@ class SuspensionResumeIT {
         assertThat(result.result()).isNull();
         assertThat(result.agenticScope()).isNotNull();
 
-        // Provide response and resume
-        result.agenticScope().completePendingResponse("APPROVED");
-        ResultWithAgenticScope<String> resumed = workflow.process("s5", "data");
+        // Complete and resume in a single call
+        ResultWithAgenticScope<String> resumed = result.completePendingResponse("APPROVED");
         assertThat(resumed.suspended()).isFalse();
         assertThat(resumed.result()).isEqualTo("Final: PROCESSED: data | APPROVED");
+    }
+
+    // ================================================================
+    // Multi-step chaining via ResultWithAgenticScope.completePendingResponse
+    // ================================================================
+
+    @Test
+    void multiStepChainingViaCompletePendingResponse(@TempDir Path tempDir) {
+        AgenticScopePersister.setStore(new FileBasedAgenticScopeStore(tempDir));
+        SuspendableWorkflowWithResult workflow = buildDoubleHitlWorkflowWithResult();
+
+        ResultWithAgenticScope<String> result = workflow.process("s5b", "request");
+        assertThat(result.suspended()).isTrue();
+        assertThat(result.agenticScope().pendingResponseIds()).containsExactly("manager-approval");
+
+        // First resume — suspends again at legal approval
+        result = result.completePendingResponse("Manager OK");
+        assertThat(result.suspended()).isTrue();
+        assertThat(result.agenticScope().pendingResponseIds()).containsExactly("legal-approval");
+
+        // Second resume — completes
+        result = result.completePendingResponse("Legal OK");
+        assertThat(result.suspended()).isFalse();
+        assertThat(result.result()).isEqualTo("Result: PROCESSED: request | Manager OK | Legal OK");
     }
 
     // ================================================================
@@ -431,6 +454,33 @@ class SuspensionResumeIT {
         });
 
         return AgenticServices.sequenceBuilder(SuspendableWorkflow.class)
+                .subAgents(dataProcessor(), managerApproval, legalApproval, finalizer)
+                .outputKey("final_result")
+                .build();
+    }
+
+    private SuspendableWorkflowWithResult buildDoubleHitlWorkflowWithResult() {
+        HumanInTheLoop managerApproval = AgenticServices.humanInTheLoopBuilder()
+                .description("Manager approval")
+                .outputKey("manager_approval")
+                .responseProvider(scope -> new SuspendedResponse<>("manager-approval"))
+                .build();
+
+        HumanInTheLoop legalApproval = AgenticServices.humanInTheLoopBuilder()
+                .description("Legal approval")
+                .outputKey("legal_approval")
+                .responseProvider(scope -> new SuspendedResponse<>("legal-approval"))
+                .build();
+
+        AgenticServices.AgenticScopeAction finalizer = AgenticServices.agentAction(scope -> {
+            String processed = (String) scope.readState("processed_data");
+            String manager = (String) scope.readState("manager_approval");
+            String legal = (String) scope.readState("legal_approval");
+            scope.writeState("final_result",
+                    "Result: " + processed + " | " + manager + " | " + legal);
+        });
+
+        return AgenticServices.sequenceBuilder(SuspendableWorkflowWithResult.class)
                 .subAgents(dataProcessor(), managerApproval, legalApproval, finalizer)
                 .outputKey("final_result")
                 .build();

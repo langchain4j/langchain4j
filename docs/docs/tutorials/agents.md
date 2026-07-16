@@ -2821,48 +2821,44 @@ The user can make this choice at the point where the response is created — in 
 
 It is advised to use `SuspendedResponse` for long-running interactions (hours/days) where crash resilience matters, and `PendingResponse` for short-lived in-process waits where a background thread will provide the answer shortly.
 
-If the method's return type is `ResultWithAgenticScope`, no exception is thrown on suspension; instead, the returned record has `suspended() == true` and `result() == null`:
+If the method's return type is `ResultWithAgenticScope`, no exception is thrown on suspension; instead, the result has `suspended() == true` and `result() == null`. You can then complete the pending response and resume execution in a single call:
 
 ```java
 ResultWithAgenticScope<String> result = workflow.processOrder("order-12345", "1000 widgets");
 if (result.suspended()) {
-    // Handle suspension — provide response and re-invoke later
+    result = result.completePendingResponse("APPROVED by manager");
+    // result.result() → "Order VALIDATED: 1000 widgets — APPROVED by manager"
 }
 ```
 
-To resume the agentic system, provide the human response and re-invoke the agent method with the same memory ID:
+This works naturally with multi-step workflows that have multiple sequential HITL gates — each `completePendingResponse` call returns a new `ResultWithAgenticScope` that may itself be suspended:
+
+```java
+ResultWithAgenticScope<String> result = workflow.processOrder("order-12345", "1000 widgets");
+
+result = result.completePendingResponse("Manager OK");   // resumes, suspends at legal gate
+result = result.completePendingResponse("Legal OK");      // resumes, completes
+// result.result() → final output
+```
+
+`ResultWithAgenticScope` is the recommended approach for handling suspension, as it avoids using exceptions for control flow.
+
+Conversely, If the method returns a plain type (e.g. `String`) instead of `ResultWithAgenticScope`, the system throws `AgenticSystemSuspendedException` on suspension. In that case, or when you need to resume through the scope directly (e.g. after a crash/restart), you can complete the response on the `AgenticScope` and re-invoke the agent method:
 
 ```java
 AgenticScope scope = workflow.getAgenticScope("order-12345");
 
-// Option 1: Complete the single deferred response (when there is exactly one)
+// Complete the single deferred response (when there is exactly one)
 scope.completePendingResponse("APPROVED by manager");
 
-// Option 2: Complete by explicit ID (useful when multiple responses are pending)
+// Or complete by explicit ID (useful when multiple responses are pending)
 scope.completePendingResponse("manager-approval", "APPROVED by manager");
 
-// Option 3: Replace the response value directly in state
-scope.writeState("approval", "APPROVED by manager");
-
-// Then re-invoke — the planner resumes from step 3
-String result = workflow.processOrder("order-12345", "1000 widgets");
-// → "Order VALIDATED: 1000 widgets — APPROVED by manager"
-```
-
-The `SequentialPlanner` restores its cursor from the checkpointed state and skips the already-completed steps (validate and approval gate), executing only the final shipping step.
-
-Note that `completePendingResponse` both completes the in-memory future (unblocking any waiting threads) and replaces the state map entry with the resolved value (so it survives serialization). The single-argument overload throws `IllegalStateException` if there is not exactly one deferred response. Similarly, `writeState` completes any `DeferredResponse` it replaces.
-
-The suspension mechanism naturally handles crash recovery. If the process crashes or restarts while waiting for human input, the scope can be recovered from the store:
-
-```java
-// After restart: load the persisted scope and provide the human response
-AgenticScope recovered = workflow.getAgenticScope("order-12345");
-recovered.completePendingResponse("APPROVED by manager");
-
-// Re-invoke — the planner resumes from the checkpoint
+// Then re-invoke — the planner resumes from the checkpoint
 String result = workflow.processOrder("order-12345", "1000 widgets");
 ```
+
+Note that `completePendingResponse` both completes the in-memory future (unblocking any waiting threads) and replaces the state map entry with the resolved value (so it survives serialization). The single-argument overload throws `IllegalStateException` if there is not exactly one deferred response.
 
 ## Agents Registry
 
