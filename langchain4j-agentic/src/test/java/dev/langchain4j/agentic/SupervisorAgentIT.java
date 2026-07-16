@@ -34,6 +34,7 @@ import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.observability.MonitoredExecution;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
@@ -970,6 +971,45 @@ public class SupervisorAgentIT {
                 .build();
 
         assertDoesNotThrow(() -> supervisor.invoke("Withdraw 100 USD from Mario's account"));
+    }
+
+    static class PlannerModelReturningDoneWithDirectResponse implements ChatModel {
+
+        @Override
+        public ChatResponse chat(ChatRequest request) {
+            String json = """
+                    {
+                      "agentName": "done",
+                      "arguments": {
+                        "response": "Paris"
+                      }
+                    }
+                    """;
+
+            return ChatResponse.builder()
+                    .aiMessage(AiMessage.from(json))
+                    .build();
+        }
+    }
+
+    @Test
+    void output_function_should_access_planner_direct_response() {
+        WithdrawAgent withdrawAgent = AgenticServices.agentBuilder(WithdrawAgent.class)
+                .chatModel(baseModel())
+                .tools(new BankTool())
+                .build();
+
+        SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
+                .chatModel(new PlannerModelReturningDoneWithDirectResponse())
+                .outputKey("capital")
+                .responseStrategy(SupervisorResponseStrategy.SUMMARY)
+                .subAgents(withdrawAgent)
+                .output(agenticScope -> "The capital of France is " + agenticScope.readState("capital", ""))
+                .build();
+
+        String result = supervisor.invoke("What is the capital of France?");
+
+        assertThat(result).isEqualTo("The capital of France is Paris");
     }
 
 }
