@@ -810,10 +810,10 @@ If LLM and LLM provider supports the methods described above, it is better to us
 | `long`, `Long`                                             | ✅           | ✅         |
 | `float`, `Float`                                           | ✅           | ✅         |
 | `double`, `Double`                                         | ✅           | ✅         |
-| `byte`, `Byte`                                             | ❌           | ✅         |
-| `short`, `Short`                                           | ❌           | ✅         |
-| `BigInteger`                                               | ❌           | ✅         |
-| `BigDecimal`                                               | ❌           | ✅         |
+| `byte`, `Byte`                                             | ✅           | ✅         |
+| `short`, `Short`                                           | ✅           | ✅         |
+| `BigInteger`                                               | ✅           | ✅         |
+| `BigDecimal`                                               | ✅           | ✅         |
 | `Date`                                                     | ❌           | ✅         |
 | `LocalDate`                                                | ❌           | ✅         |
 | `LocalTime`                                                | ❌           | ✅         |

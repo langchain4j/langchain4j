@@ -17,10 +17,12 @@ public @interface A2AClientAgent {
 
     /**
      * URL of the A2A server to which the requests will be sent.
+     * If not provided, a method annotated with {@link A2AServerUrlSupplier} must be present
+     * on the same interface.
      *
      * @return URL of the A2A server.
      */
-    String a2aServerUrl();
+    String a2aServerUrl() default "";
 
     /**
      * Name of the agent. If not provided, method name will be used.

@@ -585,5 +585,49 @@ System.out.println(rawServerSentEvents.get(0).data());
 System.out.println(rawServerSentEvents.get(0).event());
 ```
 
+## Batch Processing
+
+`MistralAiBatchChatModel` implements the core `BatchChatModel` interface to process many chat requests
+asynchronously via the [Mistral Batch API](https://docs.mistral.ai/capabilities/batch/), at 50% of the
+standard per-token price. All requests in a batch run against the single model configured on the batch
+model.
+
+Submit a batch, poll until it reaches a terminal state, then read the per-request results (which preserve
+submission order):
+```java
+MistralAiBatchChatModel batchModel = MistralAiBatchChatModel.builder()
+        .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+        .modelName("mistral-small-latest")
+        .build();
+
+BatchResponse<ChatResponse> submitted = batchModel.submit(new BatchRequest<>(List.of(
+        ChatRequest.builder().messages(UserMessage.from("What is the capital of France?")).build(),
+        ChatRequest.builder().messages(UserMessage.from("What is the capital of Germany?")).build())));
+
+String batchId = submitted.batchId();
+
+// Poll until the batch reaches a terminal state (SUCCEEDED, FAILED, CANCELLED, EXPIRED).
+BatchResponse<ChatResponse> batch = batchModel.retrieve(batchId);
+while (!batch.state().isTerminal()) {
+    Thread.sleep(Duration.ofSeconds(30).toMillis());
+    batch = batchModel.retrieve(batchId);
+}
+
+for (BatchItemResult<ChatResponse> result : batch.results()) {
+    if (result.isSuccess()) {
+        System.out.println(result.response().aiMessage().text());
+    } else {
+        System.out.println("Failed: " + result.error().message());
+    }
+}
+```
+
+A running batch can be cancelled, and existing batches can be listed with pagination:
+```java
+batchModel.cancel(batchId);
+
+BatchPage<ChatResponse> page = batchModel.list(new BatchPagination(20, null));
+```
+
 ## Examples
 - [Mistral AI Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/mistral-ai-examples/src/main/java)
