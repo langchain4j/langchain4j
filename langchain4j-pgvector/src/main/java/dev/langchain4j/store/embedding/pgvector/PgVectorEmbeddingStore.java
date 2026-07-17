@@ -229,18 +229,20 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param builder The builder containing all configuration
      */
     protected PgVectorEmbeddingStore(PgVectorEmbeddingStoreBuilder builder) {
-        this(
-                createDataSource(builder.host, builder.port, builder.user, builder.password, builder.database),
-                builder.table,
-                builder.dimension,
-                builder.useIndex,
-                builder.indexListSize,
-                builder.createTable,
-                builder.dropTableFirst,
-                builder.metadataStorageConfig,
-                builder.searchMode,
-                builder.textSearchConfig,
-                builder.rrfK);
+        this(new DatasourceBuilder()
+                .datasource(
+                        createDataSource(builder.host, builder.port, builder.user, builder.password, builder.database))
+                .table(builder.table)
+                .dimension(builder.dimension)
+                .useIndex(builder.useIndex)
+                .indexListSize(builder.indexListSize)
+                .createTable(builder.createTable)
+                .dropTableFirst(builder.dropTableFirst)
+                .skipCreateVectorExtension(builder.skipCreateVectorExtension)
+                .metadataStorageConfig(builder.metadataStorageConfig)
+                .searchMode(builder.searchMode)
+                .textSearchConfig(builder.textSearchConfig)
+                .rrfK(builder.rrfK));
     }
 
     /**
@@ -897,7 +899,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         public String toString() {
             return "PgVectorEmbeddingStore.PgVectorEmbeddingStoreBuilder(host=" + this.host + ", port=" + this.port
-                    + ", user=" + this.user + ", password=" + (this.password == null ? null : "********") + ", database=" + this.database + ", table="
+                    + ", user=" + this.user + ", password=" + (this.password == null ? null : "********")
+                    + ", database=" + this.database + ", table="
                     + this.table + ", dimension=" + this.dimension + ", useIndex=" + this.useIndex + ", indexListSize="
                     + this.indexListSize + ", createTable=" + this.createTable + ", dropTableFirst="
                     + this.dropTableFirst + ", skipCreateVectorExtension=" + this.skipCreateVectorExtension

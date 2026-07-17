@@ -7,6 +7,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -14,7 +15,12 @@ import static org.mockito.Mockito.when;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.request.EmbeddingInputType;
+import dev.langchain4j.model.embedding.request.EmbeddingRequest;
+import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
+import java.util.List;
+import org.mockito.ArgumentCaptor;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
@@ -49,6 +55,32 @@ class EmbeddingStoreContentRetrieverTest {
 
         EMBEDDING_MODEL = mock(EmbeddingModel.class);
         when(EMBEDDING_MODEL.embed(anyString())).thenReturn(Response.from(EMBEDDING));
+    }
+
+    @Test
+    void should_embed_query_with_input_type_when_configured() {
+
+        // given
+        when(EMBEDDING_MODEL.embed(any(EmbeddingRequest.class)))
+                .thenReturn(EmbeddingResponse.builder()
+                        .embeddings(List.of(EMBEDDING))
+                        .build());
+
+        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+                .embeddingStore(EMBEDDING_STORE)
+                .embeddingModel(EMBEDDING_MODEL)
+                .embeddingInputType(EmbeddingInputType.QUERY)
+                .build();
+
+        // when
+        contentRetriever.retrieve(QUERY);
+
+        // then: the query was embedded via the new API with input_type=QUERY, not via the legacy embed(String)
+        ArgumentCaptor<EmbeddingRequest> captor = ArgumentCaptor.forClass(EmbeddingRequest.class);
+        verify(EMBEDDING_MODEL).embed(captor.capture());
+        assertThat(captor.getValue().inputType()).isEqualTo(EmbeddingInputType.QUERY);
+        assertThat(captor.getValue().inputs()).hasSize(1);
+        verify(EMBEDDING_MODEL, never()).embed(anyString());
     }
 
     @Test

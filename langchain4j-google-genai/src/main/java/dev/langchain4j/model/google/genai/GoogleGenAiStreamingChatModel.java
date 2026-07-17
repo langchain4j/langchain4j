@@ -250,7 +250,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
 
                 trackingHandler.onCompleteResponse(finalChatResponse);
             } catch (Exception e) {
-                trackingHandler.onError(e);
+                trackingHandler.onError(GoogleGenAiExceptionMapper.INSTANCE.mapException(e));
             }
         });
     }

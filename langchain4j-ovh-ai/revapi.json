@@ -1,0 +1,15 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.removed",
+          "old": "interface dev.langchain4j.model.ovhai.internal.api.OvhAiApi",
+          "justification": "Internal Retrofit API interface (internal.api package) removed as part of migrating the HTTP transport to the langchain4j HttpClient abstraction; not part of the public API"
+        }
+      ]
+    }
+  }
+]

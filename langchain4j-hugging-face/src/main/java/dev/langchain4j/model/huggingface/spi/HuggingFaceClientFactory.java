@@ -1,5 +1,6 @@
 package dev.langchain4j.model.huggingface.spi;
 
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
 
 import java.time.Duration;
@@ -19,5 +20,9 @@ public interface HuggingFaceClientFactory {
         String modelId();
 
         Duration timeout();
+
+        default HttpClientBuilder httpClientBuilder() {
+            return null;
+        }
     }
 }

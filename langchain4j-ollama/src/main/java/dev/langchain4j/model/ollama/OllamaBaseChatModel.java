@@ -76,6 +76,13 @@ abstract class OllamaBaseChatModel {
                 .minP(getOrDefault(builder.minP, ollamaParameters.minP()))
                 .keepAlive(ollamaParameters.keepAlive())
                 .think(getOrDefault(builder.think, ollamaParameters.think()))
+                .numThread(ollamaParameters.numThread())
+                .numKeep(ollamaParameters.numKeep())
+                .typicalP(ollamaParameters.typicalP())
+                .numBatch(ollamaParameters.numBatch())
+                .numGPU(ollamaParameters.numGPU())
+                .mainGPU(ollamaParameters.mainGPU())
+                .useMmap(ollamaParameters.useMmap())
                 .build();
         this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.listeners = copy(builder.listeners);
