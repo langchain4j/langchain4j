@@ -51,6 +51,16 @@
             <artifactId>mutiny-zero</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>bedrock</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+        </dependency>
+
         <!-- test: shared reactive test support (BlockHound policy, TCK environment, partial-response filter) -->
         <dependency>
             <groupId>dev.langchain4j</groupId>
@@ -95,12 +105,6 @@
             <version>1.21.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>bedrock</artifactId>
             <scope>test</scope>
         </dependency>
 
