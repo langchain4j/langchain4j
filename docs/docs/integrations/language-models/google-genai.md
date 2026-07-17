@@ -137,6 +137,24 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
     .build();
 ```
 
+### Advanced: customizing the `GenerateContentConfig`
+
+The builder methods cover the most common options. To set an option of the underlying Google Gen AI Java SDK
+that is not (yet) exposed by a builder method, register a `generateContentConfigCustomizer`. It receives the
+`GenerateContentConfig.Builder` after this integration has populated it (generation parameters, tools, system
+instruction, etc.) and just before the config is built, so it can set additional options or override existing
+ones while the per-request tools and system instruction are preserved.
+
+```java
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash")
+    .generateContentConfigCustomizer(config -> config.responseLogprobs(true).logprobs(5))
+    .build();
+```
+
+This works the same way on `GoogleGenAiStreamingChatModel`.
+
 ## Request & Response Logging
 
 You can enable request and response logging for debugging, troubleshooting, and audit purposes on `GoogleGenAiChatModel`, `GoogleGenAiStreamingChatModel`, `GoogleGenAiEmbeddingModel`, and `GoogleGenAiImageModel`.
