@@ -10,7 +10,7 @@ import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.internal.DelayedResponse;
-import dev.langchain4j.agentic.internal.PendingResponse;
+import dev.langchain4j.agentic.internal.DeferredResponse;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.data.message.AiMessage;
@@ -129,12 +129,17 @@ public class DefaultAgenticScope implements AgenticScope {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void writeState(String key, Object value) {
         withReadLock(() -> {
+            Object old;
             if (value == null) {
-                state.remove(key);
+                old = state.remove(key);
             } else {
-                state.put(key, value);
+                old = state.put(key, value);
+            }
+            if (old instanceof DeferredResponse<?> pending && !pending.isDone()) {
+                ((DeferredResponse<Object>) pending).complete(value);
             }
         });
     }
@@ -386,10 +391,14 @@ public class DefaultAgenticScope implements AgenticScope {
     @Override
     @SuppressWarnings("unchecked")
     public boolean completePendingResponse(String responseId, Object value) {
-        for (Object stateValue : state.values()) {
-            if (stateValue instanceof PendingResponse<?> pending
-                    && pending.responseId().equals(responseId)) {
-                return ((PendingResponse<Object>) pending).complete(value);
+        for (Map.Entry<String, Object> entry : state.entrySet()) {
+            if (entry.getValue() instanceof DeferredResponse<?> deferred
+                    && deferred.responseId().equals(responseId)) {
+                boolean completed = ((DeferredResponse<Object>) deferred).complete(value);
+                if (completed) {
+                    withReadLock(() -> state.put(entry.getKey(), value));
+                }
+                return completed;
             }
         }
         return false;
@@ -398,10 +407,10 @@ public class DefaultAgenticScope implements AgenticScope {
     @Override
     public Set<String> pendingResponseIds() {
         return state.values().stream()
-                .filter(PendingResponse.class::isInstance)
-                .map(PendingResponse.class::cast)
+                .filter(DeferredResponse.class::isInstance)
+                .map(DeferredResponse.class::cast)
                 .filter(p -> !p.isDone())
-                .map(PendingResponse::responseId)
+                .map(DeferredResponse::responseId)
                 .collect(Collectors.toSet());
     }
 
