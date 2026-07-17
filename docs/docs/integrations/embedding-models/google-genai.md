@@ -11,7 +11,7 @@ This integration uses the official Google Gen AI SDK for Java (`com.google.genai
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-genai</artifactId>
-    <version>1.17.2-beta27</version>
+    <version>1.18.0-beta28</version>
 </dependency>
 ```
 
