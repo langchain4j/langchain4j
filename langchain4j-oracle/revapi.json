@@ -1,0 +1,15 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.data.message.ChatMessage",
+          "justification": "ChatMessage is intentionally exposed by OracleChatMemoryStore because it implements the core ChatMemoryStore API"
+        }
+      ]
+    }
+  }
+]

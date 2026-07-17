@@ -69,6 +69,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     private final List<AnthropicServerTool> serverTools;
     private final boolean returnServerToolResults;
     private final Set<String> toolMetadataKeysToSend;
+    private final List<AnthropicSkill> skills;
     private final Map<String, Object> customParameters;
     private final Boolean strictTools;
     private final Set<Capability> supportedCapabilities;
@@ -109,6 +110,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         this.thinkingDisplay = builder.thinkingDisplay;
         this.serverTools = copy(builder.serverTools);
         this.toolMetadataKeysToSend = copy(builder.toolMetadataKeysToSend);
+        this.skills = copy(builder.skills);
         this.customParameters = copy(builder.customParameters);
         this.strictTools = builder.strictTools;
 
@@ -129,11 +131,17 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 .thinkingBudgetTokens(
                         getOrDefault(builder.thinkingBudgetTokens, anthropicDefaults.thinkingBudgetTokens()))
                 .sendThinking(getOrDefault(builder.sendThinking, anthropicDefaults.sendThinking()))
+                .midConversationSystemMessages(getOrDefault(
+                        builder.midConversationSystemMessages, anthropicDefaults.midConversationSystemMessages()))
                 .returnThinking(getOrDefault(builder.returnThinking, anthropicDefaults.returnThinking()))
                 .toolChoiceName(getOrDefault(builder.toolChoiceName, anthropicDefaults.toolChoiceName()))
                 .disableParallelToolUse(
                         getOrDefault(builder.disableParallelToolUse, anthropicDefaults.disableParallelToolUse()))
                 .userId(getOrDefault(builder.userId, anthropicDefaults.userId()))
+                .returnCacheDiagnostics(
+                        getOrDefault(builder.returnCacheDiagnostics, anthropicDefaults.returnCacheDiagnostics()))
+                // previousMessageId is a per-request value (it changes every turn); it is never carried
+                // as a model-level default, only supplied via per-request AnthropicChatRequestParameters.
                 .build();
     }
 
@@ -163,6 +171,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private String thinkingDisplay;
         private Boolean returnThinking;
         private Boolean sendThinking;
+        private Boolean midConversationSystemMessages;
         private Duration timeout;
         private Boolean logRequests;
         private Boolean logResponses;
@@ -175,11 +184,13 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private List<AnthropicServerTool> serverTools;
         private Boolean returnServerToolResults;
         private Set<String> toolMetadataKeysToSend;
+        private List<AnthropicSkill> skills;
         private String userId;
         private Map<String, Object> customParameters;
         private Boolean strictTools;
         private Set<Capability> supportedCapabilities;
         private Supplier<Map<String, String>> customHeadersSupplier;
+        private Boolean returnCacheDiagnostics;
 
         /**
          * Sets a custom {@link HttpClientBuilder} for the underlying HTTP client.
@@ -464,6 +475,31 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         }
 
         /**
+         * Controls whether a {@link SystemMessage} that appears after the conversation has started (a
+         * <em>mid-conversation</em> system message) is sent inline as a {@code system} entry in the
+         * {@code messages} array, instead of being merged into the top-level {@code system} prompt.
+         * <p>
+         * Disabled by default, in which case every {@link SystemMessage} is sent via the top-level
+         * {@code system} prompt regardless of position (the existing behavior). When enabled, leading
+         * {@link SystemMessage}s still populate the top-level {@code system} prompt, while later ones are
+         * sent inline so they take effect from that point in the conversation onward.
+         * <p>
+         * Supported only by Claude Opus 4.8. Anthropic also constrains placement: a mid-conversation system
+         * message must immediately follow a {@code user} turn (including a {@code user} turn carrying tool
+         * results) and must not sit between a {@code tool_use} block and its {@code tool_result}; an
+         * unsupported model or an invalid placement returns a 400. This library does not reorder messages;
+         * it sends them at the position the caller provided.
+         *
+         * @param midConversationSystemMessages whether to send mid-conversation system messages inline
+         * @return {@code this}
+         * @see <a href="https://platform.claude.com/docs/en/build-with-claude/mid-conversation-system-messages">Anthropic: mid-conversation system messages</a>
+         */
+        public AnthropicStreamingChatModelBuilder midConversationSystemMessages(Boolean midConversationSystemMessages) {
+            this.midConversationSystemMessages = midConversationSystemMessages;
+            return this;
+        }
+
+        /**
          * Sets the HTTP request timeout for calls to the Anthropic streaming API.
          *
          * @param timeout the request timeout
@@ -608,6 +644,37 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         }
 
         /**
+         * Enables Anthropic <a href="https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview">Agent
+         * Skills</a> so Claude can generate real downloadable documents (e.g. {@code .xlsx}, {@code .pptx},
+         * {@code .docx}, {@code .pdf}).
+         * <p>
+         * Enabling skills automatically adds the {@code container.skills} block and the {@code code_execution} server
+         * tool (unless already configured via {@link #serverTools(List)}), so that does not need to be wired up manually.
+         * <p>
+         * You must, however, opt into the required beta features yourself via {@link #beta(String)}, for example
+         * {@code .beta("code-execution-2025-08-25,skills-2025-10-02,files-api-2025-04-14")}. These are beta headers
+         * and their values change over time; see the
+         * <a href="https://docs.anthropic.com/en/docs/agents-and-tools/agent-skills/overview">Agent Skills docs</a>
+         * for the current set.
+         * <p>
+         * Combine with {@link #returnServerToolResults(Boolean)} to surface the generated file ids under the
+         * {@code "server_tool_results"} key of {@link AiMessage#attributes()}.
+         * <p>
+         * Skills are supported on Claude Sonnet 4 / 4.5, Opus 4 and later. At most 8 skills may be enabled per request.
+         */
+        public AnthropicStreamingChatModelBuilder skills(List<AnthropicSkill> skills) {
+            this.skills = skills;
+            return this;
+        }
+
+        /**
+         * @see #skills(List)
+         */
+        public AnthropicStreamingChatModelBuilder skills(AnthropicSkill... skills) {
+            return skills(asList(skills));
+        }
+
+        /**
          * Controls whether to return server tool results (e.g., web_search, code_execution)
          * inside {@link AiMessage#attributes()} under the key "server_tool_results".
          * <p>
@@ -648,6 +715,22 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
          */
         public AnthropicStreamingChatModelBuilder userId(String userId) {
             this.userId = userId;
+            return this;
+        }
+
+        /**
+         * Enables Anthropic's (beta) cache diagnostics for every request.
+         * <p>
+         * Requires the {@code cache-diagnosis-2026-04-07} beta header to also be set via {@link #beta(String)}.
+         * There is intentionally no model-level default for the {@code id} to compare against — it must be
+         * set per-request via {@link AnthropicChatRequestParameters.Builder#previousMessageId(String)}; see
+         * {@link AnthropicChatRequestParameters#previousMessageId()} for why.
+         *
+         * @see AnthropicChatRequestParameters.Builder#returnCacheDiagnostics(Boolean)
+         * @see AnthropicCacheDiagnostics
+         */
+        public AnthropicStreamingChatModelBuilder returnCacheDiagnostics(Boolean returnCacheDiagnostics) {
+            this.returnCacheDiagnostics = returnCacheDiagnostics;
             return this;
         }
 
@@ -736,6 +819,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 chatRequest,
                 toThinking(parameters.thinkingType(), parameters.thinkingBudgetTokens(), this.thinkingDisplay),
                 getOrDefault(parameters.sendThinking(), true),
+                getOrDefault(parameters.midConversationSystemMessages(), false),
                 getOrDefault(parameters.cacheSystemMessages(), false) ? EPHEMERAL : NO_CACHE,
                 getOrDefault(parameters.cacheTools(), false) ? EPHEMERAL : NO_CACHE,
                 true,
@@ -744,8 +828,11 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 this.serverTools,
                 this.toolMetadataKeysToSend,
                 parameters.userId(),
+                this.skills,
                 this.customParameters,
-                this.strictTools);
+                this.strictTools,
+                getOrDefault(parameters.returnCacheDiagnostics(), false),
+                parameters.previousMessageId());
 
         boolean returnThinking = getOrDefault(parameters.returnThinking(), false);
         client.createMessage(

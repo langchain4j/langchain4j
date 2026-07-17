@@ -29,7 +29,8 @@ record GeminiGenerateContentResponse(
             BLOCKLIST,
             PROHIBITED_CONTENT,
             SPII,
-            MALFORMED_FUNCTION_CALL
+            MALFORMED_FUNCTION_CALL,
+            IMAGE_RECITATION
         }
     }
 

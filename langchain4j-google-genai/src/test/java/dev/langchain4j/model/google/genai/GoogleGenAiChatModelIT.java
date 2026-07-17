@@ -88,6 +88,13 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
         assertThat(tokenUsage.outputTokenCount()).isLessThanOrEqualTo(maxOutputTokens); // TODO
     }
 
+    @Override
+    protected void assertTotalTokenCount(TokenUsage tokenUsage) {
+        // total token count can be more than input+output due to thinking/reasoning
+        assertThat(tokenUsage.totalTokenCount())
+                .isGreaterThanOrEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+    }
+
     @Test
     void should_persist_thought_signature_in_multi_turn_tool_execution() {
         GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
@@ -132,5 +139,19 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
         // This confirms the second request succeeded without an INVALID_ARGUMENT error
         assertThat(response2.aiMessage().text()).isNotBlank();
         assertThat(response2.aiMessage().hasToolExecutionRequests()).isFalse();
+    }
+
+    @Test
+    void should_apply_generate_content_config_customizer() {
+        GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
+                .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+                .modelName("gemini-2.5-flash")
+                .generateContentConfigCustomizer(
+                        config -> config.temperature(0.7f).seed(42))
+                .build();
+
+        String response = model.chat("Respond with exactly one word: Hello.");
+
+        assertThat(response).isNotBlank();
     }
 }
