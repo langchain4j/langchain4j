@@ -1161,6 +1161,160 @@ Assistant assistant = AiServices.builder(Assistant.class)
 ```
 
 
+## Context-Augmented Generation (CAG)
+
+While RAG focuses on *what information is relevant* to a query, Context-Augmented Generation (CAG) extends this by addressing *what is relevant to whom, in what situation, and under what constraints*.
+
+CAG does not replace RAG — it layers contextual orchestration above existing retrieval and generation components. The retriever, vector store, and LLM service remain unchanged.
+
+Typical context dimensions include:
+- **User identity and role** — access control, personalization
+- **Domain rules and policies** — compliance, approval workflows
+- **Pre-loaded knowledge** — domain content that should always be in the context window
+- **Session or workflow state** — where in a process the user currently is
+
+:::note
+The CAG components described below are **experimental** and may evolve in future releases.
+:::
+
+### ContextProvider
+
+`ContextProvider` is the atomic building block of CAG. Each provider supplies content from a single dimension of context (knowledge, user profile, policies, etc.):
+
+```java
+public interface ContextProvider {
+    List<Content> provideContext(ContextRequest request);
+}
+```
+
+It returns `List<Content>` — the same type used by RAG's `ContentRetriever` — so existing
+`ContentInjector` implementations work unchanged.
+
+#### StaticContextProvider
+
+Pre-loaded content that is always present in context — the core "C" in CAG. Use this for domain knowledge, policies, or instructions that fit in the context window and don't need per-query retrieval:
+
+```java
+ContextProvider policies = StaticContextProvider.of(
+    "Return policy: Full refund within 30 days of purchase.",
+    "Shipping: Free standard shipping on orders over $50."
+);
+```
+
+#### InvocationParameterContextProvider
+
+Extracts context from `InvocationParameters` at runtime, enabling per-request context (user profile, session data) without implementing a custom provider:
+
+```java
+// Provider configured once:
+ContextProvider userContext = InvocationParameterContextProvider.of("userProfile");
+
+// At invocation time:
+InvocationParameters params = InvocationParameters.from(
+    "userProfile", "Role: Manager, Department: Sales");
+assistant.chat("Show me Q4 data", params);
+```
+
+### ContextManager
+
+`ContextManager` orchestrates context resolution from multiple `ContextProvider`s. `DefaultContextManager` composes providers sequentially (or in parallel with an `Executor`), with graceful degradation — a failing provider is logged and skipped:
+
+```java
+ContextManager contextManager = DefaultContextManager.builder()
+    .contextProvider(StaticContextProvider.of("GDPR compliance required."))
+    .contextProvider(InvocationParameterContextProvider.of("userProfile"))
+    .build();
+```
+
+A `ContextManager` returns a `ContextResult` containing the assembled `List<Content>` and a `retrievalAdvised` flag that indicates whether retrieval should proceed.
+
+### ContextAwareRetrievalAugmentor
+
+`ContextAwareRetrievalAugmentor` is the bridge between the context layer and the existing RAG pipeline. It implements `RetrievalAugmentor`, so it plugs into `AiServices` without any changes:
+
+```java
+AiServices.builder(Assistant.class)
+    .chatModel(chatModel)
+    .retrievalAugmentor(contextAwareAugmentor)
+    .build();
+```
+
+#### Pure CAG (no retrieval)
+
+When all knowledge fits in the context window, no retrieval is needed:
+
+```java
+RetrievalAugmentor augmentor = ContextAwareRetrievalAugmentor.builder()
+    .contextProvider(StaticContextProvider.of(
+        "Return policy: Full refund within 30 days.",
+        "Support hours: Mon-Fri 9am-5pm EST."))
+    .build();
+```
+
+#### Hybrid CAG + RAG
+
+Context and retrieval work together, thus context is injected alongside retrieved content:
+
+```java
+RetrievalAugmentor augmentor = ContextAwareRetrievalAugmentor.builder()
+    .contextProvider(StaticContextProvider.of("GDPR compliance required."))
+    .contextProvider(InvocationParameterContextProvider.of("userProfile"))
+    .contentRetriever(embeddingStoreContentRetriever)
+    .build();
+```
+
+#### Wrapping an existing RAG setup
+
+Existing advanced RAG pipelines can gain context-awareness by wrapping them:
+
+```java
+RetrievalAugmentor existingRag = DefaultRetrievalAugmentor.builder()
+    .queryTransformer(new CompressingQueryTransformer(chatModel))
+    .contentRetriever(retriever)
+    .build();
+
+RetrievalAugmentor augmentor = ContextAwareRetrievalAugmentor.builder()
+    .contextProvider(StaticContextProvider.of("Always respond in formal English."))
+    .retrievalAugmentor(existingRag)
+    .build();
+```
+
+### Context Propagation
+
+Resolved context is stored in `InvocationParameters` under the key `ContextAwareRetrievalAugmentor.CONTEXT_KEY` (`"langchain4j.context"`). This makes context available to downstream RAG components:
+
+```java
+// Inside a custom QueryRouter or ContentRetriever:
+List<Content> context = query.metadata().invocationParameters()
+    .get(ContextAwareRetrievalAugmentor.CONTEXT_KEY);
+```
+
+This enables patterns like context-aware routing, where a `QueryRouter` inspects the context to decide which `ContentRetriever` to use.
+
+### Custom ContextProvider
+
+Implement `ContextProvider` for domain-specific context resolution:
+
+```java
+public class RoleBasedContextProvider implements ContextProvider {
+
+    private final Map<String, List<Content>> roleContextMap;
+
+    public RoleBasedContextProvider(Map<String, List<Content>> roleContextMap) {
+        this.roleContextMap = roleContextMap;
+    }
+
+    @Override
+    public List<Content> provideContext(ContextRequest request) {
+        String role = request.invocationParameters().get("userRole");
+        if (role == null) {
+            return List.of(Content.from("Access level: public."));
+        }
+        return roleContextMap.getOrDefault(role, List.of());
+    }
+}
+```
+
 ## Examples
 
 - [Easy RAG](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_1_easy/Easy_RAG_Example.java)
