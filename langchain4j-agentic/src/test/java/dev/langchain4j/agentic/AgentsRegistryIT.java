@@ -71,11 +71,13 @@ class AgentsRegistryIT {
 
         originalClassLoader = Thread.currentThread().getContextClassLoader();
         Thread.currentThread().setContextClassLoader(registryClassLoader);
+        AgentsRegistry.refresh();
     }
 
     @AfterAll
     static void tearDown() throws Exception {
         Thread.currentThread().setContextClassLoader(originalClassLoader);
+        AgentsRegistry.refresh();
         registryClassLoader.close();
         deleteRecursively(tempDir);
     }

@@ -18,6 +18,8 @@ import dev.langchain4j.agentic.carrentalassistant.services.TowingAgentService;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import java.io.Console;
+import java.util.Scanner;
 
 public class AssistantMain {
 
@@ -26,8 +28,11 @@ public class AssistantMain {
         String memoryId = "1";
         AgenticScope agenticScope = null;
 
+        Console console = System.console();
+        Scanner scanner = console == null ? new Scanner(System.in) : null;
+
         while (true) {
-            String userMessage = System.console().readLine("You: ");
+            String userMessage = readLine(console, scanner, "You: ");
             if (userMessage == null || userMessage.equalsIgnoreCase("exit")) {
                 break;
             }
@@ -37,7 +42,18 @@ public class AssistantMain {
             System.out.println("Assistant: " + response.result());
         }
 
-        System.out.println(agenticScope.readState("customerInfo"));
+        if (agenticScope != null) {
+            System.out.println(agenticScope.readState("customerInfo"));
+        }
+    }
+
+    private static String readLine(Console console, Scanner scanner, String prompt) {
+        if (console != null) {
+            return console.readLine(prompt);
+        }
+
+        System.out.print(prompt);
+        return scanner.hasNextLine() ? scanner.nextLine() : null;
     }
 
     private static CarRentalAssistant createAssistant() {
@@ -61,9 +77,7 @@ public class AssistantMain {
 
         return AgenticServices.sequenceBuilder(CarRentalAssistant.class)
                 .beforeCall(agenticScope -> {
-                    if (agenticScope.readState("customerInfo") == null) {
-                        agenticScope.writeState("customerInfo", new CustomerInfo());
-                    }
+                    agenticScope.writeStateIfAbsent("customerInfo", new CustomerInfo());
                 })
                 .subAgents(customerInfoExtraction, towingAgentService, emergencyService(), responseGeneratorService)
                 .outputKey("response")

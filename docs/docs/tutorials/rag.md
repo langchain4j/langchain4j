@@ -105,7 +105,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.17.2-beta27</version>
+    <version>1.18.0-beta28</version>
 </dependency>
 ```
 
@@ -539,6 +539,42 @@ Currently supported embedding models can be found [here](/category/embedding-mod
 - `EmbeddingModel.dimension()` returns the dimension of the `Embedding` produced by this model
 </details>
 
+#### Request/response API and per-call parameters
+
+Besides the convenience methods above, `EmbeddingModel` accepts an `EmbeddingRequest` and returns an
+`EmbeddingResponse`, which lets you pass **per-call parameters**:
+
+```java
+EmbeddingResponse response = embeddingModel.embed(EmbeddingRequest.builder()
+    .input("What is the capital of France?")
+    .inputType(EmbeddingInputType.QUERY) // query vs document, see the section below
+    .dimensions(256)                     // reduce output dimensionality (on models that support it)
+    .build());
+
+List<Embedding> embeddings = response.embeddings();
+```
+
+Per-call parameters are strictly opt-in: each provider declares what it supports via `supportedParameters()`.
+If a request uses a parameter the model does not support, it fails fast with `UnsupportedFeatureException`
+rather than silently ignoring it. See also
+[Query vs Document Embeddings](#query-vs-document-embeddings-opt-in).
+
+#### Multimodal embeddings
+
+Some models embed images (and interleaved text + image) into the same vector space. Build inputs from `Content`
+parts; on models that support it (Cohere Embed v4, Voyage multimodal, Google Gemini Embedding 2, Amazon Titan
+Multimodal, Jina CLIP, ...) the parts are fused into a single embedding:
+
+```java
+EmbeddingResponse response = embeddingModel.embed(EmbeddingRequest.builder()
+    .input(TextContent.from("a photo of a cat"), ImageContent.from("https://example.com/cat.png"))
+    .build());
+```
+
+A model declares its supported modalities via `supportedContentTypes()`; passing an image to a text-only model
+fails fast with `UnsupportedFeatureException`. `EmbeddingModel` observability (listeners) is described in the
+[Observability](/tutorials/observability) tutorial.
+
 
 ### Embedding Store
 The `EmbeddingStore` interface represents a store for `Embedding`s, also known as vector database.
@@ -667,6 +703,25 @@ EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
     .embeddingStore(embeddingStore)
     .build();
 ```
+
+#### Query vs Document Embeddings (opt-in)
+
+Some embedding models (e.g. Cohere Embed v4, Voyage, Google) produce better retrieval quality when documents
+and queries are embedded differently. You can opt in by declaring the input type: `DOCUMENT` on the
+`EmbeddingStoreIngestor` (for the indexed segments) and `QUERY` on the `EmbeddingStoreContentRetriever` (for the
+query, see [Embedding Store Content Retriever](#embedding-store-content-retriever)).
+
+```java
+EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+    .embeddingModel(embeddingModel)
+    .embeddingStore(embeddingStore)
+    .embeddingInputType(EmbeddingInputType.DOCUMENT)
+    .build();
+```
+
+When `embeddingInputType` is not set, no input type is sent. When it is set, the selected `EmbeddingModel` must
+support the input type parameter (see its `supportedParameters()`), otherwise embedding fails fast with
+`UnsupportedFeatureException`.
 
 
 ## Naive RAG
@@ -869,6 +924,19 @@ interface Assistant {
 InvocationParameters parameters = InvocationParameters.from(Map.of("userId", "12345"));
 String response = assistant.chat("Hello", parameters);
 ```
+
+To embed the query with `input_type=query` (pairing with the ingestor's `DOCUMENT`, see
+[Query vs Document Embeddings](#query-vs-document-embeddings-opt-in)), set the input type on the retriever:
+
+```java
+ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+    .embeddingStore(embeddingStore)
+    .embeddingModel(embeddingModel)
+    .embeddingInputType(EmbeddingInputType.QUERY)
+    .build();
+```
+
+The default is unchanged (no input type is sent). The `EmbeddingModel` must support the `input_type` parameter.
 
 #### Web Search Content Retriever
 `WebSearchContentRetriever` retrieves relevant `Content` from the web using a `WebSearchEngine`.

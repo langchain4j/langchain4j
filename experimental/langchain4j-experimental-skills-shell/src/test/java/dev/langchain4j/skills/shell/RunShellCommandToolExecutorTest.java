@@ -47,6 +47,26 @@ class RunShellCommandToolExecutorTest {
     }
 
     @Test
+    void should_throw_ToolExecutionException_when_timeout_seconds_is_not_a_number() {
+        RunShellCommandToolExecutor executor = executor(false);
+
+        assertThatThrownBy(() -> executor.executeWithContext(
+                        requestWithRawArguments("{\"command\": \"echo x\", \"timeout_seconds\": \"abc\"}"), null))
+                .isInstanceOf(ToolExecutionException.class)
+                .hasMessageContaining("Invalid value for tool argument");
+    }
+
+    @Test
+    void should_throw_ToolArgumentsException_when_timeout_seconds_is_not_a_number() {
+        RunShellCommandToolExecutor executor = executor(true);
+
+        assertThatThrownBy(() -> executor.executeWithContext(
+                        requestWithRawArguments("{\"command\": \"echo x\", \"timeout_seconds\": \"abc\"}"), null))
+                .isInstanceOf(ToolArgumentsException.class)
+                .hasMessageContaining("Invalid value for tool argument");
+    }
+
+    @Test
     @DisabledOnOs(OS.WINDOWS)
     void should_not_truncate_stdout_on_success_when_within_limit_on_unix() {
         ToolExecutionResult result = executor(100, 100).executeWithContext(request("echo hello"), null);

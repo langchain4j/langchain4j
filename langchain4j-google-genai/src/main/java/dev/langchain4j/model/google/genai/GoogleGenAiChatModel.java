@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,6 +51,7 @@ public class GoogleGenAiChatModel implements ChatModel {
     private final List<String> allowedFunctionNames;
     private final String vertexSearchDatastore;
     private final Map<String, String> labels;
+    private final Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
     private GoogleGenAiChatModel(Builder builder) {
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
@@ -66,6 +68,7 @@ public class GoogleGenAiChatModel implements ChatModel {
         this.safetySettings = copy(builder.safetySettings);
         this.vertexSearchDatastore = builder.vertexSearchDatastore;
         this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
+        this.generateContentConfigCustomizer = builder.generateContentConfigCustomizer;
 
         this.client = builder.client != null
                 ? builder.client
@@ -122,7 +125,8 @@ public class GoogleGenAiChatModel implements ChatModel {
                 allowedFunctionNames,
                 vertexSearchDatastore,
                 labels,
-                parameters.cachedContent());
+                parameters.cachedContent(),
+                generateContentConfigCustomizer);
 
         if (logRequests) {
             log.info(
@@ -133,7 +137,9 @@ public class GoogleGenAiChatModel implements ChatModel {
         }
 
         var result = withRetryMappingExceptions(
-                () -> client.models.generateContent(chatRequest.modelName(), contents, config), maxRetries);
+                () -> client.models.generateContent(chatRequest.modelName(), contents, config),
+                maxRetries,
+                GoogleGenAiExceptionMapper.INSTANCE);
 
         ChatResponse response = GoogleGenAiContentMapper.toChatResponse(result, chatRequest.modelName());
 
@@ -203,6 +209,7 @@ public class GoogleGenAiChatModel implements ChatModel {
         private String cachedContent;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
         /**
          * Sets a pre-configured Google GenAI {@link Client}.
@@ -613,6 +620,20 @@ public class GoogleGenAiChatModel implements ChatModel {
         public Builder logRequestsAndResponses(Boolean logRequestsAndResponses) {
             this.logRequests = logRequestsAndResponses;
             this.logResponses = logRequestsAndResponses;
+            return this;
+        }
+
+        /**
+         * Registers a customizer applied to the {@link GenerateContentConfig.Builder} after this integration has
+         * populated it (generation parameters, tools, system instruction, etc.), so it can set any underlying
+         * Google Gen AI SDK option that is not exposed here, or override a value set above.
+         *
+         * @param generateContentConfigCustomizer a consumer that mutates the {@link GenerateContentConfig.Builder}
+         * @see GenerateContentConfig
+         */
+        public Builder generateContentConfigCustomizer(
+                Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
+            this.generateContentConfigCustomizer = generateContentConfigCustomizer;
             return this;
         }
 

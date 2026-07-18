@@ -5,6 +5,7 @@ import static dev.langchain4j.agentic.a2a.A2AAgentIT.A2A_SERVER_URL;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
 import dev.langchain4j.agentic.declarative.A2AClientCustomizer;
+import dev.langchain4j.agentic.declarative.A2AServerUrlSupplier;
 import dev.langchain4j.agentic.declarative.ExitCondition;
 import dev.langchain4j.agentic.declarative.LoopAgent;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
@@ -117,6 +118,26 @@ public class Agents {
         @SequenceAgent(
                 outputKey = "story",
                 subAgents = { DeclarativeA2AWithCustomizer.class, StyleReviewLoopAgent.class }
+        )
+        ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
+    }
+
+    public interface DeclarativeA2AWithUrlSupplier {
+
+        @A2AClientAgent(outputKey = "story")
+        String generateStory(@V("topic") String topic);
+
+        @A2AServerUrlSupplier
+        static String serverUrl() {
+            return A2A_SERVER_URL;
+        }
+    }
+
+    public interface StoryCreatorWithUrlSupplier {
+
+        @SequenceAgent(
+                outputKey = "story",
+                subAgents = { DeclarativeA2AWithUrlSupplier.class, StyleReviewLoopAgent.class }
         )
         ResultWithAgenticScope<String> write(@V("topic") String topic, @V("style") String style);
     }
