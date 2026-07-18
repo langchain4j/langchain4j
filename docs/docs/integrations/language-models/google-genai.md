@@ -31,6 +31,7 @@ https://github.com/googleapis/java-genai
 - [Cached Content Support](#cached-content-support)
 - [Thinking Models (Gemini 3.0+)](#thinking-models-gemini-30)
 - [Multimodality (Audio, Video, PDF)](#multimodality-audio-video-pdf)
+- [Live API (Experimental)](#live-api-experimental)
 - [Token Count Estimator](#token-count-estimator)
 - [Model Catalog](#model-catalog)
 
@@ -616,6 +617,117 @@ ChatResponse response = gemini.chat(ChatRequest.builder()
     ))
     .build());
 ```
+
+## Live API (Experimental)
+
+The [Gemini Live API](https://ai.google.dev/gemini-api/docs/live) is a stateful, bidirectional, real-time interface: you stream text and audio to the model over a persistent connection, and it streams text or audio back with low latency. It is designed for natural, interruptible voice conversations.
+
+Because a live session is not a request/response call, it does not fit the `ChatModel` contract. It is exposed as its own `GoogleGenAiLiveModel`, which opens a `GoogleGenAiLiveSession`.
+
+> [!NOTE]
+> The Live API is in preview and marked `@Experimental`; its surface may change in future releases.
+
+### How it works
+
+- **Open a session.** Configure a `GoogleGenAiLiveModel` with the builder, then call `connect(handler)` to open a `GoogleGenAiLiveSession`. The session is `AutoCloseable` — use it in a try-with-resources block so it always closes.
+- **Send input.** Push input through the session: `sendText(...)`, `sendAudio(...)`, or `sendClientContent(...)` to seed conversation history.
+- **Receive events.** Output is delivered to your `GoogleGenAiLiveResponseHandler`. Every method has a no-op default, so you override only the events you care about. The handler runs on the SDK's callback thread — don't block it; hand long-running work to your own executor.
+- **One response modality per session** — either `TEXT` or `AUDIO`, set with `responseModalities(...)`. To get a text version of an audio response, enable `outputAudioTranscription`.
+- **Audio format.** Input audio (`sendAudio`) must be raw 16 kHz, 16-bit little-endian PCM, sent in short chunks (about 20–40 ms). Output audio (`onAudio`) is 24 kHz, 16-bit little-endian PCM.
+
+> [!NOTE]
+> The current Gemini Developer API Live models are native-audio and require `responseModalities("AUDIO")`. Text-only output (`responseModalities("TEXT")`) is available with half-cascade Live models. The examples below use the native-audio path.
+
+### Quickstart: talk to the model and get audio back
+
+Send a text prompt and receive spoken audio plus its transcript. `onAudio` receives the raw PCM to play or buffer; `onOutputTranscription` receives the same response as text; `onTurnComplete` signals the model is done.
+
+```java
+GoogleGenAiLiveModel model = GoogleGenAiLiveModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash-native-audio-latest")
+    .responseModalities("AUDIO")
+    .voiceName("Puck")                 // pick a prebuilt voice
+    .outputAudioTranscription(true)    // also receive the spoken response as text
+    .build();
+
+CountDownLatch turnComplete = new CountDownLatch(1);
+
+try (GoogleGenAiLiveSession session = model.connect(new GoogleGenAiLiveResponseHandler() {
+    @Override
+    public void onAudio(byte[] pcm) {
+        // play or buffer the 24 kHz PCM audio
+    }
+
+    @Override
+    public void onOutputTranscription(String text) {
+        System.out.print(text);
+    }
+
+    @Override
+    public void onTurnComplete() {
+        turnComplete.countDown();
+    }
+})) {
+    session.sendText("Say hello in one short sentence.");
+    turnComplete.await(30, TimeUnit.SECONDS);
+}
+```
+
+### Streaming audio input
+
+To hold a voice conversation, stream microphone audio to the model with `sendAudio`. Send small chunks (about 20–40 ms) as they are captured. When automatic voice activity detection is enabled (the default), call `sendAudioStreamEnd()` when the input pauses (for example, the user muted the microphone) to flush any buffered audio; you can resume by sending audio again.
+
+```java
+try (GoogleGenAiLiveSession session = model.connect(handler)) {
+    for (byte[] chunk : microphoneChunks) {       // ~20–40 ms of 16 kHz PCM each
+        session.sendAudio(chunk, "audio/pcm;rate=16000");
+    }
+    session.sendAudioStreamEnd();                  // input paused — flush buffered audio
+}
+```
+
+Enable `inputAudioTranscription(true)` on the builder to also receive a transcript of the user's audio via `onInputTranscription`.
+
+### Response events
+
+Implement only the callbacks you need on `GoogleGenAiLiveResponseHandler`:
+
+| Callback | Fires when |
+| --- | --- |
+| `onPartialText(String)` | A chunk of streamed text arrives (`TEXT` modality). |
+| `onCompleteText(String)` | A turn's full text, concatenated from its chunks. |
+| `onAudio(byte[])` | A chunk of output audio arrives (24 kHz PCM). |
+| `onInputTranscription(String)` | A transcript of the user's input audio (when enabled). |
+| `onOutputTranscription(String)` | A transcript of the model's output audio (when enabled). |
+| `onGenerationComplete()` | The model finished generating the response (fires before `onTurnComplete`). |
+| `onTurnComplete()` | The model finished its turn. |
+| `onInterrupted()` | The user interrupted the model (barge-in) — stop and discard queued audio. |
+| `onUsageMetadata(TokenUsage)` | Cumulative token usage for the session. |
+| `onGoAway(Duration)` | The server will soon close the connection. |
+| `onSessionResumptionUpdate(String)` | A handle you can use to resume the session later. |
+| `onError(Throwable)` | An error occurred while sending or receiving. |
+| `onClose()` | The session was closed. |
+
+### Advanced: passthrough configuration
+
+The builder surfaces the common Live options as first-class methods. Any other `LiveConnectConfig` option — for example `sessionResumption`, `contextWindowCompression`, `mediaResolution`, `safetySettings` or `translationConfig` — can be supplied through the `liveConnectConfig(...)` escape hatch. The passed config is used as the base, and any first-class builder option takes precedence over the same field in it.
+
+```java
+LiveConnectConfig baseConfig = LiveConnectConfig.builder()
+    .mediaResolution("MEDIA_RESOLUTION_LOW")
+    .build();
+
+GoogleGenAiLiveModel model = GoogleGenAiLiveModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash-native-audio-latest")
+    .responseModalities("AUDIO")
+    .liveConnectConfig(baseConfig)     // advanced options not surfaced as builder methods
+    .build();
+```
+
+> [!NOTE]
+> Session length is limited by the model (audio-only sessions to about 15 minutes, audio + video to about 2 minutes). For longer conversations, enable context window compression via the passthrough config. See the [Live API guide](https://ai.google.dev/gemini-api/docs/live) for details.
 
 ## Token Count Estimator
 
