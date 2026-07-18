@@ -143,6 +143,18 @@ class HierarchicalDocumentSplitterTest implements WithAssertions {
     }
 
     @Test
+    void overlapFrom_should_fall_back_for_single_sentence_larger_than_max_overlap() {
+        ExampleImpl splitter = new ExampleImpl(1000, 10);
+        String segment = "This sentence is too long.";
+
+        String overlap = splitter.overlapFrom(segment);
+
+        assertThat(overlap).isNotEmpty();
+        assertThat(segment).endsWith(overlap);
+        assertThat(overlap.length()).isLessThanOrEqualTo(10);
+    }
+
+    @Test
     void overlapFrom_should_not_fall_back_when_sentence_boundaries_are_present() {
         ExampleImpl splitter = new ExampleImpl(1000, 10);
 

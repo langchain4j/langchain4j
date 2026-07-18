@@ -215,9 +215,9 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
             return overlap;
         }
 
-        // Fall back only when the sentence splitter could not find any sentence boundaries.
-        // If it found multiple sentences but the trailing sentence is too large, preserve the
-        // existing behavior of considering only complete sentences for the overlap.
+        // Fall back only when the sentence splitter produced a single unit and that complete unit
+        // does not fit into the overlap. If it found multiple sentences but the trailing sentence
+        // is too large, preserve the existing behavior of considering only complete sentences.
         return sentences.size() == 1 ? characterLevelOverlap(segmentText) : "";
     }
 
