@@ -143,6 +143,13 @@ class HierarchicalDocumentSplitterTest implements WithAssertions {
     }
 
     @Test
+    void overlapFrom_should_not_fall_back_when_sentence_boundaries_are_present() {
+        ExampleImpl splitter = new ExampleImpl(1000, 10);
+
+        assertThat(splitter.overlapFrom("Short. This sentence is too long.")).isEmpty();
+    }
+
+    @Test
     void split_should_overlap_consecutive_cjk_segments() {
         // End-to-end: a long CJK document split by characters must produce overlapping segments.
         // Before the fix, consecutive segments did not overlap at all because overlapFrom returned

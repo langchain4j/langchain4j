@@ -215,12 +215,10 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
             return overlap;
         }
 
-        // The sentence splitter could not produce any overlap. This happens for text without
-        // sentence delimiters (e.g. CJK text written without punctuation) or whenever a single
-        // "sentence" is larger than maxOverlapSize. Fall back to a character-level overlap taken
-        // from the end of the segment so that maxOverlapSize is still honoured between consecutive
-        // segments instead of silently producing no overlap at all.
-        return characterLevelOverlap(segmentText);
+        // Fall back only when the sentence splitter could not find any sentence boundaries.
+        // If it found multiple sentences but the trailing sentence is too large, preserve the
+        // existing behavior of considering only complete sentences for the overlap.
+        return sentences.size() == 1 ? characterLevelOverlap(segmentText) : "";
     }
 
     private String characterLevelOverlap(String segmentText) {
