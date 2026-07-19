@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.workflow.impl;
 
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiPredicate;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -45,7 +46,7 @@ public class LoopPlanner implements Planner {
     public Action nextAction(PlanningContext planningContext) {
         agentCursor = (agentCursor+1) % agents.size();
         if (agentCursor == 0) {
-            if (iterationsCounter > maxIterations || exitCondition.test(planningContext.agenticScope(), iterationsCounter)) {
+            if (iterationsCounter >= maxIterations || exitCondition.test(planningContext.agenticScope(), iterationsCounter)) {
                 return done();
             }
             iterationsCounter++;
@@ -78,5 +79,25 @@ public class LoopPlanner implements Planner {
 
     public String exitCondition() {
         return exitConditionDescription;
+    }
+
+    @Override
+    public Map<String, Object> executionState() {
+        // Save the current cursor and iteration counter.
+        // LoopPlanner's firstAction() does NOT advance state (it just calls agents.get(agentCursor)),
+        // so the saved values can be restored directly.
+        return Map.of("cursor", agentCursor, "iteration", iterationsCounter);
+    }
+
+    @Override
+    public void restoreExecutionState(Map<String, Object> state) {
+        Object savedCursor = state.get("cursor");
+        if (savedCursor instanceof Number n) {
+            this.agentCursor = n.intValue();
+        }
+        Object savedIteration = state.get("iteration");
+        if (savedIteration instanceof Number n) {
+            this.iterationsCounter = n.intValue();
+        }
     }
 }

@@ -61,6 +61,12 @@ public class AnthropicCreateMessageResponse {
     public AnthropicUsage usage;
 
     /**
+     * Result of a (beta) cache-diagnostics comparison; {@code null} when not requested,
+     * not yet available, or no divergence was found. See {@link AnthropicDiagnostics}.
+     */
+    public AnthropicDiagnostics diagnostics;
+
+    /**
      * Default constructor.
      */
     public AnthropicCreateMessageResponse() {}
@@ -74,11 +80,12 @@ public class AnthropicCreateMessageResponse {
         this.stopReason = builder.stopReason;
         this.stopSequence = builder.stopSequence;
         this.usage = builder.usage;
+        this.diagnostics = builder.diagnostics;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, type, role, content, model, stopReason, stopSequence, usage);
+        return Objects.hash(id, type, role, content, model, stopReason, stopSequence, usage, diagnostics);
     }
 
     @Override
@@ -93,7 +100,8 @@ public class AnthropicCreateMessageResponse {
                 && Objects.equals(model, that.model)
                 && Objects.equals(stopReason, that.stopReason)
                 && Objects.equals(stopSequence, that.stopSequence)
-                && Objects.equals(usage, that.usage);
+                && Objects.equals(usage, that.usage)
+                && Objects.equals(diagnostics, that.diagnostics);
     }
 
     @Override
@@ -106,7 +114,8 @@ public class AnthropicCreateMessageResponse {
                 + model + '\'' + ", stopReason='"
                 + stopReason + '\'' + ", stopSequence='"
                 + stopSequence + '\'' + ", usage="
-                + usage + '}';
+                + usage + ", diagnostics="
+                + diagnostics + '}';
     }
 
     /**
@@ -130,6 +139,7 @@ public class AnthropicCreateMessageResponse {
         private String stopReason;
         private String stopSequence;
         private AnthropicUsage usage;
+        private AnthropicDiagnostics diagnostics;
 
         /**
          * Sets the unique identifier.
@@ -216,6 +226,17 @@ public class AnthropicCreateMessageResponse {
          */
         public Builder usage(AnthropicUsage usage) {
             this.usage = usage;
+            return this;
+        }
+
+        /**
+         * Sets the cache-diagnostics result.
+         *
+         * @param diagnostics the cache-diagnostics result
+         * @return this builder for chaining
+         */
+        public Builder diagnostics(AnthropicDiagnostics diagnostics) {
+            this.diagnostics = diagnostics;
             return this;
         }
 

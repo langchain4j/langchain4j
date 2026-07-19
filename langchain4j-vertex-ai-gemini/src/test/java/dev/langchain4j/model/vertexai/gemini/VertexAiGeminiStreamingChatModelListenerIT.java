@@ -1,6 +1,6 @@
 package dev.langchain4j.model.vertexai.gemini;
 
-import com.google.api.gax.rpc.NotFoundException;
+import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -29,7 +29,7 @@ class VertexAiGeminiStreamingChatModelListenerIT extends AbstractStreamingChatMo
 
     @Override
     protected String modelName() {
-        return "gemini-2.0-flash-lite";
+        return "gemini-2.5-flash-lite";
     }
 
     @Override
@@ -51,7 +51,7 @@ class VertexAiGeminiStreamingChatModelListenerIT extends AbstractStreamingChatMo
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return NotFoundException.class;
+        return ModelNotFoundException.class;
     }
 
 

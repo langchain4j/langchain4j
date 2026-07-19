@@ -34,6 +34,7 @@ import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.observability.MonitoredExecution;
+import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
@@ -54,7 +55,6 @@ import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -350,7 +350,7 @@ public class SupervisorAgentIT {
                 description =
                         "A money exchanger that converts a given amount of money from the original to the target currency",
                 outputKey = "exchange")
-        public Double exchange(
+        Double exchange(
                 @V("originalCurrency") String originalCurrency,
                 @V("amount") Double amount,
                 @V("targetCurrency") String targetCurrency) {
@@ -619,6 +619,19 @@ public class SupervisorAgentIT {
         typed_banker_test(false);
     }
 
+    public record ExchangeRequest(String originalCurrency, Double amount, String targetCurrency) { }
+
+    public interface TypedExchangeAgent {
+        @UserMessage(
+                """
+            You are an operator exchanging money in different currencies.
+            Use the tool to calculate the given {{exchangeRequest}}
+            returning only the final amount provided by the tool as it is and nothing else.
+            """)
+        @Agent(outputKey = "exchange")
+        Double exchange(@V("exchangeRequest") ExchangeRequest exchangeRequest);
+    }
+
     private void typed_banker_test(boolean useMaxAgentsInvocations) {
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("exchange")
@@ -653,7 +666,7 @@ public class SupervisorAgentIT {
                 .tools(bankTool)
                 .build();
 
-        ExchangeAgent exchangeAgent = AgenticServices.agentBuilder(ExchangeAgent.class)
+        TypedExchangeAgent exchangeAgent = AgenticServices.agentBuilder(TypedExchangeAgent.class)
                 .chatModel(baseModel())
                 .description(
                         "A money exchanger that converts a given amount of money from the original to the target currency")
@@ -958,6 +971,45 @@ public class SupervisorAgentIT {
                 .build();
 
         assertDoesNotThrow(() -> supervisor.invoke("Withdraw 100 USD from Mario's account"));
+    }
+
+    static class PlannerModelReturningDoneWithDirectResponse implements ChatModel {
+
+        @Override
+        public ChatResponse chat(ChatRequest request) {
+            String json = """
+                    {
+                      "agentName": "done",
+                      "arguments": {
+                        "response": "Paris"
+                      }
+                    }
+                    """;
+
+            return ChatResponse.builder()
+                    .aiMessage(AiMessage.from(json))
+                    .build();
+        }
+    }
+
+    @Test
+    void output_function_should_access_planner_direct_response() {
+        WithdrawAgent withdrawAgent = AgenticServices.agentBuilder(WithdrawAgent.class)
+                .chatModel(baseModel())
+                .tools(new BankTool())
+                .build();
+
+        SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
+                .chatModel(new PlannerModelReturningDoneWithDirectResponse())
+                .outputKey("capital")
+                .responseStrategy(SupervisorResponseStrategy.SUMMARY)
+                .subAgents(withdrawAgent)
+                .output(agenticScope -> "The capital of France is " + agenticScope.readState("capital", ""))
+                .build();
+
+        String result = supervisor.invoke("What is the capital of France?");
+
+        assertThat(result).isEqualTo("The capital of France is Paris");
     }
 
 }

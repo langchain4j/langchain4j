@@ -1,14 +1,15 @@
 package dev.langchain4j.model.anthropic;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.internal.Utils.randomString;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_OPUS_4_8;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_5_20250929;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -31,7 +32,6 @@ import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -45,6 +45,7 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .logRequests(false) // base64-encoded PDFs are huge
@@ -71,6 +72,7 @@ class AnthropicChatModelIT {
         List<String> stopSequences = List.of("World", " World");
 
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .stopSequences(stopSequences)
@@ -95,6 +97,7 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(null) // caching test requires no other caching
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
@@ -129,6 +132,7 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(null) // caching test requires no other caching
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
@@ -165,6 +169,7 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
@@ -190,7 +195,7 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
-                .baseUrl("https://api.anthropic.com/v1/")
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .version("2023-06-01")
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
@@ -219,9 +224,10 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
-                .maxTokens(1)
+                .maxTokens(5)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -236,20 +242,17 @@ class AnthropicChatModelIT {
     }
 
     @ParameterizedTest
-    @EnumSource(
-            value = AnthropicChatModelName.class,
-            mode = EXCLUDE,
-            names = {"CLAUDE_OPUS_4_20250514" // Run manually before release. Expensive to run very often.
-            })
+    @EnumSource(AnthropicChatModelName.class)
     void should_support_all_string_model_names(AnthropicChatModelName modelName) {
 
         // given
         String modelNameString = modelName.toString();
 
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelNameString)
-                .maxTokens(1)
+                .maxTokens(5)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -276,6 +279,7 @@ class AnthropicChatModelIT {
         // given
         String expectedToolName = "get_weather";
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .temperature(0.0)
@@ -325,6 +329,7 @@ class AnthropicChatModelIT {
     void should_force_execution_without_tools_when_pass_tool_choice_none() {
         // given
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .temperature(0.0)
@@ -370,6 +375,7 @@ class AnthropicChatModelIT {
     void should_execute_one_tool_and_ignore_another_tool_with_parallel_tool_disabled() {
         // given
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .temperature(0.0)
@@ -413,10 +419,11 @@ class AnthropicChatModelIT {
     }
 
     @Test
-    void should_cache_system_message_and_tools() {
+    void should_cache_system_message_and_tools() throws InterruptedException {
 
         // given
         AnthropicChatModel model = AnthropicChatModel.builder()
+                .baseUrl(null) // caching test requires no other caching
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheSystemMessages(true)
@@ -452,6 +459,8 @@ class AnthropicChatModelIT {
         assertThat(createCacheTokenUsage.cacheCreationInputTokens()).isGreaterThan(0);
         assertThat(createCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
 
+        Thread.sleep(2000);
+
         // when
         ChatResponse response2 = model.chat(request);
 
@@ -462,10 +471,11 @@ class AnthropicChatModelIT {
     }
 
     @Test
-    void should_cache_tools() {
+    void should_cache_tools() throws InterruptedException {
 
         // given
         AnthropicChatModel model = AnthropicChatModel.builder()
+                .baseUrl(null) // caching test requires no other caching
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .cacheTools(true)
@@ -477,7 +487,7 @@ class AnthropicChatModelIT {
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("calculator")
-                .description("returns a sum of two numbers".repeat(450) + randomString(3))
+                .description("returns a sum of two numbers".repeat(500) + randomString(10))
                 .parameters(JsonObjectSchema.builder()
                         .addIntegerProperty("first")
                         .addIntegerProperty("second")
@@ -499,6 +509,8 @@ class AnthropicChatModelIT {
         assertThat(createCacheTokenUsage.cacheCreationInputTokens()).isGreaterThan(minCacheableTokenThresholdForHaiku);
         assertThat(createCacheTokenUsage.cacheReadInputTokens()).isEqualTo(0);
 
+        Thread.sleep(2000);
+
         // when
         ChatResponse response2 = model.chat(request);
 
@@ -513,6 +525,7 @@ class AnthropicChatModelIT {
 
         // given
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_HAIKU_4_5_20251001)
                 .logRequests(true)
@@ -548,6 +561,7 @@ class AnthropicChatModelIT {
 
         ChatModel model = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_SONNET_4_5_20250929)
                 .beta("context-management-2025-06-27")
@@ -588,6 +602,7 @@ class AnthropicChatModelIT {
 
         ChatModel model = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .beta("code-execution-2025-08-25")
                 .modelName(CLAUDE_SONNET_4_5_20250929)
@@ -611,6 +626,44 @@ class AnthropicChatModelIT {
     }
 
     @Test
+    void should_support_skills() {
+
+        // given
+        SpyingHttpClient spyingHttpClient =
+                new SpyingHttpClient(JdkHttpClient.builder().build());
+
+        ChatModel model = AnthropicChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_SONNET_4_5_20250929)
+                .skills(AnthropicSkill.XLSX)
+                .returnServerToolResults(true)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("Create an Excel spreadsheet with the numbers 1 to 5 in column A"))
+                .build();
+
+        // when
+        ChatResponse chatResponse = model.chat(chatRequest);
+
+        // then: the request was wired up automatically (container.skills block + code_execution server tool)
+        String requestBody = spyingHttpClient.request().body();
+        assertThat(requestBody).contains("\"container\"").contains("\"skill_id\" : \"xlsx\"");
+        assertThat(requestBody).contains("code_execution_20250825");
+
+        // and: the skill actually ran, surfacing its results (e.g. generated file ids)
+        AiMessage aiMessage = chatResponse.aiMessage();
+        assertThat(aiMessage.text()).isNotBlank();
+
+        List<AnthropicServerToolResult> results = aiMessage.attribute("server_tool_results", List.class);
+        assertThat(results).isNotEmpty();
+    }
+
+    @Test
     void should_support_web_search_tool() {
 
         // given
@@ -626,6 +679,7 @@ class AnthropicChatModelIT {
 
         ChatModel model = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_SONNET_4_5_20250929)
                 .serverTools(webSearchTool)
@@ -680,6 +734,7 @@ class AnthropicChatModelIT {
 
         ChatModel model = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_SONNET_4_5_20250929)
                 .beta("advanced-tool-use-2025-11-20")
@@ -716,6 +771,7 @@ class AnthropicChatModelIT {
 
         ChatModel model = AnthropicChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_SONNET_4_5_20250929)
                 .temperature(0.0)
@@ -775,6 +831,7 @@ class AnthropicChatModelIT {
                 .build();
 
         ChatModel model = AnthropicChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(CLAUDE_SONNET_4_5_20250929)
                 .serverTools(webSearchTool)
@@ -803,13 +860,38 @@ class AnthropicChatModelIT {
         assertThat(result.content()).isNotNull();
     }
 
-    static String randomString(int length) {
-        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        Random random = new Random();
-        StringBuilder result = new StringBuilder(length);
-        for (int i = 0; i < length; i++) {
-            result.append(characters.charAt(random.nextInt(characters.length())));
-        }
-        return result.toString();
+    @Test
+    void should_apply_mid_conversation_system_message() {
+
+        // given - mid-conversation system messages are supported by Claude Opus 4.8 only
+        boolean midConversationSystemMessages = true;
+        AnthropicChatModelName modelName = CLAUDE_OPUS_4_8;
+
+        ChatModel model = AnthropicChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(modelName)
+                .midConversationSystemMessages(midConversationSystemMessages)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        // a leading system message (goes to the top-level "system" field) followed by a mid-conversation
+        // system message (sent inline) that adds an instruction partway through the conversation. Anthropic
+        // requires an inline system message to immediately follow a "user" turn, so it is placed right after
+        // the last user message, as the final entry, where the model's next reply must honor it.
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(
+                        SystemMessage.from("You are a helpful assistant."),
+                        UserMessage.from("Hello"),
+                        AiMessage.from("Hi! How can I help you today?"),
+                        UserMessage.from("What is the capital of France?"),
+                        SystemMessage.from("Include the exact word BANANA somewhere in your ryeply."))
+                .build();
+
+        // when - the request is accepted (no 400 for an invalid placement) ...
+        ChatResponse response = model.chat(chatRequest);
+
+        // then - ... and the inline system instruction takes effect on the reply
+        assertThat(response.aiMessage().text()).containsIgnoringCase("banana");
     }
 }

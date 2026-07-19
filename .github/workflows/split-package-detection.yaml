@@ -2,11 +2,14 @@ name: Split Package Detection
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, 'release/**' ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, 'release/**' ]
   # Optional: Run manually from the Actions tab
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   check-split-packages:
@@ -14,16 +17,16 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
       - name: Set up JDK
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with:
           distribution: 'temurin'
           java-version: '25'
 
       - name: Build with Maven
-        run: mvn package -Dmaven.javadoc.skip=true -DskipTests -DskipITs
+        run: mvn package -Dmaven.javadoc.skip=true -DskipTests -DskipITs -DembeddingsSkipDownload
 
       - name: Make script executable
         run: chmod +x ./check-split-packages.sh
@@ -33,7 +36,7 @@ jobs:
 
       - name: Upload results as artifact if failure
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: split-package-report
           path: |

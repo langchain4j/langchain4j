@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
+import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.UriUtils;
 import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.WebSearchInformationResult;
@@ -50,16 +51,31 @@ public class TavilyWebSearchEngine implements WebSearchEngine {
             Boolean includeRawContent,
             List<String> includeDomains,
             List<String> excludeDomains) {
+        this(builder()
+                .baseUrl(baseUrl)
+                .apiKey(apiKey)
+                .timeout(timeout)
+                .searchDepth(searchDepth)
+                .includeAnswer(includeAnswer)
+                .includeRawContent(includeRawContent)
+                .includeDomains(includeDomains)
+                .excludeDomains(excludeDomains));
+    }
+
+    public TavilyWebSearchEngine(TavilyWebSearchEngineBuilder builder) {
         this.tavilyClient = TavilyClient.builder()
-                .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
-                .timeout(getOrDefault(timeout, ofSeconds(10)))
+                .httpClientBuilder(builder.httpClientBuilder)
+                .baseUrl(getOrDefault(builder.baseUrl, DEFAULT_BASE_URL))
+                .timeout(getOrDefault(builder.timeout, ofSeconds(10)))
+                .logRequests(builder.logRequests)
+                .logResponses(builder.logResponses)
                 .build();
-        this.apiKey = ensureNotBlank(apiKey, "apiKey");
-        this.searchDepth = searchDepth;
-        this.includeAnswer = includeAnswer;
-        this.includeRawContent = includeRawContent;
-        this.includeDomains = copyIfNotNull(includeDomains);
-        this.excludeDomains = copyIfNotNull(excludeDomains);
+        this.apiKey = ensureNotBlank(builder.apiKey, "apiKey");
+        this.searchDepth = builder.searchDepth;
+        this.includeAnswer = builder.includeAnswer;
+        this.includeRawContent = builder.includeRawContent;
+        this.includeDomains = copyIfNotNull(builder.includeDomains);
+        this.excludeDomains = copyIfNotNull(builder.excludeDomains);
     }
 
     public static TavilyWebSearchEngineBuilder builder() {
@@ -117,6 +133,9 @@ public class TavilyWebSearchEngine implements WebSearchEngine {
         private Boolean includeRawContent;
         private List<String> includeDomains;
         private List<String> excludeDomains;
+        private HttpClientBuilder httpClientBuilder;
+        private Boolean logRequests;
+        private Boolean logResponses;
 
         TavilyWebSearchEngineBuilder() {}
 
@@ -160,21 +179,28 @@ public class TavilyWebSearchEngine implements WebSearchEngine {
             return this;
         }
 
+        public TavilyWebSearchEngineBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        public TavilyWebSearchEngineBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public TavilyWebSearchEngineBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
         public TavilyWebSearchEngine build() {
-            return new TavilyWebSearchEngine(
-                    this.baseUrl,
-                    this.apiKey,
-                    this.timeout,
-                    this.searchDepth,
-                    this.includeAnswer,
-                    this.includeRawContent,
-                    this.includeDomains,
-                    this.excludeDomains);
+            return new TavilyWebSearchEngine(this);
         }
 
         public String toString() {
             return "TavilyWebSearchEngine.TavilyWebSearchEngineBuilder(baseUrl=" + this.baseUrl + ", apiKey="
-                    + this.apiKey + ", timeout=" + this.timeout + ", searchDepth=" + this.searchDepth
+                    + (this.apiKey == null ? null : "********") + ", timeout=" + this.timeout + ", searchDepth=" + this.searchDepth
                     + ", includeAnswer=" + this.includeAnswer + ", includeRawContent=" + this.includeRawContent
                     + ", includeDomains=" + this.includeDomains + ", excludeDomains=" + this.excludeDomains + ")";
         }

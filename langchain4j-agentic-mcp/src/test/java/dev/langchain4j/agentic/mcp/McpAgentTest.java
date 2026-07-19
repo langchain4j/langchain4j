@@ -7,15 +7,16 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.AgenticServices;
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
@@ -67,9 +68,8 @@ class McpAgentTest {
         McpClient mcpClient = mockMcpClient("translate", "Translate text to a target language", "text", "language");
         mockToolResult(mcpClient, "Bonjour le monde");
 
-        UntypedAgent translator = McpAgent.builder(mcpClient)
-                .outputKey("translation")
-                .build();
+        UntypedAgent translator =
+                McpAgent.builder(mcpClient).outputKey("translation").build();
 
         Object result = translator.invoke(Map.of("text", "Hello world", "language", "French"));
 
@@ -137,9 +137,8 @@ class McpAgentTest {
                 .build();
         when(mcpClient.listTools()).thenReturn(List.of(otherTool));
 
-        assertThatThrownBy(() -> McpAgent.builder(mcpClient)
-                .toolName("nonexistent_tool")
-                .build())
+        assertThatThrownBy(() ->
+                        McpAgent.builder(mcpClient).toolName("nonexistent_tool").build())
                 .isInstanceOf(dev.langchain4j.agentic.planner.AgenticSystemConfigurationException.class)
                 .hasMessageContaining("nonexistent_tool")
                 .hasMessageContaining("not found");
@@ -150,9 +149,7 @@ class McpAgentTest {
         McpClient mcpClient = mockMcpClient("fail_tool", "A tool that fails", "input");
         mockToolError(mcpClient, "Something went wrong");
 
-        UntypedAgent agent = McpAgent.builder(mcpClient)
-                .outputKey("result")
-                .build();
+        UntypedAgent agent = McpAgent.builder(mcpClient).outputKey("result").build();
 
         assertThatThrownBy(() -> agent.invoke(Map.of("input", "test")))
                 .isInstanceOf(RuntimeException.class)
@@ -227,14 +224,12 @@ class McpAgentTest {
     void mcp_agent_topology_is_non_ai_agent() {
         McpClient mcpClient = mockMcpClient("tool", "A tool", "input");
 
-        UntypedAgent agent = McpAgent.builder(mcpClient)
-                .outputKey("result")
-                .build();
+        UntypedAgent agent = McpAgent.builder(mcpClient).outputKey("result").build();
 
         assertThat(agent).isInstanceOf(McpClientInstance.class);
         McpClientInstance mcpInstance = (McpClientInstance) agent;
-        assertThat(mcpInstance.topology()).isEqualTo(
-                dev.langchain4j.agentic.planner.AgenticSystemTopology.NON_AI_AGENT);
+        assertThat(mcpInstance.topology())
+                .isEqualTo(dev.langchain4j.agentic.planner.AgenticSystemTopology.NON_AI_AGENT);
     }
 
     @Test
@@ -279,9 +274,7 @@ class McpAgentTest {
         when(mcpClient.listTools()).thenReturn(List.of(toolSpec));
         mockToolResult(mcpClient, "2024-01-01T00:00:00Z");
 
-        UntypedAgent agent = McpAgent.builder(mcpClient)
-                .outputKey("time")
-                .build();
+        UntypedAgent agent = McpAgent.builder(mcpClient).outputKey("time").build();
 
         Object result = agent.invoke(Map.of());
         assertThat(result).isEqualTo("2024-01-01T00:00:00Z");
@@ -304,5 +297,24 @@ class McpAgentTest {
 
         double result = calculator.calculate("21 * 2 + 0.5");
         assertThat(result).isEqualTo(42.5);
+    }
+
+    @Test
+    void typed_mcp_agent_in_workflow_throws_on_missing_required_input() {
+        McpClient mcpClient = mockMcpClient("translate", "Translate text to a target language", "text", "language");
+
+        TypedTranslator translator = McpAgent.builder(mcpClient, TypedTranslator.class)
+                .outputKey("translation")
+                .build();
+
+        UntypedAgent pipeline = AgenticServices.sequenceBuilder()
+                .subAgents(translator)
+                .outputKey("translation")
+                .build();
+
+        // "language" is a required input of the typed agent but is absent from the AgenticScope state.
+        assertThatThrownBy(() -> pipeline.invoke(Map.of("text", "Hello world")))
+                .isInstanceOf(MissingArgumentException.class)
+                .hasMessageContaining("language");
     }
 }

@@ -94,7 +94,7 @@ class InternalOllamaHelper {
                         .name(toolCall.getFunction().getName())
                         .arguments(toJsonWithoutIdent(toolCall.getFunction().getArguments()))
                         .build())
-                .toList();
+                .collect(Collectors.toList());
     }
 
     static String toOllamaResponseFormat(ResponseFormat responseFormat) {
@@ -176,6 +176,13 @@ class InternalOllamaHelper {
                         // numPredict and maxOutputTokens are semantically identical
                         .numPredict(requestParameters.maxOutputTokens())
                         .numCtx(requestParameters.numCtx())
+                        .numThread(requestParameters.numThread())
+                        .numKeep(requestParameters.numKeep())
+                        .typicalP(requestParameters.typicalP())
+                        .numBatch(requestParameters.numBatch())
+                        .numGPU(requestParameters.numGPU())
+                        .mainGPU(requestParameters.mainGPU())
+                        .useMmap(requestParameters.useMmap())
                         .stop(requestParameters.stopSequences())
                         .minP(requestParameters.minP())
                         .build())
@@ -200,13 +207,9 @@ class InternalOllamaHelper {
         Map<ContentType, List<Content>> groupedContents =
                 userMessage.contents().stream().collect(Collectors.groupingBy(Content::type));
 
-        if (groupedContents.get(TEXT).size() != 1) {
-            throw new IllegalArgumentException("Expecting single text content, but got: " + userMessage.contents());
-        }
+        String text = concatenateTextContents(userMessage);
 
-        String text = ((TextContent) groupedContents.get(TEXT).get(0)).text();
-
-        List<ImageContent> imageContents = groupedContents.get(IMAGE).stream()
+        List<ImageContent> imageContents = groupedContents.getOrDefault(IMAGE, List.of()).stream()
                 .map(content -> (ImageContent) content)
                 .collect(Collectors.toList());
 
@@ -215,6 +218,18 @@ class InternalOllamaHelper {
                 .content(text)
                 .images(ImageUtils.base64EncodeImageList(imageContents))
                 .build();
+    }
+
+    /**
+     * Ollama messages carry a single {@code content} string, so multiple {@link TextContent}s
+     * of a {@link UserMessage} are concatenated (separated by newlines). Returns an empty string
+     * if the message has no text content (e.g. it only contains images).
+     */
+    private static String concatenateTextContents(UserMessage userMessage) {
+        return userMessage.contents().stream()
+                .filter(content -> TEXT.equals(content.type()))
+                .map(content -> ((TextContent) content).text())
+                .collect(Collectors.joining("\n"));
     }
 
     private static Message otherMessages(ChatMessage chatMessage) {
@@ -255,10 +270,14 @@ class InternalOllamaHelper {
         if (chatMessage instanceof SystemMessage systemMessage) {
             return systemMessage.text();
         } else if (chatMessage instanceof UserMessage userMessage) {
-            return userMessage.singleText();
+            return concatenateTextContents(userMessage);
         } else if (chatMessage instanceof AiMessage aiMessage) {
             return aiMessage.text();
         } else if (chatMessage instanceof ToolExecutionResultMessage toolExecutionResultMessage) {
+            if (!toolExecutionResultMessage.hasSingleText()) {
+                throw new UnsupportedFeatureException("Ollama does not support non-text content in tool results. "
+                        + "Only text content is supported.");
+            }
             return toolExecutionResultMessage.text();
         } else {
             throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());

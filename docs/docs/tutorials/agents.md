@@ -361,7 +361,7 @@ EveningPlannerAgent eveningPlannerAgent = AgenticServices
 List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 ```
 
-Here the `output` function of the `AgenticScope` defined in the `EveningPlannerAgent` allows to assemble the outputs of the two subagents, creating a list of `EveningPlan` objects that combine a movie and a meal matching the given mood. The `output` method, even if especially relevant for parallel workflows, can be actually used in any workflow pattern to define how to combine the outputs of the subagents into a single result, instead of simply returning a value from the `AgenticScope`. The `executor` method also allows to optionally provide an `Executor` that will be used to execute the subagents in parallel, otherwise an internal cached thread pool will be used by default.
+Here the `output` function of the `AgenticScope` defined in the `EveningPlannerAgent` allows you to assemble the outputs of the two subagents, creating a list of `EveningPlan` objects that combine a movie and a meal matching the given mood. The `output` method, even if especially relevant for parallel workflows, can be actually used in any workflow pattern to define how to combine the outputs of the subagents into a single result, instead of simply returning a value from the `AgenticScope`. The `executor` method also allows you to optionally provide an `Executor` that will be used to execute the subagents in parallel, otherwise an internal cached thread pool will be used by default.
 
 ### Parallel mapper workflow
 
@@ -512,6 +512,49 @@ ExpertRouterAgent expertRouterAgent = AgenticServices
 String response = expertRouterAgent.ask("I broke my leg what should I do");
 ```
 
+## Optional agents
+
+In some cases a sub-agent in a workflow may not be required to execute if its input arguments are not available in the `AgenticScope`. By default, when an agent cannot find one of its required arguments, the entire agentic system fails with a `MissingArgumentException`. However, it is possible to mark an agent as optional, so that its execution is silently skipped when any of its arguments is missing, instead of making the whole workflow fail.
+
+This can be done by using the `optional` method of the agent builder. For example, considering the sequential workflow defined above, it is possible to make the `AudienceEditor` agent optional, so that the story is still generated and style-edited even when no audience is provided in the input.
+
+```java
+CreativeWriter creativeWriter = AgenticServices
+        .agentBuilder(CreativeWriter.class)
+        .chatModel(BASE_MODEL)
+        .outputKey("story")
+        .build();
+
+AudienceEditor audienceEditor = AgenticServices
+        .agentBuilder(AudienceEditor.class)
+        .chatModel(BASE_MODEL)
+        .optional(true)
+        .outputKey("story")
+        .build();
+
+StyleEditor styleEditor = AgenticServices
+        .agentBuilder(StyleEditor.class)
+        .chatModel(BASE_MODEL)
+        .outputKey("story")
+        .build();
+
+UntypedAgent novelCreator = AgenticServices
+        .sequenceBuilder()
+        .subAgents(creativeWriter, audienceEditor, styleEditor)
+        .outputKey("story")
+        .build();
+
+// No "audience" key is provided, so the audienceEditor will be skipped
+Map<String, Object> input = Map.of(
+        "topic", "dragons and wizards",
+        "style", "fantasy"
+);
+
+String story = (String) novelCreator.invoke(input);
+```
+
+Here the `audienceEditor` agent is configured as optional. Since the input map does not contain the "audience" key required by the `AudienceEditor`, its invocation is skipped and the workflow proceeds directly with the `StyleEditor`. The same agent can also be marked as optional declaratively using the `@Agent` annotation attribute `@Agent(optional = true)`.
+
 ## Asynchronous agents
 
 By default, all agents invocations are performed in the same thread that invoked the root agent of the agentic system, and therefore they are synchronous, meaning that the execution of the agentic system waits for the completion of each agent before proceeding to the next one. However, in many cases this is not necessary, and it could be useful to invoke an agent in an asynchronous way, allowing the execution of the agentic system to proceed without waiting for the completion of that agent.
@@ -631,11 +674,31 @@ TokenStream tokenStream = novelCreator.writeStory("dragons and wizards", "young 
 
 the streaming responses of the first two agents are internally fully consumed before the invocation of the subsequent agents can start, and only the streaming response of the last `StyleEditor` agent is propagated as the streaming response of the whole `novelCreator` agent.
 
+## Dynamic chat model selection
+
+By default, an agent is bound to a single `ChatModel` at build time. However, there are scenarios where you may want to dynamically select which model to use at each invocation based on the current state of the agentic system. For example, you might want to use a cheaper, faster model for routine work and switch to a more capable one when quality thresholds demand it.
+
+The `chatModel` method on `AgentBuilder` has an overload that accepts a `Function<AgenticScope, ChatModel>`:
+
+```java
+StoryEditor storyEditor = AgenticServices.agentBuilder(StoryEditor.class)
+        .chatModel(scope -> {
+            CritiqueResult critique = (CritiqueResult) scope.readState("critique");
+            return critique != null && critique.score() > 7.8 ? enhancedModel() : baseModel();
+        })
+        .outputKey("story")
+        .build();
+```
+
+The function receives the current `AgenticScope` and returns the `ChatModel` to use for the current invocation. In this example, a `StoryEditor` agent uses `baseModel()` by default, when the story to be edited has a critique score below 7.8 and there is still a lot to improve. It switches to `enhancedModel()` when the score exceeds that threshold and a better model could be necessary for the final refinements. The function is evaluated before every invocation, so the model can change across different invocations of the same agent.
+
+The same dynamic selection is also possible for the `streamingChatModel` method.
+
 ## Error handling
 
 In a complex agentic system, many things can go wrong, such as an agent failing to produce a result, an external tool not being available, or an unexpected error occurring during the execution of an agent.
 
-For this reason, the `errorHandler` method allows to provide the agentic system with an error handler that is a function transforming an `ErrorContext` defined as
+For this reason, the `errorHandler` method allows you to provide the agentic system with an error handler that is a function transforming an `ErrorContext` defined as
 
 ```java
 record ErrorContext(String agentName, AgenticScope agenticScope, AgentInvocationException exception) { }
@@ -690,7 +753,7 @@ UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
 
 ## Observability
 
-Tracking and logging the agents' invocations can be crucial for debugging and understanding the aggregate behavior of the whole agentic system in which those agents participate. For this reason, the `langchain4j-agentic` module allows to register an `AgentListener` through the `listener` method of the agent builders, that is notified of all agents invocations and their results, and it is defined as follows:
+Tracking and logging the agents' invocations can be crucial for debugging and understanding the aggregate behavior of the whole agentic system in which those agents participate. For this reason, the `langchain4j-agentic` module allows you to register an `AgentListener` through the `listener` method of the agent builders, that is notified of all agents invocations and their results, and it is defined as follows:
 
 ```java
 public interface AgentListener {
@@ -711,7 +774,7 @@ public interface AgentListener {
 }
 ```
 
-Note that all methods of this interface have a default empty implementation, so that it is possible to implement only the methods of interest. This will also allow to add new methods in future releases without breaking existing implementations.
+Note that all methods of this interface have a default empty implementation, so that it is possible to implement only the methods of interest. This will also allow you to add new methods in future releases without breaking existing implementations.
 
 For instance the following configuration of the `CreativeWriter` agent will log to the console when it is invoked and what is the story it generated.
 
@@ -815,14 +878,14 @@ so it will reveal the nested sequence of agents invocations necessary to generat
 
 ```
 AgentInvocation{agent=Sequential, startTime=2026-03-18T17:27:28.099439515, finishTime=2026-03-18T17:27:38.683498783, duration=10584 ms, tokens=0, inputs={topic=dragons and wiz..., style=comedy}, output=In a realm wher...}
-|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.101252287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
+|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.18.0287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
 |=> AgentInvocation{agent=reviewLoop, startTime=2026-03-18T17:27:31.035952285, finishTime=2026-03-18T17:27:38.683438433, duration=7647 ms, tokens=0, inputs={score=0.8, topic=dragons and wiz..., style=comedy, story=In a realm wher...}, output=null}
     |=> AgentInvocation{agent=scoreStyle, iteration=0, startTime=2026-03-18T17:27:31.036155107, finishTime=2026-03-18T17:27:31.671478699, duration=635 ms, tokens=152, inputs={style=comedy, story=In a realm wher...}, output=0.2}
     |=> AgentInvocation{agent=editStory, iteration=0, startTime=2026-03-18T17:27:31.671711250, finishTime=2026-03-18T17:27:38.182881941, duration=6511 ms, tokens=491, inputs={style=comedy, story=In a realm wher...}, output=In a realm wher...}
     |=> AgentInvocation{agent=scoreStyle, iteration=1, startTime=2026-03-18T17:27:38.183021641, finishTime=2026-03-18T17:27:38.683085876, duration=500 ms, tokens=439, inputs={style=comedy, story=In a realm wher...}, output=0.8}
 ```
 
-Finally, using the static `generateReport` method esposed by `HtmlReportGenerator` class, it is also possible to generate a visual HTML report of the data collected by the `AgentMonitor` for both the topology of the agentic system and the recorded executions. For instance, generating this report for the former execution: 
+Finally, using the static `generateReport` method exposed by `HtmlReportGenerator` class, it is also possible to generate a visual HTML report of the data collected by the `AgentMonitor` for both the topology of the agentic system and the recorded executions. For instance, generating this report for the former execution: 
 
 ```java
 HtmlReportGenerator.generateReport(monitor, Path.of("review-loop.html"));
@@ -831,6 +894,36 @@ HtmlReportGenerator.generateReport(monitor, Path.of("review-loop.html"));
 will produce a report file `review-loop.html` in the current working directory similar to this:
 
 ![](/img/agent-monitor.png)
+
+It is also possible to generate the topology and execution sections independently. To generate only the topology of the agentic system, without any execution data:
+
+```java
+HtmlReportGenerator.generateTopology(styledWriter, Path.of("topology.html"));
+```
+
+Conversely, to generate only the execution history recorded by the monitor, without the topology section:
+
+```java
+HtmlReportGenerator.generateExecution(monitor, Path.of("execution.html"));
+```
+
+This last method also supports filtering by memory id, for instance `HtmlReportGenerator.generateExecution(monitor, memoryId, path)`, while all methods have overloads that return the HTML as a `String` instead of writing to a file.
+
+By default, `AgentMonitor` retains up to 100 sessions (distinct memory IDs) per outcome (successful and failed, independently). When the limit is exceeded, the oldest sessions are evicted automatically. This makes it safe to attach a monitor to a long-lived singleton agent without risking unbounded memory growth.
+
+The retention limit can be changed at any time via `setMaxRetainedSessions`. If the new limit is lower than the current number of retained sessions, excess entries are evicted immediately:
+
+```java
+monitor.setMaxRetainedSessions(20);
+```
+
+Setting it to `0` disables retention entirely — listener callbacks still fire, but nothing is kept in memory. To explicitly remove all retained sessions, use the `clear()` method:
+
+```java
+monitor.clear();
+```
+
+Both operations leave ongoing (in-flight) executions unaffected.
 
 Another alternative to manually creating an `AgentMonitor` and registering it as a listener, is making your agent service interface to extend the `MonitoredAgent` one. When doing so, the builder automatically creates and registers an `AgentMonitor` as a listener, and this monitor becomes accessible directly from the agent instance via the `agentMonitor()` method.
 
@@ -900,7 +993,22 @@ EveningPlannerAgent eveningPlannerAgent = AgenticServices
 List<EveningPlan> plans = eveningPlannerAgent.plan("romantic");
 ```
 
-In this case the `AgenticServices.createAgenticSystem()` method is also provided with a `ChatModel` that by default is used to create all the subagents in this agentic system, However it is also possible to optionally specify a different `ChatModel` for a given subagent, adding to its definition a static method annotated with `@ChatModelSupplier` returning the `ChatModel` to be used with that agent. For instance the `FoodExpert` agent can define its own `ChatModel` as follows:
+Similarly to what demonstrated for the `@Output` annotation, annotating other `static` methods in the interface defining the agentic pattern with one of the following annotations, it is possible to declaratively configure the agentic system, like for instance the executor to be used for parallel agents, the exit condition for loop agents, and so on. The list of annotations available to this purpose follows:
+
+| Annotation Name          | Description                                                                                                                       |
+|--------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
+| `@Output`                | Assemble the output to be returned by this agentic pattern, putting together different states of the `AgenticScope`.              |
+| `@ActivationCondition`   | Only available on the `ConditionalAgent` to define an activation predicate for one or more sub-agents, it must return a `boolean` |
+| `@BeforeCall`            | Action invoked before calling this agentic pattern, it can be useful to initialize the state of the `AgenticScope`.               |
+| `@ErrorHandler`          | Action invoked when an error occurs during the agent's operation, allowing for custom error handling logic.                       |
+| `@ExitCondition`         | Only available on the `LoopAgent` to define an exit predicate for the loop, it must return a `boolean`                            |
+| `@ParallelExecutor`      | Only available on the `ParallelAgent` and `ParallelMapperAgent` to specify the executor used to run the sub-agents in parallel.   |
+| `@AgentListenerSupplier` | Returns the `AgentListener` registered on this agentic pattern.                                                                   |
+| `@PlannerSupplier`       | Returns the `Planner` implementation used by this agentic pattern.                                                                |
+| `@SupervisorRequest`     | Only available on the `SupervisorAgent` to define the request that will be sent to the supervisor.                                |
+
+
+In the former example the `AgenticServices.createAgenticSystem()` method is also provided with a `ChatModel` that by default is used to create all the subagents in this agentic system, However it is also possible to optionally specify a different `ChatModel` for a given subagent, adding to its definition a static method annotated with `@ChatModelSupplier` returning the `ChatModel` to be used with that agent. For instance the `FoodExpert` agent can define its own `ChatModel` as follows:
 
 ```java
 public interface FoodExpert {
@@ -922,19 +1030,21 @@ public interface FoodExpert {
 }
 ```
 
-In a very similar way, annotating other `static` methods in the agent interface, it is possible to declaratively configure other aspects of the agent like its chat memory, the tools it can use, and so on. Those methods must have no arguments unless differently specified in the following table. The list of annotations available to this purpose follows:
+In a very similar way, annotating other `static` methods in the agent interface, it is possible to declaratively configure other aspects of the agent like its chat memory, the tools it can use, and so on. Note that while the former list of annotations only applies to agentic pattern, it makes sense to use the annotations listed below only for LLM-based final agents, with the exception of `@AgentListenerSupplier` that allows to register listeners on both agentic patterns and final agents. Also, since the supervisor pattern is the only one to use an LLM internally, it is possible to use on it the annotations that allow to configure the `ChatModel` used by the supervisor itself, like `@ChatModelSupplier` and `@ChatMemoryProviderSupplier,`. Those methods must have no arguments unless differently specified in the following table. The list of annotations available to this purpose follows:
 
 | Annotation Name               | Description                                                                                                                                                   |
 |-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `@ChatModelSupplier`          | Returns the `ChatModel` to be used by this agent.                                                                                                             |
-| `@StreamingChatModelSupplier` | Returns the `StreamingChatModel` to be used by this agent.                                                                                                             |
+| `@ChatModelSupplier`          | Returns the `ChatModel` to be used by this agent. It could be both a fixed model, if the method has no argument, or a function of the `AgenticScope`.         |
+| `@StreamingChatModelSupplier` | Returns the `StreamingChatModel` to be used by this agent. It could be both a fixed model, if the method has no argument, or a function of the `AgenticScope` |
 | `@ChatMemorySupplier`         | Returns the `ChatMemory` to be used by this agent.                                                                                                            |
 | `@ChatMemoryProviderSupplier` | Returns the `ChatMemoryProvider` to be used by this agent.<br/>This method requires as argument an `Object` to be used as the memoryId of the created memory. |
 | `@ContentRetrieverSupplier`   | Returns the `ContentRetriever` to be used by this agent.                                                                                                      |
-| `@AgentListenerSupplier`      | Returns the `AgentListener` to be used by this agent.                                                                                                      |
+| `@AgentListenerSupplier`      | Returns the `AgentListener` to be used by this agent.                                                                                                         |
 | `@RetrievalAugmentorSupplier` | Returns the `RetrievalAugmentor` to be used by this agent.                                                                                                    |
 | `@ToolsSupplier`              | Returns the tool or set of tools to be used by this agent.<br/> It can return either a single `Object` or a `Object[]`                                        |
-| `@ToolProviderSupplier`       | Returns the `ToolProvider` to be used by this agent.                                                                                                          |
+| `@ToolProviderSupplier`          | Returns the `ToolProvider` to be used by this agent.                                                                                                          |
+| `@SystemMessageProviderSupplier` | Provides a dynamic system message. The method receives the memoryId as an `Object` and returns a `String`.                                                    |
+| `@UserMessageProviderSupplier`   | Provides a dynamic user message. The method receives the memoryId as an `Object` and returns a `String`.                                                      |
 
 To give another example of this declarative API, let's redefine through it the `ExpertsAgent` demonstrated in the conditional workflow section.
 
@@ -1104,128 +1214,6 @@ String response = expertChatbot.ask("I broke my leg what should I do");
 
 The `routerAgent` doesn't need to programmatically specify the output key, since it is already defined in its interface through the `typedOutputKey` attribute of the `@Agent` annotation, while the 3 expert agents still need to specify it programmatically, since their interfaces don't define it, so as usual it is possible to use either one of the 2 approaches. Also, it worth to note that, when reading the values from the `AgenticScope`, like in the conditional workflow definition, there is no need to perform any type check or cast, since the typed keys already provide the necessary type information.
 
-## Memory and context engineering
-
-All agents discussed so far are stateless, meaning that they do not maintain any context or memory of previous interactions. However, like for any other AI service, it is possible to provide agents with a `ChatMemory`, allowing them to maintain context across multiple invocations. 
-
-To provide the former `MedicalExpert` with a memory, it is sufficient to add a field annotated with `@MemoryId` to its signature.
-
-```java
-public interface MedicalExpertWithMemory {
-
-    @UserMessage("""
-        You are a medical expert.
-        Analyze the following user request under a medical point of view and provide the best possible answer.
-        The user request is {{request}}.
-        """)
-    @Agent("A medical expert")
-    String medical(@MemoryId String memoryId, @V("request") String request);
-}
-```
-
-and set a memory provider when building the agent:
-
-```java
-MedicalExpertWithMemory medicalExpert = AgenticServices
-        .agentBuilder(MedicalExpertWithMemory.class)
-        .chatModel(BASE_MODEL)
-        .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-        .outputKey("response")
-        .build();
-```
-
-Generally this is enough for single agents used in isolation, but can be limiting for agents participating in an agentic system. Supposing that also the technical and legal experts have been provided with a memory, and also the `ExpertRouterAgent` has been redefined to have it:
-
-```java
-public interface ExpertRouterAgentWithMemory {
-
-    @Agent
-    String ask(@MemoryId String memoryId, @V("request") String request);
-}
-```
-
-The sequence of these two invocations to this agent
-
-```java
-String response1 = expertRouterAgent.ask("1", "I broke my leg, what should I do?");
-
-String legalResponse1 = expertRouterAgent.ask("1", "Should I sue my neighbor who caused this damage?");
-```
-
-won't give the expected result, because the second question will be routed to the legal expert, which is now invoked for the first time and has no memory of the previous question.
-
-To solve this problem it is necessary to provide the legal expert with the context and what happened before its invocation, and this is another use case where the information automatically stored in the `AgenticScope` can come to help.
-
-In particular the `AgenticScope` keeps track of the sequence of invocations of all agents, and can produce a context concatenating those invocations in a single conversation. This context can be used as it is or if necessary summarized to a shorter version, for instance defining a `ContextSummarizer` agent.
-
-```java
-public interface ContextSummarizer {
-
-    @UserMessage("""
-        Create a very short summary, 2 sentences at most, of the
-        following conversation between an AI agent and a user.
-
-        The user conversation is: '{{it}}'.
-        """)
-    String summarize(String conversation);
-}
-```
-
-Using this agent, the legal expert can be redefined and provided with a context summarization of the previous conversation, so that it can take into account the previous interactions when answering the new question.
-
-```java
-LegalExpertWithMemory legalExpert = AgenticServices
-        .agentBuilder(LegalExpertWithMemory.class)
-        .chatModel(BASE_MODEL)
-        .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-        .context(agenticScope -> contextSummarizer.summarize(agenticScope.contextAsConversation()))
-        .outputKey("response")
-        .build();
-```
-
-More in general the context provided to an agent can be any function of the `AgenticScope` state. With this setup, the legal expert, when asked if the neighbor should be sued for the damage he caused, will be able to take into account the previous conversation with the medical expert and provide a more informed answer.
-
-Internally the agentic framework provides the additional context to the legal expert by automatically rewriting the user message sent to it, so that it contains the summarized context of the previous conversation, so in this case the actual user message will be something like:
-
-```
-"Considering this context \"The user asked about what to do after breaking their leg, and the AI provided medical advice on immediate actions like immobilizing the leg, applying ice, and seeking medical attention.\"
-You are a legal expert.
-Analyze the following user request under a legal point of view and provide the best possible answer.
-The user request is Should I sue my neighbor who caused this damage?."
-```
-
-The summarized context discussed here as an example of possible context generation for an agent is of general usefulness, so it is possible to define it on an agent in a more convenient way, using the `summarizedContext` method, like in:
-
-```java
-LegalExpertWithMemory legalExpert = AgenticServices
-        .agentBuilder(LegalExpertWithMemory.class)
-        .chatModel(BASE_MODEL)
-        .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
-        .summarizedContext("medical", "technical")
-        .outputKey("response")
-        .build();
-```
-
-By doing so it internally uses the `ContextSummarizer` agent discussed before, executing it with the same chat model of the agent where it has been defined. It is also possible to add to this method a varargs of the names of the agents whose context should be summarized, so that the summarization is done only for those agents, and not for all the ones used in the agentic system.
-
-### AgenticScope registry and persistence
-
-The `AgenticScope` is a transient data structure that is created and used during the execution of an agentic system. There is a single `AgenticScope` per user per agentic system. For stateless executions, when no memory is used, the `AgenticScope` is automatically discarded at the end of the execution, and its state is not persisted anywhere. 
-
-Conversely, when the agentic system uses a memory, the `AgenticScope` is saved in an internal registry. In this case the `AgenticScope` remains in the registry forever to allow users to interact with the agentic system in a stateful and conversational way. For this reason, when a `AgenticScope` with a specific ID is no longer needed, it has to be explicitly evicted from the registry. In order to do so the root agent of the agentic system needs to implement the interface `AgenticScopeAccess` so it is possible to call the `evictAgenticScope` method on it, passing the ID of the `AgenticScope` that has to be removed from the registry.:
-
-```java
-agent.evictAgenticScope(memoryId);
-```
-
-Both the `AgenticScope`s and their registry are purely in memory data structures. This is usually sufficient for simple agentic systems, but in some cases it can be useful to persist the `AgenticScope` state to a more durable storage, like a database or a file system. To achieve this the `langchain4j-agentic` module provides an SPI to plug in a custom persistence layer that is an implementation of the `AgenticScopeStore` interface. It is possible to set this persistence layer either programmatically:
-
-```java
-AgenticScopePersister.setStore(new MyAgenticScopeStore());
-```
-
-or using the standard Java Service Provider interface creating a file named `META-INF/services/dev.langchain4j.agentic.scope.AgenticScopeStore` containing the fully qualified name of the class implementing the `AgenticScopeStore` interface.
-
 ## Pure agentic AI
 
 Up to this point all agents have been wired and combined to create agentic systems using deterministic workflows. However, there are cases where the agentic system needs to be more flexible and adaptive, allowing agents to make decisions on how to proceed based on the context and the results of previous interactions. This is often referred to as "pure agentic AI".
@@ -1391,7 +1379,7 @@ AgentInvocation{agentName='withdraw', arguments={user=Mario, amount=115.0}}
 
 AgentInvocation{agentName='credit', arguments={user=Georgios, amount=115.0}}
 
-AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1115.0 USD. The conversion rate was 1.15 EUR to USD.}}
+AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.18.0 USD. The conversion rate was 1.15 EUR to USD.}}
 ```
 
 The last invocation is a special one that signals the supervisor believes the task has been completed, and returns as a response a summary of all the operations performed.
@@ -1968,6 +1956,528 @@ Based on the provided references, here are some key points about stochastic grav
    - Template banks like those developed by Ajith et al. are crucial for matching observed signals with theoretical predictions.
 ```
 
+### Blackboard agentic pattern
+
+The P2P pattern activates all ready agents in parallel, treating them as equal peers. However, there are scenarios where a centralized scheduler should decide which single agent fires next, applying conflict resolution when multiple agents could contribute. This is the blackboard pattern: agents are knowledge sources that post partial results to the `AgenticScope` (the blackboard), and a centralized planner inspects the blackboard after each step to activate the most appropriate agent.
+
+Like P2P, agents activate implicitly when all their arguments are present in the scope. The key difference is that only one agent fires per step, and when multiple agents are ready, a `ConflictResolutionStrategy` determines which one takes priority. If no strategy is provided, the declaration order in the `subAgents` method is used as the default tie-breaker.
+
+The `BlackboardPlanner` terminates successfully when the goal predicate is satisfied or no agent can fire (quiescence); if the maximum number of invocations is reached before the goal is satisfied, it throws an `IllegalStateException`. By default, the goal predicate checks whether the planner's `outputKey` is present in the scope — which is the most common termination condition:
+
+```java
+public class BlackboardPlanner implements Planner {
+
+    private final Predicate<AgenticScope> goalPredicate;
+    private final ConflictResolutionStrategy conflictResolutionStrategy;
+    private final int maxInvocations;
+
+    @Override
+    public Action nextAction(PlanningContext planningContext) {
+        // After each agent completes:
+        // 1. Check goal predicate → done() if satisfied
+        // 2. Find all agents whose inputs are available
+        // 3. Pick the best one via conflict resolution (or declaration order)
+        // 4. Return call(selectedAgent) — always exactly one agent per step
+    }
+}
+```
+
+The `ConflictResolutionStrategy` is a functional interface that receives the current scope and all candidate agents that are ready to fire, returning the one that should be activated.
+
+```java
+@FunctionalInterface
+public interface ConflictResolutionStrategy {
+
+    AgentInstance resolve(AgenticScope scope, List<AgentInstance> candidates);
+}
+```
+
+The interface ships with a few convenient factory methods, together with a `or` combinator to chain multiple strategies together. For instance, `declarationOrder()` simply picks the first candidate, preserving the order used in the `subAgents` method, while `agentOfType` selects the candidate matching a given type — optionally guarded by a condition on the `AgenticScope`, and returns `null` when the condition is not met or no candidate of that type is present. The `or` combinator chains two strategies: if the first returns `null`, the second is tried. Together they let you build pipelines like `agentOfType(X.class, condition).or(declarationOrder())` that read as "prefer agent of type X when the condition holds, otherwise fall back to declaration order".
+
+As a practical example, consider a medical diagnostic system where specialist agents post findings to the blackboard, and a diagnosis is produced only when enough evidence has accumulated. The order in which agents fire is not predetermined, but depends on what data is available:
+
+```java
+SymptomExtractor symptomExtractor = AgenticServices.agentBuilder(SymptomExtractor.class)
+        .chatModel(baseModel()).build();
+
+LabResultAnalyzer labAnalyzer = AgenticServices.agentBuilder(LabResultAnalyzer.class)
+        .chatModel(baseModel()).build();
+
+DrugInteractionChecker drugInteraction = AgenticServices.agentBuilder(DrugInteractionChecker.class)
+        .chatModel(baseModel()).build();
+
+DiagnosisAgent diagnosis = AgenticServices.agentBuilder(DiagnosisAgent.class)
+        .chatModel(baseModel()).build();
+
+MedicalDiagnostics diagnostics = AgenticServices.plannerBuilder(MedicalDiagnostics.class)
+        .subAgents(symptomExtractor, labAnalyzer, drugInteraction, diagnosis)
+        .planner(BlackboardPlanner::new)
+        .outputKey("diagnosis")
+        .build();
+
+String result = diagnostics.diagnose(patientInput, labResults, medications);
+```
+
+The `SymptomExtractor` fires first because its only input (`patientInput`) is available from the start. Once symptoms are extracted, both `LabResultAnalyzer` and `DrugInteractionChecker` may become eligible — but only one fires per step. Finally, `DiagnosisAgent` fires when both `symptoms` and `labAnalysis` are on the blackboard. The system terminates because the default goal predicate detects that `"diagnosis"` (the planner's `outputKey`) is now present in the scope. A custom goal predicate can be provided to the `BlackboardPlanner` constructor when the termination condition is more complex.
+
+When the clinical context matters for agent ordering, a `ConflictResolutionStrategy` can inspect the scope state to make an informed decision. For example, if the patient's symptoms mention medications or side effects, drug interaction analysis should be prioritized over lab analysis. 
+
+```java
+MedicalDiagnostics diagnostics = AgenticServices.plannerBuilder(MedicalDiagnostics.class)
+        .subAgents(symptomExtractor, labAnalyzer, drugInteraction, diagnosis)
+        .planner(() -> new BlackboardPlanner(
+                agentOfType(DrugInteractionChecker.class, scope -> {
+                            String symptoms = scope.readState("symptoms", "");
+                            return symptoms.toLowerCase().contains("medication")
+                                    || symptoms.toLowerCase().contains("drug");
+                        })
+                        .or(declarationOrder())))
+        .outputKey("diagnosis")
+        .build();
+```
+
+To enrich this example, a `HumanInTheLoop` agent can also participate directly as a knowledge source in the blackboard. The `inputKey` method declares which scope key the human reviewer depends on, so the blackboard activates it only when that data is available. Its `outputKey` is set to `"symptoms"` — when the reviewer rejects a diagnosis, the return value overwrites the symptoms with additional information, which naturally re-triggers all agents that depend on symptoms:
+
+```java
+HumanInTheLoop humanReview = AgenticServices.humanInTheLoopBuilder()
+        .description("Review the diagnosis and decide whether to approve or request additional analysis")
+        .outputKey("symptoms")
+        .inputKey(String.class, "diagnosis")
+        .responseProvider(scope -> {
+            String diagnosis = scope.readState("diagnosis", "");
+            String symptoms = scope.readState("symptoms", "");
+            if (!isAcceptable(diagnosis)) {
+                return symptoms + ". Patient also reports blurred vision.";
+            }
+            scope.writeState("approvedDiagnosis", diagnosis);
+            return symptoms;
+        })
+        .build();
+
+MedicalDiagnostics diagnostics = AgenticServices.plannerBuilder(MedicalDiagnostics.class)
+        .subAgents(symptomExtractor, labAnalyzer, drugInteraction, diagnosisAgent, humanReview)
+        .planner(() -> new BlackboardPlanner(
+                scope -> scope.hasState("approvedDiagnosis"),
+                agentOfType(DrugInteractionChecker.class, scope -> {
+                            String symptoms = scope.readState("symptoms", "");
+                            return symptoms.toLowerCase().contains("medication")
+                                    || symptoms.toLowerCase().contains("drug");
+                        })
+                        .or(declarationOrder())))
+        .outputKey("approvedDiagnosis")
+        .build();
+```
+
+The `inputKey(String.class, "diagnosis")` tells the blackboard that the reviewer should only activate after `"diagnosis"` is present in scope. When the reviewer rejects, the return value (enhanced symptoms) is written to the `"symptoms"` key via the HITL's `outputKey`. The blackboard's normal `onStateChanged("symptoms")` mechanism then re-activates agents that depend on symptoms (e.g. `DrugInteractionChecker` and `DiagnosisAgent`), producing a revised diagnosis for the next review. Note that in this second implementation the outputKey of the `MedicalDiagnostics` implemented through the `BlackboardPlanner` has been changed from `"diagnosis"` to `"approvedDiagnosis"` to give a chance to the `HumanInTheLoop` to participate in the agentic system's execution. In this way when the reviewer approves it writes the `"approvedDiagnosis"` in the `AgenticScope`, thus satisfying the goal predicate.
+
+### Voting agentic pattern
+
+The agentic patterns discussed up to this point all orchestrate agents that do different things — they split work, sequence tasks, or route decisions. However, there are cases where you want multiple agents to tackle the same problem independently, and then aggregate their answers to produce a more robust result. This is the voting (or council) pattern: run all sub-agents in parallel on the same input, collect their outputs as votes, and reconcile them through a pluggable aggregation strategy.
+
+This pattern is especially useful for classification, content moderation, risk assessment, and any decision where consensus across diverse approaches is more reliable than a single agent's judgment. By having agents with different prompts, models, or perspectives analyze the same input, you reduce the chance that a single agent's bias or error propagates to the final result.
+
+The `VotingPlanner` dispatches all sub-agents in parallel, waits for all of them to complete, and aggregates their outputs using a `VotingStrategy`:
+
+```java
+public class VotingPlanner implements Planner {
+
+    private final VotingStrategy strategy;
+
+    private List<AgentInstance> subagents;
+    private int completedCount;
+    private final List<Object> votes = new ArrayList<>();
+
+    public VotingPlanner() {
+        this(VotingStrategy.majority());
+    }
+
+    public VotingPlanner(VotingStrategy strategy) {
+        this.strategy = strategy;
+    }
+
+    @Override
+    public void init(InitPlanningContext initPlanningContext) {
+        this.subagents = initPlanningContext.subagents();
+    }
+
+    @Override
+    public Action firstAction(PlanningContext planningContext) {
+        if (subagents.isEmpty()) {
+            return done();
+        }
+        return call(subagents);
+    }
+
+    @Override
+    public Action nextAction(PlanningContext planningContext) {
+        votes.add(planningContext.previousAgentInvocation().output());
+        completedCount++;
+
+        if (completedCount < subagents.size()) {
+            return noOp();
+        }
+
+        return done(strategy.aggregate(votes));
+    }
+
+    @Override
+    public AgenticSystemTopology topology() {
+        return AgenticSystemTopology.STAR;
+    }
+}
+```
+
+The `firstAction` method dispatches all sub-agents at once. Since the topology is STAR, the framework executes them in parallel and calls `nextAction` once per agent completion. Each call collects the completed agent's output as a vote. When all agents have voted, the planner aggregates the results through the `VotingStrategy` and signals completion.
+
+The `VotingStrategy` is a functional interface with a single method and three built-in static factory methods:
+
+```java
+@FunctionalInterface
+public interface VotingStrategy {
+
+    Object aggregate(Collection<Object> votes);
+
+    static VotingStrategy majority() { ... }  // most common value wins
+    static VotingStrategy average() { ... }   // mean of numeric values
+    static VotingStrategy highest() { ... }   // max by natural ordering
+}
+```
+
+- `majority()` groups votes by equality and returns the most common value — ideal for classification tasks where agents return categorical labels.
+- `average()` computes the arithmetic mean of numeric votes — useful for scoring tasks where agents return confidence values or ratings.
+- `highest()` picks the maximum value by natural ordering — suitable when you want the most optimistic or highest-confidence assessment.
+
+Users can also provide a custom strategy via a lambda expression, for example to implement weighted voting, confidence-based filtering, or quorum rules.
+
+To give a practical example of how this works, let's build a voting-based sentiment classifier that uses three independent agents with different prompts to classify customer feedback. Each agent is instructed to return exactly one word: POSITIVE, NEGATIVE, or NEUTRAL.
+
+```java
+public interface SentimentClassifier1 {
+
+    @UserMessage("""
+            Classify the sentiment of the following text.
+            Reply with exactly one word: POSITIVE, NEGATIVE, or NEUTRAL.
+            The text is: "{{text}}"
+            """)
+    @Agent("Classify the sentiment of a given text")
+    String classify(@V("text") String text);
+}
+
+public interface SentimentClassifier2 {
+
+    @UserMessage("""
+            You are a sentiment analysis expert.
+            Analyze the emotional tone of the following text and classify it.
+            Reply with exactly one word: POSITIVE, NEGATIVE, or NEUTRAL.
+            The text is: "{{text}}"
+            """)
+    @Agent("Analyze the emotional tone of a given text")
+    String classify(@V("text") String text);
+}
+
+public interface SentimentClassifier3 {
+
+    @UserMessage("""
+            You are a customer feedback analyst.
+            Determine whether the following feedback is positive, negative, or neutral.
+            Reply with exactly one word: POSITIVE, NEGATIVE, or NEUTRAL.
+            The text is: "{{text}}"
+            """)
+    @Agent("Determine the sentiment of customer feedback")
+    String classify(@V("text") String text);
+}
+```
+
+Each classifier approaches the same task from a slightly different angle: one is generic, one is an expert analyst, and one is specialized in customer feedback. These three agents can then be combined into a voting-based agentic system:
+
+```java
+SentimentClassifier1 c1 = AgenticServices.agentBuilder(SentimentClassifier1.class)
+        .chatModel(baseModel())
+        .outputKey("vote1")
+        .build();
+
+SentimentClassifier2 c2 = AgenticServices.agentBuilder(SentimentClassifier2.class)
+        .chatModel(baseModel())
+        .outputKey("vote2")
+        .build();
+
+SentimentClassifier3 c3 = AgenticServices.agentBuilder(SentimentClassifier3.class)
+        .chatModel(baseModel())
+        .outputKey("vote3")
+        .build();
+
+SentimentVoter voter = AgenticServices.plannerBuilder(SentimentVoter.class)
+        .subAgents(c1, c2, c3)
+        .outputKey("classification")
+        .planner(VotingPlanner::new)
+        .build();
+
+ResultWithAgenticScope<String> result = voter.classify(
+        "I absolutely love this product! It exceeded all my expectations.");
+```
+
+With this configuration the three classifiers are invoked in parallel on the same text. Each writes its classification to its own output key (`vote1`, `vote2`, `vote3`), and the `VotingPlanner` collects all three results. Since the default constructor uses `VotingStrategy.majority()`, the most common classification wins. For the clearly positive text above, all three agents will likely return `POSITIVE`, yielding a unanimous result. But even in ambiguous cases where one agent disagrees, the majority vote ensures a robust final classification.
+
+To use a different aggregation strategy, simply pass it to the `VotingPlanner` constructor:
+
+```java
+.planner(() -> new VotingPlanner(VotingStrategy.average()))
+```
+
+or provide a completely custom strategy:
+
+```java
+.planner(() -> new VotingPlanner(votes ->
+        votes.stream()
+                .map(Object::toString)
+                .map(String::toUpperCase)
+                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()))
+                .entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse(null)))
+```
+
+This custom strategy normalizes all votes to uppercase before counting, handling minor formatting differences between agents (e.g. "Positive" vs "POSITIVE").
+
+### Debate agentic pattern
+
+The patterns discussed so far either dispatch agents once (voting), activate them based on data availability (blackboard, P2P), or sequence them toward a goal (GOAP). None of them supports adversarial refinement — a process where agents see each other's reasoning and iteratively revise their positions. The debate pattern fills this gap: agents generate independent answers in parallel, then enter critique rounds where they can read the full debate history and refine their arguments. Rounds continue until the agents converge on the same answer or a maximum number of rounds is reached, at which point a judge agent renders a final verdict.
+
+This pattern is especially useful for fact-checking, risk assessment, code review, and any domain where exposing agents to competing arguments improves output quality. By forcing agents to confront and respond to each other's reasoning, the debate pattern catches issues that any single agent might miss and filters out false positives through adversarial scrutiny.
+
+This pattern is implemented through a `DebatePlanner` that partitions its sub-agents into *debaters* (all but the last) and a *judge* (the last registered sub-agent). The planner is configured with two parameters: `maxRounds` (default 3) and a `ConvergenceStrategy` (default `unanimous()`).
+
+During initialization, the planner validates that at least three sub-agents are registered (two debaters and one judge) and splits the list accordingly. The first action seeds an empty `debateContext` key in the `AgenticScope` — this is necessary because debater agents reference this key via `@V(DEBATE_CONTEXT_KEY)`, and without it the first round would fail with a `MissingArgumentException`. It then dispatches all debaters in parallel.
+
+As each debater completes, `nextAction` is called (serialized under the framework's lock). The planner records each output in a map keyed by agent name and returns `noOp()` until all debaters have finished. Once all responses are collected, it checks two conditions: whether the `ConvergenceStrategy` reports convergence, and whether the current round has reached `maxRounds`. In either case, the planner enters the judge phase — it formats the debate context as `AgentName: "response"` entries (one per line), writes it to the scope, and dispatches the judge agent. When the judge completes, the planner returns `done()` with the judge's output as the final result. If neither convergence nor the round limit is reached, the planner writes the current debate context to the scope, increments the round counter, and re-dispatches all debaters for another critique round where they can see and respond to each other's prior arguments.
+
+The `ConvergenceStrategy` is a functional interface with a single method `hasConverged(Collection<Object> positions)`. Two built-in strategies are provided: `unanimous()` checks for exact equality across all positions (suitable for label-based decisions like APPROVE/REJECT), and `unanimousLastWord()` extracts the last word from each position, normalizes it to uppercase, and checks that all agents ended with the same verdict. For more nuanced convergence logic — such as semantic similarity or threshold-based agreement — users can supply a custom strategy as a lambda.
+
+To see this pattern in action, let's build a debate panel where three ethics debaters argue from different philosophical perspectives, and a judge synthesizes their arguments into a final verdict:
+
+```java
+public interface UtilitarianDebater {
+
+    @UserMessage("""
+            You are a utilitarian ethics debater. \
+            Consider the following question and argue from a utilitarian perspective, maximizing overall well-being.
+            If previous debate context is provided, consider the other debaters' arguments and refine your position.
+            Keep your response to 2-3 sentences. End with a one-word verdict: AGREE or DISAGREE.
+            Question: {{question}}
+            Previous debate context: {{debateContext}}
+            """)
+    @Agent(value = "Argues from a utilitarian ethics perspective", name = "Utilitarian")
+    String debate(@V("question") String question, @V(DEBATE_CONTEXT_KEY) String debateContext);
+}
+
+public interface DeontologicalDebater {
+
+    @UserMessage("""
+            You are a deontological ethics debater. \
+            Consider the following question and argue based on moral rules, duties, and rights.
+            If previous debate context is provided, consider the other debaters' arguments and refine your position.
+            Keep your response to 2-3 sentences. End with a one-word verdict: AGREE or DISAGREE.
+            Question: {{question}}
+            Previous debate context: {{debateContext}}
+            """)
+    @Agent(value = "Argues from a deontological ethics perspective", name = "Deontologist")
+    String debate(@V("question") String question, @V(DEBATE_CONTEXT_KEY) String debateContext);
+}
+
+public interface PragmatistDebater {
+
+    @UserMessage("""
+            You are a pragmatist debater. \
+            Consider the following question and argue based on practical consequences and real-world outcomes.
+            If previous debate context is provided, consider the other debaters' arguments and refine your position.
+            Keep your response to 2-3 sentences. End with a one-word verdict: AGREE or DISAGREE.
+            Question: {{question}}
+            Previous debate context: {{debateContext}}
+            """)
+    @Agent(value = "Argues from a pragmatist perspective", name = "Pragmatist")
+    String debate(@V("question") String question, @V(DEBATE_CONTEXT_KEY) String debateContext);
+}
+
+public interface EthicsJudge {
+
+    @UserMessage("""
+            You are an impartial ethics judge. \
+            Review the debate context where multiple debaters have argued about a question from different perspectives.
+            Synthesize their arguments and provide a balanced, well-reasoned final verdict in 3-4 sentences.
+            Debate context: {{debateContext}}
+            """)
+    @Agent(value = "Renders a final verdict by synthesizing debate arguments", name = "Judge")
+    String judge(@V("debateContext") String debateContext);
+}
+```
+
+Each debater takes both a `question` (the original input, stays constant) and a `debateContext` (updated by the planner each round with the debate history). The `@V(DEBATE_CONTEXT_KEY)` references the public constant from `DebatePlanner`, and the explicit `name` on each `@Agent` controls how agents are labeled in the debate context. The judge only receives the `debateContext`, since the original question is embedded in the debate exchanges. Note that each debater must have a distinct `outputKey` to prevent them from overwriting each other.
+
+The top-level planner interface and wiring look like this:
+
+```java
+public interface EthicsPanel {
+
+    @Agent
+    String debate(@V("question") String question);
+}
+
+UtilitarianDebater d1 = AgenticServices.agentBuilder(UtilitarianDebater.class)
+        .chatModel(baseModel())
+        .outputKey("utilitarian")
+        .build();
+
+DeontologicalDebater d2 = AgenticServices.agentBuilder(DeontologicalDebater.class)
+        .chatModel(baseModel())
+        .outputKey("deontological")
+        .build();
+
+PragmatistDebater d3 = AgenticServices.agentBuilder(PragmatistDebater.class)
+        .chatModel(baseModel())
+        .outputKey("pragmatist")
+        .build();
+
+EthicsJudge judge = AgenticServices.agentBuilder(EthicsJudge.class)
+        .chatModel(baseModel())
+        .outputKey("verdict")
+        .build();
+
+EthicsPanel panel = AgenticServices.plannerBuilder(EthicsPanel.class)
+        .subAgents(d1, d2, d3, judge)
+        .outputKey("verdict")
+        .planner(() -> new DebatePlanner(3))
+        .build();
+
+String result = panel.debate(
+        "Is it ethical to use AI-generated art in commercial products without crediting the AI tool?");
+```
+
+The debaters are listed first, and the judge is always the last sub-agent. In round 1, all three debaters produce independent positions. In round 2, each debater sees the others' arguments and can refine, dispute, or expand their position. Whether the debaters converge or the maximum number of rounds is reached, the judge always renders the final verdict based on the full debate context.
+
+To customize the convergence check or the number of rounds:
+
+```java
+.planner(() -> new DebatePlanner(5))  // allow up to 5 rounds
+```
+
+```java
+.planner(() -> new DebatePlanner(positions ->
+        positions.stream().allMatch(p -> p.toString().contains("AGREE"))))  // custom convergence
+```
+
+### Belief-Desire-Intention (BDI) agentic pattern
+
+The Belief-Desire-Intention (BDI) pattern models the classic AI concept of an agent that maintains explicit goals, evaluates which goals are currently achievable, and reactively switches between them when the environment changes. The planner implementing this pattern maintains three structures — Beliefs (the current world state from the `AgenticScope`), Desires (a set of prioritized goals), and Intentions (the committed plan currently being executed). At each step, the planner checks whether a higher-priority desire has become achievable and, if so, drops the current intention and re-deliberates. This makes BDI naturally suited for dynamic environments where multiple competing goals must be balanced and priorities can shift at any time.
+
+A `Desire` is defined as a record combining a name, a priority level, an achievability predicate, a satisfaction predicate, and the ordered list of agent types that form the intention for pursuing that desire:
+
+```java
+public record Desire(String name, int priority,
+                     Predicate<AgenticScope> achievable,
+                     Predicate<AgenticScope> satisfied,
+                     List<Class<?>> agentTypes) {
+
+    public static Desire of(String name, int priority,
+                            Predicate<AgenticScope> achievable,
+                            Predicate<AgenticScope> satisfied,
+                            Class<?>... agentTypes) {
+        return new Desire(name, priority, achievable, satisfied, List.of(agentTypes));
+    }
+
+    public static Desire of(String name, int priority,
+                            String achievableStateKey,
+                            String satisfiedStateKey,
+                            Class<?>... agentTypes) {
+        return new Desire(name, priority,
+                scope -> scope.hasState(achievableStateKey),
+                scope -> scope.hasState(satisfiedStateKey),
+                List.of(agentTypes));
+    }
+}
+```
+
+The `BDIPlanner`, implementing this pattern, takes a list of `Desire` instances and implements the deliberation cycle. During initialization, it maps each registered sub-agent by its type so that desires can reference agents by class. When execution begins, the planner filters all desires to find those that are currently achievable and not yet satisfied, selects the one with the highest priority (among equal priorities, the one declared first in the list wins), and commits to its intention, defined as the ordered sequence of agents defined by that desire. On each subsequent step, the planner runs three checks: first, **satisfaction**, testing if the current desire is now satisfied, the planner re-deliberates to select the next desire; second, **preemption**, verifying if a strictly higher-priority desire has become achievable due to belief changes (new values written to the `AgenticScope`), the current intention is suspended and the higher-priority one takes over; third, **viability** checking if the current desire is still achievable and unsatisfied, the planner advances to the next agent in the intention sequence. When a preempted desire is later re-selected, it resumes from where it left off rather than restarting, so that agents that already completed are not re-invoked.
+
+Execution terminates successfully when all desires are satisfied or none are achievable. The planner throws `IllegalStateException` in two misbehaving scenarios: if a desire's entire intention completes but the desire remains unsatisfied (the agents don't write the keys the satisfied predicate expects), or if the configurable maximum invocation count is reached with unsatisfied desires still pending.
+
+On crash recovery, the planner re-deliberates from scratch: satisfied desires are skipped, but the selected desire's intention restarts from its first agent. Agents that already completed before the crash will run again, so intention agents should be idempotent.
+
+To illustrate this pattern, consider an autonomous trading system with five AI agents and one non-AI agent. The `MarketRecommendationAgent` returns a `MarketRecommendation` enum, and hedging is only triggered when the recommendation is `SELL` or `STRONG_SELL`. The `HedgingStrategyDefaulter` is a non-AI agent that ensures `hedgingStrategy` is always present in scope (defaulting to `"None"` when hedging was skipped), so the `RebalancingAgent` can always receive it as input:
+
+```java
+public enum MarketRecommendation {
+    STRONG_BUY, BUY, HOLD, SELL, STRONG_SELL
+}
+
+public interface MarketAnalysisAgent {
+    @UserMessage("Analyze the market data and portfolio. Market: {{marketData}} Portfolio: {{portfolio}}")
+    @Agent(value = "Analyze market conditions", outputKey = "marketAnalysis")
+    String analyzeMarket(@V("marketData") String marketData, @V("portfolio") String portfolio);
+}
+
+public interface MarketRecommendationAgent {
+    @UserMessage("Based on the market analysis, provide a trading recommendation. Market analysis: {{marketAnalysis}}")
+    @Agent(value = "Provide a trading recommendation", outputKey = "recommendation")
+    MarketRecommendation recommend(@V("marketAnalysis") String marketAnalysis);
+}
+
+public static class HedgingStrategyDefaulter {
+    @Agent(outputKey = "hedgingStrategy")
+    public String defaultHedging(AgenticScope scope) {
+        return scope.hasState("hedgingStrategy") ? (String) scope.readState("hedgingStrategy") : "None";
+    }
+}
+
+public interface RebalancingAgent {
+    @UserMessage("Suggest rebalancing based on: {{marketAnalysis}} Hedging strategy: {{hedgingStrategy}} Portfolio: {{portfolio}}")
+    @Agent(value = "Rebalance portfolio", outputKey = "rebalancingPlan")
+    String rebalance(@V("marketAnalysis") String marketAnalysis,
+                     @V("hedgingStrategy") String hedgingStrategy,
+                     @V("portfolio") String portfolio);
+}
+
+public interface HedgingAgent {
+    @UserMessage("Recommend hedging strategies based on: {{marketAnalysis}}")
+    @Agent(value = "Hedge against risks", outputKey = "hedgingStrategy")
+    String hedge(@V("marketAnalysis") String marketAnalysis);
+}
+
+public interface LiquidityAgent {
+    @UserMessage("Assess liquidity for portfolio: {{portfolio}}")
+    @Agent(value = "Maintain liquidity", outputKey = "liquidityAssessment")
+    String assessLiquidity(@V("portfolio") String portfolio);
+}
+```
+
+These agents are wired into a BDI-based trading system with four desires of different priorities. Note how the "hedge risks" desire uses a predicate-based achievability check that inspects the recommendation value, and the "rebalance portfolio" desire includes the `HedgingStrategyDefaulter` before the `RebalancingAgent` to guarantee the `hedgingStrategy` scope value is present:
+
+```java
+TradingSystem tradingSystem = AgenticServices.plannerBuilder(TradingSystem.class)
+        .subAgents(marketAnalysis, recommendation, new HedgingStrategyDefaulter(),
+                   rebalancing, hedging, liquidity)
+        .planner(() -> new BDIPlanner(List.of(
+                Desire.of("analyze market", 1,
+                        "marketData", "recommendation",
+                        MarketAnalysisAgent.class, MarketRecommendationAgent.class),
+                Desire.of("hedge risks", 2,
+                        scope -> scope.hasState("recommendation")
+                                && Set.of(MarketRecommendation.SELL, MarketRecommendation.STRONG_SELL)
+                                    .contains(scope.readState("recommendation")),
+                        scope -> scope.hasState("hedgingStrategy"),
+                        HedgingAgent.class),
+                Desire.of("rebalance portfolio", 1,
+                        "recommendation", "rebalancingPlan",
+                        HedgingStrategyDefaulter.class, RebalancingAgent.class),
+                Desire.of("maintain liquidity", 1,
+                        "portfolio", "liquidityAssessment",
+                        LiquidityAgent.class)
+        )))
+        .build();
+```
+
+When invoked with market data and portfolio state, the planner's deliberation cycle works as follows: the "analyze market" and "maintain liquidity" desires are initially achievable. Once the `MarketAnalysisAgent` and `MarketRecommendationAgent` complete, the recommendation determines the next step. If the recommendation is `SELL` or `STRONG_SELL`, the "hedge risks" desire (priority 2) becomes achievable and preempts any lower-priority work, causing the planner to invoke the `HedgingAgent`. After hedging completes, the planner re-deliberates: the "rebalance portfolio" desire runs `HedgingStrategyDefaulter` (which preserves the existing hedging strategy) followed by `RebalancingAgent`, which receives the hedging strategy as input. If the recommendation is not `SELL` or `STRONG_SELL`, hedging is skipped entirely, and the `HedgingStrategyDefaulter` writes `"None"` so that `RebalancingAgent` can still proceed. This reactive, condition-driven switching is the essence of BDI — the system adapts its behavior based on changing beliefs rather than following a rigid plan.
+
 ## Non-AI agents
 
 All the agents discussed so far are AI agents, meaning that they are based on LLMs and can be invoked to perform tasks that require natural language understanding and generation. However, the `langchain4j-agentic` module also supports non-AI agents, which can be used to perform tasks that do not require natural language processing, like invoking a REST API or executing a command. These non-AI agents are indeed more similar to tools, but in this context it is convenient to model them as agents, so that they can be used in the same way as AI agents, and mixed with them to compose more powerful and complete agentic systems.
@@ -2035,7 +2545,7 @@ public record HumanInTheLoop(Function<AgenticScope, ?> responseProvider) {
 
 This quite naive, but also very generic, implementation is based on the use of a single function that takes the current `AgenticScope` as input, from which it will be possible to extract the context to ask an appropriate question, and returns the response that should be provided to the user.
 
-The `HumanInTheLoop` agent provided out-of-the-box by the `langchain4j-agentic` module allows to define this function together with the agent description, and the output variable where the user's response will be written.
+The `HumanInTheLoop` agent provided out-of-the-box by the `langchain4j-agentic` module allows you to define this function together with the agent description, and the output variable where the user's response will be written.
 
 For instance, having defined an `AstrologyAgent` like:
 
@@ -2098,6 +2608,390 @@ waiting for the user to provide the answer, which will be then used to invoke th
 
 Since the user may take some time to provide the answer, it is possible, and actually recommended, to configure the `HumanInTheLoop` agent as an asynchronous one. In this way the agents that don't need the user's input can proceed with their execution while the agentic system is waiting for the user to provide the answer.
 
+## Memory and context engineering
+
+All agents discussed so far are stateless, meaning that they do not maintain any context or memory of previous interactions. However, like for any other AI service, it is possible to provide agents with a `ChatMemory`, allowing them to maintain context across multiple invocations.
+
+To provide the former `MedicalExpert` with a memory, it is sufficient to add a field annotated with `@MemoryId` to its signature.
+
+```java
+public interface MedicalExpertWithMemory {
+
+    @UserMessage("""
+        You are a medical expert.
+        Analyze the following user request under a medical point of view and provide the best possible answer.
+        The user request is {{request}}.
+        """)
+    @Agent("A medical expert")
+    String medical(@MemoryId String memoryId, @V("request") String request);
+}
+```
+
+and set a memory provider when building the agent:
+
+```java
+MedicalExpertWithMemory medicalExpert = AgenticServices
+        .agentBuilder(MedicalExpertWithMemory.class)
+        .chatModel(BASE_MODEL)
+        .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+        .outputKey("response")
+        .build();
+```
+
+Generally this is enough for single agents used in isolation, but can be limiting for agents participating in an agentic system. Supposing that also the technical and legal experts have been provided with a memory, and also the `ExpertRouterAgent` has been redefined to have it:
+
+```java
+public interface ExpertRouterAgentWithMemory {
+
+    @Agent
+    String ask(@MemoryId String memoryId, @V("request") String request);
+}
+```
+
+The sequence of these two invocations to this agent
+
+```java
+String response1 = expertRouterAgent.ask("1", "I broke my leg, what should I do?");
+
+String legalResponse1 = expertRouterAgent.ask("1", "Should I sue my neighbor who caused this damage?");
+```
+
+won't give the expected result, because the second question will be routed to the legal expert, which is now invoked for the first time and has no memory of the previous question.
+
+To solve this problem it is necessary to provide the legal expert with the context and what happened before its invocation, and this is another use case where the information automatically stored in the `AgenticScope` can come to help.
+
+In particular the `AgenticScope` keeps track of the sequence of invocations of all agents, and can produce a context concatenating those invocations in a single conversation. This context can be used as it is or if necessary summarized to a shorter version, for instance defining a `ContextSummarizer` agent.
+
+```java
+public interface ContextSummarizer {
+
+    @UserMessage("""
+        Create a very short summary, 2 sentences at most, of the
+        following conversation between an AI agent and a user.
+
+        The user conversation is: '{{it}}'.
+        """)
+    String summarize(String conversation);
+}
+```
+
+Using this agent, the legal expert can be redefined and provided with a context summarization of the previous conversation, so that it can take into account the previous interactions when answering the new question.
+
+```java
+LegalExpertWithMemory legalExpert = AgenticServices
+        .agentBuilder(LegalExpertWithMemory.class)
+        .chatModel(BASE_MODEL)
+        .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+        .context(agenticScope -> contextSummarizer.summarize(agenticScope.contextAsConversation()))
+        .outputKey("response")
+        .build();
+```
+
+More in general the context provided to an agent can be any function of the `AgenticScope` state. With this setup, the legal expert, when asked if the neighbor should be sued for the damage he caused, will be able to take into account the previous conversation with the medical expert and provide a more informed answer.
+
+Internally the agentic framework provides the additional context to the legal expert by automatically rewriting the user message sent to it, so that it contains the summarized context of the previous conversation, so in this case the actual user message will be something like:
+
+```
+"Considering this context \"The user asked about what to do after breaking their leg, and the AI provided medical advice on immediate actions like immobilizing the leg, applying ice, and seeking medical attention.\"
+You are a legal expert.
+Analyze the following user request under a legal point of view and provide the best possible answer.
+The user request is Should I sue my neighbor who caused this damage?."
+```
+
+The summarized context discussed here as an example of possible context generation for an agent is of general usefulness, so it is possible to define it on an agent in a more convenient way, using the `summarizedContext` method, like in:
+
+```java
+LegalExpertWithMemory legalExpert = AgenticServices
+        .agentBuilder(LegalExpertWithMemory.class)
+        .chatModel(BASE_MODEL)
+        .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+        .summarizedContext("medical", "technical")
+        .outputKey("response")
+        .build();
+```
+
+By doing so it internally uses the `ContextSummarizer` agent discussed before, executing it with the same chat model of the agent where it has been defined. It is also possible to add to this method a varargs of the names of the agents whose context should be summarized, so that the summarization is done only for those agents, and not for all the ones used in the agentic system.
+
+### AgenticScope registry and persistence
+
+The `AgenticScope` is a transient data structure that is created and used during the execution of an agentic system. There is a single `AgenticScope` per user per agentic system. For stateless executions, when no memory is used, the `AgenticScope` is automatically discarded at the end of the execution, and its state is not persisted anywhere.
+
+Conversely, when the agentic system uses a memory, the `AgenticScope` is saved in an internal registry. In this case the `AgenticScope` remains in the registry forever to allow users to interact with the agentic system in a stateful and conversational way. For this reason, when a `AgenticScope` with a specific ID is no longer needed, it has to be explicitly evicted from the registry. In order to do so the root agent of the agentic system needs to implement the interface `AgenticScopeAccess` so it is possible to call the `evictAgenticScope` method on it, passing the ID of the `AgenticScope` that has to be removed from the registry.
+
+```java
+agent.evictAgenticScope(memoryId);
+```
+
+Both the `AgenticScope`s and their registry are purely in memory data structures. This is usually sufficient for simple agentic systems, but in some cases it can be useful to persist the `AgenticScope` state to a more durable storage, like a database or a file system. To achieve this the `langchain4j-agentic` module provides an SPI to plug in a custom persistence layer that is an implementation of the `AgenticScopeStore` interface. It is possible to set this persistence layer either programmatically:
+
+```java
+AgenticScopePersister.setStore(new MyAgenticScopeStore());
+```
+
+or using the standard Java Service Provider interface creating a file named `META-INF/services/dev.langchain4j.agentic.scope.AgenticScopeStore` containing the fully qualified name of the class implementing the `AgenticScopeStore` interface.
+
+### AgenticScope and agentic systems recoverability
+
+When an `AgenticScopeStore` is configured, the `langchain4j-agentic` module provides built-in recoverability support that allows agentic systems to resume execution from where they left off after a crash or process restart. This is especially valuable for long-running agentic systems that include human-in-the-loop steps, where the process may be intentionally stopped and restarted later.
+
+Recoverability is based on two mechanisms working together: **per-step checkpointing** and **planner execution state persistence**.
+
+After each agent invocation, the current `AgenticScope` is automatically checkpointed to the configured store. This means that all intermediate state written by agents (via `writeState`) is durably persisted. Additionally, the execution loop saves the planner's internal position (e.g., which agent in a sequence has been reached) so that on recovery the workflow resumes from the correct step rather than restarting from scratch.
+
+An implementation of the `Planner` interface can optionally participate in this mechanism through two methods:
+
+```java
+// Returns the planner's current internal state for persistence
+default Map<String, Object> executionState() { return Map.of(); }
+
+// Restores internal state from a previously saved map
+default void restoreExecutionState(Map<String, Object> state) { }
+```
+
+For instance, stateful planners like the sequential and the loop ones implement these methods to save and restore their cursor position and iteration counters. Stateless planners (like `ParallelPlanner` or `ConditionalPlanner`) use the default no-op implementations. Custom `Planner` implementations can override these methods to participate in recoverability as well. The execution loop also tracks its own internal state (such as which agents have completed in a parallel block) alongside the planner state, so that on resume only the agents that haven't finished are re-dispatched.
+
+To give a practical example of how this works, consider an order processing workflow where a large order must be reviewed by a human before it is fulfilled. The workflow has three steps: validate the order, wait for human approval, and ship the order.
+
+```java
+public interface OrderWorkflow extends AgenticScopeAccess {
+    @Agent
+    String processOrder(@MemoryId String orderId, @V("order") String orderDetails);
+}
+```
+
+The `@MemoryId` annotation is essential — it activates persistent scope, which is required for recoverability. Build the workflow as a sequence of three agents:
+
+```java
+// Step 1: Validate the order and write results to shared state
+AgenticScopeAction validateOrder = AgenticServices.agentAction(scope -> {
+    String order = scope.readState("order", "");
+    scope.writeState("validated_order", "VALIDATED: " + order);
+});
+
+// Step 2: Pause for human approval using SuspendedResponse
+HumanInTheLoop approvalGate = AgenticServices.humanInTheLoopBuilder()
+        .description("Wait for manager approval on large orders")
+        .outputKey("approval")
+        .responseProvider(scope -> new SuspendedResponse<>("manager-approval"))
+        .build();
+
+// Step 3: Finalize based on the approval decision
+AgenticScopeAction shipOrder = AgenticServices.agentAction(scope -> {
+    String validated = scope.readState("validated_order", "");
+    String approval = scope.readState("approval", "");
+    scope.writeState("result", "Order " + validated + " — " + approval);
+});
+
+OrderWorkflow workflow = AgenticServices.sequenceBuilder(OrderWorkflow.class)
+        .subAgents(validateOrder, approvalGate, shipOrder)
+        .outputKey("result")
+        .build();
+```
+
+When this workflow runs, it validates the order, then reaches the `HumanInTheLoop` step. Because the response provider returns a `SuspendedResponse`, the agentic system suspends its execution by throwing an `AgenticSystemSuspendedException`, instead of blocking the calling thread. The full scope — including the validated order data, the planner's cursor position (step 2 completed), and the `SuspendedResponse` — is checkpointed to the store (if one is configured), and an `AgenticSystemSuspendedException` is thrown to release the thread:
+
+```java
+try {
+    String result = workflow.processOrder("order-12345", "1000 widgets");
+    // Workflow completed normally
+} catch (AgenticSystemSuspendedException e) {
+    // Workflow suspended — waiting for human input
+    AgenticScope scope = e.scope();
+    Set<String> pendingIds = scope.pendingResponseIds(); // → ["manager-approval"]
+    // Store the scope/pendingIds for your UI / REST API to present to the human
+}
+```
+
+In alternative to `SuspendedResponse`, the human-in-the-loop can return an instance of the `PendingResponse` class to block the calling thread until the human response is provided. In essence:
+
+| Response type | Behavior |
+|---|---|
+| `SuspendedResponse` | **Suspends** the agentic system: checkpoints the scope, throws `AgenticSystemSuspendedException`, and releases the calling thread. The system is resumed by completing the response and re-invoking the agent method. |
+| `PendingResponse` | **Blocks** the calling thread on the underlying `CompletableFuture` until `complete()` is called from another thread. No exception is thrown — the agentic system waits in place. |
+
+The user can make this choice at the point where the response is created — in the `responseProvider` lambda or the `@HumanInTheLoop` static method:
+
+```java
+// Suspension: the agentic system checkpoints and throws AgenticSystemSuspendedException
+.responseProvider(scope -> new SuspendedResponse<>("approval-id"))
+
+// Blocking: the calling thread waits until complete() is called from another thread
+.responseProvider(scope -> new PendingResponse<>("approval-id"))
+```
+
+It is advised to use `SuspendedResponse` for long-running interactions (hours/days) where crash resilience matters, and `PendingResponse` for short-lived in-process waits where a background thread will provide the answer shortly.
+
+If the method's return type is `ResultWithAgenticScope`, no exception is thrown on suspension; instead, the result has `suspended() == true` and `result() == null`. You can then complete the pending response and resume execution in a single call:
+
+```java
+ResultWithAgenticScope<String> result = workflow.processOrder("order-12345", "1000 widgets");
+if (result.suspended()) {
+    result = result.completePendingResponse("APPROVED by manager");
+    // result.result() → "Order VALIDATED: 1000 widgets — APPROVED by manager"
+}
+```
+
+This works naturally with multi-step workflows that have multiple sequential HITL gates — each `completePendingResponse` call returns a new `ResultWithAgenticScope` that may itself be suspended:
+
+```java
+ResultWithAgenticScope<String> result = workflow.processOrder("order-12345", "1000 widgets");
+
+result = result.completePendingResponse("Manager OK");   // resumes, suspends at legal gate
+result = result.completePendingResponse("Legal OK");      // resumes, completes
+// result.result() → final output
+```
+
+`ResultWithAgenticScope` is the recommended approach for handling suspension, as it avoids using exceptions for control flow.
+
+Conversely, If the method returns a plain type (e.g. `String`) instead of `ResultWithAgenticScope`, the system throws `AgenticSystemSuspendedException` on suspension. In that case, or when you need to resume through the scope directly (e.g. after a crash/restart), you can complete the response on the `AgenticScope` and re-invoke the agent method:
+
+```java
+AgenticScope scope = workflow.getAgenticScope("order-12345");
+
+// Complete the single deferred response (when there is exactly one)
+scope.completePendingResponse("APPROVED by manager");
+
+// Or complete by explicit ID (useful when multiple responses are pending)
+scope.completePendingResponse("manager-approval", "APPROVED by manager");
+
+// Then re-invoke — the planner resumes from the checkpoint
+String result = workflow.processOrder("order-12345", "1000 widgets");
+```
+
+Note that `completePendingResponse` both completes the in-memory future (unblocking any waiting threads) and replaces the state map entry with the resolved value (so it survives serialization). The single-argument overload throws `IllegalStateException` if there is not exactly one deferred response.
+
+## Agents Registry
+
+The `langchain4j-agentic` module provides an SPI (Service Provider Interface) for an `AgentsRegistry`, allowing external providers to register agents that can be discovered by name and wired into any agentic pattern. This is especially useful for integrating agents provided by external systems, such as remote A2A protocol agents, into locally defined agentic workflows.
+
+The `AgentsRegistry` interface defines two methods for discovering agents:
+
+```java
+public interface AgentsRegistry {
+
+    Map<String, AgentInstance> allAgents();
+
+    AgentInstance getAgent(String name);
+
+    static AgentsRegistry get() { ... }
+}
+```
+
+- `allAgents()` returns a map of all registered agents keyed by their name.
+- `getAgent(String name)` returns the agent with the given name, throwing a `RuntimeException` if not found.
+
+The static `get()` method uses Java's `ServiceLoader` to discover registry implementations. Multiple providers are supported and automatically merged into a single composite registry; duplicate agent names across providers cause an exception at discovery time. If no provider is found, an empty registry is returned that throws on any lookup.
+
+To provide a registry implementation, create a class that implements the `AgentsRegistry` interface and register it via the standard Java SPI mechanism by creating a file `META-INF/services/dev.langchain4j.agentic.planner.AgentsRegistry` containing the fully qualified name of your implementation class.
+
+```java
+public class MyAgentsRegistry implements AgentsRegistry {
+
+    private final Map<String, AgentInstance> agents;
+
+    public MyAgentsRegistry() {
+        AgentInstance audienceEditor = (AgentInstance) AgenticServices
+                .agentBuilder(AudienceEditor.class)
+                .chatModel(myModel())
+                .outputKey("story")
+                .build();
+
+        AgentInstance styleEditor = (AgentInstance) AgenticServices
+                .agentBuilder(StyleEditor.class)
+                .chatModel(myModel())
+                .outputKey("story")
+                .build();
+
+        this.agents = Map.of(
+                "audienceEditor", audienceEditor,
+                "styleEditor", styleEditor);
+    }
+
+    @Override
+    public Map<String, AgentInstance> allAgents() {
+        return agents;
+    }
+
+    @Override
+    public AgentInstance getAgent(String name) {
+        AgentInstance agent = agents.get(name);
+        if (agent == null) {
+            throw new RuntimeException("No agent found with name: " + name);
+        }
+        return agent;
+    }
+}
+```
+
+The agents returned by the registry are standard `AgentInstance` objects, typically built using `AgenticServices.agentBuilder()`, so they are ready to be used as subagents in any agentic pattern.
+
+Once a registry is available via SPI, agents can be loaded and mixed with locally defined agents in any agentic pattern:
+
+```java
+AgentsRegistry registry = AgentsRegistry.get();
+
+CreativeWriter creativeWriter = AgenticServices
+        .agentBuilder(CreativeWriter.class)
+        .chatModel(BASE_MODEL)
+        .outputKey("story")
+        .build();
+
+AgentInstance audienceEditor = registry.getAgent("audienceEditor");
+AgentInstance styleEditor = registry.getAgent("styleEditor");
+
+UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+        .subAgents(creativeWriter, audienceEditor, styleEditor)
+        .outputKey("story")
+        .build();
+
+String story = (String) novelCreator.invoke(Map.of(
+        "topic", "dragons and wizards",
+        "style", "fantasy",
+        "audience", "young adults"));
+```
+
+Here the `CreativeWriter` is built locally while the `AudienceEditor` and `StyleEditor` are loaded from the registry by name and used as subagents alongside locally defined ones.
+
+The `@RegistryAgent` annotation allows loading agents from the registry in the declarative API. To use it, define a simple interface with a method annotated with `@RegistryAgent`, specifying the name of the agent in the registry:
+
+```java
+public interface AudienceEditorFromRegistry {
+    @RegistryAgent("audienceEditor")
+    String editStory(@V("story") String story, @V("audience") String audience);
+}
+
+public interface StyleEditorFromRegistry {
+    @RegistryAgent("styleEditor")
+    String editStory(@V("story") String story, @V("style") String style);
+}
+```
+
+These interfaces can then be used as subagents in a fully declarative agentic system definition:
+
+```java
+public interface DeclarativeStoryCreator {
+
+    @SequenceAgent(outputKey = "story",
+            subAgents = {CreativeWriter.class, AudienceEditorFromRegistry.class, StyleEditorFromRegistry.class})
+    String write(@V("topic") String topic, @V("style") String style, @V("audience") String audience);
+
+    @ChatModelSupplier
+    static ChatModel chatModel() {
+        return BASE_MODEL;
+    }
+}
+```
+
+and instantiated as usual with `AgenticServices.createAgenticSystem()`:
+
+```java
+DeclarativeStoryCreator storyCreator = AgenticServices.createAgenticSystem(DeclarativeStoryCreator.class);
+
+String story = storyCreator.write("dragons and wizards", "fantasy", "young adults");
+```
+
+When the declarative system encounters a `@RegistryAgent` annotation, it automatically loads the corresponding agent from the registry by name and wires it into the agentic system. This allows mixing locally defined agents (like `CreativeWriter` with its `@ChatModelSupplier`) and registry-provided agents in the same declarative workflow.
+
 ## A2A Integration
 
 The additional `langchain4j-agentic-a2a` module provides a seamless integration with the [A2A](https://a2aprotocol.ai/) protocol, allowing to build agentic systems that can use remote A2A server agents and eventually mixing them with other locally defined agents.
@@ -2136,6 +3030,134 @@ A2ACreativeWriter creativeWriter = AgenticServices
 This agent can then be used in the same way as a local agent, and mixed with them, when defining a workflow or using it as a subagent for a supervisor.
 
 The remote A2A agent must return a [Task](https://a2a-protocol.org/latest/specification/#61-task-object) type.
+
+### Multi-turn conversations with A2A servers
+
+The A2A protocol supports multi-turn conversations through `contextId` and `taskId` fields on the message envelope. A `contextId` groups related tasks into a conversation, while a `taskId` references a specific task within that conversation. When omitted, the A2A server generates new values; when provided, the server continues the existing conversation.
+
+To pass these fields on the outgoing message envelope, annotate method parameters with `@A2AContextId` and `@A2ATaskId`. These parameters are **not** sent as message content — they are set on the message envelope instead.
+
+```java
+public interface ChatAgent {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", outputKey = "response")
+    String chat(@V("question") String question,
+                @A2AContextId @V("contextId") String contextId,
+                @A2ATaskId @V("taskId") String taskId);
+}
+```
+
+When `null` is passed for `contextId` or `taskId`, the field is omitted from the envelope and the server creates new values.
+
+When the `@A2AContextId` or `@A2ATaskId` parameters also have recognizable names, possibly configured through the `@V` annotation, the server-assigned values from the response are automatically written back to the `AgenticScope` under that name. This enables multi-turn flows where the first call captures the IDs and subsequent calls reuse them.
+
+If the method returns `ResultWithAgenticScope`, the IDs are accessible directly:
+
+```java
+public interface ChatAgent {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", outputKey = "response")
+    ResultWithAgenticScope<String> chat(
+            @V("question") String question,
+            @A2AContextId @V("contextId") String contextId,
+            @A2ATaskId @V("taskId") String taskId);
+}
+
+// First turn — server generates contextId and taskId
+ResultWithAgenticScope<String> first = chatAgent.chat("hello", null, null);
+String contextId = (String) first.agenticScope().readState("contextId");
+String taskId = (String) first.agenticScope().readState("taskId");
+
+// Second turn — reuse the server-generated IDs to continue the conversation
+ResultWithAgenticScope<String> second = chatAgent.chat("follow-up", contextId, taskId);
+```
+
+In this way, when an A2A agent is used in an agentic system, the `contextId` and `taskId` are automatically propagated through the shared `AgenticScope`. This means a sequence of two A2A calls to the same server will naturally form a multi-turn conversation:
+
+```java
+public interface EchoSubAgent {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", outputKey = "response")
+    String echo(@V("question") String question,
+                @A2AContextId @V("contextId") String contextId,
+                @A2ATaskId @V("taskId") String taskId);
+}
+
+public interface MultiTurnWorkflow extends AgenticScopeAccess {
+
+    @Agent
+    ResultWithAgenticScope<String> converse(@V("question") String question);
+}
+
+EchoSubAgent firstTurn = AgenticServices
+        .a2aBuilder("http://localhost:8080", EchoSubAgent.class)
+        .outputKey("firstResponse").build();
+EchoSubAgent secondTurn = AgenticServices
+        .a2aBuilder("http://localhost:8080", EchoSubAgent.class)
+        .outputKey("secondResponse").build();
+
+MultiTurnWorkflow workflow = AgenticServices.sequenceBuilder(MultiTurnWorkflow.class)
+        .subAgents(firstTurn, secondTurn)
+        .outputKey("secondResponse").build();
+
+ResultWithAgenticScope<String> result = workflow.converse("hello");
+```
+
+In this sequence, the first agent sends a message with no `contextId`/`taskId` (they are `null` in the scope). The server creates a new task and context. The response IDs are written to the scope. When the second agent runs, it reads the now-populated `contextId` and `taskId` from the scope and sends them on the message envelope, continuing the same conversation.
+
+### Customizing the A2A client
+
+By default, A2A agents use a JSONRPC transport with a default configuration. The `clientCustomizer` method exposes the underlying a2a-java SDK `ClientBuilder`, allowing you to configure a different transport, set a custom HTTP client, add interceptors, or change any other client setting.
+
+When building an A2A agent programmatically, pass a `Consumer<ClientBuilder>` to `clientCustomizer`:
+
+```java
+UntypedAgent creativeWriter = AgenticServices
+        .a2aBuilder(A2A_SERVER_URL)
+        .clientCustomizer((ClientBuilder cb) ->
+                cb.withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder()))
+        .inputKeys("topic")
+        .outputKey("story")
+        .build();
+```
+
+When a customizer is provided, it replaces the default transport setup entirely, giving full control over how the `Client` is constructed.
+
+For declarative agents, annotate a static method with `@A2AClientCustomizer`. The method must take a single `ClientBuilder` parameter and return `void`:
+
+```java
+public interface DeclarativeA2AWithCustomizer {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", outputKey = "story")
+    String generateStory(@V("topic") String topic);
+
+    @A2AClientCustomizer
+    static void customizer(ClientBuilder cb) {
+        cb.withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder());
+    }
+}
+```
+
+### Configuring the A2A server URL dynamically
+
+By default, the `@A2AClientAgent` annotation requires the A2A server URL as a compile-time string literal via the `a2aServerUrl` attribute. For environments where the URL varies (e.g., dev, staging, production), a static method annotated with `@A2AServerUrlSupplier` can provide the URL dynamically at build time instead:
+
+```java
+public interface DeclarativeA2AWithUrlSupplier {
+
+    @A2AClientAgent(outputKey = "story")
+    String generateStory(@V("topic") String topic);
+
+    @A2AServerUrlSupplier
+    static String serverUrl() {
+        return System.getenv("A2A_SERVER_URL");
+    }
+}
+```
+
+The supplier method must be `static`, take no parameters, and return a `String`. It is invoked once when the agent is constructed — the URL does not change between invocations. Exactly one of `a2aServerUrl` in the annotation or an `@A2AServerUrlSupplier` method must be provided; specifying both (or neither) is an error.
+
+This pattern is consistent with how `@McpClientSupplier` provides the MCP client for `@McpClientAgent` declarative agents.
 
 ## MCP-based Tool Agents
 

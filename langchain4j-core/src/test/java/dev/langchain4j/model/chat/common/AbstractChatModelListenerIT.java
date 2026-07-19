@@ -135,7 +135,9 @@ public abstract class AbstractChatModelListenerIT {
         assertThat(parameters.modelName()).isEqualTo(modelName());
         assertThat(parameters.temperature()).isCloseTo(temperature(), Percentage.withPercentage(1));
         assertThat(parameters.topP()).isEqualTo(topP());
-        assertThat(parameters.maxOutputTokens()).isEqualTo(maxTokens());
+        if (assertMaxOutputTokens()) {
+            assertThat(parameters.maxOutputTokens()).isEqualTo(maxTokens());
+        }
         if (supportsTools()) {
             assertThat(parameters.toolSpecifications()).containsExactly(toolSpecification);
         }
@@ -169,6 +171,10 @@ public abstract class AbstractChatModelListenerIT {
     }
 
     protected boolean assertFinishReason() {
+        return true;
+    }
+
+    protected boolean assertMaxOutputTokens() {
         return true;
     }
 

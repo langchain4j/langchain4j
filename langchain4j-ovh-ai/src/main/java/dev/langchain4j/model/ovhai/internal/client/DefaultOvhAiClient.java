@@ -1,29 +1,29 @@
 package dev.langchain4j.model.ovhai.internal.client;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.internal.Utils;
+import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.Utils.ensureTrailingForwardSlash;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.ovhai.internal.client.OvhAiJsonUtils.fromJson;
+import static dev.langchain4j.model.ovhai.internal.client.OvhAiJsonUtils.toJson;
+
+import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.http.client.HttpClientBuilderLoader;
+import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.model.ovhai.internal.api.EmbeddingRequest;
 import dev.langchain4j.model.ovhai.internal.api.EmbeddingResponse;
-import dev.langchain4j.model.ovhai.internal.api.OvhAiApi;
-import okhttp3.OkHttpClient;
-import retrofit2.Retrofit;
-import retrofit2.converter.jackson.JacksonConverterFactory;
+import java.util.Arrays;
 
-import java.io.IOException;
-import java.util.List;
-
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-
+/**
+ * @deprecated Do not use anymore, use {@code langchain4j-open-ai} module instead
+ */
+@Deprecated(forRemoval = true, since = "1.14.0")
 public class DefaultOvhAiClient extends OvhAiClient {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().enable(INDENT_OUTPUT);
-
-    private final OkHttpClient okHttpClient;
-
-    private final String apiKey;
-    private final boolean logResponses;
-    private final OvhAiApi ovhAiApi;
+    private final HttpClient httpClient;
+    private final String baseUrl;
     private final String authorizationHeader;
 
     public static Builder builder() {
@@ -40,52 +40,36 @@ public class DefaultOvhAiClient extends OvhAiClient {
     DefaultOvhAiClient(Builder builder) {
         ensureNotBlank(builder.apiKey, "%s", "OVHcloud API key must be defined. It can be generated here: https://endpoints.ai.cloud.ovh.net/");
 
-        this.apiKey = builder.apiKey;
-        this.logResponses = builder.logResponses;
+        HttpClientBuilder httpClientBuilder = HttpClientBuilderLoader.loadHttpClientBuilder();
+        HttpClient httpClient = httpClientBuilder
+                .connectTimeout(builder.timeout)
+                .readTimeout(builder.timeout)
+                .build();
 
-        OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
-            .callTimeout(builder.timeout)
-            .connectTimeout(builder.timeout)
-            .readTimeout(builder.timeout)
-            .writeTimeout(builder.timeout);
-
-        if (builder.logRequests) {
-            okHttpClientBuilder.addInterceptor(new RequestLoggingInterceptor(builder.logger));
-        }
-        if (logResponses) {
-            okHttpClientBuilder.addInterceptor(new ResponseLoggingInterceptor(builder.logger));
+        if (builder.logRequests != null && builder.logRequests
+                || builder.logResponses != null && builder.logResponses) {
+            this.httpClient =
+                    new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses, builder.logger);
+        } else {
+            this.httpClient = httpClient;
         }
 
-        this.okHttpClient = okHttpClientBuilder.build();
-
-        Retrofit retrofit = new Retrofit.Builder()
-            .baseUrl(Utils.ensureTrailingForwardSlash(ensureNotBlank(builder.baseUrl, "baseUrl")))
-            .client(okHttpClient)
-            .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
-            .build();
-
-        this.ovhAiApi = retrofit.create(OvhAiApi.class);
-        this.authorizationHeader = "Bearer " + ensureNotBlank(apiKey, "apiKey");
+        this.baseUrl = ensureTrailingForwardSlash(ensureNotBlank(builder.baseUrl, "baseUrl"));
+        this.authorizationHeader = "Bearer " + ensureNotBlank(builder.apiKey, "apiKey");
     }
 
     public EmbeddingResponse embed(EmbeddingRequest request) {
-        try {
-            retrofit2.Response<List<float[]>> retrofitResponse = ovhAiApi.embed(request, authorizationHeader).execute();
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl + "api/batch_text2vec")
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Authorization", authorizationHeader)
+                .body(toJson(request))
+                .build();
 
-            if (retrofitResponse.isSuccessful()) {
-                return new EmbeddingResponse(retrofitResponse.body());
-            } else {
-                throw toException(retrofitResponse);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
+        SuccessfulHttpResponse response = httpClient.execute(httpRequest);
 
-    private static RuntimeException toException(retrofit2.Response<?> response) throws IOException {
-        int code = response.code();
-        String body = response.errorBody().string();
-        String errorMessage = String.format("status code: %s; body: %s", code, body);
-        return new RuntimeException(errorMessage);
+        float[][] embeddings = fromJson(response.body(), float[][].class);
+        return new EmbeddingResponse(Arrays.asList(embeddings));
     }
 }

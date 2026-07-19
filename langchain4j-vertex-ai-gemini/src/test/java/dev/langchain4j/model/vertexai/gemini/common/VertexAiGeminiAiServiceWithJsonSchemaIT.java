@@ -22,7 +22,7 @@ class VertexAiGeminiAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonS
                 VertexAiGeminiChatModel.builder()
                         .project(System.getenv("GCP_PROJECT_ID"))
                         .location(System.getenv("GCP_LOCATION"))
-                        .modelName("gemini-2.0-flash")
+                        .modelName("gemini-2.5-flash")
                         .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
                         .temperature(0.0f)
                         .logRequests(true)
@@ -92,6 +92,13 @@ class VertexAiGeminiAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonS
     @ParameterizedTest
     @MethodSource("models")
     protected void should_extract_pojo_with_set_of_enums(ChatModel model) {
+    }
+
+    @Disabled("Gemini cannot do it properly")
+    @Override
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_extract_pojo_with_uuid(ChatModel model) {
     }
 
     @AfterEach

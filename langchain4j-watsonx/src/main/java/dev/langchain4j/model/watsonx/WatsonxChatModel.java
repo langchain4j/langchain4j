@@ -9,10 +9,7 @@ import static java.util.stream.Collectors.toCollection;
 import com.ibm.watsonx.ai.chat.ChatResponse.ResultChoice;
 import com.ibm.watsonx.ai.chat.model.AssistantMessage;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
-import com.ibm.watsonx.ai.chat.model.ChatParameters;
 import com.ibm.watsonx.ai.chat.model.ChatUsage;
-import com.ibm.watsonx.ai.chat.model.ExtractionTags;
-import com.ibm.watsonx.ai.chat.model.ResultMessage;
 import com.ibm.watsonx.ai.chat.model.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -68,46 +65,49 @@ public class WatsonxChatModel extends WatsonxChat implements ChatModel {
                 ? toolSpecifications.stream().map(Converter::toTool).toList()
                 : null;
 
-        var watsonxChatRequest = com.ibm.watsonx.ai.chat.ChatRequest.builder();
-        ExtractionTags tags = null;
+        var watsonxChatRequestBuilder = com.ibm.watsonx.ai.chat.ChatRequest.builder();
 
-        if (chatRequest.parameters() instanceof WatsonxChatRequestParameters wcrp && nonNull(wcrp.thinking())) {
-            validateThinkingIsAllowedForGraniteModel(wcrp.modelName(), chatRequest.messages(), toolSpecifications);
-            watsonxChatRequest.thinking(wcrp.thinking());
-            tags = wcrp.thinking().extractionTags();
+        String deploymentId = null;
+
+        if (chatRequest.parameters() instanceof WatsonxChatRequestParameters wcrp) {
+            deploymentId = wcrp.deploymentId();
+            if (nonNull(wcrp.thinking())) watsonxChatRequestBuilder.thinking(wcrp.thinking());
         }
 
-        ChatParameters parameters = Converter.toChatParameters(chatRequest.parameters());
+        var parameters = Converter.toChatParameters(chatRequest.parameters());
+        var watsonxChatRequest = watsonxChatRequestBuilder
+                .messages(messages)
+                .tools(tools)
+                .parameters(parameters)
+                .deploymentId(deploymentId)
+                .build();
 
         com.ibm.watsonx.ai.chat.ChatResponse chatResponse =
-                WatsonxExceptionMapper.INSTANCE.withExceptionMapper(() -> chatService.chat(watsonxChatRequest
-                        .messages(messages)
-                        .tools(tools)
-                        .parameters(parameters)
-                        .build()));
+                WatsonxExceptionMapper.INSTANCE.withExceptionMapper(() -> chatProvider.chat(watsonxChatRequest));
 
+        AssistantMessage assistantMessage = chatResponse.toAssistantMessage();
         ResultChoice choice = chatResponse.choices().get(0);
         ChatUsage usage = chatResponse.usage();
-        ResultMessage message = choice.message();
 
-        if (isNotNullOrBlank(message.refusal())) throw new ContentFilteredException(message.refusal());
+        if (isNotNullOrBlank(assistantMessage.refusal()))
+            throw new ContentFilteredException(assistantMessage.refusal());
 
         AiMessage.Builder aiMessage = AiMessage.builder();
 
-        if (nonNull(message.toolCalls()) && !message.toolCalls().isEmpty()) {
-            aiMessage.toolExecutionRequests(message.toolCalls().stream()
+        if (nonNull(assistantMessage.toolCalls())
+                && !assistantMessage.toolCalls().isEmpty()) {
+            aiMessage.toolExecutionRequests(assistantMessage.toolCalls().stream()
                     .map(Converter::toToolExecutionRequest)
                     .toList());
-        } else if (nonNull(tags)) {
-            AssistantMessage assistantMessage = chatResponse.toAssistantMessage();
-            aiMessage.thinking(assistantMessage.thinking());
-            aiMessage.text(assistantMessage.content());
-        } else {
-            aiMessage.text(message.content());
         }
 
+        aiMessage.thinking(assistantMessage.thinking());
+        aiMessage.text(assistantMessage.content());
+
         FinishReason finishReason = Converter.toFinishReason(choice.finishReason());
-        TokenUsage tokenUsage = new TokenUsage(usage.promptTokens(), usage.completionTokens(), usage.totalTokens());
+        TokenUsage tokenUsage = usage != null
+                ? new TokenUsage(usage.promptTokens(), usage.completionTokens(), usage.totalTokens())
+                : null;
 
         return ChatResponse.builder()
                 .aiMessage(aiMessage.build())

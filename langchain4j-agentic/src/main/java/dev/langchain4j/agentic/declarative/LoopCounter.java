@@ -18,11 +18,7 @@ import java.lang.annotation.Target;
  *         @LoopAgent(
  *                 description = "Review the given story to ensure it aligns with the specified style",
  *                 outputKey = "story", maxIterations = 5,
- *                 subAgents = {
- *                     @SubAgent(type = StyleScorer.class, outputKey = "score"),
- *                     @SubAgent(type = StyleEditor.class, outputKey = "story")
- *             }
- *         )
+ *                 subAgents = { StyleScorer.class, StyleEditor.class })
  *         String write(@V("story") String story, @LoopCounter int iteration);
  *
  *         @ExitCondition

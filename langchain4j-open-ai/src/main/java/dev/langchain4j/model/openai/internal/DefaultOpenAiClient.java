@@ -12,6 +12,8 @@ import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
+import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest;
+import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechResponse;
 import dev.langchain4j.model.openai.internal.audio.transcription.AudioFile;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionRequest;
 import dev.langchain4j.model.openai.internal.audio.transcription.OpenAiAudioTranscriptionResponse;
@@ -21,8 +23,10 @@ import dev.langchain4j.model.openai.internal.completion.CompletionRequest;
 import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest;
 import dev.langchain4j.model.openai.internal.embedding.EmbeddingResponse;
+import dev.langchain4j.model.openai.internal.image.EditImageRequest;
 import dev.langchain4j.model.openai.internal.image.GenerateImagesRequest;
 import dev.langchain4j.model.openai.internal.image.GenerateImagesResponse;
+import dev.langchain4j.model.openai.internal.image.ImageFile;
 import dev.langchain4j.model.openai.internal.models.ModelsListResponse;
 import dev.langchain4j.model.openai.internal.moderation.ModerationRequest;
 import dev.langchain4j.model.openai.internal.moderation.ModerationResponse;
@@ -196,6 +200,58 @@ public class DefaultOpenAiClient extends OpenAiClient {
     }
 
     @Override
+    public SyncOrAsync<GenerateImagesResponse> imagesEdit(EditImageRequest request) {
+        HttpRequest.Builder httpRequestBuilder = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "images/edits")
+                .addQueryParams(customQueryParams)
+                .addHeader("Content-Type", "multipart/form-data; boundary=----LangChain4j")
+                .addHeaders(buildRequestHeaders());
+
+        ImageFile image = request.image();
+        httpRequestBuilder.addFormDataFile("image", image.fileName(), image.mimeType(), image.content());
+
+        httpRequestBuilder.addFormDataField("prompt", request.prompt());
+
+        if (request.mask() != null) {
+            ImageFile mask = request.mask();
+            httpRequestBuilder.addFormDataFile("mask", mask.fileName(), mask.mimeType(), mask.content());
+        }
+
+        if (request.model() != null) {
+            httpRequestBuilder.addFormDataField("model", request.model());
+        }
+
+        httpRequestBuilder.addFormDataField("n", Integer.toString(request.n()));
+
+        if (request.size() != null) {
+            httpRequestBuilder.addFormDataField("size", request.size());
+        }
+
+        if (request.quality() != null) {
+            httpRequestBuilder.addFormDataField("quality", request.quality());
+        }
+
+        if (request.user() != null) {
+            httpRequestBuilder.addFormDataField("user", request.user());
+        }
+
+        if (request.background() != null) {
+            httpRequestBuilder.addFormDataField("background", request.background());
+        }
+
+        if (request.outputFormat() != null) {
+            httpRequestBuilder.addFormDataField("output_format", request.outputFormat());
+        }
+
+        if (request.outputCompression() != null) {
+            httpRequestBuilder.addFormDataField("output_compression", Integer.toString(request.outputCompression()));
+        }
+
+        return new RequestExecutor<>(httpClient, httpRequestBuilder.build(), GenerateImagesResponse.class);
+    }
+
+    @Override
     public SyncOrAsync<OpenAiAudioTranscriptionResponse> audioTranscription(OpenAiAudioTranscriptionRequest request) {
         HttpRequest.Builder httpRequestBuilder = HttpRequest.builder()
                 .method(POST)
@@ -221,6 +277,23 @@ public class DefaultOpenAiClient extends OpenAiClient {
         }
 
         return new RequestExecutor<>(httpClient, httpRequestBuilder.build(), OpenAiAudioTranscriptionResponse.class);
+    }
+
+    @Override
+    public SyncOrAsync<OpenAiTextToSpeechResponse> textToSpeech(OpenAiTextToSpeechRequest request) {
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "audio/speech")
+                .addQueryParams(customQueryParams)
+                .addHeader("Content-Type", "application/json")
+                .addHeaders(buildRequestHeaders())
+                .body(Json.toJson(request))
+                .build();
+
+        return new RequestExecutor<>(
+                httpClient,
+                httpRequest,
+                response -> OpenAiTextToSpeechResponse.from(response.bodyBytes(), response.contentType()));
     }
 
     @Override

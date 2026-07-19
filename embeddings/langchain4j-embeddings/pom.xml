@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.13.0-beta23-SNAPSHOT</version>
+        <version>1.19.0-beta29-SNAPSHOT</version>
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -14,7 +14,7 @@
     <description>Common functionality for other langchain4j-embeddings-xxx modules</description>
 
     <properties>
-        <ai.djl.version>0.31.1</ai.djl.version>
+        <ai.djl.version>0.36.0</ai.djl.version>
     </properties>
 
     <dependencies>
@@ -22,7 +22,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.13.0-SNAPSHOT</version>
+            <version>1.19.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>

@@ -9,6 +9,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
+import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.invocation.InvocationContext;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
@@ -26,14 +27,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 class DefaultToolExecutorTest implements WithAssertions {
-
-    @Test
-    void tesT_hasNoFractionalPart() {
-        assertThat(DefaultToolExecutor.hasNoFractionalPart(3.0)).isTrue();
-        assertThat(DefaultToolExecutor.hasNoFractionalPart(-3.0)).isTrue();
-        assertThat(DefaultToolExecutor.hasNoFractionalPart(3.5)).isFalse();
-        assertThat(DefaultToolExecutor.hasNoFractionalPart(-3.5)).isFalse();
-    }
 
     public enum ExampleEnum {
         A,
@@ -119,7 +112,7 @@ class DefaultToolExecutorTest implements WithAssertions {
         InvocationContext invocationContext =
                 InvocationContext.builder().chatMemoryId(memoryId).build();
 
-        Object[] args = DefaultToolExecutor.prepareArguments(method, arguments, invocationContext);
+        Object[] args = DefaultToolExecutor.prepareArguments(method, "example", arguments, invocationContext);
 
         assertThat(args)
                 .containsExactly(
@@ -150,7 +143,7 @@ class DefaultToolExecutorTest implements WithAssertions {
             as.put("arg1", "abc");
 
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> DefaultToolExecutor.prepareArguments(method, as, invocationContext))
+                    .isThrownBy(() -> DefaultToolExecutor.prepareArguments(method, "example", as, invocationContext))
                     .withMessage("Argument \"arg1\" is not convertable to int, got java.lang.String: <abc>")
                     .withNoCause();
         }
@@ -283,12 +276,101 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .isEqualTo(singletonMap("A", 1));
     }
 
+    @Test
+    void coerce_argument_preserves_precision_of_large_long() {
+        // A JSON integer above 2^53 is deserialized as a Long by Jackson. Converting via double
+        // would silently corrupt it (9007199254740993 -> 9007199254740992).
+        long largeLong = 9007199254740993L; // 2^53 + 1
+
+        assertThat(coerceArgument(largeLong, "arg", long.class, null)).isEqualTo(largeLong);
+        assertThat(coerceArgument(largeLong, "arg", Long.class, null)).isEqualTo(largeLong);
+        assertThat(coerceArgument(Long.MAX_VALUE, "arg", long.class, null)).isEqualTo(Long.MAX_VALUE);
+        assertThat(coerceArgument(Long.MIN_VALUE, "arg", long.class, null)).isEqualTo(Long.MIN_VALUE);
+    }
+
+    @Test
+    void coerce_argument_preserves_precision_of_large_big_integer() {
+        // A JSON integer larger than Long.MAX_VALUE is deserialized as a BigInteger by Jackson.
+        BigInteger largeBigInteger = BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.TEN);
+
+        assertThat(coerceArgument(largeBigInteger, "arg", BigInteger.class, null))
+                .isEqualTo(largeBigInteger);
+        // A large integral value must not be routed through double for a BigInteger parameter.
+        BigInteger aboveDoublePrecision = new BigInteger("9007199254740993"); // 2^53 + 1
+        assertThat(coerceArgument(aboveDoublePrecision, "arg", BigInteger.class, null))
+                .isEqualTo(aboveDoublePrecision);
+    }
+
+    @Test
+    void coerce_argument_preserves_precision_of_big_decimal() {
+        // 0.1 has no exact double representation; converting via new BigDecimal(double) would yield
+        // 0.1000000000000000055511151231257827021181583404541015625. Rendering via Number.toString()
+        // (as BigDecimal.valueOf(double) does) keeps it as "0.1".
+        assertThat(coerceArgument(0.1, "arg", BigDecimal.class, null)).isEqualTo(new BigDecimal("0.1"));
+        // A BigDecimal argument must be preserved exactly.
+        BigDecimal preciseValue = new BigDecimal("1234567890.123456789");
+        assertThat(coerceArgument(preciseValue, "arg", BigDecimal.class, null)).isEqualTo(preciseValue);
+    }
+
+    @Test
+    void coerce_argument_rejects_fractional_value_for_integer_types() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(1.5, "arg", long.class, null))
+                .withMessageContaining("has non-integer value");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> coerceArgument(1.5, "arg", BigInteger.class, null))
+                .withMessageContaining("has non-integer value");
+    }
+
     private static class TestTool {
 
         @Tool
         public int addOne(int num) {
             return num + 1;
         }
+    }
+
+    private static class ThrowingTool {
+
+        @Tool
+        public String throwsWithMessage() {
+            throw new IllegalStateException("something went wrong");
+        }
+
+        @Tool
+        public String throwsWithoutMessage() {
+            throw new NullPointerException();
+        }
+    }
+
+    @Test
+    void tool_exception_with_message_is_returned_as_error() throws NoSuchMethodException {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("throwsWithMessage")
+                .arguments("{}")
+                .build();
+
+        DefaultToolExecutor executor =
+                new DefaultToolExecutor(new ThrowingTool(), ThrowingTool.class.getDeclaredMethod("throwsWithMessage"));
+
+        String result = executor.execute(request, "DEFAULT");
+        assertThat(result).isEqualTo("something went wrong");
+    }
+
+    @Test
+    void tool_exception_without_message_falls_back_to_class_name() throws NoSuchMethodException {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("throwsWithoutMessage")
+                .arguments("{}")
+                .build();
+
+        DefaultToolExecutor executor = new DefaultToolExecutor(
+                new ThrowingTool(), ThrowingTool.class.getDeclaredMethod("throwsWithoutMessage"));
+
+        String result = executor.execute(request, "DEFAULT");
+        assertThat(result).isEqualTo(NullPointerException.class.getName());
     }
 
     @Test
@@ -448,9 +530,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor2 = new DefaultToolExecutor(new PersonTool(), request2);
         String result2 = toolExecutor2.execute(request2, "DEFAULT");
-        assertThat(result2)
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(result2).isEqualToIgnoringWhitespace("""
                 [
                   {
                     "name": "Klaus",
@@ -469,9 +549,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor3 = new DefaultToolExecutor(new PersonTool(), request3);
         String result3 = toolExecutor3.execute(request3, "DEFAULT");
-        assertThat(result3)
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(result3).isEqualToIgnoringWhitespace("""
                 [
                   {
                     "name": "Peter",
@@ -491,9 +569,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor4 = new DefaultToolExecutor(new PersonTool(), request4);
         String result4 = toolExecutor4.execute(request4, "DEFAULT");
-        assertThat(result4)
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(result4).isEqualToIgnoringWhitespace("""
                 {
                   "p1": {
                     "name": "Klaus",
@@ -512,9 +588,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .build();
         DefaultToolExecutor toolExecutor5 = new DefaultToolExecutor(new PersonTool(), request5);
         String result5 = toolExecutor5.execute(request5, "DEFAULT");
-        assertThat(result5)
-                .isEqualToIgnoringWhitespace(
-                        """
+        assertThat(result5).isEqualToIgnoringWhitespace("""
                 [
                   {
                     "name": "Klaus",
@@ -602,7 +676,7 @@ class DefaultToolExecutorTest implements WithAssertions {
         InvocationContext context = InvocationContext.builder().build();
 
         // when
-        Object[] args = DefaultToolExecutor.prepareArguments(method, arguments, context);
+        Object[] args = DefaultToolExecutor.prepareArguments(method, "tool", arguments, context);
 
         // then
         assertThat(args).hasSize(2);
@@ -626,12 +700,78 @@ class DefaultToolExecutorTest implements WithAssertions {
         InvocationContext context = InvocationContext.builder().build();
 
         // when
-        Object[] args = DefaultToolExecutor.prepareArguments(method, arguments, context);
+        Object[] args = DefaultToolExecutor.prepareArguments(method, "tool", arguments, context);
 
         // then
         assertThat(args).hasSize(2);
         assertThat(args[0]).isEqualTo("Klaus");
         assertThat(args[1]).isInstanceOf(Optional.class);
         assertThat((Optional<?>) args[1]).isEmpty();
+    }
+
+    @SuppressWarnings("unused")
+    public void primitiveTool(String filePath, int startLine, int endLine) {}
+
+    @Test
+    void should_throw_when_required_primitive_is_missing() throws Exception {
+        Method method = getClass().getMethod("primitiveTool", String.class, int.class, int.class);
+        Map<String, Object> arguments = new HashMap<>();
+        arguments.put("arg0", "/tmp/foo.txt");
+
+        InvocationContext context = InvocationContext.builder().build();
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> DefaultToolExecutor.prepareArguments(method, "primitiveTool", arguments, context))
+                .withMessageContaining("Required parameter")
+                .withMessageContaining("arg1")
+                .withMessageContaining("primitiveTool");
+    }
+
+    @Test
+    void should_wrap_missing_required_primitive_into_ToolArgumentsException_when_configured() throws Exception {
+        Method method = getClass().getMethod("primitiveTool", String.class, int.class, int.class);
+        DefaultToolExecutor executor = DefaultToolExecutor.builder()
+                .object(this)
+                .originalMethod(method)
+                .methodToInvoke(method)
+                .wrapToolArgumentsExceptions(true)
+                .build();
+
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("primitiveTool")
+                .arguments("{ \"arg0\": \"/tmp/foo.txt\" }")
+                .build();
+
+        assertThatExceptionOfType(ToolArgumentsException.class)
+                .isThrownBy(() -> executor.execute(request, "DEFAULT"))
+                .withCauseInstanceOf(IllegalArgumentException.class);
+    }
+
+    static class ToolWithException {
+        @Tool("Tool that throws exception")
+        public String throwingTool(String input) {
+            throw new RuntimeException("Test exception with details");
+        }
+    }
+
+    @Test
+    void should_return_error_result_when_tool_execution_fails() throws Exception {
+        ToolWithException tool = new ToolWithException();
+        Method method = ToolWithException.class.getMethod("throwingTool", String.class);
+
+        DefaultToolExecutor executor = new DefaultToolExecutor(tool, method);
+
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("throwingTool")
+                .arguments("{\"arg0\": \"test\"}")
+                .build();
+
+        ToolExecutionResult result =
+                executor.executeWithContext(request, InvocationContext.builder().build());
+
+        assertThat(result.isError()).isTrue();
+        assertThat(result.resultText()).isEqualTo("Test exception with details");
     }
 }

@@ -3,8 +3,10 @@ package dev.langchain4j.store.embedding.hibernate;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
+import org.hibernate.dialect.CockroachDialect;
 import org.hibernate.dialect.DB2Dialect;
 import org.hibernate.dialect.Dialect;
+import org.hibernate.dialect.HANADialect;
 import org.hibernate.dialect.MariaDBDialect;
 import org.hibernate.dialect.MySQLDialect;
 import org.hibernate.dialect.OracleDialect;
@@ -19,7 +21,9 @@ import org.hibernate.dialect.SQLServerDialect;
  * <li>MSSQL: The Microsoft SQL Server database
  * <li>MYSQL: The MySQL database
  * <li>POSTGRESQL: The PostgreSQL database
+ * <li>COCKROACHDB: The Cockroach database
  * <li>ORACLE: The Oracle database
+ * <li>HANA: The SAP HANA database
  * </ul>
  * <p>
  */
@@ -95,6 +99,24 @@ public interface DatabaseKind {
                         + ") with (" + getOrDefault(indexOptions, "") + ");";
             },
             "create extension if not exists vector;");
+    DatabaseKind COCKROACHDB = new DatabaseKindImpl(
+            "jdbc:postgresql://{host}:{port}/{database}",
+            (distanceFunction, indexType, table, embeddingColumn, indexOptions) -> {
+                final String vectorOps =
+                        switch (distanceFunction) {
+                            case COSINE -> "vector_cosine_ops";
+                            case EUCLIDEAN, EUCLIDEAN_SQUARED -> "vector_l2_ops";
+                            case INNER_PRODUCT, NEGATIVE_INNER_PRODUCT -> "vector_ip_ops";
+                            default ->
+                                throw new IllegalArgumentException(
+                                        "CockroachDB does not support the distance function: " + distanceFunction);
+                        };
+                final String indexMethod = indexType == null ? "ivfflat" : indexType;
+                return "create vector index if not exists " + table + "_" + indexMethod + "_index on "
+                        + table + "(" + embeddingColumn + " " + vectorOps
+                        + ") with (" + getOrDefault(indexOptions, "") + ");";
+            },
+            "set cluster setting feature.vector_index.enabled = true;");
     DatabaseKind ORACLE = new DatabaseKindImpl(
             "jdbc:oracle:thin:@{host}:{port}/{database}",
             (distanceFunction, indexType, table, embeddingColumn, indexOptions) -> {
@@ -110,6 +132,21 @@ public interface DatabaseKind {
                         };
                 return "create vector index if not exists " + table + "_index on "
                         + table + "(" + embeddingColumn + ") organization neighbor partitions with distance "
+                        + distanceMetric + " "
+                        + getOrDefault(indexOptions, "") + ";";
+            });
+    DatabaseKind HANA = new DatabaseKindImpl(
+            "jdbc:sap://{host}:{port}", (distanceFunction, indexType, table, embeddingColumn, indexOptions) -> {
+                final String distanceMetric =
+                        switch (distanceFunction) {
+                            case COSINE -> "cosine_similarity";
+                            case EUCLIDEAN -> "l2distance";
+                            default ->
+                                throw new IllegalArgumentException(
+                                        "SAP HANA does not support the distance function: " + distanceFunction);
+                        };
+                return "create hnsw vector index " + table + "_index on "
+                        + table + "(" + embeddingColumn + ") similarity function "
                         + distanceMetric + " "
                         + getOrDefault(indexOptions, "") + ";";
             });
@@ -138,8 +175,12 @@ public interface DatabaseKind {
             return DatabaseKind.MYSQL;
         } else if (POSTGRESQL.isJdbcUrl(jdbcUrl)) {
             return DatabaseKind.POSTGRESQL;
+        } else if (COCKROACHDB.isJdbcUrl(jdbcUrl)) {
+            return DatabaseKind.COCKROACHDB;
         } else if (ORACLE.isJdbcUrl(jdbcUrl)) {
             return DatabaseKind.ORACLE;
+        } else if (HANA.isJdbcUrl(jdbcUrl)) {
+            return DatabaseKind.HANA;
         } else {
             return null;
         }
@@ -156,8 +197,12 @@ public interface DatabaseKind {
             return DatabaseKind.MYSQL;
         } else if (dialect instanceof PostgreSQLDialect) {
             return DatabaseKind.POSTGRESQL;
+        } else if (dialect instanceof CockroachDialect) {
+            return DatabaseKind.COCKROACHDB;
         } else if (dialect instanceof OracleDialect) {
             return DatabaseKind.ORACLE;
+        } else if (dialect instanceof HANADialect) {
+            return DatabaseKind.HANA;
         } else {
             return null;
         }

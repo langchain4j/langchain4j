@@ -26,7 +26,7 @@ LangChain4j provides 3 different integrations with OpenAI for using embedding mo
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.12.2</version>
+    <version>1.18.0</version>
 </dependency>
 ```
 
@@ -35,7 +35,7 @@ LangChain4j provides 3 different integrations with OpenAI for using embedding mo
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>1.12.2-beta22</version>
+    <version>1.18.0-beta28</version>
 </dependency>
 ```
 
@@ -68,6 +68,30 @@ langchain4j.open-ai.embedding-model.project-id=...
 langchain4j.open-ai.embedding-model.timeout=...
 langchain4j.open-ai.embedding-model.user=...
 ```
+
+## Setting custom embedding request parameters
+
+When using `OpenAiEmbeddingModel`, you can configure custom parameters for the embedding request
+within the HTTP request's JSON body. This is useful for OpenAI-compatible providers that require
+provider-specific embedding parameters:
+```java
+EmbeddingModel model = OpenAiEmbeddingModel.builder()
+        .baseUrl("https://integrate.api.nvidia.com/v1")
+        .apiKey(System.getenv("NVIDIA_API_KEY"))
+        .modelName("nvidia/nv-embedqa-e5-v5")
+        .customParameters(Map.of("input_type", "passage"))
+        .build();
+```
+
+## Capabilities
+
+- **Per-call parameters** (via `EmbeddingRequest`): `dimensions` — reduce output dimensionality on
+  `text-embedding-3` models. OpenAI-specific `user`, `encoding_format` and arbitrary passthrough parameters are
+  available via `OpenAiEmbeddingRequestParameters` (used, for example, for NVIDIA's `input_type`).
+- Text-only (no image inputs).
+- **Listeners**: configure via `OpenAiEmbeddingModel.builder().listeners(...)`.
+
+See [Embedding Model](/tutorials/rag#embedding-model) for the request/response API.
 
 ## Examples
 

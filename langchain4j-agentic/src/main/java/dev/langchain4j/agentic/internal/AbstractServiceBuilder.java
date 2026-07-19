@@ -21,6 +21,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
@@ -46,6 +47,8 @@ public abstract class AbstractServiceBuilder<T, S> {
     protected final List<AgentExecutor> subagents = new ArrayList<>();
 
     protected Function<ErrorContext, ErrorRecoveryResult> errorHandler;
+
+    protected Function<InternalAgent, Object> agentInstanceFactory;
 
     protected Executor executor;
 
@@ -112,11 +115,11 @@ public abstract class AbstractServiceBuilder<T, S> {
     }
 
     public S subAgents(Object... agents) {
-        return subAgents(agentsToExecutors(agents));
+        return subAgents(List.of(agents));
     }
 
-    public S subAgents(List<AgentExecutor> agentExecutors) {
-        addSubagents(agentExecutors);
+    public S subAgents(Collection<?> agents) {
+        addSubagents(agentsToExecutors(agents));
         return (S) this;
     }
 
@@ -133,6 +136,11 @@ public abstract class AbstractServiceBuilder<T, S> {
         } else {
             this.agentListener = new ComposedAgentListener(this.agentListener, agentListener);
         }
+        return (S) this;
+    }
+
+    public S agentInstanceFactory(Function<InternalAgent, Object> factory) {
+        this.agentInstanceFactory = factory;
         return (S) this;
     }
 
@@ -159,6 +167,9 @@ public abstract class AbstractServiceBuilder<T, S> {
     }
 
     public T build(InvocationHandler invocationHandler) {
+        if (agentInstanceFactory != null) {
+            return (T) agentInstanceFactory.apply((InternalAgent) invocationHandler);
+        }
         return buildAgent(agentServiceClass, invocationHandler);
     }
 

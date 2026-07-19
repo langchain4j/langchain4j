@@ -28,7 +28,7 @@ class VertexAiGeminiChatModelListenerIT extends AbstractChatModelListenerIT {
 
     @Override
     protected String modelName() {
-        return "gemini-2.0-flash-lite";
+        return "gemini-2.5-flash-lite";
     }
 
     @Override
@@ -49,7 +49,7 @@ class VertexAiGeminiChatModelListenerIT extends AbstractChatModelListenerIT {
 
     @Override
     protected Class<? extends Exception> expectedExceptionClass() {
-        return com.google.api.gax.rpc.NotFoundException.class;
+        return dev.langchain4j.exception.ModelNotFoundException.class;
     }
 
     @AfterEach

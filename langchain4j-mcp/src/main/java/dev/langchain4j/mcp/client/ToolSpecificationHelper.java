@@ -1,5 +1,8 @@
 package dev.langchain4j.mcp.client;
 
+import static dev.langchain4j.mcp.client.McpToolMetadataKeys.*;
+
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -14,18 +17,19 @@ import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.StreamSupport;
 
-import static dev.langchain4j.mcp.client.McpToolMetadataKeys.*;
-
 class ToolSpecificationHelper {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final TypeReference<List<McpIcon>> MCP_ICON_LIST_TYPE = new TypeReference<>() {};
 
     /**
      * Converts the 'tools' element from a ListToolsResult MCP message
@@ -49,6 +53,12 @@ class ToolSpecificationHelper {
             if (tool.has("title")) {
                 builder.addMetadata(TITLE, tool.get("title").asText());
             }
+            if (tool.has("outputSchema")) {
+                builder.addMetadata(OUTPUT_SCHEMA, OBJECT_MAPPER.convertValue(tool.get("outputSchema"), Object.class));
+            }
+            if (tool.has("icons")) {
+                builder.addMetadata(ICONS, OBJECT_MAPPER.convertValue(tool.get("icons"), MCP_ICON_LIST_TYPE));
+            }
             result.add(builder.build());
         }
         return result;
@@ -59,7 +69,11 @@ class ToolSpecificationHelper {
      * to a JsonSchemaElement object that describes the tool's arguments.
      */
     static JsonSchemaElement jsonNodeToJsonSchemaElement(JsonNode node) {
-        if (node.has("anyOf")) {
+        // MCP SEP-2106 allows composition keywords such as anyOf alongside type "object", and the tool
+        // inputSchema root is always type "object". JsonObjectSchema cannot represent a schema-level anyOf,
+        // so an object-typed node is parsed as an object (its anyOf constraint is not carried over) rather
+        // than as a JsonAnyOfSchema that the root would then fail to cast.
+        if (node.has("anyOf") && !isObjectType(node)) {
             JsonAnyOfSchema.Builder anyOf = JsonAnyOfSchema.builder();
             JsonSchemaElement[] types = StreamSupport.stream(node.get("anyOf").spliterator(), false)
                     .map(ToolSpecificationHelper::jsonNodeToJsonSchemaElement)
@@ -69,6 +83,12 @@ class ToolSpecificationHelper {
                 anyOf.description(node.get("description").asText());
             }
             return anyOf.build();
+        }
+        // Handle $ref (JSON Schema reference)
+        if (node.has("$ref")) {
+            return JsonReferenceSchema.builder()
+                    .reference(extractReferenceKey(node.get("$ref").asText()))
+                    .build();
         }
         JsonNode typeNode = node.get("type");
         // If no type is specified, default to object schema
@@ -90,6 +110,15 @@ class ToolSpecificationHelper {
             }
             if (node.has("additionalProperties")) {
                 builder.additionalProperties(node.get("additionalProperties").asBoolean(false));
+            }
+            // Handle $defs (draft 2019-09+) and definitions (draft-07)
+            JsonNode defsNode = node.has("$defs") ? node.get("$defs") : node.get("definitions");
+            if (defsNode != null) {
+                Map<String, JsonSchemaElement> definitions = new LinkedHashMap<>();
+                for (Map.Entry<String, JsonNode> entry : ((ObjectNode) defsNode).properties()) {
+                    definitions.put(entry.getKey(), jsonNodeToJsonSchemaElement(entry.getValue()));
+                }
+                builder.definitions(definitions);
             }
             return builder.build();
         } else if (node.get("type").getNodeType() == JsonNodeType.STRING) {
@@ -182,6 +211,13 @@ class ToolSpecificationHelper {
         }
     }
 
+    private static boolean isObjectType(JsonNode node) {
+        JsonNode typeNode = node.get("type");
+        return typeNode != null
+                && typeNode.getNodeType() == JsonNodeType.STRING
+                && typeNode.asText().equals("object");
+    }
+
     private static JsonSchemaElement toTypeElement(JsonNode node) {
         if (!node.isTextual()) {
             throw new IllegalArgumentException(node + " is not a string");
@@ -206,6 +242,20 @@ class ToolSpecificationHelper {
         }
     }
 
+    /**
+     * Extracts the reference key from a JSON Schema $ref value.
+     * For example, "#/$defs/Foo" returns "Foo", "#/definitions/Bar" returns "Bar".
+     */
+    private static String extractReferenceKey(String ref) {
+        if (ref.startsWith("#/$defs/")) {
+            return ref.substring("#/$defs/".length());
+        }
+        if (ref.startsWith("#/definitions/")) {
+            return ref.substring("#/definitions/".length());
+        }
+        return ref;
+    }
+
     private static String[] toStringArray(ArrayNode jsonArray) {
         String[] result = new String[jsonArray.size()];
         for (int i = 0; i < jsonArray.size(); i++) {
@@ -214,38 +264,34 @@ class ToolSpecificationHelper {
         return result;
     }
 
-    private static void processMcpToolAnnotations(JsonNode annotations,
-                                                  ToolSpecification.Builder builder) {
-        if(annotations.has(DESTRUCTIVE_HINT)) {
-            builder.addMetadata(DESTRUCTIVE_HINT,
-                    annotations.get(DESTRUCTIVE_HINT).asBoolean());
+    private static void processMcpToolAnnotations(JsonNode annotations, ToolSpecification.Builder builder) {
+        if (annotations.has(DESTRUCTIVE_HINT)) {
+            builder.addMetadata(
+                    DESTRUCTIVE_HINT, annotations.get(DESTRUCTIVE_HINT).asBoolean());
         }
-        if(annotations.has(IDEMPOTENT_HINT)) {
-            builder.addMetadata(IDEMPOTENT_HINT,
-                    annotations.get(IDEMPOTENT_HINT).asBoolean());
+        if (annotations.has(IDEMPOTENT_HINT)) {
+            builder.addMetadata(
+                    IDEMPOTENT_HINT, annotations.get(IDEMPOTENT_HINT).asBoolean());
         }
-        if(annotations.has(OPEN_WORLD_HINT)) {
-            builder.addMetadata(OPEN_WORLD_HINT,
-                    annotations.get(OPEN_WORLD_HINT).asBoolean());
+        if (annotations.has(OPEN_WORLD_HINT)) {
+            builder.addMetadata(
+                    OPEN_WORLD_HINT, annotations.get(OPEN_WORLD_HINT).asBoolean());
         }
-        if(annotations.has(READ_ONLY_HINT)) {
-            builder.addMetadata(READ_ONLY_HINT,
-                    annotations.get(READ_ONLY_HINT).asBoolean());
+        if (annotations.has(READ_ONLY_HINT)) {
+            builder.addMetadata(READ_ONLY_HINT, annotations.get(READ_ONLY_HINT).asBoolean());
         }
-        // note that the TITLE_ANNOTATION constant doesn't contain 'title' to disambiguate it with the other title that is
+        // note that the TITLE_ANNOTATION constant doesn't contain 'title' to disambiguate it with the other title that
+        // is
         // stored directly in the Tool object
-        if(annotations.has("title")) {
-            builder.addMetadata(TITLE_ANNOTATION,
-                    annotations.get("title").asText());
+        if (annotations.has("title")) {
+            builder.addMetadata(TITLE_ANNOTATION, annotations.get("title").asText());
         }
     }
 
-    private static void processMcpToolMetadata(JsonNode meta,
-                                               ToolSpecification.Builder builder) {
+    private static void processMcpToolMetadata(JsonNode meta, ToolSpecification.Builder builder) {
         for (Map.Entry<String, JsonNode> property : meta.properties()) {
             // convert the value to a nested Map (independent of Jackson) and store it in the metadata
             builder.addMetadata(property.getKey(), OBJECT_MAPPER.convertValue(property.getValue(), Object.class));
         }
     }
-
 }
