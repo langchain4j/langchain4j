@@ -1,5 +1,7 @@
 package dev.langchain4j.store.embedding.milvus.v2;
 
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -56,7 +58,14 @@ class MilvusV2HybridSearchDemoTest implements WithAssertions {
 
     @BeforeEach
     void setUp() {
-        embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+        try {
+            embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+        } catch (RuntimeException | LinkageError e) {
+            assumeTrue(
+                    false,
+                    "Skipping MilvusV2HybridSearchDemoTest because embedding model resources are unavailable: "
+                            + e.getMessage());
+        }
         collectionName = "demo_test_" + System.currentTimeMillis();
 
         // Default store uses HYBRID mode to support all search types in tests
