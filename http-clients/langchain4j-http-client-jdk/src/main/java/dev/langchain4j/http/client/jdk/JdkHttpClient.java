@@ -15,11 +15,9 @@ import mutiny.zero.BackpressureStrategy;
 import mutiny.zero.TubeConfiguration;
 import mutiny.zero.ZeroPublisher;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpRequest.BodyPublisher;
 import java.net.http.HttpRequest.BodyPublishers;
@@ -43,7 +41,6 @@ import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.stream.Collectors.joining;
 
 public class JdkHttpClient implements HttpClient {
 
@@ -211,9 +208,8 @@ public class JdkHttpClient implements HttpClient {
     }
 
     private static String readBody(java.net.http.HttpResponse<InputStream> response) {
-        try (InputStream inputStream = response.body();
-             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-            return reader.lines().collect(joining(System.lineSeparator()));
+        try (InputStream inputStream = response.body()) {
+            return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {
             return "Cannot read error response body: " + e.getMessage();
         }

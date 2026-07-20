@@ -1,5 +1,8 @@
 package dev.langchain4j.http.client.okhttp;
 
+import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.http.client.FormDataFile;
@@ -33,8 +36,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
 
-import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
-import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
 public class OkHttpClient implements HttpClient {
@@ -187,7 +188,7 @@ public class OkHttpClient implements HttpClient {
                         return;
                     }
 
-                    SuccessfulHttpResponse successResponse = fromOkHttpResponse(response);
+                    SuccessfulHttpResponse successResponse = fromOkHttpResponse(response, null);
                     ignoringExceptions(() -> listener.onOpen(successResponse));
 
                     try (InputStream inputStream = getInputStream(response)) {
@@ -218,17 +219,25 @@ public class OkHttpClient implements HttpClient {
     }
 
     private SuccessfulHttpResponse fromOkHttpResponse(Response response) throws IOException {
-        Map<String, List<String>> headers = new HashMap<>();
-        for (String name : response.headers().names()) {
-            headers.put(name, response.headers().values(name));
-        }
-
         String contentType = response.header("content-type");
         byte[] body;
         if (contentType != null && contentType.contains("text/event-stream")) {
             body = null;
         } else {
             body = response.body().bytes();
+        }
+
+        return fromOkHttpResponse(response, body);
+    }
+
+    /**
+     * Converts an OkHttp response into a {@link SuccessfulHttpResponse} without touching the response body.
+     * The streaming path passes {@code null} here, so that the body is left for the SSE parser to read.
+     */
+    private SuccessfulHttpResponse fromOkHttpResponse(Response response, byte[] body) {
+        Map<String, List<String>> headers = new HashMap<>();
+        for (String name : response.headers().names()) {
+            headers.put(name, response.headers().values(name));
         }
 
         return SuccessfulHttpResponse.builder()
@@ -276,8 +285,7 @@ public class OkHttpClient implements HttpClient {
 
     private RequestBody buildRequestBody(HttpRequest request) {
         if (!request.formDataFields().isEmpty() || !request.formDataFiles().isEmpty()) {
-            MultipartBody.Builder multipartBuilder =
-                    new MultipartBody.Builder().setType(MultipartBody.FORM);
+            MultipartBody.Builder multipartBuilder = new MultipartBody.Builder().setType(MultipartBody.FORM);
 
             for (Map.Entry<String, String> entry : request.formDataFields().entrySet()) {
                 multipartBuilder.addFormDataPart(entry.getKey(), entry.getValue());
@@ -285,8 +293,7 @@ public class OkHttpClient implements HttpClient {
 
             for (Map.Entry<String, FormDataFile> entry : request.formDataFiles().entrySet()) {
                 FormDataFile file = entry.getValue();
-                RequestBody fileBody = RequestBody.create(
-                        file.content(), MediaType.parse(file.contentType()));
+                RequestBody fileBody = RequestBody.create(file.content(), MediaType.parse(file.contentType()));
                 multipartBuilder.addFormDataPart(entry.getKey(), file.fileName(), fileBody);
             }
 

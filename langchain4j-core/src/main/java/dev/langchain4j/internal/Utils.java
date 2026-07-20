@@ -10,6 +10,7 @@ import static java.util.Collections.unmodifiableSet;
 
 import dev.langchain4j.Internal;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -25,10 +26,11 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -36,6 +38,8 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.InflaterInputStream;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -345,7 +349,8 @@ public class Utils {
                 int responseCode = connection.getResponseCode();
 
                 if (responseCode == HTTP_OK) {
-                    try (InputStream inputStream = connection.getInputStream();
+                    try (InputStream inputStream =
+                                    decompress(connection.getInputStream(), connection.getContentEncoding());
                             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
                         byte[] buffer = new byte[1024];
                         int bytesRead;
@@ -367,6 +372,17 @@ public class Utils {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static InputStream decompress(InputStream inputStream, String contentEncoding) throws IOException {
+        if (contentEncoding == null) {
+            return inputStream;
+        }
+        return switch (contentEncoding.trim().toLowerCase(Locale.ROOT)) {
+            case "gzip", "x-gzip" -> new GZIPInputStream(inputStream);
+            case "deflate" -> new InflaterInputStream(inputStream);
+            default -> inputStream;
+        };
     }
 
     /**
@@ -600,9 +616,12 @@ public class Utils {
         }
     }
 
-    private static void collectInterfaceMethods(Class<?> clazz, Set<MethodSignature> seen,
-                                                List<Method> result, Set<Class<?>> visited,
-                                                boolean concreteOnly) {
+    private static void collectInterfaceMethods(
+            Class<?> clazz,
+            Set<MethodSignature> seen,
+            List<Method> result,
+            Set<Class<?>> visited,
+            boolean concreteOnly) {
         if (clazz == null) {
             return;
         }
@@ -611,8 +630,9 @@ public class Utils {
                 continue;
             }
             for (Method method : iface.getDeclaredMethods()) {
-                if (method.isBridge() || method.isSynthetic() ||
-                        (concreteOnly && Modifier.isAbstract(method.getModifiers()))) {
+                if (method.isBridge()
+                        || method.isSynthetic()
+                        || (concreteOnly && Modifier.isAbstract(method.getModifiers()))) {
                     continue;
                 }
                 MethodSignature sig = new MethodSignature(method.getName(), List.of(method.getParameterTypes()));

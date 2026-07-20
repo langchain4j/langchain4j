@@ -1,47 +1,42 @@
 package dev.langchain4j.web.search.tavily;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import dev.langchain4j.internal.Utils;
-import okhttp3.OkHttpClient;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
-import retrofit2.Retrofit;
-import retrofit2.converter.jackson.JacksonConverterFactory;
+import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.web.search.tavily.TavilyJsonUtils.fromJson;
+import static dev.langchain4j.web.search.tavily.TavilyJsonUtils.toJson;
 
-import java.io.IOException;
+import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.http.client.HttpClientBuilderLoader;
+import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.log.LoggingHttpClient;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 
 class TavilyClient {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-            .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-            .enable(SerializationFeature.INDENT_OUTPUT)
-            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-            .setSerializationInclusion(JsonInclude.Include.NON_NULL);
+    private final HttpClient httpClient;
+    private final String baseUrl;
 
-    private final TavilyApi tavilyApi;
+    public TavilyClient(TavilyClientBuilder builder) {
+        HttpClientBuilder httpClientBuilder =
+                getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
 
-    public TavilyClient(String baseUrl, Duration timeout) {
-
-        OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
-                .callTimeout(timeout)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout);
-
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(Utils.ensureTrailingForwardSlash(baseUrl))
-                .client(okHttpClientBuilder.build())
-                .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
+        HttpClient httpClient = httpClientBuilder
+                .connectTimeout(builder.timeout)
+                .readTimeout(builder.timeout)
                 .build();
 
-        this.tavilyApi = retrofit.create(TavilyApi.class);
+        if (builder.logRequests != null && builder.logRequests
+                || builder.logResponses != null && builder.logResponses) {
+            this.httpClient = new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses);
+        } else {
+            this.httpClient = httpClient;
+        }
+
+        this.baseUrl = builder.baseUrl;
     }
 
     public static TavilyClientBuilder builder() {
@@ -49,67 +44,42 @@ class TavilyClient {
     }
 
     public TavilyResponse search(TavilySearchRequest searchRequest) {
-        try {
-            Response<TavilyResponse> retrofitResponse = tavilyApi
-                    .search(searchRequest)
-                    .execute();
-            if (retrofitResponse.isSuccessful()) {
-                return retrofitResponse.body();
-            } else {
-                throw toException(retrofitResponse);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "search")
+                .addHeader("Content-Type", "application/json")
+                .body(toJson(searchRequest))
+                .build();
+
+        SuccessfulHttpResponse response = httpClient.execute(httpRequest);
+
+        return fromJson(response.body(), TavilyResponse.class);
     }
 
     public CompletableFuture<TavilyResponse> searchAsync(TavilySearchRequest searchRequest) {
-        Call<TavilyResponse> call = tavilyApi.search(searchRequest);
-        CompletableFuture<TavilyResponse> future = new CompletableFuture<>();
-        call.enqueue(new Callback<>() {
-            @Override
-            public void onResponse(Call<TavilyResponse> call, Response<TavilyResponse> response) {
-                if (response.isSuccessful()) {
-                    future.complete(response.body());
-                } else {
-                    future.completeExceptionally(toRuntimeException(response));
-                }
-            }
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl, "search")
+                .addHeader("Content-Type", "application/json")
+                .body(toJson(searchRequest))
+                .build();
 
-            @Override
-            public void onFailure(Call<TavilyResponse> call, Throwable throwable) {
-                // Mirror the blocking path, which surfaces a transport failure as a RuntimeException.
-                future.completeExceptionally(
-                        throwable instanceof RuntimeException re ? re : new RuntimeException(throwable));
-            }
-        });
-        // Best-effort cancellation: cancelling the returned future aborts the in-flight HTTP call
-        future.whenComplete((result, error) -> {
-            if (future.isCancelled()) {
-                call.cancel();
-            }
-        });
-        return future;
-    }
-
-    private static RuntimeException toRuntimeException(Response<?> response) {
-        try {
-            return toException(response);
-        } catch (IOException e) {
-            return new RuntimeException(e);
-        }
-    }
-
-    private static RuntimeException toException(Response<?> response) throws IOException {
-        int code = response.code();
-        String body = response.errorBody().string();
-        String errorMessage = String.format("status code: %s; body: %s", code, body);
-        return new RuntimeException(errorMessage);
+        // Non-blocking counterpart of search(): executeAsync does not hold a thread while the response is in
+        // flight. Cancelling the returned future must reach the in-flight HTTP call, so we link the derived stage
+        // back to the raw executeAsync future (cancelling a thenApply stage alone does not cancel its upstream).
+        CompletableFuture<SuccessfulHttpResponse> httpFuture = httpClient.executeAsync(httpRequest);
+        CompletableFuture<TavilyResponse> result =
+                httpFuture.thenApply(response -> fromJson(response.body(), TavilyResponse.class));
+        propagateCancellation(result, httpFuture);
+        return result;
     }
 
     public static class TavilyClientBuilder {
         private String baseUrl;
         private Duration timeout;
+        private HttpClientBuilder httpClientBuilder;
+        private Boolean logRequests;
+        private Boolean logResponses;
 
         TavilyClientBuilder() {
         }
@@ -124,8 +94,23 @@ class TavilyClient {
             return this;
         }
 
+        public TavilyClientBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        public TavilyClientBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public TavilyClientBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
         public TavilyClient build() {
-            return new TavilyClient(this.baseUrl, this.timeout);
+            return new TavilyClient(this);
         }
 
         public String toString() {

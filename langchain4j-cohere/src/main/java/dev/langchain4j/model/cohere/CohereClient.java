@@ -1,64 +1,53 @@
 package dev.langchain4j.model.cohere;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import dev.langchain4j.internal.Utils;
-import okhttp3.OkHttpClient;
-import org.slf4j.Logger;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Retrofit;
-import retrofit2.converter.jackson.JacksonConverterFactory;
+import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Utils.ensureTrailingForwardSlash;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.cohere.CohereJsonUtils.fromJson;
+import static dev.langchain4j.model.cohere.CohereJsonUtils.toJson;
+import static java.time.Duration.ofSeconds;
 
-import java.io.IOException;
+import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.http.client.HttpClientBuilderLoader;
+import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.log.LoggingHttpClient;
 import java.net.Proxy;
 import java.time.Duration;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import org.slf4j.Logger;
 
 class CohereClient {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-            .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-            .enable(SerializationFeature.INDENT_OUTPUT)
-            .setSerializationInclusion(JsonInclude.Include.NON_NULL)
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
-    private final CohereApi cohereApi;
+    private final HttpClient httpClient;
+    private final String baseUrl;
     private final String authorizationHeader;
 
-    CohereClient(String baseUrl, String apiKey, Duration timeout, Proxy proxy, Boolean logRequests, Boolean logResponses, Logger logger) {
+    CohereClient(CohereClientBuilder builder) {
 
-        OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
-                .callTimeout(timeout)
+        HttpClientBuilder httpClientBuilder =
+                getOrDefault(builder.httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
+
+        Duration timeout = getOrDefault(builder.timeout, ofSeconds(60));
+
+        HttpClient httpClient = httpClientBuilder
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
-                .writeTimeout(timeout);
-
-        if (logRequests) {
-            okHttpClientBuilder.addInterceptor(new RequestLoggingInterceptor(logger));
-        }
-        if (logResponses) {
-            okHttpClientBuilder.addInterceptor(new ResponseLoggingInterceptor(logger));
-        }
-
-        if (Objects.nonNull(proxy)) {
-            okHttpClientBuilder.proxy(proxy);
-        }
-
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(Utils.ensureTrailingForwardSlash(baseUrl))
-                .client(okHttpClientBuilder.build())
-                .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
                 .build();
 
-        this.cohereApi = retrofit.create(CohereApi.class);
-        this.authorizationHeader = "Bearer " + ensureNotBlank(apiKey, "apiKey");
+        if (builder.logRequests != null && builder.logRequests
+                || builder.logResponses != null && builder.logResponses) {
+            this.httpClient =
+                    new LoggingHttpClient(httpClient, builder.logRequests, builder.logResponses, builder.logger);
+        } else {
+            this.httpClient = httpClient;
+        }
+
+        this.baseUrl = ensureTrailingForwardSlash(builder.baseUrl);
+        this.authorizationHeader = "Bearer " + ensureNotBlank(builder.apiKey, "apiKey");
     }
 
     public static CohereClientBuilder builder() {
@@ -66,95 +55,72 @@ class CohereClient {
     }
 
     EmbedResponse embed(EmbedRequest request) {
-        try {
-            retrofit2.Response<EmbedResponse> retrofitResponse
-                    = cohereApi.embed(request, authorizationHeader).execute();
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl + "embed")
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Accept", "application/json")
+                .addHeader("Authorization", authorizationHeader)
+                .body(toJson(request))
+                .build();
 
-            if (retrofitResponse.isSuccessful()) {
-                return retrofitResponse.body();
-            } else {
-                throw toException(retrofitResponse);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        SuccessfulHttpResponse response = httpClient.execute(httpRequest);
+
+        return fromJson(response.body(), EmbedResponse.class);
     }
 
     EmbedV2Response embedV2(EmbedV2Request request) {
-        try {
-            retrofit2.Response<EmbedV2Response> retrofitResponse =
-                    cohereApi.embedV2(request, authorizationHeader).execute();
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl + "embed")
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Accept", "application/json")
+                .addHeader("Authorization", authorizationHeader)
+                .body(toJson(request))
+                .build();
 
-            if (retrofitResponse.isSuccessful()) {
-                return retrofitResponse.body();
-            } else {
-                throw toException(retrofitResponse);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        SuccessfulHttpResponse response = httpClient.execute(httpRequest);
+
+        return fromJson(response.body(), EmbedV2Response.class);
     }
 
     RerankResponse rerank(RerankRequest request) {
-        try {
-            retrofit2.Response<RerankResponse> retrofitResponse
-                    = cohereApi.rerank(request, authorizationHeader).execute();
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl + "rerank")
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Accept", "application/json")
+                .addHeader("Authorization", authorizationHeader)
+                .body(toJson(request))
+                .build();
 
-            if (retrofitResponse.isSuccessful()) {
-                return retrofitResponse.body();
-            } else {
-                throw toException(retrofitResponse);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        SuccessfulHttpResponse response = httpClient.execute(httpRequest);
+
+        return fromJson(response.body(), RerankResponse.class);
     }
 
     CompletableFuture<RerankResponse> rerankAsync(RerankRequest request) {
-        Call<RerankResponse> call = cohereApi.rerank(request, authorizationHeader);
-        CompletableFuture<RerankResponse> future = new CompletableFuture<>();
-        call.enqueue(new Callback<>() {
-            @Override
-            public void onResponse(Call<RerankResponse> call, retrofit2.Response<RerankResponse> response) {
-                if (response.isSuccessful()) {
-                    future.complete(response.body());
-                } else {
-                    future.completeExceptionally(toRuntimeException(response));
-                }
-            }
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl + "rerank")
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Accept", "application/json")
+                .addHeader("Authorization", authorizationHeader)
+                .body(toJson(request))
+                .build();
 
-            @Override
-            public void onFailure(Call<RerankResponse> call, Throwable throwable) {
-                // Mirror the blocking path, which surfaces a transport failure as a RuntimeException.
-                future.completeExceptionally(
-                        throwable instanceof RuntimeException re ? re : new RuntimeException(throwable));
-            }
-        });
-        // Best-effort cancellation: cancelling the returned future aborts the in-flight HTTP call
-        future.whenComplete((result, error) -> {
-            if (future.isCancelled()) {
-                call.cancel();
-            }
-        });
-        return future;
-    }
-
-    private static RuntimeException toRuntimeException(retrofit2.Response<?> response) {
-        try {
-            return toException(response);
-        } catch (IOException e) {
-            return new RuntimeException(e);
-        }
-    }
-
-    private static RuntimeException toException(retrofit2.Response<?> response) throws IOException {
-        int code = response.code();
-        String body = response.errorBody().string();
-        String errorMessage = String.format("status code: %s; body: %s", code, body);
-        return new RuntimeException(errorMessage);
+        // Non-blocking counterpart of rerank(): executeAsync does not hold a thread while the response is in
+        // flight. Cancelling the returned future must reach the in-flight HTTP call, so we link the derived stage
+        // back to the raw executeAsync future (cancelling a thenApply stage alone does not cancel its upstream).
+        CompletableFuture<SuccessfulHttpResponse> httpFuture = httpClient.executeAsync(httpRequest);
+        CompletableFuture<RerankResponse> result =
+                httpFuture.thenApply(response -> fromJson(response.body(), RerankResponse.class));
+        propagateCancellation(result, httpFuture);
+        return result;
     }
 
     public static class CohereClientBuilder {
+        private HttpClientBuilder httpClientBuilder;
         private String baseUrl;
         private String apiKey;
         private Duration timeout;
@@ -164,6 +130,11 @@ class CohereClient {
         private Logger logger;
 
         CohereClientBuilder() {
+        }
+
+        public CohereClientBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
+            this.httpClientBuilder = httpClientBuilder;
+            return this;
         }
 
         public CohereClientBuilder baseUrl(String baseUrl) {
@@ -182,6 +153,11 @@ class CohereClient {
         }
 
         public CohereClientBuilder proxy(Proxy proxy) {
+            if (proxy != null) {
+                throw new UnsupportedOperationException(
+                        "Proxy configuration via proxy(...) is no longer supported. Supply a custom "
+                                + "HttpClientBuilder via httpClientBuilder(...) to configure a proxy.");
+            }
             this.proxy = proxy;
             return this;
         }
@@ -202,7 +178,7 @@ class CohereClient {
         }
 
         public CohereClient build() {
-            return new CohereClient(this.baseUrl, this.apiKey, this.timeout, this.proxy, this.logRequests, this.logResponses, this.logger);
+            return new CohereClient(this);
         }
 
         public String toString() {

@@ -159,8 +159,8 @@ public class WatsonxScoringModelTest {
                 .projectId("projectId")
                 .spaceId("spaceId")
                 .truncateInputTokens(512)
-                .query(true)
-                .inputs(true)
+                .returnQuery(true)
+                .returnInputs(true)
                 .build();
 
         withRerankServiceMock(() -> {
