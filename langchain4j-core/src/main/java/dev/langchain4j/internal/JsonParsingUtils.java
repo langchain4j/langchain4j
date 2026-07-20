@@ -16,7 +16,8 @@ public class JsonParsingUtils {
         return extractAndParseJson(text, s -> Json.fromJson(s, type));
     }
 
-    public static <T> ParsedJson<T> extractAndParseJson(String text, ThrowingFunction<String, T> parser) throws Exception {
+    public static <T> ParsedJson<T> extractAndParseJson(String text, ThrowingFunction<String, T> parser)
+            throws Exception {
         Exception parseException = null;
         try {
             return new ParsedJson<>(parser.apply(text), text);
@@ -73,7 +74,11 @@ public class JsonParsingUtils {
             if (c == openingBrace) {
                 braceCount++;
                 if (braceCount == 0) {
-                    return i == 0 || text.charAt(i - 1) != openingBrace ? i : -1;
+                    // This is the opening brace that balances the closing brace at jsonEnd. Return
+                    // it even when the preceding character is the same brace (e.g. "[[1,2]"): the
+                    // caller re-parses and keeps searching if this candidate does not parse, so
+                    // there is no reason to give up and discard an otherwise valid JSON block here.
+                    return i;
                 }
             } else if (c == closingBrace) {
                 braceCount--;
