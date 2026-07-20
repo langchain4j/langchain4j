@@ -51,6 +51,8 @@ public class ApacheHttpClient implements HttpClient {
     private final CloseableHttpAsyncClient asyncClient;
 
     public ApacheHttpClient(ApacheHttpClientBuilder builder) {
+        boolean syncBuilderProvidedByUser = builder.httpClientBuilder() != null;
+        boolean asyncBuilderProvidedByUser = builder.httpAsyncClientBuilder() != null;
         org.apache.hc.client5.http.impl.classic.HttpClientBuilder syncHttpClientBuilder =
                 getOrDefault(builder.httpClientBuilder(), HttpClients::custom);
         org.apache.hc.client5.http.impl.async.HttpAsyncClientBuilder asyncHttpClientBuilder =
@@ -69,6 +71,14 @@ public class ApacheHttpClient implements HttpClient {
         RequestConfig requestConfig = requestConfigBuilder.build();
         asyncHttpClientBuilder.setDefaultRequestConfig(requestConfig);
         syncHttpClientBuilder.setDefaultRequestConfig(requestConfig);
+
+        if (!syncBuilderProvidedByUser) {
+            syncHttpClientBuilder.disableAutomaticRetries();
+        }
+        if (!asyncBuilderProvidedByUser) {
+            asyncHttpClientBuilder.disableAutomaticRetries();
+        }
+
         this.syncClient = syncHttpClientBuilder.build();
         this.asyncClient = asyncHttpClientBuilder.build();
         this.asyncClient.start();
