@@ -90,7 +90,7 @@ import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Flow;
 import java.util.stream.Collectors;
 
@@ -1281,7 +1281,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                     private CompletableFuture<Moderation> triggerModerationIfNeeded(
                             Method method, List<ChatMessage> messages) {
                         if (method.isAnnotationPresent(Moderate.class)) {
-                            ExecutorService executor = DefaultExecutorProvider.getDefaultExecutorService();
+                            Executor executor = DefaultExecutorProvider.getDefaultExecutor();
                             return CompletableFuture.supplyAsync(
                                     () -> {
                                         List<ChatMessage> messagesToModerate = removeToolMessages(messages);

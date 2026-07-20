@@ -375,8 +375,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
             Throwable cause = unwrapCompletionException(error);
             if (cause instanceof AsyncNotSupportedException) {
                 if (offloadBlocking) {
-                    return CompletableFuture.supplyAsync(
-                            blockingCall, DefaultExecutorProvider.getDefaultExecutorService());
+                    return CompletableFuture.supplyAsync(blockingCall, DefaultExecutorProvider.getDefaultExecutor());
                 }
                 return CompletableFuture.failedFuture(new UnsupportedFeatureException(cause.getMessage()
                         + " Build the retriever with EmbeddingStoreContentRetriever.builder().offloadBlocking(true)"

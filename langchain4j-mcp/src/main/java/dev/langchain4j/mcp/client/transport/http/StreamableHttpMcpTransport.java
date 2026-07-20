@@ -73,7 +73,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         sslContext = builder.sslContext;
         httpVersion = builder.forceHttpVersion1_1 ? HttpClient.Version.HTTP_1_1 : HttpClient.Version.HTTP_2;
         subsidiaryChannelEnabled = builder.subsidiaryChannelEnabled;
-        executor = getOrDefault(builder.executor, DefaultExecutorProvider.getDefaultExecutorService());
+        executor = getOrDefault(builder.executor, DefaultExecutorProvider.getDefaultExecutor());
         HttpClient.Builder clientBuilder =
                 HttpClient.newBuilder().connectTimeout(timeout).version(httpVersion);
         if (builder.followRedirects) {

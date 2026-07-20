@@ -85,11 +85,53 @@ On the model/provider side, **OpenAI** implements the async + reactive chat meth
   `ThreadLocal` state — MDC logging context, tracing / OpenTelemetry spans, security / authentication context —
   is **not** automatically propagated the way it is in the fully-synchronous mode (which runs on one caller
   thread). `InvocationContext` is unaffected: it is passed **explicitly** as a parameter, never through a
-  thread-local. Callers that rely on ambient context must propagate it themselves — e.g. wrap the executor given
-  to `executeToolsConcurrently(Executor)` (and any memory / guardrail executor) in a context-capturing decorator
-  (Micrometer Context Propagation, an MDC-copying `Executor`, etc.). This is inherent to any async/reactive
-  model, and it now applies **by default** since tools run concurrently for the new modes (§3.2).
+  thread-local. Callers that rely on ambient context must propagate it themselves via the **`ExecutorProvider` SPI**
+  (§3.1.1). This is inherent to any async/reactive model, and it now applies **by default** since tools run
+  concurrently for the new modes (§3.2).
 - The scarce **model-delivery thread** is never blocked — enforced by BlockHound (§6).
+
+#### 3.1.1 Controlling the executor (and propagating context) — `ExecutorProvider`
+
+Whenever LangChain4j runs work off the caller thread — concurrent tool calls, blocking RAG / retrieval and
+embedding-store calls offloaded to virtual threads, moderation, in-process embedding models, retry backoff — it
+takes that executor from a single, pluggable seam: the **`ExecutorProvider`** SPI in `dev.langchain4j.spi`.
+
+```java
+public interface ExecutorProvider {
+    java.util.concurrent.Executor executor();
+}
+```
+
+**Register one to take control of every offload at once.** Two ways:
+
+1. **Via `ServiceLoader`** — implement `ExecutorProvider` and ship a
+   `META-INF/services/dev.langchain4j.spi.ExecutorProvider` entry; frameworks typically do this for you.
+2. **Programmatically** — `ExecutorProvider.set(() -> myExecutor);` — a convenience for tests and non-DI
+   applications. `ExecutorProvider.get()` returns the programmatically-set provider (a set one takes precedence
+   over the `ServiceLoader` one).
+
+If none is registered, LangChain4j uses a built-in virtual-thread-per-task executor (unchanged default behavior).
+A component that exposes its own executor option — e.g. `AiServices…executeToolsConcurrently(Executor)`, or a
+retriever's builder — still overrides the global provider for that component.
+
+**Propagating context (tracing, MDC, security, CDI / request scope).** LangChain4j does **not** copy thread-local
+context across its thread hops. To make it follow the work, return a *context-propagating* executor from your
+provider — you wrap it once and it applies everywhere:
+
+| Ecosystem | Wrap with |
+|---|---|
+| Quarkus / MicroProfile | a `ManagedExecutor` (SmallRye Context Propagation) |
+| Spring | an `Executor` wrapped with a `TaskDecorator`, or `ContextExecutorService` |
+| OpenTelemetry | `Context.taskWrapping(executor)` |
+| Micrometer Context Propagation | `ContextSnapshot.wrap(executor)` |
+| Plain SLF4J MDC | a small `Executor` that copies `MDC.getCopyOfContextMap()` onto the worker |
+
+```java
+// Example: make OpenTelemetry spans and MDC follow every LangChain4j offload.
+ExecutorService base = Executors.newVirtualThreadPerTaskExecutor();
+Executor contextAware = Context.taskWrapping(base); // OTel
+ExecutorProvider.set(() -> contextAware);
+```
 
 ### 3.2 Concurrency & error defaults for the new APIs
 - **Tools run concurrently by default** for the async/reactive modes (legacy modes stay sequential). To run them
@@ -476,6 +518,7 @@ class BookingTools {
 |---|---|
 | **RAG / content retrieval** non-blocking | **Delivered** (§3.9) — async SPI across the whole retrieval graph, fail-loud-by-default with opt-in offload. Native async today: RAG defaults, the LLM-backed query stages (over `chatAsync`), `EmbeddingStoreContentRetriever` (over async embeddings + store), `ReRankingContentAggregator` (Cohere) and `WebSearchContentRetriever` (Tavily). Other providers throw the default and are offloaded-or-fail-loud. |
 | **Reactive support for non-OpenAI model providers** | Validated across transports: async `doChatAsync` is implemented by **OpenAI** and **Anthropic** (both over the `HttpClient` abstraction) and **Bedrock** (over the AWS SDK's native async client); the reactive `doChat` publisher is implemented by **OpenAI**, **Anthropic**, and **Bedrock**, all with real mid-stream cancellation (Anthropic aborts via the SSE parser's `StreamingHandle`; Bedrock cancels the AWS SDK event-stream subscription). Remaining chat/embedding providers fall back to the throwing defaults and need a per-provider implementation (the handler→publisher `TubeBackedStreamingChatResponseHandler` bridge makes this a small change, pending extraction into a shared module). |
+| **`LangChain4jManaged` thread-local across async hops** | `LangChain4jManaged.CURRENT` is an LC4j-owned `ThreadLocal`; unlike `InvocationContext` (passed explicitly) it does **not** follow the new thread hops. Audit whether it is ever read downstream of an async offload — if so, fold it into `InvocationContext` or capture/restore it around LC4j's own async boundaries. (Distinct from host context propagation, which the `ExecutorProvider` seam now covers.) |
 | **Anthropic streaming parks a background thread on reads** | Anthropic's reactive publisher is non-blocking *for the caller* and cancellable, but internally it drives the SSE stream via `HttpClient.execute(request, listener)` → `BodyHandlers.ofInputStream()` + a **blocking** `parser.parse(...)` loop, so it parks one background thread on socket reads for the stream's duration (same as its handler path). OpenAI's publisher is fully reactive (`HttpClient.stream()` → `ofPublisher()`, nothing parked) and Bedrock's is event-driven (AWS SDK Netty). Consequence: the BlockHound "publisher path does not block" IT is meaningful for **OpenAI** and **Bedrock** but not portable to Anthropic. Making Anthropic fully reactive would require a `stream()`-based Anthropic SSE parser (a larger refactor); parked for now. |
 | Per-provider `setAsync` / async stores | `ChatMemory.setAsync` and the async store methods are implemented by the bundled in-memory stores; persistent-store integrations (Redis, JDBC, …) need their async methods implemented to be non-blocking on the async/reactive paths (they throw by default). |
 | **Tool cancellation** (interrupting already-started tools) | Parked by design — contract is run-to-completion, result discarded. |

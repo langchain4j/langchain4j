@@ -401,7 +401,7 @@ public class ToolService {
     }
 
     private static Executor defaultExecutor() {
-        return DefaultExecutorProvider.getDefaultExecutorService();
+        return DefaultExecutorProvider.getDefaultExecutor();
     }
 
     public void maxToolCallingRoundTrips(int maxToolCallingRoundTrips) {

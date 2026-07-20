@@ -298,8 +298,8 @@ public final class RetryUtils {
                         "A retriable exception occurred. Remaining retries: %s of %s"
                                 .formatted(maxRetries - retry, maxRetries),
                         mapped);
-                // schedule the next attempt after the backoff delay without blocking a thread
-                Executor delayed = CompletableFuture.delayedExecutor(jitterDelayMillis(retry), TimeUnit.MILLISECONDS);
+                Executor delayed = CompletableFuture.delayedExecutor(
+                        jitterDelayMillis(retry), TimeUnit.MILLISECONDS, DefaultExecutorProvider.getDefaultExecutor());
                 delayed.execute(() -> attemptAsync(action, maxRetries, exceptionMapper, retry + 1, result));
             });
         }

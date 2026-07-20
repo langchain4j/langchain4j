@@ -153,7 +153,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         this.contentAggregator = getOrDefault(contentAggregator, DefaultContentAggregator::new);
         this.contentInjector = getOrDefault(contentInjector, DefaultContentInjector::new);
         this.executor = getOrDefault(executor, DefaultRetrievalAugmentor::createDefaultExecutor);
-        this.asyncOffloadExecutor = getOrDefault(executor, DefaultExecutorProvider::getDefaultExecutorService);
+        this.asyncOffloadExecutor = getOrDefault(executor, DefaultExecutorProvider::getDefaultExecutor);
         this.offloadBlocking = offloadBlocking;
     }
 
