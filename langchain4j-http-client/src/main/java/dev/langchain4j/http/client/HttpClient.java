@@ -36,7 +36,7 @@ public interface HttpClient {
      *
      * @param request the HTTP request to be executed.
      * @return a {@link CompletableFuture} of the {@link SuccessfulHttpResponse}.
-     * @since 1.18.0
+     * @since 1.19.0
      */
     default CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
         throw new AsyncNotSupportedException("executeAsync() is not implemented by " + getClass().getName());
@@ -96,7 +96,7 @@ public interface HttpClient {
      * <p>
      * Uses {@link DefaultServerSentEventParser} for SSE parsing.
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     default Publisher<HttpStreamingEvent> stream(HttpRequest request) {
         return stream(request, new DefaultServerSentEventParser());
@@ -105,7 +105,7 @@ public interface HttpClient {
     /**
      * Like {@link #stream(HttpRequest)}, but with a caller-supplied {@link ServerSentEventParser}.
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     default Publisher<HttpStreamingEvent> stream(HttpRequest request, ServerSentEventParser parser) {
         throw new AsyncNotSupportedException("stream() is not implemented by " + getClass().getName());

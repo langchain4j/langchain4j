@@ -33,7 +33,7 @@ import java.util.List;
  * therefore handle unrecognized subtypes gracefully (e.g. a {@code default} branch in a type switch) rather
  * than assume the listing below is exhaustive.
  *
- * @since 1.18.0
+ * @since 1.19.0
  */
 @Experimental
 public interface AiServiceStreamingEvent { // TODO nested events?

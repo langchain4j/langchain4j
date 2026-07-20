@@ -68,7 +68,7 @@ public interface ScoringModel {
      * @param segments The list of {@link TextSegment}s to score.
      * @param query    The query against which to score the segments.
      * @return a {@link CompletableFuture} of the list of scores, in the order of {@code segments}.
-     * @since 1.18.0
+     * @since 1.19.0
      */
     default CompletableFuture<Response<List<Double>>> scoreAllAsync(List<TextSegment> segments, String query) {
         throw new AsyncNotSupportedException("scoreAllAsync() is not implemented by " + getClass().getName());

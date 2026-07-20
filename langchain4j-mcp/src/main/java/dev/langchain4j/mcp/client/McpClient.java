@@ -55,7 +55,7 @@ public interface McpClient extends AutoCloseable {
      * <p>
      * The default implementation throws an {@link UnsupportedOperationException}.
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     default CompletableFuture<ToolExecutionResult> executeToolAsync(
             ToolExecutionRequest executionRequest, InvocationContext invocationContext) {

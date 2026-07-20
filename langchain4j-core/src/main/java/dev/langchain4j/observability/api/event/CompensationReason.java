@@ -3,7 +3,7 @@ package dev.langchain4j.observability.api.event;
 /**
  * Why a successfully-executed tool was compensated (rolled back). Carried by {@link ToolCompensatedEvent}.
  *
- * @since 1.18.0
+ * @since 1.19.0
  */
 public enum CompensationReason {
 

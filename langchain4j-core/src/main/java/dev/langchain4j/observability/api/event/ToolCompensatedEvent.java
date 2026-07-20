@@ -15,7 +15,7 @@ import java.util.List;
  * (successful) result, and the {@link CompensationReason}. Like {@link ToolExecutedEvent}, it can be invoked
  * multiple times within a single AI Service invocation.
  *
- * @since 1.18.0
+ * @since 1.19.0
  */
 public interface ToolCompensatedEvent extends AiServiceEvent {
 

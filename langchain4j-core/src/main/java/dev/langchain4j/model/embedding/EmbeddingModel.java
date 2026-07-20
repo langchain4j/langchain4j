@@ -114,7 +114,7 @@ public interface EmbeddingModel {
      *
      * @param request the inputs to embed and the per-call parameters.
      * @return a {@link CompletableFuture} of the embeddings and the response metadata.
-     * @since 1.18.0
+     * @since 1.19.0
      */
     @Experimental
     default CompletableFuture<EmbeddingResponse> embedAsync(EmbeddingRequest request) {
@@ -294,7 +294,7 @@ public interface EmbeddingModel {
      *
      * @param request the request, with parameters already merged and validated.
      * @return a {@link CompletableFuture} of the response.
-     * @since 1.18.0
+     * @since 1.19.0
      */
     @Experimental
     default CompletableFuture<EmbeddingResponse> doEmbedAsync(EmbeddingRequest request) {

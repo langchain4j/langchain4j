@@ -702,7 +702,7 @@ public abstract class AiServices<T> {
      *
      * @param streamingBufferSize the buffer size; must be greater than zero
      * @return the builder instance
-     * @since 1.18.0
+     * @since 1.19.0
      */
     public AiServices<T> streamingBufferSize(int streamingBufferSize) {
         context.streamingBufferSize = streamingBufferSize;

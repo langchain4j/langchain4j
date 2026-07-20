@@ -47,7 +47,7 @@ public interface QueryRouter {
      *
      * @param query The {@link Query} to be routed.
      * @return A {@link CompletableFuture} of one or more {@link ContentRetriever}s to route the {@link Query} to.
-     * @since 1.18.0
+     * @since 1.19.0
      */
     default CompletableFuture<Collection<ContentRetriever>> routeAsync(Query query) {
         throw new AsyncNotSupportedException("routeAsync() is not implemented by " + getClass().getName());

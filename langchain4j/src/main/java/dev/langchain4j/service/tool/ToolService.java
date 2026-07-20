@@ -394,7 +394,7 @@ public class ToolService {
      * virtual-thread executor when none was set. Never {@code null}, so async tools are always offloaded and
      * never block the model-response thread. Pass a single-threaded executor to run them serially.
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     public Executor effectiveToolExecutor() {
         return getOrDefault(executor, ToolService::defaultExecutor);
@@ -485,7 +485,7 @@ public class ToolService {
      * reactive {@code Flow.Publisher}): a user-configured handler if present, otherwise the async default,
      * which sends the parsing error to the LLM so it can retry with corrected arguments.
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     public ToolArgumentsErrorHandler asyncArgumentsErrorHandler() {
         return getOrDefault(argumentsErrorHandler, DEFAULT_ASYNC_TOOL_ARGUMENTS_ERROR_HANDLER);
@@ -497,7 +497,7 @@ public class ToolService {
      * which fails the AI Service invocation (rather than hiding the error from the developer by sending it to
      * the LLM).
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     public ToolExecutionErrorHandler asyncExecutionErrorHandler() {
         return getOrDefault(executionErrorHandler, DEFAULT_ASYNC_TOOL_EXECUTION_ERROR_HANDLER);
@@ -708,7 +708,7 @@ public class ToolService {
      * has <b>already started</b> is <b>not</b> interrupted — it runs to completion and its result is simply
      * discarded (Java cannot safely interrupt arbitrary tool code; this is a deliberate best-effort contract).
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     public CompletableFuture<ToolServiceResult> executeInferenceAndToolsLoopAsync(
             AiServiceContext context,
@@ -740,7 +740,7 @@ public class ToolService {
      * {@code StreamingChatModel} to a {@code CompletableFuture<ChatResponse>}, instead of requiring a
      * {@code ChatModel}.
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     public CompletableFuture<ToolServiceResult> executeInferenceAndToolsLoopAsync(
             AiServiceContext context,
@@ -1024,7 +1024,7 @@ public class ToolService {
      * work happens on the appropriate thread. The tool <i>execution</i> itself and the delivery of intermediate
      * responses are likewise left to each mode.
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     public ToolResultsOutcome processToolResults(
             AiServiceContext context,
@@ -1068,7 +1068,7 @@ public class ToolService {
      * list is returned. When present, each result message is added to memory (sequentially, never concurrently, so
      * the underlying read-modify-write stays ordered) and the resolved memory view is returned.
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     public CompletionStage<List<ChatMessage>> persistToolResultsAndResolveMessages(
             AiServiceContext context,
@@ -1096,7 +1096,7 @@ public class ToolService {
      * {@code TokenStream} AI Service modes, which use the synchronous {@link ChatMemory} methods (so a memory
      * backed by a blocking store that only implements the synchronous methods keeps working).
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     public List<ChatMessage> persistToolResultsAndResolveMessagesSync(
             AiServiceContext context,
@@ -1119,7 +1119,7 @@ public class ToolService {
      * {@code storeRetrievedContentInChatMemory} (when {@code false}, the last user message is replaced with the
      * original, un-augmented one so retrieved content is not persisted across rounds).
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     public static List<ChatMessage> resolveMessagesForNextRequest(
             List<ChatMessage> memoryMessages, AiServiceContext context, InvocationContext invocationContext) {
@@ -1137,7 +1137,7 @@ public class ToolService {
      * Reading the messages from memory is left to each mode (synchronously or composed) so this method performs no
      * memory I/O. Each mode supplies how the returned request is actually dispatched.
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     public NextChatRequest prepareNextChatRequest(
             AiServiceContext context,
@@ -1213,7 +1213,7 @@ public class ToolService {
      * round's {@code resultMessages} in place — before the result messages are persisted. A compensating action
      * that returns a {@link CompletableFuture} is awaited. Returns immediately when compensation is disabled.
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     public void compensateIfNeeded(
             List<ToolExecutionRequest> toolExecutionRequests,
@@ -1250,7 +1250,7 @@ public class ToolService {
      * compensating action that performs blocking I/O should return a {@link CompletableFuture}, and the rewrite uses
      * {@link ChatMemory#setAsync(List)}.
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     public CompletableFuture<Void> compensateIfNeededAsync(
             List<ToolExecutionRequest> toolExecutionRequests,
@@ -1331,7 +1331,7 @@ public class ToolService {
      * (reason {@link CompensationReason#INVOCATION_CANCELLED}). A no-op when compensation is disabled or nothing is
      * pending.
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     public CompletableFuture<Void> compensateOnCancellationAsync(
             List<ToolExecutionRequest> currentRoundRequests,
@@ -1417,7 +1417,7 @@ public class ToolService {
      * Creates the accumulator the {@code compensableExecutions} are collected into across tool-calling rounds, or
      * {@code null} when compensation is disabled.
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     public List<CompensableToolExecution> newCompensableExecutionsAccumulator() {
         return compensateOnToolErrors ? new ArrayList<>() : null;
@@ -1697,7 +1697,7 @@ public class ToolService {
      * Tools run concurrently, unless {@code executor} is single-threaded, in which case they run serially in
      * request order.
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     public CompletableFuture<Map<ToolExecutionRequest, ToolExecutionResult>> executeToolsAsync(
             List<ToolExecutionRequest> toolRequests,
@@ -1728,7 +1728,7 @@ public class ToolService {
      * (rather than waiting for the whole model response), so that concurrent tools overlap each other and the
      * tail of the model stream.
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     public CompletableFuture<ToolExecutionResult> startTool(
             ToolExecutionRequest toolRequest,
@@ -1754,7 +1754,7 @@ public class ToolService {
      * first failure in iteration order, mirroring the synchronous path. The given map's iteration order
      * determines the result order, so pass a {@link LinkedHashMap} in request order.
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     public static CompletableFuture<Map<ToolExecutionRequest, ToolExecutionResult>> combineToolResults(
             Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> futures) {
@@ -1785,7 +1785,7 @@ public class ToolService {
      *                   {@linkplain ToolExecutionResult#isError() error} result carrying its error text, so
      *                   downstream bookkeeping and compensation see a complete, ordered map
      * @param firstError the first tool failure in request order, or {@code null} if every tool succeeded
-     * @since 1.18.0
+     * @since 1.19.0
      */
     public record CombinedToolResults(
             Map<ToolExecutionRequest, ToolExecutionResult> results, Throwable firstError) {}
@@ -1798,7 +1798,7 @@ public class ToolService {
      * that succeeded before failing the invocation with the tool error. The given map's iteration order determines
      * the result order, so pass a {@link LinkedHashMap} in request order.
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     public static CompletableFuture<CombinedToolResults> combineToolResultsCollectingErrors(
             Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> futures) {

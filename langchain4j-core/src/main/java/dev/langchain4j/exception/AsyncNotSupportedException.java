@@ -11,7 +11,7 @@ package dev.langchain4j.exception;
  * {@link UnsupportedOperationException} thrown from deep inside a genuinely asynchronous component (e.g.
  * {@code List.of(...).add(x)}, or an unsupported store filter) for a "not async" signal.
  *
- * @since 1.18.0
+ * @since 1.19.0
  */
 public class AsyncNotSupportedException extends LangChain4jException {
 

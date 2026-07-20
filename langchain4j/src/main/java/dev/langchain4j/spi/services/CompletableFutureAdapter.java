@@ -22,7 +22,7 @@ import java.util.concurrent.CompletionStage;
  * {@link CompletableFuture} and {@link CompletionStage} are handled natively and do not
  * require an adapter. Implementations are discovered via the {@link ServiceLoader} mechanism.
  *
- * @since 1.18.0
+ * @since 1.19.0
  */
 @Internal
 public interface CompletableFutureAdapter {

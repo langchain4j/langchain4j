@@ -50,7 +50,7 @@ import java.util.concurrent.Executor;
  * for CPU-bound vs. blocking work) ever be needed, they can be added here as {@code default} methods that fall
  * back to {@link #executor()}, without breaking existing implementations.
  *
- * @since 1.18.0
+ * @since 1.19.0
  */
 public interface ExecutorProvider {
 
@@ -74,7 +74,7 @@ public interface ExecutorProvider {
      *
      * @param provider the provider to register, or {@code null} to clear a previously-set one (falling back to
      *                 the {@code ServiceLoader} provider, then the built-in default).
-     * @since 1.18.0
+     * @since 1.19.0
      */
     static void set(ExecutorProvider provider) {
         DefaultExecutorProvider.setProvider(provider);
@@ -84,7 +84,7 @@ public interface ExecutorProvider {
      * @return the {@code ExecutorProvider} previously registered via {@link #set(ExecutorProvider)}, or
      *         {@code null} if none was set (in which case a {@code ServiceLoader} provider or the built-in default
      *         is in effect). Does not return the {@code ServiceLoader}-discovered provider.
-     * @since 1.18.0
+     * @since 1.19.0
      */
     static ExecutorProvider get() {
         return DefaultExecutorProvider.getProvider();

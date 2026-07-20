@@ -197,7 +197,7 @@ public interface StreamingChatModel {
      * (e.g. {@code Long.MAX_VALUE}) and must <b>not</b> block or perform heavy work in {@code onNext} — offload
      * it to another thread.
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     default Publisher<StreamingEvent> chat(ChatRequest request) {
 
@@ -274,7 +274,7 @@ public interface StreamingChatModel {
      * native reactive-streaming implementation; a provider that does not support reactive streaming leaves it
      * unimplemented (consistent with {@code ChatModel#doChatAsync} and the other async defaults).
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     default Publisher<StreamingEvent> doChat(ChatRequest chatRequest) {
         throw new AsyncNotSupportedException("doChat() is not implemented by " + getClass().getName());

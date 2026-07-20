@@ -32,7 +32,7 @@ public abstract class AnthropicClient {
      * request without holding a thread while the response is in flight. The default throws
      * {@link AsyncNotSupportedException} to signal that this client has no native asynchronous path.
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     public CompletableFuture<ParsedAndRawResponse> createMessageWithRawResponseAsync(
             AnthropicCreateMessageRequest request) {

@@ -90,7 +90,7 @@ public interface ChatModel {
      *
      * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
      * @return a {@link CompletableFuture} of the {@link ChatResponse}
-     * @since 1.18.0
+     * @since 1.19.0
      */
     default CompletableFuture<ChatResponse> chatAsync(ChatRequest chatRequest) {
         return chatAsync(chatRequest, ChatRequestOptions.EMPTY);
@@ -103,7 +103,7 @@ public interface ChatModel {
      * @param options     a {@link ChatRequestOptions} carrying listener attributes and other per-call metadata
      * @return a {@link CompletableFuture} of the {@link ChatResponse}
      * @see #chatAsync(ChatRequest)
-     * @since 1.18.0
+     * @since 1.19.0
      */
     default CompletableFuture<ChatResponse> chatAsync(ChatRequest chatRequest, ChatRequestOptions options) {
 
@@ -152,7 +152,7 @@ public interface ChatModel {
      *
      * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
      * @return a {@link CompletableFuture} of the {@link ChatResponse}
-     * @since 1.18.0
+     * @since 1.19.0
      */
     default CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
         throw new AsyncNotSupportedException("doChatAsync() is not implemented by " + getClass().getName());

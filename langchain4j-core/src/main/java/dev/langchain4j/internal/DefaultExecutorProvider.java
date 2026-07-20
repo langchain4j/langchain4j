@@ -66,7 +66,7 @@ public class DefaultExecutorProvider {
      *         {@link Executor}); no internal site needs an {@code ExecutorService} anymore. Retained only for
      *         backward compatibility with external callers. Prefer {@link #getDefaultExecutor()}.
      */
-    @Deprecated(since = "1.18.0")
+    @Deprecated(since = "1.19.0")
     public static ExecutorService getDefaultExecutorService() {
         Executor executor = resolveProvidedExecutor();
         if (executor instanceof ExecutorService executorService) {

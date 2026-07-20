@@ -40,7 +40,7 @@ public interface WebSearchEngine {
      *
      * @param webSearchRequest the search request
      * @return a {@link CompletableFuture} of the web search results
-     * @since 1.18.0
+     * @since 1.19.0
      */
     default CompletableFuture<WebSearchResults> searchAsync(WebSearchRequest webSearchRequest) {
         throw new AsyncNotSupportedException("searchAsync() is not implemented by " + getClass().getName());

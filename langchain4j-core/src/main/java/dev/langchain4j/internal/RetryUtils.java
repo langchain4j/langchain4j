@@ -249,7 +249,7 @@ public final class RetryUtils {
          * @param <T>             the result type.
          * @return a future completing with the first successful attempt, or failing with the mapped exception of the
          *         last attempt.
-         * @since 1.18.0
+         * @since 1.19.0
          */
         public <T> CompletableFuture<T> withRetryAsync(
                 Supplier<CompletableFuture<T>> action, int maxRetries, ExceptionMapper exceptionMapper) {
@@ -412,7 +412,7 @@ public final class RetryUtils {
      * default {@link ExceptionMapper}, without ever blocking a thread during the backoff. See
      * {@link RetryPolicy#withRetryAsync(Supplier, int, ExceptionMapper)}.
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     public static <T> CompletableFuture<T> withRetryMappingExceptionsAsync(
             Supplier<CompletableFuture<T>> action, int maxRetries) {
@@ -422,7 +422,7 @@ public final class RetryUtils {
     /**
      * Non-blocking counterpart of {@link #withRetryMappingExceptions(Callable, int, ExceptionMapper)}.
      *
-     * @since 1.18.0
+     * @since 1.19.0
      */
     public static <T> CompletableFuture<T> withRetryMappingExceptionsAsync(
             Supplier<CompletableFuture<T>> action, int maxRetries, ExceptionMapper exceptionMapper) {

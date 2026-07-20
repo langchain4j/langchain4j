@@ -51,7 +51,7 @@ public interface ContentAggregator {
      *
      * @param queryToContents A map from a {@link Query} to all {@code List<Content>} retrieved with that {@link Query}.
      * @return A {@link CompletableFuture} of the list of aggregated {@link Content}s.
-     * @since 1.18.0
+     * @since 1.19.0
      */
     default CompletableFuture<List<Content>> aggregateAsync(Map<Query, Collection<List<Content>>> queryToContents) {
         throw new AsyncNotSupportedException("aggregateAsync() is not implemented by " + getClass().getName());
