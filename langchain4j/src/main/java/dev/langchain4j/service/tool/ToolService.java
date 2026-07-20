@@ -1497,6 +1497,9 @@ public class ToolService {
                 .build();
     }
 
+    // Public only so the streaming publisher (a different package) can hold the compensable-execution accumulator
+    // and pass it back to compensateOnCancellationAsync(...); not part of the user-facing API.
+    @Internal
     public record CompensableToolExecution(ToolExecution toolExecution, ToolExecutionResultMessage resultMessage) {}
 
     /**
