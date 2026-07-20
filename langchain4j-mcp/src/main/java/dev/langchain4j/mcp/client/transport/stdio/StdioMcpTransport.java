@@ -187,16 +187,36 @@ public class StdioMcpTransport implements McpTransport {
         private Logger logger;
         private ExecutorService executorService;
 
+        /**
+         * Sets the command used to start the MCP server process (required).
+         * Example: {@code List.of("npx", "-y", "@modelcontextprotocol/server-everything")}.
+         *
+         * @param command the command and its arguments
+         * @return {@code this}
+         */
         public Builder command(List<String> command) {
             this.command = command;
             return this;
         }
 
+        /**
+         * Sets environment variables passed to the MCP server process.
+         * Defaults to an empty map when not set.
+         *
+         * @param environment the environment variables
+         * @return {@code this}
+         */
         public Builder environment(Map<String, String> environment) {
             this.environment = environment;
             return this;
         }
 
+        /**
+         * Sets whether to log events (traffic) exchanged with the MCP server process.
+         *
+         * @param logEvents {@code true} to log events
+         * @return {@code this}
+         */
         public Builder logEvents(boolean logEvents) {
             this.logEvents = logEvents;
             return this;
@@ -226,6 +246,11 @@ public class StdioMcpTransport implements McpTransport {
             return this;
         }
 
+        /**
+         * Builds the {@link StdioMcpTransport}.
+         *
+         * @return the configured {@link StdioMcpTransport}
+         */
         public StdioMcpTransport build() {
             ensureNotEmpty(command, "command");
             if (environment == null) {
