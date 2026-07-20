@@ -16,9 +16,8 @@ import java.util.concurrent.TimeUnit;
  * continuations. Resolution order: a programmatically-set {@link ExecutorProvider} → the first
  * {@link ExecutorProvider} discovered via {@code ServiceLoader} → a built-in virtual-thread default.
  * <p>
- * {@link #getDefaultExecutor()} returns the resolved executor as-is; {@link #getDefaultExecutorService()} returns
- * it only when it is an {@link ExecutorService} (for the few sites needing {@code submit(...)} / lifecycle),
- * otherwise the built-in default.
+ * {@link #getDefaultExecutor()} returns the resolved executor as-is and backs every offload. The legacy
+ * {@link #getDefaultExecutorService()} is deprecated (retained only for external back-compat).
  * <p>
  * This is the single seam a host can use to make LangChain4j's internal thread hops carry its context (tracing,
  * MDC, security, …): register an {@link ExecutorProvider} returning a context-propagating executor. With no
@@ -61,10 +60,13 @@ public class DefaultExecutorProvider {
     }
 
     /**
-     * @return an {@link ExecutorService} for the few offload sites that need one. If the registered provider's
-     *         executor is itself an {@code ExecutorService} (as most managed pools are), it is used; otherwise
-     *         the built-in default is returned so those sites always have a real {@code ExecutorService}.
+     * @return an {@link ExecutorService} — the registered provider's executor if it is itself an
+     *         {@code ExecutorService} (as most managed pools are), otherwise the built-in default.
+     * @deprecated LangChain4j now offloads everything through {@link #getDefaultExecutor()} (a plain
+     *         {@link Executor}); no internal site needs an {@code ExecutorService} anymore. Retained only for
+     *         backward compatibility with external callers. Prefer {@link #getDefaultExecutor()}.
      */
+    @Deprecated(since = "1.18.0")
     public static ExecutorService getDefaultExecutorService() {
         Executor executor = resolveProvidedExecutor();
         if (executor instanceof ExecutorService executorService) {

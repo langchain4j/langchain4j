@@ -2,7 +2,6 @@ package dev.langchain4j.spi;
 
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
 
 /**
  * SPI for supplying the {@link Executor} that LangChain4j uses to offload blocking work and run its asynchronous
@@ -26,12 +25,9 @@ import java.util.concurrent.ExecutorService;
  * the executor's lifecycle (it will not call {@code shutdown()}). This accepts the widest range of host
  * executors — every managed / context-propagating pool (Quarkus {@code ManagedExecutor}, Jakarta
  * {@code ManagedExecutorService}, Guava {@code ListeningExecutorService}, a Spring {@code TaskExecutor}, …) is
- * an {@code Executor}. A few provider-side components must <em>cancel or time-bound a submitted task, or manage
- * the pool lifecycle</em> — e.g. a streaming transport that holds the {@link java.util.concurrent.Future} from
- * {@code submit(...)} to abort a stream — so they need {@code ExecutorService.submit(...)} rather than
- * {@code execute(...)}. If the returned executor is itself an {@link ExecutorService} (most managed pools are),
- * those sites use it too; otherwise they fall back to the built-in default. So supplying an {@code ExecutorService}
- * yields the fullest coverage, while a bare {@code Executor} still governs every other offload point.
+ * an {@code Executor}. Every offload point is driven through this single {@code Executor}; components that need a
+ * {@link java.util.concurrent.Future} handle (to cancel or time-bound a task) obtain it via
+ * {@code CompletableFuture.supplyAsync(..., executor)} rather than requiring an {@code ExecutorService}.
  *
  * <h2>Discovery and precedence</h2>
  * A provider is registered either by implementing this interface and declaring it for {@link

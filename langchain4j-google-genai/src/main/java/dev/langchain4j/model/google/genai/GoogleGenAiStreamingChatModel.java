@@ -36,6 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,7 +63,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
     private final String vertexSearchDatastore;
     private final Map<String, String> labels;
 
-    private final ExecutorService executor;
+    private final Executor executor;
 
     private GoogleGenAiStreamingChatModel(Builder builder) {
         this.listeners = copy(builder.listeners);
@@ -113,7 +114,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 .cachedContent(getOrDefault(builder.cachedContent, genAiParameters.cachedContent()))
                 .build();
 
-        this.executor = getOrDefault(builder.executor, DefaultExecutorProvider::getDefaultExecutorService);
+        this.executor = getOrDefault(builder.executor, DefaultExecutorProvider::getDefaultExecutor);
     }
 
     @Override

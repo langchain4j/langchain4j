@@ -6,11 +6,13 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -51,25 +53,25 @@ class ShellCommandRunner {
 
     static Result run(String command, Path workingDirectory, Integer timeoutSeconds)
             throws IOException, InterruptedException {
-        return run(command, workingDirectory, timeoutSeconds, DEFAULT_MAX_OUTPUT_BYTES, DefaultExecutorProvider.getDefaultExecutorService());
+        return run(command, workingDirectory, timeoutSeconds, DEFAULT_MAX_OUTPUT_BYTES, DefaultExecutorProvider.getDefaultExecutor());
     }
 
     static Result run(String command, Path workingDirectory, Integer timeoutSeconds, int maxOutputBytes)
             throws IOException, InterruptedException {
-        return run(command, workingDirectory, timeoutSeconds, maxOutputBytes, DefaultExecutorProvider.getDefaultExecutorService());
+        return run(command, workingDirectory, timeoutSeconds, maxOutputBytes, DefaultExecutorProvider.getDefaultExecutor());
     }
 
     static Result run(String command,
-                      Path workingDirectory, Integer timeoutSeconds, ExecutorService executorService)
+                      Path workingDirectory, Integer timeoutSeconds, Executor executor)
             throws IOException, InterruptedException {
-        return run(command, workingDirectory, timeoutSeconds, DEFAULT_MAX_OUTPUT_BYTES, executorService);
+        return run(command, workingDirectory, timeoutSeconds, DEFAULT_MAX_OUTPUT_BYTES, executor);
     }
 
     static Result run(String command,
                       Path workingDirectory,
                       Integer timeoutSeconds,
                       int maxOutputBytes,
-                      ExecutorService executorService)
+                      Executor executor)
             throws IOException, InterruptedException {
 
         List<String> shellCommand = isWindows()
@@ -85,10 +87,10 @@ class ShellCommandRunner {
         try {
             AtomicBoolean timedOut = new AtomicBoolean(false);
 
-            Future<String> stdOutFuture = executorService.submit(() ->
-                    readStream(process.getInputStream(), maxOutputBytes, timedOut));
-            Future<String> stdErrFuture = executorService.submit(() ->
-                    readStream(process.getErrorStream(), maxOutputBytes, timedOut));
+            Future<String> stdOutFuture = CompletableFuture.supplyAsync(
+                    () -> readStreamUnchecked(process.getInputStream(), maxOutputBytes, timedOut), executor);
+            Future<String> stdErrFuture = CompletableFuture.supplyAsync(
+                    () -> readStreamUnchecked(process.getErrorStream(), maxOutputBytes, timedOut), executor);
 
             timeoutSeconds = getOrDefault(timeoutSeconds, DEFAULT_TIMEOUT_SECONDS);
             if (timeoutSeconds > DEFAULT_MAX_TIMEOUT_SECONDS) {
@@ -133,7 +135,13 @@ class ShellCommandRunner {
             try {
                 return new Result(process.exitValue(), stdOutFuture.get(), stdErrFuture.get());
             } catch (ExecutionException e) {
-                throw new IOException("Failed to read process output", e.getCause());
+                // supplyAsync wraps the reader's IOException in an UncheckedIOException; unwrap to preserve the
+                // original IOException as the cause (matching the previous ExecutorService.submit() behavior).
+                Throwable cause = e.getCause();
+                if (cause instanceof UncheckedIOException uncheckedIOException) {
+                    cause = uncheckedIOException.getCause();
+                }
+                throw new IOException("Failed to read process output", cause);
             }
         } catch (TimeoutException e) {
             throw e;
@@ -148,6 +156,16 @@ class ShellCommandRunner {
             return future.get(2, TimeUnit.SECONDS);
         } catch (Exception ignored) {
             return "";
+        }
+    }
+
+    // Wraps readStream's checked IOException so it can run inside CompletableFuture.supplyAsync (whose Supplier
+    // cannot throw checked exceptions); the caller unwraps it back to an IOException.
+    private static String readStreamUnchecked(InputStream is, int maxBytes, AtomicBoolean timedOut) {
+        try {
+            return readStream(is, maxBytes, timedOut);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
     }
 

@@ -9,6 +9,8 @@ import java.util.concurrent.Executors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
+// getDefaultExecutorService() is deprecated but retained for back-compat; this test still exercises it.
+@SuppressWarnings("deprecation")
 class DefaultExecutorProviderTest {
 
     @AfterEach
