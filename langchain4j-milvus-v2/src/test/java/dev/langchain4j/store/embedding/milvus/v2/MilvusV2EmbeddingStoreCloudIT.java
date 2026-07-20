@@ -25,7 +25,7 @@ class MilvusV2EmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
     private static final String COLLECTION_NAME = "test_collection";
 
     MilvusV2EmbeddingStore embeddingStore = MilvusV2EmbeddingStore.builder()
-            .uri(System.getenv("MILVUS_API_URI"))
+            .uri(System.getenv("MILVUS_URI"))
             .token(System.getenv("MILVUS_API_KEY"))
             .collectionName(COLLECTION_NAME)
             .consistencyLevel(ConsistencyLevel.STRONG)

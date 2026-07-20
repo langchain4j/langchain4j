@@ -23,7 +23,7 @@ import org.testcontainers.milvus.MilvusContainer;
  * https://milvus.io/docs/hybrid_search_with_milvus.md
  */
 @Testcontainers
-class MilvusV2HybridSearchDemoTest implements WithAssertions {
+class MilvusV2HybridSearchDemoIT implements WithAssertions {
 
     @Container
     private static final MilvusContainer milvus = new MilvusContainer("milvusdb/milvus:v2.6.11")
@@ -63,7 +63,7 @@ class MilvusV2HybridSearchDemoTest implements WithAssertions {
         } catch (RuntimeException | LinkageError e) {
             assumeTrue(
                     false,
-                    "Skipping MilvusV2HybridSearchDemoTest because embedding model resources are unavailable: "
+                    "Skipping MilvusV2HybridSearchDemoIT because embedding model resources are unavailable: "
                             + e.getMessage());
         }
         collectionName = "demo_test_" + System.currentTimeMillis();

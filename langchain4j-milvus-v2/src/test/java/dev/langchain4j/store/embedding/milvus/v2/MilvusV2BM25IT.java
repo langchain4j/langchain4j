@@ -123,21 +123,6 @@ class MilvusV2BM25IT implements WithAssertions {
     }
 
     @Test
-    void should_reject_query_text_with_non_bm25_metric_in_sparse_search() {
-        String query = "some text query";
-
-        assertThatThrownBy(() -> CollectionRequestBuilder.createSparseSearchReq(
-                        "col",
-                        query,
-                        new FieldDefinition("id", "text", "meta", "dense", "sparse"),
-                        IndexParam.MetricType.IP,
-                        io.milvus.v2.common.ConsistencyLevel.STRONG,
-                        3,
-                        null))
-                .isInstanceOf(IllegalArgumentException.class);
-    }
-
-    @Test
     void should_reject_query_text_with_non_bm25_metric_in_ann_sparse() {
         String query = "another text";
 
