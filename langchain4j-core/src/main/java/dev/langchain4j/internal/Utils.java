@@ -378,9 +378,6 @@ public class Utils {
         if (contentEncoding == null) {
             return inputStream;
         }
-        // The request advertises "Accept-Encoding: gzip, deflate", so a server may compress the
-        // response body. The raw stream must be decoded according to the Content-Encoding header,
-        // otherwise the caller receives compressed bytes (e.g. a corrupted image or PDF).
         return switch (contentEncoding.trim().toLowerCase(Locale.ROOT)) {
             case "gzip", "x-gzip" -> new GZIPInputStream(inputStream);
             case "deflate" -> new InflaterInputStream(inputStream);
