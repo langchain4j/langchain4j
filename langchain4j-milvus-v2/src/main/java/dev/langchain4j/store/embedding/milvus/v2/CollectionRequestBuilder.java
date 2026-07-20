@@ -27,7 +27,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class CollectionRequestBuilder {
+class CollectionRequestBuilder {
 
     static FlushReq buildFlushRequest(String collectionName) {
         return FlushReq.builder().collectionNames(singletonList(collectionName)).build();
@@ -114,67 +114,6 @@ public class CollectionRequestBuilder {
         return builder.build();
     }
 
-    // This is the method for sparse search only with pre-computed sparse embedding
-    static SearchReq createSparseSearchReq(
-            String collectionName,
-            SparseEmbedding sparseEmbedding,
-            FieldDefinition fieldDefinition,
-            IndexParam.MetricType metricType,
-            ConsistencyLevel consistencyLevel,
-            int maxResults,
-            Filter filter) {
-        SearchReq.SearchReqBuilder builder = SearchReq.builder()
-                .collectionName(collectionName)
-                .data(Collections.singletonList(new SparseFloatVec(sparseEmbedding.vectorAsSortedMap())))
-                .annsField(fieldDefinition.getSparseVectorFieldName())
-                .metricType(metricType)
-                .consistencyLevel(consistencyLevel)
-                .limit(maxResults)
-                .outputFields(Arrays.asList(
-                        fieldDefinition.getIdFieldName(),
-                        fieldDefinition.getTextFieldName(),
-                        fieldDefinition.getMetadataFieldName()));
-
-        if (filter != null) {
-            builder.filter(MilvusV2MetadataFilterMapper.map(filter, fieldDefinition.getMetadataFieldName()));
-        }
-        return builder.build();
-    }
-
-    // This is the method for sparse search only with a query string - Milvus auto-computed sparse embedding (BM25)
-    static SearchReq createSparseSearchReq(
-            String collectionName,
-            String queryText,
-            FieldDefinition fieldDefinition,
-            IndexParam.MetricType metricType,
-            ConsistencyLevel consistencyLevel,
-            int maxResults,
-            Filter filter) {
-        if (metricType != IndexParam.MetricType.BM25) {
-            throw new IllegalArgumentException(
-                    "When using plain text to query sparse embedding, metricType must be BM25 (Milvus built-in).");
-        }
-        if (queryText == null || queryText.isBlank()) {
-            throw new IllegalArgumentException("queryText must not be null or empty");
-        }
-        SearchReq.SearchReqBuilder builder = SearchReq.builder()
-                .collectionName(collectionName)
-                .data(Collections.singletonList(new EmbeddedText(queryText)))
-                .annsField(fieldDefinition.getSparseVectorFieldName())
-                .metricType(metricType)
-                .consistencyLevel(consistencyLevel)
-                .limit(maxResults)
-                .outputFields(Arrays.asList(
-                        fieldDefinition.getIdFieldName(),
-                        fieldDefinition.getTextFieldName(),
-                        fieldDefinition.getMetadataFieldName()));
-
-        if (filter != null) {
-            builder.filter(MilvusV2MetadataFilterMapper.map(filter, fieldDefinition.getMetadataFieldName()));
-        }
-        return builder.build();
-    }
-
     static AnnSearchReq createDenseAnnSearchReq(
             FieldDefinition fieldDefinition,
             Embedding queryEmbedding,
@@ -226,7 +165,7 @@ public class CollectionRequestBuilder {
         if (queryText == null || queryText.isBlank()) {
             throw new IllegalArgumentException("queryText must not be null or empty");
         }
-        // Milvus auto-generated sparse embedding（BM25）
+        // Milvus auto-generated sparse embedding (BM25)
         AnnSearchReq.AnnSearchReqBuilder builder = AnnSearchReq.builder()
                 .vectorFieldName(fieldDefinition.getSparseVectorFieldName())
                 .vectors(Collections.singletonList(new EmbeddedText(queryText)))
@@ -257,7 +196,7 @@ public class CollectionRequestBuilder {
             searchRequests.add(
                     createSparseAnnSearchReq(fieldDefinition, sparseEmbedding, sparseMetricType, filter, maxResults));
         } else {
-            // Milvus auto-generated sparse embedding（BM25）
+            // Milvus auto-generated sparse embedding (BM25)
             searchRequests.add(
                     createSparseAnnSearchReq(fieldDefinition, queryText, sparseMetricType, filter, maxResults));
         }

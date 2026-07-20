@@ -6,7 +6,6 @@ import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder
 import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.createDenseSearchReq;
 import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.createHybridSearchReq;
 import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.createSparseAnnSearchReq;
-import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.createSparseSearchReq;
 
 import dev.langchain4j.data.embedding.Embedding;
 import io.milvus.v2.common.ConsistencyLevel;
@@ -112,29 +111,6 @@ class CollectionRequestBuilderTest implements WithAssertions {
         assertThat(result.getAnnsField()).isEqualTo("vector");
         assertThat(result.getMetricType()).isEqualTo(IndexParam.MetricType.COSINE);
         assertThat(result.getLimit()).isEqualTo(5);
-        assertThat(result.getOutputFields()).containsExactly("id", "text", "metadata");
-    }
-
-    @Test
-    void should_create_sparse_search_request() {
-        // given
-        SparseEmbedding sparseEmbedding = new SparseEmbedding(new long[] {1L, 3L, 5L}, new float[] {0.1f, 0.3f, 0.5f});
-
-        // when
-        SearchReq result = createSparseSearchReq(
-                COLLECTION_NAME,
-                sparseEmbedding,
-                FIELD_DEFINITION,
-                IndexParam.MetricType.IP,
-                ConsistencyLevel.STRONG,
-                10,
-                null);
-
-        // then
-        assertThat(result.getCollectionName()).isEqualTo(COLLECTION_NAME);
-        assertThat(result.getAnnsField()).isEqualTo("sparse_vector");
-        assertThat(result.getMetricType()).isEqualTo(IndexParam.MetricType.IP);
-        assertThat(result.getLimit()).isEqualTo(10);
         assertThat(result.getOutputFields()).containsExactly("id", "text", "metadata");
     }
 

@@ -16,8 +16,6 @@
         <milvus-sdk-java.version>2.6.14</milvus-sdk-java.version>
         <jackson.version>2.22.1</jackson.version>
         <skipMilvusITs>${skipITs}</skipMilvusITs>
-        <!-- TODO: remove enforcer.skipRules -->
-        <enforcer.skipRules>dependencyConvergence</enforcer.skipRules>
     </properties>
 
     <dependencyManagement>
@@ -26,6 +24,12 @@
                 <groupId>com.google.errorprone</groupId>
                 <artifactId>error_prone_annotations</artifactId>
                 <version>2.38.0</version>
+            </dependency>
+            <!-- milvus-sdk-java brings protobuf-java transitively at 3.23.2/3.24.0/3.25.5; pin to converge -->
+            <dependency>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
+                <version>3.25.5</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

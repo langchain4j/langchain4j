@@ -1,6 +1,6 @@
 package dev.langchain4j.store.embedding.milvus.v2;
 
-public class FieldDefinition {
+class FieldDefinition {
 
     final String idFieldName;
 
