@@ -217,15 +217,15 @@ class MilvusV2EmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         SparseEmbedding sparseEmbedding = new SparseEmbedding(new long[] {1L, 3L, 5L}, new float[] {0.1f, 0.3f, 0.5f});
 
         // when & then
-        // MilvusV2EmbeddingSearchRequest extends EmbeddingSearchRequest whose constructor
-        // requires at least queryEmbedding OR query.  When only sparseEmbedding is supplied
-        // the parent-class validation fires at build() time before search() is even called.
+        // MilvusV2EmbeddingSearchRequest extends EmbeddingSearchRequest, whose constructor
+        // requires a non-null queryEmbedding. When only sparseEmbedding is supplied, the
+        // parent-class validation fires at build() time before search() is even called.
         assertThatThrownBy(() -> MilvusV2EmbeddingSearchRequest.milvusBuilder()
                         .sparseEmbedding(sparseEmbedding)
                         .maxResults(10)
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Either queryEmbedding or query must be provided");
+                .hasMessage("queryEmbedding cannot be null");
     }
 
     @Test
