@@ -45,6 +45,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class OpenAiStreamingResponseBuilder {
 
     private final StringBuffer contentBuilder = new StringBuffer();
+    private final StringBuffer refusalBuilder = new StringBuffer();
     private final StringBuffer reasoningContentBuilder;
 
     private final StringBuffer toolNameBuilder = new StringBuffer(); // legacy
@@ -155,6 +156,11 @@ public class OpenAiStreamingResponseBuilder {
             this.contentBuilder.append(content);
         }
 
+        String refusal = delta.refusal();
+        if (!isNullOrEmpty(refusal)) {
+            this.refusalBuilder.append(refusal);
+        }
+
         String reasoningContent = delta.reasoningContent();
         if (returnThinking && !isNullOrEmpty(reasoningContent)) {
             this.reasoningContentBuilder.append(reasoningContent);
@@ -251,6 +257,10 @@ public class OpenAiStreamingResponseBuilder {
                 .aiMessage(buildAiMessage())
                 .metadata(buildMetadata())
                 .build();
+    }
+
+    public String refusal() {
+        return refusalBuilder.isEmpty() ? null : refusalBuilder.toString();
     }
 
     private AiMessage buildAiMessage() {
