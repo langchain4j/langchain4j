@@ -20,6 +20,7 @@ import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.HttpResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
+import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.chat.response.StreamingEvent;
@@ -272,7 +273,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
         @Override
         public void onError(Throwable throwable) {
             if (!tube.cancelled()) {
-                tube.fail(throwable);
+                tube.fail(ExceptionMapper.DEFAULT.mapException(throwable));
             }
         }
 

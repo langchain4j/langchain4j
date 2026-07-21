@@ -323,15 +323,13 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
      * so a genuinely async component runs asynchronously even when the other one is blocking (e.g. an async embedding
      * model with a blocking vector store).
      * <p>
-     * If a component is blocking (its async method is not implemented), the returned future fails with that
-     * {@link UnsupportedOperationException} - the pipeline is not silently made "async" by parking a thread. Building
+     * If a component is blocking (its async method is not implemented), the returned future fails with an
+     * {@link UnsupportedFeatureException} - the pipeline is not silently made "async" by parking a thread. Building
      * the retriever with {@code offloadBlocking(true)} instead offloads <i>only the blocking component</i> to a shared
      * virtual-thread executor, leaving any async component on its native path.
      */
     @Override
     public CompletableFuture<List<Content>> retrieveAsync(Query query) {
-        // Root a cancellation chain at the caller-facing future so cancelling it aborts whichever hop is in flight -
-        // the query embedding or the vector-store search - not just the outer composed stage.
         CompletableFuture<List<Content>> result = new CompletableFuture<>();
         CancellationChain chain = new CancellationChain(result);
         chain.track(nativeOrOffload(() -> embedQueryAsync(query.text()), () -> embedQuery(query.text())))

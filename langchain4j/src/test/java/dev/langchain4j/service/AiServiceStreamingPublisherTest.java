@@ -1,6 +1,7 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -1197,8 +1198,9 @@ class AiServiceStreamingPublisherTest {
     @Test
     void reactive_stream_signals_onError_when_store_does_not_support_async() throws Exception {
         // With a system message, the (deferred, on-subscribe) message assembly calls the store's async methods
-        // synchronously; a store that does not implement them throws synchronously. subscribe() must not throw or
-        // hang - the failure must reach the subscriber as onError after onSubscribe.
+        // synchronously; a store that does not implement them fails synchronously. subscribe() must not throw or
+        // hang - the failure must reach the subscriber as onError after onSubscribe, translated to the user-facing
+        // UnsupportedFeatureException (consistent with the rest of the async path).
         SystemMessagedStringStreamer assistant = AiServices.builder(SystemMessagedStringStreamer.class)
                 .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hi")))
                 .chatMemory(MessageWindowChatMemory.builder()
@@ -1232,7 +1234,7 @@ class AiServiceStreamingPublisherTest {
         });
 
         assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
-        assertThat(error.get()).isExactlyInstanceOf(AsyncNotSupportedException.class);
+        assertThat(error.get()).isExactlyInstanceOf(UnsupportedFeatureException.class);
     }
 
     private static <T> Collected<T> collect(Flow.Publisher<T> publisher) throws InterruptedException {

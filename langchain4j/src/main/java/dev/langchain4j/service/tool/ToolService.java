@@ -1,6 +1,7 @@
 package dev.langchain4j.service.tool;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
@@ -877,11 +878,7 @@ public class ToolService {
                 Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
                 Throwable firstError) {
 
-            // On cancellation the round's tools have still drained (they are polled, never interrupted). Record this
-            // round's successful compensable tools so the single top-level cancellation handler
-            // (withCancellationCompensation) rolls them back together with those accumulated from earlier rounds,
-            // then terminate as cancelled - cancellation compensates via that handler, not the tool-error path.
-            if (firstError instanceof CancellationException || isCancelled(cancellation)) {
+            if (isCancelled(cancellation)) {
                 List<ToolExecutionResultMessage> resultMessages = toolExecutionRequests.stream()
                         .map(request -> toResultMessage(request, toolResults.get(request)))
                         .toList();
@@ -908,13 +905,8 @@ public class ToolService {
                             CompensationReason.TOOL_EXECUTION_FAILED,
                             context.eventListenerRegistrar,
                             null)
-                    // capture any compensation-infra failure (e.g. a failing memory rewrite) instead of letting it
-                    // short-circuit and mask the original tool error
                     .handle((ignored, compensationError) -> compensationError)
                     .thenCompose(compensationError -> {
-                        // The default asynchronous ToolExecutionErrorHandler rethrows a tool execution error. The
-                        // tools that succeeded have now been compensated; fail the invocation with the tool error,
-                        // attaching any compensation-infra failure as suppressed so the root cause is not masked.
                         if (firstError != null) {
                             if (compensationError != null) {
                                 firstError.addSuppressed(unwrapCompletionException(compensationError));
@@ -931,8 +923,6 @@ public class ToolService {
                                     intermediateResponses, toolExecutions, aggregateTokenUsage));
                         }
 
-                        // a cancellation may have arrived while the tools were executing - do not start
-                        // a new model call in that case
                         if (isCancelled(cancellation)) {
                             return CompletableFuture.<ToolServiceResult>failedFuture(new CancellationException());
                         }
@@ -1082,13 +1072,22 @@ public class ToolService {
             return CompletableFuture.completedFuture(accumulator);
         }
 
-        // Add all tool-result messages in a single batch so a persistent store does one read-modify-write
-        // (atomic, fewer round trips) instead of one per message.
         List<ChatMessage> messagesToAdd = new ArrayList<>(resultMessages);
         return chatMemory
                 .addAsync(messagesToAdd)
                 .thenCompose(ignored -> chatMemory.messagesAsync())
-                .thenApply(memoryMessages -> resolveMessagesForNextRequest(memoryMessages, context, invocationContext));
+                .thenApply(memoryMessages -> resolveMessagesForNextRequest(memoryMessages, context, invocationContext))
+                .exceptionallyCompose(ToolService::translateBlockingChatMemory);
+    }
+
+    private static CompletionStage<List<ChatMessage>> translateBlockingChatMemory(Throwable error) {
+        Throwable cause = unwrapCompletionException(error);
+        if (cause instanceof AsyncNotSupportedException) {
+            return CompletableFuture.failedFuture(new UnsupportedFeatureException(cause.getMessage()
+                    + " The asynchronous/reactive AI Service requires the chat memory's ChatMemoryStore to implement"
+                    + " its async methods (getMessagesAsync/updateMessagesAsync/deleteMessagesAsync)."));
+        }
+        return CompletableFuture.failedFuture(error);
     }
 
     /**

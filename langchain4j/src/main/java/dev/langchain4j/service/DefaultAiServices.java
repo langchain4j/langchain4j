@@ -905,11 +905,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                         if (augmentor == null) {
                             return CompletableFuture.completedFuture(null);
                         }
-                        // Try the native async path off the caller thread. A blocking augmentor (its augmentAsync
-                        // reports UnsupportedOperationException) or a blocking chat memory (messagesAsync) surfaces at
-                        // runtime; we then either offload or fail loudly - no reflection to detect it in advance. Any
-                        // synchronous throw becomes a failed future, never a thrown exception (which on the reactive
-                        // path would escape subscribe() and violate the Reactive Streams contract).
                         CompletableFuture<AugmentationResult> async;
                         try {
                             CompletableFuture<List<ChatMessage>> chatMemoryMessages = chatMemory != null
@@ -924,10 +919,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                         return async.exceptionallyCompose(error -> {
                             Throwable cause = unwrapCompletionException(error);
                             if (cause instanceof AsyncNotSupportedException) {
-                                // A blocking RetrievalAugmentor or ChatMemory on the async/reactive path fails loudly -
-                                // the component that does the blocking work decides whether to offload, not the AI
-                                // Service. Implement the async method (augmentAsync / messagesAsync), or configure an
-                                // async-capable component (e.g. DefaultRetrievalAugmentor.builder().offloadBlocking(true)).
                                 return CompletableFuture.failedFuture(new UnsupportedFeatureException(cause.getMessage()
                                         + " The asynchronous/reactive AI Service requires this component to implement its"
                                         + " async method, or to be an async-capable component (for a blocking content"
@@ -970,23 +961,35 @@ class DefaultAiServices<T> extends AiServices<T> {
                             return CompletableFuture.completedFuture(messages);
                         }
 
+                        CompletableFuture<List<ChatMessage>> assembled;
                         try {
                             CompletionStage<Void> addSystem = systemMessage.isPresent()
                                     ? chatMemory.addAsync(List.of(systemMessage.get()))
                                     : CompletableFuture.completedFuture(null);
                             ChatMessage userMessageToStore =
                                     context.storeRetrievedContentInChatMemory ? userMessage : originalUserMessage;
-                            return addSystem.thenCompose(ignored -> chatMemory.messagesAsync())
+                            assembled = addSystem.thenCompose(ignored -> chatMemory.messagesAsync())
                                     .thenCompose(history -> {
                                         List<ChatMessage> messages = new ArrayList<>(history);
                                         return chatMemory.addAsync(List.of(userMessageToStore)).thenApply(ignored2 -> {
                                             messages.add(userMessage);
                                             return messages;
                                         });
-                                    });
+                                    })
+                                    .toCompletableFuture();
                         } catch (Throwable t) {
-                            return CompletableFuture.failedFuture(t);
+                            assembled = CompletableFuture.failedFuture(t);
                         }
+                        return assembled.exceptionallyCompose(error -> {
+                            Throwable cause = unwrapCompletionException(error);
+                            if (cause instanceof AsyncNotSupportedException) {
+                                return CompletableFuture.failedFuture(new UnsupportedFeatureException(cause.getMessage()
+                                        + " The asynchronous/reactive AI Service requires the chat memory's"
+                                        + " ChatMemoryStore to implement its async methods (getMessagesAsync/"
+                                        + "updateMessagesAsync/deleteMessagesAsync)."));
+                            }
+                            return CompletableFuture.failedFuture(error);
+                        });
                     }
 
                     private final Object fallThroughToOutputProcessing = new Object();

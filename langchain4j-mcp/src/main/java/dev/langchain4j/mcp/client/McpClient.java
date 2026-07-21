@@ -2,6 +2,8 @@ package dev.langchain4j.mcp.client;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.List;
@@ -53,14 +55,13 @@ public interface McpClient extends AutoCloseable {
      * Non-blocking counterpart of {@link #executeTool(ToolExecutionRequest, InvocationContext)}:
      * executes a tool on the MCP server without holding a thread while the result is in flight.
      * <p>
-     * The default implementation throws an {@link UnsupportedOperationException}.
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}.
      *
      * @since 1.19.0
      */
     default CompletableFuture<ToolExecutionResult> executeToolAsync(
             ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
-        throw new UnsupportedOperationException(
-                getClass().getName() + " does not support asynchronous tool execution");
+        return AsyncNotSupported.failedFuture(getClass(), "executeToolAsync");
     }
 
     /**

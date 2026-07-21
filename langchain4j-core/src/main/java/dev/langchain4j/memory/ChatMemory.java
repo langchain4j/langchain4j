@@ -136,8 +136,8 @@ public interface ChatMemory {
      * compensation without blocking the model-delivery thread).
      * <p>
      * Replaces the entire message history with {@code messages}. Like the other async methods, callers must not
-     * invoke it concurrently for the same memory. The default implementation throws
-     * {@link UnsupportedOperationException}; see {@link #addAsync(List)} for the rationale.
+     * invoke it concurrently for the same memory. The default implementation returns a failed future carrying
+     * {@link AsyncNotSupportedException}; see {@link #addAsync(List)} for the rationale.
      *
      * @param messages The {@link ChatMessage}s to set.
      * @return A future that completes when the messages have been set.

@@ -10,6 +10,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
@@ -34,6 +35,7 @@ import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
 import java.util.List;
 import java.util.Queue;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -287,6 +289,7 @@ class AiServicesNonBlockingTest {
     static class NonBlockingChatModelStub implements ChatModel {
 
         private final Queue<AiMessage> responses;
+        final List<ChatRequest> requests = new CopyOnWriteArrayList<>();
 
         NonBlockingChatModelStub(AiMessage... aiMessages) {
             this.responses = new ConcurrentLinkedQueue<>(List.of(aiMessages));
@@ -294,6 +297,7 @@ class AiServicesNonBlockingTest {
 
         @Override
         public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+            requests.add(chatRequest);
             return CompletableFuture.supplyAsync(
                     () -> ChatResponse.builder()
                             .aiMessage(responses.poll())
@@ -918,6 +922,12 @@ class AiServicesNonBlockingTest {
             calls.add("withdraw:" + name);
             throw new RuntimeException("insufficient funds");
         }
+
+        @Tool
+        String cancel(String name, double amount) {
+            calls.add("cancel:" + name);
+            throw new CancellationException("the tool itself threw CancellationException");
+        }
     }
 
     interface CompensatingAssistant {
@@ -966,6 +976,101 @@ class AiServicesNonBlockingTest {
             assertThat(event.request().name()).isEqualTo("credit");
             assertThat(event.reason()).isEqualTo(CompensationReason.TOOL_EXECUTION_FAILED);
         });
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void cf_tool_throwing_cancellation_exception_is_treated_as_a_tool_failure_not_an_invocation_cancellation()
+            throws Exception {
+
+        CompensatingBankTools tools = new CompensatingBankTools();
+        List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
+
+        // Round 1: a successful (compensable) credit alongside a tool that itself throws CancellationException.
+        NonBlockingChatModelStub chatModel = new NonBlockingChatModelStub(
+                AiMessage.from(bankToolRequest("1", "credit"), bankToolRequest("2", "cancel")),
+                AiMessage.from("unreachable"));
+
+        CompensatingAssistant assistant = AiServices.builder(CompensatingAssistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .compensateOnToolErrors(true)
+                .registerListener((ToolCompensatedEventListener) compensatedEvents::add)
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("transfer");
+
+        // A CancellationException thrown by a tool is a tool failure, not an invocation cancellation: the invocation
+        // fails with it (the default async execution handler rethrows), rather than silently completing as cancelled.
+        assertThatThrownBy(() -> future.get(10, SECONDS)).rootCause().isInstanceOf(CancellationException.class);
+        // The successful credit is rolled back because a *tool* failed - reason TOOL_EXECUTION_FAILED, not
+        // INVOCATION_CANCELLED (which is what the misclassification would have produced).
+        assertThat(tools.calls).containsExactlyInAnyOrder("credit:Mario", "cancel:Mario", "uncredit:Mario");
+        assertThat(compensatedEvents).singleElement().satisfies(event -> {
+            assertThat(event.request().name()).isEqualTo("credit");
+            assertThat(event.reason()).isEqualTo(CompensationReason.TOOL_EXECUTION_FAILED);
+        });
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void cf_argument_parse_error_rolls_back_a_successful_compensable_sibling_and_reports_both_to_the_llm()
+            throws Exception {
+
+        CompensatingBankTools tools = new CompensatingBankTools();
+        List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
+
+        // Round 1: a successful (compensable) credit alongside a withdraw whose arguments cannot be parsed.
+        ToolExecutionRequest badArguments = ToolExecutionRequest.builder()
+                .id("2")
+                .name("withdraw")
+                .arguments("{ invalid json }")
+                .build();
+        NonBlockingChatModelStub chatModel = new NonBlockingChatModelStub(
+                AiMessage.from(bankToolRequest("1", "credit"), badArguments),
+                AiMessage.from("done"));
+
+        CompensatingAssistant assistant = AiServices.builder(CompensatingAssistant.class)
+                .chatModel(chatModel)
+                .tools(tools)
+                .compensateOnToolErrors(true)
+                // Deterministic argument-error text so we can assert exactly what the LLM receives (the default text
+                // is the underlying JSON parser's message). This does not change the rollback behavior under test.
+                .toolArgumentsErrorHandler((error, ctx) -> ToolErrorHandlerResult.text("Failed to parse arguments"))
+                .registerListener((ToolCompensatedEventListener) compensatedEvents::add)
+                .build();
+
+        String answer = assistant.chat("transfer").get(10, SECONDS);
+
+        assertThat(answer).isEqualTo("done");
+
+        // A tool-calling round is atomic: any tool error - including a soft argument-parse error that is sent to
+        // the LLM - rolls back the successful compensable sibling, so credit is compensated with uncredit.
+        assertThat(tools.calls).containsExactly("credit:Mario", "uncredit:Mario");
+        assertThat(compensatedEvents).singleElement().satisfies(event -> {
+            assertThat(event.request().name()).isEqualTo("credit");
+            assertThat(event.reason()).isEqualTo(CompensationReason.TOOL_EXECUTION_FAILED);
+        });
+
+        // The LLM (next round's request) receives the argument-parse error for the withdraw call, and a
+        // rolled-back notice for the credit call that was undone because of it.
+        List<ToolExecutionResultMessage> toolResultsSentToLlm = chatModel.requests.stream()
+                .flatMap(request -> request.messages().stream())
+                .filter(message -> message instanceof ToolExecutionResultMessage)
+                .map(message -> (ToolExecutionResultMessage) message)
+                .toList();
+        assertThat(toolResultsSentToLlm).hasSize(2);
+        assertThat(toolResultsSentToLlm)
+                .filteredOn(message -> message.toolName().equals("withdraw"))
+                .singleElement()
+                .satisfies(message -> assertThat(message.text()).isEqualTo("Failed to parse arguments"));
+        assertThat(toolResultsSentToLlm)
+                .filteredOn(message -> message.toolName().equals("credit"))
+                .singleElement()
+                .satisfies(message -> assertThat(message.text())
+                        .isEqualTo("Tool 'credit' was executed successfully "
+                                + "but was rolled back due to failure of tool 'withdraw'"));
+
         assertNoBlockingCalls();
     }
 

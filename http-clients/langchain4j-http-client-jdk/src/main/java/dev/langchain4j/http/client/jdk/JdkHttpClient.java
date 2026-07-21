@@ -273,7 +273,7 @@ public class JdkHttpClient implements HttpClient {
                         return;
                     }
                     if (!isSuccessful(jdkResponse)) {
-                        readErrorBodyAsync(jdkResponse.body()).whenComplete((body, err) -> {
+                        readErrorBodyAsync(jdkResponse.body(), bodySubRef).whenComplete((body, err) -> {
                             if (err != null) {
                                 tube.fail(err);
                             } else {
@@ -345,11 +345,11 @@ public class JdkHttpClient implements HttpClient {
                     });
                 }).exceptionally(throwable -> {
                     if (!tube.cancelled()) {
-                        Throwable cause = throwable.getCause();
+                        Throwable cause = unwrapCompletionException(throwable);
                         if (cause instanceof HttpTimeoutException) {
-                            tube.fail(new TimeoutException(throwable));
+                            tube.fail(new TimeoutException(cause));
                         } else {
-                            tube.fail(throwable);
+                            tube.fail(cause);
                         }
                     }
                     return null;
@@ -359,13 +359,15 @@ public class JdkHttpClient implements HttpClient {
             publisher.subscribe(subscriber);
         }
 
-        private static CompletableFuture<String> readErrorBodyAsync(Publisher<List<ByteBuffer>> body) {
+        private static CompletableFuture<String> readErrorBodyAsync(
+                Publisher<List<ByteBuffer>> body, AtomicReference<Subscription> bodySubRef) {
             CompletableFuture<String> future = new CompletableFuture<>();
             body.subscribe(new Subscriber<>() {
                 private final ByteArrayOutputStream out = new ByteArrayOutputStream();
 
                 @Override
                 public void onSubscribe(Subscription subscription) {
+                    bodySubRef.set(subscription);
                     subscription.request(Long.MAX_VALUE);
                 }
 

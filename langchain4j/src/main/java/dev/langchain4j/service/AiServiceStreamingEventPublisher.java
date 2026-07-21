@@ -541,12 +541,6 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 Throwable firstError,
                 String preCollectedFailedToolName) {
 
-            if (firstError instanceof java.util.concurrent.CancellationException) {
-                doCancellationCompensation(null, null);
-                fail(firstError);
-                return;
-            }
-
             ToolService.ToolResultsOutcome outcome = context.toolService.processToolResults(
                     context,
                     toolRequests,
