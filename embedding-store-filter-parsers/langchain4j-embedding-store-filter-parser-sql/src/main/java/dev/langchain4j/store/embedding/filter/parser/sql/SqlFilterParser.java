@@ -211,7 +211,12 @@ public class SqlFilterParser implements FilterParser {
             return column.getColumnName();
         } else if (expression instanceof Function function) {
             String name = function.getName();
-            if (name.equalsIgnoreCase("YEAR") || name.equalsIgnoreCase("MONTH")) {
+            if (name.equalsIgnoreCase("YEAR")
+                    || name.equalsIgnoreCase("MONTH")
+                    || name.equalsIgnoreCase("WEEKOFYEAR")
+                    || name.equalsIgnoreCase("DAYOFYEAR")
+                    || name.equalsIgnoreCase("DAYOFMONTH")
+                    || name.equalsIgnoreCase("DAYOFWEEK")) {
                 ExpressionList<?> parameters = function.getParameters();
                 if (parameters != null && parameters.size() == 1) {
                     Expression parameter = parameters.get(0);
@@ -319,7 +324,7 @@ public class SqlFilterParser implements FilterParser {
                             return currentHour();
                         case "MINUTE":
                             return currentMinute();
-                            // TODO add other
+                        // TODO add other
                     }
                 } else {
                     // TODO parse timestamp?

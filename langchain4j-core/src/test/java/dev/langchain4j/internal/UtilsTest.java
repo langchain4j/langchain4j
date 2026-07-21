@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 
 import com.sun.net.httpserver.HttpServer;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
@@ -36,6 +37,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
+import java.util.zip.DeflaterOutputStream;
+import java.util.zip.GZIPOutputStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -281,9 +284,37 @@ class UtilsTest {
                 exchange.getResponseBody().write(response);
                 exchange.close();
             });
+            httpServer.createContext("/gzip_endpoint", exchange -> {
+                ByteArrayOutputStream compressed = new ByteArrayOutputStream();
+                try (GZIPOutputStream gzip = new GZIPOutputStream(compressed)) {
+                    gzip.write("hello".getBytes());
+                }
+                byte[] response = compressed.toByteArray();
+                exchange.getResponseHeaders().set("Content-Encoding", "gzip");
+                exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, response.length);
+                exchange.getResponseBody().write(response);
+                exchange.close();
+            });
+            httpServer.createContext("/deflate_endpoint", exchange -> {
+                ByteArrayOutputStream compressed = new ByteArrayOutputStream();
+                try (DeflaterOutputStream deflate = new DeflaterOutputStream(compressed)) {
+                    deflate.write("hello".getBytes());
+                }
+                byte[] response = compressed.toByteArray();
+                exchange.getResponseHeaders().set("Content-Encoding", "deflate");
+                exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, response.length);
+                exchange.getResponseBody().write(response);
+                exchange.close();
+            });
             httpServer.start();
 
             assertThat(Utils.readBytes("http://localhost:" + port + "/ok_endpoint"))
+                    .isEqualTo("hello".getBytes());
+
+            // A compressed response must be transparently decoded, not returned as raw bytes.
+            assertThat(Utils.readBytes("http://localhost:" + port + "/gzip_endpoint"))
+                    .isEqualTo("hello".getBytes());
+            assertThat(Utils.readBytes("http://localhost:" + port + "/deflate_endpoint"))
                     .isEqualTo("hello".getBytes());
 
             assertThatExceptionOfType(RuntimeException.class)
