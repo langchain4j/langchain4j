@@ -73,17 +73,24 @@ import mutiny.zero.ZeroPublisher;
  * It consumes the model's reactive {@link dev.langchain4j.model.chat.StreamingChatModel#chat(ChatRequest)}
  * publisher round by round, mapping each low-level {@link StreamingEvent} to the corresponding high-level
  * {@link AiServiceStreamingEvent} as it arrives ({@link PartialThinkingEvent}, {@link PartialResponseEvent},
- * {@link PartialToolCallEvent}, {@link CompleteToolCallEvent}). When a round requests tools, the round's
- * {@link ChatResponse} is emitted as an {@link IntermediateResponseEvent}, tools are executed without blocking
- * via {@link dev.langchain4j.service.tool.ToolExecutor#executeAsync(ToolExecutionRequest, InvocationContext)}
- * (emitting {@link BeforeToolExecutionEvent} and {@link AfterToolExecutionEvent} as they happen), and the next
- * round's publisher is subscribed to. Exactly one {@link FinalResponseEvent} carrying the final answer is
- * emitted last, followed by {@code onComplete}. If RAG content was retrieved, a single
+ * {@link PartialToolCallEvent}, {@link CompleteToolCallEvent}). When a round requests tools, each tool is started
+ * <b>eagerly</b> as soon as its {@link CompleteToolCallEvent} is emitted - executed without blocking via
+ * {@link dev.langchain4j.service.tool.ToolExecutor#executeAsync(ToolExecutionRequest, InvocationContext)}
+ * (emitting {@link BeforeToolExecutionEvent} and {@link AfterToolExecutionEvent} as they happen) - and the round's
+ * {@link ChatResponse} is emitted as an {@link IntermediateResponseEvent} once the round's stream completes, after
+ * which the next round's publisher is subscribed to. Exactly one {@link FinalResponseEvent} carrying the final
+ * answer is emitted last, followed by {@code onComplete}. If RAG content was retrieved, a single
  * {@link RetrievedContentsEvent} is emitted first.
  * <p>
- * The semantics mirror the handler-based {@link AiServiceTokenStream}/{@link TokenStream}: events from every
- * round are surfaced in order; no thread is ever blocked or pinned while a model response or a tool result is
- * in flight.
+ * <b>Event ordering.</b> Because tools start eagerly on their {@link CompleteToolCallEvent} (a latency
+ * optimization: a tool overlaps the streaming of the round's remaining tokens and of any later tool calls), a
+ * round's {@link BeforeToolExecutionEvent} / {@link AfterToolExecutionEvent} may be emitted <i>before</i> that
+ * round's {@link IntermediateResponseEvent}. Treat {@link IntermediateResponseEvent} as a per-round marker
+ * carrying the assembled model {@link ChatResponse}, <b>not</b> as a barrier that all of the round's
+ * tool-execution events follow. This is the one ordering difference from the handler-based
+ * {@link AiServiceTokenStream}/{@link TokenStream}, whose intermediate-response callback always precedes that
+ * round's tool callbacks. Otherwise the semantics mirror that handler-based stream: events from every round are
+ * surfaced in order, and no thread is ever blocked or pinned while a model response or a tool result is in flight.
  * <p>
  * <b>Back-pressure.</b> The model's streaming response is consumed with unbounded demand and its events are
  * relayed to the subscriber through a <b>bounded</b> buffer ({@value #DEFAULT_BUFFER_SIZE} entries by default,
