@@ -674,6 +674,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(GET)
                 .url(baseUrl, "models")
+                .addHeader("User-Agent", "LangChain4j")
                 .addHeader("x-api-key", apiKey)
                 .addHeader("anthropic-version", version)
                 .addHeaders(customHeadersSupplier.get())
@@ -702,6 +703,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
      * <p>Constructs a POST request with the following headers:</p>
      * <ul>
      *   <li>{@code Content-Type: application/json}</li>
+     *   <li>{@code User-Agent: LangChain4j}</li>
      *   <li>{@code x-api-key}: The configured API key</li>
      *   <li>{@code anthropic-version}: The configured API version</li>
      *   <li>{@code anthropic-beta}: The configured beta features (if set)</li>
@@ -716,6 +718,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 .method(POST)
                 .url(baseUrl, path)
                 .addHeader("Content-Type", "application/json")
+                .addHeader("User-Agent", "LangChain4j")
                 .addHeader("x-api-key", apiKey)
                 .addHeader("anthropic-version", version)
                 .addHeaders(customHeadersSupplier.get())
