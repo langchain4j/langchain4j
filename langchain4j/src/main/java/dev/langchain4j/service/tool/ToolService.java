@@ -5,7 +5,6 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
-import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.allConcreteMethods;
@@ -69,6 +68,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -787,6 +787,8 @@ public class ToolService {
         private final List<ChatResponse> intermediateResponses = new ArrayList<>();
         private final List<CompensableToolExecution> compensableExecutions = newCompensableExecutionsAccumulator();
 
+        private final AtomicReference<CompletableFuture<ChatResponse>> inFlightModelCall = new AtomicReference<>();
+
         AsyncToolLoop(
                 AiServiceContext context,
                 Object memoryId,
@@ -800,6 +802,16 @@ public class ToolService {
             this.invocationContext = invocationContext;
             this.cancellation = cancellation;
             this.chatModelInvoker = chatModelInvoker;
+            if (cancellation != null) {
+                cancellation.whenComplete((ignored, error) -> {
+                    if (cancellation.isCancelled()) {
+                        CompletableFuture<ChatResponse> current = inFlightModelCall.get();
+                        if (current != null) {
+                            current.cancel(true);
+                        }
+                    }
+                });
+            }
         }
 
         /**
@@ -984,7 +996,10 @@ public class ToolService {
                     context, memoryId, nextMessages, invocationContext, toolServiceContext, toolResults, parameters);
 
             CompletableFuture<ChatResponse> nextModelCall = chatModelInvoker.apply(next.chatRequest());
-            propagateCancellation(cancellation, nextModelCall);
+            inFlightModelCall.set(nextModelCall);
+            if (isCancelled(cancellation)) {
+                nextModelCall.cancel(true);
+            }
             return nextModelCall.thenCompose(nextChatResponse -> {
                 fireResponseReceivedEvent(
                         next.chatRequest(), nextChatResponse, invocationContext, context.eventListenerRegistrar);
@@ -1708,27 +1723,10 @@ public class ToolService {
     }
 
     /**
-     * Non-blocking counterpart of {@link #execute(List, Map, InvocationContext)}, built on
-     * {@link ToolExecutor#executeAsync(ToolExecutionRequest, InvocationContext)} so that tools backed by
-     * an asynchronous client never hold a thread while their result is in flight.
-     * <p>
-     * Every tool execution (even a single one) is initiated on the {@linkplain #effectiveToolExecutor()
-     * effective executor}, so the thread that delivered the model response is never blocked by a synchronous
-     * tool. Tools run concurrently, unless a single-threaded executor was configured via
-     * {@link #executeToolsConcurrently(Executor)}, in which case they run serially in request order.
-     */
-    private CompletableFuture<Map<ToolExecutionRequest, ToolExecutionResult>> executeToolsAsync(
-            List<ToolExecutionRequest> toolRequests,
-            Map<String, ToolExecutor> toolExecutors,
-            InvocationContext invocationContext) {
-        return executeToolsAsync(
-                toolRequests, toolExecutors, invocationContext, null, null, effectiveToolExecutor());
-    }
-
-    /**
-     * As {@link #executeToolsAsync(List, Map, InvocationContext)}, but collects the results of all tools (including
-     * failed ones) instead of short-circuiting on the first failure, so the caller can compensate the successful
-     * tools before failing the invocation with the tool error.
+     * Non-blocking counterpart of {@link #execute(List, Map, InvocationContext)} that collects the results of all
+     * tools (including failed ones) instead of short-circuiting on the first failure, so the caller can compensate
+     * the successful tools before failing the invocation with the tool error. Every tool is started on the
+     * {@linkplain #effectiveToolExecutor() effective executor} so the model-delivery thread is never blocked.
      */
     private CompletableFuture<CombinedToolResults> executeToolsCollectingErrors(
             List<ToolExecutionRequest> toolRequests,
@@ -1741,42 +1739,6 @@ public class ToolService {
                     startTool(toolRequest, toolExecutors, invocationContext, null, null, effectiveToolExecutor()));
         }
         return combineToolResultsCollectingErrors(futures);
-    }
-
-    /**
-     * Non-blocking counterpart of {@link #execute(List, Map, InvocationContext)} that additionally routes
-     * {@link BeforeToolExecution} and {@link ToolExecution} notifications to the given external consumers
-     * (in addition to the ones configured on this service). Used by the non-blocking streaming AI Service to
-     * emit these notifications into its reactive stream as the tools run.
-     * <p>
-     * Every tool execution (even a single one) is initiated on {@code executor} (which must not be
-     * {@code null}), so the thread that delivered the model response is never blocked by a synchronous tool.
-     * Tools run concurrently, unless {@code executor} is single-threaded, in which case they run serially in
-     * request order.
-     *
-     * @since 1.19.0
-     */
-    public CompletableFuture<Map<ToolExecutionRequest, ToolExecutionResult>> executeToolsAsync(
-            List<ToolExecutionRequest> toolRequests,
-            Map<String, ToolExecutor> toolExecutors,
-            InvocationContext invocationContext,
-            Consumer<BeforeToolExecution> externalBeforeToolExecution,
-            Consumer<ToolExecution> externalAfterToolExecution,
-            Executor executor) {
-        Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> futures = new LinkedHashMap<>();
-        for (ToolExecutionRequest toolRequest : toolRequests) {
-            futures.put(
-                    toolRequest,
-                    startTool(
-                            toolRequest,
-                            toolExecutors,
-                            invocationContext,
-                            externalBeforeToolExecution,
-                            externalAfterToolExecution,
-                            executor));
-        }
-
-        return combineToolResults(futures);
     }
 
     /**
@@ -1806,35 +1768,6 @@ public class ToolService {
     }
 
     /**
-     * Combines a set of in-flight (possibly already-started) tool executions into a single future of their
-     * results, keyed and ordered by request. Waits for all to complete (normally or not), then surfaces the
-     * first failure in iteration order, mirroring the synchronous path. The given map's iteration order
-     * determines the result order, so pass a {@link LinkedHashMap} in request order.
-     *
-     * @since 1.19.0
-     */
-    public static CompletableFuture<Map<ToolExecutionRequest, ToolExecutionResult>> combineToolResults(
-            Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> futures) {
-        return CompletableFuture.allOf(futures.values().toArray(new CompletableFuture[0]))
-                // wait for ALL futures to complete (normally or not), then handle failures below,
-                // in request order - allOf alone would surface an arbitrary failure
-                .handle((ignored, ignoredError) -> ignored)
-                .thenCompose(ignored -> {
-                    Map<ToolExecutionRequest, ToolExecutionResult> toolResults = new LinkedHashMap<>();
-                    for (Map.Entry<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> entry :
-                            futures.entrySet()) {
-                        if (entry.getValue().isCompletedExceptionally()) {
-                            // surface the first failure in request order, mirroring the synchronous path
-                            return entry.getValue().thenApply(ignoredResult -> toolResults);
-                        }
-                        // getNow never blocks: all futures have already completed at this point
-                        toolResults.put(entry.getKey(), entry.getValue().getNow(null));
-                    }
-                    return CompletableFuture.completedFuture(toolResults);
-                });
-    }
-
-    /**
      * The results of a round of tool executions, keeping successful and failed tools together so the caller can
      * compensate the tools that <b>did</b> succeed before failing the invocation with the tool error.
      *
@@ -1848,7 +1781,9 @@ public class ToolService {
             Map<ToolExecutionRequest, ToolExecutionResult> results, Throwable firstError) {}
 
     /**
-     * Like {@link #combineToolResults(Map)} but does <b>not</b> short-circuit on the first tool failure: it waits for
+     * Combines a set of in-flight (possibly already-started) tool executions into a single future of their results,
+     * keyed and ordered by request. Unlike a short-circuiting combine, it does <b>not</b> stop on the first tool
+     * failure: it waits for
      * all tool executions to settle and returns every result (a failed tool becomes an error result), together with
      * the first failure in request order. This lets the asynchronous AI Service modes, whose default
      * {@link ToolExecutionErrorHandler} rethrows execution errors, still run the compensating actions of the tools

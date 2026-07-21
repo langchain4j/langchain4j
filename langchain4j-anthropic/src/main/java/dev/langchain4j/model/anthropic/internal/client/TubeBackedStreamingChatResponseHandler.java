@@ -61,6 +61,9 @@ public final class TubeBackedStreamingChatResponseHandler implements StreamingCh
     }
 
     private void capture(StreamingHandle handle) {
+        if (handle == null) {
+            return;
+        }
         upstreamHandle.compareAndSet(null, handle);
         if (tube.cancelled()) {
             // Downstream cancelled before we had a handle to abort with (or between capture and the

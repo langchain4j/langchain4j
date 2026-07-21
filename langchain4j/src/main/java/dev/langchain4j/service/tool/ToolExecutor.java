@@ -48,9 +48,8 @@ public interface ToolExecutor {
 
     /**
      * Non-blocking counterpart of {@link #executeWithContext(ToolExecutionRequest, InvocationContext)},
-     * invoked by the asynchronous AI Service tool loop (AI Service methods returning a {@link CompletableFuture}
-     * or a reactive {@link java.util.concurrent.Flow.Publisher}), which composes the returned future instead of
-     * waiting on a thread.
+     * invoked by the asynchronous AI Service tool loop (AI Service methods returning {@link CompletableFuture} TODO),
+     * which composes the returned future instead of waiting on a thread.
      * <p>
      * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}: asynchronous
      * AI Services are opt-in, and silently executing a tool synchronously there would block the thread delivering
