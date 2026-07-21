@@ -82,6 +82,12 @@ import mutiny.zero.ZeroPublisher;
  * answer is emitted last, followed by {@code onComplete}. If RAG content was retrieved, a single
  * {@link RetrievedContentsEvent} is emitted first.
  * <p>
+ * <b>Output guardrails.</b> When the AI Service method has output guardrails configured, the final answer may be
+ * rewritten by a guardrail, so the streamed partial chunks are not authoritative. In that case no
+ * {@link PartialResponseEvent} is emitted for the final answer; only the (possibly rewritten)
+ * {@link FinalResponseEvent} carries it. Consumers must therefore rely on {@link FinalResponseEvent} for the
+ * answer whenever output guardrails may be present, rather than concatenating {@link PartialResponseEvent}s.
+ * <p>
  * <b>Event ordering.</b> Because tools start eagerly on their {@link CompleteToolCallEvent} (a latency
  * optimization: a tool overlaps the streaming of the round's remaining tokens and of any later tool calls), a
  * round's {@link BeforeToolExecutionEvent} / {@link AfterToolExecutionEvent} may be emitted <i>before</i> that
@@ -167,10 +173,10 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
      * streams (true token-by-token streaming) and every other event is dropped.
      * <p>
      * When there <b>are output guardrails</b>, an output guardrail may rewrite the final answer, so the individual
-     * partial chunks are no longer authoritative. In that case the partials are dropped and the (possibly rewritten)
-     * text of the single {@link FinalResponseEvent} is emitted instead. This loses no streaming granularity in
-     * practice: with output guardrails the partials are buffered upstream and only released once the assembled
-     * response has passed validation, so they would arrive as a single burst at the very end anyway.
+     * partial chunks are no longer authoritative. In that case only the (possibly rewritten) text of the single
+     * {@link FinalResponseEvent} is emitted. This loses no streaming granularity in practice: with output guardrails
+     * the rich event stream does not emit {@link PartialResponseEvent}s at all (they cannot be reconciled with a
+     * possibly-rewritten final answer), so the whole answer would arrive at the very end regardless.
      *
      * @param events             the rich event stream to adapt
      * @param hasOutputGuardrails whether the AI Service method has output guardrails configured
@@ -199,8 +205,6 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     return;
                 }
                 if (hasOutputGuardrails) {
-                    // A guardrail may rewrite the answer, so the buffered partials are stale — emit the
-                    // authoritative final text instead.
                     if (event instanceof FinalResponseEvent finalResponseEvent) {
                         String text = finalResponseEvent.chatResponse().aiMessage().text();
                         if (text != null) {
@@ -242,7 +246,6 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         private final List<ToolService.CompensableToolExecution> compensableExecutions =
                 context.toolService.newCompensableExecutionsAccumulator();
         private final boolean hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
-        private final List<PartialResponse> bufferedPartialResponses = new ArrayList<>();
         private ChatExecutor chatExecutor;
         private final Executor toolExecutor = context.toolService.effectiveToolExecutor();
         private TokenUsage tokenUsage = new TokenUsage();
@@ -332,9 +335,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     if (event instanceof CompleteResponse completeResponse) {
                         this.roundResponse = completeResponse.chatResponse();
                     } else if (event instanceof PartialResponse partialResponse) {
-                        if (hasOutputGuardrails) {
-                            bufferedPartialResponses.add(partialResponse);
-                        } else {
+                        if (!hasOutputGuardrails) {
                             tube.send(new PartialResponseEvent(partialResponse, invocationContext));
                         }
                     } else if (event instanceof PartialThinking partialThinking) {
@@ -421,8 +422,6 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
             }
 
             tube.send(new IntermediateResponseEvent(chatResponse, invocationContext));
-
-            bufferedPartialResponses.clear();
 
             List<ToolExecutionRequest> toolRequests = aiMessage.toolExecutionRequests();
 
@@ -637,7 +636,6 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     .build();
 
             if (!hasOutputGuardrails || commonGuardrailParams == null) {
-                flushBufferedPartialResponses();
                 completeWithFinalResponse(finalChatResponse);
                 return;
             }
@@ -674,19 +672,11 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     return;
                 }
                 try {
-                    flushBufferedPartialResponses();
                     completeWithFinalResponse(guardedResponse);
                 } catch (Throwable t) {
                     fail(t);
                 }
             });
-        }
-
-        private void flushBufferedPartialResponses() {
-            for (PartialResponse partialResponse : bufferedPartialResponses) {
-                tube.send(new PartialResponseEvent(partialResponse, invocationContext));
-            }
-            bufferedPartialResponses.clear();
         }
 
         private void completeWithFinalResponse(ChatResponse finalChatResponse) {

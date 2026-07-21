@@ -23,12 +23,12 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 /**
- * Functional tests for output guardrails on the reactive {@link Flow.Publisher} AI Service path. Mirrors the
- * handler-based {@code AiServiceTokenStream} buffer-then-validate behaviour: while output guardrails are
- * configured, partial responses are buffered (not streamed) until the assembled final response has passed the
- * guardrails, then the (original) partials are flushed and the (possibly rewritten) final response is emitted.
- * Guardrails — and any reprompt round-trips — run off the model-delivery thread; the
- * non-blocking guarantee itself is covered by {@link AiServicesNonBlockingTest}.
+ * Functional tests for output guardrails on the reactive {@link Flow.Publisher} AI Service path. When output
+ * guardrails are configured the final answer may be rewritten by a guardrail, so the streamed partial responses
+ * are not authoritative: no {@link PartialResponseEvent} is emitted, and only the (possibly rewritten)
+ * {@link FinalResponseEvent} carries the answer (consistent with the {@code Publisher<String>} path). Guardrails —
+ * and any reprompt round-trips — run off the model-delivery thread; the non-blocking guarantee itself is covered by
+ * {@link AiServicesNonBlockingTest}.
  */
 class AiServiceStreamingPublisherGuardrailTest {
 
@@ -94,7 +94,7 @@ class AiServiceStreamingPublisherGuardrailTest {
     }
 
     @Test
-    void passing_output_guardrail_flushes_buffered_partials_and_emits_final() throws Exception {
+    void passing_output_guardrail_emits_no_partials_and_emits_the_final_response() throws Exception {
         StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
 
         PassingEventStreamer assistant = AiServices.builder(PassingEventStreamer.class)
@@ -104,14 +104,15 @@ class AiServiceStreamingPublisherGuardrailTest {
         Collected collected = collect(assistant.chat("Hi"));
 
         assertThat(collected.error).isNull();
-        assertThat(partialText(collected)).isEqualTo("Hello");
+        // With output guardrails configured, no partials are emitted (they cannot be reconciled with a possibly
+        // rewritten final answer); only the FinalResponseEvent carries the answer.
+        assertThat(collected.items).noneMatch(e -> e instanceof PartialResponseEvent);
         assertThat(finalText(collected)).isEqualTo("Hello");
-        // the FinalResponseEvent is emitted last, after the flushed partials
         assertThat(collected.items.get(collected.items.size() - 1)).isInstanceOf(FinalResponseEvent.class);
     }
 
     @Test
-    void rewriting_output_guardrail_keeps_original_partials_but_rewrites_the_final_response() throws Exception {
+    void rewriting_output_guardrail_emits_no_partials_only_the_rewritten_final_response() throws Exception {
         StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello"));
 
         RewritingEventStreamer assistant = AiServices.builder(RewritingEventStreamer.class)
@@ -121,8 +122,9 @@ class AiServiceStreamingPublisherGuardrailTest {
         Collected collected = collect(assistant.chat("Hi"));
 
         assertThat(collected.error).isNull();
-        // The buffered partials are the original model tokens; the guardrail rewrites only the final response.
-        assertThat(partialText(collected)).isEqualTo("Hello");
+        // No stale partials are emitted, so concatenating partials can never contradict the rewritten
+        // FinalResponseEvent - only the rewritten final answer is surfaced.
+        assertThat(collected.items).noneMatch(e -> e instanceof PartialResponseEvent);
         assertThat(finalText(collected)).isEqualTo("rewritten by guardrail");
         assertThat(collected.items.get(collected.items.size() - 1)).isInstanceOf(FinalResponseEvent.class);
     }
@@ -138,7 +140,8 @@ class AiServiceStreamingPublisherGuardrailTest {
         Collected collected = collect(assistant.chat("Hi"));
 
         assertThat(collected.error).isNotNull();
-        // A failed validation must not leak a final response, and the buffered partials must not be flushed.
+        // A failed validation must not leak a final response, and (as always under output guardrails) no partials
+        // are emitted.
         assertThat(collected.items).noneMatch(e -> e instanceof FinalResponseEvent);
         assertThat(collected.items).noneMatch(e -> e instanceof PartialResponseEvent);
     }
@@ -229,14 +232,12 @@ class AiServiceStreamingPublisherGuardrailTest {
     }
 
     @Test
-    void output_guardrail_does_not_replay_intermediate_tool_round_partials_before_the_final_response()
+    void output_guardrail_emits_no_partials_and_carries_intermediate_text_via_the_intermediate_event()
             throws Exception {
-        // Regression test for the shared cross-round partial-response buffer. A tool-calling (intermediate) round
-        // streams preamble text alongside its tool call; the final round streams the answer. With output guardrails
-        // buffering partial responses, only the FINAL round's partials must be flushed — the intermediate round's
-        // buffered partials must be discarded, not replayed before the final response (mirroring the handler-based
-        // path, where each round has its own buffer). The intermediate text is still observable via the
-        // IntermediateResponseEvent; it is simply not re-emitted as PartialResponseEvents at the end.
+        // With output guardrails, no PartialResponseEvents are emitted at all - neither the tool-calling
+        // (intermediate) round's preamble text nor the final round's answer is streamed as partials. The
+        // intermediate text remains observable via its IntermediateResponseEvent, and the answer via the
+        // FinalResponseEvent.
         WeatherTool tool = new WeatherTool();
         StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
                 AiMessage.builder()
@@ -258,21 +259,12 @@ class AiServiceStreamingPublisherGuardrailTest {
 
         assertThat(collected.error).isNull();
         assertThat(tool.calls).hasValue(1);
-        // Only the final round's partials are streamed; the intermediate "Let me check. " preamble is NOT replayed.
-        // (Before the fix, the shared buffer was never cleared between rounds, so this was "Let me check. It is
-        // sunny in Paris.")
-        assertThat(partialText(collected)).isEqualTo("It is sunny in Paris.");
+        // No partials under output guardrails - neither the intermediate preamble nor the final answer is streamed.
+        assertThat(collected.items).noneMatch(e -> e instanceof PartialResponseEvent);
         assertThat(finalText(collected)).isEqualTo("It is sunny in Paris.");
         // The intermediate round's preamble text is not lost — it is carried by the IntermediateResponseEvent.
         assertThat(intermediateText(collected)).isEqualTo("Let me check. ");
         assertThat(collected.items.get(collected.items.size() - 1)).isInstanceOf(FinalResponseEvent.class);
-    }
-
-    private static String partialText(Collected collected) {
-        return collected.items.stream()
-                .filter(e -> e instanceof PartialResponseEvent)
-                .map(e -> ((PartialResponseEvent) e).partialResponse().text())
-                .reduce("", String::concat);
     }
 
     private static String intermediateText(Collected collected) {
