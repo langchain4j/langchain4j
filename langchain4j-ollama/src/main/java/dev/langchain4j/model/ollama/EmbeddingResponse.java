@@ -16,6 +16,7 @@ class EmbeddingResponse {
 
     private String model;
     private List<float[]> embeddings;
+    private Integer promptEvalCount;
 
     EmbeddingResponse() {
     }
@@ -43,6 +44,14 @@ class EmbeddingResponse {
 
     public void setEmbeddings(List<float[]> embeddings) {
         this.embeddings = embeddings;
+    }
+
+    public Integer getPromptEvalCount() {
+        return promptEvalCount;
+    }
+
+    public void setPromptEvalCount(Integer promptEvalCount) {
+        this.promptEvalCount = promptEvalCount;
     }
 
     static class Builder {

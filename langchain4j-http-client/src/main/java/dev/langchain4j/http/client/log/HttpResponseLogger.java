@@ -20,9 +20,36 @@ class HttpResponseLogger {
                             """,
                     response.statusCode(),
                     format(response.headers()),
-                    response.body());
+                    formatBody(response));
         } catch (Exception e) {
             log.warn("Exception occurred while logging HTTP response: {}", e.getMessage());
         }
+    }
+
+    /**
+     * Avoids decoding and dumping binary responses (e.g. audio) as text.
+     */
+    private static Object formatBody(SuccessfulHttpResponse response) {
+        String contentType = response.contentType();
+        if (isTextual(contentType)) {
+            return response.body();
+        }
+        byte[] bytes = response.bodyBytes();
+        int length = bytes == null ? 0 : bytes.length;
+        return "[binary body, " + length + " bytes, content-type: " + contentType + "]";
+    }
+
+    private static boolean isTextual(String contentType) {
+        if (contentType == null) {
+            // Unknown content type: preserve the previous behavior and log the body as text.
+            return true;
+        }
+        String type = contentType.toLowerCase();
+        return type.contains("json")
+                || type.contains("text")
+                || type.contains("xml")
+                || type.contains("html")
+                || type.contains("x-www-form-urlencoded")
+                || type.contains("event-stream");
     }
 }

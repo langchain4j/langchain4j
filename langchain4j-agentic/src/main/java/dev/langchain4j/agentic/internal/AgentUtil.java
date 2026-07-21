@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
 import static dev.langchain4j.agentic.AgenticServices.createBuiltInAgentExecutor;
+import static dev.langchain4j.internal.Utils.allMethods;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.TypeUtils.isImageType;
@@ -21,6 +22,7 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.internal.Json;
+import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.TokenStream;
 import java.lang.annotation.Annotation;
@@ -46,6 +48,7 @@ public class AgentUtil {
     public static final String MEMORY_ID_ARG_NAME = "@MemoryId";
     public static final String AGENTIC_SCOPE_ARG_NAME = "@AgenticScope";
     public static final String LOOP_COUNTER_ARG_NAME = "@LoopCounter";
+    public static final String INVOCATION_PARAMETERS_ARG_NAME = "@InvocationParameters";
 
     private static final Map<Class<? extends TypedKey<?>>, TypedKey<?>> STATE_INSTANCES = new ConcurrentHashMap<>();
 
@@ -177,17 +180,26 @@ public class AgentUtil {
         return argumentsFromMethod(method, defaultValues, Set.of());
     }
 
-    public static List<AgentArgument> argumentsFromMethod(Method method, Map<String, Object> defaultValues, Set<String> optionalArgs) {
+    public static List<AgentArgument> argumentsFromMethod(
+            Method method, Map<String, Object> defaultValues, Set<String> optionalArgs) {
         if (method.getDeclaringClass() == UntypedAgent.class) {
             return List.of();
         }
         return Stream.of(method.getParameters())
-                .map(p -> {
-                    String argName = parameterName(p);
-                    Object defaultValue = defaultValues.getOrDefault(argName, parameterDefaultValue(p));
-                    return new AgentArgument(p.getParameterizedType(), argName, defaultValue, optionalArgs.contains(argName));
-                })
+                .map(p -> argumentFromParameter(p, defaultValues, optionalArgs))
                 .toList();
+    }
+
+    public static AgentArgument argumentFromParameter(Parameter parameter) {
+        return argumentFromParameter(parameter, Map.of(), Set.of());
+    }
+
+    private static AgentArgument argumentFromParameter(
+            Parameter parameter, Map<String, Object> defaultValues, Set<String> optionalArgs) {
+        String argName = parameterName(parameter);
+        Object defaultValue = defaultValues.getOrDefault(argName, parameterDefaultValue(parameter));
+        return new AgentArgument(
+                parameter.getParameterizedType(), argName, defaultValue, optionalArgs.contains(argName));
     }
 
     private static String parameterName(Parameter p) {
@@ -199,6 +211,9 @@ public class AgentUtil {
         }
         if (AgenticScope.class.isAssignableFrom(p.getType())) {
             return AGENTIC_SCOPE_ARG_NAME;
+        }
+        if (InvocationParameters.class.isAssignableFrom(p.getType())) {
+            return INVOCATION_PARAMETERS_ARG_NAME;
         }
         return AgentInvoker.parameterName(p);
     }
@@ -233,6 +248,11 @@ public class AgentUtil {
             }
             if (argName.equals(AGENTIC_SCOPE_ARG_NAME)) {
                 positionalArgs[i++] = agenticScope;
+                continue;
+            }
+            if (argName.equals(INVOCATION_PARAMETERS_ARG_NAME)) {
+                InvocationParameters params = agenticScope.executionContextAs(InvocationParameters.class);
+                positionalArgs[i++] = params != null ? params : new InvocationParameters();
                 continue;
             }
             if (additionalArgs.containsKey(argName)) {
@@ -294,6 +314,8 @@ public class AgentUtil {
                 case "long", "java.lang.Long" -> n.longValue();
                 case "double", "java.lang.Double" -> n.doubleValue();
                 case "float", "java.lang.Float" -> n.floatValue();
+                case "short", "java.lang.Short" -> n.shortValue();
+                case "byte", "java.lang.Byte" -> n.byteValue();
                 default -> value;
             };
         }
@@ -322,7 +344,7 @@ public class AgentUtil {
             boolean failOnMissingAnnotation,
             Class<? extends Annotation> patternAnnotation) {
         Method agentMethod = null;
-        for (Method method : agentServiceClass.getMethods()) {
+        for (Method method : allMethods(agentServiceClass)) {
             if (method.isAnnotationPresent(Agent.class)
                     || (patternAnnotation != null && method.isAnnotationPresent(patternAnnotation))) {
                 if (agentMethod != null) {
@@ -332,7 +354,9 @@ public class AgentUtil {
                 agentMethod = method;
             }
         }
-        if (agentMethod == null && failOnMissingAnnotation) {
+        if (agentMethod != null) {
+            agentMethod.setAccessible(true);
+        } else if (failOnMissingAnnotation) {
             throw new IllegalArgumentException("No agent method found in class: " + agentServiceClass.getName());
         }
         return agentMethod;

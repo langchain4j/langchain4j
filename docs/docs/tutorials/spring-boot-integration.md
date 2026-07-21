@@ -31,7 +31,7 @@ For example, for OpenAI (`langchain4j-open-ai`):
  <dependency>
      <groupId>dev.langchain4j</groupId>
      <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-     <version>1.16.2-beta26</version>
+     <version>1.18.0-beta28</version>
  </dependency>
 ```
 
@@ -40,7 +40,7 @@ For example, for OpenAI (`langchain4j-open-ai`):
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot4-starter</artifactId>
-    <version>1.16.2-beta26</version>
+    <version>1.18.0-beta28</version>
 </dependency>
 ```
 
@@ -93,7 +93,7 @@ import `langchain4j-spring-boot-starter` (Spring Boot 3) or `langchain4j-spring-
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot-starter</artifactId>
-    <version>1.16.2-beta26</version>
+    <version>1.18.0-beta28</version>
 </dependency>
 ```
 
@@ -102,7 +102,7 @@ import `langchain4j-spring-boot-starter` (Spring Boot 3) or `langchain4j-spring-
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot4-starter</artifactId>
-    <version>1.16.2-beta26</version>
+    <version>1.18.0-beta28</version>
 </dependency>
 ```
 
@@ -298,12 +298,12 @@ For Maven:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-micrometer-metrics</artifactId>
-    <version>1.16.2-beta26</version>
+    <version>1.18.0-beta28</version>
 </dependency>
 ```
 For Gradle:
 ```gradle
-implementation 'dev.langchain4j:langchain4j-micrometer-metrics:1.16.2-beta26'
+implementation 'dev.langchain4j:langchain4j-micrometer-metrics:1.18.0-beta28'
 ```
 
 #### Micrometer (Actuator) Configuration

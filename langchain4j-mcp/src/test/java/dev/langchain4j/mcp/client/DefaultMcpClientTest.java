@@ -21,6 +21,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.protocol.McpClientRequest;
 import dev.langchain4j.mcp.protocol.McpListToolsParams;
 import dev.langchain4j.mcp.protocol.McpListToolsRequest;
 import dev.langchain4j.service.tool.ToolExecutionResult;
@@ -51,6 +52,22 @@ public class DefaultMcpClientTest {
         verify(transport).start(any());
         // and: transport is left open
         verify(transport, never()).close();
+    }
+
+    @Test
+    public void should_expose_server_instructions_from_initialize_result() throws Exception {
+        // given
+        final McpTransport transport = getMinimalMcpTransportMock();
+        ObjectNode initializeResult = JsonNodeFactory.instance.objectNode();
+        initializeResult.putObject("result").put("instructions", "Use this server for file operations.");
+        when(transport.initialize(any())).thenReturn(CompletableFuture.completedFuture(initializeResult));
+
+        // when
+        final DefaultMcpClient client =
+                new DefaultMcpClient.Builder().transport(transport).build();
+
+        // then
+        assertThat(client.instructions()).isEqualTo("Use this server for file operations.");
     }
 
     @Test
@@ -512,6 +529,39 @@ public class DefaultMcpClientTest {
                 (McpListToolsRequest) callCaptor.getAllValues().get(1).message();
         assertThat(secondRequest.getParams()).isInstanceOf(McpListToolsParams.class);
         assertThat(((McpListToolsParams) secondRequest.getParams()).getCursor()).isEqualTo("cursor-page2");
+    }
+
+    @Test
+    public void meta_supplier_should_not_drop_progress_token() throws Exception {
+        final McpTransport transport = getMinimalMcpTransportMock();
+
+        ObjectNode toolResult = JsonNodeFactory.instance.objectNode();
+        toolResult
+                .putObject("result")
+                .putArray("content")
+                .addObject()
+                .put("type", "text")
+                .put("text", "ok");
+        when(transport.executeOperationWithResponse(any(McpCallContext.class)))
+                .thenReturn(CompletableFuture.completedFuture(toolResult));
+
+        DefaultMcpClient client = new DefaultMcpClient.Builder()
+                .transport(transport)
+                .progressHandler(notification -> {})
+                .metaSupplier(context -> Map.of("tenant", "acme"))
+                .build();
+
+        client.executeTool(
+                ToolExecutionRequest.builder().name("test").arguments("{}").build());
+
+        ArgumentCaptor<McpCallContext> captor = ArgumentCaptor.forClass(McpCallContext.class);
+        verify(transport).executeOperationWithResponse(captor.capture());
+        McpClientRequest request = (McpClientRequest) captor.getValue().message();
+        Map<String, Object> meta = request.getParams().getMeta();
+
+        // The user-supplied _meta must not overwrite the framework-managed progressToken.
+        assertThat(meta).containsKey("tenant");
+        assertThat(meta).containsKey("progressToken");
     }
 
     private static McpTransport getMinimalMcpTransportMock() {

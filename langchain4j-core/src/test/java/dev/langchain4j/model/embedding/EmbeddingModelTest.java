@@ -56,7 +56,7 @@ class EmbeddingModelTest implements WithAssertions {
         Response<Embedding> response = model.embed(abcDef);
 
         assertThat(response.content().vector()).containsExactly(abcDef.length(), abcDef.hashCode());
-        assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
+        assertThat(response.finishReason()).isNull();
         assertThat(response.tokenUsage()).isEqualTo(new TokenUsage(abcDef.length()));
         assertThat(model.dimension()).isEqualTo(0);
     }

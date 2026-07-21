@@ -115,6 +115,38 @@
           "oldVisibility": "package",
           "newVisibility": "public",
           "justification": "Necessary to support agents generated at deployment time from the Quarkus extension"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.addedToInterface",
+          "new": "method <T> void dev.langchain4j.agentic.scope.AgenticScope::writeStateIfAbsent(java.lang.Class<? extends dev.langchain4j.agentic.declarative.TypedKey<T>>, T)",
+          "justification": "New method on the AgenticScope."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.addedToInterface",
+          "new": "method void dev.langchain4j.agentic.scope.AgenticScope::writeStateIfAbsent(java.lang.String, java.lang.Object)",
+          "justification": "New method on the AgenticScope."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.addedToInterface",
+          "new": "method dev.langchain4j.agentic.supervisor.SupervisorAgentService<T> dev.langchain4j.agentic.supervisor.SupervisorAgentService<T>::beforeCall(java.util.function.Consumer<dev.langchain4j.agentic.scope.AgenticScope>)",
+          "justification": "SupervisorAgentService is a builder interface obtained via AgenticServices.supervisorBuilder() and is not meant to be implemented by users, so the added method breaks no real implementation. The method mirrors the pre-existing AgenticService#beforeCall and is required so beforeCall() can be called fluently on a SupervisorAgentService reference."
+        },
+        {
+          "ignore": true,
+          "code": "java.class.kindChanged",
+          "old": "class dev.langchain4j.agentic.scope.ResultWithAgenticScope<T>",
+          "new": "class dev.langchain4j.agentic.scope.ResultWithAgenticScope<T>",
+          "justification": "ResultWithAgenticScope changed from a record to a regular final class to carry additional suspension state (the 'suspended' flag and a transient resume callback) that cannot be modeled as record components. The canonical constructor and the agenticScope()/result() accessors are preserved, so normal construction and access are unaffected. This module is still in beta (1.18.0-beta), and the only source-incompatible impact is record deconstruction patterns, which are not part of the intended usage of this type."
+        },
+        {
+          "ignore": true,
+          "code": "java.class.noLongerInheritsFromClass",
+          "old": "class dev.langchain4j.agentic.scope.ResultWithAgenticScope<T>",
+          "new": "class dev.langchain4j.agentic.scope.ResultWithAgenticScope<T>",
+          "justification": "Consequence of converting ResultWithAgenticScope from a record (which implicitly extends java.lang.Record) to a regular final class in order to carry non-component suspension state. Public constructor and accessors are preserved."
         }
       ]
     }
