@@ -38,6 +38,10 @@ import dev.langchain4j.agentic.Agents.TechnicalExpertWithMemory;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
+import dev.langchain4j.guardrail.InputGuardrail;
+import dev.langchain4j.guardrail.InputGuardrailResult;
+import dev.langchain4j.guardrail.OutputGuardrail;
+import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.observability.AgentInvocation;
@@ -282,6 +286,70 @@ public class WorkflowAgentsIT {
 
         verify(audienceEditor).editStory(any(), eq("young adults"));
         verify(styleEditor).editStory(any(), eq("fantasy"));
+    }
+
+    @Test
+    void sequential_agents_with_guardrails_tests() {
+        AtomicBoolean inputGuardrailInvoked = new AtomicBoolean(false);
+        AtomicBoolean outputGuardrailInvoked = new AtomicBoolean(false);
+
+        InputGuardrail topicGuardrail = new InputGuardrail() {
+            @Override
+            public InputGuardrailResult validate(dev.langchain4j.data.message.UserMessage userMessage) {
+                inputGuardrailInvoked.set(true);
+                if (userMessage.singleText().toLowerCase().contains("violence")) {
+                    return fatal("Topic about violence is not allowed");
+                }
+                return success();
+            }
+        };
+
+        OutputGuardrail storyLengthGuardrail = new OutputGuardrail() {
+            @Override
+            public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+                outputGuardrailInvoked.set(true);
+                if (responseFromLLM.text() != null && responseFromLLM.text().length() < 10) {
+                    return fatal("Story is too short");
+                }
+                return success();
+            }
+        };
+
+        CreativeWriter creativeWriter = spy(AgenticServices.agentBuilder(CreativeWriter.class)
+                .chatModel(baseModel())
+                .inputGuardrails(topicGuardrail)
+                .outputKey("story")
+                .build());
+
+        StyleEditor styleEditor = spy(AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputGuardrails(storyLengthGuardrail)
+                .outputKey("story")
+                .build());
+
+        UntypedAgent novelCreator = AgenticServices.sequenceBuilder()
+                .subAgents(creativeWriter, styleEditor)
+                .outputKey("story")
+                .build();
+
+        Map<String, Object> input = Map.of(
+                "topic", "dragons and wizards",
+                "style", "fantasy");
+
+        String story = (String) novelCreator.invoke(input);
+        System.out.println(story);
+
+        assertThat(inputGuardrailInvoked.get()).isTrue();
+        assertThat(outputGuardrailInvoked.get()).isTrue();
+        verify(creativeWriter).generateStory("dragons and wizards");
+        verify(styleEditor).editStory(any(), eq("fantasy"));
+
+        // Verify input guardrail blocks execution when it fails
+        Map<String, Object> violentInput = Map.of(
+                "topic", "violence and war",
+                "style", "fantasy");
+
+        assertThrows(AgentInvocationException.class, () -> novelCreator.invoke(violentInput));
     }
 
     @Test
@@ -689,6 +757,45 @@ public class WorkflowAgentsIT {
         assertThat(failed.hasError()).isTrue();
         assertThat(failed.error().error()).isInstanceOf(AgentInvocationException.class);
         assertThat(failed.error().agent().name()).isEqualTo("scoreStyle");
+    }
+
+    @Test
+    void loop_agents_with_error_should_evict_ephemeral_scope() {
+        CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        StyleEditor styleEditor = AgenticServices.agentBuilder(StyleEditor.class)
+                .chatModel(baseModel())
+                .outputKey("story")
+                .build();
+
+        StyleScorer styleScorer = AgenticServices.agentBuilder(StyleScorer.class)
+                .chatModel(throwingModel())
+                .outputKey("score")
+                .build();
+
+        UntypedAgent styleReviewLoop = AgenticServices.loopBuilder()
+                .name("reviewLoop")
+                .subAgents(styleScorer, styleEditor)
+                .maxIterations(5)
+                .exitCondition(agenticScope -> agenticScope.readState("score", 0.0) >= 0.8)
+                .build();
+
+        UntypedAgent styledWriter = AgenticServices.sequenceBuilder()
+                .subAgents(creativeWriter, styleReviewLoop)
+                .outputKey("story")
+                .build();
+
+        Map<String, Object> input = Map.of(
+                "topic", "dragons and wizards",
+                "style", "comedy");
+
+        assertThrows(AgentInvocationException.class, () -> styledWriter.invokeWithAgenticScope(input));
+
+        AgenticScopeRegistry registry = ((AgenticScopeOwner) styledWriter).registry();
+        assertThat(registry.getAllAgenticScopeKeysInMemory()).isEmpty();
     }
 
     @Test

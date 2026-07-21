@@ -1,5 +1,6 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
@@ -15,6 +16,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.DefaultExecutorProvider;
+import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -35,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,7 +62,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
     private final List<String> allowedFunctionNames;
     private final String vertexSearchDatastore;
     private final Map<String, String> labels;
-    private final String cachedContent;
+    private final Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
     private final ExecutorService executor;
 
@@ -77,7 +80,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         this.safetySettings = copy(builder.safetySettings);
         this.vertexSearchDatastore = builder.vertexSearchDatastore;
         this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
-        this.cachedContent = builder.cachedContent;
+        this.generateContentConfigCustomizer = builder.generateContentConfigCustomizer;
 
         this.client = builder.client != null
                 ? builder.client
@@ -93,7 +96,12 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         ChatRequestParameters commonParameters =
                 getOrDefault(builder.defaultRequestParameters, DefaultChatRequestParameters.EMPTY);
 
-        this.defaultRequestParameters = DefaultChatRequestParameters.builder()
+        GoogleGenAiChatRequestParameters genAiParameters =
+                builder.defaultRequestParameters instanceof GoogleGenAiChatRequestParameters googleGenAiParameters
+                        ? googleGenAiParameters
+                        : GoogleGenAiChatRequestParameters.EMPTY;
+
+        this.defaultRequestParameters = GoogleGenAiChatRequestParameters.builder()
                 .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
@@ -105,6 +113,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                .cachedContent(getOrDefault(builder.cachedContent, genAiParameters.cachedContent()))
                 .build();
 
         this.executor = getOrDefault(builder.executor, DefaultExecutorProvider::getDefaultExecutorService);
@@ -117,8 +126,10 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(chatRequest.messages());
         List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages());
 
+        GoogleGenAiChatRequestParameters parameters = (GoogleGenAiChatRequestParameters) chatRequest.parameters();
+
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
-                chatRequest.parameters(),
+                parameters,
                 systemInstruction,
                 safetySettings,
                 thinkingBudget,
@@ -130,7 +141,8 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 allowedFunctionNames,
                 vertexSearchDatastore,
                 labels,
-                cachedContent);
+                parameters.cachedContent(),
+                generateContentConfigCustomizer);
 
         if (logRequests) {
             log.info(
@@ -139,6 +151,9 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     chatRequest.messages(),
                     config);
         }
+
+        MappingTrackingStreamingChatResponseHandler trackingHandler =
+                new MappingTrackingStreamingChatResponseHandler(handler);
 
         executor.execute(() -> {
             try {
@@ -155,6 +170,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 int toolIndex = 0;
 
                 for (GenerateContentResponse chunk : stream) {
+                    trackingHandler.resetMappingTracking();
                     lastChunk = chunk;
                     ChatResponse partialResponse = GoogleGenAiContentMapper.toChatResponse(chunk, modelName);
                     AiMessage aiMessage = partialResponse.aiMessage();
@@ -167,9 +183,9 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     if (aiMessage.text() != null && !aiMessage.text().isEmpty()) {
                         textBuilder.append(aiMessage.text());
                         try {
-                            handler.onPartialResponse(aiMessage.text());
+                            trackingHandler.onPartialResponse(aiMessage.text());
                         } catch (Exception userException) {
-                            handler.onError(userException);
+                            trackingHandler.onError(userException);
                         }
                     }
 
@@ -177,9 +193,9 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                         for (ToolExecutionRequest req : aiMessage.toolExecutionRequests()) {
                             toolRequests.add(req);
                             try {
-                                handler.onCompleteToolCall(new CompleteToolCall(toolIndex++, req));
+                                trackingHandler.onCompleteToolCall(new CompleteToolCall(toolIndex++, req));
                             } catch (Exception userException) {
-                                handler.onError(userException);
+                                trackingHandler.onError(userException);
                             }
                         }
                     }
@@ -192,6 +208,10 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                         if (finishReason != FinishReason.LENGTH && finishReason != FinishReason.CONTENT_FILTER) {
                             finishReason = partialReason;
                         }
+                    }
+
+                    if (!trackingHandler.wasMapped()) {
+                        onUnmappedRawEvent(trackingHandler, chunk);
                     }
                 }
 
@@ -228,9 +248,9 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     log.info("Response:\n- model: {}\n- response: {}", modelName, finalChatResponse);
                 }
 
-                handler.onCompleteResponse(finalChatResponse);
+                trackingHandler.onCompleteResponse(finalChatResponse);
             } catch (Exception e) {
-                handler.onError(e);
+                trackingHandler.onError(GoogleGenAiExceptionMapper.INSTANCE.mapException(e));
             }
         });
     }
@@ -285,67 +305,167 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         private String cachedContent;
         private Boolean logRequests;
         private Boolean logResponses;
+        private Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
+        /**
+         * Sets a pre-configured Google GenAI {@link Client}.
+         * <p>
+         * Use this when you need full control over client configuration.
+         * When set, {@link #apiKey(String)}, {@link #googleCredentials(GoogleCredentials)},
+         * {@link #projectId(String)}, {@link #location(String)}, and {@link #timeout(Duration)} are ignored.
+         *
+         * @param client the pre-configured client
+         * @return {@code this}
+         */
         public Builder client(Client client) {
             this.client = client;
             return this;
         }
 
+        /**
+         * Sets the Google OAuth2 credentials used to authenticate requests via Vertex AI.
+         * <p>
+         * Use this instead of {@link #apiKey(String)} when authenticating with a service account
+         * or Application Default Credentials (ADC).
+         * Requires {@link #projectId(String)} and {@link #location(String)} to be set.
+         *
+         * @param credentials the Google OAuth2 credentials
+         * @return {@code this}
+         */
         public Builder googleCredentials(GoogleCredentials credentials) {
             this.googleCredentials = credentials;
             return this;
         }
 
+        /**
+         * Sets the Google AI Gemini API key used to authenticate requests.
+         * <p>
+         * Use this for the Google AI Studio API. For Vertex AI, use {@link #googleCredentials(GoogleCredentials)}.
+         * Alternatively, set the {@code GOOGLE_API_KEY} environment variable.
+         *
+         * @param apiKey the API key
+         * @return {@code this}
+         */
         public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
         }
 
+        /**
+         * Sets the Google Cloud project ID for Vertex AI access.
+         * <p>
+         * Required when using {@link #googleCredentials(GoogleCredentials)} for Vertex AI.
+         *
+         * @param projectId the GCP project ID
+         * @return {@code this}
+         */
         public Builder projectId(String projectId) {
             this.projectId = projectId;
             return this;
         }
 
+        /**
+         * Sets the Google Cloud region/location for Vertex AI access (e.g. {@code "us-central1"}).
+         * <p>
+         * Required when using {@link #googleCredentials(GoogleCredentials)} for Vertex AI.
+         *
+         * @param location the GCP region
+         * @return {@code this}
+         */
         public Builder location(String location) {
             this.location = location;
             return this;
         }
 
+        /**
+         * Sets the model to use for streaming chat completions.
+         * <p>
+         * Examples: {@code "gemini-2.0-flash"}, {@code "gemini-2.5-pro"}.
+         *
+         * @param modelName the model name
+         * @return {@code this}
+         */
         public Builder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
+        /**
+         * Sets the HTTP request timeout for calls to the Google GenAI API.
+         *
+         * @param timeout the request timeout
+         * @return {@code this}
+         */
         public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
         }
 
+        /**
+         * Sets the sampling temperature in the range {@code [0.0, 2.0]}.
+         * Higher values produce more creative output; lower values produce more deterministic output.
+         *
+         * @param temperature the sampling temperature
+         * @return {@code this}
+         */
         public Builder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
+        /**
+         * Sets the nucleus sampling probability (top-p).
+         * Only the tokens whose cumulative probability exceeds this threshold are considered.
+         *
+         * @param topP the nucleus sampling threshold
+         * @return {@code this}
+         */
         public Builder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
+        /**
+         * Sets the top-K sampling value. Only the {@code topK} most-likely next tokens are considered at each step.
+         *
+         * @param topK the number of top tokens to sample from
+         * @return {@code this}
+         */
         public Builder topK(Integer topK) {
             this.topK = topK;
             return this;
         }
 
+        /**
+         * Sets the frequency penalty, which reduces the likelihood of repeating tokens
+         * proportionally to how often they have appeared in the response so far.
+         *
+         * @param frequencyPenalty the frequency penalty
+         * @return {@code this}
+         */
         public Builder frequencyPenalty(Double frequencyPenalty) {
             this.frequencyPenalty = frequencyPenalty;
             return this;
         }
 
+        /**
+         * Sets the presence penalty, which reduces the likelihood of repeating any token
+         * that has already appeared in the response, regardless of frequency.
+         *
+         * @param presencePenalty the presence penalty
+         * @return {@code this}
+         */
         public Builder presencePenalty(Double presencePenalty) {
             this.presencePenalty = presencePenalty;
             return this;
         }
 
+        /**
+         * Sets the maximum number of tokens to generate in the response.
+         *
+         * @param maxOutputTokens the maximum number of output tokens
+         * @return {@code this}
+         */
         public Builder maxOutputTokens(Integer maxOutputTokens) {
             this.maxOutputTokens = maxOutputTokens;
             return this;
@@ -369,46 +489,110 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        /**
+         * Sets the random seed for deterministic output.
+         * Requests with the same seed and parameters should produce the same response.
+         *
+         * @param seed the random seed
+         * @return {@code this}
+         */
         public Builder seed(Integer seed) {
             this.seed = seed;
             return this;
         }
 
+        /**
+         * Sets sequences that, when generated, will cause the model to stop generating further tokens.
+         *
+         * @param stopSequences the list of stop sequences
+         * @return {@code this}
+         */
         public Builder stopSequences(List<String> stopSequences) {
             this.stopSequences = stopSequences;
             return this;
         }
 
+        /**
+         * Sets safety content filter settings to block harmful content.
+         * See the <a href="https://ai.google.dev/gemini-api/docs/safety-settings">safety settings docs</a>.
+         *
+         * @param safetySettings the list of safety settings
+         * @return {@code this}
+         */
         public Builder safetySettings(List<SafetySetting> safetySettings) {
             this.safetySettings = safetySettings;
             return this;
         }
 
+        /**
+         * Sets the response format, enabling structured output such as JSON mode or JSON Schema.
+         *
+         * @param responseFormat the desired response format
+         * @return {@code this}
+         */
         public Builder responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
             return this;
         }
 
+        /**
+         * Enables the Google Search grounding tool, allowing the model to retrieve
+         * real-time information from the web.
+         * See the <a href="https://ai.google.dev/gemini-api/docs/google-search">Google Search tool docs</a>.
+         *
+         * @param googleSearch whether to enable Google Search
+         * @return {@code this}
+         */
         public Builder enableGoogleSearch(boolean googleSearch) {
             this.googleSearch = googleSearch;
             return this;
         }
 
+        /**
+         * Enables the Google Maps grounding tool, allowing the model to retrieve
+         * location-based information.
+         * See the <a href="https://ai.google.dev/gemini-api/docs/maps-grounding">Google Maps tool docs</a>.
+         *
+         * @param googleMaps whether to enable Google Maps
+         * @return {@code this}
+         */
         public Builder enableGoogleMaps(boolean googleMaps) {
             this.googleMaps = googleMaps;
             return this;
         }
 
+        /**
+         * Enables the URL context tool, allowing the model to read and reason about
+         * content at provided URLs.
+         * See the <a href="https://ai.google.dev/gemini-api/docs/url-context">URL context tool docs</a>.
+         *
+         * @param urlContext whether to enable URL context
+         * @return {@code this}
+         */
         public Builder enableUrlContext(boolean urlContext) {
             this.urlContext = urlContext;
             return this;
         }
 
+        /**
+         * Restricts function calling to only the specified function names.
+         * When set, the model can only call functions whose names appear in this list.
+         *
+         * @param allowedFunctionNames the list of allowed function names
+         * @return {@code this}
+         */
         public Builder allowedFunctionNames(List<String> allowedFunctionNames) {
             this.allowedFunctionNames = allowedFunctionNames;
             return this;
         }
 
+        /**
+         * Sets the list of {@link ChatModelListener}s to be notified on each request and response.
+         * Useful for logging, metrics, and observability integrations.
+         *
+         * @param listeners the chat model listeners
+         * @return {@code this}
+         */
         public Builder listeners(List<ChatModelListener> listeners) {
             this.listeners = listeners;
             return this;
@@ -428,49 +612,125 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        /**
+         * Sets default {@link ChatRequestParameters} that are merged into every request.
+         * Individual request parameters take precedence over these defaults.
+         *
+         * @param defaultRequestParameters the default request parameters
+         * @return {@code this}
+         */
         public Builder defaultRequestParameters(ChatRequestParameters defaultRequestParameters) {
             this.defaultRequestParameters = defaultRequestParameters;
             return this;
         }
 
+        /**
+         * Sets the name of a previously created cached content resource to use with this model.
+         * Using cached content can reduce latency and cost for repeated prompts.
+         * See the <a href="https://ai.google.dev/gemini-api/docs/caching">context caching docs</a>.
+         *
+         * @param cachedContent the cached content resource name
+         * @return {@code this}
+         */
         public Builder cachedContent(String cachedContent) {
             this.cachedContent = cachedContent;
             return this;
         }
 
+        /**
+         * Sets the Vertex AI Search datastore to use for grounding the model's responses
+         * with enterprise data.
+         *
+         * @param vertexSearchDatastore the Vertex AI Search datastore resource name
+         * @return {@code this}
+         */
         public Builder vertexSearchDatastore(String vertexSearchDatastore) {
             this.vertexSearchDatastore = vertexSearchDatastore;
             return this;
         }
 
+        /**
+         * Sets labels (key-value metadata) attached to the request.
+         * Useful for cost attribution and billing tracking in Google Cloud.
+         *
+         * @param labels a map of label keys to values
+         * @return {@code this}
+         */
         public Builder labels(Map<String, String> labels) {
             this.labels = labels;
             return this;
         }
 
+        /**
+         * Overrides the default API endpoint.
+         * <p>
+         * Useful for pointing at a regional endpoint or a compatible proxy.
+         *
+         * @param apiEndpoint the custom API endpoint URL
+         * @return {@code this}
+         */
         public Builder apiEndpoint(String apiEndpoint) {
             this.apiEndpoint = apiEndpoint;
             return this;
         }
 
+        /**
+         * Sets extra HTTP headers to include in every request to the Google GenAI API.
+         *
+         * @param customHeaders a map of header names to values
+         * @return {@code this}
+         */
         public Builder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
             return this;
         }
 
+        /**
+         * Enables debug logging of request details sent to the Google GenAI API.
+         *
+         * @param logRequests whether to log requests
+         * @return {@code this}
+         */
         public Builder logRequests(Boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }
 
+        /**
+         * Enables debug logging of response details received from the Google GenAI API.
+         *
+         * @param logResponses whether to log responses
+         * @return {@code this}
+         */
         public Builder logResponses(Boolean logResponses) {
             this.logResponses = logResponses;
             return this;
         }
 
+        /**
+         * Enables debug logging of both request and response details.
+         * Equivalent to calling both {@link #logRequests(Boolean)} and {@link #logResponses(Boolean)}.
+         *
+         * @param logRequestsAndResponses whether to log requests and responses
+         * @return {@code this}
+         */
         public Builder logRequestsAndResponses(Boolean logRequestsAndResponses) {
             this.logRequests = logRequestsAndResponses;
             this.logResponses = logRequestsAndResponses;
+            return this;
+        }
+
+        /**
+         * Registers a customizer applied to the {@link GenerateContentConfig.Builder} after this integration has
+         * populated it (generation parameters, tools, system instruction, etc.), so it can set any underlying
+         * Google Gen AI SDK option that is not exposed here, or override a value set above.
+         *
+         * @param generateContentConfigCustomizer a consumer that mutates the {@link GenerateContentConfig.Builder}
+         * @see GenerateContentConfig
+         */
+        public Builder generateContentConfigCustomizer(
+                Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
+            this.generateContentConfigCustomizer = generateContentConfigCustomizer;
             return this;
         }
 

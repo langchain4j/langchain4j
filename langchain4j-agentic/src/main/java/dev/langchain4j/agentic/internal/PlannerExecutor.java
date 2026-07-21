@@ -6,5 +6,7 @@ public interface PlannerExecutor {
 
     void onSubagentInvoked(AgentInvocation agentInvocation);
 
+    default void onSubagentSuspended() {}
+
     boolean propagateStreaming();
 }

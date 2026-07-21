@@ -4,7 +4,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.17.0-beta27-SNAPSHOT</version>
+        <version>1.19.0-beta29-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -20,7 +20,7 @@
     </developers>
 
     <properties>
-        <a2a-java-sdk-version>1.0.0.Final</a2a-java-sdk-version>
+        <a2a-java-sdk-version>1.1.0.Final</a2a-java-sdk-version>
     </properties>
 
     <dependencyManagement>
@@ -60,19 +60,19 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-agentic</artifactId>
-            <version>1.17.0-beta27-SNAPSHOT</version>
+            <version>1.19.0-beta29-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-ollama</artifactId>
-            <version>1.17.0-SNAPSHOT</version>
+            <version>1.19.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-open-ai</artifactId>
-            <version>1.17.0-SNAPSHOT</version>
+            <version>1.19.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

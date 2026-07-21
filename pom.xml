@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>1.17.0-beta27-SNAPSHOT</version>
+    <version>1.19.0-beta29-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -79,6 +79,7 @@
         <module>langchain4j-infinispan</module>
         <module>langchain4j-mariadb</module>
         <module>langchain4j-milvus</module>
+        <module>langchain4j-milvus-v2</module>
         <module>langchain4j-mongodb-atlas</module>
         <module>langchain4j-oracle</module>
         <module>langchain4j-opensearch</module>
@@ -148,8 +149,8 @@
     </modules>
 
     <properties>
-        <langchain4j.stable.version>1.17.0-SNAPSHOT</langchain4j.stable.version>
-        <langchain4j.beta.version>1.17.0-beta27-SNAPSHOT</langchain4j.beta.version>
+        <langchain4j.stable.version>1.19.0-SNAPSHOT</langchain4j.stable.version>
+        <langchain4j.beta.version>1.19.0-beta29-SNAPSHOT</langchain4j.beta.version>
         <gib.disable>true</gib.disable>
     </properties>
 

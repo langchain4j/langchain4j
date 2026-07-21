@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
 import static dev.langchain4j.agentic.AgenticServices.createBuiltInAgentExecutor;
+import static dev.langchain4j.internal.Utils.allMethods;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.TypeUtils.isImageType;
@@ -313,6 +314,8 @@ public class AgentUtil {
                 case "long", "java.lang.Long" -> n.longValue();
                 case "double", "java.lang.Double" -> n.doubleValue();
                 case "float", "java.lang.Float" -> n.floatValue();
+                case "short", "java.lang.Short" -> n.shortValue();
+                case "byte", "java.lang.Byte" -> n.byteValue();
                 default -> value;
             };
         }
@@ -341,7 +344,7 @@ public class AgentUtil {
             boolean failOnMissingAnnotation,
             Class<? extends Annotation> patternAnnotation) {
         Method agentMethod = null;
-        for (Method method : agentServiceClass.getMethods()) {
+        for (Method method : allMethods(agentServiceClass)) {
             if (method.isAnnotationPresent(Agent.class)
                     || (patternAnnotation != null && method.isAnnotationPresent(patternAnnotation))) {
                 if (agentMethod != null) {
@@ -351,7 +354,9 @@ public class AgentUtil {
                 agentMethod = method;
             }
         }
-        if (agentMethod == null && failOnMissingAnnotation) {
+        if (agentMethod != null) {
+            agentMethod.setAccessible(true);
+        } else if (failOnMissingAnnotation) {
             throw new IllegalArgumentException("No agent method found in class: " + agentServiceClass.getName());
         }
         return agentMethod;

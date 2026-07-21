@@ -1,44 +1,44 @@
 package dev.langchain4j.model.huggingface;
 
+import static dev.langchain4j.http.client.HttpMethod.POST;
+import static dev.langchain4j.internal.Utils.ensureTrailingForwardSlash;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.huggingface.HuggingFaceJsonUtils.fromJson;
+import static dev.langchain4j.model.huggingface.HuggingFaceJsonUtils.toJson;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import dev.langchain4j.http.client.HttpClient;
+import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.http.client.HttpClientBuilderLoader;
+import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.huggingface.client.EmbeddingRequest;
 import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
 import dev.langchain4j.model.huggingface.client.TextGenerationRequest;
 import dev.langchain4j.model.huggingface.client.TextGenerationResponse;
-import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
-import okhttp3.OkHttpClient;
-import retrofit2.Response;
-import retrofit2.Retrofit;
-import retrofit2.converter.jackson.JacksonConverterFactory;
 
 class DefaultHuggingFaceClient implements HuggingFaceClient {
 
     private static final String BASE_URL = "https://router.huggingface.co/hf-inference/";
 
-    private final HuggingFaceApi huggingFaceApi;
+    private final HttpClient httpClient;
+    private final String baseUrl;
+    private final String apiKey;
     private final String modelId;
 
-    DefaultHuggingFaceClient(String baseUrl, String apiKey, String modelId, Duration timeout) {
+    DefaultHuggingFaceClient(
+            HttpClientBuilder httpClientBuilder, String baseUrl, String apiKey, String modelId, Duration timeout) {
 
-        OkHttpClient okHttpClient = new OkHttpClient.Builder()
-                .addInterceptor(new ApiKeyInsertingInterceptor(apiKey))
-                .callTimeout(timeout)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout)
-                .build();
+        HttpClientBuilder builder = getOrDefault(httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder);
 
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(Objects.isNull(baseUrl) ? BASE_URL : baseUrl)
-                .client(okHttpClient)
-                .addConverterFactory(JacksonConverterFactory.create())
-                .build();
+        this.httpClient = builder.connectTimeout(timeout).readTimeout(timeout).build();
 
-        this.huggingFaceApi = retrofit.create(HuggingFaceApi.class);
+        this.baseUrl = ensureTrailingForwardSlash(Objects.isNull(baseUrl) ? BASE_URL : baseUrl);
+        this.apiKey = ensureNotBlank(apiKey, "apiKey");
         this.modelId = ensureNotBlank(modelId, "modelId");
     }
 
@@ -49,22 +49,23 @@ class DefaultHuggingFaceClient implements HuggingFaceClient {
 
     @Override
     public TextGenerationResponse generate(TextGenerationRequest request) {
-        try {
-            retrofit2.Response<List<TextGenerationResponse>> retrofitResponse =
-                    huggingFaceApi.generate(request, modelId).execute();
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl + "models/" + modelId)
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Authorization", "Bearer " + apiKey)
+                .body(toJson(request))
+                .build();
 
-            if (retrofitResponse.isSuccessful()) {
-                return toOneResponse(retrofitResponse);
-            } else {
-                throw toException(retrofitResponse);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        SuccessfulHttpResponse httpResponse = httpClient.execute(httpRequest);
+
+        List<TextGenerationResponse> responses =
+                fromJson(httpResponse.body(), new TypeReference<List<TextGenerationResponse>>() {});
+
+        return toOneResponse(responses);
     }
 
-    private static TextGenerationResponse toOneResponse(Response<List<TextGenerationResponse>> retrofitResponse) {
-        List<TextGenerationResponse> responses = retrofitResponse.body();
+    private static TextGenerationResponse toOneResponse(List<TextGenerationResponse> responses) {
         if (responses != null && responses.size() == 1) {
             return responses.get(0);
         } else {
@@ -75,25 +76,16 @@ class DefaultHuggingFaceClient implements HuggingFaceClient {
 
     @Override
     public List<float[]> embed(EmbeddingRequest request) {
-        try {
-            Response<List<float[]>> retrofitResponse =
-                    huggingFaceApi.embed(request, modelId).execute();
-            if (retrofitResponse.isSuccessful()) {
-                return retrofitResponse.body();
-            } else {
-                throw toException(retrofitResponse);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
+        HttpRequest httpRequest = HttpRequest.builder()
+                .method(POST)
+                .url(baseUrl + "models/" + modelId + "/pipeline/feature-extraction")
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Authorization", "Bearer " + apiKey)
+                .body(toJson(request))
+                .build();
 
-    private static RuntimeException toException(retrofit2.Response<?> response) throws IOException {
+        SuccessfulHttpResponse httpResponse = httpClient.execute(httpRequest);
 
-        int code = response.code();
-        String body = response.errorBody().string();
-
-        String errorMessage = String.format("status code: %s; body: %s", code, body);
-        return new RuntimeException(errorMessage);
+        return fromJson(httpResponse.body(), new TypeReference<List<float[]>>() {});
     }
 }

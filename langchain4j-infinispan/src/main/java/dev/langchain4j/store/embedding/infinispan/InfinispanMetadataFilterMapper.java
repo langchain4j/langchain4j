@@ -147,13 +147,13 @@ class InfinispanMetadataFilterMapper {
         }
 
         return "(" + filterQuery + metadataKeyLast(filter.key()) + ") " + "OR ("
-                + inFilterQuery + " and " + m + "name!='" + filter.key() + "')"
+                + inFilterQuery + " and " + m + "name!='" + escape(filter.key()) + "')"
                 + addMetadataNullCheck();
     }
 
     private String computeFilter(String operator, Object value) {
         String m = "m" + i + ".";
-        String filterQuery = m + "value " + operator + " '" + value + "'";
+        String filterQuery = m + "value " + operator + " '" + escape(String.valueOf(value)) + "'";
         if (value instanceof Integer || value instanceof Long) {
             Long longValue = getLongValue(value);
             filterQuery = m + "value_int " + operator + " " + longValue;
@@ -191,17 +191,21 @@ class InfinispanMetadataFilterMapper {
     }
 
     private String metadataKeyLast(String key) {
-        return " and m" + i + ".name='" + key + "'";
+        return " and m" + i + ".name='" + escape(key) + "'";
     }
 
     private String metadataKey(String key) {
-        return "m" + i + ".name='" + key + "' and ";
+        return "m" + i + ".name='" + escape(key) + "' and ";
     }
 
     private String formattedComparisonValues(Collection<?> comparisonValues, boolean isNumeric) {
         String inStatement = comparisonValues.stream()
-                .map(s -> isNumeric ? s.toString() : "'" + s + "'")
+                .map(s -> isNumeric ? s.toString() : "'" + escape(String.valueOf(s)) + "'")
                 .collect(Collectors.joining(", "));
         return inStatement;
+    }
+
+    private static String escape(String s) {
+        return s.replace("'", "''");
     }
 }
