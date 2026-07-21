@@ -13,6 +13,31 @@
           "code": "java.class.externalClassExposedInAPI",
           "new": "missing-class dev.langchain4j.data.image.Image",
           "justification": "Image is intentionally exposed by OllamaImageModel because it implements the core ImageModel API and returns generated images through the core Image type"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.listener.EmbeddingModelListener",
+          "justification": "Core langchain4j type intentionally exposed by OllamaEmbeddingModel's observability API (listeners())"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.ModelProvider",
+          "justification": "Core langchain4j type intentionally exposed by OllamaEmbeddingModel's provider() method"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.request.EmbeddingRequest",
+          "justification": "Core langchain4j type intentionally exposed by OllamaEmbeddingModel's doEmbed(EmbeddingRequest)"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.embedding.response.EmbeddingResponse",
+          "justification": "Core langchain4j type intentionally exposed by OllamaEmbeddingModel's doEmbed(EmbeddingRequest)"
+        },
+        {
+          "code": "java.method.removed",
+          "old": "method dev.langchain4j.model.output.Response<java.util.List<dev.langchain4j.data.embedding.Embedding>> dev.langchain4j.model.ollama.OllamaEmbeddingModel::embedAll(java.util.List<dev.langchain4j.data.segment.TextSegment>)",
+          "justification": "embedAll now inherits its default implementation from EmbeddingModel (routing through embed(EmbeddingRequest)/doEmbed); the method is still present and callable via inheritance — non-breaking"
         }
       ]
     }

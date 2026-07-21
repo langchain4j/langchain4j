@@ -45,11 +45,9 @@ public class SupervisorAgentServiceImpl<T> extends AbstractServiceBuilder<T, Sup
 
     public T build() {
         if (supervisorContext != null) {
-            this.beforeCall(agenticScope -> {
-                if (!agenticScope.hasState(SupervisorPlanner.SUPERVISOR_CONTEXT_KEY)) {
-                    agenticScope.writeState(SupervisorPlanner.SUPERVISOR_CONTEXT_KEY, supervisorContext);
-                }
-            });
+            this.beforeCall(this.beforeCall.andThen(agenticScope ->
+                    agenticScope.writeStateIfAbsent(SupervisorPlanner.SUPERVISOR_CONTEXT_KEY, supervisorContext)
+            ));
         }
 
         return build(() -> new SupervisorPlanner(chatModel, chatMemoryProvider, maxAgentsInvocations,

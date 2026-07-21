@@ -1,0 +1,15 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.chat.request.ChatRequestParameters",
+          "justification": "Core langchain4j type intentionally exposed by defaultRequestParameters() and the defaultRequestParameters(ChatRequestParameters) builder method, consistent with the other chat model implementations"
+        }
+      ]
+    }
+  }
+]

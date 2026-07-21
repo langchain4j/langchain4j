@@ -152,7 +152,8 @@ public class DefaultAzureCosmosDBNoSqlFilterMapper implements AzureCosmosDBNoSql
 
     private String formatValue(Object value) {
         if (value instanceof String) {
-            return "\"" + value + "\"";
+            String escaped = ((String) value).replace("\\", "\\\\").replace("\"", "\\\"");
+            return "\"" + escaped + "\"";
         }
         return value.toString();
     }

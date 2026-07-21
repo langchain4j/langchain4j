@@ -266,6 +266,52 @@ class GoogleGenAiContentMapperTest {
     }
 
     @Test
+    void should_use_total_token_count_from_usage_metadata() {
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(Part.builder().text("Hello!").build())
+                                .build())
+                        .build()))
+                .usageMetadata(GenerateContentResponseUsageMetadata.builder()
+                        .promptTokenCount(10)
+                        .candidatesTokenCount(5)
+                        .thoughtsTokenCount(7)
+                        .totalTokenCount(22)
+                        .build())
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
+
+        assertThat(result.tokenUsage().inputTokenCount()).isEqualTo(10);
+        assertThat(result.tokenUsage().outputTokenCount()).isEqualTo(5);
+        assertThat(result.tokenUsage().totalTokenCount()).isEqualTo(22);
+    }
+
+    @Test
+    void should_fall_back_to_prompt_plus_candidates_when_total_token_count_absent() {
+        GenerateContentResponse response = GenerateContentResponse.builder()
+                .candidates(List.of(Candidate.builder()
+                        .content(Content.builder()
+                                .role("model")
+                                .parts(Part.builder().text("Hello!").build())
+                                .build())
+                        .build()))
+                .usageMetadata(GenerateContentResponseUsageMetadata.builder()
+                        .promptTokenCount(10)
+                        .candidatesTokenCount(5)
+                        .build())
+                .build();
+
+        ChatResponse result = GoogleGenAiContentMapper.toChatResponse(response, "test-model");
+
+        assertThat(result.tokenUsage().inputTokenCount()).isEqualTo(10);
+        assertThat(result.tokenUsage().outputTokenCount()).isEqualTo(5);
+        assertThat(result.tokenUsage().totalTokenCount()).isEqualTo(15);
+    }
+
+    @Test
     void should_return_google_gen_ai_metadata_with_raw_response() {
         GenerateContentResponse response = GenerateContentResponse.builder()
                 .candidates(List.of(Candidate.builder()
