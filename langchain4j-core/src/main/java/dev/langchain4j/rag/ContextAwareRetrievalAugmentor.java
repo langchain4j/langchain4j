@@ -6,6 +6,7 @@ import dev.langchain4j.context.ContextProvider;
 import dev.langchain4j.context.ContextRequest;
 import dev.langchain4j.context.ContextResult;
 import dev.langchain4j.context.DefaultContextManager;
+import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.injector.ContentInjector;
 import dev.langchain4j.rag.content.injector.DefaultContentInjector;
@@ -74,14 +75,20 @@ public class ContextAwareRetrievalAugmentor implements RetrievalAugmentor {
     private final ContextManager contextManager;
     private final RetrievalAugmentor delegate;
     private final ContentInjector contentInjector;
+    private final TokenCountEstimator tokenCountEstimator;
+    private final Integer maxTokens;
 
     private ContextAwareRetrievalAugmentor(
             ContextManager contextManager,
             RetrievalAugmentor delegate,
-            ContentInjector contentInjector) {
+            ContentInjector contentInjector,
+            TokenCountEstimator tokenCountEstimator,
+            Integer maxTokens) {
         this.contextManager = ensureNotNull(contextManager, "contextManager");
         this.delegate = delegate;
         this.contentInjector = getOrDefault(contentInjector, DefaultContentInjector::new);
+        this.tokenCountEstimator = tokenCountEstimator;
+        this.maxTokens = maxTokens;
     }
 
     @Override
@@ -107,6 +114,17 @@ public class ContextAwareRetrievalAugmentor implements RetrievalAugmentor {
             log.trace("Retrieved {} content(s) from delegate", retrievedContents.size());
         }
 
+        if (maxTokens != null) {
+            contextContents = limitContentToBudget(contextContents, maxTokens,
+                    "Context content trimmed from {} to {} item(s) to fit within token budget (maxTokens={})");
+
+            if (!retrievedContents.isEmpty()) {
+                int contextTokens = estimateTokenCount(contextContents);
+                retrievedContents = limitContentToBudget(retrievedContents, maxTokens - contextTokens,
+                        "Retrieved content trimmed from {} to {} item(s) to fit within token budget (maxTokens={})");
+            }
+        }
+
         List<Content> allContents = new ArrayList<>(contextContents.size() + retrievedContents.size());
         allContents.addAll(contextContents);
         allContents.addAll(retrievedContents);
@@ -119,6 +137,38 @@ public class ContextAwareRetrievalAugmentor implements RetrievalAugmentor {
                 .build();
     }
 
+    private List<Content> limitContentToBudget(List<Content> contextContents, Integer maxTokens, String format) {
+        int originalContextSize = contextContents.size();
+        contextContents = trimToBudget(contextContents, maxTokens);
+        if (contextContents.size() < originalContextSize) {
+            log.warn(format,
+                    originalContextSize, contextContents.size(), maxTokens);
+        }
+        return contextContents;
+    }
+
+    private int estimateTokenCount(List<Content> contents) {
+        int total = 0;
+        for (Content content : contents) {
+            total += tokenCountEstimator.estimateTokenCountInText(content.textSegment().text());
+        }
+        return total;
+    }
+
+    private List<Content> trimToBudget(List<Content> contents, int budget) {
+        List<Content> trimmed = new ArrayList<>();
+        int tokensUsed = 0;
+        for (Content content : contents) {
+            int tokens = tokenCountEstimator.estimateTokenCountInText(content.textSegment().text());
+            if (tokensUsed + tokens > budget) {
+                break;
+            }
+            trimmed.add(content);
+            tokensUsed += tokens;
+        }
+        return trimmed;
+    }
+
     public static ContextAwareRetrievalAugmentorBuilder builder() {
         return new ContextAwareRetrievalAugmentorBuilder();
     }
@@ -129,6 +179,8 @@ public class ContextAwareRetrievalAugmentor implements RetrievalAugmentor {
         private final List<ContextProvider> contextProviders = new ArrayList<>();
         private RetrievalAugmentor delegate;
         private ContentInjector contentInjector;
+        private TokenCountEstimator tokenCountEstimator;
+        private Integer maxTokens;
 
         ContextAwareRetrievalAugmentorBuilder() {
         }
@@ -191,7 +243,31 @@ public class ContextAwareRetrievalAugmentor implements RetrievalAugmentor {
             return this;
         }
 
+        /**
+         * Sets the maximum total token budget for all injected content (context + retrieved).
+         * Context content gets priority; retrieved content is trimmed to fit the remaining budget.
+         * Requires a {@link TokenCountEstimator} to be set.
+         * When not set, no token limit is applied.
+         */
+        public ContextAwareRetrievalAugmentorBuilder maxTokens(int maxTokens) {
+            this.maxTokens = maxTokens;
+            return this;
+        }
+
+        /**
+         * Sets the {@link TokenCountEstimator} used for token budget enforcement.
+         * Required when {@link #maxTokens(int)} is set.
+         */
+        public ContextAwareRetrievalAugmentorBuilder tokenCountEstimator(TokenCountEstimator tokenCountEstimator) {
+            this.tokenCountEstimator = tokenCountEstimator;
+            return this;
+        }
+
         public ContextAwareRetrievalAugmentor build() {
+            if (maxTokens != null && tokenCountEstimator == null) {
+                throw new IllegalArgumentException(
+                        "tokenCountEstimator must be provided when maxTokens is set");
+            }
             ContextManager manager = this.contextManager;
             if (manager == null) {
                 DefaultContextManager.DefaultContextManagerBuilder cmBuilder = DefaultContextManager.builder();
@@ -200,7 +276,8 @@ public class ContextAwareRetrievalAugmentor implements RetrievalAugmentor {
                 }
                 manager = cmBuilder.build();
             }
-            return new ContextAwareRetrievalAugmentor(manager, delegate, contentInjector);
+            return new ContextAwareRetrievalAugmentor(
+                    manager, delegate, contentInjector, tokenCountEstimator, maxTokens);
         }
     }
 }

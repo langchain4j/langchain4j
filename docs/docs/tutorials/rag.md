@@ -1279,6 +1279,30 @@ RetrievalAugmentor augmentor = ContextAwareRetrievalAugmentor.builder()
     .build();
 ```
 
+### Token Budget Management
+
+When using multiple context providers or combining context with retrieval, injected content can grow large enough to impact the token window. `ContextAwareRetrievalAugmentor` supports an optional token budget via `maxTokens` and a `TokenCountEstimator`:
+
+```java
+RetrievalAugmentor augmentor = ContextAwareRetrievalAugmentor.builder()
+    .contextProvider(StaticContextProvider.of("Company policies..."))
+    .contentRetriever(embeddingStoreContentRetriever)
+    .maxTokens(1500)
+    .tokenCountEstimator(new OpenAiTokenCountEstimator("gpt-4o"))
+    .build();
+```
+
+When `maxTokens` is set:
+- **Context content is trimmed first** — items are included in provider order until the budget is reached; remaining items are dropped
+- **Retrieved content is trimmed next** — items are included in relevance order until the remaining budget (after context) is reached
+- A warning is logged whenever context or retrieved content is trimmed
+
+When `maxTokens` is not set (the default), no limit is applied and all content is injected — the same behavior as before.
+
+:::note
+`TokenCountEstimator` is model-specific. LangChain4j provides implementations for major providers (e.g., `OpenAiTokenCountEstimator`, `GoogleAiGeminiTokenCountEstimator`). See the [TokenCountEstimator Javadoc](https://javadoc.io/doc/dev.langchain4j/langchain4j-core/latest/dev/langchain4j/model/TokenCountEstimator.html) for details.
+:::
+
 ### Context Propagation
 
 Resolved context is stored in `InvocationParameters` under the key `ContextAwareRetrievalAugmentor.CONTEXT_KEY` (`"langchain4j.context"`). This makes context available to downstream RAG components:

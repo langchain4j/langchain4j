@@ -10,6 +10,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
+import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.aggregator.ContentAggregator;
@@ -35,6 +36,7 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -385,7 +387,142 @@ class ContextAwareRetrievalAugmentorTest {
         assertThat(storedContext.get(0).textSegment().text()).isEqualTo("context data");
     }
 
+    // -- Token budget management tests --
+
+    @Test
+    void should_trim_retrieved_content_when_exceeding_token_budget() {
+
+        // given -- context uses 10 chars, budget is 25, so only 15 chars left for retrieval
+        ContextProvider context = StaticContextProvider.of("0123456789"); // 10 tokens
+        ContentRetriever retriever = new TestContentRetriever(
+                Content.from("aaaaaaaaaa"), // 10 tokens -- fits (cumulative: 10)
+                Content.from("bbbbbbbbbb"), // 10 tokens -- doesn't fit (cumulative: 20 > 15)
+                Content.from("cccccccccc")  // 10 tokens -- doesn't fit
+        );
+
+        ContextAwareRetrievalAugmentor augmentor = ContextAwareRetrievalAugmentor.builder()
+                .contextProvider(context)
+                .contentRetriever(retriever)
+                .maxTokens(25)
+                .tokenCountEstimator(charCountEstimator())
+                .build();
+
+        UserMessage userMessage = UserMessage.from("test");
+
+        // when
+        AugmentationResult result = augmentor.augment(
+                new AugmentationRequest(userMessage, createMetadata(userMessage)));
+
+        // then -- only context + first retrieved item fit
+        assertThat(result.contents()).hasSize(2);
+        assertThat(result.contents().get(0).textSegment().text()).isEqualTo("0123456789");
+        assertThat(result.contents().get(1).textSegment().text()).isEqualTo("aaaaaaaaaa");
+    }
+
+    @Test
+    void should_trim_context_and_discard_retrieval_when_context_exceeds_budget() {
+
+        // given -- two context items (10 tokens each), budget is 15, only first fits
+        ContextProvider context = StaticContextProvider.of("0123456789", "abcdefghij"); // 10 + 10 = 20 tokens
+        ContentRetriever retriever = spy(new TestContentRetriever(Content.from("retrieved")));
+
+        ContextAwareRetrievalAugmentor augmentor = ContextAwareRetrievalAugmentor.builder()
+                .contextProvider(context)
+                .contentRetriever(retriever)
+                .maxTokens(15)
+                .tokenCountEstimator(charCountEstimator())
+                .build();
+
+        UserMessage userMessage = UserMessage.from("test");
+
+        // when
+        AugmentationResult result = augmentor.augment(
+                new AugmentationRequest(userMessage, createMetadata(userMessage)));
+
+        // then -- only first context item fits, retrieval has no remaining budget
+        assertThat(result.contents()).hasSize(1);
+        assertThat(result.contents().get(0).textSegment().text()).isEqualTo("0123456789");
+    }
+
+    @Test
+    void should_include_all_content_when_within_token_budget() {
+
+        // given -- context 10 tokens + retrieval 10 tokens = 20, budget is 30
+        ContextProvider context = StaticContextProvider.of("0123456789"); // 10 tokens
+        ContentRetriever retriever = new TestContentRetriever(
+                Content.from("aaaaaaaaaa"),  // 10 tokens
+                Content.from("bbbbbbbbbb")); // 10 tokens
+
+        ContextAwareRetrievalAugmentor augmentor = ContextAwareRetrievalAugmentor.builder()
+                .contextProvider(context)
+                .contentRetriever(retriever)
+                .maxTokens(30)
+                .tokenCountEstimator(charCountEstimator())
+                .build();
+
+        UserMessage userMessage = UserMessage.from("test");
+
+        // when
+        AugmentationResult result = augmentor.augment(
+                new AugmentationRequest(userMessage, createMetadata(userMessage)));
+
+        // then -- all content included
+        assertThat(result.contents()).hasSize(3);
+    }
+
+    @Test
+    void should_not_trim_when_max_tokens_is_not_set() {
+
+        // given -- no maxTokens configured, large content passes through
+        ContextProvider context = StaticContextProvider.of("large context content");
+        ContentRetriever retriever = new TestContentRetriever(
+                Content.from("doc1"), Content.from("doc2"), Content.from("doc3"));
+
+        ContextAwareRetrievalAugmentor augmentor = ContextAwareRetrievalAugmentor.builder()
+                .contextProvider(context)
+                .contentRetriever(retriever)
+                .build();
+
+        UserMessage userMessage = UserMessage.from("test");
+
+        // when
+        AugmentationResult result = augmentor.augment(
+                new AugmentationRequest(userMessage, createMetadata(userMessage)));
+
+        // then -- all content included, no trimming
+        assertThat(result.contents()).hasSize(4);
+    }
+
+    @Test
+    void should_reject_max_tokens_without_token_count_estimator() {
+        assertThatThrownBy(() -> ContextAwareRetrievalAugmentor.builder()
+                .contextProvider(StaticContextProvider.of("test"))
+                .maxTokens(100)
+                .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("tokenCountEstimator");
+    }
+
     // -- Helpers --
+
+    private static TokenCountEstimator charCountEstimator() {
+        return new TokenCountEstimator() {
+            @Override
+            public int estimateTokenCountInText(String text) {
+                return text.length();
+            }
+
+            @Override
+            public int estimateTokenCountInMessage(ChatMessage message) {
+                return 0;
+            }
+
+            @Override
+            public int estimateTokenCountInMessages(Iterable<ChatMessage> messages) {
+                return 0;
+            }
+        };
+    }
 
     private static Metadata createMetadata(UserMessage userMessage) {
         return createMetadata(userMessage, new InvocationParameters());
