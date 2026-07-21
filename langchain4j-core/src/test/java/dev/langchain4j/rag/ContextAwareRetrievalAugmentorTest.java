@@ -6,6 +6,7 @@ import dev.langchain4j.context.ContextRequest;
 import dev.langchain4j.context.ContextResult;
 import dev.langchain4j.context.InvocationParameterContextProvider;
 import dev.langchain4j.context.StaticContextProvider;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.InvocationContext;
@@ -396,6 +397,59 @@ class ContextAwareRetrievalAugmentorTest {
         // then -- only retrieved content, no context
         assertThat(result.contents()).hasSize(1);
         assertThat(result.contents().get(0).textSegment().text()).isEqualTo("retrieved content");
+    }
+
+    // -- Scenario 10: Stateful provider reading chat memory --
+
+    @Test
+    void should_allow_stateful_provider_to_adapt_context_based_on_chat_memory() {
+
+        // given -- a workflow provider that inspects chat memory to determine the current step
+        ContextProvider onboardingProvider = request -> {
+            List<ChatMessage> history = request.chatMemory();
+            if (history == null || history.isEmpty()) {
+                return List.of(Content.from("Onboarding step 1: Ask user for their name and role."));
+            }
+            boolean profileSaved = history.stream()
+                    .filter(m -> m instanceof AiMessage)
+                    .map(m -> ((AiMessage) m).text())
+                    .anyMatch(text -> text.contains("profile saved"));
+            if (profileSaved) {
+                return List.of(Content.from("Onboarding step 2: Ask user for notification preferences."));
+            }
+            return List.of(Content.from("Onboarding step 1: Ask user for their name and role."));
+        };
+
+        ContextAwareRetrievalAugmentor augmentor = ContextAwareRetrievalAugmentor.builder()
+                .contextProvider(onboardingProvider)
+                .build();
+
+        // Turn 1: no chat history -- provider returns step 1
+        UserMessage firstMessage = UserMessage.from("Hi, I'm new here");
+        AugmentationResult result1 = augmentor.augment(
+                new AugmentationRequest(firstMessage, createMetadata(firstMessage)));
+
+        assertThat(result1.contents().get(0).textSegment().text()).contains("step 1");
+
+        // Turn 2: chat history includes an AI response confirming profile was saved
+        UserMessage secondMessage = UserMessage.from("Set my preferences to daily digest");
+        List<ChatMessage> chatHistory = List.of(
+                firstMessage,
+                AiMessage.from("Thanks! Your profile saved successfully."),
+                secondMessage);
+        Metadata metadataWithHistory = Metadata.builder()
+                .chatMessage(secondMessage)
+                .chatMemory(chatHistory)
+                .invocationContext(InvocationContext.builder()
+                        .invocationParameters(new InvocationParameters())
+                        .build())
+                .build();
+
+        AugmentationResult result2 = augmentor.augment(
+                new AugmentationRequest(secondMessage, metadataWithHistory));
+
+        // then -- provider advanced to step 2 by reading the AI response from chat memory
+        assertThat(result2.contents().get(0).textSegment().text()).contains("step 2");
     }
 
     // -- Additional unit-level tests --
