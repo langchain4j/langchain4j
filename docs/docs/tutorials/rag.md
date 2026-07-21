@@ -1201,6 +1201,21 @@ ContextProvider policies = StaticContextProvider.of(
 );
 ```
 
+#### Using a ContentRetriever as a ContextProvider
+
+Existing `ContentRetriever` implementations can be used as context sources via `ContextProvider.from()`:
+
+```java
+ContentRetriever faqRetriever = EmbeddingStoreContentRetriever.builder()
+    .embeddingStore(faqStore)
+    .embeddingModel(embeddingModel)
+    .build();
+
+ContextProvider faqContext = ContextProvider.from(faqRetriever);
+```
+
+This bridges the RAG and CAG abstractions — the retriever is invoked with the user's message and metadata, and its results are treated as context content. This is useful when you want to include retriever-backed knowledge as always-on context rather than as part of the RAG retrieval pipeline.
+
 #### InvocationParameterContextProvider
 
 Extracts context from `InvocationParameters` at runtime, enabling per-request context (user profile, session data) without implementing a custom provider:

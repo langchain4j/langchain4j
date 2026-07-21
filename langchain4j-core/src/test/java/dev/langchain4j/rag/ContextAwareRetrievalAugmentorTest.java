@@ -209,7 +209,63 @@ class ContextAwareRetrievalAugmentorTest {
         verify(engRetriever, never()).retrieve(any());
     }
 
-    // -- Scenario 5: Graceful degradation with failing provider --
+    // -- Scenario 5: ContentRetriever reading resolved context via CONTEXT_KEY --
+
+    @Test
+    void should_allow_content_retriever_to_filter_results_using_resolved_context() {
+
+        // given -- context resolves the user's clearance level
+        ContextProvider clearanceProvider = request -> {
+            String level = request.invocationParameters().get("clearanceLevel");
+            return List.of(Content.from("Clearance: " + level));
+        };
+
+        // A retriever that filters documents based on the resolved context
+        Content publicDoc = Content.from("Project roadmap (public)");
+        Content classifiedDoc = Content.from("Budget forecast (classified)");
+
+        ContentRetriever securityAwareRetriever = query -> {
+            List<Content> ctx = query.metadata().invocationParameters()
+                    .get(ContextAwareRetrievalAugmentor.CONTEXT_KEY);
+            boolean hasClassifiedAccess = ctx != null && ctx.stream()
+                    .anyMatch(c -> c.textSegment().text().contains("Clearance: TOP_SECRET"));
+            if (hasClassifiedAccess) {
+                return List.of(publicDoc, classifiedDoc);
+            }
+            return List.of(publicDoc);
+        };
+
+        RetrievalAugmentor ragDelegate = DefaultRetrievalAugmentor.builder()
+                .contentRetriever(securityAwareRetriever)
+                .build();
+
+        ContextAwareRetrievalAugmentor augmentor = ContextAwareRetrievalAugmentor.builder()
+                .contextProvider(clearanceProvider)
+                .retrievalAugmentor(ragDelegate)
+                .build();
+
+        // when -- user with TOP_SECRET clearance
+        InvocationParameters topSecretParams = InvocationParameters.from("clearanceLevel", "TOP_SECRET");
+        UserMessage userMessage = UserMessage.from("Show me project docs");
+        AugmentationResult classifiedResult = augmentor.augment(
+                new AugmentationRequest(userMessage, createMetadata(userMessage, topSecretParams)));
+
+        // then -- gets both public and classified documents
+        assertThat(classifiedResult.contents()).hasSize(3); // 1 context + 2 retrieved
+        assertThat(classifiedResult.contents().get(1).textSegment().text()).isEqualTo("Project roadmap (public)");
+        assertThat(classifiedResult.contents().get(2).textSegment().text()).isEqualTo("Budget forecast (classified)");
+
+        // when -- user with PUBLIC clearance
+        InvocationParameters publicParams = InvocationParameters.from("clearanceLevel", "PUBLIC");
+        AugmentationResult publicResult = augmentor.augment(
+                new AugmentationRequest(userMessage, createMetadata(userMessage, publicParams)));
+
+        // then -- gets only public documents
+        assertThat(publicResult.contents()).hasSize(2); // 1 context + 1 retrieved
+        assertThat(publicResult.contents().get(1).textSegment().text()).isEqualTo("Project roadmap (public)");
+    }
+
+    // -- Scenario 6: Graceful degradation with failing provider --
 
     @Test
     void should_continue_when_a_context_provider_fails() {
@@ -239,7 +295,7 @@ class ContextAwareRetrievalAugmentorTest {
         assertThat(result.contents().get(1).textSegment().text()).isEqualTo("Retrieved doc.");
     }
 
-    // -- Scenario 6: Wrapping an existing DefaultRetrievalAugmentor --
+    // -- Scenario 7: Wrapping an existing DefaultRetrievalAugmentor --
 
     @Test
     void should_work_as_wrapper_around_existing_retrieval_augmentor() {
@@ -280,7 +336,7 @@ class ContextAwareRetrievalAugmentorTest {
                 .isEqualTo("doc from existing RAG");
     }
 
-    // -- Scenario 7: Multiple context providers with custom ContentInjector --
+    // -- Scenario 8: Multiple context providers with custom ContentInjector --
 
     @Test
     void should_use_custom_content_injector_with_multiple_providers() {
@@ -317,7 +373,7 @@ class ContextAwareRetrievalAugmentorTest {
                 .contains("Article about headaches.");
     }
 
-    // -- Scenario 8: Empty context -- pure retrieval fallback --
+    // -- Scenario 9: Empty context -- pure retrieval fallback --
 
     @Test
     void should_fall_through_to_pure_retrieval_when_context_is_empty() {
@@ -385,6 +441,91 @@ class ContextAwareRetrievalAugmentorTest {
         List<Content> storedContext = params.get(ContextAwareRetrievalAugmentor.CONTEXT_KEY);
         assertThat(storedContext).hasSize(1);
         assertThat(storedContext.get(0).textSegment().text()).isEqualTo("context data");
+    }
+
+    // -- ContextProvider.from(ContentRetriever) bridge tests --
+
+    @Test
+    void should_use_content_retriever_as_context_provider() {
+
+        // given
+        ContentRetriever retriever = spy(new TestContentRetriever(
+                Content.from("FAQ: To return an item, visit our returns portal.")));
+
+        ContextProvider faqContext = ContextProvider.from(retriever);
+
+        ContextAwareRetrievalAugmentor augmentor = ContextAwareRetrievalAugmentor.builder()
+                .contextProvider(faqContext)
+                .build();
+
+        UserMessage userMessage = UserMessage.from("How do I return an item?");
+
+        // when
+        AugmentationResult result = augmentor.augment(
+                new AugmentationRequest(userMessage, createMetadata(userMessage)));
+
+        // then -- retriever was called and its content is in the result
+        verify(retriever).retrieve(any());
+        assertThat(result.contents()).hasSize(1);
+        assertThat(result.contents().get(0).textSegment().text())
+                .isEqualTo("FAQ: To return an item, visit our returns portal.");
+    }
+
+    @Test
+    void should_pass_query_text_and_metadata_to_wrapped_retriever() {
+
+        // given -- a retriever that captures the query it receives
+        ContentRetriever capturingRetriever = spy(new TestContentRetriever(Content.from("doc")));
+
+        ContextProvider bridged = ContextProvider.from(capturingRetriever);
+
+        InvocationParameters params = InvocationParameters.from("key", "value");
+        UserMessage userMessage = UserMessage.from("specific question");
+        Metadata metadata = createMetadata(userMessage, params);
+
+        // when
+        ContextRequest contextRequest = new ContextRequest(userMessage, metadata);
+        List<Content> contents = bridged.provideContext(contextRequest);
+
+        // then
+        assertThat(contents).hasSize(1);
+        verify(capturingRetriever).retrieve(any(Query.class));
+    }
+
+    @Test
+    void should_combine_static_and_retriever_based_context_providers() {
+
+        // given -- static policies + retriever-backed FAQ, both as context
+        ContextProvider policies = StaticContextProvider.of("All responses must comply with GDPR.");
+        ContentRetriever faqRetriever = new TestContentRetriever(
+                Content.from("Returns are processed within 5 business days."));
+        ContextProvider faqContext = ContextProvider.from(faqRetriever);
+
+        ContextAwareRetrievalAugmentor augmentor = ContextAwareRetrievalAugmentor.builder()
+                .contextProvider(policies)
+                .contextProvider(faqContext)
+                .build();
+
+        UserMessage userMessage = UserMessage.from("How long do returns take?");
+
+        // when
+        AugmentationResult result = augmentor.augment(
+                new AugmentationRequest(userMessage, createMetadata(userMessage)));
+
+        // then -- both static and retriever-based context present
+        assertThat(result.contents()).hasSize(2);
+        assertThat(result.contents().get(0).textSegment().text())
+                .isEqualTo("All responses must comply with GDPR.");
+        assertThat(result.contents().get(1).textSegment().text())
+                .isEqualTo("Returns are processed within 5 business days.");
+    }
+
+    @Test
+    void should_have_descriptive_name_for_bridged_provider() {
+        ContentRetriever retriever = new TestContentRetriever(Content.from("doc"));
+        ContextProvider bridged = ContextProvider.from(retriever);
+
+        assertThat(bridged.name()).isEqualTo("ContentRetrieverContextProvider[TestContentRetriever]");
     }
 
     // -- Token budget management tests --

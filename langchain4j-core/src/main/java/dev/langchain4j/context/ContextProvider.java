@@ -1,9 +1,15 @@
 package dev.langchain4j.context;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.query.Query;
 
 import java.util.List;
+
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Provides contextual {@link Content} for a given {@link ContextRequest}.
@@ -47,5 +53,37 @@ public interface ContextProvider {
      */
     default String name() {
         return getClass().getSimpleName();
+    }
+
+    /**
+     * Creates a {@link ContextProvider} that delegates to the given {@link ContentRetriever}.
+     * <p>
+     * This bridges the RAG and CAG abstractions, allowing existing {@link ContentRetriever}
+     * implementations to be used as context sources.
+     *
+     * @param contentRetriever the content retriever to delegate to
+     * @return a context provider that retrieves content using the given retriever
+     */
+    static ContextProvider from(ContentRetriever contentRetriever) {
+        ensureNotNull(contentRetriever, "contentRetriever");
+        return new ContextProvider() {
+            @Override
+            public List<Content> provideContext(ContextRequest request) {
+                ChatMessage chatMessage = request.chatMessage();
+                String queryText;
+                if (chatMessage instanceof UserMessage userMessage) {
+                    queryText = userMessage.singleText();
+                } else {
+                    queryText = chatMessage.toString();
+                }
+                Query query = Query.from(queryText, request.metadata());
+                return contentRetriever.retrieve(query);
+            }
+
+            @Override
+            public String name() {
+                return "ContentRetrieverContextProvider[" + contentRetriever.getClass().getSimpleName() + "]";
+            }
+        };
     }
 }
