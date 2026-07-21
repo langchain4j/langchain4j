@@ -2,10 +2,6 @@ package dev.langchain4j.data.document.parser.docling;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Base64;
-import java.util.function.Function;
 import ai.docling.serve.api.DoclingServeApi;
 import ai.docling.serve.api.convert.request.ConvertDocumentRequest;
 import ai.docling.serve.api.convert.request.options.ConvertDocumentOptions;
@@ -18,6 +14,10 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.internal.ValidationUtils;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Base64;
+import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -141,8 +141,7 @@ public class DoclingDocumentParser implements DocumentParser {
          * @param documentTextExtractor the function to extract document text from the response
          * @return this builder
          */
-        public Builder documentTextExtractor(
-                Function<InBodyConvertDocumentResponse, String> documentTextExtractor) {
+        public Builder documentTextExtractor(Function<InBodyConvertDocumentResponse, String> documentTextExtractor) {
             this.documentTextExtractor = documentTextExtractor;
             return this;
         }

@@ -85,9 +85,7 @@ class DoclingDocumentParserTest {
     void shouldReturnDocumentWithParsedText_usingBuilder() {
         mockResponseWithMarkdown("# Parsed Content");
 
-        var parser = DoclingDocumentParser.builder()
-                .doclingClient(mockApi)
-                .build();
+        var parser = DoclingDocumentParser.builder().doclingClient(mockApi).build();
         var document = parser.parse(new ByteArrayInputStream("some bytes".getBytes()));
 
         assertThat(document.text()).isEqualTo("# Parsed Content");
@@ -95,8 +93,7 @@ class DoclingDocumentParserTest {
 
     @Test
     void shouldThrowWhenDoclingClientIsNull_usingBuilder() {
-        assertThatThrownBy(() -> DoclingDocumentParser.builder().build())
-                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> DoclingDocumentParser.builder().build()).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -116,9 +113,7 @@ class DoclingDocumentParserTest {
     void shouldUseDefaultMarkdownExtractorWhenNoneSpecified() {
         mockResponseWith("# Markdown", "<h1>HTML</h1>", "Plain text", null);
 
-        var parser = DoclingDocumentParser.builder()
-                .doclingClient(mockApi)
-                .build();
+        var parser = DoclingDocumentParser.builder().doclingClient(mockApi).build();
         var document = parser.parse(new ByteArrayInputStream("some bytes".getBytes()));
 
         assertThat(document.text()).isEqualTo("# Markdown");
@@ -163,8 +158,8 @@ class DoclingDocumentParserTest {
 
         var parser = DoclingDocumentParser.builder()
                 .doclingClient(mockApi)
-                .documentTextExtractor(response ->
-                        "%s (status=%s, time=%.1f)".formatted(
+                .documentTextExtractor(response -> "%s (status=%s, time=%.1f)"
+                        .formatted(
                                 response.getDocument().getMarkdownContent(),
                                 response.getStatus(),
                                 response.getProcessingTime()))
