@@ -27,14 +27,16 @@ public class StdioMcpTransport implements McpTransport {
 
     private final List<String> command;
     private final Map<String, String> environment;
-    private Process process;
-    private JsonRpcIoHandler jsonRpcIoHandler;
+    // These are (re)assigned by start(), which may be invoked again from the health-check thread
+    // during reconnection, so they are volatile to ensure visibility across threads.
+    private volatile Process process;
+    private volatile JsonRpcIoHandler jsonRpcIoHandler;
     private final boolean logEvents;
     private final Logger logger;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(StdioMcpTransport.class);
     private volatile McpOperationHandler messageHandler;
-    private ProcessStderrHandler stderrHandler;
+    private volatile ProcessStderrHandler stderrHandler;
     private ExecutorService executorService;
     private boolean shouldShutdownExecutorService;
 
@@ -52,6 +54,10 @@ public class StdioMcpTransport implements McpTransport {
 
     @Override
     public void start(McpOperationHandler messageHandler) {
+        // start() may be called again during reconnection (e.g. from the health-check thread).
+        // Tear down any previous process and I/O handlers first, otherwise the old subprocess and
+        // its handler tasks are leaked on every reconnect.
+        stopCurrentProcess();
         this.messageHandler = messageHandler;
         log.debug("Starting process: {}", command);
         ProcessBuilder processBuilder = new ProcessBuilder(command);
@@ -130,16 +136,35 @@ public class StdioMcpTransport implements McpTransport {
         // ignore, for stdio transport, we currently don't do reconnection attempts
     }
 
+    /**
+     * Closes the current I/O handlers and destroys the current subprocess, if any.
+     * Does not shut down the (potentially shared) executor service, so it is safe to call
+     * before starting a replacement process during reconnection.
+     */
+    private void stopCurrentProcess() {
+        if (stderrHandler != null) {
+            try {
+                stderrHandler.close();
+            } catch (Exception ignored) {
+            }
+            stderrHandler = null;
+        }
+        if (jsonRpcIoHandler != null) {
+            try {
+                jsonRpcIoHandler.close();
+            } catch (Exception ignored) {
+            }
+            jsonRpcIoHandler = null;
+        }
+        if (process != null) {
+            process.destroy();
+            process = null;
+        }
+    }
+
     @Override
     public void close() throws IOException {
-        try {
-            stderrHandler.close();
-        } catch (Exception ignored) {
-        }
-        try {
-            jsonRpcIoHandler.close();
-        } catch (Exception ignored) {
-        }
+        stopCurrentProcess();
         if (executorService != null && shouldShutdownExecutorService) {
             executorService.shutdown();
             try {
@@ -151,7 +176,6 @@ public class StdioMcpTransport implements McpTransport {
                 Thread.currentThread().interrupt();
             }
         }
-        process.destroy();
     }
 
     public static Builder builder() {
