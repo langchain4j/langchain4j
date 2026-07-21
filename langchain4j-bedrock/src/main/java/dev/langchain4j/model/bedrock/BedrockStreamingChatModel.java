@@ -131,6 +131,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                     @Override
                     public void onNext(ConverseStreamOutput output) {
                         handler.resetMappingTracking();
+                        try {
                         if (output instanceof MessageStartEvent event) {
                             if (logResponses) {
                                 log.debug("onMessageStart: {}", event);
@@ -193,6 +194,12 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
 
                         if (!handler.wasMapped()) {
                             onUnmappedRawEvent(handler, output);
+                        }
+                        } catch (Exception e) {
+                            RuntimeException mappedError = BedrockExceptionMapper.INSTANCE.mapException(e);
+                            withLoggingExceptions(() -> handler.onError(mappedError));
+                            subscription.cancel();
+                            return;
                         }
 
                         subscription.request(1);

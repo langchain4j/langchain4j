@@ -191,8 +191,68 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .invocationContext(invocationContext)
                                     .error(ex)
                                     .build());
+                            Optional<Object> asyncFailure = asAsyncOrReactiveFailure(method, ex);
+                            if (asyncFailure.isPresent()) {
+                                return asyncFailure.get();
+                            }
                             throw ex;
                         }
+                    }
+
+                    /**
+                     * If {@code method} returns an asynchronous ({@code CompletableFuture}/{@code CompletionStage} or an
+                     * adapted type) or reactive ({@code Flow.Publisher} or an adapted type) value, wraps {@code error}
+                     * into a matching already-failed future / immediately-failing publisher so a synchronous prologue
+                     * failure is delivered through the returned value rather than thrown. Returns empty for synchronous
+                     * return types (the caller then rethrows) and for a reactive stream of an unsupported element type
+                     * (a configuration error, left to surface synchronously).
+                     */
+                    private Optional<Object> asAsyncOrReactiveFailure(Method method, Throwable error) {
+                        if (error instanceof IllegalConfigurationException) {
+                            return Optional.empty();
+                        }
+                        Type declaredReturnType =
+                                context.returnType != null ? context.returnType : method.getGenericReturnType();
+                        CompletableFutureAdapter completableFutureAdapter =
+                                findCompletableFutureAdapter(declaredReturnType);
+                        boolean asyncReturnType = typeHasRawClass(declaredReturnType, CompletableFuture.class)
+                                || typeHasRawClass(declaredReturnType, CompletionStage.class)
+                                || completableFutureAdapter != null;
+                        Type returnType =
+                                asyncReturnType ? resolveFirstGenericParameterType(declaredReturnType) : declaredReturnType;
+
+                        if (asyncReturnType) {
+                            CompletableFuture<Object> failed = new CompletableFuture<>();
+                            failed.completeExceptionally(error);
+                            return Optional.of(completableFutureAdapter != null
+                                    ? completableFutureAdapter.fromCompletableFuture(declaredReturnType, failed)
+                                    : failed);
+                        }
+
+                        PublisherAdapter publisherAdapter = findPublisherAdapter(returnType);
+                        boolean reactiveStreaming =
+                                typeHasRawClass(returnType, Flow.Publisher.class) || publisherAdapter != null;
+                        if (reactiveStreaming) {
+                            Type elementType = resolveFirstGenericParameterType(returnType);
+                            if (elementType != AiServiceStreamingEvent.class && elementType != String.class) {
+                                // Unsupported element type is a configuration error; let it surface synchronously.
+                                return Optional.empty();
+                            }
+                            Flow.Publisher<AiServiceStreamingEvent> failingEvents = subscriber -> {
+                                subscriber.onSubscribe(NOOP_SUBSCRIPTION);
+                                subscriber.onError(error);
+                            };
+                            Flow.Publisher<?> mapped = elementType == AiServiceStreamingEvent.class
+                                    ? failingEvents
+                                    : AiServiceStreamingEventPublisher.toTextPublisher(
+                                            failingEvents,
+                                            context.guardrailService().hasOutputGuardrails(method),
+                                            context.streamingBufferSize);
+                            return Optional.of(
+                                    publisherAdapter != null ? publisherAdapter.fromPublisher(returnType, mapped) : mapped);
+                        }
+
+                        return Optional.empty();
                     }
 
                     private static ChatRequestParameters determineChatRequestParameters(AiServiceContext context) {

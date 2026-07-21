@@ -60,7 +60,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Flow;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import mutiny.zero.BackpressureStrategy;
 import mutiny.zero.Tube;
@@ -183,7 +182,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     subscription.cancel();
                     return;
                 }
-                tube.whenCancelled(subscription::cancel);
+                tube.whenTerminates(subscription::cancel);
                 subscription.request(Long.MAX_VALUE);
             }
 
@@ -232,7 +231,6 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         private final ChatMemory temporaryMemory;
         private final AtomicReference<Flow.Subscription> modelSubscription = new AtomicReference<>();
         private final AtomicReference<InflightRound> inflightRound = new AtomicReference<>();
-        private final AtomicBoolean cancellationCompensationStarted = new AtomicBoolean(false);
         private final AtomicReference<CompletableFuture<?>> guardrailsFuture = new AtomicReference<>();
         private final List<ToolService.CompensableToolExecution> compensableExecutions =
                 context.toolService.newCompensableExecutionsAccumulator();
@@ -249,7 +247,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         }
 
         private void start() {
-            tube.whenCancelled(() -> {
+            tube.whenTerminates(() -> {
                 Flow.Subscription subscription = modelSubscription.get();
                 if (subscription != null) {
                     subscription.cancel();
@@ -258,7 +256,9 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 if (guardrails != null) {
                     guardrails.cancel(true);
                 }
-                InflightRound round = inflightRound.getAndSet(null);
+            });
+            tube.whenCancelled(() -> {
+                InflightRound round = underAccumulatorLock(() -> inflightRound.getAndSet(null));
                 if (round != null) {
                     round.toolsFuture().whenComplete((combined, error) -> doCancellationCompensation(
                             round.toolRequests(), combined != null ? combined.results() : null));
@@ -429,11 +429,22 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     fail(error);
                     return;
                 }
-                if (!inflightRound.compareAndSet(round, null)) {
-                    return;
+                String[] failedToolNameHolder = new String[1];
+                boolean won = underAccumulatorLock(() -> {
+                    if (!inflightRound.compareAndSet(round, null)) {
+                        return false;
+                    }
+                    if (compensableExecutions != null) {
+                        failedToolNameHolder[0] = context.toolService.collectCompensableRound(
+                                toolRequests, combined.results(), compensableExecutions, invocationContext);
+                    }
+                    return true;
+                });
+                if (!won) {
+                    return; // the cancel path claimed the round; it compensates
                 }
                 if (tube.cancelled()) {
-                    doCancellationCompensation(toolRequests, combined.results());
+                    doCancellationCompensation(null, null); // this round already collected above
                     return;
                 }
                 try {
@@ -444,7 +455,8 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                             parameters,
                             toolRequests,
                             combined.results(),
-                            combined.firstError());
+                            combined.firstError(),
+                            failedToolNameHolder[0]);
                 } catch (Throwable t) {
                     fail(t);
                 }
@@ -452,16 +464,31 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         }
 
         /**
-         * Rolls back the compensable tools on cancellation, at most once (whichever of the cancel signal or the
-         * round's completion reaches it first wins). Stream events are not delivered after a cancel, so only the
-         * observability {@code ToolCompensatedEvent} fires here.
+         * Runs {@code action} while holding the compensable-executions accumulator monitor, so the inflight-round
+         * handoff and the round's collection are ordered with the cancel path (which reads the handoff under the same
+         * monitor). When compensation is disabled the accumulator is {@code null}; there is then nothing to order, so
+         * the action runs without a lock.
+         */
+        private <T> T underAccumulatorLock(java.util.function.Supplier<T> action) {
+            if (compensableExecutions == null) {
+                return action.get();
+            }
+            synchronized (compensableExecutions) {
+                return action.get();
+            }
+        }
+
+        /**
+         * Rolls back the compensable tools on cancellation. Safe to call more than once and from either the cancel
+         * signal or a racing round completion: {@code compensateOnCancellationAsync} snapshots-and-clears the shared
+         * accumulator under its monitor, so each compensable tool is rolled back exactly once (the first caller to
+         * snapshot it wins; later calls see an empty accumulator). Only round-data-bearing calls collect a round, and
+         * those are mutually exclusive via {@code inflightRound}, so no round is collected twice. Stream events are not
+         * delivered after a cancel, so only the observability {@code ToolCompensatedEvent} fires here.
          */
         private void doCancellationCompensation(
                 List<ToolExecutionRequest> currentRoundRequests,
                 Map<ToolExecutionRequest, ToolExecutionResult> currentRoundResults) {
-            if (!cancellationCompensationStarted.compareAndSet(false, true)) {
-                return;
-            }
             context.toolService.compensateOnCancellationAsync(
                     currentRoundRequests,
                     currentRoundResults,
@@ -511,11 +538,11 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 ChatRequestParameters parameters,
                 List<ToolExecutionRequest> toolRequests,
                 Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
-                Throwable firstError) {
+                Throwable firstError,
+                String preCollectedFailedToolName) {
 
-            // A tool cancelled by the subscription's cancellation is not a tool failure: abort without compensating
-            // (started tools run to completion with their results discarded — the best-effort cancellation contract).
             if (firstError instanceof java.util.concurrent.CancellationException) {
+                doCancellationCompensation(null, null);
                 fail(firstError);
                 return;
             }
@@ -540,10 +567,13 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     CompensationReason.TOOL_EXECUTION_FAILED,
                     context.eventListenerRegistrar,
                     (toolExecution, reason) ->
-                            tube.send(new ToolCompensatedEvent(toolExecution, reason, invocationContext)));
+                            tube.send(new ToolCompensatedEvent(toolExecution, reason, invocationContext)),
+                    true,
+                    preCollectedFailedToolName);
 
             compensated.whenComplete((ignoredCompensation, compensationError) -> {
                 if (tube.cancelled()) {
+                    doCancellationCompensation(null, null);
                     return;
                 }
                 // The default asynchronous ToolExecutionErrorHandler rethrows a tool execution error. The tools that

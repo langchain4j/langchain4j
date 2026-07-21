@@ -1,5 +1,7 @@
 package dev.langchain4j.service.guardrail;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
@@ -82,7 +84,10 @@ public interface GuardrailService {
      */
     default <MethodKey> CompletableFuture<UserMessage> executeGuardrailsAsync(
             MethodKey method, InputGuardrailRequest request) {
-        return executeInputGuardrailsAsync(method, request).thenApply(result -> result.userMessage(request));
+        CompletableFuture<InputGuardrailResult> guardrailFuture = executeInputGuardrailsAsync(method, request);
+        CompletableFuture<UserMessage> result = guardrailFuture.thenApply(r -> r.userMessage(request));
+        propagateCancellation(result, guardrailFuture);
+        return result;
     }
 
     /**
@@ -154,7 +159,10 @@ public interface GuardrailService {
      * @since 1.19.0
      */
     default <MethodKey, T> CompletableFuture<T> executeGuardrailsAsync(MethodKey method, OutputGuardrailRequest request) {
-        return executeOutputGuardrailsAsync(method, request).thenApply(result -> result.response(request));
+        CompletableFuture<OutputGuardrailResult> guardrailFuture = executeOutputGuardrailsAsync(method, request);
+        CompletableFuture<T> result = guardrailFuture.thenApply(r -> r.response(request));
+        propagateCancellation(result, guardrailFuture);
+        return result;
     }
 
     /**

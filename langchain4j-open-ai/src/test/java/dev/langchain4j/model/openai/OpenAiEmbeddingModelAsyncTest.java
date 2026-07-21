@@ -12,8 +12,11 @@ import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Deterministic coverage of {@link OpenAiEmbeddingModel#doEmbedAsync}'s cancellation semantics: cancelling the
@@ -61,5 +64,48 @@ class OpenAiEmbeddingModelAsyncTest {
 
         // then: cancellation propagates through the aggregate (allOf) -> batch -> executeRawAsync -> HTTP client
         assertThat(httpFuture).isCancelled();
+    }
+
+    /**
+     * When embedding is split across multiple batches and a non-first batch fails, the caller must see the real
+     * provider error - not the {@link java.util.concurrent.CancellationException} that aborting the sibling batches
+     * injects into {@code allOf}. (Without the fix, {@code allOf} surfaces batch-0's CancellationException, which
+     * {@code EmbeddingModel.embedAsync} then mis-reports and whose onError listener it suppresses.)
+     */
+    @Test
+    void multi_batch_failure_reports_the_real_error_not_a_masked_cancellation() throws Exception {
+        RuntimeException realError = new RuntimeException("real batch error (e.g. rate limit)");
+        CompletableFuture<SuccessfulHttpResponse> batch0 = new CompletableFuture<>(); // never completes -> aborted sibling
+        AtomicInteger call = new AtomicInteger();
+        HttpClient client = new HttpClient() {
+            @Override
+            public SuccessfulHttpResponse execute(HttpRequest request) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
+                // batch 0 hangs (will be aborted as a sibling); batch 1 fails with the real error
+                return call.getAndIncrement() == 0 ? batch0 : CompletableFuture.failedFuture(realError);
+            }
+        };
+
+        EmbeddingModel model = OpenAiEmbeddingModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(client))
+                .modelName("text-embedding-3-small")
+                .maxSegmentsPerBatch(1) // 2 inputs -> 2 batches
+                .maxRetries(0)
+                .build();
+
+        CompletableFuture<EmbeddingResponse> future =
+                model.embedAsync(EmbeddingRequest.builder().inputs("a", "b").build());
+
+        // the returned future fails with the real error, not a masked CancellationException
+        assertThatThrownBy(() -> future.get(5, SECONDS)).hasMessageContaining("real batch error");
     }
 }

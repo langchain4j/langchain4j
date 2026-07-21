@@ -41,6 +41,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 
@@ -226,7 +227,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         List<CompletableFuture<EmbeddedBatch>> batchFutures =
                 textBatches.stream().map(batch -> embedTextsAsync(batch, parameters)).toList();
 
-        CompletableFuture<EmbeddingResponse> result = CompletableFuture.allOf(
+        CompletableFuture<EmbeddingResponse> aggregate = CompletableFuture.allOf(
                         batchFutures.toArray(new CompletableFuture[0]))
                 .thenApply(ignored -> {
                     List<EmbeddedBatch> responses =
@@ -253,16 +254,25 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                                     .build())
                             .build();
                 });
-        // Cancelling the aggregate future does not propagate to the stages it was derived from, so wire each in-flight
-        // batch (and, in turn, its HTTP call) back to the returned future - otherwise cancellation would not abort them.
-        batchFutures.forEach(batchFuture -> propagateCancellation(result, batchFuture));
-        // allOf waits for all batches even after one fails, so eagerly abort the still-in-flight siblings on the first
-        // failure rather than letting their HTTP calls run to completion only to be discarded.
+
+        CompletableFuture<EmbeddingResponse> result = new CompletableFuture<>();
+        aggregate.whenComplete((response, error) -> {
+            if (error == null) {
+                result.complete(response);
+            }
+        });
+
+        AtomicReference<Throwable> firstError = new AtomicReference<>();
         batchFutures.forEach(batchFuture -> batchFuture.whenComplete((response, error) -> {
             if (error != null) {
-                batchFutures.forEach(sibling -> sibling.cancel(true));
+                Throwable cause = unwrapCompletionException(error);
+                if (!(cause instanceof CancellationException) && firstError.compareAndSet(null, cause)) {
+                    result.completeExceptionally(cause);
+                    batchFutures.forEach(sibling -> sibling.cancel(true));
+                }
             }
         }));
+        batchFutures.forEach(batchFuture -> propagateCancellation(result, batchFuture));
         return result;
     }
 

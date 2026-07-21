@@ -281,10 +281,16 @@ public class DefaultOpenAiClient extends OpenAiClient {
             if (tube.cancelled()) {
                 return;
             }
-            if (toolCallBuilder.hasRequests()) {
-                handler.onCompleteToolCall(toolCallBuilder.buildAndReset());
+            try {
+                if (toolCallBuilder.hasRequests()) {
+                    handler.onCompleteToolCall(toolCallBuilder.buildAndReset());
+                }
+                handler.onCompleteResponse(responseBuilder.build());
+            } catch (Exception e) {
+                if (!tube.cancelled()) {
+                    tube.fail(e);
+                }
             }
-            handler.onCompleteResponse(responseBuilder.build());
         }
     }
 

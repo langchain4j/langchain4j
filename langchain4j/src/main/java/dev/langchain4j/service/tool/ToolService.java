@@ -1264,22 +1264,56 @@ public class ToolService {
             CompensationReason reason,
             AiServiceListenerRegistrar listenerRegistrar,
             BiConsumer<ToolExecution, CompensationReason> streamEmitter) {
+        return compensateIfNeededAsync(
+                toolExecutionRequests,
+                toolResults,
+                resultMessages,
+                compensableExecutions,
+                anyToolErrored,
+                chatMemory,
+                messages,
+                invocationContext,
+                reason,
+                listenerRegistrar,
+                streamEmitter,
+                false,
+                null);
+    }
+
+    /**
+     * As {@link #compensateIfNeededAsync}, but when {@code alreadyCollected} is {@code true} this round's compensable
+     * tools have already been recorded into {@code compensableExecutions} (via {@link #collectCompensableRound}) and
+     * {@code preCollectedFailedToolName} carries the collect's result; the collection step is then skipped. The
+     * reactive streaming path uses this so a round's compensable tools are collected <em>before</em> the inflight-round
+     * handoff, closing the window where a concurrent cancellation could snapshot the accumulator before the collection.
+     *
+     * @since 1.19.0
+     */
+    public CompletableFuture<Void> compensateIfNeededAsync(
+            List<ToolExecutionRequest> toolExecutionRequests,
+            Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+            List<ToolExecutionResultMessage> resultMessages,
+            List<CompensableToolExecution> compensableExecutions,
+            boolean anyToolErrored,
+            ChatMemory chatMemory,
+            List<ChatMessage> messages,
+            InvocationContext invocationContext,
+            CompensationReason reason,
+            AiServiceListenerRegistrar listenerRegistrar,
+            BiConsumer<ToolExecution, CompensationReason> streamEmitter,
+            boolean alreadyCollected,
+            String preCollectedFailedToolName) {
 
         if (!compensateOnToolErrors) {
             return CompletableFuture.completedFuture(null);
         }
         List<CompensableToolExecution> toCompensate;
         String failedToolName;
-        // Serialize accumulator access. On the reactive path this method (a round's completion) can run concurrently
-        // with compensateOnCancellationAsync (a subscriber cancellation) on a different thread. Collecting,
-        // snapshotting and clearing atomically means the async rollback below operates on an immutable copy: no
-        // ConcurrentModificationException, and each compensable tool is rolled back at most once (whoever clears
-        // first wins; the other sees an empty accumulator).
         synchronized (compensableExecutions) {
-            failedToolName = collectCompensable(
-                    toolExecutionRequests, toolResults, resultMessages, compensableExecutions, invocationContext);
-            // A tool error compensates only when a tool actually errored; a cancellation always rolls back whatever
-            // successful compensable tools have accumulated (across rounds).
+            failedToolName = alreadyCollected
+                    ? preCollectedFailedToolName
+                    : collectCompensable(
+                            toolExecutionRequests, toolResults, resultMessages, compensableExecutions, invocationContext);
             boolean triggered = reason == CompensationReason.INVOCATION_CANCELLED || anyToolErrored;
             if (!triggered || compensableExecutions.isEmpty()) {
                 return CompletableFuture.completedFuture(null);
@@ -1287,7 +1321,6 @@ public class ToolService {
             toCompensate = List.copyOf(compensableExecutions);
             compensableExecutions.clear();
         }
-        // rewriteCurrentResults edits this round's (round-local) resultMessages, not the shared accumulator
         rewriteCurrentResults(toolExecutionRequests, toolResults, resultMessages, reason, failedToolName);
         String rolledBackByToolName = failedToolName;
         return compensateToolsActions(toCompensate, invocationContext)
@@ -1380,6 +1413,28 @@ public class ToolService {
      * Collects this round's successful compensable tool executions into {@code compensableExecutions} (which
      * accumulates across rounds), and returns the name of the first tool in this round that errored (or null).
      */
+    /**
+     * Records one completed round's successful compensable tool executions into the shared {@code accumulator} and
+     * returns the first errored tool's name (or {@code null}). The caller MUST hold the monitor of {@code accumulator}
+     * across this call together with whatever "round is complete" handoff it performs (e.g. clearing the inflight
+     * round), so that a concurrent cancellation - which reads that handoff and snapshots the accumulator under the same
+     * monitor - observes this round's tools as present once it sees the round released. Used by the reactive streaming
+     * path; the result messages are derived the same way as the cancellation path ({@link #toResultMessage}).
+     *
+     * @since 1.19.0
+     */
+    public String collectCompensableRound(
+            List<ToolExecutionRequest> toolExecutionRequests,
+            Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+            List<CompensableToolExecution> compensableExecutions,
+            InvocationContext invocationContext) {
+        List<ToolExecutionResultMessage> resultMessages = toolExecutionRequests.stream()
+                .map(request -> toResultMessage(request, toolResults.get(request)))
+                .toList();
+        return collectCompensable(
+                toolExecutionRequests, toolResults, resultMessages, compensableExecutions, invocationContext);
+    }
+
     private String collectCompensable(
             List<ToolExecutionRequest> toolExecutionRequests,
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
