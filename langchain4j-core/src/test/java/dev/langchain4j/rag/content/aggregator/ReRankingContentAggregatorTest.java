@@ -315,8 +315,12 @@ class ReRankingContentAggregatorTest {
         ScoringModel blockingOnly = (segments, q) -> Response.from(singletonList(0.9));
         ContentAggregator aggregator = new ReRankingContentAggregator(blockingOnly);
 
-        // when-then: the non-async model surfaces loudly instead of silently blocking a carrier thread
-        assertThatThrownBy(() -> aggregator.aggregateAsync(queryToContents))
+        // when-then: the non-async model surfaces loudly (through the returned future) instead of silently blocking
+        // a carrier thread - the scoring model's failed future propagates through the aggregator's composition
+        assertThat(aggregator.aggregateAsync(queryToContents)).isCompletedExceptionally();
+        assertThatThrownBy(() -> aggregator.aggregateAsync(queryToContents).get())
+                .isInstanceOf(java.util.concurrent.ExecutionException.class)
+                .cause()
                 .isExactlyInstanceOf(AsyncNotSupportedException.class)
                 .hasMessageContaining("scoreAllAsync");
     }

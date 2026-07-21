@@ -1,6 +1,7 @@
 package dev.langchain4j.model.scoring;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
 
@@ -57,7 +58,7 @@ public interface ScoringModel {
      * Non-blocking counterpart of {@link #scoreAll(List, String)}, used by the asynchronous and reactive RAG flow
      * (see {@code ReRankingContentAggregator}).
      * <p>
-     * The default throws {@link UnsupportedOperationException}: a scoring model that is not genuinely asynchronous
+     * The default returns a failed future carrying {@link AsyncNotSupportedException}: a scoring model that is not genuinely asynchronous
      * does not pretend to be. A model backed by remote HTTP I/O opts in by overriding this with a genuinely async
      * call (no thread parked). A model that has not opted in is still usable from the non-blocking RAG path, which
      * offloads its blocking {@link #scoreAll(List, String)}.
@@ -71,6 +72,6 @@ public interface ScoringModel {
      * @since 1.19.0
      */
     default CompletableFuture<Response<List<Double>>> scoreAllAsync(List<TextSegment> segments, String query) {
-        throw new AsyncNotSupportedException("scoreAllAsync() is not implemented by " + getClass().getName());
+        return AsyncNotSupported.failedFuture(getClass(), "scoreAllAsync");
     }
 }

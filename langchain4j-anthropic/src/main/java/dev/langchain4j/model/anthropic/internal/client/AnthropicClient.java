@@ -2,6 +2,7 @@ package dev.langchain4j.model.anthropic.internal.client;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCountTokensRequest;
@@ -29,15 +30,14 @@ public abstract class AnthropicClient {
 
     /**
      * Non-blocking counterpart of {@link #createMessageWithRawResponse(AnthropicCreateMessageRequest)}: sends the
-     * request without holding a thread while the response is in flight. The default throws
+     * request without holding a thread while the response is in flight. The default returns a failed future carrying
      * {@link AsyncNotSupportedException} to signal that this client has no native asynchronous path.
      *
      * @since 1.19.0
      */
     public CompletableFuture<ParsedAndRawResponse> createMessageWithRawResponseAsync(
             AnthropicCreateMessageRequest request) {
-        throw new AsyncNotSupportedException(
-                "createMessageWithRawResponseAsync() is not implemented by " + getClass().getName());
+        return AsyncNotSupported.failedFuture(getClass(), "createMessageWithRawResponseAsync");
     }
 
     /**

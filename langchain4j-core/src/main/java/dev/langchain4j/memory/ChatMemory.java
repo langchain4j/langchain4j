@@ -1,6 +1,7 @@
 package dev.langchain4j.memory;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.data.message.ChatMessage;
 import java.util.Arrays;
 import java.util.List;
@@ -110,7 +111,7 @@ public interface ChatMemory {
      * message) so that adding several messages at once is a single operation; to add one message, pass a
      * singleton list.
      * <p>
-     * The default implementation throws {@link UnsupportedOperationException}: a memory backed by a blocking
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}: a memory backed by a blocking
      * {@link dev.langchain4j.store.memory.chat.ChatMemoryStore} is <b>not</b> silently offloaded to a worker thread.
      * Implementations should compose the store's
      * {@link dev.langchain4j.store.memory.chat.ChatMemoryStore#getMessagesAsync(Object) getMessagesAsync}/
@@ -125,8 +126,7 @@ public interface ChatMemory {
      * @since 1.19.0
      */
     default CompletableFuture<Void> addAsync(List<ChatMessage> messages) {
-        throw new AsyncNotSupportedException(
-                "addAsync() is not implemented by " + getClass().getName());
+        return AsyncNotSupported.failedFuture(getClass(), "addAsync");
     }
 
     /**
@@ -144,8 +144,7 @@ public interface ChatMemory {
      * @since 1.19.0
      */
     default CompletableFuture<Void> setAsync(List<ChatMessage> messages) {
-        throw new AsyncNotSupportedException(
-                "setAsync() is not implemented by " + getClass().getName());
+        return AsyncNotSupported.failedFuture(getClass(), "setAsync");
     }
 
     /**
@@ -153,15 +152,14 @@ public interface ChatMemory {
      * ({@link java.util.concurrent.CompletableFuture}/{@link CompletionStage}) and reactive
      * ({@link java.util.concurrent.Flow.Publisher}) AI Service APIs.
      * <p>
-     * The default implementation throws {@link UnsupportedOperationException}; see {@link #addAsync(List)}
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; see {@link #addAsync(List)}
      * for the rationale.
      *
      * @return A future that completes with the current state of the chat memory.
      * @since 1.19.0
      */
     default CompletableFuture<List<ChatMessage>> messagesAsync() {
-        throw new AsyncNotSupportedException(
-                "messagesAsync() is not implemented by " + getClass().getName());
+        return AsyncNotSupported.failedFuture(getClass(), "messagesAsync");
     }
 
     /**

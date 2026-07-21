@@ -82,16 +82,20 @@ class DefaultRetrievalAugmentorAsyncTest {
     }
 
     @Test
-    void augmentAsync_default_should_throw_for_an_augmentor_that_has_not_opted_in() {
+    void augmentAsync_default_should_fail_loudly_for_an_augmentor_that_has_not_opted_in() {
         // A custom RetrievalAugmentor that implements only the blocking augment(): the async default is fail-loud
         // (it is the AI Service, not the augmentor, that decides to offload a blocking augmentor - see
-        // DefaultAiServices), so it never pretends to be asynchronous.
+        // DefaultAiServices), so it never pretends to be asynchronous. The signal is delivered through the returned
+        // future, not thrown synchronously.
         RetrievalAugmentor customAugmentor = augmentationRequest -> AugmentationResult.builder()
                 .chatMessage(augmentationRequest.chatMessage())
                 .contents(List.of())
                 .build();
 
-        assertThatThrownBy(() -> customAugmentor.augmentAsync(request()))
+        assertThat(customAugmentor.augmentAsync(request())).isCompletedExceptionally();
+        assertThatThrownBy(() -> customAugmentor.augmentAsync(request()).get())
+                .isInstanceOf(ExecutionException.class)
+                .cause()
                 .isExactlyInstanceOf(AsyncNotSupportedException.class);
     }
 

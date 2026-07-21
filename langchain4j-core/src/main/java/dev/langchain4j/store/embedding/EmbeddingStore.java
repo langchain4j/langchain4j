@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -148,7 +149,7 @@ public interface EmbeddingStore<Embedded> {
      * Non-blocking counterpart of {@link #search(EmbeddingSearchRequest)}, used by the asynchronous and reactive RAG
      * flow (see {@code EmbeddingStoreContentRetriever.retrieveAsync}).
      * <p>
-     * The default throws {@link UnsupportedOperationException}: a store that is not genuinely asynchronous does not
+     * The default returns a failed future carrying {@link AsyncNotSupportedException}: a store that is not genuinely asynchronous does not
      * pretend to be. A store backed by remote/DB I/O opts in by overriding this with a genuinely async query (no
      * thread parked); an in-memory store may override it to complete synchronously on the calling thread. A store
      * that has not opted in is still usable from the non-blocking RAG path:
@@ -163,7 +164,7 @@ public interface EmbeddingStore<Embedded> {
      * @since 1.19.0
      */
     default CompletableFuture<EmbeddingSearchResult<Embedded>> searchAsync(EmbeddingSearchRequest request) {
-        throw new AsyncNotSupportedException("searchAsync() is not implemented by " + getClass().getName());
+        return AsyncNotSupported.failedFuture(getClass(), "searchAsync");
     }
 
     /**

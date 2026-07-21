@@ -1,6 +1,7 @@
 package dev.langchain4j.rag.content.aggregator;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
@@ -44,7 +45,7 @@ public interface ContentAggregator {
      * ({@link java.util.concurrent.CompletableFuture}/{@link java.util.concurrent.CompletionStage}) and reactive
      * ({@link java.util.concurrent.Flow.Publisher}) AI Service modes when RAG is configured.
      * <p>
-     * The default implementation throws {@link UnsupportedOperationException}: an aggregator backed by a blocking
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}: an aggregator backed by a blocking
      * model call (e.g. {@link ReRankingContentAggregator}'s scoring model) must opt in by overriding this method to
      * stay off the calling thread. An aggregator that cannot be made non-blocking is still usable from these modes
      * via {@code DefaultRetrievalAugmentor}, which offloads the blocking {@link #aggregate(Map)} to its executor.
@@ -54,6 +55,6 @@ public interface ContentAggregator {
      * @since 1.19.0
      */
     default CompletableFuture<List<Content>> aggregateAsync(Map<Query, Collection<List<Content>>> queryToContents) {
-        throw new AsyncNotSupportedException("aggregateAsync() is not implemented by " + getClass().getName());
+        return AsyncNotSupported.failedFuture(getClass(), "aggregateAsync");
     }
 }

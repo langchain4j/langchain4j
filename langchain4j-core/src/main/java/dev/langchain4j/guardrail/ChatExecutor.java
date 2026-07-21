@@ -1,6 +1,7 @@
 package dev.langchain4j.guardrail;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.message.ChatMessage;
@@ -38,7 +39,7 @@ public interface ChatExecutor {
     /**
      * Non-blocking counterpart of {@link #execute()}.
      * <p>
-     * The default implementation throws {@link UnsupportedOperationException}; the built-in executors override it to
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; the built-in executors override it to
      * call the model without blocking (via the async/reactive model APIs). Used by output-guardrail reprompts on the
      * non-blocking AI Service paths. Consistent with {@code ChatModel#doChatAsync} and the other async defaults, a
      * blocking executor is not silently run on the calling thread.
@@ -47,13 +48,13 @@ public interface ChatExecutor {
      * @since 1.19.0
      */
     default CompletableFuture<ChatResponse> executeAsync() {
-        throw new AsyncNotSupportedException("executeAsync() is not implemented by " + getClass().getName());
+        return AsyncNotSupported.failedFuture(getClass(), "executeAsync");
     }
 
     /**
      * Non-blocking counterpart of {@link #execute(List)}.
      * <p>
-     * The default implementation throws {@link UnsupportedOperationException}; the built-in executors override it to
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; the built-in executors override it to
      * call the model without blocking (via the async/reactive model APIs). Used by output-guardrail reprompts on the
      * non-blocking AI Service paths. Consistent with {@code ChatModel#doChatAsync} and the other async defaults, a
      * blocking executor is not silently run on the calling thread.
@@ -63,7 +64,7 @@ public interface ChatExecutor {
      * @since 1.19.0
      */
     default CompletableFuture<ChatResponse> executeAsync(List<ChatMessage> chatMessages) {
-        throw new AsyncNotSupportedException("executeAsync() is not implemented by " + getClass().getName());
+        return AsyncNotSupported.failedFuture(getClass(), "executeAsync");
     }
 
     /**

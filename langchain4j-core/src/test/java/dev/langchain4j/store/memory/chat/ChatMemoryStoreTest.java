@@ -37,19 +37,20 @@ class ChatMemoryStoreTest implements WithAssertions {
     }
 
     @Test
-    void async_methods_throw_by_default() {
+    void async_methods_return_a_failed_future_by_default() {
         ChatMemoryStore store = new BlockingOnlyStore();
 
-        assertThatThrownBy(() -> store.getMessagesAsync("foo"))
-                .isExactlyInstanceOf(AsyncNotSupportedException.class)
-                .hasMessageContaining("getMessagesAsync");
+        assertAsyncNotSupported(store.getMessagesAsync("foo"), "getMessagesAsync");
+        assertAsyncNotSupported(store.updateMessagesAsync("foo", List.of()), "updateMessagesAsync");
+        assertAsyncNotSupported(store.deleteMessagesAsync("foo"), "deleteMessagesAsync");
+    }
 
-        assertThatThrownBy(() -> store.updateMessagesAsync("foo", List.of()))
+    private void assertAsyncNotSupported(java.util.concurrent.CompletableFuture<?> future, String method) {
+        assertThat(future).isCompletedExceptionally();
+        assertThatThrownBy(future::get)
+                .isInstanceOf(java.util.concurrent.ExecutionException.class)
+                .cause()
                 .isExactlyInstanceOf(AsyncNotSupportedException.class)
-                .hasMessageContaining("updateMessagesAsync");
-
-        assertThatThrownBy(() -> store.deleteMessagesAsync("foo"))
-                .isExactlyInstanceOf(AsyncNotSupportedException.class)
-                .hasMessageContaining("deleteMessagesAsync");
+                .hasMessageContaining(method);
     }
 }

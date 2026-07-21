@@ -81,14 +81,20 @@ class AsyncChatMemoryTest {
     }
 
     @Test
-    void addAsync_throws_when_store_does_not_support_async() {
+    void addAsync_returns_a_failed_future_when_store_does_not_support_async() {
 
         ChatMemory chatMemory = MessageWindowChatMemory.builder()
                 .maxMessages(10)
                 .chatMemoryStore(new SyncOnlyChatMemoryStore())
                 .build();
 
-        assertThatThrownBy(() -> chatMemory.addAsync(List.of(UserMessage.from("Hello"), AiMessage.from("Hi"))))
+        // The store's async default signals "not supported" through the returned future; addAsync composes over it,
+        // so the failure is delivered through the future rather than thrown synchronously.
+        CompletableFuture<Void> future = chatMemory.addAsync(List.of(UserMessage.from("Hello"), AiMessage.from("Hi")));
+        assertThat(future).isCompletedExceptionally();
+        assertThatThrownBy(future::get)
+                .isInstanceOf(ExecutionException.class)
+                .cause()
                 .isExactlyInstanceOf(AsyncNotSupportedException.class)
                 .hasMessageContaining("getMessagesAsync");
     }

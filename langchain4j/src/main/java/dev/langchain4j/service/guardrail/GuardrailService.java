@@ -3,6 +3,7 @@ package dev.langchain4j.service.guardrail;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
@@ -44,7 +45,7 @@ public interface GuardrailService {
     /**
      * Non-blocking counterpart of {@link #executeInputGuardrails(Object, InputGuardrailRequest)}.
      * <p>
-     * The default implementation throws {@link UnsupportedOperationException}; the internal implementation
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; the internal implementation
      * ({@code AbstractGuardrailService}) overrides it, and only implementors that opt into the non-blocking
      * AI Service modes need to provide it.
      *
@@ -56,8 +57,7 @@ public interface GuardrailService {
      */
     default <MethodKey> CompletableFuture<InputGuardrailResult> executeInputGuardrailsAsync(
             MethodKey method, InputGuardrailRequest request) {
-        throw new AsyncNotSupportedException(
-                "executeInputGuardrailsAsync() is not implemented by " + getClass().getName());
+        return AsyncNotSupported.failedFuture(getClass(), "executeInputGuardrailsAsync");
     }
 
     /**
@@ -104,7 +104,7 @@ public interface GuardrailService {
     /**
      * Non-blocking counterpart of {@link #executeOutputGuardrails(Object, OutputGuardrailRequest)}.
      * <p>
-     * The default implementation throws {@link UnsupportedOperationException}; the internal implementation
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; the internal implementation
      * ({@code AbstractGuardrailService}) overrides it, and only implementors that opt into the non-blocking
      * AI Service modes need to provide it.
      *
@@ -116,8 +116,7 @@ public interface GuardrailService {
      */
     default <MethodKey> CompletableFuture<OutputGuardrailResult> executeOutputGuardrailsAsync(
             MethodKey method, OutputGuardrailRequest request) {
-        throw new AsyncNotSupportedException(
-                "executeOutputGuardrailsAsync() is not implemented by " + getClass().getName());
+        return AsyncNotSupported.failedFuture(getClass(), "executeOutputGuardrailsAsync");
     }
 
     /**

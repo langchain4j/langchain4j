@@ -1,6 +1,7 @@
 package dev.langchain4j.web.search;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -30,7 +31,7 @@ public interface WebSearchEngine {
      * Non-blocking counterpart of {@link #search(WebSearchRequest)}, used by the asynchronous and reactive RAG flow
      * (see {@code WebSearchContentRetriever}).
      * <p>
-     * The default throws {@link UnsupportedOperationException}: a web search engine that is not genuinely asynchronous
+     * The default returns a failed future carrying {@link AsyncNotSupportedException}: a web search engine that is not genuinely asynchronous
      * does not pretend to be. An engine backed by remote HTTP I/O opts in by overriding this with a genuinely async
      * call (no thread parked). An engine that has not opted in is still usable from the non-blocking RAG path, which
      * offloads its blocking {@link #search(WebSearchRequest)}.
@@ -43,6 +44,6 @@ public interface WebSearchEngine {
      * @since 1.19.0
      */
     default CompletableFuture<WebSearchResults> searchAsync(WebSearchRequest webSearchRequest) {
-        throw new AsyncNotSupportedException("searchAsync() is not implemented by " + getClass().getName());
+        return AsyncNotSupported.failedFuture(getClass(), "searchAsync");
     }
 }

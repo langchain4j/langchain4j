@@ -1,6 +1,7 @@
 package dev.langchain4j.rag.content.retriever;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import dev.langchain4j.Experimental;
@@ -49,7 +50,7 @@ public interface ContentRetriever {
      * ({@link java.util.concurrent.CompletableFuture}/{@link java.util.concurrent.CompletionStage}) and reactive
      * ({@link java.util.concurrent.Flow.Publisher}) AI Service modes when RAG is configured.
      * <p>
-     * The default implementation throws {@link UnsupportedOperationException}: a retriever backed by blocking I/O
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}: a retriever backed by blocking I/O
      * (embedding-model call, vector-store query, web search, etc.) must opt in by overriding this method so it can
      * return a genuinely non-blocking future instead of secretly tying up a worker thread. A retriever that cannot
      * be made non-blocking is still usable from these modes via {@code DefaultRetrievalAugmentor}, which offloads the
@@ -63,7 +64,7 @@ public interface ContentRetriever {
      * @since 1.19.0
      */
     default CompletableFuture<List<Content>> retrieveAsync(Query query) {
-        throw new AsyncNotSupportedException("retrieveAsync() is not implemented by " + getClass().getName());
+        return AsyncNotSupported.failedFuture(getClass(), "retrieveAsync");
     }
 
     /**

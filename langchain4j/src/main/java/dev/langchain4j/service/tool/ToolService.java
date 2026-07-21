@@ -1994,15 +1994,15 @@ public class ToolService {
         try {
             futureToolResult = toolExecutor.executeAsync(toolRequest, invocationContext);
         } catch (AsyncNotSupportedException e) {
-            // a configuration gap (the tool executor does not support asynchronous execution), not a tool
-            // failure: fail the AI Service invocation instead of routing it to the tool error handlers,
-            // which would send the message to the LLM and hide the problem from the developer
             return CompletableFuture.failedFuture(e);
         } catch (Exception e) {
             return handleToolError(e, toolRequest, invocationContext, argumentsErrorHandler, executionErrorHandler);
         }
         return futureToolResult.exceptionallyCompose(error -> {
             Throwable cause = unwrapCompletionException(error);
+            if (cause instanceof AsyncNotSupportedException) {
+                return CompletableFuture.failedFuture(cause);
+            }
             Exception exception = cause instanceof Exception e ? e : new RuntimeException(cause);
             return handleToolError(
                     exception, toolRequest, invocationContext, argumentsErrorHandler, executionErrorHandler);

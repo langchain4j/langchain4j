@@ -1,6 +1,7 @@
 package dev.langchain4j.store.memory.chat;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageDeserializer;
 import dev.langchain4j.data.message.ChatMessageSerializer;
@@ -53,7 +54,7 @@ public interface ChatMemoryStore {
      * ({@link java.util.concurrent.CompletableFuture}/{@link CompletionStage}) and reactive
      * ({@link java.util.concurrent.Flow.Publisher}) AI Service APIs.
      * <p>
-     * The default implementation throws {@link UnsupportedOperationException}: a store backed by blocking I/O is
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}: a store backed by blocking I/O is
      * <b>not</b> silently offloaded to a worker thread, because that would hide the fact that it is not truly
      * non-blocking. Implement this method to return the messages without blocking the calling thread (e.g. using a
      * reactive client), or, if the underlying client is blocking, offload it to an executor explicitly.
@@ -63,8 +64,7 @@ public interface ChatMemoryStore {
      * @since 1.19.0
      */
     default CompletableFuture<List<ChatMessage>> getMessagesAsync(Object memoryId) {
-        throw new AsyncNotSupportedException(
-                "getMessagesAsync() is not implemented by " + getClass().getName());
+        return AsyncNotSupported.failedFuture(getClass(), "getMessagesAsync");
     }
 
     /**
@@ -72,7 +72,7 @@ public interface ChatMemoryStore {
      * ({@link java.util.concurrent.CompletableFuture}/{@link CompletionStage}) and reactive
      * ({@link java.util.concurrent.Flow.Publisher}) AI Service APIs.
      * <p>
-     * The default implementation throws {@link UnsupportedOperationException}; see {@link #getMessagesAsync(Object)}
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; see {@link #getMessagesAsync(Object)}
      * for the rationale.
      *
      * @param memoryId The ID of the chat memory.
@@ -82,8 +82,7 @@ public interface ChatMemoryStore {
      * @since 1.19.0
      */
     default CompletableFuture<Void> updateMessagesAsync(Object memoryId, List<ChatMessage> messages) {
-        throw new AsyncNotSupportedException(
-                "updateMessagesAsync() is not implemented by " + getClass().getName());
+        return AsyncNotSupported.failedFuture(getClass(), "updateMessagesAsync");
     }
 
     /**
@@ -91,7 +90,7 @@ public interface ChatMemoryStore {
      * ({@link java.util.concurrent.CompletableFuture}/{@link CompletionStage}) and reactive
      * ({@link java.util.concurrent.Flow.Publisher}) AI Service APIs.
      * <p>
-     * The default implementation throws {@link UnsupportedOperationException}; see {@link #getMessagesAsync(Object)}
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; see {@link #getMessagesAsync(Object)}
      * for the rationale.
      *
      * @param memoryId The ID of the chat memory.
@@ -99,7 +98,6 @@ public interface ChatMemoryStore {
      * @since 1.19.0
      */
     default CompletableFuture<Void> deleteMessagesAsync(Object memoryId) {
-        throw new AsyncNotSupportedException(
-                "deleteMessagesAsync() is not implemented by " + getClass().getName());
+        return AsyncNotSupported.failedFuture(getClass(), "deleteMessagesAsync");
     }
 }

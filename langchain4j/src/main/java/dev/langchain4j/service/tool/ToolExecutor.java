@@ -1,6 +1,6 @@
 package dev.langchain4j.service.tool;
 
-import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
@@ -71,7 +71,7 @@ public interface ToolExecutor {
      */
     default CompletableFuture<ToolExecutionResult> executeAsync(
             ToolExecutionRequest request, InvocationContext context) {
-        throw new AsyncNotSupportedException(getClass().getName()
+        return AsyncNotSupported.failedFuture(getClass().getName()
                 + " does not support asynchronous execution. To use this tool with an AI Service method"
                 + " returning a CompletableFuture, override ToolExecutor.executeAsync()."
                 + " If blocking execution is acceptable, it can simply return"

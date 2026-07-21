@@ -49,10 +49,17 @@ class ChatModelAsyncDefaultTest {
     }
 
     @Test
-    void doChatAsync_default_throws_AsyncNotSupportedException() {
+    void doChatAsync_default_returns_a_failed_future() {
         ChatModel model = new BlockingOnlyChatModel();
 
-        assertThatThrownBy(() -> model.doChatAsync(ChatRequest.builder().messages(UserMessage.from("hi")).build()))
+        CompletableFuture<ChatResponse> future =
+                model.doChatAsync(ChatRequest.builder().messages(UserMessage.from("hi")).build());
+
+        // The default signals "not async" through the returned future rather than throwing synchronously.
+        assertThat(future).isCompletedExceptionally();
+        assertThatThrownBy(future::get)
+                .isInstanceOf(ExecutionException.class)
+                .cause()
                 .isExactlyInstanceOf(AsyncNotSupportedException.class)
                 .hasMessageContaining("doChatAsync");
     }

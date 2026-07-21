@@ -1,6 +1,7 @@
 package dev.langchain4j.guardrail;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Internal;
@@ -95,7 +96,7 @@ abstract class AbstractChatExecutor implements ChatExecutor {
     /**
      * Non-blocking counterpart of {@link #execute(ChatRequest)}.
      * <p>
-     * The default implementation throws {@link UnsupportedOperationException}; subclasses that support
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; subclasses that support
      * non-blocking execution should override it (consistent with {@code ChatModel#doChatAsync} and
      * {@code HttpClient#executeAsync}).
      *
@@ -103,6 +104,6 @@ abstract class AbstractChatExecutor implements ChatExecutor {
      * @return a {@link CompletableFuture} that completes with the chat response
      */
     protected CompletableFuture<ChatResponse> executeAsync(ChatRequest chatRequest) {
-        throw new AsyncNotSupportedException("executeAsync() is not implemented by " + getClass().getName());
+        return AsyncNotSupported.failedFuture(getClass(), "executeAsync");
     }
 }

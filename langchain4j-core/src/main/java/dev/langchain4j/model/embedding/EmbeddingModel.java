@@ -1,6 +1,7 @@
 package dev.langchain4j.model.embedding;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -285,7 +286,7 @@ public interface EmbeddingModel {
      * after the request's parameters have been merged and validated. A provider backed by remote HTTP I/O overrides
      * this to return a genuinely non-blocking future (no thread is parked).
      * <p>
-     * The default throws {@link UnsupportedOperationException}: a model that is not genuinely asynchronous does not
+     * The default returns a failed future carrying {@link AsyncNotSupportedException}: a model that is not genuinely asynchronous does not
      * pretend to be. It must opt in by overriding this method, so it can choose an execution strategy appropriate to
      * how it works - real async I/O for a network model, a bounded compute pool (or nothing) for a CPU-bound
      * in-process model - rather than being silently offloaded to a (possibly wrong) thread. A model that has not
@@ -298,7 +299,7 @@ public interface EmbeddingModel {
      */
     @Experimental
     default CompletableFuture<EmbeddingResponse> doEmbedAsync(EmbeddingRequest request) {
-        throw new AsyncNotSupportedException("doEmbedAsync() is not implemented by " + getClass().getName());
+        return AsyncNotSupported.failedFuture(getClass(), "doEmbedAsync");
     }
 
     /**

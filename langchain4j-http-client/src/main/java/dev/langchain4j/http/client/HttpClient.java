@@ -1,6 +1,6 @@
 package dev.langchain4j.http.client;
 
-import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
@@ -39,7 +39,7 @@ public interface HttpClient {
      * @since 1.19.0
      */
     default CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
-        throw new AsyncNotSupportedException("executeAsync() is not implemented by " + getClass().getName());
+        return AsyncNotSupported.failedFuture(getClass(), "executeAsync");
     }
 
     /**
@@ -108,6 +108,6 @@ public interface HttpClient {
      * @since 1.19.0
      */
     default Publisher<HttpStreamingEvent> stream(HttpRequest request, ServerSentEventParser parser) {
-        throw new AsyncNotSupportedException("stream() is not implemented by " + getClass().getName());
+        return AsyncNotSupported.failingPublisher(getClass(), "stream");
     }
 }

@@ -1,6 +1,7 @@
 package dev.langchain4j.rag.query.transformer;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.rag.query.Query;
 
 import java.util.Collection;
@@ -40,7 +41,7 @@ public interface QueryTransformer {
      * ({@link java.util.concurrent.CompletableFuture}/{@link java.util.concurrent.CompletionStage}) and reactive
      * ({@link java.util.concurrent.Flow.Publisher}) AI Service modes when RAG is configured.
      * <p>
-     * The default implementation throws {@link UnsupportedOperationException}: a transformer backed by a blocking
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}: a transformer backed by a blocking
      * LLM call (e.g. query compression/expansion) must opt in by overriding this method to stay off the calling
      * thread. A transformer that cannot be made non-blocking is still usable from these modes via
      * {@code DefaultRetrievalAugmentor}, which offloads the blocking {@link #transform(Query)} to its executor.
@@ -50,7 +51,7 @@ public interface QueryTransformer {
      * @since 1.19.0
      */
     default CompletableFuture<Collection<Query>> transformAsync(Query query) {
-        throw new AsyncNotSupportedException("transformAsync() is not implemented by " + getClass().getName());
+        return AsyncNotSupported.failedFuture(getClass(), "transformAsync");
     }
 }
 

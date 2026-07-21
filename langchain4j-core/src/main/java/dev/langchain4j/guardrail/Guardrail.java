@@ -1,6 +1,7 @@
 package dev.langchain4j.guardrail;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -44,7 +45,7 @@ public interface Guardrail<P extends GuardrailRequest, R extends GuardrailResult
      * invocation is cancelled (best-effort, mirroring {@code ToolExecutor}). A guardrail backed by a
      * cancellation-aware async client should honor that cancellation.
      * <p>
-     * The default implementation throws {@link UnsupportedOperationException}: a guardrail must opt in to the
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}: a guardrail must opt in to the
      * non-blocking paths rather than have its (potentially blocking) {@link #validate(GuardrailRequest)} silently
      * run on the model-delivery thread. A guardrail that performs blocking I/O (e.g. calling a remote moderation or
      * PII service) must override this method to return a future completed off the calling thread (for instance via
@@ -61,7 +62,7 @@ public interface Guardrail<P extends GuardrailRequest, R extends GuardrailResult
      * @since 1.19.0
      */
     default CompletableFuture<R> validateAsync(P request) {
-        throw new AsyncNotSupportedException(getClass().getName()
+        return AsyncNotSupported.failedFuture(getClass().getName()
                 + " does not implement validateAsync(). To use this guardrail with an asynchronous"
                 + " (CompletableFuture/CompletionStage) or reactive (Flow.Publisher) AI Service, override"
                 + " validateAsync(). If the guardrail does not perform blocking I/O, return"

@@ -1,6 +1,7 @@
 package dev.langchain4j.model.chat;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -145,7 +146,7 @@ public interface ChatModel {
     /**
      * SPI hook for a genuinely non-blocking chat implementation, invoked by {@link #chatAsync(ChatRequest)}.
      * <p>
-     * The default throws {@link UnsupportedOperationException} to signal that this model has no native asynchronous
+     * The default returns a failed future carrying {@link AsyncNotSupportedException} to signal that this model has no native asynchronous
      * implementation. Callers on the asynchronous and reactive path (for example the non-blocking RAG stages) detect
      * this and either offload the blocking {@link #doChat(ChatRequest)} or fail loudly with an actionable message.
      * A model backed by remote HTTP I/O overrides this with a genuinely asynchronous call (no thread parked).
@@ -155,7 +156,7 @@ public interface ChatModel {
      * @since 1.19.0
      */
     default CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
-        throw new AsyncNotSupportedException("doChatAsync() is not implemented by " + getClass().getName());
+        return AsyncNotSupported.failedFuture(getClass(), "doChatAsync");
     }
 
     default ChatRequestParameters defaultRequestParameters() {

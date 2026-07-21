@@ -1,6 +1,7 @@
 package dev.langchain4j.rag;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.rag.content.Content;
 
@@ -30,7 +31,7 @@ public interface RetrievalAugmentor {
      * ({@link java.util.concurrent.CompletableFuture}/{@link java.util.concurrent.CompletionStage}) and reactive
      * ({@link java.util.concurrent.Flow.Publisher}) AI Service modes so the RAG flow never blocks the calling thread.
      * <p>
-     * The default throws {@link UnsupportedOperationException}: an augmentor that is not genuinely asynchronous does
+     * The default returns a failed future carrying {@link AsyncNotSupportedException}: an augmentor that is not genuinely asynchronous does
      * not pretend to be. {@link DefaultRetrievalAugmentor} overrides this to compose its steps into a real future. A
      * custom augmentor that has not opted in is still usable from the non-blocking modes: the AI Service offloads its
      * blocking {@link #augment(AugmentationRequest)} to a shared virtual-thread executor, rather than the augmentor
@@ -44,6 +45,6 @@ public interface RetrievalAugmentor {
      * @since 1.19.0
      */
     default CompletableFuture<AugmentationResult> augmentAsync(AugmentationRequest augmentationRequest) {
-        throw new AsyncNotSupportedException("augmentAsync() is not implemented by " + getClass().getName());
+        return AsyncNotSupported.failedFuture(getClass(), "augmentAsync");
     }
 }
