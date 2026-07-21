@@ -1,8 +1,8 @@
 package dev.langchain4j.model.cohere;
 
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
-import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
@@ -11,14 +11,12 @@ import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 
@@ -109,8 +107,8 @@ public class CohereScoringModel implements ScoringModel {
      * RAG flow. The underlying HTTP call is dispatched asynchronously (no thread is parked while it is in flight),
      * and cancelling the returned future aborts the in-flight call (best-effort).
      * <p>
-     * Note: unlike {@link #scoreAll(List, String)}, this path does not apply {@code maxRetries}
-     * (retry-around-future would re-park a thread and defeat the purpose).
+     * Like {@link #scoreAll(List, String)}, a failed request is retried up to {@code maxRetries} times
+     * (retry-around-future, composing futures without parking a thread); a cancellation is never retried.
      */
     @Override
     public CompletableFuture<Response<List<Double>>> scoreAllAsync(List<TextSegment> segments, String query) {
@@ -121,27 +119,15 @@ public class CohereScoringModel implements ScoringModel {
                 .documents(segments.stream().map(TextSegment::text).collect(toList()))
                 .build();
 
-        CompletableFuture<RerankResponse> rerankFuture = client.rerankAsync(request);
-        CompletableFuture<Response<List<Double>>> result = rerankFuture
-                .thenApply(response -> {
-                    List<Double> scores = response.getResults().stream()
-                            .sorted(comparingInt(Result::getIndex))
-                            .map(Result::getRelevanceScore)
-                            .collect(toList());
-                    return Response.from(
-                            scores, new TokenUsage(response.getMeta().getBilledUnits().getSearchUnits()));
-                })
-                // Map provider/transport failures the same way the blocking path does (via ExceptionMapper), while
-                // leaving a cancellation untouched. This path still does not retry (see javadoc).
-                .exceptionallyCompose(throwable -> {
-                    Throwable cause = unwrapCompletionException(throwable);
-                    if (cause instanceof CancellationException) {
-                        return CompletableFuture.failedFuture(cause);
-                    }
-                    return CompletableFuture.failedFuture(ExceptionMapper.DEFAULT.mapException(cause));
-                });
-        // Link the caller-facing derived stage back to the raw HTTP call so cancelling the returned future aborts it
-        // (CohereClient.rerankAsync delegates to HttpClient.executeAsync, which propagates the cancellation).
+        CompletableFuture<RerankResponse> rerankFuture =
+                withRetryMappingExceptionsAsync(() -> client.rerankAsync(request), maxRetries);
+        CompletableFuture<Response<List<Double>>> result = rerankFuture.thenApply(response -> {
+            List<Double> scores = response.getResults().stream()
+                    .sorted(comparingInt(Result::getIndex))
+                    .map(Result::getRelevanceScore)
+                    .collect(toList());
+            return Response.from(scores, new TokenUsage(response.getMeta().getBilledUnits().getSearchUnits()));
+        });
         propagateCancellation(result, rerankFuture);
         return result;
     }

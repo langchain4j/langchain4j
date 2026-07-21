@@ -3,6 +3,7 @@ package dev.langchain4j.model.openai;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
@@ -17,7 +18,6 @@ import static java.util.Collections.unmodifiableMap;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
@@ -213,8 +213,8 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
      * OpenAI embeddings request is in flight. Cancelling the returned future aborts the in-flight HTTP request
      * (best-effort).
      * <p>
-     * Note: unlike {@link #doEmbed(EmbeddingRequest)}, this path does not apply {@code maxRetries} (retry-around-future
-     * is not wired), consistent with the other OpenAI async methods.
+     * Like {@link #doEmbed(EmbeddingRequest)}, each batch request is retried up to {@code maxRetries} times
+     * (retry-around-future, composing futures without parking a thread); a cancellation is never retried.
      */
     @Override
     public CompletableFuture<EmbeddingResponse> doEmbedAsync(EmbeddingRequest request) {
@@ -289,23 +289,16 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                         .build();
 
         CompletableFuture<ParsedAndRawResponse<dev.langchain4j.model.openai.internal.embedding.EmbeddingResponse>>
-                rawFuture = client.embedding(request).executeRawAsync();
+                rawFuture = withRetryMappingExceptionsAsync(
+                        () -> client.embedding(request).executeRawAsync(), maxRetries);
 
         CompletableFuture<EmbeddedBatch> result = rawFuture.thenApply(parsedAndRaw -> {
-                    dev.langchain4j.model.openai.internal.embedding.EmbeddingResponse response =
-                            parsedAndRaw.parsedResponse();
-                    List<Embedding> embeddings = response.data().stream()
-                            .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
-                            .toList();
-                    return new EmbeddedBatch(embeddings, tokenUsageFrom(response.usage()), response.model());
-                })
-                .exceptionallyCompose(throwable -> {
-                    Throwable cause = unwrapCompletionException(throwable);
-                    if (cause instanceof CancellationException) {
-                        return CompletableFuture.failedFuture(cause);
-                    }
-                    return CompletableFuture.failedFuture(ExceptionMapper.DEFAULT.mapException(cause));
-                });
+            dev.langchain4j.model.openai.internal.embedding.EmbeddingResponse response = parsedAndRaw.parsedResponse();
+            List<Embedding> embeddings = response.data().stream()
+                    .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
+                    .toList();
+            return new EmbeddedBatch(embeddings, tokenUsageFrom(response.usage()), response.model());
+        });
 
         propagateCancellation(result, rawFuture);
         return result;
