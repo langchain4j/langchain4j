@@ -1245,7 +1245,11 @@ A `ContextManager` returns a `ContextResult` containing the assembled `List<Cont
 
 ### ContextAwareRetrievalAugmentor
 
-`ContextAwareRetrievalAugmentor` is the bridge between the context layer and the existing RAG pipeline. It implements `RetrievalAugmentor`, so it plugs into `AiServices` without any changes:
+`ContextAwareRetrievalAugmentor` is the bridge between the context layer and the existing RAG pipeline. It implements `RetrievalAugmentor`, so it plugs into `AiServices` without any changes.
+
+Context and retrieved content are kept as independent streams: context is resolved before the delegate RAG pipeline runs and is never passed through query transformation, routing, or re-ranking. The two streams are merged only after the delegate completes, so re-rankers cannot filter out context content.
+
+Usage:
 
 ```java
 AiServices.builder(Assistant.class)

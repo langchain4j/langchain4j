@@ -43,6 +43,12 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  *       whether the delegate is invoked.</li>
  * </ul>
  * <p>
+ * <b>Separation from the RAG pipeline:</b> context and retrieved content are kept as
+ * independent streams. Context is resolved before the delegate runs and is never passed
+ * through the delegate's query transformation, routing, or re-ranking components.
+ * The two streams are merged only after the delegate's pipeline completes, so
+ * re-rankers cannot filter out context content.
+ * <p>
  * Context is propagated to downstream RAG components via a well-known
  * key in {@link dev.langchain4j.invocation.InvocationParameters}: {@link #CONTEXT_KEY}.
  * <p>
