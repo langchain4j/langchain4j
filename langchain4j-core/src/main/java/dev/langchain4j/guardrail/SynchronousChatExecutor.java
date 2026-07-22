@@ -35,6 +35,6 @@ final class SynchronousChatExecutor extends AbstractChatExecutor { // TODO renam
 
     @Override
     protected CompletableFuture<ChatResponse> executeAsync(ChatRequest chatRequest) {
-        return this.chatModel.chatAsync(chatRequest); // TODO
+        return this.chatModel.chatAsync(chatRequest);
     }
 }

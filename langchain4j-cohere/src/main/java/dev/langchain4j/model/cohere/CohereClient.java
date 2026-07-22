@@ -109,9 +109,6 @@ class CohereClient {
                 .body(toJson(request))
                 .build();
 
-        // Non-blocking counterpart of rerank(): executeAsync does not hold a thread while the response is in
-        // flight. Cancelling the returned future must reach the in-flight HTTP call, so we link the derived stage
-        // back to the raw executeAsync future (cancelling a thenApply stage alone does not cancel its upstream).
         CompletableFuture<SuccessfulHttpResponse> httpFuture = httpClient.executeAsync(httpRequest);
         CompletableFuture<RerankResponse> result =
                 httpFuture.thenApply(response -> fromJson(response.body(), RerankResponse.class));

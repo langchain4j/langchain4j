@@ -74,24 +74,18 @@ public non-sealed class OutputGuardrailExecutor
                 return result;
             }
 
-            // Not successful
             if (!result.isRetry()) {
-                // Not any kind of retry, so just stop here
                 removeViolatingMessageIfRequested(result, request);
                 throw new OutputGuardrailException(result.toString(), result.getFirstFailureException(), result);
             }
 
             if (++attempt < maxAttempts) {
-                // If we get here we know it is some kind of retry
-                // We don't want to add intermediary UserMessages to the memory
                 var chatMessages = Optional.ofNullable(
                                 accumulatedRequest.requestParams().chatMemory())
                         .map(ChatMemory::messages)
                         .orElseGet(ArrayList::new);
                 result.getReprompt().map(UserMessage::from).ifPresent(chatMessages::add);
 
-                // Re-execute the request with the appended message
-                // But don't add it or the resulting message to the memory
                 var response = accumulatedRequest.chatExecutor().execute(chatMessages);
                 accumulatedRequest = OutputGuardrailRequest.builder()
                         .responseFromLLM(response)
@@ -128,8 +122,6 @@ public non-sealed class OutputGuardrailExecutor
             maxAttempts = OutputGuardrailsConfig.MAX_RETRIES_DEFAULT;
         }
 
-        // Root a cancellation chain at the caller-facing future so cancelling it aborts the in-flight guardrail
-        // validations and the reprompt model call (best-effort), mirroring the model/RAG/tool async paths.
         CompletableFuture<OutputGuardrailResult> result = new CompletableFuture<>();
         CancellationChain chain = new CancellationChain(result);
         attemptAsync(request, request, 0, maxAttempts, chain).whenComplete((attemptResult, error) -> {
@@ -156,9 +148,7 @@ public non-sealed class OutputGuardrailExecutor
                 return CompletableFuture.completedFuture(result);
             }
 
-            // Not successful
             if (!result.isRetry()) {
-                // Not any kind of retry, so just stop here
                 return removeViolatingMessageIfRequestedAsync(result, request)
                         .thenCompose(ignored -> CompletableFuture.<OutputGuardrailResult>failedFuture(
                                 new OutputGuardrailException(
@@ -167,8 +157,6 @@ public non-sealed class OutputGuardrailExecutor
 
             var nextAttempt = attempt + 1;
             if (nextAttempt < maxAttempts) {
-                // If we get here we know it is some kind of retry.
-                // We don't want to add intermediary UserMessages to the memory. Read the memory non-blockingly.
                 ChatMemory memory = accumulatedRequest.requestParams().chatMemory();
                 CompletableFuture<List<ChatMessage>> memoryMessages = memory != null
                         ? chain.track(memory.messagesAsync())
@@ -177,8 +165,6 @@ public non-sealed class OutputGuardrailExecutor
                     var chatMessages = new ArrayList<>(currentMessages);
                     result.getReprompt().map(UserMessage::from).ifPresent(chatMessages::add);
 
-                    // Re-execute the request with the appended message without blocking, but don't add it or the
-                    // resulting message to the memory.
                     return chain.track(accumulatedRequest.chatExecutor().executeAsync(chatMessages))
                             .thenCompose(response -> {
                                 var nextRequest = OutputGuardrailRequest.builder()
@@ -217,7 +203,6 @@ public non-sealed class OutputGuardrailExecutor
             return CompletableFuture.completedFuture(null);
         }
         return memory.messagesAsync().thenCompose(current -> {
-            // Remove the last AiMessage — the one that failed the guardrail
             var messages = new ArrayList<>(current);
             var it = messages.listIterator(messages.size());
             while (it.hasPrevious()) {

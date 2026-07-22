@@ -146,7 +146,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
     private final String beta;
     private final Supplier<Map<String, String>> customHeadersSupplier;
 
-    private static final ServerSentEventParsingHandle NO_OP_PARSING_HANDLE = new ServerSentEventParsingHandle() { // TODO
+    private static final ServerSentEventParsingHandle NO_OP_PARSING_HANDLE = new ServerSentEventParsingHandle() {
         @Override
         public void cancel() {
             // reactive path cancels via Flow.Subscription

@@ -44,8 +44,6 @@ public final class StreamingChatModelHelper {
 
             @Override
             public void onSubscribe(Flow.Subscription subscription) {
-                // Cancelling the returned future cancels the stream (best-effort), aborting the in-flight model call -
-                // otherwise the subscription would be dropped and the stream would keep running after cancel.
                 future.whenComplete((response, error) -> {
                     if (future.isCancelled()) {
                         subscription.cancel();

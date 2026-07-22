@@ -77,8 +77,6 @@ public non-sealed class InputGuardrailExecutor
 
     @Override
     public CompletableFuture<InputGuardrailResult> executeAsync(InputGuardrailRequest request) {
-        // Root a cancellation chain at the caller-facing future so cancelling it aborts the in-flight guardrail
-        // validations (best-effort), mirroring the model/RAG/tool async paths.
         CompletableFuture<InputGuardrailResult> result = new CompletableFuture<>();
         CancellationChain chain = new CancellationChain(result);
         executeGuardrailsAsync(request, chain)

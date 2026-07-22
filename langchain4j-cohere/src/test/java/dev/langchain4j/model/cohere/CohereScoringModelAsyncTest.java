@@ -63,7 +63,7 @@ class CohereScoringModelAsyncTest {
 
             future.cancel(true);
 
-            // cancelling the returned future aborts the in-flight HTTP call (R3)
+            // cancelling the returned future aborts the in-flight HTTP call (R3) // TODO remove all references to review comments
             assertThat(clientDisconnected.get(5, SECONDS)).isTrue();
         }
     }

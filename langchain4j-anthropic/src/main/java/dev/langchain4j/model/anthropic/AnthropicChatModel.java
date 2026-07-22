@@ -858,8 +858,6 @@ public class AnthropicChatModel implements ChatModel {
         AnthropicCreateMessageRequest anthropicRequest = toAnthropicRequest(chatRequest, parameters);
         boolean returnThinking = getOrDefault(parameters.returnThinking(), false);
 
-        // Retries use the same backoff/jitter and exception mapping as doChat, but the backoff is scheduled rather
-        // than slept, so no thread is parked. A cancellation is never retried and cancels the in-flight request.
         java.util.concurrent.CompletableFuture<ParsedAndRawResponse> rawFuture = withRetryMappingExceptionsAsync(
                 () -> client.createMessageWithRawResponseAsync(anthropicRequest), maxRetries);
 

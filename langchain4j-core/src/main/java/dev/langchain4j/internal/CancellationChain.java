@@ -1,9 +1,11 @@
 package dev.langchain4j.internal;
 
-import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
-
 import dev.langchain4j.Internal;
+
 import java.util.concurrent.CompletableFuture;
+
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Propagates cancellation from a single caller-facing "root" future to every downstream future produced while
@@ -35,14 +37,7 @@ public final class CancellationChain {
      * @param root the caller-facing future whose cancellation should be propagated to every tracked future.
      */
     public CancellationChain(CompletableFuture<?> root) {
-        this.root = ensureNotNull(root);
-    }
-
-    private static CompletableFuture<?> ensureNotNull(CompletableFuture<?> root) {
-        if (root == null) {
-            throw new IllegalArgumentException("root must not be null");
-        }
-        return root;
+        this.root = ensureNotNull(root, "root");
     }
 
     /**

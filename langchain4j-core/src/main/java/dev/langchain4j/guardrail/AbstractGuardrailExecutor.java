@@ -175,14 +175,13 @@ public abstract sealed class AbstractGuardrailExecutor<
         ensureNotNull(guardrail, "guardrail");
 
         try {
-            // Track the raw in-flight validation so cancelling the caller-facing future aborts it (best-effort).
             CompletableFuture<R> inFlight = guardrail.validateAsync(request);
             chain.track(inFlight);
             return inFlight.handle((result, error) -> {
                 if (error != null) {
                     Throwable cause = unwrapCompletionException(error);
                     if (cause instanceof CancellationException cancellation) {
-                        throw cancellation; // propagate cancellation as-is, do not convert it into a guardrail failure
+                        throw cancellation;
                     }
                     throw createGuardrailException(cause.getMessage(), cause);
                 }

@@ -266,7 +266,7 @@ public final class RetryUtils {
                 CompletableFuture<T> result) {
 
             if (result.isDone()) {
-                return; // the caller cancelled while we were waiting to (re)try
+                return;
             }
 
             CompletableFuture<T> attempt;
@@ -276,7 +276,6 @@ public final class RetryUtils {
                 attempt = CompletableFuture.failedFuture(t);
             }
 
-            // cancelling the returned future cancels the in-flight attempt
             CompletableFutureUtils.propagateCancellation(result, attempt);
 
             attempt.whenComplete((value, error) -> {
@@ -286,7 +285,7 @@ public final class RetryUtils {
                 }
                 Throwable cause = Exceptions.unwrapCompletionException(error);
                 if (cause instanceof CancellationException) {
-                    result.completeExceptionally(cause); // a cancellation is not a provider error - never retry it
+                    result.completeExceptionally(cause);
                     return;
                 }
                 RuntimeException mapped = exceptionMapper.mapException(cause);

@@ -71,7 +71,7 @@ public interface ScoringModel {
      * @return a {@link CompletableFuture} of the list of scores, in the order of {@code segments}.
      * @since 1.19.0
      */
-    default CompletableFuture<Response<List<Double>>> scoreAllAsync(List<TextSegment> segments, String query) {
+    default CompletableFuture<Response<List<Double>>> scoreAllAsync(List<TextSegment> segments, String query) { // TODO new API?
         return AsyncNotSupported.failedFuture(getClass(), "scoreAllAsync");
     }
 }
