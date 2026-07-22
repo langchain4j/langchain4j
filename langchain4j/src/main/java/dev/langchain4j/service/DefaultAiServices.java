@@ -89,6 +89,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Flow;
@@ -223,7 +224,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         if (asyncReturnType) {
                             CompletableFuture<Object> failed = new CompletableFuture<>();
-                            failed.completeExceptionally(error);
+                            completeExceptionallyAsFailure(failed, error);
                             return Optional.of(completableFutureAdapter != null
                                     ? completableFutureAdapter.fromCompletableFuture(declaredReturnType, failed)
                                     : failed);
@@ -378,7 +379,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                             propagateCancellation(result, augmentation);
                             augmentation.whenComplete((augmentationResult, augmentationError) -> {
                                 if (augmentationError != null) {
-                                    result.completeExceptionally(unwrapCompletionException(augmentationError));
+                                    completeExceptionallyAsFailure(result, augmentationError);
                                     return;
                                 }
                                 try {
@@ -408,7 +409,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                     asyncAppendOutputFormat))
                                             .whenComplete((guardedInput, guardrailError) -> {
                                                 if (guardrailError != null) {
-                                                    result.completeExceptionally(unwrapCompletionException(guardrailError));
+                                                    completeExceptionallyAsFailure(result, guardrailError);
                                                     return;
                                                 }
                                                 assembleMessagesAsync(
@@ -418,8 +419,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                                 originalUserMessage)
                                                         .whenComplete((assembledMessages, assemblyError) -> {
                                                             if (assemblyError != null) {
-                                                                result.completeExceptionally(
-                                                                        unwrapCompletionException(assemblyError));
+                                                                completeExceptionallyAsFailure(result, assemblyError);
                                                                 return;
                                                             }
                                                             try {
@@ -439,12 +439,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                                         returnsImage,
                                                                         isReturnTypeResult);
                                                             } catch (Throwable t) {
-                                                                result.completeExceptionally(t);
+                                                                completeExceptionallyAsFailure(result, t);
                                                             }
                                                         });
                                             });
                                 } catch (Throwable t) {
-                                    result.completeExceptionally(t);
+                                    completeExceptionallyAsFailure(result, t);
                                 }
                             });
                             return completableFutureAdapter != null
@@ -787,7 +787,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                             : new RuntimeException(cause))
                                                     .build());
                                         }
-                                        result.completeExceptionally(cause);
+                                        completeExceptionallyAsFailure(result, error);
                                     } else {
                                         result.complete(value);
                                     }
@@ -856,7 +856,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         propagateCancellation(result, inner);
                         inner.whenComplete((value, error) -> {
                             if (error != null) {
-                                result.completeExceptionally(unwrapCompletionException(error));
+                                completeExceptionallyAsFailure(result, error);
                             } else {
                                 result.complete(value);
                             }
@@ -1359,6 +1359,19 @@ class DefaultAiServices<T> extends AiServices<T> {
                 });
 
         return (T) proxyInstance;
+    }
+
+    /**
+     * Completes {@code result} exceptionally with {@code error}, unwrapping the {@link CompletionException} the async
+     * pipeline adds. A {@link CancellationException} surfacing from a tool or a downstream stage is a <em>failure</em>,
+     * not a cancellation of this invocation: completing the returned future with a bare {@code CancellationException}
+     * would flip {@link CompletableFuture#isCancelled()} to {@code true} and make {@code get()} throw a bare
+     * {@code CancellationException} (no cause). It is re-wrapped so the caller instead sees an ordinary exceptional
+     * completion. A genuine caller cancellation already cancelled {@code result}, so this is then a no-op.
+     */
+    private static void completeExceptionallyAsFailure(CompletableFuture<?> result, Throwable error) {
+        Throwable cause = unwrapCompletionException(error);
+        result.completeExceptionally(cause instanceof CancellationException ? new CompletionException(cause) : cause);
     }
 
     private static boolean resolvesToType(Object o, Type returnType) {

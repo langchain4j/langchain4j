@@ -1,6 +1,5 @@
 package dev.langchain4j.service;
 
-import static dev.langchain4j.service.AsyncTestTimeouts.TIMEOUT_SECONDS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -131,7 +130,7 @@ class AiServicesNonBlockingTest {
         AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
                 .chatModel(new NonBlockingChatModelStub(AiMessage.from("{\"name\": \"Warmup\"}")))
                 .build();
-        assistant.extractPerson("warm up the parsing pipeline").get(TIMEOUT_SECONDS, SECONDS);
+        assistant.extractPerson("warm up the parsing pipeline").get(10, SECONDS);
     }
 
     @AfterAll
@@ -228,7 +227,7 @@ class AiServicesNonBlockingTest {
                 .tools(tools)
                 .build();
 
-        String answer = assistant.chat("What is the temperature in Munich?").get(TIMEOUT_SECONDS, SECONDS);
+        String answer = assistant.chat("What is the temperature in Munich?").get(10, SECONDS);
 
         assertThat(answer).isEqualTo("42 degrees");
         assertThat(tools.invocations).hasValue(1);
@@ -274,7 +273,7 @@ class AiServicesNonBlockingTest {
 
         gate.countDown();
 
-        assertThat(future.get(TIMEOUT_SECONDS, SECONDS)).isEqualTo("Berlin");
+        assertThat(future.get(10, SECONDS)).isEqualTo("Berlin");
     }
 
     @BeforeEach
@@ -332,7 +331,7 @@ class AiServicesNonBlockingTest {
         String answer = assistant
                 .chat("What is the capital of Germany?")
                 .whenComplete((response, error) -> completionThread.set(Thread.currentThread()))
-                .get(TIMEOUT_SECONDS, SECONDS);
+                .get(10, SECONDS);
 
         assertThat(answer).isEqualTo("Berlin");
         assertThat(completionThread.get()).isNotNull().isNotEqualTo(callerThread);
@@ -379,7 +378,7 @@ class AiServicesNonBlockingTest {
                 .tools(tools)
                 .build();
 
-        String answer = assistant.chat("What is the weather in Munich?").get(TIMEOUT_SECONDS, SECONDS);
+        String answer = assistant.chat("What is the weather in Munich?").get(10, SECONDS);
 
         assertThat(answer).isEqualTo("42 degrees, 69 percent");
         assertThat(tools.invocations).hasValue(2);
@@ -400,7 +399,7 @@ class AiServicesNonBlockingTest {
                 .executeToolsConcurrently()
                 .build();
 
-        String answer = assistant.chat("What is the weather in Munich?").get(TIMEOUT_SECONDS, SECONDS);
+        String answer = assistant.chat("What is the weather in Munich?").get(10, SECONDS);
 
         assertThat(answer).isEqualTo("42 degrees, 69 percent");
         assertThat(tools.invocations).hasValue(2);
@@ -438,7 +437,7 @@ class AiServicesNonBlockingTest {
                 .tools(tools)
                 .build();
 
-        String answer = assistant.chat("What is the temperature in Munich?").get(TIMEOUT_SECONDS, SECONDS);
+        String answer = assistant.chat("What is the temperature in Munich?").get(10, SECONDS);
 
         assertThat(answer).isEqualTo("42 degrees");
         assertThat(tools.invocations).hasValue(1);
@@ -459,7 +458,7 @@ class AiServicesNonBlockingTest {
                 .executeToolsConcurrently()
                 .build();
 
-        String answer = assistant.chat("What is the weather in Munich?").get(TIMEOUT_SECONDS, SECONDS);
+        String answer = assistant.chat("What is the weather in Munich?").get(10, SECONDS);
 
         assertThat(answer).isEqualTo("42 degrees, 69 percent");
         assertThat(tools.invocations).hasValue(2);
@@ -497,7 +496,7 @@ class AiServicesNonBlockingTest {
                 .executeToolsConcurrently()
                 .build();
 
-        String answer = assistant.chat("What is the weather in Munich?").get(TIMEOUT_SECONDS, SECONDS);
+        String answer = assistant.chat("What is the weather in Munich?").get(10, SECONDS);
 
         assertThat(answer).isEqualTo("42 degrees, 69 percent");
         assertThat(tools.invocations).hasValue(2);
@@ -521,7 +520,7 @@ class AiServicesNonBlockingTest {
                 .chatModel(new NonBlockingChatModelStub(AiMessage.from("{\"name\": \"Klaus\"}")))
                 .build();
 
-        Result<Person> result = assistant.extractPerson("My name is Klaus").get(TIMEOUT_SECONDS, SECONDS);
+        Result<Person> result = assistant.extractPerson("My name is Klaus").get(10, SECONDS);
 
         assertThat(result.content().name).isEqualTo("Klaus");
         assertNoBlockingCalls();
@@ -554,7 +553,7 @@ class AiServicesNonBlockingTest {
                 .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
                 .build();
 
-        String answer = assistant.chat("What is the capital of Germany?").get(TIMEOUT_SECONDS, SECONDS);
+        String answer = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
 
         assertThat(answer).isEqualTo("Berlin");
         assertNoBlockingCalls();
@@ -667,7 +666,7 @@ class AiServicesNonBlockingTest {
                 .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
                 .build();
 
-        String answer = assistant.chat("What is the capital of Germany?").get(TIMEOUT_SECONDS, SECONDS);
+        String answer = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
 
         assertThat(answer).isEqualTo("Berlin");
         assertNoBlockingCalls();
@@ -695,7 +694,7 @@ class AiServicesNonBlockingTest {
                 .chatModel(model)
                 .build();
 
-        String answer = assistant.chat("What is the capital of Germany?").get(TIMEOUT_SECONDS, SECONDS);
+        String answer = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
 
         assertThat(answer).isEqualTo("Berlin");
         assertNoBlockingCalls();
@@ -773,7 +772,7 @@ class AiServicesNonBlockingTest {
                 .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
                 .build();
 
-        String answer = assistant.chat("What is the capital of Germany?").get(TIMEOUT_SECONDS, SECONDS);
+        String answer = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
 
         assertThat(answer).isEqualTo("Berlin");
         assertNoBlockingCalls();
@@ -809,7 +808,7 @@ class AiServicesNonBlockingTest {
 
         gate.countDown();
 
-        assertThat(future.get(TIMEOUT_SECONDS, SECONDS)).isEqualTo("Berlin");
+        assertThat(future.get(10, SECONDS)).isEqualTo("Berlin");
         assertNoBlockingCalls();
     }
 
@@ -880,7 +879,7 @@ class AiServicesNonBlockingTest {
 
         CompletableFuture<String> future = assistant.chat("What is the capital of Germany?");
 
-        assertThat(entered.await(TIMEOUT_SECONDS, SECONDS)).as("input guardrail should start").isTrue();
+        assertThat(entered.await(5, SECONDS)).as("input guardrail should start").isTrue();
         future.cancel(true);
         release.countDown();
 
@@ -967,7 +966,7 @@ class AiServicesNonBlockingTest {
                 .registerListener((ToolCompensatedEventListener) compensatedEvents::add)
                 .build();
 
-        String answer = assistant.chat("transfer").get(TIMEOUT_SECONDS, SECONDS);
+        String answer = assistant.chat("transfer").get(10, SECONDS);
 
         assertThat(answer).isEqualTo("done");
         // the failed withdraw triggered a rollback of the earlier successful credit
@@ -1003,7 +1002,7 @@ class AiServicesNonBlockingTest {
 
         // A CancellationException thrown by a tool is a tool failure, not an invocation cancellation: the invocation
         // fails with it (the default async execution handler rethrows), rather than silently completing as cancelled.
-        assertThatThrownBy(() -> future.get(TIMEOUT_SECONDS, SECONDS)).rootCause().isInstanceOf(CancellationException.class);
+        assertThatThrownBy(() -> future.get(10, SECONDS)).rootCause().isInstanceOf(CancellationException.class);
         // The successful credit is rolled back because a *tool* failed - reason TOOL_EXECUTION_FAILED, not
         // INVOCATION_CANCELLED (which is what the misclassification would have produced).
         assertThat(tools.calls).containsExactlyInAnyOrder("credit:Mario", "cancel:Mario", "uncredit:Mario");
@@ -1041,7 +1040,7 @@ class AiServicesNonBlockingTest {
                 .registerListener((ToolCompensatedEventListener) compensatedEvents::add)
                 .build();
 
-        String answer = assistant.chat("transfer").get(TIMEOUT_SECONDS, SECONDS);
+        String answer = assistant.chat("transfer").get(10, SECONDS);
 
         assertThat(answer).isEqualTo("done");
 
@@ -1117,7 +1116,7 @@ class AiServicesNonBlockingTest {
 
         // The failing withdraw fails the invocation (the default async handler rethrows), but the earlier
         // successful credit is compensated first — a tool failure must not short-circuit the rollback.
-        assertThatThrownBy(() -> future.get(TIMEOUT_SECONDS, SECONDS)).rootCause().hasMessageContaining("insufficient funds");
+        assertThatThrownBy(() -> future.get(10, SECONDS)).rootCause().hasMessageContaining("insufficient funds");
         assertThat(tools.calls).containsExactly("credit:Mario", "withdraw:Mario", "uncredit:Mario");
         assertNoBlockingCalls();
     }
@@ -1192,7 +1191,7 @@ class AiServicesNonBlockingTest {
 
         CompletableFuture<String> future = assistant.chat("transfer");
 
-        assertThat(round2Entered.await(TIMEOUT_SECONDS, SECONDS)).as("the second round should start").isTrue();
+        assertThat(round2Entered.await(5, SECONDS)).as("the second round should start").isTrue();
         future.cancel(true);
         release.countDown();
 
@@ -1237,7 +1236,7 @@ class AiServicesNonBlockingTest {
                 .registerListeners(List.of(listener))
                 .build();
 
-        String answer = assistant.chat("What is the capital of Germany?").get(TIMEOUT_SECONDS, SECONDS);
+        String answer = assistant.chat("What is the capital of Germany?").get(10, SECONDS);
 
         assertThat(answer).isEqualTo("Berlin");
         assertThat(listener.count).hasValue(1);
@@ -1330,7 +1329,7 @@ class AiServicesNonBlockingTest {
             }
         });
 
-        assertThat(latch.await(TIMEOUT_SECONDS, SECONDS)).isTrue();
+        assertThat(latch.await(10, SECONDS)).isTrue();
         assertThat(error.get()).isNull();
         return String.join("", items);
     }
@@ -1360,7 +1359,7 @@ class AiServicesNonBlockingTest {
             }
         });
 
-        assertThat(latch.await(TIMEOUT_SECONDS, SECONDS)).isTrue();
+        assertThat(latch.await(10, SECONDS)).isTrue();
         assertThat(error.get()).as("stream must fail").isNotNull();
         return error.get();
     }

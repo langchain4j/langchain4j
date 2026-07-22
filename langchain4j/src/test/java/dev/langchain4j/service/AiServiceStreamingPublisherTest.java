@@ -2,7 +2,6 @@ package dev.langchain4j.service;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import static dev.langchain4j.service.AsyncTestTimeouts.TIMEOUT_SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -801,7 +800,7 @@ class AiServiceStreamingPublisherTest {
             String slowTool(String city) {
                 toolStarted.countDown();
                 try {
-                    releaseTool.await(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                    releaseTool.await(5, TimeUnit.SECONDS);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
@@ -846,7 +845,7 @@ class AiServiceStreamingPublisherTest {
             }
         });
 
-        assertThat(toolStarted.await(TIMEOUT_SECONDS, TimeUnit.SECONDS)).as("the tool is running").isTrue();
+        assertThat(toolStarted.await(5, TimeUnit.SECONDS)).as("the tool is running").isTrue();
         subscription.get().cancel();
         releaseTool.countDown(); // let the already-running tool finish
 
@@ -873,7 +872,7 @@ class AiServiceStreamingPublisherTest {
                 calls.add("credit");
                 toolStarted.countDown();
                 try {
-                    releaseTool.await(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                    releaseTool.await(5, TimeUnit.SECONDS);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
@@ -915,7 +914,7 @@ class AiServiceStreamingPublisherTest {
             public void onComplete() {}
         });
 
-        assertThat(toolStarted.await(TIMEOUT_SECONDS, TimeUnit.SECONDS)).as("the compensable tool is running").isTrue();
+        assertThat(toolStarted.await(5, TimeUnit.SECONDS)).as("the compensable tool is running").isTrue();
         subscription.get().cancel();
         releaseTool.countDown(); // let the already-running tool finish (drain), then it is rolled back
 
@@ -1058,7 +1057,7 @@ class AiServiceStreamingPublisherTest {
             }
         });
 
-        assertThat(firstItem.await(TIMEOUT_SECONDS, TimeUnit.SECONDS)).isTrue();
+        assertThat(firstItem.await(5, TimeUnit.SECONDS)).isTrue();
 
         // the cancellation should propagate to the model's reactive stream, which then stops producing
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
