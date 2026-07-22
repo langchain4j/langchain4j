@@ -116,9 +116,11 @@ public class OkHttpClient implements HttpClient {
     /**
      * {@inheritDoc}
      * <p>
-     * Note: OkHttp reads the response body on a blocking call thread, so — unlike the JDK client — this
-     * publisher pins an OkHttp dispatcher thread for the lifetime of the stream. Cancelling the
-     * subscription cancels the underlying SSE parsing (which closes the stream and frees the thread). TODO
+     * Events are delivered incrementally as they arrive. Note that OkHttp exposes the response body only as a
+     * blocking source, so — unlike the JDK client, which consumes the body reactively and pins no thread — this
+     * publisher reads and parses it on an OkHttp dispatcher thread for the lifetime of the stream. On any terminal
+     * signal (a downstream cancel, an error, or a buffer overflow) the underlying call is cancelled, which closes
+     * the stream, aborts the connection, and frees that thread.
      */
     @Override
     public Flow.Publisher<HttpStreamingEvent> stream(HttpRequest request, ServerSentEventParser parser) {
