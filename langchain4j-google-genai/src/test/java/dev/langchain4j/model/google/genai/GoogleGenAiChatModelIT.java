@@ -140,4 +140,18 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
         assertThat(response2.aiMessage().text()).isNotBlank();
         assertThat(response2.aiMessage().hasToolExecutionRequests()).isFalse();
     }
+
+    @Test
+    void should_apply_generate_content_config_customizer() {
+        GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
+                .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+                .modelName("gemini-2.5-flash")
+                .generateContentConfigCustomizer(
+                        config -> config.temperature(0.7f).seed(42))
+                .build();
+
+        String response = model.chat("Respond with exactly one word: Hello.");
+
+        assertThat(response).isNotBlank();
+    }
 }

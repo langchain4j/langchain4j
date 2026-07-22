@@ -9,6 +9,7 @@ import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAg
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.agentError;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentInvocation;
 import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgenticScopeCreated;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.onAgenticSystemSuspended;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -23,6 +24,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -46,6 +48,7 @@ import dev.langchain4j.agentic.planner.Planner;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.AgenticScopeAccess;
 import dev.langchain4j.agentic.scope.AgenticScopeRegistry;
+import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.workflow.impl.ParallelMapperServiceImpl;
@@ -218,6 +221,15 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
             throw e;
         }
 
+        if (result instanceof Action action && action.isSuspended()) {
+            onAgenticSystemSuspended(agentListener, currentScope);
+            if (isRootCall() && method.getReturnType().equals(ResultWithAgenticScope.class)) {
+                return new ResultWithAgenticScope<>(currentScope, null, true,
+                        () -> (ResultWithAgenticScope) executeAgentMethod(registry, method, args));
+            }
+            throw new AgenticSystemSuspendedException(currentScope);
+        }
+
         Object output = outputKey != null ? currentScope.readState(outputKey) : result;
 
         if (isRootCall()) {
@@ -357,11 +369,13 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
 
     private class PlannerLoop implements PlannerExecutor {
         static final String EXECUTION_STATE_PREFIX = "__planner_state_";
+        private static final String COMPLETED_AGENTS_KEY = "__completedAgents";
 
         private final Planner planner;
         private final DefaultAgenticScope agenticScope;
         private final AgenticScopeRegistry registry;
         private final ReentrantLock lock = new ReentrantLock();
+        private final Set<String> completedAgentIds = new java.util.HashSet<>();
 
         private volatile Action nextAction = null;
 
@@ -375,15 +389,23 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         public Object loop() {
             Map<String, Object> savedState = agenticScope.readState(executionStateId(), Map.of());
             if (!savedState.isEmpty()) {
+                restoreCompletedAgents(savedState);
                 planner.restoreExecutionState(savedState);
             }
 
             nextAction = planner.firstAction(new PlanningContext(agenticScope, null));
+            nextAction = filterCompletedAgents(nextAction);
             while (nextAction == null || !nextAction.isDone()) {
                 if (nextAction == null) {
                     Thread.yield();
                     continue;
                 }
+
+                if (hasSuspendedResponses(agenticScope)) {
+                    nextAction = planner.suspend();
+                    break;
+                }
+
                 List<AgentExecutor> agents = ((Action.AgentCallAction) nextAction).agentsToCall();
                 nextAction = null;
                 switch (agents.size()) {
@@ -393,10 +415,37 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
                 }
             }
 
+            if (nextAction != null && nextAction.isSuspended()) {
+                return nextAction;
+            }
+
+            if (hasSuspendedResponses(agenticScope)) {
+                return planner.suspend();
+            }
+
             // Clear execution state when planner is done
             agenticScope.writeState(executionStateId(), null);
 
             return result();
+        }
+
+        private Action filterCompletedAgents(Action action) {
+            if (completedAgentIds.isEmpty() || !(action instanceof Action.AgentCallAction aca) || aca.agentsToCall().size() <= 1) {
+                return action;
+            }
+            List<AgentExecutor> remaining = aca.agentsToCall().stream()
+                    .filter(a -> !completedAgentIds.contains(a.agentId()))
+                    .toList();
+            return remaining.isEmpty() ? planner.done() : new Action.AgentCallAction(remaining);
+        }
+
+        private void restoreCompletedAgents(Map<String, Object> savedState) {
+            Object completed = savedState.get(COMPLETED_AGENTS_KEY);
+            if (completed instanceof List<?> list) {
+                for (Object id : list) {
+                    completedAgentIds.add(id.toString());
+                }
+            }
         }
 
         private String executionStateId() {
@@ -417,6 +466,7 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
                 throw new RuntimeException(e);
             }
         }
+
         private Object result() {
             Object result = output != null ? output.apply(agenticScope) : nextAction.result();
 
@@ -431,18 +481,38 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
             return result;
         }
 
+        private void saveExecutionState() {
+            Map<String, Object> execState = planner.executionState();
+            if (!completedAgentIds.isEmpty()) {
+                execState = new HashMap<>(execState);
+                execState.put(COMPLETED_AGENTS_KEY, new ArrayList<>(completedAgentIds));
+            }
+            if (!execState.isEmpty()) {
+                agenticScope.writeState(executionStateId(), execState);
+            }
+        }
+
+        @Override
+        public void onSubagentSuspended() {
+            lock.lock();
+            try {
+                this.nextAction = planner.suspend();
+                saveExecutionState();
+                if (registry != null) {
+                    agenticScope.checkpoint(registry);
+                }
+            } finally {
+                lock.unlock();
+            }
+        }
+
         @Override
         public void onSubagentInvoked(AgentInvocation agentInvocation) {
             lock.lock();
             try {
+                completedAgentIds.add(agentInvocation.agentId());
                 this.nextAction = composeActions(this.nextAction, planner.nextAction(new PlanningContext(agenticScope, agentInvocation)));
-
-                // Save planner execution state after each agent invocation
-                Map<String, Object> execState = planner.executionState();
-                if (!execState.isEmpty()) {
-                    agenticScope.writeState(executionStateId(), execState);
-                }
-
+                saveExecutionState();
                 if (registry != null) {
                     agenticScope.checkpoint(registry);
                 }
@@ -473,6 +543,11 @@ public class PlannerBasedInvocationHandler implements InvocationHandler, Interna
         private static boolean isEmptyCall(Action action) {
             return action instanceof Action.AgentCallAction aca && aca.agentsToCall().isEmpty();
         }
+    }
+
+    private static boolean hasSuspendedResponses(AgenticScope agenticScope) {
+        return agenticScope.state().values().stream()
+                .anyMatch(v -> v instanceof SuspendedResponse<?> sr && !sr.isDone());
     }
 
     private boolean isRootCall() {
