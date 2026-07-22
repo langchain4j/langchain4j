@@ -19,6 +19,12 @@ import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.rag.DefaultRetrievalAugmentor;
+import dev.langchain4j.rag.RetrievalAugmentor;
+import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.rag.query.router.DefaultQueryRouter;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -1386,6 +1392,166 @@ class AiServicesNonBlockingTest {
         assertThat(violations)
                 .as("BlockHound must flag a blocking call on a policed thread")
                 .isNotEmpty();
+    }
+
+    // ---- RAG (retrieval augmentation) ----
+    // RAG runs *before* the model call, so - unlike the tool/guardrail/memory stages - it does not naturally land on
+    // the policed delivery thread. Two complementary shapes cover it: a native-async retriever that completes on the
+    // delivery thread (so content aggregation, injection and the model call that follows are policed), and a blocking
+    // retriever offloaded via offloadBlocking(true) whose retrieve() must run off the pipeline thread.
+
+    /**
+     * A {@link ContentRetriever} whose synchronous {@code retrieve()} blocks (simulating I/O). It does not implement
+     * {@code retrieveAsync}, so {@code DefaultRetrievalAugmentor.offloadBlocking(true)} offloads the blocking call to
+     * a non-policed worker. Records the thread it ran on so a test can assert it was offloaded off the pipeline
+     * thread; when a {@code gate} is supplied the retrieval blocks until it opens (to prove the caller is not blocked).
+     */
+    static class BlockingContentRetriever implements ContentRetriever {
+
+        private final Content content;
+        private final CountDownLatch gate;
+        final AtomicReference<String> retrieveThread = new AtomicReference<>();
+
+        BlockingContentRetriever(Content content) {
+            this(content, null);
+        }
+
+        BlockingContentRetriever(Content content, CountDownLatch gate) {
+            this.content = content;
+            this.gate = gate;
+        }
+
+        @Override
+        public List<Content> retrieve(Query query) {
+            retrieveThread.set(Thread.currentThread().getName());
+            try {
+                if (gate != null) {
+                    gate.await();
+                } else {
+                    Thread.sleep(20);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return List.of(content);
+        }
+    }
+
+    /**
+     * A genuinely non-blocking {@link ContentRetriever}: {@code retrieveAsync} completes on the policed delivery
+     * thread (like the model stub), so content aggregation, injection and the downstream stages run on the policed
+     * thread - any hidden blocking there is caught by BlockHound. Its blocking {@code retrieve()} must never be called.
+     */
+    static class AsyncContentRetriever implements ContentRetriever {
+
+        private final Content content;
+
+        AsyncContentRetriever(Content content) {
+            this.content = content;
+        }
+
+        @Override
+        public List<Content> retrieve(Query query) {
+            throw new AssertionError("blocking retrieve() must not be called for a native-async retriever");
+        }
+
+        @Override
+        public CompletableFuture<List<Content>> retrieveAsync(Query query) {
+            return CompletableFuture.supplyAsync(
+                    () -> List.of(content), CompletableFuture.delayedExecutor(10, MILLISECONDS, deliveryExecutor));
+        }
+    }
+
+    private static RetrievalAugmentor augmentorFor(ContentRetriever... retrievers) {
+        return DefaultRetrievalAugmentor.builder()
+                .queryRouter(new DefaultQueryRouter(retrievers))
+                .build();
+    }
+
+    private static RetrievalAugmentor offloadingAugmentorFor(ContentRetriever... retrievers) {
+        return DefaultRetrievalAugmentor.builder()
+                .queryRouter(new DefaultQueryRouter(retrievers))
+                .offloadBlocking(true)
+                .build();
+    }
+
+    @Test
+    void rag_native_async_retriever_does_not_block_the_delivery_thread() throws Exception {
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
+                .retrievalAugmentor(augmentorFor(new AsyncContentRetriever(Content.from("Germany is in Europe."))))
+                .build();
+
+        assertThat(assistant.chat("What is the capital of Germany?").get(10, SECONDS)).isEqualTo("Berlin");
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void rag_multiple_retrievers_fan_out_does_not_block_the_delivery_thread() throws Exception {
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
+                .retrievalAugmentor(augmentorFor(
+                        new AsyncContentRetriever(Content.from("fact one")),
+                        new AsyncContentRetriever(Content.from("fact two"))))
+                .build();
+
+        assertThat(assistant.chat("What is the capital of Germany?").get(10, SECONDS)).isEqualTo("Berlin");
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void rag_with_memory_and_tools_does_not_block_the_delivery_thread() throws Exception {
+        WeatherTools tools = new WeatherTools();
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(new NonBlockingChatModelStub(
+                        AiMessage.from(toolRequest("1", "currentTemperature")), AiMessage.from("It is 42 in Berlin.")))
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(20))
+                .tools(tools)
+                .retrievalAugmentor(augmentorFor(new AsyncContentRetriever(Content.from("Berlin is in Germany."))))
+                .build();
+
+        assertThat(assistant.chat("What is the weather in Berlin?").get(10, SECONDS))
+                .isEqualTo("It is 42 in Berlin.");
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void rag_blocking_retriever_is_offloaded_off_the_caller_thread() throws Exception {
+        // A blocking retriever with offloadBlocking(true): the blocking retrieve() must run on the offload executor,
+        // never inline on the calling thread. The offloaded worker legitimately blocks - the guarantee here is that it
+        // does so off the caller/pipeline thread; the downstream pipeline (delivery thread) also stays clean.
+        BlockingContentRetriever retriever = new BlockingContentRetriever(Content.from("Germany is in Europe."));
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
+                .retrievalAugmentor(offloadingAugmentorFor(retriever))
+                .build();
+
+        String callerThreadName = Thread.currentThread().getName();
+        assertThat(assistant.chat("What is the capital of Germany?").get(10, SECONDS)).isEqualTo("Berlin");
+
+        assertThat(retriever.retrieveThread.get())
+                .as("the blocking retrieve() must be offloaded off the caller/pipeline thread")
+                .isNotNull()
+                .isNotEqualTo(callerThreadName);
+        assertNoBlockingCalls();
+    }
+
+    @Test
+    void rag_does_not_block_the_caller_thread() throws Exception {
+        // The blocking retrieve() waits on the gate; offloadBlocking(true) offloads it, so chat() hands back a
+        // not-yet-completed future instead of blocking the caller on retrieval.
+        CountDownLatch gate = new CountDownLatch(1);
+        BlockingContentRetriever retriever = new BlockingContentRetriever(Content.from("context"), gate);
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(new NonBlockingChatModelStub(AiMessage.from("Berlin")))
+                .retrievalAugmentor(offloadingAugmentorFor(retriever))
+                .build();
+
+        CompletableFuture<String> future = assistant.chat("What is the capital of Germany?");
+
+        assertThat(future).isNotDone();
+        gate.countDown();
+        assertThat(future.get(10, SECONDS)).isEqualTo("Berlin");
     }
 
     private static void assertNoBlockingCalls() {
