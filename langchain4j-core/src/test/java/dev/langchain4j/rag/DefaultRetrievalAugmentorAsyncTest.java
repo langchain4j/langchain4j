@@ -221,7 +221,7 @@ class DefaultRetrievalAugmentorAsyncTest {
     }
 
     @Test
-    void async_offload_honors_a_configured_executor() throws Exception {
+    void async_offload_does_not_use_the_configured_executor() throws Exception {
         ExecutorService custom = Executors.newSingleThreadExecutor(r -> new Thread(r, "custom-offload-thread"));
         try {
             CompletableFuture<String> offloadThreadName = new CompletableFuture<>();
@@ -232,13 +232,13 @@ class DefaultRetrievalAugmentorAsyncTest {
 
             RetrievalAugmentor augmentor = DefaultRetrievalAugmentor.builder()
                     .queryRouter(new DefaultQueryRouter(blockingRetriever))
-                    .executor(custom) // a configured executor is used for the async offload too
+                    .executor(custom) // the sync fan-out pool - NOT reused for the async offload
                     .offloadBlocking(true)
                     .build();
 
             augmentor.augmentAsync(request()).get(5, SECONDS);
 
-            assertThat(offloadThreadName.get(5, SECONDS)).isEqualTo("custom-offload-thread");
+            assertThat(offloadThreadName.get(5, SECONDS)).isNotEqualTo("custom-offload-thread");
         } finally {
             custom.shutdownNow();
         }

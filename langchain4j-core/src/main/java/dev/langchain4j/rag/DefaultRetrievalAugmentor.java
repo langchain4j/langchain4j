@@ -109,8 +109,8 @@ import static java.util.stream.Collectors.toMap;
  * is used, but you can provide a custom {@link Executor} instance.
  * <br>
  * On the asynchronous {@code augmentAsync} path, a blocking stage that is offloaded (see {@code offloadBlocking})
- * runs on the shared virtual-thread executor by default (non-pinning for I/O); a custom {@link Executor}, if
- * provided, is used there too.
+ * runs on the shared virtual-thread executor (non-pinning for I/O; the {@link dev.langchain4j.spi.ExecutorProvider}
+ * default), independently of the synchronous fan-out {@link Executor} above.
  *
  * @see DefaultQueryTransformer
  * @see DefaultQueryRouter
@@ -123,15 +123,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     private final QueryRouter queryRouter;
     private final ContentAggregator contentAggregator;
     private final ContentInjector contentInjector;
-    // Executor for the (synchronous) parallel routing/retrieval fan-out. Released default: a cached platform-thread
-    // pool (a modified Executors.newCachedThreadPool()). Left unchanged for backward compatibility.
     private final Executor executor;
-    // Executor for the async offload of a blocking stage (augmentAsync + offloadBlocking). Defaults to the shared
-    // virtual-thread executor (non-pinning for I/O, consistent with EmbeddingStoreContentRetriever) but honors a
-    // configured executor(...) - e.g. a platform pool for a CPU-bound blocking component.
-    private final Executor asyncOffloadExecutor;
-    // On augmentAsync, whether a stage that is not genuinely async (its *Async default throws) is offloaded to the
-    // async offload executor, rather than failing loudly. See the builder's offloadBlocking(boolean).
     private final boolean offloadBlocking;
 
     public DefaultRetrievalAugmentor(QueryTransformer queryTransformer,
@@ -153,7 +145,6 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         this.contentAggregator = getOrDefault(contentAggregator, DefaultContentAggregator::new);
         this.contentInjector = getOrDefault(contentInjector, DefaultContentInjector::new);
         this.executor = getOrDefault(executor, DefaultRetrievalAugmentor::createDefaultExecutor);
-        this.asyncOffloadExecutor = getOrDefault(executor, DefaultExecutorProvider::getDefaultExecutor);
         this.offloadBlocking = offloadBlocking;
     }
 
@@ -287,7 +278,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
             Throwable cause = unwrapCompletionException(error);
             if (cause instanceof AsyncNotSupportedException) {
                 if (offloadBlocking) {
-                    return supplyAsync(blockingCall, asyncOffloadExecutor);
+                    return supplyAsync(blockingCall, DefaultExecutorProvider.getDefaultExecutor());
                 }
                 return CompletableFuture.failedFuture(new UnsupportedFeatureException(cause.getMessage()
                         + " The RAG pipeline is not fully asynchronous. Either use async-capable components, or build"
@@ -408,8 +399,9 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
          * <p>
          * By default ({@code false}), {@code augmentAsync} fails with an actionable error naming the blocking stage,
          * so a not-truly-async pipeline is never silently made "async" by parking a thread. Set to {@code true} to
-         * instead offload the blocking stage to the configured {@link #executor(Executor) executor}. Has no effect on
-         * the synchronous {@link #augment(AugmentationRequest)}.
+         * instead offload the blocking stage to the shared virtual-thread executor (the
+         * {@link dev.langchain4j.spi.ExecutorProvider} default) - not the synchronous fan-out
+         * {@link #executor(Executor) executor}. Has no effect on the synchronous {@link #augment(AugmentationRequest)}.
          */
         public DefaultRetrievalAugmentorBuilder offloadBlocking(boolean offloadBlocking) {
             this.offloadBlocking = offloadBlocking;
