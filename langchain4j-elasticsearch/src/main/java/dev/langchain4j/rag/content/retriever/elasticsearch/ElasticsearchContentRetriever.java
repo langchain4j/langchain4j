@@ -194,26 +194,56 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
             return this;
         }
 
+        /**
+         * Sets the {@link EmbeddingModel} used to embed queries before searching.
+         *
+         * @param embeddingModel the embedding model
+         * @return {@code this}
+         */
         public Builder embeddingModel(EmbeddingModel embeddingModel) {
             this.embeddingModel = embeddingModel;
             return this;
         }
 
+        /**
+         * Sets the maximum number of results to retrieve per query.
+         *
+         * @param maxResults the maximum number of results
+         * @return {@code this}
+         */
         public Builder maxResults(int maxResults) {
             this.maxResults = maxResults;
             return this;
         }
 
+        /**
+         * Sets the minimum relevance score threshold for retrieved results.
+         * Results scoring below this threshold are excluded.
+         *
+         * @param minScore the minimum score, in the range {@code [0.0, 1.0]}
+         * @return {@code this}
+         */
         public Builder minScore(double minScore) {
             this.minScore = minScore;
             return this;
         }
 
+        /**
+         * Sets the {@link Filter} applied to metadata during retrieval.
+         *
+         * @param filter the metadata filter
+         * @return {@code this}
+         */
         public Builder filter(Filter filter) {
             this.filter = filter;
             return this;
         }
 
+        /**
+         * Builds the {@link ElasticsearchContentRetriever}.
+         *
+         * @return the configured {@link ElasticsearchContentRetriever}
+         */
         public ElasticsearchContentRetriever build() {
             if (client != null) {
                 return new ElasticsearchContentRetriever(
