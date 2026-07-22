@@ -109,5 +109,28 @@ public enum ReturnBehavior {
      * <p>
      * Only allowed on AI services returning {@code dev.langchain4j.service.Result}.
      */
-    IMMEDIATE_IF_LAST;
+    IMMEDIATE_IF_LAST,
+
+    /**
+     * <b>Suspends</b> the AI Service execution loop after this tool runs, instead of sending the
+     * tool result back to the LLM. The tool method is still executed (e.g. to kick off a long-running
+     * job or to persist the request for later), but its return value is <b>not</b> turned into a
+     * {@link dev.langchain4j.data.message.ToolExecutionResultMessage} — the corresponding tool call
+     * is left <em>pending</em> in the chat memory.
+     * <p>
+     * This enables human-in-the-loop and asynchronous workflows: the caller can fulfill the pending
+     * tool call later (once the external process completes or the user provides input) and resume the
+     * conversation by supplying the real {@link dev.langchain4j.data.message.ToolExecutionResultMessage}
+     * (see {@code dev.langchain4j.service.tool.ToolExecutionResumer}).
+     * <p>
+     * When a response contains a {@code SUSPEND} tool (and no tool errored), the loop suspends:
+     * results of any non-{@code SUSPEND} tools in the same response are still recorded in the chat
+     * memory, while the {@code SUSPEND} tool call(s) stay pending. A tool error anywhere in the
+     * response cancels the suspension so the LLM can react to the error on the next turn.
+     * <p>
+     * Only allowed on AI services returning {@code dev.langchain4j.service.Result}, so that the caller
+     * can detect the suspension (via {@link dev.langchain4j.model.output.FinishReason#TOOL_EXECUTION}
+     * and the pending tool calls in {@code Result.finalResponse()}).
+     */
+    SUSPEND;
 }

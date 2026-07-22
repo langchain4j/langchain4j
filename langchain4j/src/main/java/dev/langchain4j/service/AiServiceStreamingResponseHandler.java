@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.agent.tool.ReturnBehavior.SUSPEND;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
@@ -306,6 +307,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             List<ToolExecutionResult> toolResults = new ArrayList<>();
             boolean anyToolErrored = false;
             List<ReturnBehavior> returnBehaviors = new ArrayList<>();
+            List<ToolExecutionResultMessage> suspendedResults = new ArrayList<>();
 
             if (toolExecutor != null) {
                 for (Future<ToolRequestResult> toolExecutionFuture : toolExecutionFutures) {
@@ -317,9 +319,14 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                         toolResults.add(toolResult);
                         ToolExecutionResultMessage toolExecutionResultMessage =
                                 toResultMessage(toolRequest, toolResult);
-                        addToMemory(toolExecutionResultMessage);
+                        ReturnBehavior returnBehavior = toolServiceContext.returnBehavior(toolRequest.name());
+                        if (returnBehavior == SUSPEND) {
+                            suspendedResults.add(toolExecutionResultMessage);
+                        } else {
+                            addToMemory(toolExecutionResultMessage);
+                        }
                         anyToolErrored = anyToolErrored || toolResult.isError();
-                        returnBehaviors.add(toolServiceContext.returnBehavior(toolRequest.name()));
+                        returnBehaviors.add(returnBehavior);
                     } catch (ExecutionException e) {
                         if (e.getCause() instanceof RuntimeException re) {
                             throw re;
@@ -338,11 +345,29 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     ToolRequestResult toolRequestResult = new ToolRequestResult(toolRequest, toolResult);
                     fireToolExecutedEvent(toolRequestResult);
                     ToolExecutionResultMessage toolExecutionResultMessage = toResultMessage(toolRequest, toolResult);
-                    addToMemory(toolExecutionResultMessage);
+                    ReturnBehavior returnBehavior = toolServiceContext.returnBehavior(toolRequest.name());
+                    if (returnBehavior == SUSPEND) {
+                        suspendedResults.add(toolExecutionResultMessage);
+                    } else {
+                        addToMemory(toolExecutionResultMessage);
+                    }
                     anyToolErrored = anyToolErrored || toolResult.isError();
-                    returnBehaviors.add(toolServiceContext.returnBehavior(toolRequest.name()));
+                    returnBehaviors.add(returnBehavior);
                 }
             }
+
+            boolean suspended = !anyToolErrored && !suspendedResults.isEmpty();
+            if (suspended) {
+                ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
+                fireInvocationComplete(finalChatResponse);
+
+                if (completeResponseHandler != null) {
+                    completeResponseHandler.accept(finalChatResponse);
+                }
+                return;
+            }
+            // suspension cancelled by a tool error: record the deferred results so memory stays consistent
+            suspendedResults.forEach(this::addToMemory);
 
             if (ToolService.shouldReturnImmediately(anyToolErrored, returnBehaviors)) {
                 ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
