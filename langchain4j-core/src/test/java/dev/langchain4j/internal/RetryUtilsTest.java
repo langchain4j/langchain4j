@@ -180,6 +180,101 @@ class RetryUtilsTest {
     }
 
     @Test
+    void exponentialBackoff_delay_increases_across_attempts() {
+        RetryUtils.RetryPolicy policy =
+                RetryUtils.retryPolicyBuilder().delayMillis(100).backoffExp(2.0).build();
+
+        assertThat(policy.rawDelayMs(0)).isEqualTo(100.0);
+        assertThat(policy.rawDelayMs(1)).isEqualTo(200.0);
+        assertThat(policy.rawDelayMs(2)).isEqualTo(400.0);
+        assertThat(policy.rawDelayMs(3)).isEqualTo(800.0);
+    }
+
+    @Test
+    void maxIntervalMillis_caps_the_raw_delay() {
+        RetryUtils.RetryPolicy policy = RetryUtils.retryPolicyBuilder()
+                .delayMillis(100)
+                .backoffExp(2.0)
+                .maxIntervalMillis(300)
+                .build();
+
+        assertThat(policy.rawDelayMs(0)).isEqualTo(100.0);
+        assertThat(policy.rawDelayMs(1)).isEqualTo(200.0);
+        // uncapped would be 400, capped at 300
+        assertThat(policy.rawDelayMs(2)).isEqualTo(300.0);
+        // uncapped would be 800, still capped at 300
+        assertThat(policy.rawDelayMs(5)).isEqualTo(300.0);
+    }
+
+    @Test
+    void jitter_is_applied_within_expected_range() {
+        RetryUtils.RetryPolicy policy = RetryUtils.retryPolicyBuilder()
+                .delayMillis(100)
+                .backoffExp(2.0)
+                .jitterScale(0.5)
+                .build();
+
+        double rawDelay = policy.rawDelayMs(1); // 200.0
+        for (int i = 0; i < 100; i++) {
+            assertThat(policy.jitterDelayMillis(1)).isBetween((int) rawDelay, (int) (rawDelay + rawDelay * 0.5));
+        }
+    }
+
+    @Test
+    void withExponentialBackoff_retries_stop_after_maxAttempts() throws Exception {
+        @SuppressWarnings("unchecked")
+        Callable<String> mockAction = mock(Callable.class);
+        when(mockAction.call()).thenThrow(new RuntimeException("always fails"));
+
+        assertThatThrownBy(() -> RetryUtils.withExponentialBackoff(mockAction, 10L, 2.0, 100L, 3))
+                .isInstanceOf(RuntimeException.class);
+
+        verify(mockAction, times(3)).call();
+        verifyNoMoreInteractions(mockAction);
+    }
+
+    @Test
+    void withExponentialBackoff_succeeds_on_nth_attempt() throws Exception {
+        @SuppressWarnings("unchecked")
+        Callable<String> mockAction = mock(Callable.class);
+        when(mockAction.call())
+                .thenThrow(new RuntimeException("fail 1"))
+                .thenThrow(new RuntimeException("fail 2"))
+                .thenReturn("Success");
+
+        String result = RetryUtils.withExponentialBackoff(mockAction, 10L, 2.0, 100L, 5);
+
+        assertThat(result).isEqualTo("Success");
+        verify(mockAction, times(3)).call();
+        verifyNoMoreInteractions(mockAction);
+    }
+
+    @Test
+    void withExponentialBackoff_rejects_non_positive_maxAttempts() {
+        @SuppressWarnings("unchecked")
+        Callable<String> mockAction = mock(Callable.class);
+
+        assertThatThrownBy(() -> RetryUtils.withExponentialBackoff(mockAction, 10L, 2.0, 100L, 0))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void withRetry_using_custom_policy_overload() throws Exception {
+        @SuppressWarnings("unchecked")
+        Callable<String> mockAction = mock(Callable.class);
+        when(mockAction.call()).thenReturn("Success");
+
+        RetryUtils.RetryPolicy policy =
+                RetryUtils.retryPolicyBuilder().delayMillis(10).maxRetries(1).build();
+
+        String result = RetryUtils.withRetry(mockAction, policy);
+
+        assertThat(result).isEqualTo("Success");
+        verify(mockAction).call();
+        verifyNoMoreInteractions(mockAction);
+    }
+
+    @Test
     void should_not_retry_after_flag_is_set_in_catch() throws Exception {
         @SuppressWarnings("unchecked")
         Callable<String> mockAction = mock(Callable.class);

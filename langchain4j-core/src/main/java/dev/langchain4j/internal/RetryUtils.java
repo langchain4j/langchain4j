@@ -43,6 +43,7 @@ public final class RetryUtils {
             private int delayMillis = 1000;
             private double jitterScale = 0.2;
             private double backoffExp = 1.5;
+            private long maxIntervalMillis = Long.MAX_VALUE;
 
             /**
              * Construct a RetryPolicy.Builder.
@@ -107,12 +108,27 @@ public final class RetryUtils {
             }
 
             /**
+             * Sets the maximum interval in milliseconds, capping the exponential backoff growth.
+             *
+             * <p>Without a cap, the raw delay ({@code delayMillis * Math.pow(backoffExp, retry)}) can grow
+             * unboundedly with the retry count. When set, the raw delay is capped at this value before jitter
+             * is applied.
+             *
+             * @param maxIntervalMillis The maximum interval in milliseconds.
+             * @return {@code this}
+             */
+            public Builder maxIntervalMillis(long maxIntervalMillis) {
+                this.maxIntervalMillis = maxIntervalMillis;
+                return this;
+            }
+
+            /**
              * Builds a RetryPolicy.
              *
              * @return A RetryPolicy.
              */
             public RetryPolicy build() {
-                return new RetryPolicy(maxRetries, delayMillis, jitterScale, backoffExp);
+                return new RetryPolicy(maxRetries, delayMillis, jitterScale, backoffExp, maxIntervalMillis);
             }
         }
 
@@ -120,6 +136,7 @@ public final class RetryUtils {
         private final int delayMillis;
         private final double jitterScale;
         private final double backoffExp;
+        private final long maxIntervalMillis;
 
         /**
          * Construct a RetryPolicy.
@@ -131,20 +148,37 @@ public final class RetryUtils {
          * @param backoffExp  The backoff exponent.
          */
         public RetryPolicy(int maxRetries, int delayMillis, double jitterScale, double backoffExp) {
+            this(maxRetries, delayMillis, jitterScale, backoffExp, Long.MAX_VALUE);
+        }
+
+        /**
+         * Construct a RetryPolicy.
+         *
+         * @param maxRetries        The maximum number of retries.
+         *                          The action can be executed up to {@code maxRetries + 1} times.
+         * @param delayMillis       The delay in milliseconds.
+         * @param jitterScale       The jitter scale.
+         * @param backoffExp        The backoff exponent.
+         * @param maxIntervalMillis The maximum interval in milliseconds, capping the exponential backoff growth.
+         */
+        public RetryPolicy(
+                int maxRetries, int delayMillis, double jitterScale, double backoffExp, long maxIntervalMillis) {
             this.maxRetries = maxRetries;
             this.delayMillis = delayMillis;
             this.jitterScale = jitterScale;
             this.backoffExp = backoffExp;
+            this.maxIntervalMillis = maxIntervalMillis;
         }
 
         /**
-         * This method returns the raw delay in milliseconds after a given retry.
+         * This method returns the raw delay in milliseconds after a given retry, capped at
+         * {@code maxIntervalMillis}.
          *
          * @param retry The retry number.
          * @return The raw delay in milliseconds.
          */
         public double rawDelayMs(int retry) {
-            return delayMillis * Math.pow(backoffExp, retry);
+            return Math.min(delayMillis * Math.pow(backoffExp, retry), maxIntervalMillis);
         }
 
         /**
@@ -231,6 +265,10 @@ public final class RetryUtils {
 
     /**
      * Default retry policy used by {@link #withRetry(Callable)}.
+     *
+     * <p>Retries up to 2 times (3 attempts total) with an exponential backoff starting at 500ms,
+     * a backoff exponent of 1.5 (delays: 500ms, 750ms, 1125ms, ...), and 20% jitter. No max interval cap
+     * is applied.
      */
     public static final RetryPolicy DEFAULT_RETRY_POLICY = retryPolicyBuilder()
             .maxRetries(2)
@@ -265,6 +303,49 @@ public final class RetryUtils {
      */
     public static <T> T withRetry(Callable<T> action, int maxRetries) {
         return DEFAULT_RETRY_POLICY.withRetry(action, maxRetries);
+    }
+
+    /**
+     * This method attempts to execute a given action using the provided {@link RetryPolicy}.
+     * If the action fails on all attempts, it throws a RuntimeException.
+     *
+     * @param action The action to be executed.
+     * @param policy The retry policy governing max retries, delay, backoff, jitter, and max interval.
+     * @param <T>    The type of the result of the action.
+     * @return The result of the action if it is successful.
+     * @throws RuntimeException if the action fails on all attempts.
+     */
+    public static <T> T withRetry(Callable<T> action, RetryPolicy policy) {
+        return policy.withRetry(action);
+    }
+
+    /**
+     * Convenience factory method that builds a {@link RetryPolicy} with exponential backoff and executes
+     * the given action with it.
+     *
+     * @param action        The action to be executed.
+     * @param initialDelayMs The initial delay in milliseconds before the first retry.
+     * @param multiplier    The backoff exponent applied to the delay after each retry.
+     * @param maxDelayMs    The maximum interval in milliseconds, capping the exponential backoff growth.
+     * @param maxAttempts   The maximum number of attempts (including the first, non-retry attempt).
+     *                      Must be at least 1.
+     * @param <T>           The type of the result of the action.
+     * @return The result of the action if it is successful.
+     * @throws IllegalArgumentException if {@code maxAttempts} is less than 1.
+     * @throws RuntimeException         if the action fails on all attempts.
+     */
+    public static <T> T withExponentialBackoff(
+            Callable<T> action, long initialDelayMs, double multiplier, long maxDelayMs, int maxAttempts) {
+        if (maxAttempts < 1) {
+            throw new IllegalArgumentException("maxAttempts must be at least 1, got: " + maxAttempts);
+        }
+        RetryPolicy policy = retryPolicyBuilder()
+                .maxRetries(maxAttempts - 1)
+                .delayMillis(Math.toIntExact(initialDelayMs))
+                .backoffExp(multiplier)
+                .maxIntervalMillis(maxDelayMs)
+                .build();
+        return policy.withRetry(action);
     }
 
     /**
