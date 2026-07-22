@@ -49,6 +49,11 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
     private boolean batching = true;
 
     /**
+     * Use the same example together
+     */
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    /**
      * Create an embedding model
      */
     public OracleEmbeddingModel(Connection conn, String pref) {
@@ -157,28 +162,22 @@ public class OracleEmbeddingModel extends DimensionAwareEmbeddingModel {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     String text = rs.getString("data");
-
-                    ObjectMapper mapper = new ObjectMapper();
                     dev.langchain4j.model.oracle.Embedding dbmsEmbedding =
-                            mapper.readValue(text, dev.langchain4j.model.oracle.Embedding.class);
-                    Embedding embedding = new Embedding(toFloatArray(dbmsEmbedding.getVector()));
-                    embeddings.add(embedding);
+                            OBJECT_MAPPER.readValue(text, dev.langchain4j.model.oracle.Embedding.class);
+                    embeddings.add(new Embedding(toFloatArray(dbmsEmbedding.getVector())));
                 }
             }
         }
     }
 
     private List<Object> toClobList(Connection conn, List<String> inputs) throws JsonProcessingException, SQLException {
-        ObjectMapper objectMapper = new ObjectMapper();
-
         List<Object> chunks = new ArrayList<>();
         for (int i = 0; i < inputs.size(); i++) {
             // Create JSON string
             Chunk chunk = new Chunk();
             chunk.setId(i);
             chunk.setData(inputs.get(i));
-            String jsonString = objectMapper.writeValueAsString(chunk);
-
+            String jsonString = OBJECT_MAPPER.writeValueAsString(chunk);
             Clob clob = conn.createClob();
             clob.setString(1, jsonString);
             chunks.add(clob);
