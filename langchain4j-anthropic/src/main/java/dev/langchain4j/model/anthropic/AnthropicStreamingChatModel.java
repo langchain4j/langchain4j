@@ -2,6 +2,7 @@ package dev.langchain4j.model.anthropic;
 
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
 import static dev.langchain4j.model.anthropic.AnthropicChatModel.toThinking;
@@ -77,6 +78,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     private final Map<String, Object> customParameters;
     private final Boolean strictTools;
     private final Set<Capability> supportedCapabilities;
+    private final int streamingBufferSize;
 
     /**
      * Constructs an instance of an {@code AnthropicStreamingChatModel} with the specified parameters.
@@ -98,6 +100,9 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         this.listeners = copy(builder.listeners);
         this.returnServerToolResults = getOrDefault(builder.returnServerToolResults, false);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
+        this.streamingBufferSize = ensureGreaterThanZero(
+                getOrDefault(builder.streamingBufferSize, ReactiveStreamingDefaults.DEFAULT_BUFFER_SIZE),
+                "streamingBufferSize");
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -195,6 +200,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Set<Capability> supportedCapabilities;
         private Supplier<Map<String, String>> customHeadersSupplier;
         private Boolean returnCacheDiagnostics;
+        private Integer streamingBufferSize;
 
         /**
          * Sets a custom {@link HttpClientBuilder} for the underlying HTTP client.
@@ -205,6 +211,20 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
          */
         public AnthropicStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        /**
+         * Sets the size of the bounded back-pressure buffer for the reactive ({@code Flow.Publisher}) streaming
+         * path. Events from the model are relayed through this buffer; if a subscriber consumes slower than the
+         * model produces and the buffer overflows, the stream terminates with an {@link IllegalStateException}.
+         * Defaults to {@value dev.langchain4j.reactive.streaming.ReactiveStreamingDefaults#DEFAULT_BUFFER_SIZE}.
+         *
+         * @param streamingBufferSize the buffer size (must be greater than zero)
+         * @return {@code this}
+         */
+        public AnthropicStreamingChatModelBuilder streamingBufferSize(Integer streamingBufferSize) {
+            this.streamingBufferSize = streamingBufferSize;
             return this;
         }
 
@@ -826,7 +846,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         AnthropicChatRequestParameters parameters = (AnthropicChatRequestParameters) chatRequest.parameters();
         AnthropicCreateMessageRequest anthropicRequest = toAnthropicRequest(chatRequest, parameters);
         AnthropicCreateMessageOptions options = toOptions(parameters);
-        return client.createMessagePublisher(anthropicRequest, options, ReactiveStreamingDefaults.DEFAULT_BUFFER_SIZE); // TODO make size configurable
+        return client.createMessagePublisher(anthropicRequest, options, streamingBufferSize);
     }
 
     private AnthropicCreateMessageRequest toAnthropicRequest(

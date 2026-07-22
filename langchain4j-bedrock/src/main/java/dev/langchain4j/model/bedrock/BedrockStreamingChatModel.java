@@ -8,6 +8,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
 import static java.util.Objects.isNull;
 
@@ -65,6 +66,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
 
     private final BedrockRuntimeAsyncClient client;
     private final boolean logResponses;
+    private final int streamingBufferSize;
 
     public BedrockStreamingChatModel(String modelId) {
         this(builder().modelId(modelId));
@@ -79,6 +81,9 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                         builder.logger)
                 : builder.client;
         this.logResponses = getOrDefault(builder.logResponses, false);
+        this.streamingBufferSize = ensureGreaterThanZero(
+                getOrDefault(builder.streamingBufferSize, ReactiveStreamingDefaults.DEFAULT_BUFFER_SIZE),
+                "streamingBufferSize");
     }
 
     @Override
@@ -95,7 +100,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
 
         TubeConfiguration config = new TubeConfiguration()
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
-                .withBufferSize(ReactiveStreamingDefaults.DEFAULT_BUFFER_SIZE); // TOD Ocustomizable
+                .withBufferSize(streamingBufferSize);
 
         return ZeroPublisher.create(config, tube -> {
             TubeBackedStreamingChatResponseHandler bridge = new TubeBackedStreamingChatResponseHandler(tube);
@@ -302,9 +307,24 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
     public static class Builder extends AbstractBuilder<Builder> {
 
         private BedrockRuntimeAsyncClient client;
+        private Integer streamingBufferSize;
 
         public Builder client(BedrockRuntimeAsyncClient client) {
             this.client = client;
+            return this;
+        }
+
+        /**
+         * Sets the size of the bounded back-pressure buffer for the reactive ({@code Flow.Publisher}) streaming
+         * path. Events from the model are relayed through this buffer; if a subscriber consumes slower than the
+         * model produces and the buffer overflows, the stream terminates with an {@link IllegalStateException}.
+         * Defaults to {@value dev.langchain4j.reactive.streaming.ReactiveStreamingDefaults#DEFAULT_BUFFER_SIZE}.
+         *
+         * @param streamingBufferSize the buffer size (must be greater than zero)
+         * @return {@code this}
+         */
+        public Builder streamingBufferSize(Integer streamingBufferSize) {
+            this.streamingBufferSize = streamingBufferSize;
             return this;
         }
 
