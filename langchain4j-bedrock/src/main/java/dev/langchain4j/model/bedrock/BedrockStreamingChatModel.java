@@ -13,6 +13,7 @@ import static java.util.Objects.isNull;
 
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
+import dev.langchain4j.reactive.streaming.ReactiveStreamingDefaults;
 import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
@@ -61,11 +62,6 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
 
     private static final Logger log = LoggerFactory.getLogger(BedrockStreamingChatModel.class);
 
-    /**
-     * Size of the bounded back-pressure buffer used by the reactive streaming publisher returned from
-     * {@link #doChat(ChatRequest)}. Mirrors the OpenAI module's default; a follow-up may make this configurable.
-     */
-    private static final int STREAMING_BUFFER_SIZE = 16384;
 
     private final BedrockRuntimeAsyncClient client;
     private final boolean logResponses;
@@ -99,7 +95,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
 
         TubeConfiguration config = new TubeConfiguration()
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
-                .withBufferSize(STREAMING_BUFFER_SIZE); // TODO
+                .withBufferSize(ReactiveStreamingDefaults.DEFAULT_BUFFER_SIZE); // TOD Ocustomizable
 
         return ZeroPublisher.create(config, tube -> {
             TubeBackedStreamingChatResponseHandler bridge = new TubeBackedStreamingChatResponseHandler(tube);

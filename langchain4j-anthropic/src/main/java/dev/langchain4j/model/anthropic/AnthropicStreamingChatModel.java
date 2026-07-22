@@ -34,6 +34,7 @@ import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingEvent;
+import dev.langchain4j.reactive.streaming.ReactiveStreamingDefaults;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -64,11 +65,6 @@ import org.slf4j.Logger;
  */
 public class AnthropicStreamingChatModel implements StreamingChatModel {
 
-    /**
-     * Size of the bounded back-pressure buffer used by the reactive streaming publisher returned from
-     * {@link #doChat(ChatRequest)}. Mirrors the OpenAI module's default; a follow-up may make this configurable.
-     */
-    private static final int STREAMING_BUFFER_SIZE = 16384;
 
     private final AnthropicClient client;
     private final String thinkingDisplay;
@@ -830,7 +826,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         AnthropicChatRequestParameters parameters = (AnthropicChatRequestParameters) chatRequest.parameters();
         AnthropicCreateMessageRequest anthropicRequest = toAnthropicRequest(chatRequest, parameters);
         AnthropicCreateMessageOptions options = toOptions(parameters);
-        return client.createMessagePublisher(anthropicRequest, options, STREAMING_BUFFER_SIZE); // TODO make size configurable
+        return client.createMessagePublisher(anthropicRequest, options, ReactiveStreamingDefaults.DEFAULT_BUFFER_SIZE); // TODO make size configurable
     }
 
     private AnthropicCreateMessageRequest toAnthropicRequest(

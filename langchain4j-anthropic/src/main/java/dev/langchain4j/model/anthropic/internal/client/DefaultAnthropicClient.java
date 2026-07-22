@@ -691,7 +691,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
      * Non-blocking reactive counterpart of {@link #createMessage(AnthropicCreateMessageRequest,
      * AnthropicCreateMessageOptions, StreamingChatResponseHandler)}: drives the same SSE listener from the reactive
      * {@code httpClient.stream(...)} publisher (nothing parked on socket reads), bridging events into a bounded
-     * {@link Tube} of {@link StreamingEvent}s. Cancelling the returned publisher's subscription aborts the HTTP request
+     * {@code Tube} of {@link StreamingEvent}s. Cancelling the returned publisher's subscription aborts the HTTP request
      * - the subscriber cancels the upstream {@code Flow.Subscription} on any terminal signal (downstream cancel, error,
      * or buffer overflow).
      */

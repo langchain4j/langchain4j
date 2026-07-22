@@ -65,8 +65,18 @@ public final class HttpStreamingChatPublisher {
                 .withBufferSize(bufferSize);
 
         return ZeroPublisher.create(config, tube -> {
-            Sink sink = sinkFactory.apply(tube);
-            upstream.get().subscribe(new Subscriber<>() {
+            final Sink sink;
+            final Publisher<HttpStreamingEvent> source;
+            try {
+                sink = sinkFactory.apply(tube);
+                source = upstream.get();
+            } catch (Throwable t) {
+                if (!tube.cancelled()) {
+                    tube.fail(t);
+                }
+                return;
+            }
+            source.subscribe(new Subscriber<>() {
 
                 @Override
                 public void onSubscribe(Subscription subscription) {

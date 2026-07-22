@@ -54,6 +54,7 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
+import dev.langchain4j.reactive.streaming.HttpStreamingChatPublisher;
 import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import java.util.ArrayList;
@@ -63,11 +64,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Flow.Publisher;
-import java.util.concurrent.Flow.Subscriber;
-import java.util.concurrent.Flow.Subscription;
-import mutiny.zero.BackpressureStrategy;
-import mutiny.zero.TubeConfiguration;
-import mutiny.zero.ZeroPublisher;
+import mutiny.zero.Tube;
 
 class OpenAiResponsesClient {
 
@@ -233,73 +230,60 @@ class OpenAiResponsesClient {
     Publisher<StreamingEvent> streamingChatPublisher(
             ChatRequest chatRequest, OpenAiResponsesChatRequestParameters parameters) {
 
-        TubeConfiguration config = new TubeConfiguration()
-                .withBackpressureStrategy(BackpressureStrategy.BUFFER)
-                .withBufferSize(streamingBufferSize);
+        return HttpStreamingChatPublisher.create(
+                streamingBufferSize,
+                () -> {
+                    try {
+                        Map<String, Object> payload = buildRequestPayload(chatRequest, parameters, true);
+                        return httpClient.stream(buildHttpRequest(payload, true));
+                    } catch (Exception e) {
+                        throw ExceptionMapper.DEFAULT.mapException(e);
+                    }
+                },
+                ResponsesEventSink::new);
+    }
 
-        return ZeroPublisher.create(config, tube -> {
-            HttpRequest request;
-            try {
-                Map<String, Object> payload = buildRequestPayload(chatRequest, parameters, true);
-                request = buildHttpRequest(payload, true);
-            } catch (Exception e) {
-                tube.fail(ExceptionMapper.DEFAULT.mapException(e));
+    private static final class ResponsesEventSink implements HttpStreamingChatPublisher.Sink {
+
+        private final Tube<StreamingEvent> tube;
+        private final ResponsesApiEventListener listener;
+
+        ResponsesEventSink(Tube<StreamingEvent> tube) {
+            this.tube = tube;
+            this.listener = new ResponsesApiEventListener(new TubeBackedStreamingChatResponseHandler(tube));
+        }
+
+        @Override
+        public void onEvent(HttpStreamingEvent item) {
+            if (tube.cancelled()) {
                 return;
             }
-
-            TubeBackedStreamingChatResponseHandler handler = new TubeBackedStreamingChatResponseHandler(tube);
-            ResponsesApiEventListener listener = new ResponsesApiEventListener(handler);
-
-            Publisher<HttpStreamingEvent> upstream = httpClient.stream(request);
-            upstream.subscribe(new Subscriber<>() {
-
-                @Override
-                public void onSubscribe(Subscription subscription) {
-                    if (tube.cancelled()) {
-                        subscription.cancel();
-                        return;
-                    }
-                    // whenTerminates (not whenCancelled): abort the upstream HTTP stream on ANY terminal signal -
-                    // downstream cancel, an error, or a buffer overflow - so overflow actually aborts the connection.
-                    tube.whenTerminates(subscription::cancel);
-                    subscription.request(Long.MAX_VALUE);
+            try {
+                if (item instanceof HttpResponseReceived responseReceived) {
+                    listener.onOpen(responseReceived.response());
+                } else if (item instanceof ServerSentEvent sse) {
+                    listener.onEvent(sse);
                 }
-
-                @Override
-                public void onNext(HttpStreamingEvent item) {
-                    if (tube.cancelled()) {
-                        return;
-                    }
-                    try {
-                        if (item instanceof HttpResponseReceived responseReceived) {
-                            listener.onOpen(responseReceived.response());
-                        } else if (item instanceof ServerSentEvent sse) {
-                            listener.onEvent(sse);
-                        }
-                    } catch (Exception e) {
-                        if (!tube.cancelled()) {
-                            tube.fail(e);
-                        }
-                    }
+            } catch (Exception e) {
+                if (!tube.cancelled()) {
+                    tube.fail(e);
                 }
+            }
+        }
 
-                @Override
-                public void onError(Throwable throwable) {
-                    if (!tube.cancelled()) {
-                        listener.onError(throwable);
-                    }
-                }
+        @Override
+        public void onError(Throwable throwable) {
+            if (!tube.cancelled()) {
+                listener.onError(throwable);
+            }
+        }
 
-                @Override
-                public void onComplete() {
-                    // Guard against a hang: if the HTTP stream ends without an SSE terminal event having completed the
-                    // tube, complete it here. If a terminal event already did (the normal path), this is a no-op.
-                    if (!tube.cancelled()) {
-                        tube.complete();
-                    }
-                }
-            });
-        });
+        @Override
+        public void onComplete() {
+            if (!tube.cancelled()) {
+                tube.complete();
+            }
+        }
     }
 
     private Map<String, Object> buildRequestPayload(

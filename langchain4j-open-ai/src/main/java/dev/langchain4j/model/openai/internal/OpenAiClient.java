@@ -21,6 +21,7 @@ import dev.langchain4j.model.openai.internal.moderation.ModerationRequest;
 import dev.langchain4j.model.openai.internal.moderation.ModerationResponse;
 import dev.langchain4j.model.openai.internal.spi.OpenAiClientBuilderFactory;
 import dev.langchain4j.model.openai.internal.spi.ServiceHelper;
+import dev.langchain4j.reactive.streaming.ReactiveStreamingDefaults;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.Flow.Publisher;
@@ -34,7 +35,7 @@ public abstract class OpenAiClient {
      * Default size of the bounded back-pressure buffer used by the reactive streaming publisher (see
      * {@code chatCompletionPublisher}); overridable per object via {@code Builder#streamingBufferSize(int)}.
      */
-    public static final int DEFAULT_STREAMING_BUFFER_SIZE = 16384;
+    public static final int DEFAULT_STREAMING_BUFFER_SIZE = ReactiveStreamingDefaults.DEFAULT_BUFFER_SIZE;
 
     public abstract SyncOrAsyncOrStreaming<CompletionResponse> completion(CompletionRequest request);
 
