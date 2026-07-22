@@ -135,8 +135,6 @@ class ShellCommandRunner {
             try {
                 return new Result(process.exitValue(), stdOutFuture.get(), stdErrFuture.get());
             } catch (ExecutionException e) {
-                // supplyAsync wraps the reader's IOException in an UncheckedIOException; unwrap to preserve the
-                // original IOException as the cause (matching the previous ExecutorService.submit() behavior).
                 Throwable cause = e.getCause();
                 if (cause instanceof UncheckedIOException uncheckedIOException) {
                     cause = uncheckedIOException.getCause();
@@ -159,8 +157,6 @@ class ShellCommandRunner {
         }
     }
 
-    // Wraps readStream's checked IOException so it can run inside CompletableFuture.supplyAsync (whose Supplier
-    // cannot throw checked exceptions); the caller unwraps it back to an IOException.
     private static String readStreamUnchecked(InputStream is, int maxBytes, AtomicBoolean timedOut) {
         try {
             return readStream(is, maxBytes, timedOut);
