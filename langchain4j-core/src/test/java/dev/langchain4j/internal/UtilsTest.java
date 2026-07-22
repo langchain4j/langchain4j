@@ -519,9 +519,24 @@ class UtilsTest {
         assertThat(merge(List.of(), List.of(2))).isEqualTo(List.of(2));
         assertThat(merge(List.of(), List.of())).isEqualTo(List.of());
 
+        // more than two lists
+        assertThat(merge(List.of(1), List.of(2), List.of(3))).isEqualTo(List.of(1, 2, 3));
+
         assertThatThrownBy(() -> merge(List.of()))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("at least 2 elements");
+    }
+
+    @Test
+    void test_merge_lists_is_null_safe() {
+        // null lists are treated as empty, for any number of arguments
+        assertThat(merge(null, List.of(2))).isEqualTo(List.of(2));
+        assertThat(merge(List.of(1), null)).isEqualTo(List.of(1));
+        assertThat(merge(List.of(1), null, List.of(3))).isEqualTo(List.of(1, 3));
+
+        // never returns null, even when every list is null or empty
+        assertThat(merge((List<Integer>) null, null)).isNotNull().isEmpty();
+        assertThat(merge(List.of(), (List<Integer>) null)).isNotNull().isEmpty();
     }
 
     @Test
@@ -531,11 +546,27 @@ class UtilsTest {
         assertThat(merge(Map.of(), Map.of("two", 2))).isEqualTo(Map.of("two", 2));
         assertThat(merge(Map.of(), Map.of())).isEqualTo(Map.of());
 
+        // more than two maps
+        assertThat(merge(Map.of("one", 1), Map.of("two", 2), Map.of("three", 3)))
+                .isEqualTo(Map.of("one", 1, "two", 2, "three", 3));
+
         assertThatThrownBy(() -> merge(Map.of()))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("at least 2 elements");
         assertThatThrownBy(() -> merge(Map.of("one", 1), Map.of("one", 1)))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Duplicate key: one");
+    }
+
+    @Test
+    void test_merge_maps_is_null_safe() {
+        // null maps are treated as empty, for any number of arguments
+        assertThat(merge(null, Map.of("two", 2))).isEqualTo(Map.of("two", 2));
+        assertThat(merge(Map.of("one", 1), null)).isEqualTo(Map.of("one", 1));
+        assertThat(merge(Map.of("one", 1), null, Map.of("three", 3))).isEqualTo(Map.of("one", 1, "three", 3));
+
+        // never returns null, even when every map is null or empty
+        assertThat(merge((Map<String, Integer>) null, null)).isNotNull().isEmpty();
+        assertThat(merge(Map.of(), (Map<String, Integer>) null)).isNotNull().isEmpty();
     }
 }
