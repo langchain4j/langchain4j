@@ -14,6 +14,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
@@ -851,5 +852,103 @@ class ToolSpecificationHelperTest {
         JsonObjectSchema textInputDef =
                 (JsonObjectSchema) parameters.definitions().get("TextInput");
         assertThat(textInputDef.properties()).containsOnlyKeys("text", "language");
+    }
+
+    @Test
+    void toolWithNonDefsRefIsNotTreatedAsReference() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "send-chat-message",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "chatId": { "type": "string" },
+                        "body": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "object",
+                              "properties": {
+                                "application": { "$ref": "#/properties/body/properties/from/properties/application" }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "required": ["chatId"]
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        JsonObjectSchema parameters = toolSpecifications.get(0).parameters();
+
+        JsonObjectSchema body = (JsonObjectSchema) parameters.properties().get("body");
+        JsonObjectSchema from = (JsonObjectSchema) body.properties().get("from");
+        JsonSchemaElement application = from.properties().get("application");
+
+        assertThat(application).isNotInstanceOf(JsonReferenceSchema.class);
+        assertThat(application).isInstanceOf(JsonObjectSchema.class);
+        assertThat(JsonSchemaElementUtils.toMap(parameters, false).toString()).doesNotContain("#/$defs/#");
+    }
+
+    @Test
+    void toolWithDefsRefAndBodyPointerRefAreHandledDifferently() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "mixed_refs",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "contact": { "$ref": "#/$defs/Contact" },
+                        "self": { "$ref": "#/properties/contact" }
+                      },
+                      "$defs": {
+                        "Contact": { "type": "object", "properties": { "name": { "type": "string" } } }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        JsonObjectSchema parameters = toolSpecifications.get(0).parameters();
+
+        JsonSchemaElement contact = parameters.properties().get("contact");
+        assertThat(contact).isInstanceOf(JsonReferenceSchema.class);
+        assertThat(((JsonReferenceSchema) contact).reference()).isEqualTo("Contact");
+
+        assertThat(parameters.properties().get("self")).isNotInstanceOf(JsonReferenceSchema.class);
+    }
+
+    @Test
+    void toolWithNonDefsRefKeepsSiblingKeywords() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "mixed_ref_keywords",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "note": {
+                          "$ref": "#/properties/other",
+                          "type": "string",
+                          "description": "a note"
+                        }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        JsonObjectSchema parameters = toolSpecifications.get(0).parameters();
+
+        JsonSchemaElement note = parameters.properties().get("note");
+        assertThat(note).isInstanceOf(JsonStringSchema.class);
+        assertThat(((JsonStringSchema) note).description()).isEqualTo("a note");
     }
 }

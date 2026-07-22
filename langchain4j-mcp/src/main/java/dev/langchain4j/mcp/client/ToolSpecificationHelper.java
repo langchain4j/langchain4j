@@ -84,11 +84,11 @@ class ToolSpecificationHelper {
             }
             return anyOf.build();
         }
-        // Handle $ref (JSON Schema reference)
         if (node.has("$ref")) {
-            return JsonReferenceSchema.builder()
-                    .reference(extractReferenceKey(node.get("$ref").asText()))
-                    .build();
+            String referenceKey = extractReferenceKey(node.get("$ref").asText());
+            if (referenceKey != null) {
+                return JsonReferenceSchema.builder().reference(referenceKey).build();
+            }
         }
         JsonNode typeNode = node.get("type");
         // If no type is specified, default to object schema
@@ -243,8 +243,10 @@ class ToolSpecificationHelper {
     }
 
     /**
-     * Extracts the reference key from a JSON Schema $ref value.
-     * For example, "#/$defs/Foo" returns "Foo", "#/definitions/Bar" returns "Bar".
+     * Extracts the definition key from a JSON Schema $ref that targets a definition.
+     * For example, "#/$defs/Foo" returns "Foo" and "#/definitions/Bar" returns "Bar".
+     * Returns {@code null} for any other $ref (for example a pointer into the schema body),
+     * which is not a definition key.
      */
     private static String extractReferenceKey(String ref) {
         if (ref.startsWith("#/$defs/")) {
@@ -253,7 +255,7 @@ class ToolSpecificationHelper {
         if (ref.startsWith("#/definitions/")) {
             return ref.substring("#/definitions/".length());
         }
-        return ref;
+        return null;
     }
 
     private static String[] toStringArray(ArrayNode jsonArray) {

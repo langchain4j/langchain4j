@@ -45,6 +45,7 @@ import dev.langchain4j.mcp.protocol.McpUnsubscribeResourceRequest;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -870,13 +871,28 @@ public class DefaultMcpClient implements McpClient {
             if (request.getParams() == null) {
                 request.setParams(new McpClientParams());
             }
-            request.getParams().setMeta(meta);
+            request.getParams().setMeta(mergeMeta(request.getParams().getMeta(), meta));
         } else if (message instanceof McpClientNotification notification) {
             if (notification.getParams() == null) {
                 notification.setParams(new McpClientParams());
             }
-            notification.getParams().setMeta(meta);
+            notification.getParams().setMeta(mergeMeta(notification.getParams().getMeta(), meta));
         }
+    }
+
+    /**
+     * Merges the user-supplied {@code _meta} entries into the {@code _meta} already present on the
+     * message. Entries already set by the client (such as the framework-managed
+     * {@code progressToken}) take precedence, so that protocol metadata is never overwritten by the
+     * user-supplied values.
+     */
+    private static Map<String, Object> mergeMeta(Map<String, Object> existing, Map<String, Object> supplied) {
+        if (existing == null || existing.isEmpty()) {
+            return supplied;
+        }
+        Map<String, Object> merged = new LinkedHashMap<>(supplied);
+        merged.putAll(existing);
+        return merged;
     }
 
     private void notifyListeners(Consumer<McpClientListener> action) {
