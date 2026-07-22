@@ -9,21 +9,17 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * A concrete implementation of the {@link ChatExecutor} interface that executes
- * chat requests using a specified {@link ChatModel}.
+ * A concrete implementation of the {@link ChatExecutor} interface that executes chat requests by delegating
+ * directly to a {@link ChatModel} - synchronously via {@link ChatModel#chat(ChatRequest)} and asynchronously via
+ * {@link ChatModel#chatAsync(ChatRequest)}. (The streaming counterpart is {@link StreamingToSynchronousChatExecutor}.)
  *
- * This class utilizes a {@link ChatRequest} to encapsulate the input messages
- * and parameters and delegates the execution of the chat to the provided
- * {@link ChatModel}.
- *
- * Instances of this class are immutable and are typically instantiated using
- * the {@link SynchronousBuilder}.
+ * <p>Instances of this class are immutable and are typically instantiated using the {@link SynchronousBuilder}.
  */
 @Internal
-final class SynchronousChatExecutor extends AbstractChatExecutor { // TODO rename? not sync any more
+final class DirectChatExecutor extends AbstractChatExecutor {
     private final ChatModel chatModel;
 
-    protected SynchronousChatExecutor(SynchronousBuilder builder) {
+    protected DirectChatExecutor(SynchronousBuilder builder) {
         super(builder);
         this.chatModel = ensureNotNull(builder.chatModel, "chatModel");
     }

@@ -160,7 +160,7 @@ class EmbeddingStoreContentRetrieverAsyncTest {
 
         future.cancel(true);
 
-        // cancelling the retriever aborts the in-flight vector-store search (R2)
+        // cancelling the retriever aborts the in-flight vector-store search
         assertThat(pendingSearch).isCancelled();
     }
 

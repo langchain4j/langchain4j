@@ -164,13 +164,13 @@ class DefaultRetrievalAugmentorAsyncTest {
 
         future.cancel(true);
 
-        // cancelling the pipeline aborts the in-flight leaf call (R2)
+        // cancelling the pipeline aborts the in-flight leaf call
         assertThat(inFlight).isCancelled();
     }
 
     @Test
     void augmentAsync_does_not_mistake_an_incidental_UnsupportedOperationException_for_not_async() {
-        // R4: a genuinely-async retriever whose retrieveAsync fails with a *plain* UnsupportedOperationException (e.g. a
+        // a genuinely-async retriever whose retrieveAsync fails with a *plain* UnsupportedOperationException (e.g. a
         // bug like List.of(...).add(x)) must NOT be treated as the "not async" signal - it must propagate, not be
         // silently offloaded (which would mask the bug and double the cost), even with offloadBlocking(true).
         ContentRetriever asyncRetrieverWithBug = new ContentRetriever() {
@@ -199,7 +199,7 @@ class DefaultRetrievalAugmentorAsyncTest {
 
     @Test
     void async_offload_runs_on_the_shared_virtual_thread_executor_by_default() throws Exception {
-        // R5: a blocking stage offloaded on augmentAsync must run on the shared virtual-thread executor (non-pinning),
+        // a blocking stage offloaded on augmentAsync must run on the shared virtual-thread executor (non-pinning),
         // not the augmentor's platform-thread pool used for synchronous parallel retrieval.
         CompletableFuture<Boolean> offloadWasVirtual = new CompletableFuture<>();
         ContentRetriever blockingRetriever = query -> {

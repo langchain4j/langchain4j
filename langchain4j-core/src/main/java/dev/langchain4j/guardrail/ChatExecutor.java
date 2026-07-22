@@ -175,7 +175,7 @@ public interface ChatExecutor {
          * @return a fully constructed {@link ChatExecutor} instance
          */
         public ChatExecutor build() {
-            return new SynchronousChatExecutor(this);
+            return new DirectChatExecutor(this);
         }
     }
 
