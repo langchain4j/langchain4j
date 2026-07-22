@@ -13,16 +13,17 @@ import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.HttpResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
-import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-import dev.langchain4j.http.client.sse.ServerSentEventParsingHandle;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.SocketTimeoutException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,13 +32,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
-import java.util.concurrent.atomic.AtomicReference;
 import mutiny.zero.BackpressureStrategy;
 import mutiny.zero.TubeConfiguration;
 import mutiny.zero.ZeroPublisher;
 import org.apache.hc.client5.http.async.methods.SimpleHttpRequest;
 import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
 import org.apache.hc.client5.http.async.methods.SimpleRequestBuilder;
+import org.apache.hc.client5.http.async.methods.SimpleRequestProducer;
 import org.apache.hc.client5.http.classic.methods.HttpDelete;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
@@ -50,11 +51,16 @@ import org.apache.hc.core5.concurrent.FutureCallback;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.EntityDetails;
+import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.HttpEntityContainer;
 import org.apache.hc.core5.http.HttpResponse;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.core5.http.nio.AsyncResponseConsumer;
+import org.apache.hc.core5.http.nio.CapacityChannel;
+import org.apache.hc.core5.http.protocol.HttpContext;
 import org.apache.hc.core5.util.Timeout;
 
 public class ApacheHttpClient implements HttpClient {
@@ -173,12 +179,14 @@ public class ApacheHttpClient implements HttpClient {
     /**
      * {@inheritDoc}
      * <p>
-     * Note: the Apache async client buffers the whole response before delivering it, so — unlike the JDK
-     * client — this publisher does not stream incrementally; it emits all parsed events once the body has
-     * arrived. On any terminal signal (a downstream cancel, an error, or a buffer overflow) it requests
-     * cancellation of the in-flight request and stops the SSE parsing, so no further events are delivered.
-     * Note that the Apache async client buffers the whole response and may not close the underlying connection
-     * promptly on cancellation (see {@code cancelAbortsConnection} in the client's cancellation contract test).
+     * Incrementally streaming, like the JDK client: the response body is consumed off the socket by an
+     * {@link AsyncResponseConsumer} as it arrives, bytes are pushed through the parser's
+     * {@link ServerSentEventParser#incremental() incremental} mode, and each completed event is delivered
+     * immediately — nothing is buffered to end-of-response, and no thread is pinned for the lifetime of the
+     * stream. On any terminal signal (a downstream cancel, an error, or a buffer overflow) no further events are
+     * delivered and cancellation of the in-flight request is requested; note that Apache's async client does not
+     * always close the underlying connection promptly on cancellation (see {@code cancelAbortsConnection} in the
+     * client's cancellation contract test), whereas event delivery stops immediately.
      */
     @Override
     public Flow.Publisher<HttpStreamingEvent> stream(HttpRequest request, ServerSentEventParser parser) {
@@ -186,59 +194,157 @@ public class ApacheHttpClient implements HttpClient {
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
                 .withBufferSize(streamingBufferSize);
         return ZeroPublisher.create(config, tube -> {
-            AtomicReference<ServerSentEventParsingHandle> parsingHandle = new AtomicReference<>();
-            java.util.concurrent.Future<SimpleHttpResponse> future =
-                    executeServerSentEvents(request, parser, new ServerSentEventListener() {
-                        @Override
-                        public void onOpen(SuccessfulHttpResponse response) {
-                            if (!tube.cancelled()) {
-                                tube.send(new HttpResponseReceived(response));
-                            }
-                        }
-
-                        @Override
-                        public void onEvent(ServerSentEvent event) {
-                            if (!tube.cancelled()) {
-                                tube.send(event);
-                            }
-                        }
-
-                        @Override
-                        public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
-                            parsingHandle.set(context.parsingHandle());
-                            if (!tube.cancelled()) {
-                                tube.send(event);
-                            }
-                        }
-
-                        @Override
-                        public void onError(Throwable throwable) {
-                            if (!tube.cancelled()) {
-                                tube.fail(throwable);
-                            }
-                        }
-
-                        @Override
-                        public void onClose() {
-                            if (!tube.cancelled()) {
-                                tube.complete();
-                            }
-                        }
-                    });
-            // Request cancellation of the in-flight HTTP request and stop the SSE parsing on any terminal signal -
-            // downstream cancel, error, or a buffer overflow (which fails the tube internally). Using the request
-            // Future - not just the parsing handle, which is null until the first event - means a cancel before the
-            // first event also reaches the request; whenTerminates (not whenCancelled) additionally covers buffer
-            // overflow. Best-effort: Apache's async client may not close the connection promptly (it buffers the
-            // whole response), but no further events are delivered.
-            tube.whenTerminates(() -> {
-                future.cancel(true);
-                ServerSentEventParsingHandle handle = parsingHandle.get();
-                if (handle != null) {
-                    handle.cancel();
+            ServerSentEventListener listener = new ServerSentEventListener() {
+                @Override
+                public void onOpen(SuccessfulHttpResponse response) {
+                    if (!tube.cancelled()) {
+                        tube.send(new HttpResponseReceived(response));
+                    }
                 }
-            });
+
+                @Override
+                public void onEvent(ServerSentEvent event) {
+                    if (!tube.cancelled()) {
+                        tube.send(event);
+                    }
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    if (!tube.cancelled()) {
+                        tube.fail(throwable);
+                    }
+                }
+
+                @Override
+                public void onClose() {
+                    if (!tube.cancelled()) {
+                        tube.complete();
+                    }
+                }
+            };
+            java.util.concurrent.Future<Void> future = asyncClient.execute(
+                    SimpleRequestProducer.create(toSimpleApacheRequest(request)),
+                    new SseResponseConsumer(parser, listener),
+                    null);
+            tube.whenTerminates(() -> future.cancel(true));
         });
+    }
+
+    /**
+     * Streaming {@link AsyncResponseConsumer} that drives a {@link ServerSentEventListener} incrementally: the
+     * reactor pushes body bytes as they arrive off the socket, they are fed to the parser's
+     * {@link ServerSentEventParser.Incremental incremental} mode, and each completed event is delivered right
+     * away. A non-2xx response body is buffered (it is small) so it can be reported through {@link HttpException}.
+     */
+    private static final class SseResponseConsumer implements AsyncResponseConsumer<Void> {
+
+        private final ServerSentEventParser parser;
+        private final ServerSentEventListener listener;
+
+        private ServerSentEventParser.Incremental incremental;
+        private FutureCallback<Void> resultCallback;
+        private int errorStatus;
+        private ByteArrayOutputStream errorBody;
+
+        SseResponseConsumer(ServerSentEventParser parser, ServerSentEventListener listener) {
+            this.parser = parser;
+            this.listener = listener;
+        }
+
+        @Override
+        public void consumeResponse(
+                HttpResponse response,
+                EntityDetails entityDetails,
+                HttpContext context,
+                FutureCallback<Void> resultCallback) {
+            this.resultCallback = resultCallback;
+            int status = response.getCode();
+            if (status >= 200 && status < 300) {
+                incremental = parser.incremental();
+                // The SSE body is delivered incrementally as events, not as a buffered byte[].
+                SuccessfulHttpResponse open = successfulResponseFrom(response, null);
+                ignoringExceptions(() -> listener.onOpen(open));
+                if (entityDetails == null) {
+                    finishOk();
+                }
+            } else {
+                errorStatus = status;
+                errorBody = new ByteArrayOutputStream();
+                if (entityDetails == null) {
+                    finishError();
+                }
+            }
+        }
+
+        @Override
+        public void informationResponse(HttpResponse response, HttpContext context) {}
+
+        @Override
+        public void updateCapacity(CapacityChannel capacityChannel) throws IOException {
+            capacityChannel.update(Integer.MAX_VALUE);
+        }
+
+        @Override
+        public void consume(ByteBuffer src) {
+            if (incremental != null) {
+                for (ServerSentEvent event : incremental.feed(src)) {
+                    ignoringExceptions(() -> listener.onEvent(event));
+                }
+            } else if (errorBody != null) {
+                byte[] chunk = new byte[src.remaining()];
+                src.get(chunk);
+                errorBody.writeBytes(chunk);
+            }
+        }
+
+        @Override
+        public void streamEnd(List<? extends Header> trailers) {
+            if (incremental != null) {
+                for (ServerSentEvent event : incremental.flush()) {
+                    ignoringExceptions(() -> listener.onEvent(event));
+                }
+                finishOk();
+            } else if (errorBody != null) {
+                finishError();
+            }
+        }
+
+        @Override
+        public void failed(Exception cause) {
+            Throwable mapped = cause instanceof SocketTimeoutException ? new TimeoutException(cause) : cause;
+            ignoringExceptions(() -> listener.onError(mapped));
+        }
+
+        @Override
+        public void releaseResources() {}
+
+        private void finishOk() {
+            ignoringExceptions(listener::onClose);
+            if (resultCallback != null) {
+                resultCallback.completed(null);
+            }
+        }
+
+        private void finishError() {
+            HttpException ex = new HttpException(errorStatus, errorBody.toString(StandardCharsets.UTF_8));
+            ignoringExceptions(() -> listener.onError(ex));
+            if (resultCallback != null) {
+                resultCallback.failed(ex);
+            }
+        }
+    }
+
+    private static SuccessfulHttpResponse successfulResponseFrom(HttpResponse response, byte[] body) {
+        Map<String, List<String>> headers = new HashMap<>();
+        for (Header header : response.getHeaders()) {
+            headers.computeIfAbsent(header.getName(), k -> new ArrayList<>()).add(header.getValue());
+        }
+        return SuccessfulHttpResponse.builder()
+                .statusCode(response.getCode())
+                .headers(headers)
+                .body(body)
+                .build();
     }
 
     @Override

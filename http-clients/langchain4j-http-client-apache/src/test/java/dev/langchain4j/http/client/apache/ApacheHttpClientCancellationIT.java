@@ -12,8 +12,11 @@ class ApacheHttpClientCancellationIT extends HttpClientCancellationIT {
 
     @Override
     protected boolean cancelAbortsConnection() {
-        // Apache's async client buffers the whole response and does not abort an in-flight request when its
-        // future is cancelled; cancellation releases the caller but the connection is not closed promptly.
+        // Apache's async client does not abort an in-flight request when its future is cancelled: the caller is
+        // released (the future completes with CancellationException), but the reactor keeps the pending connection
+        // open rather than closing it promptly. This is independent of response buffering - it holds even with the
+        // non-buffering streaming consumer used by stream() (verified: switching executeAsync to the lower-level
+        // producer/consumer API does not change it), so it is a property of the async reactor, not the Simple API.
         return false;
     }
 }
