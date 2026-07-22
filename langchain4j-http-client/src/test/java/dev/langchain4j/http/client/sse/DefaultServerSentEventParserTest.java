@@ -131,6 +131,68 @@ class DefaultServerSentEventParserTest {
     }
 
     @Test
+    void shouldPreserveExtraLeadingSpacesInDataField() {
+        // Per WHATWG HTML Living Standard (Server-sent events), only a single
+        // leading U+0020 SPACE should be stripped from each data: value;
+        // all remaining leading whitespace must be preserved.
+
+        // given
+        String input = "data:   indented\n\n";
+        InputStream stream = new ByteArrayInputStream(input.getBytes(UTF_8));
+
+        // when
+        parser.parse(stream, listener);
+
+        // then - two leading spaces are preserved
+        verify(listener).onEvent(eq(new ServerSentEvent(null, "  indented")), any());
+    }
+
+    @Test
+    void shouldPreserveTrailingWhitespaceInDataField() {
+        // Trailing whitespace must be preserved per the WHATWG spec.
+
+        // given
+        String input = "data: trailing   \n\n";
+        InputStream stream = new ByteArrayInputStream(input.getBytes(UTF_8));
+
+        // when
+        parser.parse(stream, listener);
+
+        // then
+        verify(listener).onEvent(eq(new ServerSentEvent(null, "trailing   ")), any());
+    }
+
+    @Test
+    void shouldParseDataFieldWithoutLeadingSpace() {
+        // When there is no space after the colon, nothing is stripped.
+
+        // given
+        String input = "data:no-space\n\n";
+        InputStream stream = new ByteArrayInputStream(input.getBytes(UTF_8));
+
+        // when
+        parser.parse(stream, listener);
+
+        // then
+        verify(listener).onEvent(eq(new ServerSentEvent(null, "no-space")), any());
+    }
+
+    @Test
+    void shouldPreserveWhitespaceInMultiLineDataField() {
+        // Each data: line should have only one leading space removed.
+
+        // given
+        String input = "data:  first  \ndata:   second\n\n";
+        InputStream stream = new ByteArrayInputStream(input.getBytes(UTF_8));
+
+        // when
+        parser.parse(stream, listener);
+
+        // then
+        verify(listener).onEvent(eq(new ServerSentEvent(null, " first  \n  second")), any());
+    }
+
+    @Test
     void shouldHandleIOException() {
 
         // given

@@ -33,13 +33,13 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
                 }
 
                 if (line.startsWith("event:")) {
-                    event = line.substring("event:".length()).trim();
+                    event = stripSingleLeadingSpace(line.substring("event:".length()));
                 } else if (line.startsWith("data:")) {
-                    String content = line.substring("data:".length());
+                    String content = stripSingleLeadingSpace(line.substring("data:".length()));
                     if (!data.isEmpty()) {
                         data.append("\n");
                     }
-                    data.append(content.trim());
+                    data.append(content);
                 }
             }
 
@@ -50,5 +50,18 @@ public class DefaultServerSentEventParser implements ServerSentEventParser {
         } catch (IOException e) {
             ignoringExceptions(() -> listener.onError(e));
         }
+    }
+
+    /**
+     * Strips at most a single leading U+0020 SPACE from the given value, as required by the
+     * <a href="https://html.spec.whatwg.org/multipage/server-sent-events.html#parsing-an-event-stream">
+     * WHATWG HTML Living Standard</a> for server-sent events. All other whitespace (additional
+     * leading spaces, trailing spaces, tabs, etc.) is preserved.
+     *
+     * @param value the raw field value (text after the field name and colon)
+     * @return the value with at most one leading space removed
+     */
+    private static String stripSingleLeadingSpace(String value) {
+        return value.startsWith(" ") ? value.substring(1) : value;
     }
 }
