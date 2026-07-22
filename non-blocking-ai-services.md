@@ -43,8 +43,9 @@ Delivered building blocks (each non-blocking end to end):
 ### 3.0 Updated core interfaces (layer by layer)
 
 Each layer gained an async/reactive counterpart **alongside** its existing blocking method. The new methods are
-`default` and **throw "not implemented"** (see the contract in §3.7), so existing custom implementations still
-compile and only providers/implementors that opt in become non-blocking.
+`default` and report **"not implemented"** through their return type — a failed future / failing publisher (see the
+contract in §3.7), so existing custom implementations still compile and only providers/implementors that opt in
+become non-blocking.
 
 | Layer | Interface | Existing (blocking) | Added |
 |---|---|---|---|
@@ -67,7 +68,7 @@ compile and only providers/implementors that opt in become non-blocking.
 
 On the model/provider side, **OpenAI** implements the async + reactive chat methods and async embeddings,
 **Cohere** implements async scoring/re-rank (`scoreAllAsync`) and **Tavily** implements async web search
-(`searchAsync`); other providers fall back to the throwing defaults until implemented (see §8).
+(`searchAsync`); other providers fall back to the fail-loud defaults until implemented (see §8).
 
 ### 3.1 Threading model — "non-blocking" and "non-pinning"
 
@@ -165,8 +166,8 @@ history can't corrupt conversation state (see §3.7).
   (`setAsync` is the async bulk-replace used e.g. by async tool compensation, delegating to the store's
   `updateMessagesAsync`). The type is `CompletableFuture` — uniform with the rest of the async SPI surface — but the
   framework never *cancels* a memory operation (§3.7).
-- **Defaults throw** `AsyncNotSupportedException` (no silent offload): a blocking store used with an async
-  service fails loudly instead of secretly tying up a worker. Bundled stores implement them natively.
+- **Defaults return a failed future** carrying `AsyncNotSupportedException` (no silent offload): a blocking store
+  used with an async service fails loudly instead of secretly tying up a worker. Bundled stores implement them natively.
 - `addAsync` takes a **list** (single method to implement; batches a round's writes into one atomic store
   read-modify-write).
 - Memory I/O was pulled out of the shared tool-loop bookkeeping so each mode does it on the right thread; the
@@ -174,7 +175,7 @@ history can't corrupt conversation state (see §3.7).
   future; the reactive cold publisher assembles on `subscribe`).
 
 ### 3.5 Non-blocking guardrails
-- `Guardrail.validateAsync(P) : CompletableFuture<R>` — the async primitive (throwing default). CPU-only guardrails
+- `Guardrail.validateAsync(P) : CompletableFuture<R>` — the async primitive (fail-loud default). CPU-only guardrails
   return `CompletableFuture.completedFuture(validate(request))`; I/O guardrails offload in `validateAsync` (e.g. an
   async moderation client, or `supplyAsync(..., executor)`).
 - `GuardrailService.executeGuardrailsAsync` / `GuardrailExecutor.executeAsync` compose the guardrails **without a
@@ -238,8 +239,8 @@ history can't corrupt conversation state (see §3.7).
 > - **Memory writes are deliberately *not* cancelled** even though the type would allow it — cancelling a memory write
 >   mid-flight could corrupt conversation state — so the framework simply lets them run to completion.
 
-> **(b) The new async SPIs throw `AsyncNotSupportedException` by default — uniformly.**
-> Every async SPI default throws `AsyncNotSupportedException` (a subtype of `UnsupportedOperationException`): the model
+> **(b) The new async SPIs report `AsyncNotSupportedException` by default — uniformly.**
+> Every async SPI default reports `AsyncNotSupportedException` (a `NonRetriableException`, and hence a `LangChain4jException`) through its return type — a failed `CompletableFuture`, or a failing `Flow.Publisher` for the two publisher-returning methods (`StreamingChatModel.doChat(ChatRequest)`, `HttpClient.stream`): the model
 > layer (`ChatModel.doChatAsync`, `StreamingChatModel.doChat(ChatRequest)`, `EmbeddingModel.doEmbedAsync`,
 > `ScoringModel.scoreAllAsync`), `EmbeddingStore.searchAsync`, `WebSearchEngine.searchAsync`, the RAG stage SPIs
 > (`RetrievalAugmentor.augmentAsync`, `QueryTransformer.transformAsync`, `QueryRouter.routeAsync`,
@@ -255,8 +256,11 @@ history can't corrupt conversation state (see §3.7).
 > *specific* type to decide offload-vs-fail-loud. Matching the bare `UnsupportedOperationException` would misread an
 > *incidental* `UnsupportedOperationException` thrown from deep inside a **genuinely async** component (e.g.
 > `List.of(...).add(x)`, or an unsupported store filter) as a "not async" signal — silently offloading (masking the
-> bug, doubling the cost) or reporting a misleading "not fully asynchronous" error. The marker extends
-> `UnsupportedOperationException` so existing `catch`/`instanceof UnsupportedOperationException` code keeps working.
+> bug, doubling the cost) or reporting a misleading "not fully asynchronous" error. The marker is therefore
+> deliberately **disjoint** from `UnsupportedOperationException` — it extends `NonRetriableException` (a
+> `LangChain4jException`), *not* `UnsupportedOperationException` — so an incidental `UnsupportedOperationException` is
+> never matched as a "not async" signal; and, being non-retriable, a "not implemented" default is not pointlessly
+> retried with back-off.
 > The distinct `UnsupportedFeatureException` is reserved for the terminal, user-facing error the orchestrators *emit*
 > when failing loudly (it carries the actionable `offloadBlocking(true)` hint). Most default messages follow
 > `"<method>() is not implemented by " + getClass().getName()`; a couple of user-implementable SPIs (`ToolExecutor`,
@@ -266,9 +270,11 @@ history can't corrupt conversation state (see §3.7).
 > A method returning a `CompletableFuture` or `Flow.Publisher` reports *operation* errors by completing the future
 > exceptionally (or via `onError`), never by throwing synchronously — a synchronous throw would bypass the caller's
 > `whenComplete`/`exceptionally` and, on the reactive path, break the Reactive Streams contract by escaping
-> `subscribe()`. The throwing SPI *defaults* from (b) are an internal "not implemented" seam; the public async entry
-> points (`embedAsync`, `retrieveAsync`, the AI Service's future/publisher) convert such a throw into a failed future /
-> `onError`, so a caller always has a single error channel.
+> `subscribe()`. The SPI *defaults* from (b) follow this same rule — they deliver `AsyncNotSupportedException` through
+> the return type (a failed future / `onError`), not by throwing. As a belt-and-suspenders, the public async entry
+> points (`embedAsync`, `retrieveAsync`, the AI Service's future/publisher) also convert any *synchronous* throw from a
+> genuine implementation (e.g. an eager `validate()`) into a failed future / `onError`, so a caller always has a single
+> error channel.
 
 ### 3.8 Implementation note: `mutiny-zero`
 The reactive publishers (the AI Service `AiServiceStreamingEventPublisher`, and the model/HTTP streaming
@@ -358,7 +364,7 @@ Which stage implementations are async today:
   non-blocking path: the consumer surfaces `AsyncNotSupportedException`, which is offloaded when opted in, or
   fails loudly otherwise.
 
-The `*Async` methods on `ScoringModel` and `WebSearchEngine` are `default` methods that throw
+The `*Async` methods on `ScoringModel` and `WebSearchEngine` are `default` methods that return a failed future carrying
 `AsyncNotSupportedException`, so adding them is not a breaking change and providers opt in incrementally.
 
 ## 4. Supported types
@@ -516,11 +522,11 @@ class BookingTools {
 
 | Item | Status |
 |---|---|
-| **RAG / content retrieval** non-blocking | **Delivered** (§3.9) — async SPI across the whole retrieval graph, fail-loud-by-default with opt-in offload. Native async today: RAG defaults, the LLM-backed query stages (over `chatAsync`), `EmbeddingStoreContentRetriever` (over async embeddings + store), `ReRankingContentAggregator` (Cohere) and `WebSearchContentRetriever` (Tavily). Other providers throw the default and are offloaded-or-fail-loud. |
-| **Reactive support for non-OpenAI model providers** | Validated across transports: async `doChatAsync` is implemented by **OpenAI** and **Anthropic** (both over the `HttpClient` abstraction) and **Bedrock** (over the AWS SDK's native async client); the reactive `doChat` publisher is implemented by **OpenAI**, **Anthropic**, and **Bedrock**, all with real mid-stream cancellation (Anthropic aborts via the SSE parser's `StreamingHandle`; Bedrock cancels the AWS SDK event-stream subscription). Remaining chat/embedding providers fall back to the throwing defaults and need a per-provider implementation (the handler→publisher `TubeBackedStreamingChatResponseHandler` bridge makes this a small change, pending extraction into a shared module). |
+| **RAG / content retrieval** non-blocking | **Delivered** (§3.9) — async SPI across the whole retrieval graph, fail-loud-by-default with opt-in offload. Native async today: RAG defaults, the LLM-backed query stages (over `chatAsync`), `EmbeddingStoreContentRetriever` (over async embeddings + store), `ReRankingContentAggregator` (Cohere) and `WebSearchContentRetriever` (Tavily). Other providers return the default (a failed future) and are offloaded-or-fail-loud. |
+| **Reactive support for non-OpenAI model providers** | Validated across transports: async `doChatAsync` is implemented by **OpenAI** and **Anthropic** (both over the `HttpClient` abstraction) and **Bedrock** (over the AWS SDK's native async client); the reactive `doChat` publisher is implemented by **OpenAI**, **Anthropic**, and **Bedrock**, all with real mid-stream cancellation (Anthropic aborts via the SSE parser's `StreamingHandle`; Bedrock cancels the AWS SDK event-stream subscription). Remaining chat/embedding providers fall back to the fail-loud defaults and need a per-provider implementation (the handler→publisher `TubeBackedStreamingChatResponseHandler` bridge makes this a small change, pending extraction into a shared module). |
 | **`LangChain4jManaged` thread-local across async hops** | `LangChain4jManaged.CURRENT` is an LC4j-owned `ThreadLocal`; unlike `InvocationContext` (passed explicitly) it does **not** follow the new thread hops. Audit whether it is ever read downstream of an async offload — if so, fold it into `InvocationContext` or capture/restore it around LC4j's own async boundaries. (Distinct from host context propagation, which the `ExecutorProvider` seam now covers.) |
-| **Anthropic streaming parks a background thread on reads** | Anthropic's reactive publisher is non-blocking *for the caller* and cancellable, but internally it drives the SSE stream via `HttpClient.execute(request, listener)` → `BodyHandlers.ofInputStream()` + a **blocking** `parser.parse(...)` loop, so it parks one background thread on socket reads for the stream's duration (same as its handler path). OpenAI's publisher is fully reactive (`HttpClient.stream()` → `ofPublisher()`, nothing parked) and Bedrock's is event-driven (AWS SDK Netty). Consequence: the BlockHound "publisher path does not block" IT is meaningful for **OpenAI** and **Bedrock** but not portable to Anthropic. Making Anthropic fully reactive would require a `stream()`-based Anthropic SSE parser (a larger refactor); parked for now. |
-| Per-provider `setAsync` / async stores | `ChatMemory.setAsync` and the async store methods are implemented by the bundled in-memory stores; persistent-store integrations (Redis, JDBC, …) need their async methods implemented to be non-blocking on the async/reactive paths (they throw by default). |
+| **Anthropic streaming fully reactive** | **Delivered.** Anthropic's streaming (both handler and reactive-publisher paths) now drives the SSE listener from `HttpClient.stream()` → the JDK client's `BodyHandlers.ofPublisher()` (nothing parked on socket reads), matching OpenAI; the same event-interpretation logic is reused, only the transport driver changed. All three reactive providers now carry the shared BlockHound TCK `AbstractStreamingChatModelPublisherNonBlockingIT` (in `langchain4j-core`), which enforces "no blocking on the worker threads" per provider — OpenAI and Anthropic police the JDK `HttpClient-*` workers, Bedrock the AWS SDK's `sdk-async-response-*` executor. |
+| Per-provider `setAsync` / async stores | `ChatMemory.setAsync` and the async store methods are implemented by the bundled in-memory stores; persistent-store integrations (Redis, JDBC, …) need their async methods implemented to be non-blocking on the async/reactive paths (they return a failed future by default). |
 | **Tool cancellation** (interrupting already-started tools) | Parked by design — contract is run-to-completion, result discarded. |
 | Moderation (`@Moderate`) on the new APIs | Intentionally **forbidden** (fails fast) — not meaningful for the async/reactive flow. |
 | **Kotlin `chatAsync` source compatibility** | The existing Kotlin `chatAsync` extension changes return type from `ChatResponse` to `CompletableFuture<ChatResponse>` — a source break for existing Kotlin callers. **Open decision** (needs the Kotlin-extension owner's call) before release. |

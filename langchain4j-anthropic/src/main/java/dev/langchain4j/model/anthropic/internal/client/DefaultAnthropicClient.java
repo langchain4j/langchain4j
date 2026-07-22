@@ -35,9 +35,13 @@ import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
+import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
+import dev.langchain4j.http.client.sse.HttpResponseReceived;
+import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
+import dev.langchain4j.http.client.sse.ServerSentEventParsingHandle;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
@@ -60,7 +64,10 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingHandle;
+import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
+import dev.langchain4j.reactive.streaming.HttpStreamingChatPublisher;
 import dev.langchain4j.model.output.FinishReason;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -71,6 +78,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
@@ -137,6 +145,18 @@ public class DefaultAnthropicClient extends AnthropicClient {
     private final String version;
     private final String beta;
     private final Supplier<Map<String, String>> customHeadersSupplier;
+
+    private static final ServerSentEventParsingHandle NO_OP_PARSING_HANDLE = new ServerSentEventParsingHandle() { // TODO
+        @Override
+        public void cancel() {
+            // reactive path cancels via Flow.Subscription
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return false;
+        }
+    };
 
     /**
      * Creates a new builder for constructing a {@link DefaultAnthropicClient} instance.
@@ -286,10 +306,22 @@ public class DefaultAnthropicClient extends AnthropicClient {
             AnthropicCreateMessageRequest request,
             AnthropicCreateMessageOptions options,
             StreamingChatResponseHandler handler) {
+        HttpRequest httpRequest = toHttpRequest(toJson(request), "messages");
+        httpClient.execute(httpRequest, buildStreamingEventListener(handler, options));
+    }
+
+    /**
+     * Builds the {@link ServerSentEventListener} that interprets Anthropic's streaming SSE events and drives the given
+     * {@link StreamingChatResponseHandler}. Shared by the blocking handler path ({@link #createMessage} via
+     * {@code execute(listener)}) and the non-blocking reactive publisher path ({@link #createMessagePublisher} via
+     * {@code httpClient.stream(...)}), so the event-interpretation logic is not duplicated.
+     */
+    private ServerSentEventListener buildStreamingEventListener(
+            StreamingChatResponseHandler handler, AnthropicCreateMessageOptions options) {
 
         StreamingChatResponseHandler targetHandler = handler;
 
-        ServerSentEventListener eventListener = new ServerSentEventListener() {
+        return new ServerSentEventListener() {
 
             final MappingTrackingStreamingChatResponseHandler handler =
                     new MappingTrackingStreamingChatResponseHandler(targetHandler);
@@ -653,10 +685,48 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 withLoggingExceptions(() -> handler.onError(mappedError));
             }
         };
+    }
+
+    /**
+     * Non-blocking reactive counterpart of {@link #createMessage(AnthropicCreateMessageRequest,
+     * AnthropicCreateMessageOptions, StreamingChatResponseHandler)}: drives the same SSE listener from the reactive
+     * {@code httpClient.stream(...)} publisher (nothing parked on socket reads), bridging events into a bounded
+     * {@link Tube} of {@link StreamingEvent}s. Cancelling the returned publisher's subscription aborts the HTTP request
+     * - the subscriber cancels the upstream {@code Flow.Subscription} on any terminal signal (downstream cancel, error,
+     * or buffer overflow).
+     */
+    public Publisher<StreamingEvent> createMessagePublisher(
+            AnthropicCreateMessageRequest request, AnthropicCreateMessageOptions options, int bufferSize) {
 
         HttpRequest httpRequest = toHttpRequest(toJson(request), "messages");
+        return HttpStreamingChatPublisher.create(
+                bufferSize,
+                () -> httpClient.stream(httpRequest, new DefaultServerSentEventParser()),
+                tube -> {
+                    ServerSentEventListener eventListener =
+                            buildStreamingEventListener(new TubeBackedStreamingChatResponseHandler(tube), options);
+                    return new HttpStreamingChatPublisher.Sink() {
+                        @Override
+                        public void onEvent(HttpStreamingEvent item) {
+                            if (item instanceof HttpResponseReceived responseReceived) {
+                                eventListener.onOpen(responseReceived.response());
+                            } else if (item instanceof ServerSentEvent serverSentEvent) {
+                                eventListener.onEvent(
+                                        serverSentEvent, new ServerSentEventContext(NO_OP_PARSING_HANDLE));
+                            }
+                        }
 
-        httpClient.execute(httpRequest, eventListener);
+                        @Override
+                        public void onError(Throwable throwable) {
+                            eventListener.onError(throwable);
+                        }
+
+                        @Override
+                        public void onComplete() {
+                            eventListener.onClose();
+                        }
+                    };
+                });
     }
 
     /**

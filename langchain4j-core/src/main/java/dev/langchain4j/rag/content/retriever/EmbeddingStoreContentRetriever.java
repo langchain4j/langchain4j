@@ -358,7 +358,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
 
     /**
      * Runs {@code asyncCall} (a component's async method). If it is blocking - i.e. it reports being unimplemented
-     * via an {@link UnsupportedOperationException} - then either offload the corresponding blocking call to a shared
+     * via an {@link AsyncNotSupportedException} - then either offload the corresponding blocking call to a shared
      * virtual-thread executor (when {@code offloadBlocking}) or fail with an actionable message. Any other error
      * propagates unchanged. No reflection: the (un)availability of async is discovered by calling it.
      */

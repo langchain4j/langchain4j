@@ -13,6 +13,7 @@ import static java.util.Objects.isNull;
 
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
+import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;

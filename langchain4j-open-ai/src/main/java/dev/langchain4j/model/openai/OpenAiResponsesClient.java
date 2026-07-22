@@ -54,7 +54,7 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
-import dev.langchain4j.model.openai.internal.TubeBackedStreamingChatResponseHandler;
+import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import java.util.ArrayList;
 import java.util.HashSet;

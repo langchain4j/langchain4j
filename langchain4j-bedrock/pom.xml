@@ -36,6 +36,12 @@
         </dependency>
 
         <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-reactive-streaming</artifactId>
+            <version>1.19.0-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>bedrockruntime</artifactId>
         </dependency>
@@ -71,6 +77,16 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
+            <version>1.19.0-SNAPSHOT</version>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Shared reactive non-blocking TCK (AbstractStreamingChatModelPublisherNonBlockingIT) -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-reactive-streaming</artifactId>
             <version>1.19.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>

@@ -271,7 +271,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
 
     /**
      * Runs a stage on its component's native async method. A stage that is not genuinely async (its {@code *Async}
-     * method reports being unimplemented via an {@link UnsupportedOperationException}) is either offloaded - its
+     * method reports being unimplemented via an {@link AsyncNotSupportedException}) is either offloaded - its
      * blocking counterpart runs on the async offload executor (the shared virtual-thread executor by default) - when
      * {@code offloadBlocking}, or fails with an actionable message. Any other error propagates unchanged. No
      * reflection: async availability is discovered by calling it.

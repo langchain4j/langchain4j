@@ -23,6 +23,8 @@ import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
+import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
+import dev.langchain4j.reactive.streaming.HttpStreamingChatPublisher;
 import dev.langchain4j.model.chat.response.StreamingEvent;
 import dev.langchain4j.model.openai.OpenAiStreamingResponseBuilder;
 import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest;
@@ -43,16 +45,11 @@ import dev.langchain4j.model.openai.internal.image.ImageFile;
 import dev.langchain4j.model.openai.internal.models.ModelsListResponse;
 import dev.langchain4j.model.openai.internal.moderation.ModerationRequest;
 import dev.langchain4j.model.openai.internal.moderation.ModerationResponse;
-import mutiny.zero.BackpressureStrategy;
 import mutiny.zero.Tube;
-import mutiny.zero.TubeConfiguration;
-import mutiny.zero.ZeroPublisher;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Flow.Publisher;
-import java.util.concurrent.Flow.Subscriber;
-import java.util.concurrent.Flow.Subscription;
 
 import java.util.function.Supplier;
 
@@ -193,17 +190,13 @@ public class DefaultOpenAiClient extends OpenAiClient {
                 .body(Json.toJson(request))
                 .build();
 
-        TubeConfiguration config = new TubeConfiguration()
-                .withBackpressureStrategy(BackpressureStrategy.BUFFER)
-                .withBufferSize(streamingBufferSize);
-
-        return ZeroPublisher.create(config, tube -> {
-            Publisher<HttpStreamingEvent> upstream = httpClient.stream(httpRequest);
-            upstream.subscribe(new ChatCompletionEventSubscriber(tube, options));
-        });
+        return HttpStreamingChatPublisher.create(
+                streamingBufferSize,
+                () -> httpClient.stream(httpRequest),
+                tube -> new ChatCompletionEventSink(tube, options));
     }
 
-    private static final class ChatCompletionEventSubscriber implements Subscriber<HttpStreamingEvent> {
+    private static final class ChatCompletionEventSink implements HttpStreamingChatPublisher.Sink {
 
         private static final String DONE_MARKER = "[DONE]";
 
@@ -215,7 +208,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
         private final OpenAiStreamingResponseBuilder responseBuilder;
         private SuccessfulHttpResponse rawHttpResponse;
 
-        ChatCompletionEventSubscriber(Tube<StreamingEvent> tube, ChatCompletionOptions options) {
+        ChatCompletionEventSink(Tube<StreamingEvent> tube, ChatCompletionOptions options) {
             this.tube = ensureNotNull(tube, "tube");
             this.tubeHandler = new TubeBackedStreamingChatResponseHandler(tube);
             this.handler = new MappingTrackingStreamingChatResponseHandler(tubeHandler);
@@ -224,19 +217,7 @@ public class DefaultOpenAiClient extends OpenAiClient {
         }
 
         @Override
-        public void onSubscribe(Subscription subscription) {
-            if (tube.cancelled()) {
-                subscription.cancel();
-                return;
-            }
-            // whenTerminates (not whenCancelled): abort the upstream HTTP stream on ANY terminal signal - downstream
-            // cancel, an error, or a buffer overflow - so overflow actually aborts the connection.
-            tube.whenTerminates(subscription::cancel);
-            subscription.request(Long.MAX_VALUE);
-        }
-
-        @Override
-        public void onNext(HttpStreamingEvent item) {
+        public void onEvent(HttpStreamingEvent item) {
             if (tube.cancelled()) {
                 return;
             }

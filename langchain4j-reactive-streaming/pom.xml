@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>dev.langchain4j</groupId>
+        <artifactId>langchain4j-parent</artifactId>
+        <version>1.19.0-beta29-SNAPSHOT</version>
+        <relativePath>../langchain4j-parent/pom.xml</relativePath>
+    </parent>
+
+    <artifactId>langchain4j-reactive-streaming</artifactId>
+    <version>1.19.0-SNAPSHOT</version>
+    <name>LangChain4j :: Reactive Streaming</name>
+    <description>
+        Shared reactive-streaming infrastructure for streaming chat model providers: the handler-to-Publisher bridge
+        and the shared non-blocking contract test (TCK). Sits below the streaming providers and above core,
+        http-client and mutiny-zero.
+    </description>
+
+    <dependencies>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-core</artifactId>
+            <version>1.19.0-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-http-client</artifactId>
+            <version>1.19.0-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.smallrye.reactive</groupId>
+            <artifactId>mutiny-zero</artifactId>
+            <version>1.2.1</version>
+        </dependency>
+
+        <!-- test: the shared non-blocking TCK uses BlockHound -->
+        <dependency>
+            <groupId>io.projectreactor.tools</groupId>
+            <artifactId>blockhound</artifactId>
+            <version>1.0.17.RELEASE</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Publish the test-jar so streaming providers can extend the shared TCK. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

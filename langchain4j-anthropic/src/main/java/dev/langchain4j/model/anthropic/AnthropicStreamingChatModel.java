@@ -23,7 +23,6 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicCreateMessageOptions;
-import dev.langchain4j.model.anthropic.internal.client.TubeBackedStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -44,9 +43,6 @@ import java.util.Set;
 import java.util.concurrent.Flow.Publisher;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import mutiny.zero.BackpressureStrategy;
-import mutiny.zero.TubeConfiguration;
-import mutiny.zero.ZeroPublisher;
 import org.slf4j.Logger;
 
 /**
@@ -834,16 +830,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         AnthropicChatRequestParameters parameters = (AnthropicChatRequestParameters) chatRequest.parameters();
         AnthropicCreateMessageRequest anthropicRequest = toAnthropicRequest(chatRequest, parameters);
         AnthropicCreateMessageOptions options = toOptions(parameters);
-
-        TubeConfiguration config = new TubeConfiguration()
-                .withBackpressureStrategy(BackpressureStrategy.BUFFER)
-                .withBufferSize(STREAMING_BUFFER_SIZE); // TODO
-
-        return ZeroPublisher.create(config, tube -> {
-            TubeBackedStreamingChatResponseHandler bridge = new TubeBackedStreamingChatResponseHandler(tube);
-            tube.whenTerminates(bridge::cancelUpstream);
-            client.createMessage(anthropicRequest, options, bridge);
-        });
+        return client.createMessagePublisher(anthropicRequest, options, STREAMING_BUFFER_SIZE); // TODO make size configurable
     }
 
     private AnthropicCreateMessageRequest toAnthropicRequest(

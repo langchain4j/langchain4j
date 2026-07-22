@@ -29,6 +29,12 @@
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-reactive-streaming</artifactId>
+            <version>1.19.0-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-http-client-jdk</artifactId>
             <version>1.19.0-SNAPSHOT</version>
             <scope>runtime</scope>
@@ -63,6 +69,24 @@
             <version>1.19.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Shared reactive non-blocking TCK (AbstractStreamingChatModelPublisherNonBlockingIT) -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-reactive-streaming</artifactId>
+            <version>1.19.0-SNAPSHOT</version>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Reactive non-blocking TCK: AnthropicStreamingChatModelPublisherNonBlockingIT uses BlockHound -->
+        <dependency>
+            <groupId>io.projectreactor.tools</groupId>
+            <artifactId>blockhound</artifactId>
+            <version>1.0.17.RELEASE</version>
             <scope>test</scope>
         </dependency>
 
