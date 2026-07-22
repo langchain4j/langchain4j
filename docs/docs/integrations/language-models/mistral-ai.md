@@ -447,7 +447,7 @@ Moderation example:
 ```java
 ModerationModel model = new MistralAiModerationModel.Builder()
     .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-    .modelName(MistralAiModerationModelName.MISTRAL_MODERATION_LATEST)
+    .modelName("mistral-moderation-latest")
     .logRequests(true)
     .logResponses(false)
     .build();
