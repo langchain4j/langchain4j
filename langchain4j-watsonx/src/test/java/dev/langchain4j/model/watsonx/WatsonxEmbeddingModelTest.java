@@ -122,7 +122,7 @@ public class WatsonxEmbeddingModelTest {
                 new EmbeddingResponse.Result(List.of(0f, 1f), "test1"),
                 new EmbeddingResponse.Result(List.of(0f, 1f), "test2"));
 
-        when(mockEmbeddingService.embedding(List.of("test1", "test2"), null))
+        when(mockEmbeddingService.embed(List.of("test1", "test2"), null))
                 .thenReturn(new EmbeddingResponse("modelId", "createdAt", results, 10));
 
         withEmbeddingServiceMock(() -> {
@@ -163,7 +163,7 @@ public class WatsonxEmbeddingModelTest {
                     .apiKey("apiKey")
                     .build();
 
-            when(mockEmbeddingService.embedding(List.of("test1", "test2"), parameters))
+            when(mockEmbeddingService.embed(List.of("test1", "test2"), parameters))
                     .thenReturn(new EmbeddingResponse("modelId", "createdAt", results, 10));
 
             var response =

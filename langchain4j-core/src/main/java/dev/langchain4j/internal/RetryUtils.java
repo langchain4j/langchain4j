@@ -156,7 +156,11 @@ public final class RetryUtils {
         public int jitterDelayMillis(int retry) {
             double delay = rawDelayMs(retry);
             double jitter = delay * jitterScale;
-            return (int) (delay + RANDOM.nextInt((int) jitter));
+            int jitterBound = (int) jitter;
+            if (jitterBound <= 0) {
+                return (int) delay;
+            }
+            return (int) (delay + RANDOM.nextInt(jitterBound));
         }
 
         /**

@@ -45,7 +45,8 @@ public class HttpMcpTransport implements McpTransport {
     private final OkHttpClient client;
     private final boolean logResponses;
     private final boolean logRequests;
-    private EventSource mcpSseEventListener;
+    // (re)assigned by start(), which may be invoked again from the reconnect thread, so volatile
+    private volatile EventSource mcpSseEventListener;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String CONTENT_TYPE = "Content-Type";
     private static final String CONTENT_TYPE_JSON = "application/json";
@@ -74,6 +75,12 @@ public class HttpMcpTransport implements McpTransport {
 
     @Override
     public void start(McpOperationHandler messageHandler) {
+        // start() may be called again during reconnection. Cancel any previous SSE channel first,
+        // otherwise the old EventSource (and its connection) is leaked on every reconnect.
+        if (mcpSseEventListener != null) {
+            mcpSseEventListener.cancel();
+            mcpSseEventListener = null;
+        }
         this.messageHandler = messageHandler;
         mcpSseEventListener = startSseChannel(logResponses);
     }

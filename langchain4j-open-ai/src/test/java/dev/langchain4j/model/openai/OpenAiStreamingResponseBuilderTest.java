@@ -187,6 +187,42 @@ class OpenAiStreamingResponseBuilderTest {
     }
 
     @Test
+    void should_not_throw_npe_when_tool_call_has_no_function() {
+        // Given: an OpenAI-compatible gateway (e.g. LiteLLM, vLLM) emits a header chunk that carries
+        // an id but no "function" object at all: {"index":0,"id":"call_x","type":"function"}
+        OpenAiStreamingResponseBuilder builder = new OpenAiStreamingResponseBuilder();
+
+        ToolCall headerChunk = ToolCall.builder()
+                .id("call_x")
+                .index(0)
+                .type(ToolType.FUNCTION)
+                .function(null)
+                .build();
+
+        // When: appending the response (should not throw NPE)
+        builder.append(chatCompletionResponse(headerChunk));
+
+        // Then: a subsequent chunk carrying the function (and no id, as real gateways stream it once)
+        // completes the tool call normally
+        ToolCall functionChunk = ToolCall.builder()
+                .index(0)
+                .type(ToolType.FUNCTION)
+                .function(FunctionCall.builder()
+                        .name("getWeather")
+                        .arguments("{\"city\": \"Berlin\"}")
+                        .build())
+                .build();
+        builder.append(chatCompletionResponse(functionChunk));
+
+        ChatResponse chatResponse = builder.build();
+        List<ToolExecutionRequest> requests = chatResponse.aiMessage().toolExecutionRequests();
+        assertThat(requests).hasSize(1);
+        assertThat(requests.get(0).id()).isEqualTo("call_x");
+        assertThat(requests.get(0).name()).isEqualTo("getWeather");
+        assertThat(requests.get(0).arguments()).isEqualTo("{\"city\": \"Berlin\"}");
+    }
+
+    @Test
     void should_keep_all_tool_calls_from_same_delta() {
 
         // given
@@ -225,6 +261,68 @@ class OpenAiStreamingResponseBuilderTest {
         List<ToolExecutionRequest> toolExecutionRequests = response.aiMessage().toolExecutionRequests();
         assertThat(toolExecutionRequests).hasSize(2);
         assertThat(toolExecutionRequests).extracting(ToolExecutionRequest::id).containsExactly("call_1", "call_2");
+    }
+
+    @Test
+    void should_accumulate_logprobs_across_streaming_chunks() {
+        // Given: streaming chunks, each carrying one token's logprobs.content (as OpenAI sends them)
+        OpenAiStreamingResponseBuilder builder = new OpenAiStreamingResponseBuilder();
+
+        builder.append(chatCompletionResponseWithLogProb(dev.langchain4j.model.openai.internal.chat.LogProb.builder()
+                .token("Hello")
+                .logprob(-0.1)
+                .bytes(List.of(72, 101, 108, 108, 111))
+                .build()));
+        builder.append(chatCompletionResponseWithLogProb(dev.langchain4j.model.openai.internal.chat.LogProb.builder()
+                .token("!")
+                .logprob(-0.2)
+                .bytes(List.of(33))
+                .build()));
+
+        // When
+        ChatResponse chatResponse = builder.build();
+
+        // Then: metadata exposes the accumulated logprobs in order
+        OpenAiChatResponseMetadata metadata = (OpenAiChatResponseMetadata) chatResponse.metadata();
+        assertThat(metadata.logProbs()).hasSize(2);
+        assertThat(metadata.logProbs())
+                .extracting(dev.langchain4j.model.openai.LogProb::token)
+                .containsExactly("Hello", "!");
+        assertThat(metadata.logProbs().get(0).logprob()).isEqualTo(-0.1);
+    }
+
+    @Test
+    void should_keep_logprobs_null_when_not_requested() {
+        // Given: a response without logprobs (logprobs not requested)
+        OpenAiStreamingResponseBuilder builder = new OpenAiStreamingResponseBuilder();
+        builder.append(ChatCompletionResponse.builder()
+                .id("resp_1")
+                .model("gpt-4o")
+                .choices(List.of(ChatCompletionChoice.builder()
+                        .index(0)
+                        .delta(Delta.builder().content("Hello").build())
+                        .build()))
+                .build());
+
+        // When
+        ChatResponse chatResponse = builder.build();
+
+        // Then: logProbs stays null (backward compatible)
+        OpenAiChatResponseMetadata metadata = (OpenAiChatResponseMetadata) chatResponse.metadata();
+        assertThat(metadata.logProbs()).isNull();
+    }
+
+    private static ChatCompletionResponse chatCompletionResponseWithLogProb(
+            dev.langchain4j.model.openai.internal.chat.LogProb logProb) {
+        return ChatCompletionResponse.builder()
+                .id("resp_1")
+                .model("gpt-4o")
+                .choices(List.of(ChatCompletionChoice.builder()
+                        .index(0)
+                        .delta(Delta.builder().content(logProb.token()).build())
+                        .logprobs(LogProbs.builder().content(List.of(logProb)).build())
+                        .build()))
+                .build();
     }
 
     private static ChatCompletionResponse chatCompletionResponse(ToolCall toolCall) {

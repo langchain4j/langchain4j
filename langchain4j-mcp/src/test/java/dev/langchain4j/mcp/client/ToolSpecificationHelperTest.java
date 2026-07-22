@@ -14,6 +14,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.internal.JsonSchemaElementUtils;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
@@ -341,6 +342,82 @@ class ToolSpecificationHelperTest {
         JsonSchemaElement option2 = anyOf.anyOf().get(1);
         assertThat(option2).isInstanceOf(JsonObjectSchema.class);
         assertThat(((JsonObjectSchema) option2).properties()).containsOnlyKeys("path", "line", "body");
+    }
+
+    @Test
+    void toolWithAnyOfAlongsideObjectTypeAtRoot() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "fetch_artifacts",
+                    "description": "Fetch build artifacts",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "version": {
+                          "type": "string",
+                          "description": "Version identifier. Provide this, run_url, or both."
+                        },
+                        "run_url": {
+                          "type": "string",
+                          "description": "Execution run URL. Provide this, version, or both."
+                        },
+                        "filter": {
+                          "type": "string",
+                          "description": "Comma-separated list of names to fetch."
+                        },
+                        "signed": {
+                          "type": "boolean",
+                          "description": "If true, returns signed URLs."
+                        }
+                      },
+                      "anyOf": [
+                        { "required": ["version"] },
+                        { "required": ["run_url"] }
+                      ]
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+
+        assertThat(toolSpecifications).hasSize(1);
+        ToolSpecification toolSpecification = toolSpecifications.get(0);
+        assertThat(toolSpecification.name()).isEqualTo("fetch_artifacts");
+        JsonObjectSchema parameters = toolSpecification.parameters();
+        assertThat(parameters.properties()).containsOnlyKeys("version", "run_url", "filter", "signed");
+        assertThat(parameters.properties().get("version")).isInstanceOf(JsonStringSchema.class);
+        assertThat(parameters.properties().get("signed")).isInstanceOf(JsonBooleanSchema.class);
+    }
+
+    @Test
+    void toolWithAnyOfAlongsideObjectTypeAndPropertiesInBranches() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "fetch_by_key",
+                    "inputSchema": {
+                      "type": "object",
+                      "anyOf": [
+                        {
+                          "properties": { "version": { "type": "string" } },
+                          "required": ["version"]
+                        },
+                        {
+                          "properties": { "run_url": { "type": "string" } },
+                          "required": ["run_url"]
+                        }
+                      ]
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+
+        assertThat(toolSpecifications).hasSize(1);
+        assertThat(toolSpecifications.get(0).parameters()).isInstanceOf(JsonObjectSchema.class);
     }
 
     @Test
@@ -775,5 +852,103 @@ class ToolSpecificationHelperTest {
         JsonObjectSchema textInputDef =
                 (JsonObjectSchema) parameters.definitions().get("TextInput");
         assertThat(textInputDef.properties()).containsOnlyKeys("text", "language");
+    }
+
+    @Test
+    void toolWithNonDefsRefIsNotTreatedAsReference() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "send-chat-message",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "chatId": { "type": "string" },
+                        "body": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "object",
+                              "properties": {
+                                "application": { "$ref": "#/properties/body/properties/from/properties/application" }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "required": ["chatId"]
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        JsonObjectSchema parameters = toolSpecifications.get(0).parameters();
+
+        JsonObjectSchema body = (JsonObjectSchema) parameters.properties().get("body");
+        JsonObjectSchema from = (JsonObjectSchema) body.properties().get("from");
+        JsonSchemaElement application = from.properties().get("application");
+
+        assertThat(application).isNotInstanceOf(JsonReferenceSchema.class);
+        assertThat(application).isInstanceOf(JsonObjectSchema.class);
+        assertThat(JsonSchemaElementUtils.toMap(parameters, false).toString()).doesNotContain("#/$defs/#");
+    }
+
+    @Test
+    void toolWithDefsRefAndBodyPointerRefAreHandledDifferently() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "mixed_refs",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "contact": { "$ref": "#/$defs/Contact" },
+                        "self": { "$ref": "#/properties/contact" }
+                      },
+                      "$defs": {
+                        "Contact": { "type": "object", "properties": { "name": { "type": "string" } } }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        JsonObjectSchema parameters = toolSpecifications.get(0).parameters();
+
+        JsonSchemaElement contact = parameters.properties().get("contact");
+        assertThat(contact).isInstanceOf(JsonReferenceSchema.class);
+        assertThat(((JsonReferenceSchema) contact).reference()).isEqualTo("Contact");
+
+        assertThat(parameters.properties().get("self")).isNotInstanceOf(JsonReferenceSchema.class);
+    }
+
+    @Test
+    void toolWithNonDefsRefKeepsSiblingKeywords() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [{
+                    "name": "mixed_ref_keywords",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "note": {
+                          "$ref": "#/properties/other",
+                          "type": "string",
+                          "description": "a note"
+                        }
+                      }
+                    }
+                }]
+                """;
+        ArrayNode json = OBJECT_MAPPER.readValue(text, ArrayNode.class);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        JsonObjectSchema parameters = toolSpecifications.get(0).parameters();
+
+        JsonSchemaElement note = parameters.properties().get("note");
+        assertThat(note).isInstanceOf(JsonStringSchema.class);
+        assertThat(((JsonStringSchema) note).description()).isEqualTo("a note");
     }
 }
