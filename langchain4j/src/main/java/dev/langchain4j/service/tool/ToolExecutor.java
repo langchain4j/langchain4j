@@ -8,6 +8,7 @@ import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.service.MemoryId;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 /**
  * A low-level executor/handler of a {@link ToolExecutionRequest}.
@@ -48,8 +49,8 @@ public interface ToolExecutor {
 
     /**
      * Non-blocking counterpart of {@link #executeWithContext(ToolExecutionRequest, InvocationContext)},
-     * invoked by the asynchronous AI Service tool loop (AI Service methods returning {@link CompletableFuture} TODO),
-     * which composes the returned future instead of waiting on a thread.
+     * invoked by the asynchronous AI Service tool loop (AI Service methods returning {@link CompletableFuture}
+     * or {@link CompletionStage}), which composes the returned future instead of waiting on a thread.
      * <p>
      * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}: asynchronous
      * AI Services are opt-in, and silently executing a tool synchronously there would block the thread delivering

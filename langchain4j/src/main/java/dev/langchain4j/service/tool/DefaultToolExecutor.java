@@ -155,7 +155,8 @@ public class DefaultToolExecutor implements ToolExecutor {
         try {
             result = invokeMethod(arguments);
         } catch (IllegalAccessException e) {
-            return CompletableFuture.failedFuture(new RuntimeException(e)); // TODO why wrapping?
+            return CompletableFuture.failedFuture(new IllegalStateException(
+                    "Tool method is not accessible even after setAccessible(true): " + methodToInvoke, e));
         } catch (InvocationTargetException e) {
             return toFailedOrErrorResult(e.getCause());
         }
@@ -170,7 +171,7 @@ public class DefaultToolExecutor implements ToolExecutor {
                         }
                         return CompletableFuture.completedFuture(toToolExecutionResult(value, futureValueType()));
                     })
-                    .thenCompose(futureToolResult -> futureToolResult); // TODO
+                    .thenCompose(futureToolResult -> futureToolResult);
         }
 
         return CompletableFuture.completedFuture(toToolExecutionResult(result, methodToInvoke.getReturnType()));
