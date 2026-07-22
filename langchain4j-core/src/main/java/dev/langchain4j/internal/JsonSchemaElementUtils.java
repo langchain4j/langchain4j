@@ -260,11 +260,8 @@ public class JsonSchemaElementUtils {
 
         Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
         List<String> required = new ArrayList<>();
-        for (Field field : type.getDeclaredFields()) {
+        for (Field field : instanceFieldsIn(type)) {
             String fieldName = field.getName();
-            if (isStatic(field.getModifiers()) || fieldName.equals("__$hits$__") || fieldName.startsWith("this$")) {
-                continue;
-            }
             if (isRequired(field, areSubFieldsRequiredByDefault)) {
                 required.add(fieldName);
             }
@@ -294,6 +291,28 @@ public class JsonSchemaElementUtils {
         }
 
         return builder.build();
+    }
+
+    private static List<Field> instanceFieldsIn(Class<?> type) {
+        Map<String, Field> fieldsByName = new LinkedHashMap<>();
+        addInstanceFields(type, fieldsByName);
+        return new ArrayList<>(fieldsByName.values());
+    }
+
+    private static void addInstanceFields(Class<?> type, Map<String, Field> fieldsByName) {
+        Class<?> superclass = type.getSuperclass();
+        if (superclass != null && superclass != Object.class && isCustomClass(superclass)) {
+            addInstanceFields(superclass, fieldsByName);
+        }
+
+        for (Field field : type.getDeclaredFields()) {
+            String fieldName = field.getName();
+            if (isStatic(field.getModifiers()) || fieldName.equals("__$hits$__") || fieldName.startsWith("this$")) {
+                continue;
+            }
+            fieldsByName.remove(fieldName);
+            fieldsByName.put(fieldName, field);
+        }
     }
 
     private static boolean isRequired(Field field, boolean defaultValue) {
