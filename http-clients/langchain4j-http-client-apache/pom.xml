@@ -60,6 +60,28 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- test: the shared non-blocking publisher TCK (AbstractHttpClientPublisherNonBlockingIT) uses BlockHound -->
+        <dependency>
+            <groupId>io.projectreactor.tools</groupId>
+            <artifactId>blockhound</artifactId>
+            <version>1.0.17.RELEASE</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration combine.children="append">
+                    <!-- The shared non-blocking publisher TCK runs BlockHound, which needs this flag to instrument
+                         JDK classes on JDK 13+. Keep the parent's argLine and the mockito agent. -->
+                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} -XX:+AllowRedefinitionToAddDeleteMethods</argLine>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>
