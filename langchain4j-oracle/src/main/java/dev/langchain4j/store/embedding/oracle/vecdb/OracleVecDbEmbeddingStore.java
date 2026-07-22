@@ -7,7 +7,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -141,7 +140,33 @@ public final class OracleVecDbEmbeddingStore implements EmbeddingStore<TextSegme
     @Override
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
-        throw new UnsupportedFeatureException("Removing VecDB embeddings by metadata filter is not supported");
+        try (Connection connection = dataSource.getConnection()) {
+            int offset = 0;
+            while (true) {
+                String responseJson =
+                        queryExecutor.listVectors(connection, embeddingTable.name(), null, DELETE_BATCH_SIZE, offset);
+
+                List<VecDbVectorJsonMapper.ListedVector> listedVectors =
+                        VecDbVectorJsonMapper.vectorsFromListResponse(responseJson);
+                if (listedVectors.isEmpty()) {
+                    return;
+                }
+
+                List<String> matchingIds = listedVectors.stream()
+                        .filter(vector -> filter.test(vector.metadata()))
+                        .map(VecDbVectorJsonMapper.ListedVector::id)
+                        .toList();
+
+                if (!matchingIds.isEmpty()) {
+                    queryExecutor.deleteVectors(
+                            connection, embeddingTable.name(), VecDbVectorJsonMapper.idsToJson(matchingIds));
+                }
+
+                offset += listedVectors.size() - matchingIds.size();
+            }
+        } catch (SQLException exception) {
+            throw unchecked(exception);
+        }
     }
 
     @Override

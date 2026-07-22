@@ -5,10 +5,12 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import java.util.ArrayList;
@@ -25,6 +27,7 @@ final class VecDbVectorJsonMapper {
     static final String TEXT_METADATA_KEY = "text";
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final TypeReference<Map<String, Object>> METADATA_TYPE = new TypeReference<>() {};
 
     private VecDbVectorJsonMapper() {}
 
@@ -104,10 +107,8 @@ final class VecDbVectorJsonMapper {
         return idsJson.toString();
     }
 
-    /** Extracts vector IDs from a {@code DBMS_VECTOR_DATABASE.LIST_VECTORS} response. */
-    static List<String> idsFromListResponse(String responseJson) {
+    static List<ListedVector> vectorsFromListResponse(String responseJson) {
         ensureNotBlank(responseJson, "responseJson");
-
         JsonNode response;
         try {
             response = OBJECT_MAPPER.readTree(responseJson);
@@ -120,19 +121,41 @@ final class VecDbVectorJsonMapper {
             throw invalidListResponse("\"items\" must be an array");
         }
 
-        List<String> ids = new ArrayList<>(items.size());
+        List<ListedVector> vectors = new ArrayList<>(items.size());
         for (JsonNode item : items) {
             JsonNode id = item == null || !item.isObject() ? null : item.get("id");
             if (id == null || !id.isTextual()) {
                 throw invalidListResponse("each \"items\" entry must contain a string \"id\"");
             }
+
             try {
-                ids.add(ensureNotBlank(id.asText(), "id"));
+                JsonNode metadataNode = item.get("metadata");
+                vectors.add(new ListedVector(ensureNotBlank(id.asText(), "id"), toMetadata(metadataNode)));
             } catch (IllegalArgumentException exception) {
-                throw invalidListResponse("each \"items\" entry must contain a non-blank \"id\"", exception);
+                throw invalidListResponse(exception.getMessage(), exception);
             }
         }
-        return List.copyOf(ids);
+        return List.copyOf(vectors);
+    }
+
+    /** Extracts vector IDs from a {@code DBMS_VECTOR_DATABASE.LIST_VECTORS} response. */
+    static List<String> idsFromListResponse(String responseJson) {
+        return vectorsFromListResponse(responseJson).stream()
+                .map(ListedVector::id)
+                .toList();
+    }
+
+    private static Metadata toMetadata(JsonNode metadataNode) {
+        if (metadataNode == null || metadataNode.isNull()) {
+            return new Metadata();
+        }
+        if (!metadataNode.isObject()) {
+            throw new IllegalArgumentException("each \"items\" entry must contain an object or null \"metadata\"");
+        }
+
+        Map<String, Object> metadata = OBJECT_MAPPER.convertValue(metadataNode, METADATA_TYPE);
+        metadata.remove(TEXT_METADATA_KEY);
+        return new Metadata(metadata);
     }
 
     private static IllegalStateException invalidListResponse(String message) {
@@ -157,4 +180,6 @@ final class VecDbVectorJsonMapper {
         }
         return value;
     }
+
+    record ListedVector(String id, Metadata metadata) {}
 }
